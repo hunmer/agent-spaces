@@ -20,7 +20,10 @@
     "purpose": "Purpose",
     "membersLabel": "Team members",
     "searchAgent": "Search agent",
-    "noAgents": "No agents available"
+    "noAgents": "No agents available",
+    "smartCreate": "Smart create team",
+    "smartCreating": "Selecting team members...",
+    "smartCreateFailed": "Failed to select team members"
   },
   "visibility": {
     "private": "Private",

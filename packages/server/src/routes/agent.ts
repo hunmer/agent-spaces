@@ -2,7 +2,7 @@ import { Router } from 'express';
 import type { Request, Response } from 'express';
 import type { AgentConfig } from '@agent-spaces/shared';
 import * as agentService from '../services/agent.js';
-import { generateAgentDesign, optimizeAgentPrompt } from '../agents/agent-designer.js';
+import { generateAgentDesign, generateTeamMemberSelection, optimizeAgentPrompt } from '../agents/agent-designer.js';
 
 const router = Router({ mergeParams: true });
 
@@ -80,6 +80,29 @@ router.post('/presets/generate', async (req: Request<{ id: string }>, res: Respo
   } catch (err) {
     console.error('[agent-designer] generate failed', err);
     res.status(400).json({ error: err instanceof Error ? err.message : 'agent generation failed' });
+  }
+});
+
+router.post('/presets/generate-team-members', async (req: Request, res: Response) => {
+  const { name, description, agents } = req.body as {
+    name?: string;
+    description?: string;
+    agents?: Array<Pick<AgentConfig, 'id' | 'name' | 'role' | 'description'>>;
+  };
+  if (typeof name !== 'string' || !name.trim() || !Array.isArray(agents) || agents.length === 0) {
+    res.status(400).json({ error: 'name and agents are required' });
+    return;
+  }
+
+  try {
+    res.json(await generateTeamMemberSelection({
+      name,
+      description: typeof description === 'string' ? description : '',
+      agents,
+    }));
+  } catch (err) {
+    console.error('[agent-designer] team member generation failed', err);
+    res.status(400).json({ error: err instanceof Error ? err.message : 'team member generation failed' });
   }
 });
 

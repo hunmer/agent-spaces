@@ -11,6 +11,16 @@ export interface PromptOptimizationResult {
   systemPrompt: string;
 }
 
+export interface TeamMemberSelectionInput {
+  name: string;
+  description: string;
+  agents: Array<Pick<AgentConfig, 'id' | 'name' | 'role' | 'description'>>;
+}
+
+export interface TeamMemberSelectionResult {
+  agentIds: string[];
+}
+
 interface ModelConfig {
   modelProvider?: AgentConfig['modelProvider'];
   modelId: string;
@@ -42,6 +52,14 @@ How to shape the systemPrompt:
 - Match the user's language: if they write in Chinese, write the systemPrompt in Chinese.
 - Stay grounded and genuinely useful to the user's request.`;
 
+const TEAM_MEMBER_SELECTION_PROMPT = [
+  'You are assembling a new collaboration team.',
+  'Select the smallest useful set of available agents for the team title and description.',
+  'Return only a valid JSON object with this exact schema: {"agentIds":["exact-agent-id"]}.',
+  'Use only exact agent ids from the available agents list and do not invent agents.',
+  'Do not wrap the JSON in markdown fences or mention system internals.',
+].join('\n');
+
 export async function generateAgentDesign(userPrompt: string): Promise<AgentDesign> {
   const prompt = userPrompt.trim();
   if (!prompt) throw new Error('prompt is required');
@@ -65,6 +83,44 @@ export async function generateAgentDesign(userPrompt: string): Promise<AgentDesi
     preview: content.slice(0, 500),
   });
   return normalizeDesign(parseJsonObject(content));
+}
+
+export async function generateTeamMemberSelection(
+  input: TeamMemberSelectionInput,
+): Promise<TeamMemberSelectionResult> {
+  const name = input.name.trim();
+  const agents = input.agents
+    .filter((agent) => typeof agent?.id === 'string' && agent.id.trim())
+    .map((agent) => ({
+      id: agent.id.trim(),
+      name: typeof agent.name === 'string' ? agent.name : undefined,
+      role: typeof agent.role === 'string' ? agent.role : undefined,
+      description: typeof agent.description === 'string' ? agent.description : undefined,
+    }));
+  if (!name) throw new Error('team name is required');
+  if (agents.length === 0) throw new Error('at least one available agent is required');
+
+  const config = resolveModelConfig();
+  if (!config) {
+    throw new Error(`Configure model settings for ${AGENT_GENERATOR_PRESET_ID} before generating team members.`);
+  }
+
+  const agentBlock = agents
+    .map((agent) => `- ${agent.id} (${agent.name?.trim() || agent.id}${agent.role ? `, role=${agent.role}` : ''})${agent.description ? `: ${agent.description}` : ''}`)
+    .join('\n');
+  const content = await requestText(
+    config,
+    buildTeamMemberSelectionSystemPrompt(config),
+    [
+      `Team title: ${name}`,
+      `Team description: ${input.description.trim() || '(empty)'}`,
+      '',
+      'Available agents (agent id, name, role, description):',
+      agentBlock,
+    ].join('\n'),
+  );
+
+  return normalizeTeamMemberSelection(parseJsonObject(content), new Set(agents.map((agent) => agent.id)));
 }
 
 export async function optimizeAgentPrompt(
@@ -230,6 +286,11 @@ function buildOptimizationSystemPrompt(config: ModelConfig): string {
   ].join('\n');
   if (!custom) return base;
   return `${custom}\n\n${base}`;
+}
+
+function buildTeamMemberSelectionSystemPrompt(config: ModelConfig): string {
+  const custom = config.systemPrompt?.trim();
+  return custom ? `${custom}\n\n${TEAM_MEMBER_SELECTION_PROMPT}` : TEAM_MEMBER_SELECTION_PROMPT;
 }
 
 function buildPromptOptimizationUserPrompt(userRequest: string, currentPrompt: string): string {
@@ -404,6 +465,21 @@ function normalizeDesign(value: unknown): AgentDesign {
     throw new Error('Generated JSON must include name, description, and systemPrompt.');
   }
   return { name, description, systemPrompt };
+}
+
+export function normalizeTeamMemberSelection(
+  value: unknown,
+  availableIds: ReadonlySet<string>,
+): TeamMemberSelectionResult {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw new Error('Generated team member selection must be a JSON object.');
+  }
+  const agentIds = (value as { agentIds?: unknown }).agentIds;
+  if (!Array.isArray(agentIds)) throw new Error('Generated JSON must include agentIds.');
+
+  const validIds = [...new Set(agentIds.filter((id): id is string => typeof id === 'string' && availableIds.has(id)))];
+  if (validIds.length === 0) throw new Error('Generated JSON did not include any available agent ids.');
+  return { agentIds: validIds };
 }
 
 function inferProvider(apiBase?: string): NonNullable<AgentConfig['modelProvider']> {

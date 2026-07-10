@@ -75,9 +75,26 @@ export function TeamMemberRow({
   const a = resolveAgent(agent, name ?? "");
   const displayName = name ?? a.name ?? a.id;
   const isOwner = role === "owner";
+  // display 变体下，传入 onInboxOpen 即整行可点：打开未读消息对话框并选中该成员
+  const rowClickable = variant === "display" && Boolean(onInboxOpen);
 
   const inner = (
-    <div className="flex items-center gap-2 rounded-md px-2 py-1.5 transition-colors hover:bg-muted/50">
+    <div
+      onClick={rowClickable ? onInboxOpen : undefined}
+      role={rowClickable ? "button" : undefined}
+      tabIndex={rowClickable ? 0 : undefined}
+      onKeyDown={
+        rowClickable
+          ? (e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onInboxOpen?.();
+              }
+            }
+          : undefined
+      }
+      className={`flex items-center gap-2 rounded-md px-2 py-1.5 transition-colors hover:bg-muted/50 ${rowClickable ? "cursor-pointer" : ""}`}
+    >
       <MemberHoverCard
         agentId={a.id}
         displayName={displayName}

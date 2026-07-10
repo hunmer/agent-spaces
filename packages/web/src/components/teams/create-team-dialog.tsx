@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { AgentConfig } from "@agent-spaces/shared";
 import { useTranslations } from "next-intl";
-import { Loader2 } from "lucide-react";
+import { Loader2, Sparkles } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -89,6 +89,8 @@ export function CreateTeamDialog({
   const tc = useTranslations("common");
 
   const [values, setValues] = useState<TeamFormValues>(EMPTY);
+  const [smartLoading, setSmartLoading] = useState(false);
+  const [smartError, setSmartError] = useState("");
 
   useEffect(() => {
     if (!open) return;
@@ -149,8 +151,32 @@ export function CreateTeamDialog({
   };
 
   const handleClose = (next: boolean) => {
-    if (!next) setValues(EMPTY);
+    if (!next) {
+      setValues(EMPTY);
+      setSmartError("");
+    }
     onOpenChange(next);
+  };
+
+  const handleSmartCreate = async () => {
+    if (!values.name.trim() || smartLoading) return;
+    setSmartLoading(true);
+    setSmartError("");
+    try {
+      const result = await sdk.agent.suggestTeamMembers({
+        name: values.name.trim(),
+        description: values.description.trim(),
+        agents: agents
+          .filter((agent) => agent.enabled !== false)
+          .map(({ id, name, role, description }) => ({ id, name, role, description })),
+      });
+      setValues((prev) => ({ ...prev, members: [...new Set([...prev.members, ...result.agentIds])] }));
+      setMemberQuery("");
+    } catch (error) {
+      setSmartError(error instanceof Error ? error.message : t("form.smartCreateFailed"));
+    } finally {
+      setSmartLoading(false);
+    }
   };
 
   const handleSubmit = async () => {
@@ -203,6 +229,21 @@ export function CreateTeamDialog({
               rows={3}
               className="max-h-48 resize-none"
             />
+            {mode === "create" ? (
+              <div className="space-y-1.5">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => void handleSmartCreate()}
+                  disabled={loading || smartLoading || !values.name.trim() || !agents.some((agent) => agent.enabled !== false)}
+                >
+                  {smartLoading ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
+                  {smartLoading ? t("form.smartCreating") : t("form.smartCreate")}
+                </Button>
+                {smartError ? <p className="text-xs text-destructive">{smartError}</p> : null}
+              </div>
+            ) : null}
             <Textarea
               value={values.purpose}
               onChange={(e) => setValues({ ...values, purpose: e.target.value })}

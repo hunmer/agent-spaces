@@ -20,7 +20,10 @@
     "purpose": "团队目标",
     "membersLabel": "团队成员",
     "searchAgent": "搜索 Agent",
-    "noAgents": "暂无可用 Agent"
+    "noAgents": "暂无可用 Agent",
+    "smartCreate": "智能创建 Team",
+    "smartCreating": "正在选择团队成员...",
+    "smartCreateFailed": "智能选择团队成员失败"
   },
   "visibility": {
     "private": "私有",

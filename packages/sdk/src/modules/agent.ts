@@ -56,5 +56,12 @@ export function createAgentApi(http: HttpClient) {
     /** Generate agent config from prompt */
     generateFromPrompt: (prompt: string): Promise<Record<string, unknown> & { error?: string }> =>
       http.post('/api/agents/presets/generate', { prompt }),
+
+    suggestTeamMembers: (input: {
+      name: string;
+      description: string;
+      agents: Array<Pick<AgentConfig, 'id' | 'name' | 'role' | 'description'>>;
+    }): Promise<{ agentIds: string[] }> =>
+      http.post('/api/agents/presets/generate-team-members', input),
   };
 }

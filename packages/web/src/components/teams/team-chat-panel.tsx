@@ -10,6 +10,7 @@ import { MessageNavigator } from "@/components/chat/message-navigator";
 import { ChatInput } from "@/components/chat/chat-input";
 import { useAgentStore } from "@/stores/agent";
 import { sdk } from "@/lib/sdk";
+import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AgentEditor } from "@/components/sidebar/agent-editor";
 import { normalizeAgent, type AgentPreset } from "@/components/sidebar/agent-shared";
@@ -34,6 +35,12 @@ type TeamChatPanelProps = {
 };
 
 type TeamParticipant = NonNullable<TeamRuntimeResponse["participants"]>[number];
+
+function isRuntimeThinkingDelivery(delivery: TeamInboxItemView): boolean {
+  return delivery.preview.trim() === "Thinking"
+    && (!delivery.subject || delivery.subject.trim() === "Thinking")
+    && (!delivery.body || delivery.body.trim() === "Thinking");
+}
 
 const EMPTY_CHANNEL: Channel = {
   id: "__team_runtime__",
@@ -354,7 +361,9 @@ export function TeamChatPanel({ teamId, actorAgentId, sidebarOpen = true, onTogg
       })));
       const deliveries = Array.from(new Map(
         responses.flatMap((response) => response.inbox_items).map((delivery) => [delivery.delivery_id, delivery]),
-      ).values()).sort((a, b) => a.sent_at.localeCompare(b.sent_at));
+      ).values())
+        .filter((delivery) => !isRuntimeThinkingDelivery(delivery))
+        .sort((a, b) => a.sent_at.localeCompare(b.sent_at));
       setWorkflowDeliveries(deliveries);
       setWorkflowOpen(true);
     } catch (err) {
@@ -371,14 +380,21 @@ export function TeamChatPanel({ teamId, actorAgentId, sidebarOpen = true, onTogg
     <section className="flex h-full min-h-0 flex-col rounded-2xl border border-border bg-card p-4">
       <div className="mb-3 flex items-center justify-between gap-2">
         <div className="min-w-0">
-          <h2 className="font-medium">{t("chat.title")}</h2>
+          <h2 className="flex items-center gap-2 font-medium">
+            {t("chat.title")}
+            {runtime?.status === "running" ? (
+              <Badge variant="outline" className="gap-1 border-emerald-500/40 bg-emerald-500/10 px-1.5 py-0 text-xs font-normal text-emerald-600">
+                <Loader2 className="size-3 animate-spin" />
+                running
+              </Badge>
+            ) : null}
+          </h2>
           <div className="text-xs text-muted-foreground">
             {teamDescription
               || (leader?.name ? t("chat.subtitle", { leader: leader.name }) : t("chat.loadingLeader"))}
           </div>
         </div>
         <div className="flex items-center gap-1.5">
-          {(loading || sending) ? <Loader2 className="size-4 animate-spin text-muted-foreground" /> : null}
           <Button
             variant="ghost"
             size="icon"
@@ -395,7 +411,7 @@ export function TeamChatPanel({ teamId, actorAgentId, sidebarOpen = true, onTogg
             size="icon"
             className="size-7"
             onClick={handleClearMessages}
-            disabled={viewMessages.length === 0 || loading || sending}
+            disabled={viewMessages.length === 0 || sending}
             title="清空消息"
           >
             <Trash2 className="size-3.5" />
