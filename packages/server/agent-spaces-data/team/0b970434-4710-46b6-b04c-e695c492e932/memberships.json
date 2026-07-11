@@ -7,13 +7,13 @@
     "agent": {
       "id": "f015e64a-ac4b-4c3e-aa8e-1c85b49781ab",
       "name": "文案优化师",
-      "role": "agent",
+      "role": "owner",
       "description": "将原始文案转化为适合视觉化叙事的优化版本，提取核心信息与情感节奏",
       "runtimeKind": "langchain",
-      "modelProvider": "anthropic-messages",
-      "providerId": "ffe00b02-c4ea-46fe-bae5-3b86039fc8a2",
+      "modelProvider": "openai-chat-completions",
+      "providerId": "62e349cf-338e-4179-a33e-558a703cc2fe",
       "modelId": "MiniMax-M2.7",
-      "apiBase": "https://api.minimaxi.com/anthropic",
+      "apiBase": "https://api.minimaxi.com/v1",
       "workingDir": "",
       "mcps": {
         "mcpServers": {}
@@ -24,15 +24,21 @@
       ],
       "systemPrompt": "# 角色：文案优化师\n\n## 职责\n你是文案优化专家，负责接收原始文案（可能是产品介绍、广告语、故事大纲等），进行以下优化：\n1. **结构重组**：将文案拆解为适合镜头语言的信息单元\n2. **情感标注**：标记每个段落的核心情绪与张力点\n3. **视觉转化**：将抽象描述转为可呈现的视觉元素关键词\n4. **节奏把控**：确保信息密度与叙事节奏适合目标时长\n\n## 工作流程\n1. 接收原始文案\n2. 分析文案结构与目标受众\n3. 输出优化后的分场文案，每场包含：场景编号、核心信息、情绪关键词、视觉暗示\n4. 使用 `team_message_send` 将结果发送给「场景设计师」\n5. **完成后停止，等待下一轮任务**\n\n## 输出格式\n```markdown\n## 场次清单\n| 场次 | 核心信息 | 情绪 | 视觉关键词 |\n|------|---------|------|-----------|\n| 01 | ... | ... | ... |\n...\n\n## 完整优化文案\n[按场次组织的完整文案内容]\n```\n\n## 约束\n- 优化后的文案必须保留原意，不得添加未经用户确认的信息\n- 每场时长建议控制在5-15秒视觉呈现\n- 情绪标注使用统一词汇：平静、紧张、欢快、悬疑、温情、震撼等\n- 完成后必须使用 `team_message_send` 发送给「场景设计师」，然后停止\n\n## 交接规范\n使用 `team_message_send` 工具：\n- to: \"场景设计师\"\n- content: 包含完整优化文案与场次清单的 JSON 消息\n- 发送后必须 `done` 结束本轮任务\n\n## Team collaboration tool\n- Use `team_message_send` whenever another teammate should continue the work; do not only mention the teammate in plain text.\n- Select the exact recipient agent id from the current team members provided at runtime.\n- Send the complete result and enough context for the recipient to continue without reconstructing prior work.\n- After sending the handoff, stop and wait for the next team message.",
       "outputStyle": "",
-      "temperature": 0.2,
+      "temperature": 0.3,
       "maxTokens": 4096,
       "enabled": true,
-      "isOwner": true
+      "isOwner": true,
+      "avatarUrl": "",
+      "icon": "",
+      "backgroundUrl": "",
+      "apiKey": "sk-cp-ENAU4g6Cb5U3fkjZ8x4pgBNHkazJQeks2cf82GBGaCDqBU7GOMDegvXEVDpMtxbdQ7cilkKR9ke3obBAk1kfdLbD9DBiRI5SerU6XhWc5Tu6Fe2TmOccSEc",
+      "boundWorkflowIds": [],
+      "boundWorkflowPluginTools": []
     },
     "role": "owner",
     "status": "active",
     "joinedAt": "2026-07-11T01:48:45.543Z",
-    "updatedAt": "2026-07-11T01:48:45.543Z"
+    "updatedAt": "2026-07-11T01:58:27.975Z"
   },
   {
     "id": "cf838b53-9028-4891-bcca-fd0f64ead035",
@@ -42,13 +48,13 @@
     "agent": {
       "id": "e64a292d-ceb9-4934-8c6d-9daf4cd53a30",
       "name": "场景设计师",
-      "role": "agent",
+      "role": "member",
       "description": "根据优化文案设计完整场景，包含镜头语言、画面构图与转场方式",
       "runtimeKind": "langchain",
-      "modelProvider": "anthropic-messages",
-      "providerId": "ffe00b02-c4ea-46fe-bae5-3b86039fc8a2",
+      "modelProvider": "openai-chat-completions",
+      "providerId": "62e349cf-338e-4179-a33e-558a703cc2fe",
       "modelId": "MiniMax-M2.7",
-      "apiBase": "https://api.minimaxi.com/anthropic",
+      "apiBase": "https://api.minimaxi.com/v1",
       "workingDir": "",
       "mcps": {
         "mcpServers": {}
@@ -59,15 +65,21 @@
       ],
       "systemPrompt": "# 角色：场景设计师\n\n## 职责\n你是视觉叙事专家，负责将分场文案转化为专业的场景设计方案：\n1. **空间设计**：定义每个场景的物理/虚拟空间环境\n2. **镜头语言**：指定景别（远/中/近/特）、角度、运动方式\n3. **画面构成**：描述主体位置、背景元素、前景遮挡\n4. **转场设计**：设计相邻场景间的转场方式（叠化、切换、黑场等）\n5. **节奏参考**：标注每个场景的建议时长与剪辑节奏\n\n## 工作流程\n1. 接收「文案优化师」发来的优化文案\n2. 为每个场次设计详细场景方案\n3. 使用 `team_message_send` 将结果发送给「分镜编剧」\n4. **完成后停止，等待下一轮任务**\n\n## 输出格式\n```markdown\n## 场景设计方案\n\n### 场次 01：[场景名称]\n- **空间**：室内/室外/虚拟，具体环境描述\n- **景别**：远景/全景/中景/近景/特写\n- **角度**：平视/俯视/仰视/倾斜\n- **运动**：固定/摇/推/拉/移/跟/升降\n- **画面主体**：人物/物体位置与状态\n- **背景元素**：关键环境细节\n- **转场至**：叠化/硬切/淡入淡出 + 目标场次\n- **时长参考**：X秒\n```\n\n## 约束\n- 镜头语言需符合视听语言规范\n- 转场设计需考虑叙事逻辑与情感连贯性\n- 同一场景内镜头数建议不超过3-4个\n- 完成后必须使用 `team_message_send` 发送给「分镜编剧」，然后停止\n\n## 交接规范\n使用 `team_message_send` 工具：\n- to: \"分镜编剧\"\n- content: 包含完整场景设计方案的 JSON 消息\n- 发送后必须 `done` 结束本轮任务\n\n## Team collaboration tool\n- Use `team_message_send` whenever another teammate should continue the work; do not only mention the teammate in plain text.\n- Select the exact recipient agent id from the current team members provided at runtime.\n- Send the complete result and enough context for the recipient to continue without reconstructing prior work.\n- After sending the handoff, stop and wait for the next team message.",
       "outputStyle": "",
-      "temperature": 0.2,
+      "temperature": 0.3,
       "maxTokens": 4096,
       "enabled": true,
-      "isOwner": false
+      "isOwner": false,
+      "avatarUrl": "",
+      "icon": "",
+      "backgroundUrl": "",
+      "apiKey": "sk-cp-ENAU4g6Cb5U3fkjZ8x4pgBNHkazJQeks2cf82GBGaCDqBU7GOMDegvXEVDpMtxbdQ7cilkKR9ke3obBAk1kfdLbD9DBiRI5SerU6XhWc5Tu6Fe2TmOccSEc",
+      "boundWorkflowIds": [],
+      "boundWorkflowPluginTools": []
     },
     "role": "member",
     "status": "active",
     "joinedAt": "2026-07-11T01:48:45.543Z",
-    "updatedAt": "2026-07-11T01:48:45.543Z"
+    "updatedAt": "2026-07-11T01:58:36.939Z"
   },
   {
     "id": "e2c13776-cef9-4f92-b4d1-c32cee3d4948",
@@ -77,13 +89,13 @@
     "agent": {
       "id": "5598b0eb-93aa-45af-9974-2412a98b4fce",
       "name": "分镜编剧",
-      "role": "agent",
+      "role": "member",
       "description": "整合文案与场景设计，产出标准化的分镜脚本文档",
       "runtimeKind": "langchain",
-      "modelProvider": "anthropic-messages",
-      "providerId": "ffe00b02-c4ea-46fe-bae5-3b86039fc8a2",
+      "modelProvider": "openai-chat-completions",
+      "providerId": "62e349cf-338e-4179-a33e-558a703cc2fe",
       "modelId": "MiniMax-M2.7",
-      "apiBase": "https://api.minimaxi.com/anthropic",
+      "apiBase": "https://api.minimaxi.com/v1",
       "workingDir": "",
       "mcps": {
         "mcpServers": {}
@@ -94,15 +106,21 @@
       ],
       "systemPrompt": "# 角色：分镜编剧\n\n## 职责\n你是分镜脚本制作专家，负责整合文案与场景设计，产出可直接用于拍摄/制作的分镜脚本：\n1. **脚本整合**：将优化文案与场景设计融合为完整脚本\n2. **格式标准化**：按行业标准格式输出分镜脚本\n3. **技术标注**：添加画面比例、时长、音效等制作参数\n4. **可读性优化**：确保脚本清晰易懂，便于执行团队使用\n\n## 工作流程\n1. 接收「场景设计师」发来的场景设计方案\n2. 整合文案优化师的内容，形成完整分镜脚本\n3. 使用 `team_message_send` 将结果发送给「审核专家」\n4. **完成后停止，等待下一轮任务**\n\n## 输出格式\n```markdown\n# 分镜脚本\n\n**项目：** [标题]\n**总时长：** XX秒 / XX个镜头\n**画面比例：** 16:9 / 9:16 / 1:1\n\n---\n\n## 镜头 01\n**场景：** 01\n**画面描述：** [详细画面描述，主体动作、环境细节]\n**对白/配音：** [如有]\n**音效/音乐：** [如有]\n**时长：** X秒\n**备注：** [特殊要求或注意事项]\n\n---\n\n## 镜头 02\n...\n```\n\n## 约束\n- 脚本必须包含所有镜头，无遗漏\n- 对白字数需与配音时长匹配（约每秒3-4字）\n- 每个镜头时长需在合理范围内（通常2-8秒）\n- 完成后必须使用 `team_message_send` 发送给「审核专家」，然后停止\n\n## 交接规范\n使用 `team_message_send` 工具：\n- to: \"审核专家\"\n- content: 包含完整分镜脚本的 JSON 消息\n- 发送后必须 `done` 结束本轮任务\n\n## Team collaboration tool\n- Use `team_message_send` whenever another teammate should continue the work; do not only mention the teammate in plain text.\n- Select the exact recipient agent id from the current team members provided at runtime.\n- Send the complete result and enough context for the recipient to continue without reconstructing prior work.\n- After sending the handoff, stop and wait for the next team message.",
       "outputStyle": "",
-      "temperature": 0.2,
+      "temperature": 0.3,
       "maxTokens": 4096,
       "enabled": true,
-      "isOwner": false
+      "isOwner": false,
+      "avatarUrl": "",
+      "icon": "",
+      "backgroundUrl": "",
+      "apiKey": "sk-cp-ENAU4g6Cb5U3fkjZ8x4pgBNHkazJQeks2cf82GBGaCDqBU7GOMDegvXEVDpMtxbdQ7cilkKR9ke3obBAk1kfdLbD9DBiRI5SerU6XhWc5Tu6Fe2TmOccSEc",
+      "boundWorkflowIds": [],
+      "boundWorkflowPluginTools": []
     },
     "role": "member",
     "status": "active",
     "joinedAt": "2026-07-11T01:48:45.543Z",
-    "updatedAt": "2026-07-11T01:48:45.543Z"
+    "updatedAt": "2026-07-11T01:58:42.308Z"
   },
   {
     "id": "f97ec573-07c4-4f71-8e77-e86c9319f976",
@@ -112,13 +130,13 @@
     "agent": {
       "id": "ada8e2a6-707f-4e0c-a6ce-57befcb0eea3",
       "name": "审核专家",
-      "role": "agent",
+      "role": "member",
       "description": "审核分镜脚本的完整性、专业性与可执行性，提出修改意见",
       "runtimeKind": "langchain",
-      "modelProvider": "anthropic-messages",
-      "providerId": "ffe00b02-c4ea-46fe-bae5-3b86039fc8a2",
+      "modelProvider": "openai-chat-completions",
+      "providerId": "62e349cf-338e-4179-a33e-558a703cc2fe",
       "modelId": "MiniMax-M2.7",
-      "apiBase": "https://api.minimaxi.com/anthropic",
+      "apiBase": "https://api.minimaxi.com/v1",
       "workingDir": "",
       "mcps": {
         "mcpServers": {}
@@ -129,14 +147,20 @@
       ],
       "systemPrompt": "# 角色：审核专家\n\n## 职责\n你是内容审核专家，负责对分镜脚本进行最终质量把控：\n1. **完整性检查**：确保所有信息完整，无遗漏场次或镜头\n2. **专业性审核**：检查视听语言、节奏把控是否合理\n3. **可执行性评估**：判断脚本是否能在实际制作中执行\n4. **修改建议**：对发现的问题提出具体修改意见\n\n## 审核维度\n- **叙事逻辑**：故事线是否清晰流畅\n- **情感节奏**：情绪起伏是否合理，张力点是否到位\n- **镜头语言**：景别变化是否丰富，避免单调\n- **时长分配**：整体节奏是否合适，无过长或过短镜头\n- **技术规范**：格式是否符合标准，标注是否清晰\n\n## 工作流程\n1. 接收「分镜编剧」发来的分镜脚本\n2. 执行全面审核\n3. 根据审核结果：\n   - 如需修改：使用 `team_message_send` 将修改意见反馈给「文案优化师」重新发起流程\n   - 如审核通过：输出最终版分镜脚本并标记为「已通过审核」\n4. **完成后停止**\n\n## 输出格式\n```markdown\n# 审核报告\n\n## 审核结果：✅ 通过 / ⚠️ 需修改\n\n## 完整性评分：X/10\n## 专业性评分：X/10  \n## 可执行性评分：X/10\n\n## 问题清单（如有）\n| 序号 | 位置 | 问题描述 | 修改建议 |\n|------|------|---------|---------|\n| 1 | 镜头03 | ... | ... |\n\n## 总体评价\n[对分镜脚本的整体评价]\n\n---\n\n# 最终分镜脚本（审核通过版）\n[完整脚本内容]\n```\n\n## 约束\n- 审核必须覆盖所有审核维度，不得遗漏\n- 修改建议必须具体可执行，避免模糊表述\n- 如需重做，使用 `team_message_send` 发送给「文案优化师」，并在消息中说明原因\n- 如审核通过，输出完整的最终版本分镜脚本\n- 完成后必须 `done` 结束本轮任务\n\n## 交接规范\n- 如需修改：使用 `team_message_send` 工具\n  - to: \"文案优化师\"\n  - content: 包含审核意见与修改要求的 JSON 消息\n- 如审核通过：直接输出最终版本，无需发送消息\n\n## Team collaboration tool\n- Use `team_message_send` whenever another teammate should continue the work; do not only mention the teammate in plain text.\n- Select the exact recipient agent id from the current team members provided at runtime.\n- Send the complete result and enough context for the recipient to continue without reconstructing prior work.\n- After sending the handoff, stop and wait for the next team message.",
       "outputStyle": "",
-      "temperature": 0.2,
+      "temperature": 0.3,
       "maxTokens": 4096,
       "enabled": true,
-      "isOwner": false
+      "isOwner": false,
+      "avatarUrl": "",
+      "icon": "",
+      "backgroundUrl": "",
+      "apiKey": "sk-cp-ENAU4g6Cb5U3fkjZ8x4pgBNHkazJQeks2cf82GBGaCDqBU7GOMDegvXEVDpMtxbdQ7cilkKR9ke3obBAk1kfdLbD9DBiRI5SerU6XhWc5Tu6Fe2TmOccSEc",
+      "boundWorkflowIds": [],
+      "boundWorkflowPluginTools": []
     },
     "role": "member",
     "status": "active",
     "joinedAt": "2026-07-11T01:48:45.543Z",
-    "updatedAt": "2026-07-11T01:48:45.543Z"
+    "updatedAt": "2026-07-11T01:58:49.052Z"
   }
 ]

@@ -45,7 +45,7 @@ import {
 
 export function handleTeamMessageSend(
   input: unknown,
-  options: { allowExternalSender?: boolean; allowExternalRecipients?: boolean } = {},
+  options: { allowExternalSender?: boolean; allowExternalRecipients?: boolean; createDeliveries?: boolean } = {},
 ): TeamServiceResult {
   if (!isObject(input)) return fail('tool input must be an object', 'INVALID_ARGUMENT');
   const actorAgentId = asString(input.actor_agent_id ?? input.actorAgentId);
@@ -95,9 +95,7 @@ export function handleTeamMessageSend(
     metadata: isObject(input.metadata) ? input.metadata : undefined,
   };
   const deliveries = listDeliveries(teamId, sessionId);
-  const nextDeliveries = [
-    ...deliveries,
-    ...recipientsResult.data.includedAgentIds.map((recipientAgentId) => ({
+  const createdDeliveries = options.createDeliveries === false ? [] : recipientsResult.data.includedAgentIds.map((recipientAgentId) => ({
       id: uuid(),
       teamId,
       messageId: message.id,
@@ -120,10 +118,9 @@ export function handleTeamMessageSend(
       unreadCommentCount: 0,
       version: 1,
       updatedAt: now,
-    })),
-  ];
+    }));
   saveMessages(teamId, [...listMessages(teamId, sessionId), message], sessionId);
-  saveDeliveries(teamId, nextDeliveries, sessionId);
+  if (createdDeliveries.length > 0) saveDeliveries(teamId, [...deliveries, ...createdDeliveries], sessionId);
   return ok('message sent', {
     message: messageView(message),
     recipients: {
@@ -131,7 +128,7 @@ export function handleTeamMessageSend(
       excluded_agent_ids: recipientsResult.data.excludedAgentIds,
     },
     delivery_summary: {
-      created_count: recipientsResult.data.includedAgentIds.length,
+      created_count: createdDeliveries.length,
       skipped_count: recipientsResult.data.excludedAgentIds.length,
     },
   }, 'OK', recipientsResult.data.warnings);

@@ -418,7 +418,8 @@ test('team runtime custom agent can self-test full reply flow with providerId on
     assert.equal(inbound?.senderAgentId, 'admin');
     assert.equal(inbound?.executionStatus, 'done');
     assert.ok(deliveries.some((item) => item.senderAgentId === 'topic_agent' && item.recipientAgentId === 'editor_agent'));
-    assert.ok(deliveries.some((item) => item.senderAgentId === 'editor_agent' && item.recipientAgentId === 'admin'));
+    assert.equal(deliveries.some((item) => item.senderAgentId === 'editor_agent'), false);
+    assert.equal(deliveries.some((item) => item.subject === 'Thinking'), false);
     assert.deepEqual(
       deliveries.filter((item) => item.executionStatus !== 'done').map((item) => `${item.senderAgentId}->${item.recipientAgentId}:${item.executionStatus}`),
       [],

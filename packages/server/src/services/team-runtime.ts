@@ -768,7 +768,7 @@ async function dispatchTeamReply(teamId: string, sessionId: string, actorAgentId
     recipient_agent_ids: recipientAgentIds,
     initial_execution_status: 'running',
     metadata: { sessionId: runtime.sessionId, runtimeStatus: 'running', parts: [] },
-  }, { allowExternalRecipients: true });
+  }, { allowExternalRecipients: true, createDeliveries: false });
   const replyMessageId = (pendingResult.data as { message?: { message_id?: string } } | undefined)?.message?.message_id;
   let partsTracker: ReturnType<typeof createAgentMessagePartsTracker>;
   partsTracker = createAgentMessagePartsTracker({
