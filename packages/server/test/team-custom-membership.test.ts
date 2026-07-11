@@ -30,6 +30,7 @@ test('generated team agents persist only as custom memberships', async () => {
       providerId: 'provider-1',
       modelId: 'model-1',
       apiBase: 'https://example.com/v1',
+      apiKey: 'must-not-be-persisted',
       tools: ['team_message_send'],
       systemPrompt: 'Write, then hand off with team_message_send.',
       enabled: true,
@@ -49,9 +50,12 @@ test('generated team agents persist only as custom memberships', async () => {
     const teamId = (created.data as { team: { team_id: string } }).team.team_id;
     const memberships = JSON.parse(readFileSync(join(dataDir, 'team', teamId, 'memberships.json'), 'utf-8')) as Array<Record<string, unknown>>;
     const generatedMembership = memberships.find((item) => item.agentId === generatedAgent.id);
+    const { apiKey: _apiKey, ...expectedAgent } = generatedAgent;
+    void _apiKey;
 
     assert.equal(generatedMembership?.agentStore, 'custom');
-    assert.deepEqual(generatedMembership?.agent, generatedAgent);
+    assert.deepEqual(generatedMembership?.agent, expectedAgent);
+    assert.equal(Object.prototype.hasOwnProperty.call(generatedMembership?.agent as object, 'apiKey'), false);
     assert.equal(generatedMembership?.role, 'owner');
     assert.equal(memberships.length, 1);
     assert.equal(listPresets().some((agent) => agent.id === generatedAgent.id), false);

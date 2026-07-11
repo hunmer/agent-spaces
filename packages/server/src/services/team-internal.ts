@@ -142,7 +142,10 @@ export function listMemberships(teamId: string): TeamMembership[] {
 }
 
 export function saveMemberships(teamId: string, items: TeamMembership[]): void {
-  writeJsonFile(teamMembershipsPath(teamId), items);
+  writeJsonFile(teamMembershipsPath(teamId), items.map((item) => ({
+    ...item,
+    ...(item.agent ? { agent: redactAgentSecrets(item.agent) } : {}),
+  })));
 }
 
 export function listMessages(teamId: string, sessionId?: string): TeamMessage[] {
