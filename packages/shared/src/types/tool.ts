@@ -95,6 +95,12 @@ export const BUILT_IN_AGENT_TOOLS = [
     category: 'team',
   },
   {
+    name: 'team_agent_session_list',
+    label: 'Team Agent Sessions',
+    description: 'List real Agent session IDs recorded for team members.',
+    category: 'team',
+  },
+  {
     name: 'team_task_manage',
     label: 'Team Task Manage',
     description: 'Create, list, or complete persisted team tasks.',

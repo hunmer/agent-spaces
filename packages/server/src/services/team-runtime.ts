@@ -109,6 +109,11 @@ type StoredTeamRuntime = TeamRuntime & {
   lastMessageId?: string;
   startedAt?: string;
   output?: string;
+  agentSessions?: Array<{
+    agentId: string;
+    sessionId: string;
+    updatedAt: string;
+  }>;
 };
 
 type Delivery = {
@@ -284,6 +289,18 @@ function saveRuntimes(teamId: string, sessionId: string, items: StoredTeamRuntim
   writeJsonFile(teamRuntimesPath(teamId, sessionId), items);
 }
 
+function recordAgentSession(teamId: string, sessionId: string, runtime: StoredTeamRuntime, agentId: string, agentSessionId: string): StoredTeamRuntime {
+  const current = listRuntimes(teamId, sessionId).find((item) => item.sessionId === runtime.sessionId) ?? runtime;
+  const entry = { agentId, sessionId: agentSessionId, updatedAt: new Date().toISOString() };
+  return updateRuntime(teamId, sessionId, {
+    ...current,
+    agentSessions: [
+      ...(current.agentSessions ?? []).filter((item) => item.sessionId !== agentSessionId),
+      entry,
+    ],
+  });
+}
+
 function listTasks(teamId: string, sessionId: string): TeamTask[] {
   return readJsonFile<TeamTask[]>(teamTasksPath(teamId, sessionId)) ?? [];
 }
@@ -420,7 +437,7 @@ function buildTeamAgentPrompt(
     `Your actor_agent_id: ${actorAgentId}`,
     'Always use these exact ids in team tool calls; never use a recipient agent id as team_id.',
     'If another teammate should continue the work, call `team_message_send` with that teammate\'s agent id instead of only mentioning them in plain text.',
-    'When prior teammate output is needed, read the completed task\'s agentSessionId from `team_task_manage` action=list, then call `GetAgentSessionDetail` with that session id.',
+    'When prior teammate output is needed, call `team_agent_session_list` with the upstream agent id, then pass the returned session_id to `GetAgentSessionDetail`. Never guess a session id or use a task id as a session id.',
     'If a requested tool like `AddCurrentChannelComment` is unavailable, use the available team tools to hand off work to the correct teammate.',
     ...(isOwner ? [
       'After the first request, call `team_manage` with action=get and include_members_preview=true to inspect every active member, then create the complete multi-agent task list with `team_task_manage` action=create before delegating work. Create tasks only for non-owner members; never assign a task to yourself. Create all known downstream tasks at once, not only the next task.',
@@ -445,7 +462,7 @@ function buildTeamAgentSystemPrompt(teamId: string, agentId: string, base?: stri
   const isOwner = listMemberships(teamId).some((item) => item.status === 'active' && item.agentId === agentId && item.role === 'owner');
   const policy = isOwner
     ? 'Mandatory team policy: before the first team_message_send, call team_manage with action=get and include_members_preview=true to inspect every active member, then create the complete multi-agent task list with team_task_manage action=create. Create tasks only for non-owner members; never assign a task to yourself. Create all known downstream tasks at once, not only the next task. This overrides any earlier instruction that says to use only team_message_send.'
-    : 'Mandatory team policy: before finishing, complete your assigned task with team_task_manage action=complete. Use GetAgentSessionDetail when an upstream task provides an agentSessionId.';
+    : 'Mandatory team policy: before finishing, complete your assigned task with team_task_manage action=complete. To read upstream output, call team_agent_session_list first and pass its returned session_id to GetAgentSessionDetail. Never guess a session id.';
   return [base?.trim(), policy].filter(Boolean).join('\n\n') || undefined;
 }
 
@@ -484,7 +501,7 @@ function resolveTeamRuntimeTools(
 ): { tools?: string[]; functionTools?: ReturnType<typeof createTeamFunctionTools> } {
   const allowedTools = asStringArray(tools);
   const isOwner = listMemberships(teamId).some((item) => item.status === 'active' && item.agentId === actorAgentId && item.role === 'owner');
-  const requiredTeamTools: BuiltInAgentToolName[] = ['team_task_manage', 'GetAgentSessionDetail', ...(isOwner ? ['team_manage', 'team_task_complete'] as const : [])];
+  const requiredTeamTools: BuiltInAgentToolName[] = ['team_task_manage', 'team_agent_session_list', 'GetAgentSessionDetail', ...(isOwner ? ['team_manage', 'team_task_complete'] as const : [])];
   const allowedToolNames = allowedTools
     ? [...new Set([...allowedTools, ...requiredTeamTools])] as BuiltInAgentToolName[]
     : undefined;
@@ -881,6 +898,7 @@ async function dispatchTeamReply(teamId: string, sessionId: string, actorAgentId
         const task = listTasks(teamId, sessionId).find((item) => item.assigneeAgentId === targetAgentId && item.status === 'running');
         if (task) throw new Error(`agent completed without marking task complete: ${task.title}`);
       }
+      runtime = recordAgentSession(teamId, sessionId, runtime, targetAgentId, reply.agentContext.sessionId);
       logLines.push('', '[OUTPUT]', reply.agentContext.output || reply.content);
       if (activeTeamRuns.get(runKey)?.token !== token) return;
       const parts = partsTracker.buildParts({
@@ -986,7 +1004,7 @@ function maybeWakeOwnerForTasks(teamId: string, sessionId: string, actorAgentId:
   const content = [
     'Team members are idle but the task list is incomplete.',
     'Use `team_task_manage` with action=list, inspect pending or running tasks, and send the next required task to its assigned agent.',
-    'Tell the recipient to use `GetAgentSessionDetail` with the completed upstream task agentSessionId when prior output is needed.',
+    'Tell the recipient to call `team_agent_session_list` for the upstream agent and pass the returned session_id to `GetAgentSessionDetail`. Never guess a session id or use a task id.',
   ].join(' ');
   void postTeamRuntimeMessage({
     team_id: teamId,
@@ -1085,6 +1103,24 @@ export function handleTeamTaskManage(input: unknown): TeamServiceResult {
     return ok('team task completed', { task: completed });
   }
   return fail('action must be create, list, or complete', 'INVALID_ARGUMENT');
+}
+
+export function handleTeamAgentSessionList(input: unknown): TeamServiceResult {
+  if (!input || typeof input !== 'object') return fail('tool input must be an object', 'INVALID_ARGUMENT');
+  const map = input as Record<string, unknown>;
+  const teamId = asString(map.team_id ?? map.teamId);
+  const sessionId = asSessionId(map.session_id ?? map.sessionId);
+  const actorAgentId = asString(map.actor_agent_id ?? map.actorAgentId);
+  const targetAgentId = asString(map.agent_id ?? map.agentId);
+  if (!teamId || !sessionId || !actorAgentId) return fail('team_id, session_id, and actor_agent_id are required', 'INVALID_ARGUMENT');
+  if (!isActiveMember(listMemberships(teamId).find((item) => item.agentId === actorAgentId))) {
+    return fail('active team membership required', 'PERMISSION_DENIED');
+  }
+  const runtime = listRuntimes(teamId, sessionId).find((item) => item.sessionId === sessionId);
+  const sessions = (runtime?.agentSessions ?? [])
+    .filter((item) => !targetAgentId || item.agentId === targetAgentId)
+    .map((item) => ({ agent_id: item.agentId, session_id: item.sessionId, updated_at: item.updatedAt }));
+  return ok('team agent sessions listed', { sessions });
 }
 
 export function handleTeamTaskComplete(input: unknown): TeamServiceResult {

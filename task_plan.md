@@ -13,6 +13,10 @@ Prevent team conversations from stalling when a member finishes without sending 
 - [complete] 7. Synchronize team_id and session_id with URL parameters.
 - [complete] 8. Expose session tasks/final output and render them in Team detail.
 - [complete] 9. Add focused tests/build validation.
+- [complete] 10. Persist real member Agent Session IDs in Team runtime state.
+- [complete] 11. Add Team member session list builtin tool and catalog entry.
+- [complete] 12. Update runtime/designer prompts and default tools.
+- [complete] 13. Add regression tests and build validation.
 
 ## Decisions
 - Reuse JSON team runtime storage and existing function-tool patterns.

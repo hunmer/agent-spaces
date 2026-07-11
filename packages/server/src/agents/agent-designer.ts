@@ -60,7 +60,7 @@ const TEAM_AGENT_TOOL_INSTRUCTIONS = [
   '- Select the exact recipient agent id from the current team members provided at runtime.',
   '- Send the complete result and enough context for the recipient to continue without reconstructing prior work.',
   '- After sending the handoff, stop and wait for the next team message.',
-  '- Use `GetAgentSessionDetail` with an upstream task agentSessionId when you need the previous agent output.',
+  '- To read previous agent output, call `team_agent_session_list` with that agent id, then pass the returned session_id to `GetAgentSessionDetail`. Never guess a session id or use a task id.',
 ].join('\n');
 
 export async function generateAgentDesign(userPrompt: string): Promise<AgentDesign> {
@@ -346,8 +346,8 @@ export function normalizeTeamMemberSelection(
   const normalized = designs.map((agent, index) => {
     const isOwner = index === ownerIndex;
     const tools: BuiltInAgentToolName[] = isOwner
-      ? ['team_manage', 'team_message_send', 'team_task_manage', 'GetAgentSessionDetail', 'team_task_complete']
-      : ['team_message_send', 'team_task_manage', 'GetAgentSessionDetail'];
+      ? ['team_manage', 'team_message_send', 'team_task_manage', 'team_agent_session_list', 'GetAgentSessionDetail', 'team_task_complete']
+      : ['team_message_send', 'team_task_manage', 'team_agent_session_list', 'GetAgentSessionDetail'];
     return {
       id: uuid(),
       name: agent.name,

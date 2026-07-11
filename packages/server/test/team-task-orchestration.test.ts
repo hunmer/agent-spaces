@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createPreset } from '../src/services/agent.js';
 import { handleTeamManage } from '../src/services/team.js';
-import { getTeamRuntime, handleTeamTaskManage, postTeamRuntimeMessage, setTeamRuntimeFactoryForTests } from '../src/services/team-runtime.js';
+import { getTeamRuntime, handleTeamAgentSessionList, handleTeamTaskManage, postTeamRuntimeMessage, setTeamRuntimeFactoryForTests } from '../src/services/team-runtime.js';
 import { closeDb } from '../src/storage/agent-store.js';
 
 test('idle member run wakes owner to inspect incomplete tasks', async () => {
@@ -75,6 +75,16 @@ test('idle member run wakes owner to inspect incomplete tasks', async () => {
     assert.equal(ownerRuns, 2);
     const runtime = getTeamRuntime({ team_id: teamId, session_id: sessionId, actor_agent_id: 'admin' });
     assert.equal((runtime.data as { tasks: Array<{ title: string }> }).tasks[0]?.title, 'Member work');
+    const memberSessions = handleTeamAgentSessionList({
+      team_id: teamId,
+      session_id: sessionId,
+      actor_agent_id: owner.id,
+      agent_id: member.id,
+    });
+    const sessions = (memberSessions.data as { sessions: Array<{ agent_id: string; session_id: string }> }).sessions;
+    assert.equal(sessions.length, 1);
+    assert.equal(sessions[0]?.agent_id, member.id);
+    assert.match(sessions[0]?.session_id ?? '', /^[0-9a-f-]{36}$/);
   } finally {
     setTeamRuntimeFactoryForTests();
     closeDb();

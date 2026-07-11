@@ -8,3 +8,6 @@
 - Started Team URL/session detail UI work.
 - Added URL synchronization, runtime task response typing, session task/final-output cards, and locale labels.
 - Runtime task response regression test passed; SDK and Server builds passed; Next frontend compilation passed. Full web tsc remains blocked by the pre-existing `message-item.tsx:203` error.
+- Started member Agent Session lookup tool work.
+- Added runtime Agent Session persistence, `team_agent_session_list`, prompt/tool defaults, and a real-session lookup regression assertion.
+- Session lookup and designer tests passed 6/6; shared, SDK, and Server builds passed.

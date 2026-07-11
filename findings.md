@@ -14,3 +14,6 @@
 - `TeamDetailPanel` currently has the active session ID but no runtime data, so it can fetch the same session detail directly without coupling chat state upward.
 - URL parameters should use the requested snake_case names `team_id` and `session_id`; initializing parent state from them lets refresh restore selection.
 - Existing Team translations live in `packages/web/src/locales/{zh,en}/teams.json`; add only the detail labels needed by the new cards.
+- Team task IDs are not Agent Session IDs. The authoritative Agent Session ID is `reply.agentContext.sessionId` returned by each member runtime.
+- Because Team runtime now stores one record per Team session, member Agent Session history is stored as `runtime.agentSessions[]` inside that record.
+- `team_agent_session_list` is bound to the current Team session and may filter by `agent_id`; its returned `session_id` is safe to pass to `GetAgentSessionDetail`.

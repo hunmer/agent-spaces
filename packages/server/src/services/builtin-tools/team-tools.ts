@@ -7,7 +7,7 @@ import {
   handleTeamMessageComment,
   handleTeamMessageUpdate,
 } from '../team.js';
-import { handleTeamMessageSendAndRun, handleTeamTaskComplete, handleTeamTaskManage } from '../team-runtime.js';
+import { handleTeamAgentSessionList, handleTeamMessageSendAndRun, handleTeamTaskComplete, handleTeamTaskManage } from '../team-runtime.js';
 
 const actorField = {
   actor_agent_id: {
@@ -190,6 +190,17 @@ export function createTeamFunctionTools(
       }, ['action', 'actor_agent_id']),
       annotations: { destructive: false, openWorld: false },
       execute: async (input) => handleTeamMessageComment(bindContext(input)),
+    },
+    {
+      name: 'team_agent_session_list',
+      description: 'List real Agent session IDs recorded for team members in the current team session.',
+      inputSchema: schema({
+        ...actorField,
+        team_id: { type: 'string' },
+        agent_id: { type: 'string', description: 'Optional member Agent ID to filter.' },
+      }, ['actor_agent_id', 'team_id']),
+      annotations: { readOnly: true, openWorld: false },
+      execute: async (input) => handleTeamAgentSessionList(bindContext(input)),
     },
     {
       name: 'team_task_manage',
