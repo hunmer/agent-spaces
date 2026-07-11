@@ -79,7 +79,8 @@
     "taskStatus": {
       "pending": "Pending",
       "running": "Running",
-      "completed": "Completed"
+      "completed": "Completed",
+      "failed": "Failed"
     },
     "noMembers": "No members.",
     "addMember": "Add member",

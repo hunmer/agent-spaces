@@ -93,6 +93,7 @@ export function TeamDetailPanel({
                       </div>
                       <div className="mt-1 text-muted-foreground">{task.assigneeAgentId}</div>
                       {task.agentSessionId ? <div className="mt-1 break-all font-mono text-muted-foreground">{task.agentSessionId}</div> : null}
+                      {task.error ? <div className="mt-1 text-destructive">{task.error}</div> : null}
                     </div>
                   ))}
                 </div>

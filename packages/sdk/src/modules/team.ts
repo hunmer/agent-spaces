@@ -135,8 +135,9 @@ export interface TeamTaskView {
   id: string;
   title: string;
   assigneeAgentId: string;
-  status: 'pending' | 'running' | 'completed';
+  status: 'pending' | 'running' | 'completed' | 'failed';
   agentSessionId?: string;
+  error?: string;
   createdAt: string;
   updatedAt: string;
 }

@@ -131,8 +131,9 @@ type TeamTask = {
   id: string;
   title: string;
   assigneeAgentId: string;
-  status: 'pending' | 'running' | 'completed';
+  status: 'pending' | 'running' | 'completed' | 'failed';
   agentSessionId?: string;
+  error?: string;
   createdAt: string;
   updatedAt: string;
 };
@@ -299,6 +300,16 @@ function markNextTaskRunning(teamId: string, sessionId: string, agentId: string)
   saveTasks(teamId, sessionId, tasks.map((item) => item.id === task.id ? { ...item, status: 'running', updatedAt: now } : item));
 }
 
+function markAgentTaskFailed(teamId: string, sessionId: string, agentId: string, error: string): void {
+  const tasks = listTasks(teamId, sessionId);
+  const task = tasks.find((item) => item.assigneeAgentId === agentId && item.status === 'running');
+  if (!task) return;
+  const now = new Date().toISOString();
+  saveTasks(teamId, sessionId, tasks.map((item) => item.id === task.id
+    ? { ...item, status: 'failed', error, updatedAt: now }
+    : item));
+}
+
 function loadTeam(teamId: string): Team | null {
   return readJsonFile<Team>(teamFilePath(teamId));
 }
@@ -317,10 +328,8 @@ function resolveLeader(teamId: string, actorAgentId: string): string | null {
 
 function ensureRuntime(teamId: string, sessionId: string, actorAgentId: string, leaderAgentId: string): StoredTeamRuntime {
   const runtimes = listRuntimes(teamId, sessionId);
-  const existing = [...runtimes].reverse().find((item) =>
-    item.actorAgentId === actorAgentId
-    && item.leaderAgentId === leaderAgentId);
-  if (existing) return existing;
+  const existing = [...runtimes].reverse().find((item) => item.sessionId === sessionId);
+  if (existing) return { ...existing, actorAgentId, leaderAgentId };
   const created: StoredTeamRuntime = {
     sessionId,
     teamId,
@@ -335,7 +344,7 @@ function ensureRuntime(teamId: string, sessionId: string, actorAgentId: string, 
 
 function findLatestRuntime(teamId: string, sessionId: string, actorAgentId: string): StoredTeamRuntime | null {
   return listRuntimes(teamId, sessionId)
-    .filter((item) => item.actorAgentId === actorAgentId)
+    .filter((item) => item.sessionId === sessionId)
     .sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''))[0] ?? null;
 }
 
@@ -414,7 +423,7 @@ function buildTeamAgentPrompt(
     'When prior teammate output is needed, read the completed task\'s agentSessionId from `team_task_manage` action=list, then call `GetAgentSessionDetail` with that session id.',
     'If a requested tool like `AddCurrentChannelComment` is unavailable, use the available team tools to hand off work to the correct teammate.',
     ...(isOwner ? [
-      'After the first request, call `team_manage` with action=get and include_members_preview=true to inspect every active member, then create the complete multi-agent task list with `team_task_manage` action=create before delegating work. Create all known downstream tasks at once, not only the next task.',
+      'After the first request, call `team_manage` with action=get and include_members_preview=true to inspect every active member, then create the complete multi-agent task list with `team_task_manage` action=create before delegating work. Create tasks only for non-owner members; never assign a task to yourself. Create all known downstream tasks at once, not only the next task.',
       'Whenever you are woken for an idle-team check, call `team_task_manage` action=list and send the next incomplete task to its assigned agent.',
       'When the overall team task is finished, call `team_task_complete` before your final reply so the team runtime does not remain running. Its `output` must contain the complete, user-ready final deliverable—not an output summary, progress update, or description of the work performed.',
     ] : [
@@ -435,7 +444,7 @@ function buildTeamAgentPrompt(
 function buildTeamAgentSystemPrompt(teamId: string, agentId: string, base?: string): string | undefined {
   const isOwner = listMemberships(teamId).some((item) => item.status === 'active' && item.agentId === agentId && item.role === 'owner');
   const policy = isOwner
-    ? 'Mandatory team policy: before the first team_message_send, call team_manage with action=get and include_members_preview=true to inspect every active member, then create the complete multi-agent task list with team_task_manage action=create. Create all known downstream tasks at once, not only the next task. This overrides any earlier instruction that says to use only team_message_send.'
+    ? 'Mandatory team policy: before the first team_message_send, call team_manage with action=get and include_members_preview=true to inspect every active member, then create the complete multi-agent task list with team_task_manage action=create. Create tasks only for non-owner members; never assign a task to yourself. Create all known downstream tasks at once, not only the next task. This overrides any earlier instruction that says to use only team_message_send.'
     : 'Mandatory team policy: before finishing, complete your assigned task with team_task_manage action=complete. Use GetAgentSessionDetail when an upstream task provides an agentSessionId.';
   return [base?.trim(), policy].filter(Boolean).join('\n\n') || undefined;
 }
@@ -828,6 +837,7 @@ async function dispatchTeamReply(teamId: string, sessionId: string, actorAgentId
   const logStartedAt = new Date().toISOString();
   const logLines = [`team: ${teamId}`, `agent: ${targetAgentId}`, `startedAt: ${logStartedAt}`];
   const handoffs: QueuedTeamHandoff[] = [];
+  let runSucceeded = false;
   const ownerAgentId = listMemberships(teamId).find((item) => item.status === 'active' && item.role === 'owner')?.agentId;
   const recipientAgentIds = [...new Set([actorAgentId, ownerAgentId].filter((id): id is string => Boolean(id) && id !== targetAgentId))];
   const pendingResult = handleTeamMessageSend({
@@ -867,6 +877,10 @@ async function dispatchTeamReply(teamId: string, sessionId: string, actorAgentId
         appendTeamRunToolEvent(logLines, event);
         partsTracker.handleEvent(event);
       }, handoffs, (input) => logLines.push('', '[INPUT]', input));
+      if (targetMembership?.role !== 'owner') {
+        const task = listTasks(teamId, sessionId).find((item) => item.assigneeAgentId === targetAgentId && item.status === 'running');
+        if (task) throw new Error(`agent completed without marking task complete: ${task.title}`);
+      }
       logLines.push('', '[OUTPUT]', reply.agentContext.output || reply.content);
       if (activeTeamRuns.get(runKey)?.token !== token) return;
       const parts = partsTracker.buildParts({
@@ -919,9 +933,11 @@ async function dispatchTeamReply(teamId: string, sessionId: string, actorAgentId
         });
         if (updatedReply) broadcastTeamRuntimeEvent('team.message.updated', { teamId, actorAgentId, message: updatedReply });
       }
+      runSucceeded = true;
   } catch (error) {
       if (activeTeamRuns.get(runKey)?.token !== token) return;
       const message = error instanceof Error ? error.message : String(error);
+      markAgentTaskFailed(teamId, sessionId, targetAgentId, message);
       logLines.push('', '[ERROR]', message);
       const parts = partsTracker.buildParts({ sessionId: runtime.sessionId, success: false, error: message });
       const updatedReply = replyMessageId ? updateTeamMessage(teamId, sessionId, replyMessageId, {
@@ -949,6 +965,7 @@ async function dispatchTeamReply(teamId: string, sessionId: string, actorAgentId
     writeTeamRunLog(teamId, sessionId, logStartedAt, runtime.sessionId, logLines);
     if (activeTeamRuns.get(runKey)?.token === token) activeTeamRuns.delete(runKey);
   }
+  if (!runSucceeded) return;
   for (const handoff of handoffs) {
     await dispatchQueuedHandoff(teamId, sessionId, actorAgentId, runtime, handoff);
   }
@@ -982,9 +999,10 @@ function maybeWakeOwnerForTasks(teamId: string, sessionId: string, actorAgentId:
 
 function updateRuntime(teamId: string, sessionId: string, runtime: StoredTeamRuntime): StoredTeamRuntime {
   const runtimes = listRuntimes(teamId, sessionId);
-  saveRuntimes(teamId, sessionId, runtimes.some((item) => item.sessionId === runtime.sessionId)
-    ? runtimes.map((item) => item.sessionId === runtime.sessionId ? runtime : item)
-    : [...runtimes, runtime]);
+  saveRuntimes(teamId, sessionId, [
+    ...runtimes.filter((item) => item.sessionId !== runtime.sessionId),
+    runtime,
+  ]);
   return runtime;
 }
 
@@ -1046,7 +1064,8 @@ export function handleTeamTaskManage(input: unknown): TeamServiceResult {
       const item = asRecord(value);
       const title = asString(item?.title);
       const assigneeAgentId = asString(item?.assignee_agent_id ?? item?.assigneeAgentId);
-      if (!title || !assigneeAgentId || !isActiveMember(listMemberships(teamId).find((member) => member.agentId === assigneeAgentId))) return [];
+      const assignee = listMemberships(teamId).find((member) => member.agentId === assigneeAgentId);
+      if (!title || !assigneeAgentId || !isActiveMember(assignee) || assignee.role === 'owner') return [];
       return [{ id: uuid(), title, assigneeAgentId, status: 'pending', createdAt: now, updatedAt: now }];
     });
     if (tasks.length === 0) return fail('at least one valid assigned task is required', 'INVALID_ARGUMENT');

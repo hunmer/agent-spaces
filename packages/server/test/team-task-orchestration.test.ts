@@ -19,12 +19,13 @@ test('idle member run wakes owner to inspect incomplete tasks', async () => {
   try {
     const owner = createPreset('', { name: 'Owner' });
     const member = createPreset('', { name: 'Member' });
-    assert.ok(owner && member);
+    const reviewer = createPreset('', { name: 'Reviewer' });
+    assert.ok(owner && member && reviewer);
     const created = handleTeamManage({
       action: 'create',
       actor_agent_id: owner.id,
       name: 'Task Team',
-      initial_members: [{ agent_id: member.id }],
+      initial_members: [{ agent_id: member.id }, { agent_id: reviewer.id }],
     });
     const teamId = (created.data as { team: { team_id: string } }).team.team_id;
     const sessionId = '55555555-5555-4555-8555-555555555555';
@@ -36,19 +37,27 @@ test('idle member run wakes owner to inspect incomplete tasks', async () => {
           if (prompt.includes('Team members are idle')) {
             const taskTool = options?.functionTools?.find((tool) => tool.name === 'team_task_manage');
             const listed = await taskTool?.execute({ action: 'list' }) as { data: { tasks: Array<{ status: string }> } };
-            assert.equal(listed.data.tasks[0]?.status, 'running');
+            assert.equal(listed.data.tasks.some((task) => task.status === 'pending'), true);
             resolveOwnerCheck?.();
           } else {
             const teamTool = options?.functionTools?.find((tool) => tool.name === 'team_manage');
             const taskTool = options?.functionTools?.find((tool) => tool.name === 'team_task_manage');
             const sendTool = options?.functionTools?.find((tool) => tool.name === 'team_message_send');
             const team = await teamTool?.execute({ action: 'get', include_members_preview: true }) as { data: { members_preview: Array<{ agent_id: string }> } };
-            assert.equal(team.data.members_preview.length, 2);
+            assert.equal(team.data.members_preview.length, 3);
             const blocked = await sendTool?.execute({ action: 'send', mode: 'direct', recipient_agent_ids: [member.id], subject: 'work', body: 'do work' }) as { code: string };
             assert.equal(blocked.code, 'TASK_LIST_REQUIRED');
-            await taskTool?.execute({ action: 'create', tasks: [{ title: 'Member work', assignee_agent_id: member.id }] });
+            await taskTool?.execute({ action: 'create', tasks: [
+              { title: 'Member work', assignee_agent_id: member.id },
+              { title: 'Review work', assignee_agent_id: reviewer.id },
+            ] });
             await sendTool?.execute({ action: 'send', mode: 'direct', recipient_agent_ids: [member.id], subject: 'work', body: 'do work' });
           }
+        } else if (prompt.includes(`Your actor_agent_id: ${member.id}`)) {
+          const taskTool = options?.functionTools?.find((tool) => tool.name === 'team_task_manage');
+          const listed = await taskTool?.execute({ action: 'list' }) as { data: { tasks: Array<{ id: string; assigneeAgentId: string }> } };
+          const task = listed.data.tasks.find((item) => item.assigneeAgentId === member.id)!;
+          await taskTool?.execute({ action: 'complete', task_id: task.id });
         }
         return { success: true, summary: 'done', output: ['done'], artifacts: [] };
       },
@@ -66,6 +75,49 @@ test('idle member run wakes owner to inspect incomplete tasks', async () => {
     assert.equal(ownerRuns, 2);
     const runtime = getTeamRuntime({ team_id: teamId, session_id: sessionId, actor_agent_id: 'admin' });
     assert.equal((runtime.data as { tasks: Array<{ title: string }> }).tasks[0]?.title, 'Member work');
+  } finally {
+    setTeamRuntimeFactoryForTests();
+    closeDb();
+    if (previousDataDir === undefined) delete process.env.AGENT_SPACES_DATA_DIR;
+    else process.env.AGENT_SPACES_DATA_DIR = previousDataDir;
+    rmSync(dataDir, { recursive: true, force: true });
+  }
+});
+
+test('owner tasks are ignored and incomplete member runs fail the team runtime', async () => {
+  const previousDataDir = process.env.AGENT_SPACES_DATA_DIR;
+  const dataDir = mkdtempSync(join(tmpdir(), 'agent-spaces-team-task-failure-'));
+  process.env.AGENT_SPACES_DATA_DIR = dataDir;
+
+  try {
+    const owner = createPreset('', { name: 'Owner' });
+    const member = createPreset('', { name: 'Member' });
+    assert.ok(owner && member);
+    const created = handleTeamManage({ action: 'create', actor_agent_id: owner.id, name: 'Failure Team', initial_members: [{ agent_id: member.id }] });
+    const teamId = (created.data as { team: { team_id: string } }).team.team_id;
+    const sessionId = '77777777-7777-4777-8777-777777777777';
+
+    setTeamRuntimeFactoryForTests(() => ({
+      async execute(prompt, _workingDir, options) {
+        if (prompt.includes(`Your actor_agent_id: ${owner.id}`)) {
+          const taskTool = options?.functionTools?.find((tool) => tool.name === 'team_task_manage');
+          const sendTool = options?.functionTools?.find((tool) => tool.name === 'team_message_send');
+          const result = await taskTool?.execute({ action: 'create', tasks: [
+            { title: 'Owner work', assignee_agent_id: owner.id },
+            { title: 'Member work', assignee_agent_id: member.id },
+          ] }) as { data: { tasks: Array<{ assigneeAgentId: string }> } };
+          assert.deepEqual(result.data.tasks.map((task) => task.assigneeAgentId), [member.id]);
+          await sendTool?.execute({ action: 'send', mode: 'direct', recipient_agent_ids: [member.id], subject: 'work', body: 'do work' });
+        }
+        return { success: true, summary: 'done', output: ['done'], artifacts: [] };
+      },
+      stop() {},
+    }));
+
+    await postTeamRuntimeMessage({ team_id: teamId, session_id: sessionId, actor_agent_id: 'admin', target_agent_id: owner.id, content: 'start' }, true);
+    const runtime = getTeamRuntime({ team_id: teamId, session_id: sessionId, actor_agent_id: 'admin' });
+    assert.equal((runtime.data as { runtime: { status: string } }).runtime.status, 'error');
+    assert.equal((runtime.data as { tasks: Array<{ status: string }> }).tasks[0]?.status, 'failed');
   } finally {
     setTeamRuntimeFactoryForTests();
     closeDb();

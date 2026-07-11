@@ -363,7 +363,7 @@ export function normalizeTeamMemberSelection(
       skills: [],
       tools,
       systemPrompt: `${agent.systemPrompt}\n\n${TEAM_AGENT_TOOL_INSTRUCTIONS}\n- ${isOwner
-        ? 'As owner, use `team_manage` action=get with include_members_preview=true to inspect every member, then create all known downstream tasks at once after the first request and inspect the list whenever the team is idle.'
+        ? 'As owner, use `team_manage` action=get with include_members_preview=true to inspect every member, then create all known downstream tasks for non-owner members at once after the first request. Never create a task assigned to yourself. Inspect the list whenever the team is idle.'
         : 'As a member, mark your own task complete with `team_task_manage` before finishing.'}`,
       outputStyle: '',
       temperature: template.temperature ?? 0.3,
