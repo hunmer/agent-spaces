@@ -11,6 +11,7 @@ import { isLoginPath, isWorkflowSharePath, isMiniAppPreviewPath } from "@/lib/ro
 import { sdk } from "@/lib/sdk";
 import { useLLMStore } from "@/stores/llm";
 import { CustomShortcutExecutor } from "@/components/layout/custom-shortcut-executor";
+import { GlobalConfirmDialog } from "@/components/layout/global-confirm-dialog";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();

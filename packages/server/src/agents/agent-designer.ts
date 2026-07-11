@@ -19,7 +19,7 @@ export interface TeamMemberSelectionInput {
 }
 
 export interface TeamMemberSelectionResult {
-  agents: AgentConfig[];
+  agents: Array<AgentConfig & { isOwner: boolean }>;
 }
 
 const SYSTEM_PROMPT = `You design Agent Spaces agents — and an agent can be anyone, in any domain.
@@ -46,7 +46,8 @@ How to shape the systemPrompt:
 const TEAM_MEMBER_SELECTION_PROMPT = [
   'You are assembling a new collaboration team.',
   'Design 2 to 4 complementary agents for the team title and description.',
-  'Return only a valid JSON object with this exact schema: {"agents":[{"name":"short name","description":"one sentence","systemPrompt":"markdown system prompt"}]}.',
+  'Return only a valid JSON object with this exact schema: {"agents":[{"name":"short name","description":"one sentence","systemPrompt":"markdown system prompt","isOwner":true}]}.',
+  'Exactly one agent must have isOwner=true; every other agent must have isOwner=false.',
   'Each agent must have a distinct responsibility and a directly usable system prompt.',
   'Each system prompt must state when work is handed off with `team_message_send`, which teammate role should receive it, and that the agent must stop after sending.',
   'Escape all newlines and double quotes inside JSON strings, and do not use triple-backtick code fences.',
@@ -336,11 +337,12 @@ export function normalizeTeamMemberSelection(
   }
   const agents = (value as { agents?: unknown }).agents;
   if (!Array.isArray(agents) || agents.length === 0) throw new Error('Generated JSON must include agents.');
-  const normalized = agents
-    .map(normalizeDesign)
+  const designs = agents
+    .map((agent) => ({ ...normalizeDesign(agent), isOwner: (agent as { isOwner?: unknown }).isOwner === true }))
     .filter((agent) => agent.name.trim().toLowerCase().replace(/[\s_]+/g, '-') !== AGENT_GENERATOR_PRESET_ID)
-    .slice(0, 4)
-    .map((agent) => ({
+    .slice(0, 4);
+  const ownerIndex = Math.max(0, designs.findIndex((agent) => agent.isOwner));
+  const normalized = designs.map((agent, index) => ({
       id: uuid(),
       name: agent.name,
       role: 'agent',
@@ -359,6 +361,7 @@ export function normalizeTeamMemberSelection(
       temperature: template.temperature ?? 0.3,
       maxTokens: template.maxTokens ?? 4096,
       enabled: true,
+      isOwner: index === ownerIndex,
     }));
   if (normalized.length === 0) throw new Error('Generated JSON did not include any usable agents.');
   return { agents: normalized };

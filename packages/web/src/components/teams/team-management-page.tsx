@@ -7,6 +7,7 @@ import { EllipsisVertical, Eraser, Loader2, Pencil, Plus, Trash2 } from "lucide-
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import type { PanelImperativeHandle } from "react-resizable-panels";
 import { sdk } from "@/lib/sdk";
@@ -105,6 +106,28 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
   // 右栏初始是否展开，由持久化布局决定（detail 占比 > 0 即展开）
   const [infoSidebarOpen, setInfoSidebarOpen] = useState(() => (loadSavedLayout()[PANEL_ID_DETAIL] ?? DEFAULT_LAYOUT[PANEL_ID_DETAIL]) > 0);
   const [workflowListOpen, setWorkflowListOpen] = useState(false);
+  const [confirmState, setConfirmState] = useState<{
+    message: string;
+    destructive?: boolean;
+    action?: string;
+    resolve: (ok: boolean) => void;
+  } | null>(null);
+
+  // 统一用 Dialog 替代原生 confirm()，返回 Promise 以便在 async 流程中 await
+  const confirmDialog = useCallback((opts: {
+    message: string;
+    destructive?: boolean;
+    action?: string;
+  }) => new Promise<boolean>((resolve) => {
+    setConfirmState({ ...opts, resolve });
+  }), []);
+
+  const closeConfirm = useCallback((ok: boolean) => {
+    setConfirmState((prev) => {
+      prev?.resolve(ok);
+      return null;
+    });
+  }, []);
   const detailPanelRef = useRef<PanelImperativeHandle>(null);
   const saveLayoutTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
@@ -282,7 +305,7 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
             .map((agent_id, index) => {
               const agent = customAgents.get(agent_id);
               return agent
-                ? { agent_id, role: index === 0 ? "owner" : "member", agent_store: "custom" as const, agent }
+                ? { agent_id, role: agent.isOwner ? "owner" : "member", agent_store: "custom" as const, agent }
                 : { agent_id, role: index === 0 ? "owner" : "member" };
             }),
         });
@@ -309,7 +332,11 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
 
   async function dissolveTeam(team: TeamView) {
     if (!selectedActorId) return;
-    if (!confirm(t("deleteConfirm", { name: team.name }))) return;
+    if (!(await confirmDialog({
+      message: t("deleteConfirm", { name: team.name }),
+      destructive: true,
+      action: tc("delete"),
+    }))) return;
     setError("");
     try {
       await sdk.team.dissolve(team.team_id, selectedActorId);
@@ -321,7 +348,11 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
   }
 
   async function deleteArchivedTeam(team: TeamView) {
-    if (!confirm(t("archived.deleteConfirm", { name: team.name }))) return;
+    if (!(await confirmDialog({
+      message: t("archived.deleteConfirm", { name: team.name }),
+      destructive: true,
+      action: tc("delete"),
+    }))) return;
     setError("");
     try {
       await sdk.team.deleteArchive(team.team_id);
@@ -332,7 +363,10 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
   }
 
   async function restoreArchivedTeam(team: TeamView) {
-    if (!confirm(t("archived.restoreConfirm", { name: team.name }))) return;
+    if (!(await confirmDialog({
+      message: t("archived.restoreConfirm", { name: team.name }),
+      action: t("archived.restore"),
+    }))) return;
     setError("");
     try {
       await sdk.team.restoreArchive(team.team_id, selectedActorId);
@@ -344,7 +378,11 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
 
   async function clearAllArchived() {
     if (archivedTeams.length === 0) return;
-    if (!confirm(t("archived.clearConfirm"))) return;
+    if (!(await confirmDialog({
+      message: t("archived.clearConfirm"),
+      destructive: true,
+      action: tc("delete"),
+    }))) return;
     setError("");
     try {
       await sdk.team.clearArchives();
@@ -565,6 +603,24 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
         onClose={() => setWorkflowListOpen(false)}
         showCreate={false}
       />
+
+      <AlertDialog open={!!confirmState} onOpenChange={(open) => { if (!open) closeConfirm(false); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{tc("confirm")}</AlertDialogTitle>
+            <AlertDialogDescription>{confirmState?.message}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => closeConfirm(false)}>{tc("cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              variant={confirmState?.destructive ? "destructive" : "default"}
+              onClick={() => closeConfirm(true)}
+            >
+              {confirmState?.action ?? tc("confirm")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 });

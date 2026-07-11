@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import type { AgentConfig } from '@agent-spaces/shared';
 import { normalizeTeamMemberSelection, parseJsonObject } from './agent-designer.js';
 
 const generatorTemplate = {
@@ -39,8 +40,8 @@ test('filters agent-generator and adds team tool instructions', () => {
   ) => { agents: Array<Record<string, unknown>> };
   const result = normalize({
     agents: [
-      { name: 'Agent Generator', description: 'Creates agents', systemPrompt: 'Generate agents.' },
-      { name: 'Writer', description: 'Writes the draft', systemPrompt: 'Write the draft.' },
+      { name: 'Agent Generator', description: 'Creates agents', systemPrompt: 'Generate agents.', isOwner: true },
+      { name: 'Writer', description: 'Writes the draft', systemPrompt: 'Write the draft.', isOwner: true },
     ],
   }, generatorTemplate);
 
@@ -50,5 +51,17 @@ test('filters agent-generator and adds team tool instructions', () => {
   assert.equal(result.agents[0]?.runtimeKind, 'langchain');
   assert.equal(result.agents[0]?.providerId, 'provider-1');
   assert.deepEqual(result.agents[0]?.tools, ['team_message_send']);
+  assert.equal(result.agents[0]?.isOwner, true);
   assert.match(String(result.agents[0]?.id ?? ''), /^[0-9a-f-]{36}$/);
+});
+
+test('keeps exactly one generated team owner', () => {
+  const result = normalizeTeamMemberSelection({
+    agents: [
+      { name: 'Lead', description: 'Leads', systemPrompt: 'Lead.', isOwner: true },
+      { name: 'Writer', description: 'Writes', systemPrompt: 'Write.', isOwner: true },
+    ],
+  }, generatorTemplate as AgentConfig);
+
+  assert.deepEqual(result.agents.map((agent) => agent.isOwner), [true, false]);
 });

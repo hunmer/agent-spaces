@@ -22,7 +22,7 @@ export interface TeamFormValues {
   avatarUrl: string;
   visibility: "private" | "open";
   members: string[];
-  customAgents: AgentConfig[];
+  customAgents: Array<AgentConfig & { isOwner: boolean }>;
 }
 
 export interface TeamFormDefaults {
