@@ -45,6 +45,59 @@ interface WorkflowToolRunRequestBody {
   input?: unknown;
 }
 
+export async function runAgentSseText(
+  agentId: string,
+  systemPrompt: string,
+  userPrompt: string,
+  maxTurns = 100,
+  maxTokens?: number,
+): Promise<string> {
+  const workspaceId = resolveWorkspaceId(undefined);
+  const workspace = workspaceService.getById(workspaceId);
+  const preset = agentService.listPresets(workspaceId).find((agent) => agent.id === agentId);
+  if (!preset || preset.enabled === false) throw new Error('agent preset not found');
+
+  const mcpServers = agentService.getMcpServers(preset.mcps);
+  const configDir = agentService.getAgentConfigDir(workspaceId, preset);
+  const skills = agentService.getAvailableSkillNames(configDir, preset.skills);
+  const workingDir = agentService.resolveWorkingDir(workspaceId, preset);
+  const prompt = buildAgentPrompt(workspaceId, systemPrompt, userPrompt, [], {
+    runtimeKind: preset.runtimeKind,
+    mcpServers: Object.keys(mcpServers ?? {}),
+    skills,
+    boundDirs: workspace?.boundDirs ?? [],
+    workingDir,
+    excludeNativeClaudeMd: preset.runtimeKind === 'claude-code',
+    boundWorkflowIds: preset.boundWorkflowIds,
+    boundWorkflowPluginTools: preset.boundWorkflowPluginTools,
+  });
+  const output: string[] = [];
+  const runtime = createAgentRuntime({
+    kind: preset.runtimeKind,
+    provider: preset.modelProvider,
+    model: preset.modelId,
+    apiKey: preset.apiKey,
+    baseURL: getRuntimeBaseURL(preset.modelProvider, preset.apiBase),
+    adapterBaseURL: preset.apiBase,
+    maxTokens: maxTokens ?? preset.maxTokens,
+    ...getThinkingRuntimeConfig(preset),
+  });
+  const result = await runtime.execute(prompt, workingDir, {
+    maxTurns,
+    mcpServers,
+    skills,
+    configDir,
+    sandboxDirs: preset.sandboxDirs,
+    userPrompt,
+    outputStyle: preset.outputStyle,
+    onEvent: (event) => {
+      if (event.type === 'output') output.push(event.line);
+    },
+  });
+  if (!result.success) throw new Error(result.error || 'Agent run failed');
+  return output.length ? output.join('') : result.output.join('\n');
+}
+
 router.post('/run', async (req: Request, res: Response) => {
   const body = req.body as AgentSseRequestBody;
   if (!verifyRequestKey(req, body)) {

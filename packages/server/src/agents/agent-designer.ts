@@ -1,6 +1,7 @@
 import type { AgentConfig } from '@agent-spaces/shared';
 import { v4 as uuid } from 'uuid';
 import { AGENT_GENERATOR_PRESET_ID, readAgentTemplate } from '../services/agent.js';
+import { runAgentSseText } from '../routes/agent-sse.js';
 
 export interface AgentDesign {
   name: string;
@@ -19,16 +20,6 @@ export interface TeamMemberSelectionInput {
 
 export interface TeamMemberSelectionResult {
   agents: AgentConfig[];
-}
-
-interface ModelConfig {
-  modelProvider?: AgentConfig['modelProvider'];
-  modelId: string;
-  apiBase: string;
-  apiKey: string;
-  systemPrompt?: string;
-  temperature?: number;
-  maxTokens?: number;
 }
 
 const SYSTEM_PROMPT = `You design Agent Spaces agents — and an agent can be anyone, in any domain.
@@ -74,20 +65,19 @@ export async function generateAgentDesign(userPrompt: string): Promise<AgentDesi
   const prompt = userPrompt.trim();
   if (!prompt) throw new Error('prompt is required');
 
-  const config = resolveModelConfig();
-  if (!config) {
+  const template = readAgentTemplate(AGENT_GENERATOR_PRESET_ID);
+  if (!template) {
     throw new Error(`Configure model settings for ${AGENT_GENERATOR_PRESET_ID} before generating agents.`);
   }
 
   console.info('[agent-designer] generating agent design', {
     agentId: AGENT_GENERATOR_PRESET_ID,
-    provider: config.modelProvider ?? inferProvider(config.apiBase),
-    modelId: config.modelId,
-    apiBase: maskUrl(config.apiBase),
+    provider: template.modelProvider,
+    modelId: template.modelId,
     promptLength: prompt.length,
   });
 
-  const content = await requestText(config, buildDesignSystemPrompt(config), prompt);
+  const content = await requestText(buildDesignSystemPrompt(template), prompt);
   console.info('[agent-designer] model text extracted', {
     length: content.length,
     preview: content.slice(0, 500),
@@ -101,13 +91,11 @@ export async function generateTeamMemberSelection(
   const name = input.name.trim();
   if (!name) throw new Error('team name is required');
 
-  const config = resolveModelConfig();
   const template = readAgentTemplate(AGENT_GENERATOR_PRESET_ID);
-  if (!config || !template) {
+  if (!template) {
     throw new Error(`Configure model settings for ${AGENT_GENERATOR_PRESET_ID} before generating team members.`);
   }
 
-  const requestConfig = { ...config, maxTokens: Math.max(config.maxTokens ?? 0, 8192) };
   const userPrompt = [
     `Team title: ${name}`,
     `Team description: ${input.description.trim() || '(empty)'}`,
@@ -117,11 +105,12 @@ export async function generateTeamMemberSelection(
   for (let attempt = 0; attempt < 2; attempt += 1) {
     const compactRetry = attempt === 1;
     const content = await requestText(
-      requestConfig,
       compactRetry
         ? `${TEAM_MEMBER_SELECTION_PROMPT}\nKeep every systemPrompt under 800 characters. Return fresh JSON only.`
-        : buildTeamMemberSelectionSystemPrompt(config),
+        : buildTeamMemberSelectionSystemPrompt(template),
       compactRetry ? `${userPrompt}\nThe previous response was invalid or truncated.` : userPrompt,
+      100,
+      Math.max(template.maxTokens ?? 0, 8192),
     );
     try {
       return normalizeTeamMemberSelection(parseJsonObject(content), template);
@@ -145,23 +134,21 @@ export async function optimizeAgentPrompt(
   const prompt = userPrompt.trim();
   if (!prompt) throw new Error('prompt is required');
 
-  const config = resolveModelConfig();
-  if (!config) {
+  const template = readAgentTemplate(AGENT_GENERATOR_PRESET_ID);
+  if (!template) {
     throw new Error(`Configure model settings for ${AGENT_GENERATOR_PRESET_ID} before optimizing prompts.`);
   }
 
   console.info('[agent-designer] optimizing agent prompt', {
     agentId: AGENT_GENERATOR_PRESET_ID,
-    provider: config.modelProvider ?? inferProvider(config.apiBase),
-    modelId: config.modelId,
-    apiBase: maskUrl(config.apiBase),
+    provider: template.modelProvider,
+    modelId: template.modelId,
     promptLength: prompt.length,
     currentPromptLength: currentPrompt.trim().length,
   });
 
   const content = await requestText(
-    config,
-    buildOptimizationSystemPrompt(config),
+    buildOptimizationSystemPrompt(template),
     buildPromptOptimizationUserPrompt(prompt, currentPrompt),
   );
   console.info('[agent-designer] optimized prompt received', {
@@ -171,125 +158,17 @@ export async function optimizeAgentPrompt(
   return { systemPrompt: normalizePrompt(content) };
 }
 
-function resolveModelConfig(): ModelConfig | null {
-  const preset = readAgentTemplate(AGENT_GENERATOR_PRESET_ID);
-  if (preset?.apiBase && preset.apiKey && preset.modelId) {
-    return {
-      modelProvider: preset.modelProvider,
-      modelId: preset.modelId,
-      apiBase: preset.apiBase,
-      apiKey: preset.apiKey,
-      systemPrompt: preset.systemPrompt,
-      temperature: preset.temperature,
-      maxTokens: preset.maxTokens,
-    };
-  }
-
-  return null;
+async function requestText(systemPrompt: string, userPrompt: string, maxTurns?: number, maxTokens?: number): Promise<string> {
+  return runAgentSseText(AGENT_GENERATOR_PRESET_ID, systemPrompt, userPrompt, maxTurns, maxTokens);
 }
 
-async function requestDesign(config: ModelConfig, userPrompt: string): Promise<string> {
-  return requestText(config, buildDesignSystemPrompt(config), userPrompt);
-}
-
-async function requestText(config: ModelConfig, systemPrompt: string, userPrompt: string): Promise<string> {
-  const provider = config.modelProvider ?? inferProvider(config.apiBase);
-  if (provider === 'anthropic-messages') return requestAnthropic(config, systemPrompt, userPrompt);
-  if (provider === 'gemini-generate-content') return requestGemini(config, systemPrompt, userPrompt);
-  return requestOpenAICompatible(
-    config,
-    systemPrompt,
-    userPrompt,
-    provider === 'openai-responses' || provider === 'openai-responses-to-anthropic-messages',
-  );
-}
-
-async function requestOpenAICompatible(
-  config: ModelConfig,
-  systemPrompt: string,
-  userPrompt: string,
-  useResponsesApi: boolean,
-): Promise<string> {
-  const url = joinUrl(config.apiBase, useResponsesApi ? '/responses' : '/chat/completions');
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${config.apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(
-      useResponsesApi
-        ? {
-            model: config.modelId,
-            input: `${systemPrompt}\n\nUser request:\n${userPrompt}`,
-            temperature: config.temperature ?? 0.2,
-            max_output_tokens: config.maxTokens,
-          }
-        : {
-            model: config.modelId,
-            messages: [
-              { role: 'system', content: systemPrompt },
-              { role: 'user', content: userPrompt },
-            ],
-            temperature: config.temperature ?? 0.2,
-            max_tokens: config.maxTokens,
-          },
-    ),
-  });
-  const body = await readResponseBody(response);
-  if (!response.ok || body.error) throw new Error(body.error || `Agent design generation failed with status ${response.status}`);
-  return body.text;
-}
-
-async function requestAnthropic(config: ModelConfig, systemPrompt: string, userPrompt: string): Promise<string> {
-  const response = await fetch(getAnthropicMessagesUrl(config.apiBase), {
-    method: 'POST',
-    headers: {
-      'x-api-key': config.apiKey,
-      'anthropic-version': '2023-06-01',
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: config.modelId,
-      system: systemPrompt,
-      messages: [{ role: 'user', content: userPrompt }],
-      max_tokens: config.maxTokens ?? 4096,
-      temperature: config.temperature ?? 0.2,
-    }),
-  });
-  const body = await readResponseBody(response);
-  if (!response.ok || body.error) throw new Error(body.error || `Agent design generation failed with status ${response.status}`);
-  return body.text;
-}
-
-async function requestGemini(config: ModelConfig, systemPrompt: string, userPrompt: string): Promise<string> {
-  const response = await fetch(joinUrl(config.apiBase, `/models/${encodeURIComponent(config.modelId)}:generateContent`), {
-    method: 'POST',
-    headers: {
-      'x-goog-api-key': config.apiKey,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      systemInstruction: { parts: [{ text: systemPrompt }] },
-      contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
-      generationConfig: {
-        temperature: config.temperature ?? 0.2,
-        maxOutputTokens: config.maxTokens,
-      },
-    }),
-  });
-  const body = await readResponseBody(response);
-  if (!response.ok || body.error) throw new Error(body.error || `Agent design generation failed with status ${response.status}`);
-  return body.text;
-}
-
-function buildDesignSystemPrompt(config: ModelConfig): string {
+function buildDesignSystemPrompt(config: AgentConfig): string {
   const custom = config.systemPrompt?.trim();
   if (!custom) return SYSTEM_PROMPT;
   return `${custom}\n\n${SYSTEM_PROMPT}`;
 }
 
-function buildOptimizationSystemPrompt(config: ModelConfig): string {
+function buildOptimizationSystemPrompt(config: AgentConfig): string {
   const custom = config.systemPrompt?.trim();
   const base = [
     'You optimize agent system prompts.',
@@ -303,7 +182,7 @@ function buildOptimizationSystemPrompt(config: ModelConfig): string {
   return `${custom}\n\n${base}`;
 }
 
-function buildTeamMemberSelectionSystemPrompt(config: ModelConfig): string {
+function buildTeamMemberSelectionSystemPrompt(config: AgentConfig): string {
   const custom = config.systemPrompt?.trim();
   return custom ? `${custom}\n\n${TEAM_MEMBER_SELECTION_PROMPT}` : TEAM_MEMBER_SELECTION_PROMPT;
 }
@@ -322,97 +201,6 @@ function buildPromptOptimizationUserPrompt(userRequest: string, currentPrompt: s
 
 function normalizePrompt(text: string): string {
   return text.trim().replace(/^```(?:markdown|md)?\s*/i, '').replace(/\s*```$/i, '');
-}
-
-async function readResponseBody(response: Response): Promise<{ text: string; error?: string }> {
-  const raw = await response.text();
-  if (!raw) return { text: '' };
-  try {
-    const json = JSON.parse(raw) as Record<string, unknown>;
-    const text = isAgentDesignJson(json) ? JSON.stringify(json) : extractText(json);
-    console.info('[agent-designer] provider response received', {
-      status: response.status,
-      keys: Object.keys(json),
-      stopReason: json.stop_reason ?? json.stopReason,
-      usage: json.usage,
-      textLength: text.length,
-      preview: raw.slice(0, 800),
-    });
-    return {
-      text,
-      error: extractError(json),
-    };
-  } catch {
-    console.info('[agent-designer] provider raw text received', {
-      status: response.status,
-      preview: raw.slice(0, 800),
-    });
-    return { text: raw };
-  }
-}
-
-function extractText(json: Record<string, unknown>): string {
-  const outputText = json.output_text;
-  if (typeof outputText === 'string') return outputText;
-
-  const output = Array.isArray(json.output) ? json.output : [];
-  const responseOutputText = output
-    .flatMap((item) => Array.isArray((item as { content?: unknown }).content) ? (item as { content: unknown[] }).content : [])
-    .map((part) => {
-      const record = part as { text?: unknown; type?: unknown };
-      return typeof record.text === 'string' ? record.text : '';
-    })
-    .filter(Boolean)
-    .join('\n');
-  if (responseOutputText) return responseOutputText;
-
-  const choices = Array.isArray(json.choices) ? json.choices : [];
-  const firstChoice = choices[0] as Record<string, unknown> | undefined;
-  if (typeof firstChoice?.text === 'string') return firstChoice.text;
-  const message = firstChoice?.message as Record<string, unknown> | undefined;
-  if (typeof message?.content === 'string') return message.content;
-  if (Array.isArray(message?.content)) {
-    const messageText = message.content
-      .map((part) => typeof (part as { text?: unknown }).text === 'string' ? (part as { text: string }).text : '')
-      .filter(Boolean)
-      .join('\n');
-    if (messageText) return messageText;
-  }
-
-  const content = Array.isArray(json.content) ? json.content : [];
-  const anthropicText = content
-    .map((part) => typeof (part as { text?: unknown }).text === 'string' ? (part as { text: string }).text : '')
-    .filter(Boolean)
-    .join('\n');
-  if (anthropicText) return anthropicText;
-
-  const candidates = Array.isArray(json.candidates) ? json.candidates : [];
-  const firstCandidate = candidates[0] as Record<string, unknown> | undefined;
-  const parts = ((firstCandidate?.content as Record<string, unknown> | undefined)?.parts ?? []) as unknown[];
-  return parts
-    .map((part) => typeof (part as { text?: unknown }).text === 'string' ? (part as { text: string }).text : '')
-    .filter(Boolean)
-    .join('\n');
-}
-
-function isAgentDesignJson(json: Record<string, unknown>): boolean {
-  return typeof json.name === 'string'
-    && typeof json.description === 'string'
-    && typeof json.systemPrompt === 'string';
-}
-
-function extractError(json: Record<string, unknown>): string | undefined {
-  if (json.success === false) {
-    return typeof json.msg === 'string' ? json.msg : 'Provider returned success=false';
-  }
-
-  const error = json.error;
-  if (typeof error === 'string') return error;
-  if (error && typeof error === 'object') {
-    const message = (error as { message?: unknown }).message;
-    if (typeof message === 'string') return message;
-  }
-  return typeof json.message === 'string' ? json.message : undefined;
 }
 
 export function parseJsonObject(text: string): unknown {
@@ -580,30 +368,4 @@ function inferProvider(apiBase?: string): NonNullable<AgentConfig['modelProvider
   if (apiBase?.includes('anthropic.com')) return 'anthropic-messages';
   if (apiBase?.includes('generativelanguage.googleapis.com')) return 'gemini-generate-content';
   return 'openai-chat-completions';
-}
-
-function joinUrl(base: string, path: string): string {
-  return `${base.replace(/\/+$/, '')}${path}`;
-}
-
-function getAnthropicMessagesUrl(apiBase: string): string {
-  try {
-    const url = new URL(apiBase);
-    if (url.pathname.endsWith('/messages')) return apiBase;
-    if (url.hostname === 'api.anthropic.com') {
-      return joinUrl(apiBase, '/messages');
-    }
-    return joinUrl(apiBase, '/v1/messages');
-  } catch {
-    return apiBase;
-  }
-}
-
-function maskUrl(value: string): string {
-  try {
-    const url = new URL(value);
-    return `${url.origin}${url.pathname}`;
-  } catch {
-    return value.slice(0, 120);
-  }
 }

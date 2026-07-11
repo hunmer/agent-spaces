@@ -97,6 +97,7 @@ import { handleTypeScriptLspConnection } from './ws/typescript-lsp.js';
 import { broadcastToAll } from './ws/connection-manager.js';
 import { startScheduler, stopScheduler } from './agents/scheduler-agent.js';
 import { recoverRunningWorkOnStartup } from './services/issue-retry.js';
+import { recoverTeamRuntimesOnStartup } from './services/team-internal.js';
 import { startPersistedNotificationServices } from './services/notification-hub/index.js';
 import { InteractionManager } from './services/interaction-manager.js';
 import { ClientNodeManager } from './services/client-node-manager.js';
@@ -498,6 +499,7 @@ server.on('upgrade', (req, socket, head) => {
 
 const HOST = process.env.HOST || '0.0.0.0';
 
+recoverTeamRuntimesOnStartup();
 server.listen(PORT, HOST, () => {
   console.log(`[server] listening on http://${HOST}:${PORT}`);
   console.log(`[server] websocket on ws://${HOST}:${PORT}/ws?workspaceId=...`);

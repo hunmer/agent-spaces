@@ -164,6 +164,24 @@ export function listRuntimes(teamId: string): Array<{ leaderAgentId?: string; st
     .flatMap((sessionId) => readJsonFile<Array<{ leaderAgentId?: string; status?: string }>>(teamRuntimesPath(teamId, sessionId)) ?? []);
 }
 
+export function recoverTeamRuntimesOnStartup(): number {
+  let recovered = 0;
+  const updatedAt = new Date().toISOString();
+  for (const teamId of listTeamIds()) {
+    for (const sessionId of listTeamSessionIds(teamId)) {
+      const path = teamRuntimesPath(teamId, sessionId);
+      const runtimes = readJsonFile<Array<Record<string, unknown>>>(path) ?? [];
+      const next = runtimes.map((runtime) => {
+        if (runtime.status !== 'running') return runtime;
+        recovered++;
+        return { ...runtime, status: 'error', updatedAt };
+      });
+      if (next.some((runtime, index) => runtime !== runtimes[index])) writeJsonFile(path, next);
+    }
+  }
+  return recovered;
+}
+
 export function saveDeliveries(teamId: string, items: TeamInboxItem[], sessionId: string): void {
   writeJsonFile(teamDeliveriesPath(teamId, sessionId), items);
 }
