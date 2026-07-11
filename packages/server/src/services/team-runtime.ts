@@ -363,7 +363,7 @@ function buildTeamAgentPrompt(
     'Always use these exact ids in team tool calls; never use a recipient agent id as team_id.',
     'If another teammate should continue the work, call `team_message_send` with that teammate\'s agent id instead of only mentioning them in plain text.',
     'If a requested tool like `AddCurrentChannelComment` is unavailable, use the available team tools to hand off work to the correct teammate.',
-    ...(isOwner ? ['When the overall team task is finished, call `team_task_complete` with the final result in `output` before your final reply so the team runtime does not remain running.'] : []),
+    ...(isOwner ? ['When the overall team task is finished, call `team_task_complete` before your final reply so the team runtime does not remain running. Its `output` must contain the complete, user-ready final deliverable—not an output summary, progress update, or description of the work performed.'] : []),
     '',
     'Current team members (agent id, name, team role):',
     participantBlock,

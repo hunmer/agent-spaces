@@ -69,15 +69,15 @@ export function MessageItem({ message, workspaceId, agent: fallbackAgent, teamId
 
   const showDuration = !isUser && (isStreaming || message.status === 'completed' || message.status === 'error') && elapsed > 0;
 
-  const handleCopy = useCallback(async () => {
-    const text = isHTML(message.content) ? message.content.replace(/<[^>]*>/g, '') : message.content;
+  const handleCopy = useCallback(async (content = message.content) => {
+    const text = isHTML(content) ? content.replace(/<[^>]*>/g, '') : content;
     await copyToClipboard(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }, [message.content]);
 
   if (message.metadata?.teamId) {
-    return <TeamMessageCard message={message} />;
+    return <TeamMessageCard message={message} copied={copied} onCopy={handleCopy} onDelete={() => onDelete?.(message)} />;
   }
 
   return (

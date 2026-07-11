@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import type { Message } from '@agent-spaces/shared';
 import type { TeamRuntimeResponse } from '@agent-spaces/sdk';
-import { ArrowUpRight, Loader2, Users } from 'lucide-react';
+import { ArrowUpRight, Check, Copy, Loader2, Trash2, Users } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AgentIcon } from '@/components/common/agent-icon';
 import { Badge } from '@/components/ui/badge';
@@ -16,7 +16,18 @@ const TeamChatPanel = dynamic(() => import('@/components/teams/team-chat-panel')
   ssr: false,
 });
 
-export function TeamMessageCard({ message }: { message: Message }) {
+export function TeamMessageCard({
+  message,
+  copied,
+  onCopy,
+  onDelete,
+}: {
+  message: Message;
+  copied: boolean;
+  onCopy: (content: string) => void;
+  onDelete: () => void;
+}) {
+  const tc = useTranslations('common');
   const tm = useTranslations('chat.messageItem');
   const [open, setOpen] = useState(false);
   const [summary, setSummary] = useState<TeamRuntimeResponse | null>(null);
@@ -117,7 +128,7 @@ export function TeamMessageCard({ message }: { message: Message }) {
   );
 
   return (
-    <div className="px-3 py-1.5">
+    <div className="group px-3 py-1.5">
       {teamStatus === 'running' ? (
         <BorderGlide className="max-w-2xl rounded-md" rx="0.375rem" ry="0.375rem" color="var(--primary)" duration={3000}>
           {card}
@@ -125,6 +136,22 @@ export function TeamMessageCard({ message }: { message: Message }) {
       ) : (
         card
       )}
+      <div className="flex h-6 max-w-2xl items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+        <button
+          onClick={() => onCopy(summary?.runtime.output || message.content)}
+          className="cursor-pointer rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          title={tc('copy')}
+        >
+          {copied ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
+        </button>
+        <button
+          onClick={onDelete}
+          className="cursor-pointer rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-destructive"
+          title={tc('delete')}
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+        </button>
+      </div>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="flex h-[85vh] max-w-[calc(100vw-2rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-6xl">
           <DialogHeader className="border-b px-5 py-3">
