@@ -241,9 +241,10 @@ export function createTeamApi(http: HttpClient) {
     },
 
     /** 团队详情 */
-    get: (teamId: string, actorAgentId: string, includeMembersPreview = false): Promise<TeamDetail> => {
+    get: (teamId: string, actorAgentId: string, includeMembersPreview = false, sessionId?: string): Promise<TeamDetail> => {
       const query = new URLSearchParams({ actor_agent_id: actorAgentId });
       if (includeMembersPreview) query.set('include_members_preview', 'true');
+      if (sessionId) query.set('session_id', sessionId);
       return unwrap(http.raw(`/api/teams/${teamId}?${query.toString()}`));
     },
 

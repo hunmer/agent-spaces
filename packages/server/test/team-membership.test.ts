@@ -99,6 +99,44 @@ test('team memberships persist agent store, validate invite target, and allow cu
   }
 });
 
+test('team detail unread counts are scoped to the requested session', () => {
+  const previousDataDir = process.env.AGENT_SPACES_DATA_DIR;
+  const dataDir = mkdtempSync(join(tmpdir(), 'agent-spaces-team-session-unread-'));
+  process.env.AGENT_SPACES_DATA_DIR = dataDir;
+
+  try {
+    const owner = createPreset('', { name: 'Owner' });
+    const member = createPreset('', { name: 'Member' });
+    assert.ok(owner);
+    assert.ok(member);
+    const created = handleTeamManage({
+      action: 'create', actor_agent_id: owner.id, name: 'Session counts', initial_members: [{ agent_id: member.id }],
+    });
+    const teamId = (created.data as { team: { team_id: string } }).team.team_id;
+    const sessionA = '11111111-1111-4111-8111-111111111111';
+    const sessionB = '22222222-2222-4222-8222-222222222222';
+
+    for (const sessionId of [sessionA, sessionB]) {
+      const sent = handleTeamMessageSend({
+        action: 'send', actor_agent_id: owner.id, team_id: teamId, session_id: sessionId,
+        mode: 'direct', subject: 'unread', body: 'unread', recipient_agent_ids: [member.id],
+      });
+      assert.equal(sent.success, true);
+    }
+
+    const detail = handleTeamManage({
+      action: 'get', actor_agent_id: owner.id, team_id: teamId, session_id: sessionA, include_members_preview: true,
+    });
+    const members = (detail.data as { members_preview: Array<{ agent_id: string; unread_count: number }> }).members_preview;
+    assert.equal(members.find((item) => item.agent_id === member.id)?.unread_count, 1);
+  } finally {
+    closeAgentDb();
+    if (previousDataDir === undefined) delete process.env.AGENT_SPACES_DATA_DIR;
+    else process.env.AGENT_SPACES_DATA_DIR = previousDataDir;
+    rmSync(dataDir, { recursive: true, force: true });
+  }
+});
+
 test('team resolves workflow agent ids as custom members and deletes team messages', () => {
   const previousDataDir = process.env.AGENT_SPACES_DATA_DIR;
   const dataDir = mkdtempSync(join(tmpdir(), 'agent-spaces-team-'));

@@ -413,8 +413,8 @@ export function teamView(team: Team, actorAgentId?: string) {
   };
 }
 
-export function membershipView(item: TeamMembership) {
-  const unreadCount = listDeliveries(item.teamId)
+export function membershipView(item: TeamMembership, sessionId?: string) {
+  const unreadCount = listDeliveries(item.teamId, sessionId)
     .filter((delivery) => delivery.recipientAgentId === item.agentId && delivery.inboxStatus === 'unread')
     .length;
   const runningCount = listRuntimes(item.teamId)

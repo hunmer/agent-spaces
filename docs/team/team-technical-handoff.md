@@ -26,6 +26,10 @@
 - **team 会话以 UUID `session_id` 唯一标识**：runtime、message、inbox、日志和前端消息卡必须透传同一个 ID；不再使用 `runtime_id/runtimeId`
 - team 聊天标题栏可通过 session Select 切换历史会话；频道中的 team 消息卡通过 `metadata.sessionId` 打开对应会话
 - **agent handoff 必须等待下游 agent 完成**：工具调用不能 fire-and-forget，否则父 LangChain stream 会提前关闭
+- **owner 首轮必须先创建 task list，再 handoff**；服务端会拒绝 task list 为空时的首次 `team_message_send`
+- task 只分配给非 owner 成员；member 结束前必须完成自己的 task，否则 task 标记 `failed`、Team runtime 标记 `error`
+- **禁止猜 Agent Session ID**：先调用 `team_agent_session_list`，再把返回的 `session_id` 传给 `GetAgentSessionDetail`
+- Team 管理页用 URL 参数 `team_id` / `session_id` 保存当前选择，刷新后可恢复
 
 ## 3. 核心文件入口
 
@@ -41,6 +45,8 @@
   - HTTP 路由装配
 - `packages/server/src/services/builtin-tools/team-tools.ts`
   - 内置工具 schema，给 agent/tool 调用 team 能力用
+- `packages/server/src/services/builtin-tools/agent-tools.ts`
+  - `ListAgentSessions` / `GetAgentSessionDetail`
 - `packages/server/src/services/agent.ts`
   - agent preset 查询
 - `packages/server/src/services/chat.ts`
@@ -55,6 +61,8 @@
   - team runtime 聊天面板
   - 通过 `sdk.team.listSessions / getRuntime / sendRuntimeMessage / clearMessages / deleteMessage` 调用
   - 右侧 Select 切换当前 `session_id`
+- `packages/web/src/components/teams/team-detail-panel.tsx`
+  - 展示当前 session 的 task list、task error、成员 Agent Session ID 和 `team_task_complete` 最终输出
 - `packages/web/src/components/chat/message-item.tsx`
   - 频道 team 消息卡
   - 从 `message.metadata.sessionId` 定位并打开对应 team 会话
@@ -102,6 +110,7 @@ team 数据目录：
       deliveries.json
       comments.json
       runtimes.json
+      tasks.json
       logs/team.log
 ```
 
@@ -119,6 +128,13 @@ team 数据目录：
   - inbox 投递记录
 - `{team_id}/{session_id}/comments.json`
   - 消息评论
+- `{team_id}/{session_id}/tasks.json`
+  - 当前 Team session 的任务列表；状态为 `pending | running | completed | failed`
+- `{team_id}/{session_id}/runtimes.json`
+  - 当前 Team session runtime 状态
+  - `agentSessions[]` 保存成员运行产生的真实 Agent Session ID：`agentId / sessionId / updatedAt`
+- `{team_id}/{session_id}/logs/team.log`
+  - 每次成员运行的输入、tool call/result、输出和错误
 
 `session_id` 是 team 会话唯一 UUID。前端打开 team 聊天时生成并在 runtime、消息、inbox 请求中持续透传；API 和消息字段统一使用 `session_id/sessionId`，不再使用 `runtime_id/runtimeId`。
 
@@ -310,6 +326,9 @@ team 列表查询（`GET /api/teams`）已**移除所有过滤器**：
 - `team_inbox_query`
 - `team_message_update`
 - `team_message_comment`
+- `team_task_manage`
+- `team_task_complete`
+- `team_agent_session_list`
 
 其中 `team_membership_manage` 现在支持：
 
@@ -342,6 +361,41 @@ team runtime 创建内置工具时会绑定当前 `teamId` 和当前 agent id：
 - agent 工具入口必须 `await dispatchTeamReply`，直到下游 agent 完成后才返回 tool result
 - UI 的 `postTeamRuntimeMessage` 仍立即返回，后台执行 agent，不阻塞 HTTP 请求
 - 禁止恢复 `void (async () => ...)()` 式 handoff；父 LangChain runtime 会先结束并关闭 stream，导致下游 token 写入已关闭 controller
+
+### 8.3 task 与 Agent Session 工具
+
+`team_task_manage`：
+
+- `action=create`：仅 owner 可用；服务端过滤分配给 owner 自己的任务
+- `action=list`：列出当前 Team session 的任务
+- `action=complete`：member 只能完成自己的任务；自动绑定当前运行的 Agent Session ID
+
+task 状态流转：
+
+```text
+pending -> running -> completed
+                   -> failed
+```
+
+- handoff 到 member 时，其首个 `pending` task 自动变为 `running`
+- member 正常返回但未调用 `complete`，按协议失败处理
+- 协议失败或 runtime 异常都会将 task 标记为 `failed`，并将 Team runtime 标记为 `error`
+- member 已完成 task 但没有 handoff，且仍有 pending task 时，才触发 owner idle 自检
+
+`team_agent_session_list`：
+
+- 数据来自当前 `{team_id}/{session_id}/runtimes.json` 的 `agentSessions[]`
+- 可传 `agent_id` 过滤成员
+- 返回真实 `session_id`，用于后续调用 `GetAgentSessionDetail`
+- task `id`、Team `session_id`、Agent `session_id` 是三类不同 ID，禁止混用
+
+正确调用顺序：
+
+```text
+team_agent_session_list(agent_id=<上游 agent>)
+  -> sessions[0].session_id
+  -> GetAgentSessionDetail(session_id=<返回值>)
+```
 
 ## 9. 当前关键流程
 
@@ -425,6 +479,27 @@ team runtime 创建内置工具时会绑定当前 `teamId` 和当前 agent id：
 - open team 可直接 join
 - private team 只有已在 team 中的成员才能继续走 join
 - join 时会补 `agentStore/agent` 语义
+
+### 9.5 Team task 调度
+
+1. owner 调用 `team_manage(action=get, include_members_preview=true)` 获取全部成员
+2. owner 一次性创建所有已知的非 owner 下游任务
+3. task list 创建前，owner 的首次 direct handoff 会返回 `TASK_LIST_REQUIRED`
+4. member 收到 handoff 后，其 task 自动进入 `running`
+5. member 必须先 `team_task_manage(action=complete)`，再按需要 `team_message_send`
+6. member 没有 handoff但已完成 task时，系统检查是否仍有 pending task；如有且无 member 在运行，自动唤醒 owner
+7. owner 完成整体任务时调用 `team_task_complete`，其 `output` 作为最终交付内容保存
+
+### 9.6 前端 Team/Session URL 与详情
+
+- 切换 Team：更新 URL `team_id`
+- 切换 Session：更新 URL `session_id`
+- 切换 Team 时清除旧 Team 的 `session_id`，新聊天面板生成/选择 session 后再写回
+- `TeamDetailPanel` 按当前 session 拉取 runtime，展示：
+  - task title / assignee / status
+  - task 的 Agent Session ID 和失败原因
+  - `team_task_complete` 最终输出
+- 任务区域高度随内容自适应，详情面板整体滚动
 
 ## 10. 最近已修复的问题
 
@@ -535,6 +610,35 @@ team runtime 创建内置工具时会绑定当前 `teamId` 和当前 agent id：
 - 根因：`stripMentionIds` 只匹配空 mention span，无法清理 `<span ...>@Team</span>`
 - 修复：mention 清理支持 span 内文本；仅移除本次识别出的 team mention，不影响普通 agent mention
 
+### 已修复 16：owner 未创建 task list 就直接 handoff
+
+- prompt 软约束不足，且旧 custom agent system prompt 可能要求“只使用 team_message_send”
+- runtime 在真正的 system prompt 末尾追加强制 Team policy
+- task list 为空时，owner direct handoff 返回 `TASK_LIST_REQUIRED`
+
+### 已修复 17：owner 给自己创建 task
+
+- prompt 明确 task 只分配给非 owner 成员
+- `team_task_manage(create)` 服务端过滤 `role=owner` 的 assignee
+
+### 已修复 18：member 输出结束但未调用协作工具
+
+- member 返回时若自己的 task 仍为 `running`，视为协议失败
+- task 标记 `failed`，Team runtime 标记 `error`
+- 失败时不继续派发已排队 handoff，也不触发普通 owner idle 自检
+
+### 已修复 19：把 task ID 当成 Agent Session ID
+
+- runtime 记录 `reply.agentContext.sessionId` 到 `runtimes.json.agentSessions[]`
+- 新增 `team_agent_session_list`
+- runtime/designer prompt 明确先查询真实 session，再调用 `GetAgentSessionDetail`
+
+### 已修复 20：Team/Session 选择刷新后丢失
+
+- Team 页面同步 URL `team_id` / `session_id`
+- 页面初始化时从 URL 恢复选中状态
+- 详情面板展示当前 session 的 tasks 和最终输出
+
 ## 11. 当前已知限制
 
 - team 编辑模式现在支持完整成员增删改 UI（invite / set-role / remove），通过 `sdk.team` 调用
@@ -550,6 +654,10 @@ team runtime 创建内置工具时会绑定当前 `teamId` 和当前 agent id：
   - handler 已经不再依赖它
 - `sdk.team` 目前未封装消息评论接口
   - 后续有前端调用点时补到同一模块即可
+- 历史 session 的 `runtimes.json` 没有 `agentSessions[]`
+  - 只有新代码执行过的成员运行才会自动记录
+- `team_agent_session_list` 当前查询当前 Team session，不跨 session 汇总
+- Web 全量 `tsc --noEmit` 当前被 `packages/web/src/components/chat/message-item.tsx:203` 的既有 click-handler 类型错误阻塞
 
 ## 12. 下个 agent 接手建议
 
@@ -570,6 +678,13 @@ team runtime 创建内置工具时会绑定当前 `teamId` 和当前 agent id：
 - custom agent 是只允许一次性静态配置，还是后续允许在 team 内编辑
 - workflow 导入后，是否要支持导入 `custom agent` 配置而不只是 preset id
 
+### 12.1 建议技能
+
+- `diagnose`：Team runtime 卡住、状态错误、handoff/tool 调用异常时使用
+- `tdd`：继续扩展 task 状态机、重试或恢复机制时使用
+- `code-architecture-research`：需要梳理 runtime/message/task/session 全调用链时使用
+- `planning-with-files`：跨后端、SDK、前端的多阶段 Team 改造时使用
+
 ## 13. 快速验收命令
 
 类型检查：
@@ -584,6 +699,8 @@ pnpm exec tsc --noEmit -p "packages/web/tsconfig.json"
 
 ```powershell
 pnpm exec tsx --test "packages/server/test/team-membership.test.ts"
+pnpm exec tsx --test "packages/server/test/team-task-orchestration.test.ts"
+pnpm exec tsx --test "packages/server/test/agent-tools.test.ts"
 pnpm exec tsx --test "packages/server/test/channel-team.test.ts"
 ```
 
@@ -626,6 +743,19 @@ pnpm exec tsx --test "packages/server/test/channel-team.test.ts"
 - `dispatchTeamReply` 是否返回 Promise，不能 fire-and-forget
 - 日志中父 `langchain:N` 是否在子 `langchain:N+1` 完成前出现 `runtime reset`
 
+如果 Agent 详情报 `session not found`，看：
+
+- 是否错误地把 task `id` 或 Team `session_id` 传给 `GetAgentSessionDetail`
+- 是否先调用 `team_agent_session_list(agent_id=...)`
+- `{team_id}/{session_id}/runtimes.json` 是否存在对应 `agentSessions[]`
+
+如果 member 输出后 Team 仍卡在 running，看：
+
+- member 是否调用了 `team_task_manage(action=complete)`
+- `tasks.json` 中该成员任务是否为 `completed` 或 `failed`
+- `runtimes.json` 是否为单条当前 session runtime，status 是否为 `error/completed/running`
+- `team.log` 是否有 `agent completed without marking task complete`
+
 如果 inbox 出现 `<think>` 或 team 工具报 `TEAM_NOT_FOUND`，看：
 
 - `formatAgentReply` 是否仍剥离 `<think>...</think>`
@@ -639,4 +769,4 @@ pnpm exec tsx --test "packages/server/test/channel-team.test.ts"
 
 ## 15. 一句话总结
 
-这块现在的核心是：**team 定义全局共享，membership 支持 `agent/chat/custom`，聊天数据按 UUID `session_id` 隔离；所有 runtime、消息、inbox、消息卡和工具调用必须透传同一个 session。**
+这块现在的核心是：**Team 会话按 UUID `session_id` 隔离；owner 先为非 owner 成员创建 task，member 必须完成自己的 task；真实 Agent Session ID 由 runtime 记录并通过 `team_agent_session_list` 查询，禁止猜测；前端用 `team_id/session_id` URL 参数恢复会话并展示 tasks 与最终输出。**

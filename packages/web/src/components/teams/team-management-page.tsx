@@ -193,13 +193,14 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
 
   const loadTeamDetail = useCallback(async (teamId: string) => {
     try {
-      const data = await sdk.team.get(teamId, selectedActorId, true);
+      const sessionId = activeSession?.teamId === teamId ? activeSession.sessionId : undefined;
+      const data = await sdk.team.get(teamId, selectedActorId, true, sessionId);
       setTeamDetail(data);
     } catch (err) {
       setTeamDetail(null);
       setError(err instanceof Error ? err.message : String(err));
     }
-  }, [selectedActorId]);
+  }, [activeSession, selectedActorId]);
 
   useEffect(() => {
     void loadTeams();
@@ -217,7 +218,7 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
     void loadTeamDetail(selectedTeamId);
     const timer = setInterval(() => void loadTeamDetail(selectedTeamId), 3000);
     return () => clearInterval(timer);
-  }, [loadTeamDetail, selectedActorId, selectedTeamId]);
+  }, [activeSession, loadTeamDetail, selectedActorId, selectedTeamId]);
 
   function openCreateDialog() {
     setDialogMode("create");

@@ -7,6 +7,7 @@ import {
   archivedTeamDataDir,
   asArray,
   asBoolean,
+  asSessionId,
   asString,
   fail,
   isObject,
@@ -104,7 +105,7 @@ export function handleTeamManage(input: unknown): TeamServiceResult {
     saveMemberships(team.id, memberships);
     return ok('team created', {
       team: teamView(team, actorAgentId),
-      memberships_created: memberships.map(membershipView),
+      memberships_created: memberships.map((item) => membershipView(item)),
     });
   }
 
@@ -121,7 +122,7 @@ export function handleTeamManage(input: unknown): TeamServiceResult {
           listMemberships(team.id)
             .filter((item) => item.status === 'active')
             .slice(0, 5)
-            .map(membershipView);
+            .map((item) => membershipView(item));
       }
       return view;
     });
@@ -133,6 +134,8 @@ export function handleTeamManage(input: unknown): TeamServiceResult {
 
   if (action === 'get') {
     const teamId = asString(input.team_id ?? input.teamId);
+    const sessionId = asSessionId(input.session_id ?? input.sessionId);
+    if ((input.session_id ?? input.sessionId) !== undefined && !sessionId) return fail('session_id must be a UUID', 'INVALID_ARGUMENT');
     if (!teamId) return fail('team_id is required', 'INVALID_ARGUMENT');
     const team = loadTeam(teamId);
     if (!team) return fail('team not found', 'TEAM_NOT_FOUND');
@@ -142,7 +145,7 @@ export function handleTeamManage(input: unknown): TeamServiceResult {
     return ok('team loaded', {
       team: teamView(team, actorAgentId),
       members_preview: asBoolean(input.include_members_preview ?? input.includeMembersPreview)
-        ? memberships.filter((item) => item.status === 'active').slice(0, 20).map(membershipView)
+        ? memberships.filter((item) => item.status === 'active').slice(0, 20).map((item) => membershipView(item, sessionId))
         : undefined,
       stats: {
         unread_count: deliveries.filter((item) => item.recipientAgentId === actorAgentId && item.inboxStatus === 'unread').length,
