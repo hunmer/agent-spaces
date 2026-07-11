@@ -18,6 +18,7 @@ import { broadcastToWorkspace } from '../ws/connection-manager.js';
 import { createAgentMessagePartsTracker } from '../agents/agent-message-parts.js';
 import { asSessionId } from './team-internal.js';
 import {
+  createAgentFunctionTools,
   createCommandFunctionTools,
   createDatabaseFunctionTools,
   createTeamFunctionTools,
@@ -85,6 +86,24 @@ type TeamAgentReply = {
   usage?: MessageTokenUsage;
   agentContext: MessageAgentContext;
 };
+
+export function persistTeamAgentSessionHistory(reply: TeamAgentReply, parts: MessagePart[]): void {
+  const agentSessionId = reply.agentContext.sessionId;
+  if (!agentSessionId) return;
+  const detail = agentService.getSessionDetail(agentSessionId);
+  const now = new Date().toISOString();
+  agentService.writeWorkflowAgentSessionHistory(agentSessionId, {
+    session: detail?.session ?? null,
+    usage: detail?.usage ?? null,
+    messages: [
+      { id: `${agentSessionId}-user`, role: 'user', content: reply.agentContext.userPrompt ?? '', createdAt: now, senderId: 'user' },
+      { id: `${agentSessionId}-agent`, role: 'agent', content: reply.content, createdAt: now, senderId: reply.agentContext.agentConfigId ?? 'agent', parts },
+    ],
+    systemPrompt: reply.agentContext.systemPrompt,
+    fullPrompt: reply.agentContext.fullPrompt,
+    generatedAt: now,
+  });
+}
 
 type StoredTeamRuntime = TeamRuntime & {
   lastMessageId?: string;
@@ -440,6 +459,7 @@ function resolveTeamRuntimeTools(
       },
     }),
     ...createCommandFunctionTools('', allowedToolNames),
+    ...createAgentFunctionTools(TEAM_RUNTIME_WORKSPACE_ID, allowedToolNames),
     ...createDatabaseFunctionTools('', allowedToolNames),
     ...createWorkspaceFileFunctionTools('', allowedToolNames, () => workspace),
     ...createWorkflowExecutionFunctionTools('', allowedToolNames),
@@ -803,6 +823,7 @@ async function dispatchTeamReply(teamId: string, sessionId: string, actorAgentId
         agentContext: reply.agentContext,
         success: true,
       });
+      persistTeamAgentSessionHistory(reply, parts);
       if (handoffs.length > 0) {
         for (const handoff of handoffs) {
           const message = listMessages(teamId, sessionId).find((item) => item.id === handoff.messageId);
@@ -827,10 +848,11 @@ async function dispatchTeamReply(teamId: string, sessionId: string, actorAgentId
           body: reply.content,
           metadata: { sessionId: runtime.sessionId, runtimeStatus: 'completed', parts },
         }) : null;
+        const persistedRuntime = listRuntimes(teamId, sessionId).find((item) => item.sessionId === runtime.sessionId);
         const nextRuntime = updateRuntime(teamId, sessionId, {
           ...runtime,
-          status: 'completed',
-          output: listRuntimes(teamId, sessionId).find((item) => item.sessionId === runtime.sessionId)?.output,
+          status: persistedRuntime?.status ?? runtime.status,
+          output: persistedRuntime?.output,
           updatedAt: new Date().toISOString(),
         });
         completeRuntimeDelivery(teamId, sessionId, runtime, targetAgentId, 'done');
@@ -1019,22 +1041,6 @@ function collectConversationMessages(teamId: string, sessionId: string, actorAge
     });
 }
 
-function maybeCompleteRuntime(teamId: string, sessionId: string, runtime: StoredTeamRuntime, messages: TeamRuntimeMessage[]): StoredTeamRuntime {
-  if (runtime.status !== 'running') return runtime;
-  const latestLeaderReply = [...messages]
-    .reverse()
-    .find((item) => item.senderAgentId === runtime.leaderAgentId
-      && item.status === 'completed'
-      && listMessages(teamId, sessionId).find((message) => message.id === item.id)?.metadata?.sessionId === runtime.sessionId);
-  if (!latestLeaderReply) return runtime;
-  const completed = {
-    ...runtime,
-    status: 'completed' as const,
-    updatedAt: latestLeaderReply.createdAt,
-  };
-  return updateRuntime(teamId, sessionId, completed);
-}
-
 export function listTeamSessions(input: unknown): TeamServiceResult {
   if (!input || typeof input !== 'object') return fail('tool input must be an object', 'INVALID_ARGUMENT');
   const map = input as Record<string, unknown>;
@@ -1076,7 +1082,6 @@ export function getTeamRuntime(input: unknown): TeamServiceResult {
     runtime = ensureRuntime(teamId, sessionId, actorAgentId, leaderAgentId);
   }
   const messages = collectConversationMessages(teamId, sessionId, actorAgentId, runtime.leaderAgentId, runtime);
-  runtime = maybeCompleteRuntime(teamId, sessionId, runtime, messages);
   const leader = resolveLeaderProfile(runtime.leaderAgentId);
   // participants 用原始请求者过滤：非成员不在成员列表中，自然返回全部成员（含 owner）
   const participants = listParticipants(teamId, actorAgentId);

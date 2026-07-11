@@ -7,6 +7,7 @@ import { LangChainRuntime } from '../adapters/langchain-runtime.js';
 import type { AgentRuntimeConfig, AgentRuntimeEvent } from '../adapters/agent-runtime-types.js';
 import { buildAgentPrompt } from '../ws/agent-prompt.js';
 import {
+  createAgentFunctionTools,
   createCommandFunctionTools,
   createDatabaseFunctionTools,
   createTeamFunctionTools,
@@ -118,6 +119,7 @@ router.post('/sessions/:sessionId/run', async (req, res) => {
     const fileWorkspace = getSessionFileWorkspace(workspaceId, session) ?? chatService.getAgentWorkspace(agentId);
     const functionTools = [
       ...createTeamFunctionTools(workspaceId, tools),
+      ...createAgentFunctionTools(workspaceId, tools),
       ...createCommandFunctionTools(workspaceId, tools),
       ...createDatabaseFunctionTools(workspaceId, tools),
       ...createWorkspaceFileFunctionTools(workspaceId, tools, () => fileWorkspace),
@@ -283,6 +285,7 @@ router.post('/agents/:id/run', async (req, res) => {
     const tools = normalizeToolNames(agent.tools);
     const functionTools = [
       ...createTeamFunctionTools(id, tools),
+      ...createAgentFunctionTools(id, tools),
       ...createCommandFunctionTools(id, tools),
       ...createDatabaseFunctionTools(id, tools),
       ...createWorkflowExecutionFunctionTools(id, tools, {

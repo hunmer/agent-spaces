@@ -541,6 +541,44 @@ test('owner runtime gets a completion tool and can finish the current team task'
   }
 });
 
+test('owner runtime stays running when the completion tool is not called', async () => {
+  const previousDataDir = process.env.AGENT_SPACES_DATA_DIR;
+  const dataDir = mkdtempSync(join(tmpdir(), 'agent-spaces-team-owner-running-'));
+  process.env.AGENT_SPACES_DATA_DIR = dataDir;
+  setTeamRuntimeFactoryForTests(() => ({
+    async execute() {
+      return { success: true, summary: 'done', output: ['ordinary reply'], artifacts: [] };
+    },
+    stop() {},
+  }));
+
+  try {
+    const owner = createPreset('', { name: 'Owner Agent' });
+    assert.ok(owner);
+    const created = handleTeamManage({ action: 'create', actor_agent_id: owner.id, name: 'Owner Running Team' });
+    assert.equal(created.success, true);
+    const teamId = (created.data as { team: { team_id: string } }).team.team_id;
+    const sessionId = '33333333-3333-4333-8333-333333333333';
+
+    await postTeamRuntimeMessage({
+      team_id: teamId,
+      session_id: sessionId,
+      actor_agent_id: 'admin',
+      target_agent_id: owner.id,
+      content: 'work on this task',
+    }, true);
+
+    const loaded = getTeamRuntime({ team_id: teamId, session_id: sessionId, actor_agent_id: 'admin' });
+    assert.equal((loaded.data as { runtime: { status: string } }).runtime.status, 'running');
+  } finally {
+    setTeamRuntimeFactoryForTests();
+    closeAgentDb();
+    if (previousDataDir === undefined) delete process.env.AGENT_SPACES_DATA_DIR;
+    else process.env.AGENT_SPACES_DATA_DIR = previousDataDir;
+    rmSync(dataDir, { recursive: true, force: true });
+  }
+});
+
 test('team runtime sessions store and load messages independently', () => {
   const previousDataDir = process.env.AGENT_SPACES_DATA_DIR;
   const dataDir = mkdtempSync(join(tmpdir(), 'agent-spaces-team-session-'));

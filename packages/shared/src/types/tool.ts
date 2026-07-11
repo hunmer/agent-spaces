@@ -35,6 +35,18 @@ export const BUILT_IN_AGENT_TOOLS = [
     category: 'channel',
   },
   {
+    name: 'ListAgentSessions',
+    label: 'List Agent Sessions',
+    description: 'List session records and session IDs for an agent.',
+    category: 'channel',
+  },
+  {
+    name: 'GetAgentSessionDetail',
+    label: 'Get Agent Session Detail',
+    description: 'Get messages, prompts, usage, and raw data for an agent session.',
+    category: 'channel',
+  },
+  {
     name: 'ViewCurrentChannelIssue',
     label: 'View Current Issue',
     description: 'View the issue and comments bound to the current channel.',

@@ -6,6 +6,7 @@ import * as workspaceService from './workspace.js';
 import { buildAgentPrompt, buildBuiltInTools } from '../ws/agent-prompt.js';
 import type { ExecutionSession } from './execution-types.js';
 import {
+  createAgentFunctionTools,
   createCommandFunctionTools,
   createDatabaseFunctionTools,
   createIssueFunctionTools,
@@ -119,6 +120,7 @@ async function executeAgentWithRuntime(
   const functionTools = [
     ...issueFunctionTools,
     ...createTeamFunctionTools(workspaceId, tools),
+    ...createAgentFunctionTools(workspaceId, tools),
     ...createCommandFunctionTools(workspaceId, tools),
     ...createDatabaseFunctionTools(workspaceId, tools),
     ...createWorkspaceFileFunctionTools(workspaceId, tools, () => workspace ?? null),
