@@ -135,7 +135,7 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
   const { workflows, loadWorkflows } = useWorkflowStore();
 
   const availableAgents = useMemo(
-    () => agents.filter((agent) => agent.enabled !== false),
+    () => agents.filter((agent) => agent.enabled !== false && agent.id !== "agent-generator"),
     [agents],
   );
   const selectedTeam = teams.find((team) => team.team_id === selectedTeamId) ?? null;
@@ -279,11 +279,11 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
           visibility: values.visibility,
           initial_members: values.members
             .filter((id) => id !== selectedActorId)
-            .map((agent_id) => {
+            .map((agent_id, index) => {
               const agent = customAgents.get(agent_id);
               return agent
-                ? { agent_id, role: "member", agent_store: "custom" as const, agent }
-                : { agent_id, role: "member" };
+                ? { agent_id, role: index === 0 ? "owner" : "member", agent_store: "custom" as const, agent }
+                : { agent_id, role: index === 0 ? "owner" : "member" };
             }),
         });
         await loadTeams(data.team.team_id);

@@ -42,7 +42,7 @@ test('generated team agents persist only as custom memberships', async () => {
         agent_id: generatedAgent.id,
         agent_store: 'custom',
         agent: generatedAgent,
-        role: 'member',
+        role: 'owner',
       }],
     });
     assert.equal(created.success, true);
@@ -52,6 +52,8 @@ test('generated team agents persist only as custom memberships', async () => {
 
     assert.equal(generatedMembership?.agentStore, 'custom');
     assert.deepEqual(generatedMembership?.agent, generatedAgent);
+    assert.equal(generatedMembership?.role, 'owner');
+    assert.equal(memberships.length, 1);
     assert.equal(listPresets().some((agent) => agent.id === generatedAgent.id), false);
   } finally {
     closeDb();

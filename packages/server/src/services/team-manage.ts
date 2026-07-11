@@ -53,7 +53,9 @@ export function handleTeamManage(input: unknown): TeamServiceResult {
     if (asBoolean(input.dry_run)) return ok('team create validation passed', { team: { name } });
 
     const now = new Date().toISOString();
-    const ownerAgent = resolveMembershipAgent({ agent_id: actorAgentId });
+    const initialMembers = asArray<JsonMap>(input.initial_members ?? input.initialMembers);
+    const requestedOwner = initialMembers.find((item) => parseRole(item?.role) === 'owner');
+    const ownerAgent = resolveMembershipAgent(requestedOwner ?? { agent_id: actorAgentId });
     if ('error' in ownerAgent) return ownerAgent.error;
     const team: Team = {
       id: uuid(),
@@ -64,7 +66,7 @@ export function handleTeamManage(input: unknown): TeamServiceResult {
       avatarUrl: asString(input.avatar_url ?? input.avatarUrl) || undefined,
       status: 'active',
       visibility: parseVisibility(input.visibility),
-      createdBy: actorAgentId,
+      createdBy: ownerAgent.agentId,
       createdAt: now,
       updatedAt: now,
       memberCount: 1,
@@ -81,10 +83,10 @@ export function handleTeamManage(input: unknown): TeamServiceResult {
       joinedAt: now,
       updatedAt: now,
     }];
-    for (const item of asArray<JsonMap>(input.initial_members ?? input.initialMembers)) {
+    for (const item of initialMembers) {
       const resolved = resolveMembershipAgent(item);
       if ('error' in resolved) return resolved.error;
-      if (resolved.agentId === actorAgentId || memberships.some((membership) => membership.agentId === resolved.agentId)) continue;
+      if (memberships.some((membership) => membership.agentId === resolved.agentId)) continue;
       memberships.push({
         id: uuid(),
         teamId: team.id,
