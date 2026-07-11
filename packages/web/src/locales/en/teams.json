@@ -72,6 +72,15 @@
     "purpose": "Purpose",
     "noPurpose": "No purpose provided.",
     "members": "Members",
+    "session": "Current session ID",
+    "tasks": "Tasks",
+    "noTasks": "No tasks for this session.",
+    "finalOutput": "Final output",
+    "taskStatus": {
+      "pending": "Pending",
+      "running": "Running",
+      "completed": "Completed"
+    },
     "noMembers": "No members.",
     "addMember": "Add member",
     "setOwner": "Set as owner",

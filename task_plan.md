@@ -9,6 +9,10 @@ Prevent team conversations from stalling when a member finishes without sending 
 - [complete] 3. Add owner idle self-check scheduling and task lifecycle integration.
 - [complete] 4. Update owner/member prompts and default tool assignments.
 - [complete] 5. Add regression tests and run builds.
+- [complete] 6. Trace Team selection/session state and runtime response types.
+- [complete] 7. Synchronize team_id and session_id with URL parameters.
+- [complete] 8. Expose session tasks/final output and render them in Team detail.
+- [complete] 9. Add focused tests/build validation.
 
 ## Decisions
 - Reuse JSON team runtime storage and existing function-tool patterns.
@@ -20,3 +24,4 @@ Prevent team conversations from stalling when a member finishes without sending 
 | Prompt patch context mismatch due to decoded punctuation | 1 | Located exact UTF-8 lines with `rg` and split the patch. |
 | Server build: readonly generated tools and invalid explicit `false` overload | 1 | Use mutable `BuiltInAgentToolName[]`; call the default non-wait overload without the second argument. |
 | Existing owner-transfer test expects `my_role=null`, implementation returns fallback owner | 1 | Unrelated pre-existing behavior; task/runtime regression cases pass, so left untouched. |
+| Web `tsc --noEmit` fails in existing `message-item.tsx:203` click-handler typing | 1 | Outside this change; Next compilation succeeded and modified packages are validated separately. |

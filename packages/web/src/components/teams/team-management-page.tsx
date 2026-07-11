@@ -3,6 +3,7 @@
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import type { WorkflowTemplate } from "@agent-spaces/shared";
 import { useTranslations } from "next-intl";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import type { PanelImperativeHandle } from "react-resizable-panels";
 import { sdk } from "@/lib/sdk";
@@ -40,12 +41,17 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
 }, ref) {
   const t = useTranslations("teams");
   const tc = useTranslations("common");
+  const pathname = usePathname();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const initialTeamId = searchParams.get("team_id") ?? "";
+  const initialSessionId = searchParams.get("session_id") ?? "";
   const ensureAgents = useAgentStore((store) => store.ensure);
   const agents = useAgentStore((store) => store.agents);
   const [selectedActorId, setSelectedActorId] = useState("");
   const [teams, setTeams] = useState<TeamView[]>([]);
   const [archivedTeams, setArchivedTeams] = useState<TeamView[]>([]);
-  const [selectedTeamId, setSelectedTeamId] = useState("");
+  const [selectedTeamId, setSelectedTeamId] = useState(initialTeamId);
   const [teamDetail, setTeamDetail] = useState<TeamDetail | null>(null);
   const [loadingTeams, setLoadingTeams] = useState(false);
   const [loadingArchived, setLoadingArchived] = useState(false);
@@ -59,7 +65,8 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
   // 右栏初始是否展开，由持久化布局决定（detail 占比 > 0 即展开）
   const [infoSidebarOpen, setInfoSidebarOpen] = useState(() => (loadSavedLayout()[PANEL_ID_DETAIL] ?? DEFAULT_LAYOUT[PANEL_ID_DETAIL]) > 0);
   const [workflowListOpen, setWorkflowListOpen] = useState(false);
-  const [activeSession, setActiveSession] = useState<{ teamId: string; sessionId: string } | null>(null);
+  const [activeSession, setActiveSession] = useState<{ teamId: string; sessionId: string } | null>(() =>
+    initialTeamId && initialSessionId ? { teamId: initialTeamId, sessionId: initialSessionId } : null);
   const detailPanelRef = useRef<PanelImperativeHandle>(null);
   const saveLayoutTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
@@ -92,6 +99,16 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
       ? current
       : { teamId: selectedTeamId, sessionId });
   }, [selectedTeamId]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (selectedTeamId) params.set("team_id", selectedTeamId);
+    else params.delete("team_id");
+    if (activeSession?.teamId === selectedTeamId && activeSession.sessionId) params.set("session_id", activeSession.sessionId);
+    else params.delete("session_id");
+    const next = params.toString();
+    if (next !== searchParams.toString()) router.replace(next ? `${pathname}?${next}` : pathname);
+  }, [activeSession, pathname, router, searchParams, selectedTeamId]);
 
   const { workflows, loadWorkflows } = useWorkflowStore();
 
@@ -372,6 +389,7 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
                 key={selectedTeamId}
                 teamId={selectedTeamId}
                 actorAgentId={selectedActorId}
+                initialSessionId={activeSession?.teamId === selectedTeamId ? activeSession.sessionId : undefined}
                 sidebarOpen={infoSidebarOpen}
                 onToggleSidebar={toggleInfoSidebar}
                 teamDescription={selectedTeam?.description}

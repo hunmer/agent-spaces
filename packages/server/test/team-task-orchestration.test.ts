@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createPreset } from '../src/services/agent.js';
 import { handleTeamManage } from '../src/services/team.js';
-import { handleTeamTaskManage, postTeamRuntimeMessage, setTeamRuntimeFactoryForTests } from '../src/services/team-runtime.js';
+import { getTeamRuntime, handleTeamTaskManage, postTeamRuntimeMessage, setTeamRuntimeFactoryForTests } from '../src/services/team-runtime.js';
 import { closeDb } from '../src/storage/agent-store.js';
 
 test('idle member run wakes owner to inspect incomplete tasks', async () => {
@@ -64,6 +64,8 @@ test('idle member run wakes owner to inspect incomplete tasks', async () => {
     }, true);
     await ownerChecked;
     assert.equal(ownerRuns, 2);
+    const runtime = getTeamRuntime({ team_id: teamId, session_id: sessionId, actor_agent_id: 'admin' });
+    assert.equal((runtime.data as { tasks: Array<{ title: string }> }).tasks[0]?.title, 'Member work');
   } finally {
     setTeamRuntimeFactoryForTests();
     closeDb();

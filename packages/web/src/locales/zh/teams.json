@@ -72,6 +72,15 @@
     "purpose": "团队目标",
     "noPurpose": "暂无团队目标。",
     "members": "成员",
+    "session": "当前会话 ID",
+    "tasks": "任务列表",
+    "noTasks": "当前会话暂无任务。",
+    "finalOutput": "最终输出",
+    "taskStatus": {
+      "pending": "待运行",
+      "running": "运行中",
+      "completed": "已完成"
+    },
     "noMembers": "暂无成员。",
     "addMember": "添加成员",
     "setOwner": "设置为 owner",

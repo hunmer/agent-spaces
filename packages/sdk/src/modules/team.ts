@@ -128,6 +128,17 @@ export interface TeamRuntimeResponse {
   leader?: TeamRuntimeAgentProfile;
   participants?: TeamRuntimeAgentProfile[];
   messages: TeamRuntimeMessageView[];
+  tasks: TeamTaskView[];
+}
+
+export interface TeamTaskView {
+  id: string;
+  title: string;
+  assigneeAgentId: string;
+  status: 'pending' | 'running' | 'completed';
+  agentSessionId?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface TeamSessionView {

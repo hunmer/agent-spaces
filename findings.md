@@ -8,3 +8,9 @@
 - Generated team agents currently receive only `team_message_send`; owner/member defaults must diverge in `normalizeTeamMemberSelection`.
 - The idle recovery can stay event-driven: after a non-owner run ends with no queued handoff, inspect incomplete tasks and active member runs, then enqueue one owner check.
 - Task completion stores the executing agent session ID injected by the bound tool context, enabling downstream `GetAgentSessionDetail` calls.
+- Team selection state lives in `team-management-page.tsx`; `team-list-panel.tsx` only emits `onSelectTeam`, so URL synchronization belongs in the parent callback/state initializer.
+- `TeamChatPanel` already emits `onSessionIdChange` and accepts `initialSessionId`, but the parent currently does not pass the URL session into it.
+- `getTeamRuntime` already returns `runtime.output`; adding `tasks: listTasks(teamId, sessionId)` is the smallest API extension for the detail sidebar.
+- `TeamDetailPanel` currently has the active session ID but no runtime data, so it can fetch the same session detail directly without coupling chat state upward.
+- URL parameters should use the requested snake_case names `team_id` and `session_id`; initializing parent state from them lets refresh restore selection.
+- Existing Team translations live in `packages/web/src/locales/{zh,en}/teams.json`; add only the detail labels needed by the new cards.

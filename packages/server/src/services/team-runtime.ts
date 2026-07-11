@@ -1220,6 +1220,7 @@ export function getTeamRuntime(input: unknown): TeamServiceResult {
     leader,
     participants,
     messages,
+    tasks: listTasks(teamId, sessionId),
   });
 }
 
