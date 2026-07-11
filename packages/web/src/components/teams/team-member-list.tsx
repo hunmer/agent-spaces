@@ -27,11 +27,12 @@ interface TeamMemberListProps {
   actorAgentId: string;
   members: TeamMembershipView[];
   agents: AgentConfig[];
+  sessionId?: string;
   myRole?: string | null;
   onChange: () => void;
 }
 
-export function TeamMemberList({ teamId, actorAgentId, members, agents, myRole, onChange }: TeamMemberListProps) {
+export function TeamMemberList({ teamId, actorAgentId, members, agents, sessionId, myRole, onChange }: TeamMemberListProps) {
   const t = useTranslations("teams");
   const tm = useTranslations("chat.messageItem");
   const [addOpen, setAddOpen] = useState(false);
@@ -321,6 +322,7 @@ export function TeamMemberList({ teamId, actorAgentId, members, agents, myRole, 
         onOpenChange={setInboxOpen}
         teamId={teamId}
         actorAgentId={actorAgentId}
+        sessionId={sessionId}
         members={members}
         agents={agents}
         initialAgentId={inboxAgentId}

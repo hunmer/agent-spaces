@@ -35,6 +35,7 @@ type TeamChatPanelProps = {
   sidebarOpen?: boolean;
   onToggleSidebar?: () => void;
   teamDescription?: string;
+  onSessionIdChange?: (sessionId: string) => void;
 };
 
 type TeamParticipant = NonNullable<TeamRuntimeResponse["participants"]>[number];
@@ -148,7 +149,7 @@ function createTeamMessageWorkflow(
   };
 }
 
-export function TeamChatPanel({ teamId, actorAgentId, initialSessionId, sidebarOpen = true, onToggleSidebar, teamDescription }: TeamChatPanelProps) {
+export function TeamChatPanel({ teamId, actorAgentId, initialSessionId, sidebarOpen = true, onToggleSidebar, teamDescription, onSessionIdChange }: TeamChatPanelProps) {
   const t = useTranslations("teams");
   const agents = useAgentStore((store) => store.agents);
   const ensureAgents = useAgentStore((store) => store.ensure);
@@ -166,6 +167,8 @@ export function TeamChatPanel({ teamId, actorAgentId, initialSessionId, sidebarO
   const [workflowOpen, setWorkflowOpen] = useState(false);
   const [workflowLoading, setWorkflowLoading] = useState(false);
   const [workflowDeliveries, setWorkflowDeliveries] = useState<TeamInboxItemView[]>([]);
+
+  useEffect(() => onSessionIdChange?.(sessionId), [onSessionIdChange, sessionId]);
 
   const leader = useMemo(() => {
     if (leaderProfile?.id) return leaderProfile;

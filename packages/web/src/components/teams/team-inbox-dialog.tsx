@@ -17,6 +17,7 @@ interface TeamInboxDialogProps {
   onOpenChange: (open: boolean) => void;
   teamId: string;
   actorAgentId: string;
+  sessionId?: string;
   members: TeamMembershipView[];
   agents: AgentConfig[];
   initialAgentId?: string;
@@ -28,6 +29,7 @@ export function TeamInboxDialog({
   onOpenChange,
   teamId,
   actorAgentId,
+  sessionId,
   members,
   agents,
   initialAgentId,
@@ -83,17 +85,20 @@ export function TeamInboxDialog({
       const res = await sdk.team.listInbox({
         actor_agent_id: actorAgentId,
         team_id: teamId,
+        session_id: sessionId,
         recipient_agent_id: selectedAgentId,
         page_size: 100,
       });
-      setItems(res.inbox_items);
+      setItems(res.inbox_items.filter((item) => !(item.preview.trim() === "Thinking"
+        && (!item.subject || item.subject.trim() === "Thinking")
+        && (!item.body || item.body.trim() === "Thinking"))));
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
       setItems([]);
     } finally {
       setLoading(false);
     }
-  }, [actorAgentId, selectedAgentId, teamId]);
+  }, [actorAgentId, selectedAgentId, sessionId, teamId]);
 
   useEffect(() => {
     if (open) void loadInbox();

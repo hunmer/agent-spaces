@@ -106,6 +106,7 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
   // 右栏初始是否展开，由持久化布局决定（detail 占比 > 0 即展开）
   const [infoSidebarOpen, setInfoSidebarOpen] = useState(() => (loadSavedLayout()[PANEL_ID_DETAIL] ?? DEFAULT_LAYOUT[PANEL_ID_DETAIL]) > 0);
   const [workflowListOpen, setWorkflowListOpen] = useState(false);
+  const [activeSession, setActiveSession] = useState<{ teamId: string; sessionId: string } | null>(null);
   const detailPanelRef = useRef<PanelImperativeHandle>(null);
   const saveLayoutTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
@@ -132,6 +133,12 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
       return next;
     });
   }, []);
+
+  const handleActiveSessionChange = useCallback((sessionId: string) => {
+    setActiveSession((current) => current?.teamId === selectedTeamId && current.sessionId === sessionId
+      ? current
+      : { teamId: selectedTeamId, sessionId });
+  }, [selectedTeamId]);
 
   const { workflows, loadWorkflows } = useWorkflowStore();
 
@@ -481,11 +488,13 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
 
             <ResizablePanel id={PANEL_ID_CHAT} defaultSize="40%" minSize="30%" className="min-w-0">
             <TeamChatPanel
+              key={selectedTeamId}
               teamId={selectedTeamId}
               actorAgentId={selectedActorId}
               sidebarOpen={infoSidebarOpen}
               onToggleSidebar={toggleInfoSidebar}
               teamDescription={selectedTeam?.description}
+              onSessionIdChange={handleActiveSessionChange}
             />
             </ResizablePanel>
 
@@ -533,6 +542,7 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
                       actorAgentId={selectedActorId}
                       members={teamDetail.members_preview ?? []}
                       agents={availableAgents}
+                      sessionId={activeSession?.teamId === selectedTeam.team_id ? activeSession.sessionId : undefined}
                       myRole={teamDetail.team.my_role}
                       onChange={() => void loadTeamDetail(selectedTeam.team_id)}
                     />

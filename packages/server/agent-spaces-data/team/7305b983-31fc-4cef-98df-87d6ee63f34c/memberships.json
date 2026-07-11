@@ -7,7 +7,7 @@
     "agent": {
       "id": "topic_agent",
       "name": "Topic Agent",
-      "role": "agent",
+      "role": "owner",
       "description": "围绕公众号主题生成多角度选题和大纲",
       "runtimeKind": "langchain",
       "modelProvider": "openai-chat-completions",
@@ -23,16 +23,20 @@
       ],
       "systemPrompt": "你是 topic_agent，负责接收用户需求、制定选题并在终审通过后向用户交付结果。你只负责选题与流程协调，不撰写正文、不审批稿件。\n\n工作流：\n1. 收到 admin 的新主题时，将消息正文视为用户需求；未提供风格或目标读者时，默认采用适合公众号的深度长文风格和普通年轻读者。\n2. 生成结构化选题报告：3 个差异化切入角度及 1-10 分评分；选择最高分角度；给出 5-7 个一级章节的大纲；列出 5 条可引用的事实、数据或案例线索并标注来源类型。\n3. 调用 team_message_send，将完整选题报告发送给 editor_agent，明确要求其撰写全文并提交 reviewer_agent。发送后等待下游完成，不要自己代写、代审或重复发送。\n4. 收到 reviewer_agent 的“通过”通知时，向 admin 输出简洁的完成结果，包含标题、终审结论和最终稿件；任务到此结束。\n5. 如果收到“需修改”信息，不向用户宣布完成；修改应由 reviewer_agent 退回 editor_agent。\n\n必须遵守：\n- 只使用 team_message_send 进行成员间通知。\n- 根据发送者和消息内容判断当前阶段，终审通知不得被当成新选题重新处理。\n- 不向 reviewer_agent 发稿，不替 editor_agent 或 reviewer_agent 执行职责。\n\n选题报告格式：\n# 选题报告\n## 原始需求\n## 切入角度\n## 推荐大纲\n## 事实线索\n## 写作要求",
       "outputStyle": "",
-      "temperature": 0.7,
-      "maxTokens": 8192,
+      "temperature": 0.3,
+      "maxTokens": 4096,
       "avatarUrl": "",
       "icon": "",
-      "enabled": true
+      "enabled": true,
+      "backgroundUrl": "",
+      "skills": [],
+      "boundWorkflowIds": [],
+      "boundWorkflowPluginTools": []
     },
     "role": "owner",
     "status": "active",
     "joinedAt": "2026-07-10T01:47:31.710Z",
-    "updatedAt": "2026-07-10T02:29:24.799Z"
+    "updatedAt": "2026-07-11T04:03:52.835Z"
   },
   {
     "id": "f1ab2ac0-2edd-4a42-919e-aa5261b59dc1",
@@ -42,7 +46,7 @@
     "agent": {
       "id": "editor_agent",
       "name": "Editor Agent",
-      "role": "agent",
+      "role": "member",
       "description": "基于选题大纲撰写完整公众号文章",
       "runtimeKind": "langchain",
       "modelProvider": "openai-chat-completions",
@@ -66,7 +70,6 @@
       "icon": "",
       "enabled": true,
       "backgroundUrl": "",
-      "apiKey": "sk-cp-ENAU4g6Cb5U3fkjZ8x4pgBNHkazJQeks2cf82GBGaCDqBU7GOMDegvXEVDpMtxbdQ7cilkKR9ke3obBAk1kfdLbD9DBiRI5SerU6XhWc5Tu6Fe2TmOccSEc",
       "skills": [],
       "boundWorkflowIds": [],
       "boundWorkflowPluginTools": []
@@ -74,7 +77,7 @@
     "role": "member",
     "status": "active",
     "joinedAt": "2026-07-10T01:47:31.710Z",
-    "updatedAt": "2026-07-10T02:50:20.572Z"
+    "updatedAt": "2026-07-11T04:04:10.072Z"
   },
   {
     "id": "8c87ad61-eaf4-4ca3-b430-1edd566f2f7c",
@@ -107,7 +110,6 @@
       "enabled": true,
       "backgroundUrl": "",
       "skills": [],
-      "apiKey": "sk-cp-ENAU4g6Cb5U3fkjZ8x4pgBNHkazJQeks2cf82GBGaCDqBU7GOMDegvXEVDpMtxbdQ7cilkKR9ke3obBAk1kfdLbD9DBiRI5SerU6XhWc5Tu6Fe2TmOccSEc",
       "boundWorkflowIds": [],
       "boundWorkflowPluginTools": []
     },
