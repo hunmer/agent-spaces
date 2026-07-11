@@ -3,10 +3,6 @@
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import type { WorkflowTemplate } from "@agent-spaces/shared";
 import { useTranslations } from "next-intl";
-import { EllipsisVertical, Eraser, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import type { PanelImperativeHandle } from "react-resizable-panels";
 import { sdk } from "@/lib/sdk";
@@ -17,63 +13,20 @@ import type {
 import { useAgentStore } from "@/stores/agent";
 import { useWorkflowStore } from "@/stores/workflow";
 import { CreateTeamDialog, type TeamFormDefaults, type TeamFormValues } from "@/components/teams/create-team-dialog";
-import { TeamMemberList } from "@/components/teams/team-member-list";
 import { TeamChatPanel } from "@/components/teams/team-chat-panel";
 import { WorkflowListDialog } from "@/components/workflow/workflow-list-dialog";
-import { TeamCard } from "@/components/teams/team-card";
+import { TeamListPanel } from "@/components/teams/team-list-panel";
+import { TeamDetailPanel } from "@/components/teams/team-detail-panel";
 import { confirmDialog } from "@/stores/confirm";
-
-const PANEL_ID_LIST = "team-list";
-const PANEL_ID_CHAT = "team-chat";
-const PANEL_ID_DETAIL = "team-detail";
-
-// 三栏布局持久化（百分比 Layout，见 docs/ui/react-resizable-panels-size-units.md）
-const LAYOUT_KEY = "team-management:layout";
-const DEFAULT_LAYOUT: Record<string, number> = {
-  [PANEL_ID_LIST]: 25,
-  [PANEL_ID_CHAT]: 40,
-  [PANEL_ID_DETAIL]: 35,
-};
-
-function loadSavedLayout(): Record<string, number> {
-  if (typeof window === "undefined") return DEFAULT_LAYOUT;
-  try {
-    const raw = window.localStorage.getItem(LAYOUT_KEY);
-    const parsed = raw ? JSON.parse(raw) as Record<string, number> : null;
-    if (!parsed) return DEFAULT_LAYOUT;
-    // 合并默认值，避免新增 panel id 时缺字段
-    return { ...DEFAULT_LAYOUT, ...parsed };
-  } catch {
-    return DEFAULT_LAYOUT;
-  }
-}
-
-function extractAgentRunIds(workflow: WorkflowTemplate): string[] {
-  const ids: string[] = [];
-  for (const node of workflow.nodes ?? []) {
-    if (node.type !== "agent" && node.type !== "agent_run") continue;
-    const data = node.data ?? {};
-    // 兼容两种数据结构：
-    // 1. 内联 agent 定义：node.data.agent.id
-    // 2. 引用模式：node.data.agentConfigId
-    const agentObj = data.agent as { id?: unknown } | undefined;
-    const fromAgent = agentObj && typeof agentObj.id === "string" ? agentObj.id.trim() : "";
-    const fromConfigId = typeof data.agentConfigId === "string" ? data.agentConfigId.trim() : "";
-    const id = fromAgent || fromConfigId;
-    if (id) ids.push(id);
-  }
-  const result = Array.from(new Set(ids));
-  // eslint-disable-next-line no-console
-  console.log("[extractAgentRunIds]", { workflowName: workflow.name, nodeCount: (workflow.nodes ?? []).length, extractedIds: result });
-  return result;
-}
-
-function formatTime(value?: string | null) {
-  if (!value) return "-";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleString();
-}
+import {
+  PANEL_ID_LIST,
+  PANEL_ID_CHAT,
+  PANEL_ID_DETAIL,
+  DEFAULT_LAYOUT,
+  LAYOUT_KEY,
+  loadSavedLayout,
+  extractAgentRunIds,
+} from "@/components/teams/team-management-utils";
 
 export type TeamManagementPageHandle = {
   openCreateDialog: () => void;
@@ -392,110 +345,38 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
             onLayoutChange={handleLayoutChange}
           >
             <ResizablePanel id={PANEL_ID_LIST} defaultSize="25%" minSize="18%" maxSize="35%">
-            <section className="flex h-full flex-col rounded-2xl border border-border bg-card p-4">
-              {error ? (
-                <div className="mb-2 rounded-xl border border-destructive/40 bg-destructive/5 px-3 py-2 text-sm text-destructive">
-                  {error}
-                </div>
-              ) : null}
-              <div className=" flex items-center justify-between">
-                <h2 className="font-medium">{t("list.title")}</h2>
-                <div className="flex items-center gap-1">
-                  {loadingTeams || loadingArchived ? <Loader2 className="size-4 animate-spin text-muted-foreground" /> : null}
-                  <Button variant="ghost" size="icon" onClick={openCreateDialog} disabled={!canCreateTeam} title={t("newTeam")}>
-                    <Plus className="size-4" />
-                  </Button>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger
-                      render={
-                        <Button variant="ghost" size="icon" disabled={!canCreateTeam}>
-                          <EllipsisVertical className="size-4" />
-                        </Button>
-                      }
-                    />
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => setWorkflowListOpen(true)}>
-                        {t("importFromWorkflow")}
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              </div>
-              <Tabs defaultValue="active" className="min-h-0 flex-1 flex-col gap-2">
-                <TabsList className="self-start">
-                  <TabsTrigger value="active">{t("tabs.active")}</TabsTrigger>
-                  <TabsTrigger value="archived">{t("tabs.archived")}</TabsTrigger>
-                </TabsList>
-                <TabsContent value="active" className="min-h-0 flex-1 overflow-auto">
-                  {teams.length === 0 ? (
-                    <div className="rounded-xl border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">
-                      {t("empty.teams")}
-                    </div>
-                  ) : (
-                    <div className="flex flex-col gap-2">
-                      {teams.map((team) => (
-                        <TeamCard
-                          key={team.team_id}
-                          team={team}
-                          mode="active"
-                          selected={team.team_id === selectedTeamId}
-                          onSelect={(item) => setSelectedTeamId(item.team_id)}
-                          onEdit={(item) => openEditDialog(item)}
-                          onDelete={(item) => void dissolveTeam(item)}
-                          agents={availableAgents}
-                        />
-                      ))}
-                    </div>
-                  )}
-                </TabsContent>
-                <TabsContent value="archived" className="min-h-0 flex-1 overflow-auto">
-                  <div className="mb-2 flex items-center justify-end">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => void clearAllArchived()}
-                      disabled={archivedTeams.length === 0}
-                    >
-                      <Eraser className="size-4" />
-                      {t("archived.clearAll")}
-                    </Button>
-                  </div>
-                  {archivedTeams.length === 0 ? (
-                    <div className="rounded-xl border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">
-                      {t("empty.archived")}
-                    </div>
-                  ) : (
-                    <div className="flex flex-col gap-2">
-                      {archivedTeams.map((team) => (
-                        <TeamCard
-                          key={team.team_id}
-                          team={team}
-                          mode="archived"
-                          onRestore={(item) => void restoreArchivedTeam(item)}
-                          onDelete={(item) => void deleteArchivedTeam(item)}
-                          agents={availableAgents}
-                          archivedAtLabel={team.dissolved_at ? `${t("list.archivedAt")} ${formatTime(team.dissolved_at)}` : ""}
-                        />
-                      ))}
-                    </div>
-                  )}
-                </TabsContent>
-              </Tabs>
-            </section>
+              <TeamListPanel
+                error={error}
+                loadingTeams={loadingTeams}
+                loadingArchived={loadingArchived}
+                canCreateTeam={canCreateTeam}
+                teams={teams}
+                archivedTeams={archivedTeams}
+                selectedTeamId={selectedTeamId}
+                availableAgents={availableAgents}
+                onCreateTeam={openCreateDialog}
+                onImportFromWorkflow={() => setWorkflowListOpen(true)}
+                onSelectTeam={(item) => setSelectedTeamId(item.team_id)}
+                onEditTeam={openEditDialog}
+                onDissolveTeam={(item) => void dissolveTeam(item)}
+                onRestoreArchived={(item) => void restoreArchivedTeam(item)}
+                onDeleteArchived={(item) => void deleteArchivedTeam(item)}
+                onClearArchived={() => void clearAllArchived()}
+              />
             </ResizablePanel>
 
             <ResizableHandle withHandle />
 
             <ResizablePanel id={PANEL_ID_CHAT} defaultSize="40%" minSize="30%" className="min-w-0">
-            <TeamChatPanel
-              key={selectedTeamId}
-              teamId={selectedTeamId}
-              actorAgentId={selectedActorId}
-              sidebarOpen={infoSidebarOpen}
-              onToggleSidebar={toggleInfoSidebar}
-              teamDescription={selectedTeam?.description}
-              onSessionIdChange={handleActiveSessionChange}
-            />
+              <TeamChatPanel
+                key={selectedTeamId}
+                teamId={selectedTeamId}
+                actorAgentId={selectedActorId}
+                sidebarOpen={infoSidebarOpen}
+                onToggleSidebar={toggleInfoSidebar}
+                teamDescription={selectedTeam?.description}
+                onSessionIdChange={handleActiveSessionChange}
+              />
             </ResizablePanel>
 
             <ResizableHandle withHandle />
@@ -512,50 +393,18 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
                 setInfoSidebarOpen(size.asPercentage > 0);
               }}
             >
-            {infoSidebarOpen ? (
-            <section className="rounded-2xl border border-border bg-card p-4 h-full">
-              {selectedTeam && teamDetail ? (
-                <div className="flex h-full flex-col gap-4">
-                  <div className="flex items-start justify-between gap-3 rounded-xl border border-border bg-background p-3">
-                    <div>
-                      <h2 className="text-xl font-semibold">{teamDetail.team.name}</h2>
-                      <p className="mt-1 text-sm text-muted-foreground">{teamDetail.team.description || t("detail.noDescription")}</p>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button size="sm" variant="outline" onClick={() => openEditDialog(selectedTeam)}>
-                        <Pencil className="size-4" />
-                      </Button>
-                      <Button size="sm" variant="outline" onClick={() => void dissolveTeam(selectedTeam)}>
-                        <Trash2 className="size-4" />
-                      </Button>
-                    </div>
-                  </div>
-
-                  <div className="rounded-xl border border-border bg-background p-3">
-                    <div className="text-sm font-medium">{t("detail.purpose")}</div>
-                    <p className="mt-1 text-sm text-muted-foreground">{teamDetail.team.purpose || t("detail.noPurpose")}</p>
-                  </div>
-
-                  <div className="rounded-xl border border-border p-3">
-                    <TeamMemberList
-                      teamId={selectedTeam.team_id}
-                      actorAgentId={selectedActorId}
-                      members={teamDetail.members_preview ?? []}
-                      agents={availableAgents}
-                      sessionId={activeSession?.teamId === selectedTeam.team_id ? activeSession.sessionId : undefined}
-                      myRole={teamDetail.team.my_role}
-                      onChange={() => void loadTeamDetail(selectedTeam.team_id)}
-                    />
-                  </div>
-
-                </div>
-              ) : (
-                <div className="rounded-2xl border border-dashed border-border px-4 py-10 text-center text-sm text-muted-foreground">
-                  {t("empty.teamDetail")}
-                </div>
-              )}
-            </section>
-            ) : null}
+              {infoSidebarOpen ? (
+                <TeamDetailPanel
+                  selectedTeam={selectedTeam}
+                  teamDetail={teamDetail}
+                  selectedActorId={selectedActorId}
+                  availableAgents={availableAgents}
+                  activeSessionId={activeSession && activeSession.teamId === selectedTeam?.team_id ? activeSession.sessionId : undefined}
+                  onEditTeam={openEditDialog}
+                  onDissolveTeam={(item) => void dissolveTeam(item)}
+                  onRefreshDetail={(teamId) => void loadTeamDetail(teamId)}
+                />
+              ) : null}
             </ResizablePanel>
           </ResizablePanelGroup>
         )}
