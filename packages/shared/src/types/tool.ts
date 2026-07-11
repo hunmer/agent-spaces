@@ -95,6 +95,12 @@ export const BUILT_IN_AGENT_TOOLS = [
     category: 'team',
   },
   {
+    name: 'team_task_manage',
+    label: 'Team Task Manage',
+    description: 'Create, list, or complete persisted team tasks.',
+    category: 'team',
+  },
+  {
     name: 'team_task_complete',
     label: 'Team Task Complete',
     description: 'Mark the current team task as completed.',

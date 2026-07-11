@@ -1,4 +1,4 @@
-import type { AgentConfig } from '@agent-spaces/shared';
+import type { AgentConfig, BuiltInAgentToolName } from '@agent-spaces/shared';
 import { v4 as uuid } from 'uuid';
 import { AGENT_GENERATOR_PRESET_ID, readAgentTemplate } from '../services/agent.js';
 import { runAgentSseText } from '../routes/agent-sse.js';
@@ -60,6 +60,7 @@ const TEAM_AGENT_TOOL_INSTRUCTIONS = [
   '- Select the exact recipient agent id from the current team members provided at runtime.',
   '- Send the complete result and enough context for the recipient to continue without reconstructing prior work.',
   '- After sending the handoff, stop and wait for the next team message.',
+  '- Use `GetAgentSessionDetail` with an upstream task agentSessionId when you need the previous agent output.',
 ].join('\n');
 
 export async function generateAgentDesign(userPrompt: string): Promise<AgentDesign> {
@@ -342,7 +343,12 @@ export function normalizeTeamMemberSelection(
     .filter((agent) => agent.name.trim().toLowerCase().replace(/[\s_]+/g, '-') !== AGENT_GENERATOR_PRESET_ID)
     .slice(0, 4);
   const ownerIndex = Math.max(0, designs.findIndex((agent) => agent.isOwner));
-  const normalized = designs.map((agent, index) => ({
+  const normalized = designs.map((agent, index) => {
+    const isOwner = index === ownerIndex;
+    const tools: BuiltInAgentToolName[] = isOwner
+      ? ['team_message_send', 'team_task_manage', 'GetAgentSessionDetail', 'team_task_complete']
+      : ['team_message_send', 'team_task_manage', 'GetAgentSessionDetail'];
+    return {
       id: uuid(),
       name: agent.name,
       role: 'agent',
@@ -355,14 +361,17 @@ export function normalizeTeamMemberSelection(
       workingDir: '',
       mcps: { mcpServers: {} },
       skills: [],
-      tools: ['team_message_send' as const],
-      systemPrompt: `${agent.systemPrompt}\n\n${TEAM_AGENT_TOOL_INSTRUCTIONS}`,
+      tools,
+      systemPrompt: `${agent.systemPrompt}\n\n${TEAM_AGENT_TOOL_INSTRUCTIONS}\n- ${isOwner
+        ? 'As owner, create the assigned task list after the first request and inspect it whenever the team is idle.'
+        : 'As a member, mark your own task complete with `team_task_manage` before finishing.'}`,
       outputStyle: '',
       temperature: template.temperature ?? 0.3,
       maxTokens: template.maxTokens ?? 4096,
       enabled: true,
-      isOwner: index === ownerIndex,
-    }));
+      isOwner,
+    };
+  });
   if (normalized.length === 0) throw new Error('Generated JSON did not include any usable agents.');
   return { agents: normalized };
 }

@@ -7,7 +7,7 @@ import {
   handleTeamMessageComment,
   handleTeamMessageUpdate,
 } from '../team.js';
-import { handleTeamMessageSendAndRun, handleTeamTaskComplete } from '../team-runtime.js';
+import { handleTeamMessageSendAndRun, handleTeamTaskComplete, handleTeamTaskManage } from '../team-runtime.js';
 
 const actorField = {
   actor_agent_id: {
@@ -38,12 +38,13 @@ export function createTeamFunctionTools(
     teamId: string;
     sessionId: string;
     actorAgentId: string;
+    agentSessionId?: string;
     handleMessageSend?: (input: unknown) => Promise<unknown> | unknown;
   },
 ): AgentFunctionTool[] {
   const allowedToolNames = new Set(allowedTools ?? BUILT_IN_AGENT_TOOLS.map((tool) => tool.name));
   const bindContext = (input: unknown): unknown => context && input && typeof input === 'object'
-    ? { ...input, team_id: context.teamId, session_id: context.sessionId, actor_agent_id: context.actorAgentId }
+    ? { ...input, team_id: context.teamId, session_id: context.sessionId, actor_agent_id: context.actorAgentId, agent_session_id: context.agentSessionId }
     : input;
 
   const tools: AgentFunctionTool[] = [
@@ -189,6 +190,30 @@ export function createTeamFunctionTools(
       }, ['action', 'actor_agent_id']),
       annotations: { destructive: false, openWorld: false },
       execute: async (input) => handleTeamMessageComment(bindContext(input)),
+    },
+    {
+      name: 'team_task_manage',
+      description: 'Create, list, or complete persisted tasks for the current team session.',
+      inputSchema: schema({
+        action: { type: 'string', enum: ['create', 'list', 'complete'] },
+        ...actorField,
+        team_id: { type: 'string' },
+        tasks: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              title: { type: 'string' },
+              assignee_agent_id: { type: 'string' },
+            },
+            required: ['title', 'assignee_agent_id'],
+            additionalProperties: false,
+          },
+        },
+        task_id: { type: 'string' },
+      }, ['action', 'actor_agent_id', 'team_id']),
+      annotations: { destructive: false, openWorld: false },
+      execute: async (input) => handleTeamTaskManage(bindContext(input)),
     },
     {
       name: 'team_task_complete',
