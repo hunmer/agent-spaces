@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { AgentConfig, Channel, ExecutionLog, Message, Workflow } from "@agent-spaces/shared";
 import { useTranslations } from "next-intl";
-import { Loader2, PanelRight, Trash2, Workflow as WorkflowIcon } from "lucide-react";
+import { Loader2, PanelRight, Plus, Trash2, Workflow as WorkflowIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MessageItem } from "@/components/chat/message-item";
 import { MessageNavigator } from "@/components/chat/message-navigator";
@@ -289,6 +289,10 @@ export function TeamChatPanel({ teamId, actorAgentId, initialSessionId, sidebarO
     setSessionId(value);
   }, [sessionId]);
 
+  const handleNewSession = useCallback(() => {
+    handleSessionChange(crypto.randomUUID());
+  }, [handleSessionChange]);
+
   const handleSend = useCallback(async (content: string, mentions: string[], _attachments?: unknown, _replyToMessageId?: string, contextLength?: number) => {
     const trimmed = content.trim();
     if (!trimmed) return;
@@ -429,6 +433,17 @@ export function TeamChatPanel({ teamId, actorAgentId, initialSessionId, sidebarO
               ))}
             </SelectContent>
           </Select>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-7"
+            onClick={handleNewSession}
+            disabled={loading || sending}
+            title={t("chat.newSession")}
+            aria-label={t("chat.newSession")}
+          >
+            <Plus className="size-3.5" />
+          </Button>
           <Button
             variant="ghost"
             size="icon"

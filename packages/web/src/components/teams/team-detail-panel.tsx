@@ -4,7 +4,7 @@ import type { AgentConfig } from "@agent-spaces/shared";
 import { useEffect, useState } from "react";
 import type { TeamDetail, TeamRuntimeResponse, TeamView } from "@agent-spaces/sdk";
 import { useTranslations } from "next-intl";
-import { Loader2, Pencil, Trash2 } from "lucide-react";
+import { Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { TeamMemberList } from "@/components/teams/team-member-list";
@@ -33,7 +33,6 @@ export function TeamDetailPanel({
 }: TeamDetailPanelProps) {
   const t = useTranslations("teams");
   const [sessionDetail, setSessionDetail] = useState<TeamRuntimeResponse | null>(null);
-  const [loadingSession, setLoadingSession] = useState(false);
 
   useEffect(() => {
     if (!selectedTeam?.team_id || !activeSessionId) {
@@ -42,14 +41,11 @@ export function TeamDetailPanel({
     }
     let cancelled = false;
     const load = async () => {
-      setLoadingSession(true);
       try {
         const detail = await sdk.team.getRuntime(selectedTeam.team_id, "admin", activeSessionId);
         if (!cancelled) setSessionDetail(detail);
       } catch {
         if (!cancelled) setSessionDetail(null);
-      } finally {
-        if (!cancelled) setLoadingSession(false);
       }
     };
     void load();
@@ -63,7 +59,7 @@ export function TeamDetailPanel({
   return (
     <section className="rounded-2xl border border-border bg-card p-4 h-full">
       {selectedTeam && teamDetail ? (
-        <div className="flex h-full flex-col gap-4">
+        <div className="flex h-full flex-col gap-4 overflow-auto">
           <div className="flex items-start justify-between gap-3 rounded-xl border border-border bg-background p-3">
             <div>
               <h2 className="text-xl font-semibold">{teamDetail.team.name}</h2>
@@ -86,16 +82,6 @@ export function TeamDetailPanel({
 
           {activeSessionId ? (
             <div className="rounded-xl border border-border bg-background p-3">
-              <div className="flex items-center justify-between gap-2">
-                <div className="text-sm font-medium">{t("detail.session")}</div>
-                {loadingSession ? <Loader2 className="size-3.5 animate-spin text-muted-foreground" /> : null}
-              </div>
-              <div className="mt-1 break-all font-mono text-xs text-muted-foreground">{activeSessionId}</div>
-            </div>
-          ) : null}
-
-          {activeSessionId ? (
-            <div className="min-h-0 flex-1 overflow-auto rounded-xl border border-border bg-background p-3">
               <div className="text-sm font-medium">{t("detail.tasks")}</div>
               {sessionDetail?.tasks.length ? (
                 <div className="mt-2 space-y-2">
