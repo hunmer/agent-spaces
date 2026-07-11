@@ -140,8 +140,6 @@ export function TeamCard({
           <div className="min-w-0">
             <div className="truncate font-medium">{team.name}</div>
             <div className="mt-1 flex flex-wrap gap-1">
-              <Badge variant={badgeTone(team.status)}>{t(`status.${team.status}`)}</Badge>
-              <Badge variant={badgeTone(team.visibility)}>{t(`visibility.${team.visibility}`)}</Badge>
               {running ? (
                 <Badge variant="outline" className="gap-1 border-emerald-500/40 bg-emerald-500/10 px-1.5 py-0 text-xs text-emerald-600">
                   <Loader2 className="size-3 animate-spin" />
