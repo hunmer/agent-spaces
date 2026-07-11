@@ -51,6 +51,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </SidebarInset>
       </SidebarProvider>
       <GlobalWorkspaceDialog />
+      <GlobalConfirmDialog />
       <CustomShortcutExecutor />
     </>
   );
