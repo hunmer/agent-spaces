@@ -39,8 +39,13 @@ test('idle member run wakes owner to inspect incomplete tasks', async () => {
             assert.equal(listed.data.tasks[0]?.status, 'running');
             resolveOwnerCheck?.();
           } else {
+            const teamTool = options?.functionTools?.find((tool) => tool.name === 'team_manage');
             const taskTool = options?.functionTools?.find((tool) => tool.name === 'team_task_manage');
             const sendTool = options?.functionTools?.find((tool) => tool.name === 'team_message_send');
+            const team = await teamTool?.execute({ action: 'get', include_members_preview: true }) as { data: { members_preview: Array<{ agent_id: string }> } };
+            assert.equal(team.data.members_preview.length, 2);
+            const blocked = await sendTool?.execute({ action: 'send', mode: 'direct', recipient_agent_ids: [member.id], subject: 'work', body: 'do work' }) as { code: string };
+            assert.equal(blocked.code, 'TASK_LIST_REQUIRED');
             await taskTool?.execute({ action: 'create', tasks: [{ title: 'Member work', assignee_agent_id: member.id }] });
             await sendTool?.execute({ action: 'send', mode: 'direct', recipient_agent_ids: [member.id], subject: 'work', body: 'do work' });
           }

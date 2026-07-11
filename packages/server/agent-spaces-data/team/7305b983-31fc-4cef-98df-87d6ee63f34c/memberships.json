@@ -19,6 +19,7 @@
         "mcpServers": {}
       },
       "tools": [
+        "team_manage",
         "team_message_send",
         "team_task_manage",
         "GetAgentSessionDetail",

@@ -346,7 +346,7 @@ export function normalizeTeamMemberSelection(
   const normalized = designs.map((agent, index) => {
     const isOwner = index === ownerIndex;
     const tools: BuiltInAgentToolName[] = isOwner
-      ? ['team_message_send', 'team_task_manage', 'GetAgentSessionDetail', 'team_task_complete']
+      ? ['team_manage', 'team_message_send', 'team_task_manage', 'GetAgentSessionDetail', 'team_task_complete']
       : ['team_message_send', 'team_task_manage', 'GetAgentSessionDetail'];
     return {
       id: uuid(),
@@ -363,7 +363,7 @@ export function normalizeTeamMemberSelection(
       skills: [],
       tools,
       systemPrompt: `${agent.systemPrompt}\n\n${TEAM_AGENT_TOOL_INSTRUCTIONS}\n- ${isOwner
-        ? 'As owner, create the assigned task list after the first request and inspect it whenever the team is idle.'
+        ? 'As owner, use `team_manage` action=get with include_members_preview=true to inspect every member, then create all known downstream tasks at once after the first request and inspect the list whenever the team is idle.'
         : 'As a member, mark your own task complete with `team_task_manage` before finishing.'}`,
       outputStyle: '',
       temperature: template.temperature ?? 0.3,

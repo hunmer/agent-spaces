@@ -414,7 +414,7 @@ function buildTeamAgentPrompt(
     'When prior teammate output is needed, read the completed task\'s agentSessionId from `team_task_manage` action=list, then call `GetAgentSessionDetail` with that session id.',
     'If a requested tool like `AddCurrentChannelComment` is unavailable, use the available team tools to hand off work to the correct teammate.',
     ...(isOwner ? [
-      'After the first request, create the complete assigned task list with `team_task_manage` action=create before delegating work.',
+      'After the first request, call `team_manage` with action=get and include_members_preview=true to inspect every active member, then create the complete multi-agent task list with `team_task_manage` action=create before delegating work. Create all known downstream tasks at once, not only the next task.',
       'Whenever you are woken for an idle-team check, call `team_task_manage` action=list and send the next incomplete task to its assigned agent.',
       'When the overall team task is finished, call `team_task_complete` before your final reply so the team runtime does not remain running. Its `output` must contain the complete, user-ready final deliverable—not an output summary, progress update, or description of the work performed.',
     ] : [
@@ -430,6 +430,14 @@ function buildTeamAgentPrompt(
     'Latest user message:',
     message,
   ].join('\n');
+}
+
+function buildTeamAgentSystemPrompt(teamId: string, agentId: string, base?: string): string | undefined {
+  const isOwner = listMemberships(teamId).some((item) => item.status === 'active' && item.agentId === agentId && item.role === 'owner');
+  const policy = isOwner
+    ? 'Mandatory team policy: before the first team_message_send, call team_manage with action=get and include_members_preview=true to inspect every active member, then create the complete multi-agent task list with team_task_manage action=create. Create all known downstream tasks at once, not only the next task. This overrides any earlier instruction that says to use only team_message_send.'
+    : 'Mandatory team policy: before finishing, complete your assigned task with team_task_manage action=complete. Use GetAgentSessionDetail when an upstream task provides an agentSessionId.';
+  return [base?.trim(), policy].filter(Boolean).join('\n\n') || undefined;
 }
 
 function formatAgentReply(result: { success: boolean; summary: string; output: string[]; error?: string }): string {
@@ -467,7 +475,7 @@ function resolveTeamRuntimeTools(
 ): { tools?: string[]; functionTools?: ReturnType<typeof createTeamFunctionTools> } {
   const allowedTools = asStringArray(tools);
   const isOwner = listMemberships(teamId).some((item) => item.status === 'active' && item.agentId === actorAgentId && item.role === 'owner');
-  const requiredTeamTools: BuiltInAgentToolName[] = ['team_task_manage', 'GetAgentSessionDetail', ...(isOwner ? ['team_task_complete'] as const : [])];
+  const requiredTeamTools: BuiltInAgentToolName[] = ['team_task_manage', 'GetAgentSessionDetail', ...(isOwner ? ['team_manage', 'team_task_complete'] as const : [])];
   const allowedToolNames = allowedTools
     ? [...new Set([...allowedTools, ...requiredTeamTools])] as BuiltInAgentToolName[]
     : undefined;
@@ -488,6 +496,9 @@ function resolveTeamRuntimeTools(
         const result = handleTeamMessageSend(input);
         if (!result.success || !input || typeof input !== 'object') return result;
         const map = input as Record<string, unknown>;
+        if (isOwner && listTasks(teamId, sessionId).length === 0) {
+          return fail('owner must create the task list with team_task_manage action=create before sending the first handoff', 'TASK_LIST_REQUIRED');
+        }
         const recipients = Array.isArray(map.recipient_agent_ids) ? map.recipient_agent_ids : [];
         const targetAgentId = recipients.find((item): item is string => typeof item === 'string' && item.length > 0);
         const content = asString(map.body);
@@ -560,7 +571,7 @@ async function executePresetTeamReply(
         skills: agentService.getAvailableSkillNames(agentService.getAgentConfigDir('', preset), preset.skills),
         configDir: agentService.getAgentConfigDir('', preset),
         sandboxDirs: preset.sandboxDirs,
-        systemPrompt: preset.systemPrompt,
+        systemPrompt: buildTeamAgentSystemPrompt(teamId, targetAgentId, preset.systemPrompt),
         outputStyle: preset.outputStyle,
         onEvent,
       },
@@ -635,7 +646,7 @@ async function executeChatTeamReply(
     mcpServers: agentService.getMcpServers(agent.mcps as Parameters<typeof agentService.getMcpServers>[0]),
     skills: Array.isArray(agent.skills) ? agent.skills.filter((item): item is string => typeof item === 'string') : [],
     configDir: chatService.getAgentConfigDir(targetAgentId) || undefined,
-    systemPrompt: agent.systemPrompt,
+    systemPrompt: buildTeamAgentSystemPrompt(teamId, targetAgentId, agent.systemPrompt),
     outputStyle: agent.outputStyle,
     onEvent,
   });
@@ -717,7 +728,7 @@ async function executeCustomTeamReply(
         ? agent.mcps as Parameters<typeof agentService.getMcpServers>[0]
         : undefined),
       skills,
-      systemPrompt: asString(agent.systemPrompt),
+      systemPrompt: buildTeamAgentSystemPrompt(teamId, targetAgentId, asString(agent.systemPrompt)),
       outputStyle: asString(agent.outputStyle),
       onEvent,
     },

@@ -50,7 +50,7 @@ test('filters agent-generator and adds team tool instructions', () => {
   assert.match(String(result.agents[0]?.systemPrompt ?? ''), /recipient agent id/);
   assert.equal(result.agents[0]?.runtimeKind, 'langchain');
   assert.equal(result.agents[0]?.providerId, 'provider-1');
-  assert.deepEqual(result.agents[0]?.tools, ['team_message_send', 'team_task_manage', 'GetAgentSessionDetail', 'team_task_complete']);
+  assert.deepEqual(result.agents[0]?.tools, ['team_manage', 'team_message_send', 'team_task_manage', 'GetAgentSessionDetail', 'team_task_complete']);
   assert.equal(result.agents[0]?.isOwner, true);
   assert.match(String(result.agents[0]?.id ?? ''), /^[0-9a-f-]{36}$/);
 });
