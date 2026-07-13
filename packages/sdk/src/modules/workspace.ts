@@ -12,7 +12,7 @@ export function createWorkspaceApi(http: HttpClient) {
     create: (data: CreateWorkspaceInput): Promise<Workspace> =>
       http.post('/api/workspaces', data),
 
-    update: (id: string, data: Partial<Pick<Workspace, 'name' | 'boundDirs' | 'agentspaceDir' | 'autoProcessIssues' | 'editorSettings' | 'notificationSettings' | 'hooksEnabled'>>): Promise<Workspace> =>
+    update: (id: string, data: Partial<Pick<Workspace, 'name' | 'boundDirs' | 'agentspaceDir' | 'autoProcessIssues' | 'editorSettings' | 'notificationSettings' | 'hooksEnabled' | 'miniAppIds'>>): Promise<Workspace> =>
       http.put(`/api/workspaces/${id}`, data),
 
     delete: (id: string): Promise<void> =>

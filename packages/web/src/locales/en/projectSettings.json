@@ -2,6 +2,12 @@
   "title": "Project Settings",
   "loading": "Loading...",
   "workspaceNotFound": "Workspace not found",
+  "miniApps": {
+    "title": "Choose MiniApp extensions for workspaces",
+    "description": "Selected MiniApps appear as tabs in this workspace.",
+    "select": "Choose MiniApps",
+    "empty": "None selected"
+  },
   "info": {
     "title": "Info",
     "path": "Path",

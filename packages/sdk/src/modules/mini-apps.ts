@@ -8,6 +8,7 @@ export interface MiniAppProject {
   version: string;
   type: 'react' | 'html';
   tags?: string[];
+  extensions?: 'workspace'[];
   enabledPlugins?: string[];
   agentConfigId?: string;
   enableAgents?: boolean;
@@ -57,6 +58,9 @@ export function createMiniAppApi(http: HttpClient) {
 
     get: (id: string): Promise<MiniAppProject> =>
       http.get(`/api/mini-apps/${encodeURIComponent(id)}`),
+
+    listTools: (id: string): Promise<{ tools: Array<{ name: string; description?: string; inputSchema: Record<string, unknown> }> }> =>
+      http.get(`/api/mini-apps/${encodeURIComponent(id)}/tools`),
 
     create: (data: { name: string; type: 'react' | 'html'; description?: string; tags?: string[] }): Promise<MiniAppProject> =>
       http.post('/api/mini-apps', data),

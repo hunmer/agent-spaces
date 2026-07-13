@@ -6,7 +6,7 @@ import { broadcastToWorkspace } from './connection-manager.js';
 import { createMessage, updateMessage, listMessages } from '../services/message.js';
 import { getChannel, updateChannel } from '../services/channel.js';
 import * as issueService from '../services/issue.js';
-import { createAgentFunctionTools, createIssueFunctionTools, createTeamFunctionTools, createCommandFunctionTools, createDatabaseFunctionTools, createWorkflowExecutionFunctionTools, createMiniAppFunctionTools } from '../services/builtin-tools/index.js';
+import { createAgentFunctionTools, createIssueFunctionTools, createTeamFunctionTools, createCommandFunctionTools, createDatabaseFunctionTools, createWorkflowExecutionFunctionTools, createMiniAppFunctionTools, createWorkspaceMiniAppFunctionTools } from '../services/builtin-tools/index.js';
 import { startScheduler } from '../agents/scheduler-agent.js';
 import * as agentService from '../services/agent.js';
 import * as wsService from '../services/workspace.js';
@@ -262,6 +262,7 @@ export async function runMentionedAgent(
     ...createWorkflowExecutionFunctionTools(workspaceId, preset.tools, {
       boundWorkflowPluginTools: preset.boundWorkflowPluginTools,
     }),
+    ...createWorkspaceMiniAppFunctionTools(workspaceId),
     ...(miniAppRuntimeContext ? createMiniAppFunctionTools({
       enabledPlugins: miniAppRuntimeContext.enabledPlugins,
     }) : []),

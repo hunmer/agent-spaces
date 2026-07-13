@@ -2,6 +2,12 @@
   "title": "项目设置",
   "loading": "加载中...",
   "workspaceNotFound": "未找到工作空间",
+  "miniApps": {
+    "title": "选择适合 workspaces 的 miniapp 扩展",
+    "description": "选择后将在当前工作空间中增加对应标签页。",
+    "select": "选择 MiniApp",
+    "empty": "尚未选择"
+  },
   "info": {
     "title": "信息",
     "path": "路径",

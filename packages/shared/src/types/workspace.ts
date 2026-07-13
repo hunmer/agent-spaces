@@ -16,6 +16,7 @@ export interface Workspace {
   editorSettings?: WorkspaceEditorSettings;
   notificationSettings?: WorkspaceNotificationSettings;
   hooksEnabled?: boolean;
+  miniAppIds?: string[];
   isWorktree?: boolean;
   parentWorkspaceId?: string;
 }

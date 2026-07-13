@@ -9,6 +9,7 @@ export interface MiniAppProject {
   version: string;
   type: 'react' | 'html';
   tags?: string[];
+  extensions?: 'workspace'[];
   enabledPlugins?: string[];
   agentConfigId?: string;
   enableAgents?: boolean;

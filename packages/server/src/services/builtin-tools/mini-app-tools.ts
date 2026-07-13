@@ -491,6 +491,38 @@ async function listWorkflowsForMiniApp(args: Record<string, any>) {
 
 const BUILTIN_TOOLS: BuiltinToolDefinition[] = [
   {
+    name: 'execute_miniapp_tool',
+    description: 'Execute a tool exposed by a mini-app src/api.js and return its result.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        miniapp_id: { type: 'string', description: 'Mini-app id.' },
+        toolName: { type: 'string', description: 'Tool name from the mini-app src/tools.js.' },
+        params: { type: 'object', description: 'Tool parameters.' },
+      },
+      required: ['miniapp_id', 'toolName'],
+    },
+    outputs: [{ key: 'result', type: 'object' }],
+    execute: async (args) => {
+      const miniappId = String(args.miniapp_id || args.miniAppId || '').trim();
+      const toolName = String(args.toolName || args.tool_name || '').trim();
+      if (!miniappId || !toolName) throw new Error('miniapp_id and toolName are required');
+      const project = miniAppStore.getProject(miniappId);
+      if (!project) throw new Error(`Mini-app not found: ${miniappId}`);
+      const miniAppAgent = await import('../mini-app-agent.js');
+      const specs = miniAppAgent.getRegisteredMiniAppTools(miniappId);
+      if (!specs[toolName]) throw new Error(`Tool "${toolName}" not found in mini-app "${miniappId}"`);
+      const handler = miniAppAgent.loadApiJs(miniappId)[toolName];
+      if (!handler) throw new Error(`API handler "${toolName}" not found in mini-app "${miniappId}"`);
+      const params = args.params && typeof args.params === 'object' && !Array.isArray(args.params)
+        ? args.params
+        : args.pararms && typeof args.pararms === 'object' && !Array.isArray(args.pararms)
+          ? args.pararms
+          : {};
+      return handler(params, miniAppAgent.makeApiCtx(miniappId));
+    },
+  },
+  {
     name: 'list_workflows',
     description: 'List saved workflows for mini-app workflow selection.',
     input_schema: {
@@ -703,6 +735,20 @@ export async function executeMiniAppBuiltinTool(
   const tool = BUILTIN_TOOLS.find(t => t.name === toolName);
   if (!tool) throw new Error(`Tool "${toolName}" not found in builtin tools`);
   return tool.execute(args, { workspaceId });
+}
+
+export function createWorkspaceMiniAppFunctionTools(workspaceId: string): AgentFunctionTool[] {
+  const tool = BUILTIN_TOOLS.find((item) => item.name === 'execute_miniapp_tool')!;
+  return [{
+    name: tool.name,
+    description: tool.description,
+    inputSchema: tool.input_schema,
+    execute: async (input) => executeMiniAppBuiltinTool(
+      tool.name,
+      input && typeof input === 'object' && !Array.isArray(input) ? input as Record<string, any> : {},
+      workspaceId,
+    ),
+  }];
 }
 
 function listMiniAppAgentPresets(projectId: string, fallbackPresets: MiniAppAgentPreset[]): MiniAppAgentPreset[] {

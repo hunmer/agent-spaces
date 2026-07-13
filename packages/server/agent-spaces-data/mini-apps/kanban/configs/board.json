@@ -1,6 +1,37 @@
 {
   "title": "Kanban",
   "layoutMode": "horizontal",
-  "columns": [],
+  "columns": [
+    {
+      "id": "col_6aa0934d-3a57-43b2-a2a0-242f955d4395",
+      "title": "Draft",
+      "color": "slate",
+      "order": 0
+    },
+    {
+      "id": "col_d311f6ff-3cb4-4106-85da-f907bbfde4c9",
+      "title": "Todo",
+      "color": "sky",
+      "order": 1
+    },
+    {
+      "id": "col_d690f84c-2f85-443b-8fd4-9e437ca84aad",
+      "title": "In Progress",
+      "color": "amber",
+      "order": 2
+    },
+    {
+      "id": "col_617dc797-1d15-4bfb-a137-409f3be1c8e4",
+      "title": "Done",
+      "color": "emerald",
+      "order": 3
+    },
+    {
+      "id": "col_8d8a8c08-cbe6-4f86-9ddc-bdb2471a3253",
+      "title": "Bug",
+      "color": "rose",
+      "order": 4
+    }
+  ],
   "tasks": []
 }

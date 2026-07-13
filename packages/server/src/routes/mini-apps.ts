@@ -8,7 +8,7 @@ import { exec } from 'node:child_process';
 import * as svc from '../services/mini-apps.js';
 import { invokeService } from '../services/mini-app-services.js';
 import { getProject, readAgentsConfig, readAgentConfig, upsertAgentConfig, listAgentChats, clearAgentChats, DuplicateNameError } from '../storage/mini-app-store.js';
-import { runMiniAppAgent } from '../services/mini-app-agent.js';
+import { getRegisteredMiniAppTools, runMiniAppAgent } from '../services/mini-app-agent.js';
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 500 * 1024 * 1024 } });
@@ -34,6 +34,13 @@ router.post('/', (req: Request, res: Response) => {
 router.get('/:id', (req: Request<{ id: string }>, res: Response) => {
   try { res.json(svc.getProject(req.params.id)); }
   catch (error: any) { res.status(error.message.includes('not found') ? 404 : 500).json({ error: error.message }); }
+});
+
+router.get('/:id/tools', (req: Request<{ id: string }>, res: Response) => {
+  try {
+    if (!getProject(req.params.id)) { res.status(404).json({ error: 'Project not found' }); return; }
+    res.json({ tools: Object.values(getRegisteredMiniAppTools(req.params.id)) });
+  } catch (error: any) { res.status(500).json({ error: error.message }); }
 });
 
 router.put('/:id', (req: Request<{ id: string }>, res: Response) => {

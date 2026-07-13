@@ -33,6 +33,7 @@ interface MiniAppListDialogProps {
   showTagsFilter?: boolean;
   /** 确认按钮文案 key，默认 page.create */
   confirmLabelKey?: 'page.create' | 'filters.confirm';
+  allowEmptySelection?: boolean;
 }
 
 export function MiniAppListDialog({
@@ -47,6 +48,7 @@ export function MiniAppListDialog({
   showTypeFilter = true,
   showTagsFilter = true,
   confirmLabelKey = 'page.create',
+  allowEmptySelection = false,
 }: MiniAppListDialogProps) {
   const t = useTranslations('mini-apps');
   const filters = useMiniAppFilters({ projects });
@@ -63,7 +65,7 @@ export function MiniAppListDialog({
 
   const handleConfirm = () => {
     if (!onConfirm) return;
-    const selected = filters.filtered.filter(p => selectedSet.has(p.id));
+    const selected = projects.filter(p => selectedSet.has(p.id));
     onConfirm(selected);
   };
 
@@ -146,7 +148,7 @@ export function MiniAppListDialog({
           <div className="flex gap-2">
             <Button variant="outline" onClick={onClose}>{t('listDialog.cancel')}</Button>
             {selectable ? (
-              <Button onClick={handleConfirm} disabled={selectedIds.length === 0}>
+              <Button onClick={handleConfirm} disabled={!allowEmptySelection && selectedIds.length === 0}>
                 {t(confirmLabelKey)}
               </Button>
             ) : null}

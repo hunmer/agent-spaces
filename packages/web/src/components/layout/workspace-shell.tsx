@@ -25,8 +25,12 @@ import { sendNativeNotification } from "@/lib/native-notification";
 import { useNotificationStore } from "@/stores/notification";
 import { useInspectorHistoryStore } from "@/stores/inspector-history";
 import type { Issue, IssueStatusChangedPayload, AppNotification } from "@agent-spaces/shared";
+import type { MiniAppProject } from "@agent-spaces/sdk";
+import { sdk } from "@/lib/sdk";
 
 const WORKSPACE_TOUR_KEY = "agent-spaces:workspace-tour-completed";
+const EMPTY_MINI_APP_IDS: string[] = [];
+type LayoutJsonNode = { type?: string; component?: string; name?: string; id?: string; children?: LayoutJsonNode[] };
 
 const panelLoader = () => <PanelLoading />;
 
@@ -307,6 +311,8 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
   const agents = useAgentStore((s) => s.agents);
   const createChannel = useChannelStore((s) => s.createChannel);
   const createIssue = useIssueStore((s) => s.createIssue);
+  const workspaceMiniAppIds = useWorkspaceStore((s) => s.workspaces.find((w) => w.id === workspaceId)?.miniAppIds ?? EMPTY_MINI_APP_IDS);
+  const [workspaceMiniApps, setWorkspaceMiniApps] = useState<MiniAppProject[]>([]);
   // 用户首次交互后才允许 tab 联动，避免恢复期间覆盖选中状态
   const userInteractedRef = useRef(false);
   useEffect(() => {
@@ -345,6 +351,42 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
     }
     return m;
   });
+
+  useEffect(() => {
+    if (!workspaceMiniAppIds.length) {
+      setWorkspaceMiniApps([]);
+      return;
+    }
+    let cancelled = false;
+    void sdk.miniApp.list().then((projects) => {
+      if (!cancelled) setWorkspaceMiniApps(projects.filter((project) => workspaceMiniAppIds.includes(project.id)));
+    });
+    return () => { cancelled = true; };
+  }, [workspaceMiniAppIds]);
+
+  useEffect(() => {
+    setModel((current) => {
+      const json = current.toJson() as IJsonModel;
+      const tabsets: LayoutJsonNode[] = [];
+      const visit = (node: LayoutJsonNode | undefined) => {
+        if (!node || typeof node !== 'object') return;
+        if (node.type === 'tabset') tabsets.push(node);
+        if (Array.isArray(node.children)) node.children.forEach(visit);
+      };
+      visit(json.layout as unknown as LayoutJsonNode);
+      const target = tabsets.find((tabset) => tabset.children?.some((tab) => tab.component === 'chat')) ?? tabsets[0];
+      if (!target?.children) return current;
+      const existing = target.children.filter((tab) => !String(tab.component ?? '').startsWith('mini-app:'));
+      const miniAppTabs = workspaceMiniApps.map((project) => ({
+        type: 'tab',
+        name: project.name,
+        component: `mini-app:${project.id}`,
+        id: `mini-app:${project.id}`,
+      }));
+      target.children = [...existing, ...miniAppTabs];
+      return Model.fromJson(json);
+    });
+  }, [workspaceMiniApps]);
 
   useEffect(() => {
     const saved = localStorage.getItem(LAYOUT_STORAGE_KEY);
@@ -573,6 +615,10 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
   const factory = useCallback(
     (node: TabNode) => {
       const comp = node.getComponent();
+      if (comp?.startsWith('mini-app:')) {
+        const miniAppId = comp.slice('mini-app:'.length);
+        return <iframe title={node.getName()} src={`/mini-apps-preview?id=${encodeURIComponent(miniAppId)}&embedded=1`} className="size-full border-0" />;
+      }
       switch (comp) {
         case "channel-list":
           return <ChannelList workspaceId={workspaceId} />;

@@ -3,10 +3,15 @@
   "name": "kanban",
   "version": "1.0.0",
   "type": "react",
-  "tags": ["productivity"],
+  "tags": [
+    "productivity"
+  ],
+  "extensions": [
+    "workspace"
+  ],
   "mainFile": "index.jsx",
   "createdAt": "2026-06-18T00:00:00.000Z",
-  "updatedAt": "2026-06-18T00:00:00.000Z",
+  "updatedAt": "2026-07-13T04:49:34.594Z",
   "description": "看板",
   "icon": "📋",
   "avatarUrl": ""
