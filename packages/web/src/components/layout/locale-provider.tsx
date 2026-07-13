@@ -26,7 +26,7 @@ export function useLocale() {
   return useContext(LocaleContext);
 }
 
-export function LocaleIntlProvider({ locale, children }: { locale: Locale; children: React.ReactNode }) {
+export function LocaleIntlProvider({ locale, children }: { locale: Locale; children?: React.ReactNode }) {
   return (
     <NextIntlClientProvider
       locale={locale}

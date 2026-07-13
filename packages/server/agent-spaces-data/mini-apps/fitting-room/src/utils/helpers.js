@@ -1,6 +1,27 @@
 // 上传/解析图片、调用工作流、解析工作流输出等通用工具
 
+const FILE_UPLOAD_DEBUG = '[DEBUG-file-upload-20260713]';
+
+function uploadSnapshot(item) {
+  const file = item?.file || item;
+  return {
+    id: item?.id,
+    name: file?.name,
+    preview: item?.preview,
+    uploadedPath: file?.uploadedPath,
+    uploadedUrl: file?.uploadedUrl,
+    uploadedHttpPath: file?.uploadedHttpPath,
+    httpPath: file?.httpPath,
+    url: file?.url,
+    uploading: file?.uploading,
+    uploadProgress: file?.uploadProgress,
+    uploadError: file?.uploadError,
+    hasUploadPromise: Boolean(file?.uploadPromise),
+  };
+}
+
 export async function resolveUploadItem(item) {
+  console.info(FILE_UPLOAD_DEBUG, 'resolveUploadItem start', uploadSnapshot(item));
   const file = item?.file || item;
   if (!file) throw new Error('图片无效');
   if (file.uploadError) throw new Error(file.uploadError);
@@ -16,15 +37,20 @@ export async function resolveUploadItem(item) {
     });
   }
   const url = file.uploadedHttpPath || file.uploadedUrl || file.httpPath || file.url || '';
-  return {
+  const resolved = {
     name: file.name || file.uploadedPath || 'image.png',
     path: file.uploadedPath || file.path || url,
     url,
   };
+  console.info(FILE_UPLOAD_DEBUG, 'resolveUploadItem complete', {
+    item: uploadSnapshot(item),
+    resolved,
+  });
+  return resolved;
 }
 
 export function persistableFiles(items) {
-  return (Array.isArray(items) ? items : [])
+  const result = (Array.isArray(items) ? items : [])
     .map((item) => {
       const file = item?.file || item;
       const url = file?.uploadedHttpPath || file?.uploadedUrl || file?.httpPath || file?.url || '';
@@ -44,6 +70,11 @@ export function persistableFiles(items) {
       };
     })
     .filter(Boolean);
+  console.info(FILE_UPLOAD_DEBUG, 'persistableFiles', {
+    input: (Array.isArray(items) ? items : []).map(uploadSnapshot),
+    output: result.map(uploadSnapshot),
+  });
+  return result;
 }
 
 export function normalizeWorkflow(workflow) {
