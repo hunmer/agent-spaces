@@ -15,5 +15,6 @@
   "enabledPlugins": [
     "@agent-spaces/builtin"
   ],
-  "icon": "👗"
+  "icon": "👗",
+  "updatedAt": "2026-07-13T07:10:36.142Z"
 }
