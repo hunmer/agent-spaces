@@ -78,12 +78,7 @@ export function unwrapWorkflowPayload(value) {
 // 从工作流 payload 中提取图片列表
 export function extractImages(payload) {
   const steps = Array.isArray(payload?.steps) ? payload.steps : [];
-  const endStep = steps.find((step) =>
-    step?.nodeId === 'node_1781681576137_end'
-    || String(step?.nodeId || '').endsWith('_end')
-    || String(step?.nodeLabel || '').includes('结束'),
-  );
-  const result = endStep?.output?.result
+  const result = steps.find((step) => Array.isArray(step?.output?.result))?.output?.result
     || payload?.result
     || steps.find((step) => Array.isArray(step?.output?.data?.images))?.output?.data?.images
     || steps.find((step) => Array.isArray(step?.output?.images))?.output?.images
@@ -106,26 +101,20 @@ export async function runImageToImage({
   sourceImage,        // { url, path, name }
   references,         // [{ url, path, name }]
   prompt,
-  provider,
   model,
+  aspect = '1:1',
+  size = '1k',
   taskIdPrefix = 'fitting',
   label = '试衣间',
 }) {
   if (!workflowId) throw new Error('请先选择工作流');
   if (!sourceImage?.url) throw new Error('请选择一张形象图');
+  if (!prompt?.trim()) throw new Error('请输入图片编辑描述');
 
   const images = [
-    {
-      name: sourceImage.name || 'source.png',
-      path: sourceImage.path || sourceImage.url,
-      url: sourceImage.url,
-    },
-    ...(Array.isArray(references) ? references.map((ref) => ({
-      name: ref.name || 'reference.png',
-      path: ref.path || ref.url,
-      url: ref.url,
-    })) : []),
-  ];
+    sourceImage.url,
+    ...(Array.isArray(references) ? references.map((ref) => ref.url) : []),
+  ].filter(Boolean);
 
   const taskId = `${taskIdPrefix}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
   const result = await AS.callPluginTool(
@@ -135,9 +124,10 @@ export async function runImageToImage({
       workflow_id: workflowId,
       input: {
         images,
-        prompt: prompt || '',
-        provider: provider || 'openai',
+        prompt: prompt.trim(),
         model: model || 'gpt-image-2',
+        aspect,
+        size,
       },
       max_wait_ms: 600000,
     },
@@ -147,7 +137,8 @@ export async function runImageToImage({
         workflowId,
         prompt,
         model,
-        provider,
+        aspect,
+        size,
         label,
         sourceImage: sourceImage.url,
       },

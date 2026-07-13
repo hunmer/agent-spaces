@@ -2,7 +2,6 @@ import { resolveUploadItem, persistableFiles, runImageToImage } from "../utils/h
 
 const {
   Button,
-  Input,
   Label,
   Textarea,
   Select,
@@ -37,8 +36,9 @@ export default function GenerateDialog({ open, onClose, kind, workflowId, workfl
   const [uploadedSource, setUploadedSource] = React.useState([]);
   const [references, setReferences] = React.useState([]);
   const [prompt, setPrompt] = React.useState("");
-  const [provider, setProvider] = React.useState("openai");
   const [model, setModel] = React.useState("gpt-image-2");
+  const [aspect, setAspect] = React.useState("1:1");
+  const [size, setSize] = React.useState("1k");
   const [uploadingSource, setUploadingSource] = React.useState(false);
   const [uploadingRefs, setUploadingRefs] = React.useState(false);
   const [running, setRunning] = React.useState(false);
@@ -80,7 +80,7 @@ export default function GenerateDialog({ open, onClose, kind, workflowId, workfl
     return url ? { url, path: f?.uploadedPath || f?.path || url, name: f?.name || "upload" } : null;
   })();
 
-  const canGenerate = !!currentSource && !uploadingSource && !uploadingRefs && !running;
+  const canGenerate = !!currentSource && !!prompt.trim() && !uploadingSource && !uploadingRefs && !running;
 
   const onUploadedSourceChange = async (files) => {
     setUploadedSource(files.slice(-1));
@@ -107,6 +107,10 @@ export default function GenerateDialog({ open, onClose, kind, workflowId, workfl
       setError("请先在历史区右上角选择图生图工作流");
       return;
     }
+    if (!prompt.trim()) {
+      setError("请输入图片编辑描述");
+      return;
+    }
     setRunning(true);
     setStatus("正在上传图片...");
     try {
@@ -123,9 +127,10 @@ export default function GenerateDialog({ open, onClose, kind, workflowId, workfl
         workflowId,
         sourceImage: sourceResolved,
         references: refResolved,
-        prompt,
-        provider,
+        prompt: prompt.trim(),
         model,
+        aspect,
+        size,
         taskIdPrefix: `fitting-${kind}`,
         label: kind === "hairstyle" ? "发型生成" : "服装生成",
       });
@@ -133,9 +138,10 @@ export default function GenerateDialog({ open, onClose, kind, workflowId, workfl
       const service = kind === "hairstyle" ? "add_hairstyle_results" : "add_outfit_results";
       await AS.invokeService(service, {
         items: images,
-        prompt,
-        provider,
+        prompt: prompt.trim(),
         model,
+        aspect,
+        size,
         workflowId,
         workflowName,
         sourceImage: sourceResolved.url,
@@ -233,7 +239,7 @@ export default function GenerateDialog({ open, onClose, kind, workflowId, workfl
         </div>
 
         <div className="fr-field">
-          <Label>描述（可选）</Label>
+          <Label>描述</Label>
           <Textarea
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
@@ -242,22 +248,36 @@ export default function GenerateDialog({ open, onClose, kind, workflowId, workfl
           />
         </div>
 
+        <div className="fr-field">
+          <Label>模型</Label>
+          <Select value={model} onValueChange={setModel}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="gpt-image-2">gpt-image-2</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
         <div className="fr-field-row" style={{ gridTemplateColumns: "1fr 1fr" }}>
           <div className="fr-field" style={{ margin: 0 }}>
-            <Label>提供商</Label>
-            <Select value={provider} onValueChange={setProvider}>
+            <Label>画面比例</Label>
+            <Select value={aspect} onValueChange={setAspect}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="openai">OpenAI</SelectItem>
+                {["16:9", "9:16", "1:1", "4:3", "3:4"].map((value) => (
+                  <SelectItem key={value} value={value}>{value}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
           <div className="fr-field" style={{ margin: 0 }}>
-            <Label>模型</Label>
-            <Select value={model} onValueChange={setModel}>
+            <Label>分辨率</Label>
+            <Select value={size} onValueChange={setSize}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="gpt-image-2">gpt-image-2</SelectItem>
+                {["1k", "2k", "4k"].map((value) => (
+                  <SelectItem key={value} value={value}>{value}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>

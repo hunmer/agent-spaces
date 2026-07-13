@@ -28,8 +28,8 @@
   - `profile.json`：形象（照片 URL 列表 + 体型字段）。
   - `hairstyle-history.json` / `outfit-history.json`：生图历史（去重 by url，最多 200 条）。
   - `shared-config.json`：发型 / 服装各自选中的 `workflowId` + `workflowName`。
-- **生图**：复用 cover-generator 的图生图协议 —— `callPluginTool('@agent-spaces/builtin', 'execute_workflow_sync', { workflow_id, input: { images, prompt, provider, model }, max_wait_ms })` + `{ taskId, meta }` 跟踪。`images[0]` 为形象图，其余为参考图。
-- **结果解析**：`unwrapWorkflowPayload` + `extractImages`，容错多种 payload 包装。
+- **生图**：适配 `edit_image` 工作流协议 —— `callPluginTool('@agent-spaces/builtin', 'execute_workflow_sync', { workflow_id, input: { images, prompt, model, aspect, size }, max_wait_ms })` + `{ taskId, meta }` 跟踪。`images` 是 URL 字符串数组，首项为形象图，其余为参考图。
+- **结果解析**：`unwrapWorkflowPayload` + `extractImages`，从返回 `result` 数组的成功结束节点提取图片，忽略仅返回 `error` 的默认结束节点。
 - **样式**：Tailwind `className` 优先，必要时用 CSS 变量（`var(--card)` / `var(--border)` 等），不强制 dark/light。
 
 ## Dependencies

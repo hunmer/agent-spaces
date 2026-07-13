@@ -4,7 +4,7 @@ const OUTFIT_HISTORY_PATH = 'outfit-history.json';
 const CONFIG_PATH = 'shared-config.json';
 
 function addResultsHelper(historyPath) {
-  return ({ items, prompt, provider, model, workflowId, workflowName, sourceImage, references }, ctx) => {
+  return ({ items, prompt, model, aspect, size, workflowId, workflowName, sourceImage, references }, ctx) => {
     ctx.updateConfig(historyPath, (prev) => {
       const list = Array.isArray(prev) ? prev : [];
       const existing = new Set(list.map((item) => item.url));
@@ -16,8 +16,9 @@ function addResultsHelper(historyPath) {
           type: 'image',
           url: item.url,
           prompt,
-          provider,
           model,
+          aspect,
+          size,
           workflowId,
           workflowName,
           sourceImage: sourceImage || null,
