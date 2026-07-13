@@ -23,6 +23,7 @@ const {
 } = window.AgentSpacesUI;
 
 const PROFILE_PATH = "profile.json";
+const HAIRSTYLE_DEFAULT_PROMPT = "只迁移发型，不修改脸部特征与服饰";
 
 // dialog props:
 //   open, onClose
@@ -30,12 +31,13 @@ const PROFILE_PATH = "profile.json";
 //   workflowId, workflowName
 export default function GenerateDialog({ open, onClose, kind, workflowId, workflowName }) {
   const AS = window.AgentSpaces;
-  const [profile, setProfile] = React.useState({ photos: [] });
+  const [profile, setProfile] = React.useState({ photos: [], outfits: [] });
   const [tab, setTab] = React.useState("library"); // library | upload
   const [selectedSource, setSelectedSource] = React.useState(null); // {url,path,name}
   const [uploadedSource, setUploadedSource] = React.useState([]);
   const [references, setReferences] = React.useState([]);
-  const [prompt, setPrompt] = React.useState("");
+  const [selectedOutfitUrls, setSelectedOutfitUrls] = React.useState([]);
+  const [prompt, setPrompt] = React.useState(kind === "hairstyle" ? HAIRSTYLE_DEFAULT_PROMPT : "");
   const [model, setModel] = React.useState("gpt-image-2");
   const [aspect, setAspect] = React.useState("1:1");
   const [size, setSize] = React.useState("1k");
@@ -48,9 +50,13 @@ export default function GenerateDialog({ open, onClose, kind, workflowId, workfl
   React.useEffect(() => {
     if (!open) return;
     const initial = AS.getConfig?.(PROFILE_PATH);
-    if (initial && Array.isArray(initial.photos)) setProfile(initial);
+    if (initial && typeof initial === "object") {
+      setProfile({ ...initial, photos: initial.photos || [], outfits: initial.outfits || [] });
+    }
     const off = AS.onConfigChanged?.((path, value) => {
-      if (path === PROFILE_PATH && value && Array.isArray(value.photos)) setProfile(value);
+      if (path === PROFILE_PATH && value && typeof value === "object") {
+        setProfile({ ...value, photos: value.photos || [], outfits: value.outfits || [] });
+      }
     });
     return () => off?.();
   }, [open]);
@@ -61,7 +67,8 @@ export default function GenerateDialog({ open, onClose, kind, workflowId, workfl
     setSelectedSource(null);
     setUploadedSource([]);
     setReferences([]);
-    setPrompt("");
+    setSelectedOutfitUrls([]);
+    setPrompt(kind === "hairstyle" ? HAIRSTYLE_DEFAULT_PROMPT : "");
     setError("");
     setStatus("");
     setTab("library");
@@ -73,6 +80,12 @@ export default function GenerateDialog({ open, onClose, kind, workflowId, workfl
     path: p.path,
     name: p.name || "photo",
   }));
+  const outfitList = (profile.outfits || []).map((p) => ({
+    id: p.url || p.path || Math.random(),
+    url: p.url,
+    path: p.path,
+    name: p.name || "outfit",
+  }));
 
   const currentSource = tab === "library" ? selectedSource : (() => {
     const f = uploadedSource[0]?.file || uploadedSource[0];
@@ -80,7 +93,13 @@ export default function GenerateDialog({ open, onClose, kind, workflowId, workfl
     return url ? { url, path: f?.uploadedPath || f?.path || url, name: f?.name || "upload" } : null;
   })();
 
-  const canGenerate = !!currentSource && !!prompt.trim() && !uploadingSource && !uploadingRefs && !running;
+  const canGenerate = !!currentSource && !uploadingSource && !uploadingRefs && !running;
+
+  const toggleOutfit = (url) => {
+    setSelectedOutfitUrls((current) => current.includes(url)
+      ? current.filter((item) => item !== url)
+      : [...current, url]);
+  };
 
   const onUploadedSourceChange = async (files) => {
     setUploadedSource(files.slice(-1));
@@ -107,10 +126,6 @@ export default function GenerateDialog({ open, onClose, kind, workflowId, workfl
       setError("请先在历史区右上角选择图生图工作流");
       return;
     }
-    if (!prompt.trim()) {
-      setError("请输入图片编辑描述");
-      return;
-    }
     setRunning(true);
     setStatus("正在上传图片...");
     try {
@@ -119,7 +134,8 @@ export default function GenerateDialog({ open, onClose, kind, workflowId, workfl
           ? { file: { uploadedHttpPath: currentSource.url, uploadedPath: currentSource.path, name: currentSource.name } }
           : uploadedSource[0],
       );
-      const refResolved = await Promise.all(references.map(resolveUploadItem));
+      const selectedOutfits = outfitList.filter((item) => selectedOutfitUrls.includes(item.url));
+      const refResolved = await Promise.all([...selectedOutfits, ...references].map(resolveUploadItem));
 
       setStatus("正在执行工作流...");
       const images = await runImageToImage({
@@ -227,6 +243,27 @@ export default function GenerateDialog({ open, onClose, kind, workflowId, workfl
 
         <div className="fr-field">
           <Label>参考图（发型样式 / 服装款式，可多张）</Label>
+          {kind === "outfit" && outfitList.length > 0 && (
+            <>
+              <div className="fr-caption" style={{ margin: "8px 0" }}>
+                从我的形象快速选择服装（已选 {selectedOutfitUrls.length} 张）
+              </div>
+              <div className="fr-source-grid" style={{ maxHeight: 220, marginBottom: 12 }}>
+                {outfitList.map((item) => (
+                  <button
+                    type="button"
+                    key={item.id}
+                    className={`fr-source-item${selectedOutfitUrls.includes(item.url) ? " is-selected" : ""}`}
+                    onClick={() => toggleOutfit(item.url)}
+                    aria-pressed={selectedOutfitUrls.includes(item.url)}
+                    title="点击选择"
+                  >
+                    <img src={item.url} alt={item.name} />
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
           <FileUpload
             value={references}
             onChange={onReferencesChange}
@@ -239,11 +276,11 @@ export default function GenerateDialog({ open, onClose, kind, workflowId, workfl
         </div>
 
         <div className="fr-field">
-          <Label>描述</Label>
+          <Label>描述（可选）</Label>
           <Textarea
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
-            placeholder={kind === "hairstyle" ? "例如：保留脸部特征，仅替换为参考图中的发型" : "例如：保留脸部特征，换上参考图中的服装"}
+            placeholder={kind === "hairstyle" ? HAIRSTYLE_DEFAULT_PROMPT : "例如：保留脸部特征，换上参考图中的服装"}
             rows={3}
           />
         </div>

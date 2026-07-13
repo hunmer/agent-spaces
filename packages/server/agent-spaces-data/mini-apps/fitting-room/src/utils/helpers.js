@@ -109,7 +109,7 @@ export async function runImageToImage({
 }) {
   if (!workflowId) throw new Error('请先选择工作流');
   if (!sourceImage?.url) throw new Error('请选择一张形象图');
-  if (!prompt?.trim()) throw new Error('请输入图片编辑描述');
+  const normalizedPrompt = prompt?.trim() || '';
 
   const images = [
     sourceImage.url,
@@ -124,7 +124,7 @@ export async function runImageToImage({
       workflow_id: workflowId,
       input: {
         images,
-        prompt: prompt.trim(),
+        prompt: normalizedPrompt,
         model: model || 'gpt-image-2',
         aspect,
         size,
@@ -135,7 +135,7 @@ export async function runImageToImage({
       taskId,
       meta: {
         workflowId,
-        prompt,
+        prompt: normalizedPrompt,
         model,
         aspect,
         size,

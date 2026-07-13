@@ -42,6 +42,7 @@ export default {
       waist: typeof payload?.waist === 'string' ? payload.waist : '',
       hip: typeof payload?.hip === 'string' ? payload.hip : '',
       photos: Array.isArray(payload?.photos) ? payload.photos : [],
+      outfits: Array.isArray(payload?.outfits) ? payload.outfits : [],
       updatedAt: new Date().toLocaleString('zh-CN'),
     };
     ctx.writeConfig(PROFILE_PATH, profile);

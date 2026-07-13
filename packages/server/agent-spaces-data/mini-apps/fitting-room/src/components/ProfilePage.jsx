@@ -29,7 +29,14 @@ const defaultProfile = {
   waist: "",
   hip: "",
   photos: [],
+  outfits: [],
 };
+
+const storedFiles = (items) => persistableFiles(items).map((item) => ({
+  url: item.file.httpPath || item.file.url,
+  path: item.file.uploadedPath || item.file.httpPath || item.file.url,
+  name: item.file.name,
+}));
 
 export default function ProfilePage() {
   const AS = window.AgentSpaces;
@@ -37,6 +44,7 @@ export default function ProfilePage() {
   const profileRef = React.useRef(defaultProfile);
   const [saving, setSaving] = React.useState(false);
   const [uploading, setUploading] = React.useState(false);
+  const [uploadingOutfits, setUploadingOutfits] = React.useState(false);
   const [status, setStatus] = React.useState("");
   const [error, setError] = React.useState("");
 
@@ -48,11 +56,21 @@ export default function ProfilePage() {
   React.useEffect(() => {
     const initial = AS.getConfig?.(PROFILE_PATH);
     if (initial && typeof initial === "object") {
-      replaceProfile({ ...defaultProfile, ...initial, photos: persistableFiles(initial.photos) });
+      replaceProfile({
+        ...defaultProfile,
+        ...initial,
+        photos: persistableFiles(initial.photos),
+        outfits: persistableFiles(initial.outfits),
+      });
     }
     const off = AS.onConfigChanged?.((path, value) => {
       if (path === PROFILE_PATH && value && typeof value === "object") {
-        replaceProfile({ ...defaultProfile, ...value, photos: persistableFiles(value.photos) });
+        replaceProfile({
+          ...defaultProfile,
+          ...value,
+          photos: persistableFiles(value.photos),
+          outfits: persistableFiles(value.outfits),
+        });
       }
     });
     return () => off?.();
@@ -60,32 +78,29 @@ export default function ProfilePage() {
 
   const update = (patch) => replaceProfile({ ...profileRef.current, ...patch });
 
-  const writeProfile = (current, photos) => AS.invokeService("save_profile", {
+  const writeProfile = (current) => AS.invokeService("save_profile", {
     gender: current.gender,
     height: current.height,
     weight: current.weight,
     bust: current.bust,
     waist: current.waist,
     hip: current.hip,
-    photos,
+    photos: storedFiles(current.photos),
+    outfits: storedFiles(current.outfits),
   });
 
-  const onPhotosChange = (files) => {
+  const onFilesChange = (field, files) => {
     const list = Array.isArray(files) ? files : [];
-    update({ photos: list });
+    update({ [field]: list });
     if (list.some((item) => item?.file?.uploading || item?.file?.uploadError)) return;
 
     const persisted = persistableFiles(list);
     if (persisted.length !== list.length) return;
 
-    const next = { ...profileRef.current, photos: persisted };
+    const next = { ...profileRef.current, [field]: persisted };
     replaceProfile(next);
     setError("");
-    writeProfile(next, persisted.map((item) => ({
-      url: item.file.httpPath || item.file.url,
-      path: item.file.uploadedPath || item.file.httpPath || item.file.url,
-      name: item.file.name,
-    })))
+    writeProfile(next)
       .then(() => {
         setStatus("图片已自动保存");
         setTimeout(() => setStatus(""), 2000);
@@ -93,8 +108,15 @@ export default function ProfilePage() {
       .catch((err) => setError(err?.message || String(err)));
   };
 
+  const onPhotosChange = (files) => onFilesChange("photos", files);
+  const onOutfitsChange = (files) => onFilesChange("outfits", files);
+
   const removePhoto = (id) => {
     onPhotosChange((profile.photos || []).filter((p) => p.id !== id));
+  };
+
+  const removeOutfit = (id) => {
+    onOutfitsChange((profile.outfits || []).filter((p) => p.id !== id));
   };
 
   const save = async () => {
@@ -102,8 +124,11 @@ export default function ProfilePage() {
     setError("");
     setStatus("");
     try {
-      const photos = await Promise.all((profile.photos || []).map(resolveUploadItem));
-      await writeProfile(profileRef.current, photos.map((p) => ({ url: p.url, path: p.path, name: p.name })));
+      await Promise.all([
+        ...(profile.photos || []).map(resolveUploadItem),
+        ...(profile.outfits || []).map(resolveUploadItem),
+      ]);
+      await writeProfile(profileRef.current);
       setStatus("已保存");
       setTimeout(() => setStatus(""), 2000);
     } catch (err) {
@@ -238,6 +263,57 @@ export default function ProfilePage() {
                     className="fr-photo-del"
                     title="删除"
                     onClick={() => removePhoto(item.id)}
+                  >
+                    <Trash2 style={{ width: 14, height: 14 }} />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      <div className="fr-panel" style={{ marginTop: 20 }}>
+        <div className="fr-section-head">
+          <div className="fr-section-title">
+            <ImagePlus className="fr-icon" />
+            <span>我的服饰</span>
+          </div>
+          {uploadingOutfits && (
+            <span className="fr-caption" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+              <Loader2 className="fr-icon fr-spin" />上传中...
+            </span>
+          )}
+        </div>
+        <div className="fr-caption" style={{ marginBottom: 12 }}>
+          上传自己的服装图片，生成服装效果图时可直接选择。
+        </div>
+        <FileUpload
+          value={profile.outfits}
+          onChange={onOutfitsChange}
+          onUploadStatusChange={(s) => setUploadingOutfits(!!s?.uploading)}
+          autoUpload
+          accept="image/*"
+          maxFiles={20}
+          placeholder="拖拽服装图片到此处，或点击选择（可多选）"
+        />
+
+        {(!profile.outfits || profile.outfits.length === 0) ? (
+          <div className="fr-empty" style={{ minHeight: 160 }}>
+            还没有服饰图片
+          </div>
+        ) : (
+          <div className="fr-photo-grid">
+            {profile.outfits.map((item) => {
+              const file = item?.file || item;
+              const url = file?.uploadedHttpPath || file?.uploadedUrl || file?.httpPath || file?.url;
+              return (
+                <div className="fr-photo" key={item.id || url}>
+                  <img src={url} alt={file?.name || "outfit"} />
+                  <button
+                    className="fr-photo-del"
+                    title="删除"
+                    onClick={() => removeOutfit(item.id)}
                   >
                     <Trash2 style={{ width: 14, height: 14 }} />
                   </button>

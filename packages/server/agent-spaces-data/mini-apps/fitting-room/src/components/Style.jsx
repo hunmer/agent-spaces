@@ -51,7 +51,7 @@ export default function Style() {
       .fr-ref-thumb { position: relative; border-radius: 7px; overflow: hidden; border: 1px solid var(--border, #e4e4e7); aspect-ratio: 1; background: var(--muted, #e5e7eb); }
       .fr-ref-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
       .fr-source-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; max-height: 280px; overflow: auto; padding: 4px; }
-      .fr-source-item { position: relative; border-radius: 8px; overflow: hidden; border: 2px solid transparent; cursor: pointer; aspect-ratio: 3 / 4; background: var(--muted, #e5e7eb); }
+      .fr-source-item { position: relative; width: 100%; padding: 0; border-radius: 8px; overflow: hidden; border: 2px solid transparent; cursor: pointer; aspect-ratio: 3 / 4; background: var(--muted, #e5e7eb); }
       .fr-source-item img { width: 100%; height: 100%; object-fit: cover; display: block; }
       .fr-source-item.is-selected { border-color: var(--primary, #18181b); }
       .fr-source-item.is-selected::after { content: "✓"; position: absolute; top: 6px; right: 6px; width: 22px; height: 22px; border-radius: 50%; background: var(--primary, #18181b); color: var(--primary-foreground, #ffffff); display: grid; place-items: center; font-size: 13px; }
