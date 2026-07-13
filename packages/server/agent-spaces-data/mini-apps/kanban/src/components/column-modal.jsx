@@ -3,8 +3,8 @@ import { t } from '../utils/i18n.js';
 
 const { Layout, Sparkles, Input, Label, Button, Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } = window.AgentSpacesUI;
 
-const BG_COLORS = {
-  sky: 'bg-sky-400', amber: 'bg-amber-400', emerald: 'bg-emerald-400', rose: 'bg-rose-400', purple: 'bg-purple-400', slate: 'bg-stone-400',
+const COLORS = {
+  sky: '#0ea5e9', amber: '#f59e0b', emerald: '#10b981', rose: '#f43f5e', purple: '#a855f7', slate: '#78716c',
 };
 
 export default function ColumnModal({ isOpen, onClose, onCreate, onEdit, editingColumn }) {
@@ -49,7 +49,7 @@ export default function ColumnModal({ isOpen, onClose, onCreate, onEdit, editing
             </Label>
             <div className="flex items-center gap-3 py-1">
               {['sky', 'amber', 'emerald', 'rose', 'purple', 'slate'].map((opt) => (
-                <button key={opt} type="button" onClick={() => setColor(opt)} className={`h-7 w-7 rounded-full ${BG_COLORS[opt]} hover:scale-115 active:scale-95 transition-all duration-150 cursor-pointer ${color === opt ? 'ring-2 ring-stone-800 dark:ring-neutral-101 ring-offset-2' : 'opacity-85 hover:opacity-100'}`} />
+                <button key={opt} type="button" onClick={() => setColor(opt)} className={`h-7 w-7 rounded-full hover:scale-115 active:scale-95 transition-all duration-150 cursor-pointer ${color === opt ? 'ring-2 ring-stone-800 ring-offset-2' : 'opacity-85 hover:opacity-100'}`} style={{ backgroundColor: COLORS[opt] }} />
               ))}
             </div>
           </div>

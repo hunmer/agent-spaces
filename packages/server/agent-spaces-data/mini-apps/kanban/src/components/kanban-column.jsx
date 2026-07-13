@@ -6,33 +6,28 @@ import { t } from '../utils/i18n.js';
 
 const { Plus, ChevronDown, ChevronUp } = window.AgentSpacesUI;
 
-const COLOR_OPTIONS = [
-  { name: 'slate', headerBg: 'border-t-stone-500 bg-stone-50 dark:bg-neutral-800 text-stone-700 dark:text-neutral-200' },
-  { name: 'sky', headerBg: 'border-t-sky-500 bg-sky-50/40 dark:bg-sky-950/30 text-sky-700 dark:text-sky-300' },
-  { name: 'emerald', headerBg: 'border-t-emerald-500 bg-emerald-50/40 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300' },
-  { name: 'amber', headerBg: 'border-t-amber-500 bg-amber-50/40 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300' },
-  { name: 'rose', headerBg: 'border-t-rose-500 bg-rose-50/40 dark:bg-rose-950/30 text-rose-700 dark:text-rose-300' },
-  { name: 'purple', headerBg: 'border-t-purple-500 bg-purple-50/40 dark:bg-purple-950/30 text-purple-700 dark:text-purple-300' },
-];
-
-const DOT_COLORS = {
-  slate: 'bg-stone-400', sky: 'bg-sky-400', emerald: 'bg-emerald-400', amber: 'bg-amber-400', rose: 'bg-rose-400', purple: 'bg-purple-400',
+const COLUMN_COLORS = {
+  slate: '#78716c', sky: '#0ea5e9', emerald: '#10b981', amber: '#f59e0b', rose: '#f43f5e', purple: '#a855f7',
 };
 
 export default function KanbanColumn({ column, tasks, layoutMode, onCardClick, onAddTask }) {
   const { setNodeRef, isOver } = useDroppable({ id: column.id });
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const activeColor = COLOR_OPTIONS.find((c) => c.name === column.color) || COLOR_OPTIONS[0];
+  const activeColor = COLUMN_COLORS[column.color] || COLUMN_COLORS.slate;
   const taskIds = tasks.map((tk) => tk.id);
 
   return (
     <div
       ref={setNodeRef}
-      className={`flex flex-col rounded-2xl border transition-all duration-200 dark:border-neutral-700 ${isOver ? 'bg-stone-100/60 dark:bg-neutral-700/40 scale-[1.01] shadow-xs' : 'bg-stone-50/25 dark:bg-neutral-800/50 border-stone-200 dark:border-neutral-700'} ${layoutMode === 'horizontal' ? 'w-full md:w-[310px] lg:w-[330px] shrink-0 h-full max-h-[75vh] md:max-h-[80vh]' : 'w-full'}`}
+      className={`flex flex-col overflow-hidden rounded-2xl border transition-all duration-200 dark:border-neutral-700 ${isOver ? 'bg-stone-100/60 dark:bg-neutral-700/40 scale-[1.01] shadow-xs' : 'bg-stone-50/25 dark:bg-neutral-800/50 border-stone-200 dark:border-neutral-700'} ${layoutMode === 'horizontal' ? 'w-full md:w-[310px] lg:w-[330px] shrink-0 h-full max-h-[75vh] md:max-h-[80vh]' : 'w-full'}`}
+      style={{ maxWidth: layoutMode === 'horizontal' ? 330 : undefined }}
     >
-      <div className={`px-4 py-3.5 border-t-2 rounded-t-2xl border-b border-stone-200/80 dark:border-neutral-700 flex items-center justify-between ${activeColor.headerBg}`}>
+      <div
+        className="px-4 py-3.5 border-t-2 rounded-t-2xl border-b border-stone-200/80 dark:border-neutral-700 flex items-center justify-between"
+        style={{ borderTopColor: activeColor, backgroundColor: `${activeColor}1f`, color: activeColor }}
+      >
         <div className="flex items-center gap-2.5 flex-1 min-w-0">
-          <span className={`block h-3 w-3 rounded-full ${DOT_COLORS[column.color] || 'bg-stone-400'}`} />
+          <span className="block h-3 w-3 rounded-full" style={{ backgroundColor: activeColor }} />
           <h3 className="text-sm font-bold truncate">{column.title}</h3>
           <span className="bg-stone-200/70 dark:bg-neutral-600 text-stone-700 dark:text-neutral-300 text-[10px] font-bold px-2 py-0.5 rounded-full min-w-[18px] text-center">{tasks.length}</span>
         </div>
@@ -44,7 +39,7 @@ export default function KanbanColumn({ column, tasks, layoutMode, onCardClick, o
       </div>
 
       {(!isCollapsed || layoutMode === 'horizontal') && (
-        <div className={`p-3.5 flex-1 flex flex-col gap-3 min-h-[140px] select-none ${layoutMode === 'horizontal' ? 'overflow-y-auto' : ''}`}>
+        <div className={`flex-1 flex flex-col gap-3 min-h-[140px] select-none ${layoutMode === 'horizontal' ? 'overflow-y-auto' : ''}`} style={{ padding: 14 }}>
           <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
             {tasks.length > 0 ? (
               <div className={`grid gap-3 ${layoutMode === 'vertical' ? 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4' : 'grid-cols-1'}`}>

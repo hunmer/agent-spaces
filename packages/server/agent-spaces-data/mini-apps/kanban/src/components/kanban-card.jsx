@@ -24,8 +24,8 @@ export default function KanbanCard({ task, onClick, isOverlay = false }) {
   });
 
   const style = isOverlay
-    ? { transform: 'rotate(2.5deg) scale(1.04)', cursor: 'grabbing' }
-    : { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.35 : 1, cursor: isDragging ? 'grabbing' : 'pointer' };
+    ? { transform: 'rotate(2.5deg) scale(1.04)', cursor: 'grabbing', padding: 16 }
+    : { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.35 : 1, cursor: isDragging ? 'grabbing' : 'pointer', padding: 16 };
 
   const ps = PRIORITY_STYLES[task.priority] || PRIORITY_STYLES.medium;
   const overdue = task.dueDate && new Date(task.dueDate) < new Date() && task.columnId !== 'done' && task.columnId !== 'archive';
@@ -35,7 +35,7 @@ export default function KanbanCard({ task, onClick, isOverlay = false }) {
       ref={setNodeRef}
       style={style}
       onClick={() => { if (!isDragging) onClick(); }}
-      className={`group relative flex flex-col p-4 bg-white dark:bg-neutral-800 rounded-xl border border-stone-200 dark:border-neutral-700 hover:border-stone-400 dark:hover:border-neutral-500 hover:shadow-md transition-all duration-200 ${isOverlay ? 'shadow-2xl border-2 scale-105 rotate-2 z-20' : 'shadow-xs'}`}
+      className={`group relative flex flex-col bg-white dark:bg-neutral-800 rounded-xl border border-stone-200 dark:border-neutral-700 hover:border-stone-400 dark:hover:border-neutral-500 hover:shadow-md transition-all duration-200 ${isOverlay ? 'shadow-2xl border-2 scale-105 rotate-2 z-20' : 'shadow-xs'}`}
       {...(!isOverlay ? attributes : {})}
     >
       <div className="flex items-center justify-between gap-2 mb-2.5">

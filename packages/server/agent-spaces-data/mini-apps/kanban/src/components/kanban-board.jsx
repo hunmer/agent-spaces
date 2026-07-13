@@ -148,7 +148,7 @@ export default function KanbanBoard() {
                 ))}
               </SortableContext>
               {layoutMode === 'horizontal' && (
-                <button onClick={() => setIsColumnModalOpen(true)} className="w-[280px] shrink-0 h-[120px] rounded-2xl border-2 border-dashed border-stone-200 dark:border-neutral-600 hover:border-stone-400 dark:hover:border-neutral-400 text-stone-400 hover:text-stone-800 dark:hover:text-neutral-200 flex flex-col items-center justify-center gap-1.5 transition cursor-pointer">
+                <button onClick={() => setIsColumnModalOpen(true)} className="shrink-0 rounded-2xl border-2 border-dashed border-stone-200 dark:border-neutral-600 hover:border-stone-400 dark:hover:border-neutral-400 text-stone-400 hover:text-stone-800 dark:hover:text-neutral-200 flex flex-col items-center justify-center gap-1.5 transition cursor-pointer" style={{ width: 330, minWidth: 330, minHeight: 160 }}>
                   <Plus className="h-5 w-5" /><span className="text-xs font-bold">{t.newSection}</span>
                 </button>
               )}
