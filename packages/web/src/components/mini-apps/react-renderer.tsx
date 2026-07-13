@@ -8,7 +8,11 @@ import {
   DndContext,
   closestCenter,
   PointerSensor,
+  TouchSensor,
   KeyboardSensor,
+  DragOverlay,
+  defaultDropAnimationSideEffects,
+  useDroppable,
   useSensor,
   useSensors,
 } from '@dnd-kit/core';
@@ -17,6 +21,7 @@ import {
   useSortable,
   arrayMove,
   verticalListSortingStrategy,
+  horizontalListSortingStrategy,
   sortableKeyboardCoordinates,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -134,7 +139,11 @@ function resolveExternalModule(id: string) {
       DndContext,
       closestCenter,
       PointerSensor,
+      TouchSensor,
       KeyboardSensor,
+      DragOverlay,
+      defaultDropAnimationSideEffects,
+      useDroppable,
       useSensor,
       useSensors,
     };
@@ -146,6 +155,7 @@ function resolveExternalModule(id: string) {
       useSortable,
       arrayMove,
       verticalListSortingStrategy,
+      horizontalListSortingStrategy,
       sortableKeyboardCoordinates,
     };
   }

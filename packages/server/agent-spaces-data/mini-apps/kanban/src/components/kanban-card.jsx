@@ -2,7 +2,7 @@ import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { t } from '../utils/i18n.js';
 
-const { Calendar, AlignLeft, GripVertical, CheckCircle2, AlertCircle } = window.AgentSpacesUI;
+const { CalendarDays, AlignLeft, GripVertical, CheckCircle2, AlertCircle } = window.AgentSpacesUI;
 
 const PRIORITY_STYLES = {
   low: { text: 'text-emerald-700 bg-emerald-50 border border-emerald-100', dot: 'bg-emerald-500' },
@@ -60,7 +60,7 @@ export default function KanbanCard({ task, onClick, isOverlay = false }) {
         </div>
         {task.dueDate ? (
           <span className={`flex items-center gap-1 px-1.5 py-0.5 rounded-md ${overdue ? 'text-rose-600 bg-rose-50 font-bold border border-rose-100' : 'text-stone-500'}`}>
-            <Calendar className="h-3 w-3" />{formatDate(task.dueDate)}
+            <CalendarDays className="h-3 w-3" />{formatDate(task.dueDate)}
           </span>
         ) : (
           <span className="text-[10px] text-stone-300">{formatDate(new Date(task.createdAt).toISOString())}</span>

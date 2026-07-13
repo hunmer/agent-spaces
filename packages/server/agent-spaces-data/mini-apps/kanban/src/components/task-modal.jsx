@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { t } from '../utils/i18n.js';
 
 const {
-  Calendar, AlertCircle, FileText, LayoutGrid, Trash2, Clock,
+  CalendarDays, AlertCircle, FileText, LayoutGrid, Trash2, Clock,
   Input, Textarea, Label, Button, SearchSelect,
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
   ToggleGroup, ToggleGroupItem,
@@ -74,7 +74,7 @@ export default function TaskModal({ task, columns, isOpen, onClose, onSave, onDe
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                <Calendar className="h-3.5 w-3.5" />{t.dueDate}
+                <CalendarDays className="h-3.5 w-3.5" />{t.dueDate}
               </Label>
               <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="h-8" />
             </div>
@@ -97,7 +97,7 @@ export default function TaskModal({ task, columns, isOpen, onClose, onSave, onDe
             </ToggleGroup>
           </div>
         </form>
-        <DialogFooter className="!-mx-0 !-mb-0 px-6 py-4 border-t flex-row justify-between sm:justify-between">
+        <DialogFooter className="!-mx-0 mb-4 px-6 py-4 border-t flex-row justify-between sm:justify-between">
           {isConfirmingDelete ? (
             <div className="flex items-center gap-2">
               <span className="text-xs font-semibold text-rose-600 animate-pulse">{t.deleteConfirm}</span>
