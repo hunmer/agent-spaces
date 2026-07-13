@@ -75,14 +75,13 @@ export function unwrapWorkflowPayload(value) {
   return payload;
 }
 
-// 从工作流 payload 中提取图片列表
+// 只从实际执行到的结束节点提取最终图片，避免误取中间节点产物。
 export function extractImages(payload) {
   const steps = Array.isArray(payload?.steps) ? payload.steps : [];
-  const result = steps.find((step) => Array.isArray(step?.output?.result))?.output?.result
-    || payload?.result
-    || steps.find((step) => Array.isArray(step?.output?.data?.images))?.output?.data?.images
-    || steps.find((step) => Array.isArray(step?.output?.images))?.output?.images
-    || [];
+  const endSteps = steps.filter((step) => step?.nodeType === 'end' && step?.status === 'completed');
+  const result = endSteps.find((step) => Array.isArray(step?.output?.result))?.output.result || [];
+  const error = endSteps.find((step) => typeof step?.output?.error === 'string')?.output.error;
+  if (!result.length && error) throw new Error(error);
   const images = Array.isArray(result) ? result : [result];
   return images
     .map((item) => {
@@ -129,7 +128,7 @@ export async function runImageToImage({
         aspect,
         size,
       },
-      max_wait_ms: 600000,
+      max_wait_ms: 1200000,
     },
     {
       taskId,

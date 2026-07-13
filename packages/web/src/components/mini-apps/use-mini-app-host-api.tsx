@@ -194,7 +194,9 @@ function WrappedFileUpload(props: any) {
         return item;
       }
 
-      const uploadPromise = uploadWorkflowFile(file, (progress) => setUploadProgress(item.id, progress));
+      const uploadPromise = Promise.resolve().then(() =>
+        uploadWorkflowFile(file, (progress) => setUploadProgress(item.id, progress)),
+      );
       return {
         ...item,
         file: createWorkflowUploadFile(file, uploadPromise),

@@ -396,12 +396,14 @@ function workflowNumberInput(args: Record<string, any>, key: string, fallback: n
   return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
 }
 
-function formatWorkflowSteps(log: any, nodeId?: string) {
+function formatWorkflowSteps(log: any, nodes: Array<{ id: string; type: string }> = [], nodeId?: string) {
   const steps = Array.isArray(log?.steps) ? log.steps : [];
+  const nodeTypes = new Map(nodes.map((node) => [node.id, node.type]));
   return steps
     .filter((step: any) => !nodeId || step.nodeId === nodeId)
     .map((step: any) => ({
       nodeId: step.nodeId,
+      nodeType: nodeTypes.get(step.nodeId),
       nodeLabel: step.nodeLabel,
       status: step.status,
       startedAt: step.startedAt,
@@ -426,7 +428,8 @@ async function executeWorkflowSyncForMiniApp(args: Record<string, any>) {
   if (!workflowId) throw new Error('workflow_id is required');
 
   const workflowService = await import('../workflow.js');
-  if (!workflowService.getWorkflow(workflowId)) throw new Error(`Workflow not found: ${workflowId}`);
+  const workflow = workflowService.getWorkflow(workflowId);
+  if (!workflow) throw new Error(`Workflow not found: ${workflowId}`);
 
   const result = await manager.execute({
     workflowId,
@@ -460,7 +463,7 @@ async function executeWorkflowSyncForMiniApp(args: Record<string, any>) {
     executionId: result.executionId,
     status,
     timedOut,
-    steps: log ? formatWorkflowSteps(log, workflowStringInput(args, 'node_id', 'nodeId') || undefined) : [],
+    steps: log ? formatWorkflowSteps(log, workflow.nodes, workflowStringInput(args, 'node_id', 'nodeId') || undefined) : [],
   };
 }
 

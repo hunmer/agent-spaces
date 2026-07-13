@@ -8,8 +8,8 @@
       "type": "start",
       "label": "开始",
       "position": {
-        "x": 0,
-        "y": 542.5
+        "x": -345,
+        "y": 555
       },
       "data": {
         "inputFields": [
@@ -794,7 +794,7 @@
     }
   ],
   "createdAt": 1782271756656,
-  "updatedAt": 1783932361350,
+  "updatedAt": 1783937374869,
   "published": false,
   "enabledPlugins": [
     "workflow.openai",
@@ -803,9 +803,9 @@
     "workflow.jimeng",
     "workflow.ai-image"
   ],
-  "lastRunAt": 1783935909815,
+  "lastRunAt": 1783937220939,
   "groups": [],
   "description": "编辑图片",
   "variables": [],
-  "lastOpenedAt": 1783935848783
+  "lastOpenedAt": 1783937288487
 }

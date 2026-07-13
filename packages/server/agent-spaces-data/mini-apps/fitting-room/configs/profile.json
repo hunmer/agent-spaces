@@ -12,5 +12,12 @@
       "name": "微信图片_20260713093538_17_1072 (2).jpg"
     }
   ],
-  "updatedAt": "2026/7/13 17:49:31"
+  "outfits": [
+    {
+      "url": "http://127.0.0.1:3100/static/uploads/fe5de0ac51f72687219c5951c3e51d03-acbb0b7b-be6a-4dd2-b4f6-952d32319a72.jpeg",
+      "path": "G:\\agent_spaces\\packages\\server\\public\\uploads\\fe5de0ac51f72687219c5951c3e51d03-acbb0b7b-be6a-4dd2-b4f6-952d32319a72.jpeg",
+      "name": "fe5de0ac51f72687219c5951c3e51d03.jpeg"
+    }
+  ],
+  "updatedAt": "2026/7/13 17:59:04"
 }
