@@ -90,7 +90,7 @@ function normalizeLegacySourceHandle(snapshot: WorkflowSnapshot): WorkflowSnapsh
 
 function findLastEndNodeId(nodes: Workflow['nodes']): string | null {
   for (let index = nodes.length - 1; index >= 0; index -= 1) {
-    if (nodes[index]?.type === 'end') return nodes[index].id;
+    if (nodes[index]?.type === 'end' && !nodes[index].composite?.parentId) return nodes[index].id;
   }
   return null;
 }

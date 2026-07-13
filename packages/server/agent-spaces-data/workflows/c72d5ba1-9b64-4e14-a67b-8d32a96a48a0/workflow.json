@@ -27,8 +27,8 @@
       "type": "end",
       "label": "结束",
       "position": {
-        "x": 315,
-        "y": 210
+        "x": 300,
+        "y": 330
       },
       "data": {
         "outputs": [
@@ -47,7 +47,7 @@
       "label": "nodes.loop.label",
       "position": {
         "x": 300,
-        "y": 0
+        "y": -6.75
       },
       "data": {
         "loopType": "array",
@@ -416,14 +416,6 @@
       }
     },
     {
-      "id": "e-node_1783937435786_la4or4-loop-next-node_1783937424474_end-target",
-      "source": "node_1783937435786_la4or4",
-      "target": "node_1783937424474_end",
-      "edgeKind": "runtime",
-      "sourceHandle": "loop-next",
-      "targetHandle": "target"
-    },
-    {
       "id": "e-node_1783937424474_start-output:urls-node_1783937435786_la4or4-property:arrayPath",
       "source": "node_1783937424474_start",
       "target": "node_1783937435786_la4or4",
@@ -536,16 +528,28 @@
       "edgeKind": "reference",
       "sourceHandle": "output:data.Location",
       "targetHandle": "property:groups[0].variables[0].value"
+    },
+    {
+      "id": "e-node_1783937435786_la4or4-loop-next-node_1783937424474_end-target",
+      "source": "node_1783937435786_la4or4",
+      "target": "node_1783937424474_end",
+      "sourceHandle": "loop-next"
+    },
+    {
+      "id": "e-node_1783937435786_la4or4-output:items-node_1783937424474_end-target",
+      "source": "node_1783937435786_la4or4",
+      "target": "node_1783937424474_end",
+      "sourceHandle": "output:items"
     }
   ],
   "createdAt": 1783937424479,
-  "updatedAt": 1783942395912,
+  "updatedAt": 1783944087331,
   "published": false,
-  "lastOpenedAt": 1783942312663,
+  "lastOpenedAt": 1783944076018,
   "groups": [],
   "enabledPlugins": [
     "workflow.tencent-cos"
   ],
   "variables": [],
-  "lastRunAt": 1783943388039
+  "lastRunAt": 1783940345008
 }
