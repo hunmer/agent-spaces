@@ -176,6 +176,27 @@ export function executeStringSplit(resolvedData: Record<string, any>): Record<st
   return { result: source.split(delimiter) };
 }
 
+/**
+ * 随机生成文本节点：按模式（纯文本 / 纯数字）和长度生成随机字符串。
+ * 纯文本模式可选择是否包含特殊字符。
+ */
+export function executeRandomText(resolvedData: Record<string, any>): Record<string, string> {
+  const mode = resolvedData.mode === 'number' ? 'number' : 'text';
+  const length = Math.max(1, Math.floor(Number(resolvedData.length) || 0) || 0);
+  let chars: string;
+  if (mode === 'number') {
+    chars = '0123456789';
+  } else {
+    chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
+    if (resolvedData.includeSpecial) chars += '!@#$%^&*-_=+';
+  }
+  let result = '';
+  for (let i = 0; i < length; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return { result };
+}
+
 export function interpolateTemplate(template: string, context: Record<string, any>): string {
   if (!template) return '';
   const keys = Object.keys(context);

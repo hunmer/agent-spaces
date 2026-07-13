@@ -657,6 +657,26 @@
         }
       }
     },
+    "random_text": {
+      "label": "随机生成文本",
+      "description": "按模式和长度生成随机字符串，可选择纯文本或纯数字，文本模式可包含特殊字符，输出 result 字符串",
+      "props": {
+        "mode": {
+          "label": "生成模式",
+          "tooltip": "纯文本使用大小写字母，纯数字仅使用数字",
+          "text": "纯文本",
+          "number": "纯数字"
+        },
+        "length": {
+          "label": "长度",
+          "tooltip": "生成字符串的字符数，最小为 1"
+        },
+        "includeSpecial": {
+          "label": "包含特殊字符",
+          "tooltip": "仅纯文本模式可用，开启后加入 !@#$%^&* 等符号"
+        }
+      }
+    },
     "string_concat": {
       "label": "字符串拼接",
       "description": "用模板字符串拼接输入字段，'{{expression}}' 占位符会被替换为对应值，输出 result 字符串",

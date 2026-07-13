@@ -164,4 +164,41 @@ export const utilsNodes: NodeTypeDefinition[] = [
     ],
     outputs: [{ key: 'result', type: 'object' }],
   },
+  {
+    type: 'random_text',
+    label: 'nodes.random_text.label',
+    category: 'nodes.categories.utilities',
+    icon: 'Shuffle',
+    description: 'nodes.random_text.description',
+    properties: [
+      {
+        key: 'mode',
+        label: 'nodes.random_text.props.mode.label',
+        type: 'select',
+        default: 'text',
+        tooltip: 'nodes.random_text.props.mode.tooltip',
+        options: [
+          { label: 'nodes.random_text.props.mode.text', value: 'text' },
+          { label: 'nodes.random_text.props.mode.number', value: 'number' },
+        ],
+      },
+      {
+        key: 'length',
+        label: 'nodes.random_text.props.length.label',
+        type: 'number',
+        default: 8,
+        required: true,
+        tooltip: 'nodes.random_text.props.length.tooltip',
+      },
+      {
+        key: 'includeSpecial',
+        label: 'nodes.random_text.props.includeSpecial.label',
+        type: 'checkbox',
+        default: false,
+        tooltip: 'nodes.random_text.props.includeSpecial.tooltip',
+        visibleWhen: { key: 'mode', equals: 'text' } as any,
+      },
+    ],
+    outputs: [{ key: 'result', type: 'string' }],
+  },
 ];

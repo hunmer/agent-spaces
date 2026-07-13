@@ -43,6 +43,7 @@ import {
   executeParseJson,
   executeStringConcat,
   executeStringSplit,
+  executeRandomText,
   executeArrayTextReplace,
   executeSwitch,
   executeVariableAggregate,
@@ -1046,6 +1047,8 @@ export class ExecutionManager {
         return executeArrayTextReplace(resolvedData);
       case 'parse_json':
         return executeParseJson(resolvedData);
+      case 'random_text':
+        return executeRandomText(resolvedData);
       case 'string_concat':
         return executeStringConcat(resolvedData);
       case 'string_split':

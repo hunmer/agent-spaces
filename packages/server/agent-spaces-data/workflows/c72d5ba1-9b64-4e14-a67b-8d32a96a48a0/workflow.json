@@ -70,13 +70,13 @@
       "label": "nodes.loop_body.label",
       "position": {
         "x": 634,
-        "y": 215.07407407407408
+        "y": 170
       },
       "data": {
         "width": 150,
         "height": 260,
         "nodeWidth": 347,
-        "nodeHeight": 729
+        "nodeHeight": 807
       },
       "composite": {
         "role": "loop_body",
@@ -92,8 +92,8 @@
       "type": "start",
       "label": "nodes.loop.label开始",
       "position": {
-        "x": 699.4074074074074,
-        "y": 315.0740740740741
+        "x": 705,
+        "y": 270
       },
       "data": {},
       "composite": {
@@ -109,7 +109,7 @@
       "label": "nodes.loop.label结束",
       "position": {
         "x": 690,
-        "y": 780
+        "y": 813
       },
       "data": {},
       "composite": {
@@ -125,7 +125,7 @@
       "label": "COS上传文件",
       "position": {
         "x": 705,
-        "y": 555
+        "y": 614.2592592592592
       },
       "data": {
         "secretId": "{{ __config__[\"workflow.tencent-cos\"][\"secretId\"]}}",
@@ -167,10 +167,63 @@
           }
         ],
         "sourceNodeId": "node_1783937435787_sqs5a9",
-        "key": ""
+        "key": "{{ __data__[\"node_1783937956240_ps2aad\"].result }}"
       },
       "composite": {
         "rootId": "node_1783937435786_dsqbxm",
+        "parentId": "node_1783937435786_dsqbxm",
+        "generated": false,
+        "hidden": false
+      }
+    },
+    {
+      "id": "node_1783937956240_ps2aad",
+      "type": "random_text",
+      "label": "nodes.random_text.label",
+      "position": {
+        "x": 702.2037037037037,
+        "y": 434.64814814814815
+      },
+      "data": {
+        "mode": "text",
+        "length": 12,
+        "includeSpecial": false,
+        "outputs": [
+          {
+            "key": "result",
+            "type": "string"
+          }
+        ],
+        "sourceNodeId": "node_1783937435787_sqs5a9"
+      },
+      "composite": {
+        "rootId": "node_1783937435786_dsqbxm",
+        "parentId": "node_1783937435786_dsqbxm",
+        "generated": false,
+        "hidden": false
+      }
+    },
+    {
+      "id": "node_1783938129544_05ik2d",
+      "type": "string_split",
+      "label": "nodes.string_split.label",
+      "position": {
+        "x": 703.6018518518518,
+        "y": 524.4537037037037
+      },
+      "data": {
+        "text": ".",
+        "outputs": [
+          {
+            "key": "result",
+            "type": "string[]"
+          }
+        ],
+        "sourceNodeId": "node_1783937956240_ps2aad",
+        "source": "{{ __loop__.item }}"
+      },
+      "composite": {
+        "rootId": "node_1783937435786_la4or4",
         "parentId": "node_1783937435786_dsqbxm",
         "generated": false,
         "hidden": false
@@ -229,22 +282,41 @@
       "targetHandle": "property:arrayPath"
     },
     {
-      "id": "e-node_1783937435787_sqs5a9-source-node_1783937491901_egfvn5-target",
-      "source": "node_1783937435787_sqs5a9",
-      "target": "node_1783937491901_egfvn5"
-    },
-    {
       "id": "e-node_1783937491901_egfvn5-source-node_1783937435787_1zkvk0-target",
       "source": "node_1783937491901_egfvn5",
       "target": "node_1783937435787_1zkvk0"
+    },
+    {
+      "id": "e-node_1783937435787_sqs5a9-source-node_1783937956240_ps2aad-target",
+      "source": "node_1783937435787_sqs5a9",
+      "target": "node_1783937956240_ps2aad"
+    },
+    {
+      "id": "e-node_1783937956240_ps2aad-output:result-node_1783937491901_egfvn5-property:key",
+      "source": "node_1783937956240_ps2aad",
+      "target": "node_1783937491901_egfvn5",
+      "edgeKind": "reference",
+      "sourceHandle": "output:result",
+      "targetHandle": "property:key"
+    },
+    {
+      "id": "e-node_1783937956240_ps2aad-source-node_1783938129544_05ik2d-target",
+      "source": "node_1783937956240_ps2aad",
+      "target": "node_1783938129544_05ik2d"
+    },
+    {
+      "id": "e-node_1783938129544_05ik2d-source-node_1783937491901_egfvn5-target",
+      "source": "node_1783938129544_05ik2d",
+      "target": "node_1783937491901_egfvn5"
     }
   ],
   "createdAt": 1783937424479,
-  "updatedAt": 1783937545389,
+  "updatedAt": 1783938149851,
   "published": false,
   "lastOpenedAt": 1783937424492,
   "groups": [],
   "enabledPlugins": [
     "workflow.tencent-cos"
-  ]
+  ],
+  "variables": []
 }

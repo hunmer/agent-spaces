@@ -657,6 +657,26 @@
         }
       }
     },
+    "random_text": {
+      "label": "Random Text",
+      "description": "Generate a random string by mode and length, choose text or number, text mode can include special characters, output as result string",
+      "props": {
+        "mode": {
+          "label": "Mode",
+          "tooltip": "Text uses upper/lower-case letters, number uses digits only",
+          "text": "Text",
+          "number": "Number"
+        },
+        "length": {
+          "label": "Length",
+          "tooltip": "Number of characters to generate, minimum 1"
+        },
+        "includeSpecial": {
+          "label": "Include Special Chars",
+          "tooltip": "Text mode only, adds !@#$%^&* etc. when enabled"
+        }
+      }
+    },
     "string_concat": {
       "label": "String Concat",
       "description": "Interpolate input fields into a template using '{{expression}}' placeholders and output a result string",
