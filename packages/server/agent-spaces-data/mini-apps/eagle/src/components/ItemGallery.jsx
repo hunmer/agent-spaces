@@ -137,17 +137,7 @@ export default function ItemGallery({
   async function copyPath(item) {
     const abs = buildAbsPath(libraryPath, item, "original");
     const text = abs || item.name || "";
-    try {
-      await navigator.clipboard.writeText(text);
-    } catch {
-      // 兜底：老浏览器/无权限
-      const ta = document.createElement("textarea");
-      ta.value = text;
-      document.body.appendChild(ta);
-      ta.select();
-      try { document.execCommand("copy"); } catch { /* noop */ }
-      ta.remove();
-    }
+    await window.AgentSpaces?.copyText?.(text);
   }
 
   function handleImageDragStart(e, item) {
@@ -542,7 +532,7 @@ function InfoRow({ label, value, mono, copyable }) {
   async function doCopy(e) {
     e.stopPropagation();
     if (text === "—") return;
-    try { await navigator.clipboard.writeText(text); } catch { /* noop */ }
+    await window.AgentSpaces?.copyText?.(text);
   }
   return (
     <div className="flex items-start gap-2 py-0.5">

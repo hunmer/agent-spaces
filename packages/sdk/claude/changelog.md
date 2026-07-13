@@ -2,6 +2,12 @@
 
 > 本文件只记录 SDK 模块 AI 上下文的更新历史，最近 5 条倒序排列。
 
+## 2026-07-13 — 模块数核对修正
+
+- 核对 `src/modules/` 实际文件数与 `index.ts` 注册数：均为 39（此前文档误记为 40）
+- 修正 `claude/overview.md` 模块列表：移除不存在的 `task`/`modelCatalog`，补全 `externalImport`/`workflowSettings`，列全 39 个
+- 更新 `CLAUDE.md`（模块数 40→39、扫描状态）
+
 ## 2026-07-10 — 新增 team 模块
 
 - 新增 `src/modules/team.ts`，导出 `createTeamApi`，在 `src/index.ts` 注册为 `sdk.team`

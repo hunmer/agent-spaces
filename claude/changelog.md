@@ -2,6 +2,15 @@
 
 > 本文件只记录"AI 上下文索引"的生成/更新历史，最近 5 条倒序排列。
 
+## 2026-07-13 — 增量核对 + MCP 拆分
+
+- **mcp**: 原 `CLAUDE.md` 长文档拆分为 `claude/*.md`（8 个详情文件），`CLAUDE.md` 改为轻量索引；SDK 覆盖由反射自动同步（当前 39 模块）
+- **server**: 修正 Team 服务文件数 9→8；`builtin-tools/` 补全为 12 文件（含 `agent-tools.ts`）；services 99→100；路由确认 42
+- **web**: `components/teams/` 扩充 8→13 文件（新增 detail-panel/hover-card/list-panel/selector/management-utils + chat/team-message-card）；Store 数修正 23→44（含 workflow-editor/ 12 + search-commands/ 7 + 顶层 25）；新增 `stores/confirm.ts` + `layout/global-confirm-dialog.tsx`
+- **sdk**: 模块数核对 40→39（与实际 `src/modules/` 文件数及 `index.ts` 注册数一致）；`overview.md` 模块列表修正（移除不存在的 task/modelCatalog，补全 externalImport/workflowSettings）
+- 根 `CLAUDE.md`：Mermaid 图与模块表补 mcp 节点；扫描状态 9/9→10/10
+- 更新文件：根 `CLAUDE.md` + `claude/changelog.md`；server `CLAUDE.md` + `claude/module-responsibilities.md` + `claude/changelog.md`；web `CLAUDE.md` + `claude/module-responsibilities.md` + `claude/changelog.md`；sdk `CLAUDE.md` + `claude/overview.md` + `claude/changelog.md`；mcp `CLAUDE.md`（重写）+ `claude/*.md`（新建 8 文件）
+
 ## 2026-07-10 — 增量更新（Team 多 Agent 协作系统）
 
 - **shared**: 新增 `types/team.ts`（Team / TeamMembership / TeamMessage / TeamInboxItem / TeamRuntime / TeamComment + 角色与状态枚举）；类型文件 27 → 30

@@ -21,7 +21,7 @@ import CreationSkeletonCard from './components/CreationSkeletonCard';
 
 const { FileText, Button, Dialog, DialogContent, DialogHeader, DialogTitle, Input, Textarea, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Slider, Badge, Trash2, ChevronLeft, ChevronRight, Masonry } = window.AgentSpacesUI;
 
-const { getUserSetting, saveUserSettings } = window.AgentSpaces;
+const { getUserSetting, saveUserSettings, copyText } = window.AgentSpaces;
 
 export default function App() {
   const dbq = useCopywritingDb();
@@ -297,7 +297,7 @@ export default function App() {
 
   const handleCopy = async (item) => {
     const text = item.type === 'text' ? (item.content || '') : (item.transcription || '');
-    await navigator.clipboard.writeText(text || '');
+    await copyText(text);
   };
 
   const handleAddToReference = (item) => {
@@ -495,7 +495,7 @@ export default function App() {
         <div className="mt-2 flex items-center justify-between shrink-0">
           <span className="size-2 rounded-full" style={{ backgroundColor: color.dot }} />
           <div className="flex items-center gap-2">
-            <Button size="sm" variant="outline" onClick={() => navigator.clipboard.writeText(item.text)}>
+            <Button size="sm" variant="outline" onClick={() => copyText(item.text)}>
               复制文案
             </Button>
             <Button

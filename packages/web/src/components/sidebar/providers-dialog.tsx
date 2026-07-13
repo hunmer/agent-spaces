@@ -185,7 +185,16 @@ export function ProvidersDialog({
             providerModels={providers.map(p => ({ id: p.id, models: getModelsForProvider(p.name) }))}
             onEdit={handleEdit}
             onDelete={handleDelete}
-            onAddModel={(providerName) => { if (!standalone) onOpenChange(false); onAddModel(providerName); }}
+            onAddModel={(providerName) => {
+              // 先打开 models（设 hash 为 /settings/models），再关闭 providers。
+              // 顺序很关键：若先关 providers，syncHash 会 replaceState 清空 hash，
+              // 随后开 models 又设新 hash，中间态在 Tauri webview 等环境下可能触发
+              // 额外导航事件，导致 models 对话框打开后又被快速关闭。
+              // 先开 models 使 hash 直接变为 /settings/models，关 providers 时
+              // readHashPath 已不等于 /settings/providers，不会再 replaceState。
+              onAddModel(providerName);
+              if (!standalone) onOpenChange(false);
+            }}
           />
         )}
       </div>

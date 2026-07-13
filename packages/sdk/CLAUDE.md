@@ -1,6 +1,6 @@
 # packages/sdk (`@agent-spaces/sdk`)
 
-前端统一 API SDK。封装所有后端 HTTP 调用，提供 `createSDK()` 工厂函数返回 40 个 API 模块、200+ 方法。依赖 `@agent-spaces/shared` 类型。纯逻辑层，无 UI 依赖。
+前端统一 API SDK。封装所有后端 HTTP 调用，提供 `createSDK()` 工厂函数返回 39 个 API 模块、200+ 方法。依赖 `@agent-spaces/shared` 类型。纯逻辑层，无 UI 依赖。
 
 ## 约定
 
@@ -19,5 +19,5 @@
 
 ## 扫描状态
 
-- **更新时间**: 2026-07-10
-- **已扫描**: package.json、src/index.ts、src/modules/（40 模块，含 team）
+- **更新时间**: 2026-07-13
+- **已扫描**: package.json、src/index.ts、src/modules/（39 模块，含 team）

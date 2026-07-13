@@ -2,16 +2,16 @@
 
 ## 路由层 (routes/)
 
-30+ 路由文件，对应 REST API 各模块。每个路由文件导出 Express Router。
+42 路由文件，对应 REST API 各模块。每个路由文件导出 Express Router。
 
 ## 服务层 (services/)
 
-90+ 业务逻辑文件，核心子域：
+100 业务逻辑文件，核心子域：
 
 | 子域 | 关键文件 | 职责 |
 |---|---|---|
-| 内置工具 | `builtin-tools/` | Agent 可调用内置工具（Workflow 编辑器、数据库、Issue、Team 协作、命令、文件等） |
-| Team 协作 | `team.ts`, `team-manage.ts`, `team-membership.ts`, `team-message.ts`, `team-inbox.ts`, `team-runtime.ts`, `team-internal.ts`, `team-message.ts`, `team-types.ts` | 多 Agent 团队：创建/成员角色/消息广播与直发/收件箱/运行时编排 |
+| 内置工具 | `builtin-tools/`（12 文件：agent-tools / command-tools / database-tools / issue-tools / mini-app-tools / team-tools / workflow-editor-tools / workflow-exec-tools / workspace-file-tools / input-helpers / index + workflow-editor/） | Agent 可调用内置工具（Workflow 编辑器、数据库、Issue、Team 协作、命令、文件、Agent 等） |
+| Team 协作 | `team.ts`, `team-manage.ts`, `team-membership.ts`, `team-message.ts`, `team-inbox.ts`, `team-runtime.ts`, `team-internal.ts`, `team-types.ts`（8 文件） | 多 Agent 团队：创建/成员角色/消息广播与直发/收件箱/运行时编排 |
 | 通知中心 | `notification-hub/` (11 文件) | 微信/飞书/机器人通知推送 |
 | 语音识别 | `speech-recognition/` (3 文件) | 腾讯语音等 |
 | 订阅管理 | `subscription/` (5 文件) | AI Code/MiniMax/智谱订阅 |

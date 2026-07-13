@@ -1,5 +1,6 @@
 const { Badge, Button, Card, CardContent, CardHeader, CardTitle } = window.AgentSpacesUI;
 const { Pencil, Trash2, Clock, Copy } = window.AgentSpacesUI;
+const { copyText } = window.AgentSpaces;
 
 // 单条片段展示。有代码则显示代码体 + 复制按钮。
 export default function SnippetCard({ snippet, onEdit, onDelete }) {
@@ -9,7 +10,7 @@ export default function SnippetCard({ snippet, onEdit, onDelete }) {
   const updated = snippet.updated_at ? new Date(snippet.updated_at).toLocaleString() : '';
 
   const copyCode = () => {
-    if (snippet.code) navigator.clipboard?.writeText(snippet.code);
+    if (snippet.code) copyText?.(snippet.code);
   };
 
   return (

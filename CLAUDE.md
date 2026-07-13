@@ -41,6 +41,7 @@ graph TD
     Server --> Templates[packages/templates<br/>模板/插件]
     Web --> Inspector[dom-inspector-hook<br/>开发工具]
     Server --> DB[(SQLite)]
+    MCP[packages/mcp<br/>MCP 服务] --> SDK
 ```
 
 | 模块 | 路径 | 职责 |
@@ -49,6 +50,7 @@ graph TD
 | Server | [packages/server](packages/server/CLAUDE.md) | Express 5 后端 + AI Agent 运行时 |
 | Electron | [packages/electron](packages/electron/CLAUDE.md) | 桌面壳（窗口/协议/快捷键） |
 | SDK | [packages/sdk](packages/sdk/CLAUDE.md) | 前端统一 API 层 |
+| MCP | [packages/mcp](packages/mcp/CLAUDE.md) | SDK → MCP 服务（stdio/http） |
 | Shared | [packages/shared](packages/shared/CLAUDE.md) | 跨前后端类型定义 |
 | Templates | [packages/templates](packages/templates/CLAUDE.md) | 模板/插件/技能打包 |
 | DOM Inspector | [packages/dom-inspector-hook](packages/dom-inspector-hook/CLAUDE.md) | 开发工具 Hook |
@@ -57,8 +59,8 @@ graph TD
 
 ## 扫描状态
 
-- **更新时间**: 2026-07-10
-- **已扫描**: 根目录结构、所有 package.json、主要入口文件、路由/服务/存储/API 层、最近 6 个迭代（runtime 管理 / issue 系统 / notification-hub / usage dashboard / mini-apps / **team 协作**）
-- **已覆盖模块**: 9/9（web, server, electron, sdk, shared, templates, dom-inspector-hook, flutter, documents）
+- **更新时间**: 2026-07-13
+- **已扫描**: 根目录结构、所有 package.json、主要入口文件、路由/服务/存储/API 层、最近 7 个迭代（runtime 管理 / issue 系统 / notification-hub / usage dashboard / mini-apps / team 协作 / **mcp 拆分 + 增量核对**）
+- **已覆盖模块**: 10/10（web, server, electron, sdk, mcp, shared, templates, dom-inspector-hook, flutter, documents）
 - **跳过**: node_modules, .next, dist, out, release, agent-spaces-data 运行时数据, build 缓存
 - **下一步建议**: 深挖 `packages/server/src/services/team-runtime.ts`（Team 运行时编排细节）、`packages/web/src/components/chat/`（聊天面板重构）、`packages/templates/plugins/obsidian`（新插件）

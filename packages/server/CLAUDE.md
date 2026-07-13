@@ -9,7 +9,7 @@ Express 5 后端服务，REST API + WebSocket，SQLite 存储。核心能力：�
 - AI 运行时适配器在 `src/adapters/`，`claude-code-runtime` 是独立子模块；新增运行时需实现统一接口。
 - Runtime 管理（CLI 发现/SDK 安装）集中在 `routes/runtime.ts`。
 - Issue 系统跨 `services/issue*.ts` + `agents/issue-agent-runner.ts` + `storage/issue-store.ts`。
-- Team 协作系统跨 `services/team*.ts`（9 文件：team/manage/membership/message/inbox/runtime/internal/types）+ `routes/team.ts`（3 挂载点 `/api/teams` `/api/team-inbox` `/api/team-messages`）+ `builtin-tools/team-tools.ts`。
+- Team 协作系统跨 `services/team*.ts`（8 文件：team/team-manage/team-membership/team-message/team-inbox/team-runtime/team-internal/team-types）+ `routes/team.ts`（3 挂载点 `/api/teams` `/api/team-inbox` `/api/team-messages`）+ `builtin-tools/team-tools.ts`。
 - WebSocket 处理在 `src/ws/`。
 - 运行时数据目录 `agent-spaces-data/` 勿手动修改。
 - 路由前缀 `/api/`，`/api/inspector/track` 为唯一无认证端点。
@@ -23,6 +23,7 @@ Express 5 后端服务，REST API + WebSocket，SQLite 存储。核心能力：�
 | [对外接口](claude/public-interfaces.md) | REST API、WebSocket 端点 | 需要调用/新增接口 |
 | [模块职责](claude/module-responsibilities.md) | 路由/服务/存储/适配器分类 | 需要定位功能 |
 | [AI 运行时适配器](claude/ai-adapters.md) | 各 Agent SDK 适配详情 + Runtime 管理 | 需要新增/修改运行时 |
+| [Team 运行时编排](claude/team-runtime.md) | Team 多 Agent 调度/消息路由/handoff/任务/会话生命周期 | 改 Team 协作逻辑 |
 | [数据模型](claude/data-model.md) | Storage 层、领域模型 | 需要改数据结构 |
 | [测试与质量](claude/testing-and-quality.md) | 测试覆盖 | 需要运行/补充测试 |
 | [文件索引](claude/file-map.md) | 完整目录结构 | 需要找文件 |
@@ -30,6 +31,6 @@ Express 5 后端服务，REST API + WebSocket，SQLite 存储。核心能力：�
 
 ## 扫描状态
 
-- **更新时间**: 2026-07-10
-- **已扫描**: package.json、app.ts、全部路由（42 个）、services（99 文件，含 team 系列/notification-hub/issue）、storage（20+ store）、adapters（含 claude-code-runtime 子模块）、ws、agents
+- **更新时间**: 2026-07-13
+- **已扫描**: package.json、app.ts、全部路由（42 个）、services（100 文件，含 team 系列/notification-hub/issue/builtin-tools）、storage（20+ store）、adapters（含 claude-code-runtime 子模块）、ws、agents、**team-runtime.ts 全文（1379 行）**
 - **跳过**: node_modules, dist, agent-spaces-data, public

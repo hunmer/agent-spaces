@@ -746,6 +746,31 @@ export function useMiniAppHostApi(projectId: string, runtimeContext?: MiniAppRun
       sendNotifiction,
     };
 
+    // 复制文本到剪贴板：兼容非安全上下文（HTTP）下 navigator.clipboard 为 undefined 的情况，
+    // 优先使用 Clipboard API，失败降级到 document.execCommand('copy')。
+    const copyText = async (text: string): Promise<void> => {
+      const value = text || '';
+      if (navigator.clipboard?.writeText) {
+        try {
+          await navigator.clipboard.writeText(value);
+          return;
+        } catch {
+          // 降级到 execCommand
+        }
+      }
+      const textarea = document.createElement('textarea');
+      textarea.value = value;
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      document.body.appendChild(textarea);
+      textarea.select();
+      try {
+        document.execCommand('copy');
+      } finally {
+        document.body.removeChild(textarea);
+      }
+    };
+
     (window as any).AgentSpacesUI = hostUi;
     (window as any).AgentSpaces = {
       ...pluginApi,
@@ -753,6 +778,7 @@ export function useMiniAppHostApi(projectId: string, runtimeContext?: MiniAppRun
       ...fileApi,
       ...notificationApi,
       ...settingApi,
+      copyText,
       readConfigJson,
       writeConfigJson,
       readLastSelection,
@@ -768,6 +794,7 @@ export function useMiniAppHostApi(projectId: string, runtimeContext?: MiniAppRun
       ...fileApi,
       ...notificationApi,
       ...settingApi,
+      copyText,
       readConfigJson,
       writeConfigJson,
       readLastSelection,

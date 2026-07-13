@@ -5,7 +5,7 @@
 | 目录 | 职责 |
 |---|---|
 | `chat/` | 聊天界面（消息列表、输入框、Agent 面板） |
-| `teams/` | Team 多 Agent 协作（create-team-dialog / team-card / team-chat-panel / team-inbox-dialog / team-management-page / member-select-panel / team-member-list / team-member-row） |
+| `teams/` | Team 多 Agent 协作（create-team-dialog / team-card / team-chat-panel / team-inbox-dialog / team-management-page / member-select-panel / team-member-list / team-member-row / team-detail-panel / team-hover-card / team-list-panel / team-selector / team-management-utils） |
 | `composer/` | 消息编辑器（TipTap 富文本） |
 | `editor/` | Monaco 代码编辑器、文件树、标签页 |
 | `workflow/` | Workflow 可视化编辑器（ReactFlow 节点） |
@@ -33,25 +33,36 @@
 
 ## Zustand Stores (src/stores/)
 
+44 个文件（含子目录），分三层：
+
+**顶层 store（25 个）**：
+
 | Store | 职责 |
 |---|---|
 | `agent.ts` | Agent 状态 |
 | `chat.ts` | 聊天会话/消息 |
 | `editor.ts` / `editor-send.ts` | 编辑器状态 |
 | `llm.ts` | LLM 配置 |
-| `workflow-editor/crud.ts` | Workflow CRUD |
-| `workflow-editor/edit.ts` | Workflow 编辑状态 |
 | `terminal.ts` | 终端 |
 | `git.ts` | Git 状态 |
-| `task.ts` | 任务 |
 | `issue.ts` | Issue |
-| `command.ts` | 命令 |
+| `command.ts` / `command-palette.ts` | 命令 / 命令面板 |
 | `channel.ts` | 频道 |
 | `notification.ts` | 通知 |
-| `command-palette.ts` | 命令面板 |
 | `mobile-panel.ts` | 移动端面板 |
 | `keyboard-shortcuts.ts` | 快捷键 |
-| `search-commands/` | 搜索命令（file/channel/issue/server/workflow/workspace） |
+| `workflow.ts` / `workspace.ts` / `worktree.ts` | 工作流/工作区/Worktree |
+| `activity-log.ts` | 活动日志 |
+| `code-favorites.ts` | 代码收藏 |
+| `confirm.ts` | 全局确认对话框 |
+| `content-usage-report.ts` | 用量报告 |
+| `custom-shortcuts.ts` | 自定义快捷键 |
+| `hooks.ts` | Hook 状态 |
+| `inspector-history.ts` | Inspector 历史 |
+
+**`workflow-editor/` 子目录（12 文件）**：crud / edit / execution / execution-logs / groups / interaction / staging / types / undo-redo / validation / versions / index
+
+**`search-commands/` 子目录（7 文件）**：channel-search / file-search / issue-search / server-search / workflow-search / workspace-search / index + types
 
 ## lib 工具 (src/lib/)
 

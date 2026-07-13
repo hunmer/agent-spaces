@@ -18,12 +18,13 @@ Next.js 16 前端 SPA，React 19 + Zustand 状态管理。提供聊天、代码�
 | [入口与启动](claude/entrypoints.md) | server.mjs、next.config.ts | 需要启动/构建 |
 | [页面路由](claude/public-interfaces.md) | 所有 page.tsx 路由 | 需要找页面 |
 | [组件与状态](claude/module-responsibilities.md) | 组件目录、Store 列表 | 需要定位组件/状态 |
+| [Chat 架构](claude/chat-architecture.md) | 聊天组件链路、消息渲染、数据流 | 改聊天/消息渲染 |
 | [依赖与配置](claude/dependencies-and-config.md) | UI 库、构建配置 | 排查依赖问题 |
 | [文件索引](claude/file-map.md) | 完整目录结构 | 需要找文件 |
 | [变更记录](claude/changelog.md) | 更新历史 | 了解变更 |
 
 ## 扫描状态
 
-- **更新时间**: 2026-07-10
-- **已扫描**: package.json、入口文件、全部 page 路由（25+，含 teams 页面）、组件目录（26 子域，含 teams/chat/sidebar）、Store 列表（23）、settings 各 Tab、locales（en/zh）
+- **更新时间**: 2026-07-13
+- **已扫描**: package.json、入口文件、全部 page 路由（25+，含 teams 页面）、组件目录（26 子域，含 teams/chat/sidebar）、**chat/ 43 文件全量（主面板/消息渲染/输入/频道/Agent/内联聊天）**、Store 列表（44 文件，含 workflow-editor/ 12 + search-commands/ 7 + 顶层 25）、settings 各 Tab、locales（en/zh）
 - **跳过**: node_modules, .next, out, public/monaco

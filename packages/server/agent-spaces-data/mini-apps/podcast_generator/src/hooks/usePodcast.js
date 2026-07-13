@@ -1,5 +1,5 @@
 const { useState, useCallback, useEffect, useMemo } = React;
-const { getUserSetting, saveUserSettings, callPluginTool, openAgentEditor } = window.AgentSpaces;
+const { getUserSetting, saveUserSettings, callPluginTool, openAgentEditor, copyText } = window.AgentSpaces;
 import {
   BUILTIN_PLUGIN, EPUB_PLUGIN, MAX_CONTENT_CHARS, SETTING_KEYS,
   AGENT_INIT_NAME, AGENT_INIT_PROMPT,
@@ -165,7 +165,7 @@ export function usePodcast() {
   const copyScript = useCallback(() => {
     if (!podcast.length) return;
     const text = podcast.map((it) => `${it.role}：${it.content}`).join('\n');
-    navigator.clipboard?.writeText(text).then(
+    Promise.resolve(copyText?.(text)).then(
       () => setToast('已复制到剪贴板'),
       () => setError('复制失败'),
     );
