@@ -17,7 +17,6 @@ import {
 } from '@/lib/native-notification';
 
 const LAST_SELECTION_CONFIG = 'last-selection.json';
-const FILE_UPLOAD_DEBUG = '[DEBUG-file-upload-20260713]';
 
 type UploadedWorkflowFile = {
   name: string;
@@ -46,21 +45,6 @@ type MiniAppRuntimeContext = {
   route: string;
   params: Record<string, unknown>;
 };
-
-function summarizeWorkflowUploadItem(item: WorkflowFileUploadItem) {
-  return {
-    id: item.id,
-    name: item.file?.name,
-    preview: item.preview,
-    uploadedPath: item.file?.uploadedPath,
-    uploadedUrl: item.file?.uploadedUrl,
-    uploadedHttpPath: item.file?.uploadedHttpPath,
-    uploading: item.file?.uploading,
-    uploadProgress: item.file?.uploadProgress,
-    uploadError: item.file?.uploadError,
-    hasUploadPromise: Boolean(item.file?.uploadPromise),
-  };
-}
 
 function normalizeRelativePath(filePath: string, fallback: string) {
   const normalized = (filePath || fallback).trim().replace(/\\/g, '/').replace(/^\/+/, '');
@@ -95,7 +79,6 @@ async function uploadWorkflowFile(
 ): Promise<UploadedWorkflowFile> {
   const formData = new FormData();
   formData.append('file', file);
-  onProgress?.(0);
 
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
@@ -194,15 +177,10 @@ function WrappedFileUpload(props: any) {
 
   useEffect(() => {
     latestValueRef.current = props.value || [];
-    console.info(FILE_UPLOAD_DEBUG, 'wrapper props.value changed', latestValueRef.current.map(summarizeWorkflowUploadItem));
     emitUploadStatus(latestValueRef.current);
   }, [props.value]);
 
   const handleChange = (files: WorkflowFileUploadItem[]) => {
-    console.info(FILE_UPLOAD_DEBUG, 'wrapper handleChange', {
-      autoUpload,
-      files: files.map(summarizeWorkflowUploadItem),
-    });
     if (!autoUpload) {
       latestValueRef.current = files;
       props.onChange?.(files);
@@ -233,15 +211,6 @@ function WrappedFileUpload(props: any) {
 
       promise
         .then((uploaded) => {
-          console.info(FILE_UPLOAD_DEBUG, 'upload request succeeded', {
-            itemId: item.id,
-            response: {
-              name: uploaded.name,
-              path: uploaded.path,
-              url: uploaded.url,
-              httpPath: uploaded.httpPath,
-            },
-          });
           const current = latestValueRef.current;
           const updated = current.map((currentItem) => (
             currentItem.id === item.id
@@ -249,12 +218,10 @@ function WrappedFileUpload(props: any) {
               : currentItem
           ));
           latestValueRef.current = updated;
-          console.info(FILE_UPLOAD_DEBUG, 'wrapper success state', updated.map(summarizeWorkflowUploadItem));
           props.onChange?.(updated);
           emitUploadStatus(updated);
         })
         .catch((error) => {
-          console.error(FILE_UPLOAD_DEBUG, 'upload request failed', { itemId: item.id, error });
           const current = latestValueRef.current;
           const updated = current.map((currentItem) => (
             currentItem.id === item.id

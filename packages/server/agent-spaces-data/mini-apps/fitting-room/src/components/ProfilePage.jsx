@@ -20,7 +20,6 @@ const {
 } = window.AgentSpacesUI;
 
 const PROFILE_PATH = "profile.json";
-const FILE_UPLOAD_DEBUG = "[DEBUG-file-upload-20260713]";
 
 const defaultProfile = {
   gender: "",
@@ -56,37 +55,13 @@ export default function ProfilePage() {
   const update = (patch) => setProfile((prev) => ({ ...prev, ...patch }));
 
   const onPhotosChange = (files) => {
-    console.info(FILE_UPLOAD_DEBUG, "ProfilePage onPhotosChange", files.map((item) => ({
-      id: item?.id,
-      preview: item?.preview,
-      name: item?.file?.name,
-      uploadedUrl: item?.file?.uploadedUrl,
-      uploadedHttpPath: item?.file?.uploadedHttpPath,
-      uploading: item?.file?.uploading,
-      uploadProgress: item?.file?.uploadProgress,
-    })));
     update({ photos: files });
     Promise.all((files || []).map(resolveUploadItem))
-      .then((resolved) => {
-        console.info(FILE_UPLOAD_DEBUG, "ProfilePage resolve complete", resolved);
-        setProfile((prev) => {
-          const photos = persistableFiles(prev.photos);
-          console.info(FILE_UPLOAD_DEBUG, "ProfilePage persist state", {
-            previousCount: prev.photos?.length || 0,
-            nextCount: photos.length,
-            photos,
-          });
-          return { ...prev, photos };
-        });
+      .then(() => {
+        setProfile((prev) => ({ ...prev, photos: persistableFiles(prev.photos) }));
       })
-      .catch((error) => {
-        console.error(FILE_UPLOAD_DEBUG, "ProfilePage resolve failed", error);
-      });
+      .catch(() => {});
   };
-
-  React.useEffect(() => {
-    console.info(FILE_UPLOAD_DEBUG, "ProfilePage photos committed", profile.photos);
-  }, [profile.photos]);
 
   const removePhoto = (id) => {
     update({ photos: (profile.photos || []).filter((p) => p.id !== id) });

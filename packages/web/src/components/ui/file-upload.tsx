@@ -39,7 +39,6 @@ interface FileUploadProps<TFile extends FileUploadFileLike = File> {
 }
 
 let _fileId = 0;
-const FILE_UPLOAD_DEBUG = "[DEBUG-file-upload-20260713]";
 
 export function FileUpload<TFile extends FileUploadFileLike = File>({
   value = [],
@@ -58,10 +57,8 @@ export function FileUpload<TFile extends FileUploadFileLike = File>({
   const dropzoneAccept = accept ?? getAcceptFromFileNameFilter(fileNameFilter);
 
   useEffect(() => {
-    console.info(FILE_UPLOAD_DEBUG, "component value changed", value.map(summarizeFileUploadItem));
     for (const item of value) {
       if (item.preview?.startsWith("blob:") && getUploadedFileUrl(item.file)) {
-        console.info(FILE_UPLOAD_DEBUG, "revoke local preview", summarizeFileUploadItem(item));
         URL.revokeObjectURL(item.preview);
       }
     }
@@ -77,14 +74,6 @@ export function FileUpload<TFile extends FileUploadFileLike = File>({
       }
 
       if (accepted.length === 0) return;
-
-      console.info(FILE_UPLOAD_DEBUG, "drop accepted", {
-        accepted: accepted.map((file) => ({ name: file.name, size: file.size, type: file.type })),
-        rejected: rejected.map((item) => ({
-          name: item.file.name,
-          errors: item.errors.map((error) => error.code),
-        })),
-      });
 
       const newFiles: FileUploadFile[] = accepted.map((file) => {
         const item: FileUploadFile = { id: `upload-${++_fileId}`, file };
@@ -234,23 +223,6 @@ function getFilePreview(item: FileUploadFile<FileUploadFileLike>): string | unde
 
 function getUploadedFileUrl(file: FileUploadFileLike): string | undefined {
   return file.uploadedHttpPath || file.uploadedUrl || file.httpPath || file.url;
-}
-
-function summarizeFileUploadItem(item: FileUploadFile<FileUploadFileLike>) {
-  return {
-    id: item.id,
-    name: item.file.name,
-    type: item.file.type,
-    preview: item.preview,
-    uploadedHttpPath: item.file.uploadedHttpPath,
-    uploadedUrl: item.file.uploadedUrl,
-    httpPath: item.file.httpPath,
-    url: item.file.url,
-    selectedPreview: getFilePreview(item),
-    uploading: item.file.uploading,
-    uploadProgress: item.file.uploadProgress,
-    uploadError: item.file.uploadError,
-  };
 }
 
 function formatSize(bytes: number): string {

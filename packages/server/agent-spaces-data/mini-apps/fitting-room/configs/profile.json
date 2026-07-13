@@ -5,6 +5,12 @@
   "bust": "",
   "waist": "",
   "hip": "",
-  "photos": [],
-  "updatedAt": "2026/7/13 15:10:36"
+  "photos": [
+    {
+      "url": "http://127.0.0.1:3100/static/uploads/微信图片_20260713093538_17_1072 (2)-dcc1bbc3-ac34-4725-bac9-82c14c9142da.jpg",
+      "path": "G:\\agent_spaces\\packages\\server\\public\\uploads\\微信图片_20260713093538_17_1072 (2)-dcc1bbc3-ac34-4725-bac9-82c14c9142da.jpg",
+      "name": "微信图片_20260713093538_17_1072 (2).jpg"
+    }
+  ],
+  "updatedAt": "2026/7/13 15:43:38"
 }
