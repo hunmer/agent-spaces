@@ -304,5 +304,26 @@
     "mainFile": "index.jsx",
     "createdAt": "2026-07-01T09:11:14.435Z",
     "updatedAt": "2026-07-01T09:11:14.435Z"
+  },
+  {
+    "id": "fitting-room",
+    "name": "试衣间",
+    "description": "管理个人形象，并通过图生图工作流生成发型与服装效果图",
+    "version": "1.0.0",
+    "type": "react",
+    "tags": [
+      "试衣",
+      "发型",
+      "服装",
+      "图生图",
+      "工作流"
+    ],
+    "mainFile": "index.jsx",
+    "createdAt": "2026-07-13T08:00:00.000Z",
+    "updatedAt": "2026-07-13T08:00:00.000Z",
+    "enabledPlugins": [
+      "@agent-spaces/builtin"
+    ],
+    "icon": "👗"
   }
 ]
