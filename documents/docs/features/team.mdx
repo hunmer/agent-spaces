@@ -1,0 +1,213 @@
+---
+sidebar_position: 6
+---
+
+# Team 协作
+
+Team 是一个**全局协作模块**，不绑定工作空间。它把多个 Agent 组织成一个团队，由 owner 统一编排任务，member 各自完成分工，通过会话（session）、任务（task）和收件箱（inbox）协同完成一个完整目标。
+
+适用于：需要多个 Agent 分工协作、接力交付的复杂任务，例如「前端 Agent 出页面 + 后端 Agent 出接口 + 文档 Agent 写说明」。
+
+## 核心概念
+
+| 概念 | 说明 |
+|------|------|
+| **Team** | 一组 Agent 的集合，全局存在，不归属于任何工作空间 |
+| **Membership** | 成员关系，记录某个 Agent 在 Team 中的角色与状态 |
+| **Session** | Team 的一次协作会话，以 UUID 唯一标识；消息、任务、运行时都按 session 隔离 |
+| **Task** | owner 分配给 member 的子任务，状态为 `pending / running / completed / failed` |
+| **Runtime** | 当前 session 的运行状态，记录每个成员产生的真实 Agent Session ID |
+| **Inbox** | 成员间的消息投递收件箱 |
+
+## 角色系统
+
+Team 内有 4 种角色，**注意它们是 Team 内角色，不是平台级身份**：
+
+| 角色 | 含义 | 权限 |
+|------|------|------|
+| `owner` | 团队创建者 / 最高权限 | 全部操作，包含创建任务、转移 owner |
+| `admin` | 团队管理员 | invite / set-role / remove / update |
+| `member` | 普通成员 | 参与 runtime / chat，完成分配给自己的 task |
+| `observer` | 观察者 | 只读 |
+
+关键规则：
+
+- 系统中**不存在「平台级 admin」**，`admin` 只是某个 Team 内的角色
+- 转移 owner 时，新的 owner 上位，其它 active owner 自动降级为 admin
+- 一个 Team 至少保留一个 owner，最后一个 owner 不能被移除
+
+## 成员来源
+
+Team 成员有 3 类来源（`agentStore`）：
+
+- **`agent`** — 来自 Agent 预设（Preset）
+- **`chat`** — 来自频道 Chat Agent
+- **`custom`** — 直接把一份 Agent 配置对象挂在成员关系上，无需预先存在
+
+邀请成员时会按来源做存在性校验，查不到返回 `AGENT_NOT_FOUND`。
+
+## 创建 Team
+
+1. 进入「Teams」管理页面
+2. 点击「创建 Team」
+3. 填写 Team 基础信息（名称、描述等）
+4. 添加初始成员
+5. 保存后，系统创建 owner 成员关系并写入每个初始成员
+
+### 从 Workflow 导入成员
+
+创建 Team 对话框支持从已有 Workflow 自动导入默认成员：
+
+1. 扫描 Workflow 中的 `agent_run` 节点
+2. 读取每个节点的 `agentConfigId`
+3. 去重后作为默认成员填入创建表单
+
+这样可以直接复用 Workflow 里已经编排好的 Agent 集合。
+
+## 成员管理
+
+在 Team 管理页可以对成员做增删改：
+
+- **邀请成员** — 指定来源与角色
+- **修改角色** — 例如把 member 提升为 admin
+- **移除成员** — 硬删除，不保留 removed 记录
+- **转移 owner** — 两步操作：先把新 owner 设为 `owner`（旧 owner 自动降 admin），再移除旧 owner
+
+:::tip
+Team 列表查询返回**全部 Team**，不再按成员可见性过滤。无论当前操作者是否为成员，都能看到所有 Team。
+:::
+
+## Team 协作会话
+
+Team 的协作在**会话（session）**中展开。每个 session 用一个 UUID 标识，彼此完全隔离。
+
+### 人工发起
+
+Team 聊天面板使用固定人工身份 `admin` 发起消息：
+
+```text
+用户手动发送
+  └─ admin -> owner（或 @ 的某个 member）
+       └─ 唤起目标 Agent 执行
+            └─ 目标 Agent -> admin（完成回复）
+```
+
+- 消息落盘保留真实方向：`admin -> 目标 Agent`，目标回复另存为反向消息
+- `admin` 不是 Team 角色，也不是成员，仅代表「用户在管理页手动触发」
+
+### 会话切换
+
+- 聊天面板右侧的 Session 下拉可切换该 Team 的历史会话
+- 频道中的 Team 消息卡携带 `metadata.sessionId`，点击即可打开对应会话
+- Team 页面通过 URL 参数 `team_id` / `session_id` 保存当前选择，刷新后可恢复
+
+### Task 调度
+
+典型的多 Agent 协作流程：
+
+1. owner 先一次性创建所有已知的下游任务（task 只能分配给非 owner 成员）
+2. owner handoff 给 member 时，member 的首个 `pending` task 自动进入 `running`
+3. member 执行完毕后**必须**调用 `team_task_manage(action=complete)` 标记完成
+4. member 未调用 complete 就返回，视为协议失败，task 标记 `failed`，Team runtime 标记 `error`
+5. 全部完成后，owner 调用 `team_task_complete`，其 `output` 作为整个 Team 任务的最终交付
+
+:::warning
+owner 首次 handoff 前必须先创建 task list。如果 task list 为空，服务端会返回 `TASK_LIST_REQUIRED` 并拒绝执行。
+:::
+
+## 收件箱与评论
+
+### Inbox
+
+成员间的消息投递会写入收件箱（`deliveries.json`）：
+
+- 人工输入记录为 `senderAgentId=admin`、`recipientAgentId=<目标 Agent>`
+- member 完成任务后的回复，收件人自动合并「人工发起者」和「active owner」，并通过 `Set` 去重
+- reply 落盘前会剥离 `<think>...</think>` 推理文本，避免污染 inbox
+
+### 评论
+
+Team 消息支持评论（comment），用于补充信息或交互讨论。
+
+## Agent 协作工具
+
+Team 能力通过一组内置工具暴露给 Agent，由 Agent 在运行时调用：
+
+| 工具 | 作用 |
+|------|------|
+| `team_manage` | Team 基础管理（create / get / update / dissolve） |
+| `team_membership_manage` | 成员管理（join / invite / leave） |
+| `team_message_send` | 向另一个成员发送消息并唤起下游 Agent |
+| `team_message_update` / `team_message_comment` | 更新消息 / 发表评论 |
+| `team_inbox_query` | 查询当前收件箱 |
+| `team_task_manage` | 任务管理（create / list / complete） |
+| `team_task_complete` | owner 标记整个 Team 任务完成并输出最终交付 |
+| `team_agent_session_list` | 查询成员运行产生的真实 Agent Session ID |
+
+### Handoff 生命周期
+
+`team_message_send` 从一个 Agent 唤起下一个 Agent 时：
+
+- Agent 工具入口**必须等待**下游 Agent 完成，不能 fire-and-forget
+- 否则父 LangChain stream 会提前关闭，导致下游 token 写入已关闭的 controller（报错 `Controller is already closed`）
+- UI 发送路径仍异步执行，不阻塞 HTTP 请求
+
+### 查询真实 Agent Session
+
+:::danger
+**禁止猜测 Agent Session ID**。Task `id`、Team `session_id`、Agent `session_id` 是三类完全不同的 ID，不能混用。
+:::
+
+正确调用顺序：
+
+```text
+team_agent_session_list(agent_id=<上游 agent>)
+  -> sessions[0].session_id
+  -> GetAgentSessionDetail(session_id=<返回值>)
+```
+
+## 数据存储
+
+Team 数据存储在全局目录：
+
+```text
+.agent-spaces-data/team/
+  teams.json                    # Team id 索引
+  {team_id}/
+    info.json                   # Team 基础信息
+    memberships.json            # 成员关系
+    {session_id}/
+      messages.json             # 发送过的 Team 消息
+      deliveries.json           # inbox 投递记录
+      comments.json             # 消息评论
+      runtimes.json             # 当前 session runtime 状态
+      tasks.json                # 当前 session 的任务列表
+      logs/team.log             # 每次成员运行的输入、工具调用与输出
+```
+
+`session_id` 是 Team 会话的唯一 UUID，runtime、消息、inbox、日志和前端消息卡都透传同一个 ID。
+
+## SDK 调用
+
+前端所有 Team 接口调用都走 `sdk.team.*`，内部统一解包 `{ success, code, message, data }` 信封。常用方法：
+
+| SDK 方法 | 作用 |
+|----------|------|
+| `sdk.team.list` / `get` / `create` / `update` / `dissolve` | Team 基础管理 |
+| `sdk.team.invite` / `setRole` / `remove` | 成员管理 |
+| `sdk.team.listSessions` / `getRuntime` / `sendRuntimeMessage` | 会话与运行时 |
+| `sdk.team.clearMessages` / `deleteMessage` | 消息清理 |
+| `sdk.team.deleteArchive` / `clearArchives` | 归档管理 |
+
+:::warning
+前端**不要**在组件里手拼 `/api/teams...` URL，必须走 `sdk.team.*`。
+:::
+
+## 已知限制
+
+- Team 编辑模式支持完整成员增删改 UI，但 PATCH 本身只改 Team 基础字段，成员变更走独立 membership 接口
+- Workflow 导入只导入 Agent id，不会导入复杂的 custom agent 配置
+- 旧 membership 数据没有独立迁移命令，仅在读取时兜底推断 `agentStore`
+- 旧的 `{team_id}/messages.json` 全局会话文件不会自动迁移到某个 session，需要保留旧消息时单独做一次性迁移
+- `sdk.team` 目前未封装消息评论接口，后续有前端调用点时补到同一模块
+- 历史 session 的 `runtimes.json` 可能没有 `agentSessions[]`，只有新代码执行过的成员运行才会自动记录

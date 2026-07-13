@@ -21,6 +21,7 @@ const sidebars: SidebarsConfig = {
         'features/mini-app',
         'features/agent/index',
         'features/issue-management',
+        'features/team',
         'features/chat',
         'features/code-editor',
         'features/terminal',
