@@ -118,6 +118,7 @@ export function ChatPanel({ workspaceId, channelId, miniAppContext, onAgentActiv
   const [deletingMsg, setDeletingMsg] = useState<Message | null>(null);
   const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
   const [replyTo, setReplyTo] = useState<{ id: string; label: string } | null>(null);
+  const [configAgentId, setConfigAgentId] = useState<string | null>(null);
   const [messagesLoading, setMessagesLoading] = useState(false);
   const [channelTeams, setChannelTeams] = useState<TeamView[]>([]);
   const [channelActive, setChannelActive] = useState(false);
@@ -408,8 +409,29 @@ export function ChatPanel({ workspaceId, channelId, miniAppContext, onAgentActiv
             }}
           />
         ) : null}
-        <ChatInput ref={chatInputRef} channelName={channel.name} channelId={channel.id} workspaceId={workspaceId} channel={channel} agents={mentionAgents} teams={channelTeams} messages={msgs} onSend={handleSend} isProcessing={isProcessing} onStop={handleStop} replyTo={replyTo} onCancelReply={() => setReplyTo(null)} onAgentActivated={onAgentActivated} />
+        <ChatInput ref={chatInputRef} channelName={channel.name} channelId={channel.id} workspaceId={workspaceId} channel={channel} agents={mentionAgents} teams={channelTeams} messages={msgs} onSend={handleSend} isProcessing={isProcessing} onStop={handleStop} replyTo={replyTo} onCancelReply={() => setReplyTo(null)} onAgentActivated={onAgentActivated} onConfigureAgent={(agentId) => setConfigAgentId(agentId)} />
       </div>
+
+      {configAgentId && (() => {
+        const agent = agents.find((item) => item.id === configAgentId);
+        if (!agent) return null;
+        return (
+          <Dialog open onOpenChange={(open) => { if (!open) setConfigAgentId(null); }}>
+            <DialogContent className="sm:max-w-2xl max-h-[85vh] flex flex-col gap-0 p-0 overflow-hidden">
+              <DialogHeader className="border-b px-5 py-3">
+                <DialogTitle>{t('messageItem.configureAgent')}</DialogTitle>
+                <DialogDescription />
+              </DialogHeader>
+              <AgentEditor
+                agent={normalizeAgent(agent)}
+                onSaved={() => setConfigAgentId(null)}
+                onBack={() => setConfigAgentId(null)}
+                showFooter
+              />
+            </DialogContent>
+          </Dialog>
+        );
+      })()}
 
       {/* 右侧：信息面板 - Drawer */}
       <Sheet open={infoOpen} onOpenChange={setInfoOpen}>
