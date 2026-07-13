@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState, type MouseEvent } from "react";
+import { useCallback, useEffect, useMemo, useState, type MouseEvent } from "react";
 import { useDropzone, type Accept, type FileRejection } from "react-dropzone";
 import { Upload, X, FileIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -55,14 +55,15 @@ export function FileUpload<TFile extends FileUploadFileLike = File>({
 }: FileUploadProps<TFile>) {
   const [dragError, setDragError] = useState<string | null>(null);
   const dropzoneAccept = accept ?? getAcceptFromFileNameFilter(fileNameFilter);
+  const files = useMemo(() => value.filter((item) => item?.file), [value]);
 
   useEffect(() => {
-    for (const item of value) {
+    for (const item of files) {
       if (item.preview?.startsWith("blob:") && getUploadedFileUrl(item.file)) {
         URL.revokeObjectURL(item.preview);
       }
     }
-  }, [value]);
+  }, [files]);
 
   const onDrop = useCallback(
     (accepted: File[], rejected: FileRejection[]) => {
@@ -83,19 +84,19 @@ export function FileUpload<TFile extends FileUploadFileLike = File>({
         return item;
       });
 
-      const next = maxFiles > 0 ? [...value, ...newFiles].slice(0, maxFiles) : [...value, ...newFiles];
+      const next = maxFiles > 0 ? [...files, ...newFiles].slice(0, maxFiles) : [...files, ...newFiles];
       onChange?.(next);
     },
-    [value, onChange, maxFiles],
+    [files, onChange, maxFiles],
   );
 
   const removeFile = useCallback(
     (id: string) => {
-      const target = value.find((f) => f.id === id);
+      const target = files.find((f) => f.id === id);
       if (target?.preview) URL.revokeObjectURL(target.preview);
-      onChange?.(value.filter((f) => f.id !== id));
+      onChange?.(files.filter((f) => f.id !== id));
     },
-    [value, onChange],
+    [files, onChange],
   );
 
   const { getRootProps, getInputProps, isDragActive, open: openFilePicker } = useDropzone({
@@ -154,9 +155,9 @@ export function FileUpload<TFile extends FileUploadFileLike = File>({
       {dragError && <p className="text-xs text-destructive">{dragError}</p>}
 
       {/* File list */}
-      {value.length > 0 && (
+      {files.length > 0 && (
         <div className="flex flex-col gap-2">
-          {value.map((item) => {
+          {files.map((item) => {
             const preview = getFilePreview(item);
             const uploaded = Boolean(getUploadedFileUrl(item.file));
             return (

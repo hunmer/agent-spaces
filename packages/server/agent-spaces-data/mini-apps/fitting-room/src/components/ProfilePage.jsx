@@ -34,37 +34,67 @@ const defaultProfile = {
 export default function ProfilePage() {
   const AS = window.AgentSpaces;
   const [profile, setProfile] = React.useState(defaultProfile);
+  const profileRef = React.useRef(defaultProfile);
   const [saving, setSaving] = React.useState(false);
   const [uploading, setUploading] = React.useState(false);
   const [status, setStatus] = React.useState("");
   const [error, setError] = React.useState("");
 
+  const replaceProfile = (next) => {
+    profileRef.current = next;
+    setProfile(next);
+  };
+
   React.useEffect(() => {
     const initial = AS.getConfig?.(PROFILE_PATH);
     if (initial && typeof initial === "object") {
-      setProfile({ ...defaultProfile, ...initial });
+      replaceProfile({ ...defaultProfile, ...initial, photos: persistableFiles(initial.photos) });
     }
     const off = AS.onConfigChanged?.((path, value) => {
       if (path === PROFILE_PATH && value && typeof value === "object") {
-        setProfile({ ...defaultProfile, ...value });
+        replaceProfile({ ...defaultProfile, ...value, photos: persistableFiles(value.photos) });
       }
     });
     return () => off?.();
   }, []);
 
-  const update = (patch) => setProfile((prev) => ({ ...prev, ...patch }));
+  const update = (patch) => replaceProfile({ ...profileRef.current, ...patch });
+
+  const writeProfile = (current, photos) => AS.invokeService("save_profile", {
+    gender: current.gender,
+    height: current.height,
+    weight: current.weight,
+    bust: current.bust,
+    waist: current.waist,
+    hip: current.hip,
+    photos,
+  });
 
   const onPhotosChange = (files) => {
-    update({ photos: files });
-    Promise.all((files || []).map(resolveUploadItem))
+    const list = Array.isArray(files) ? files : [];
+    update({ photos: list });
+    if (list.some((item) => item?.file?.uploading || item?.file?.uploadError)) return;
+
+    const persisted = persistableFiles(list);
+    if (persisted.length !== list.length) return;
+
+    const next = { ...profileRef.current, photos: persisted };
+    replaceProfile(next);
+    setError("");
+    writeProfile(next, persisted.map((item) => ({
+      url: item.file.httpPath || item.file.url,
+      path: item.file.uploadedPath || item.file.httpPath || item.file.url,
+      name: item.file.name,
+    })))
       .then(() => {
-        setProfile((prev) => ({ ...prev, photos: persistableFiles(prev.photos) }));
+        setStatus("图片已自动保存");
+        setTimeout(() => setStatus(""), 2000);
       })
-      .catch(() => {});
+      .catch((err) => setError(err?.message || String(err)));
   };
 
   const removePhoto = (id) => {
-    update({ photos: (profile.photos || []).filter((p) => p.id !== id) });
+    onPhotosChange((profile.photos || []).filter((p) => p.id !== id));
   };
 
   const save = async () => {
@@ -73,15 +103,7 @@ export default function ProfilePage() {
     setStatus("");
     try {
       const photos = await Promise.all((profile.photos || []).map(resolveUploadItem));
-      await AS.invokeService("save_profile", {
-        gender: profile.gender,
-        height: profile.height,
-        weight: profile.weight,
-        bust: profile.bust,
-        waist: profile.waist,
-        hip: profile.hip,
-        photos: photos.map((p) => ({ url: p.url, path: p.path, name: p.name })),
-      });
+      await writeProfile(profileRef.current, photos.map((p) => ({ url: p.url, path: p.path, name: p.name })));
       setStatus("已保存");
       setTimeout(() => setStatus(""), 2000);
     } catch (err) {

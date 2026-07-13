@@ -1,0 +1,40 @@
+[
+  {
+    "id": "1783929253124-0",
+    "type": "image",
+    "url": "http://127.0.0.1:3100/static/uploads/微信图片_20260713093538_17_1072 (2)-dcc1bbc3-ac34-4725-bac9-82c14c9142da.jpg",
+    "prompt": "",
+    "provider": "openai",
+    "model": "gpt-image-2",
+    "workflowId": "c19d5c51-7773-4193-a467-6b579b63c1d5",
+    "workflowName": "图生图",
+    "sourceImage": "http://127.0.0.1:3100/static/uploads/微信图片_20260713093538_17_1072 (2)-dcc1bbc3-ac34-4725-bac9-82c14c9142da.jpg",
+    "references": [
+      {
+        "url": "http://127.0.0.1:3100/static/uploads/3869ad38b8d70340280f04c723fe2711 (1)-76be0d46-5fcf-440e-8f99-af8e4a9ff47f.jpeg",
+        "path": "G:\\agent_spaces\\packages\\server\\public\\uploads\\3869ad38b8d70340280f04c723fe2711 (1)-76be0d46-5fcf-440e-8f99-af8e4a9ff47f.jpeg",
+        "name": "3869ad38b8d70340280f04c723fe2711 (1).jpeg"
+      }
+    ],
+    "createdAt": "2026/7/13 15:54:13"
+  },
+  {
+    "id": "1783929253124-1",
+    "type": "image",
+    "url": "http://127.0.0.1:3100/static/uploads/3869ad38b8d70340280f04c723fe2711 (1)-76be0d46-5fcf-440e-8f99-af8e4a9ff47f.jpeg",
+    "prompt": "",
+    "provider": "openai",
+    "model": "gpt-image-2",
+    "workflowId": "c19d5c51-7773-4193-a467-6b579b63c1d5",
+    "workflowName": "图生图",
+    "sourceImage": "http://127.0.0.1:3100/static/uploads/微信图片_20260713093538_17_1072 (2)-dcc1bbc3-ac34-4725-bac9-82c14c9142da.jpg",
+    "references": [
+      {
+        "url": "http://127.0.0.1:3100/static/uploads/3869ad38b8d70340280f04c723fe2711 (1)-76be0d46-5fcf-440e-8f99-af8e4a9ff47f.jpeg",
+        "path": "G:\\agent_spaces\\packages\\server\\public\\uploads\\3869ad38b8d70340280f04c723fe2711 (1)-76be0d46-5fcf-440e-8f99-af8e4a9ff47f.jpeg",
+        "name": "3869ad38b8d70340280f04c723fe2711 (1).jpeg"
+      }
+    ],
+    "createdAt": "2026/7/13 15:54:13"
+  }
+]
