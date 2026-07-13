@@ -31,6 +31,7 @@ import Placeholder from '@tiptap/extension-placeholder';
 import TaskList from '@tiptap/extension-task-list';
 import TaskItem from '@tiptap/extension-task-item';
 import * as AgentSpacesUI from '@/lib/ui-exports';
+import { LocaleIntlProvider, useLocale } from '@/components/layout/locale-provider';
 
 interface RenderErrorBoundaryProps {
   onError: (error: string | null) => void;
@@ -202,6 +203,7 @@ export function useMiniAppReactRenderer({
   files,
   mainFile,
 }: UseMiniAppReactRendererOptions) {
+  const { locale } = useLocale();
   const reactComponentRef = useRef<React.ComponentType<Record<string, unknown>> | null>(null);
   const componentPropsRef = useRef<Record<string, unknown> | undefined>(componentProps);
   const filesRef = useRef<Record<string, string>>(files || {});
@@ -226,11 +228,13 @@ export function useMiniAppReactRenderer({
     const root = getMiniAppRoot(container);
     root.render(
       React.createElement(RenderErrorBoundary, { onError },
-        React.createElement(Component, componentPropsRef.current)
+        React.createElement(LocaleIntlProvider, { locale },
+          React.createElement(Component, componentPropsRef.current)
+        )
       )
     );
     onError(null);
-  }, [containerRef, onError]);
+  }, [containerRef, locale, onError]);
 
   const compileReact = useCallback((code: string) => {
     if (!containerRef.current) return;

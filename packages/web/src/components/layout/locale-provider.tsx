@@ -26,6 +26,23 @@ export function useLocale() {
   return useContext(LocaleContext);
 }
 
+export function LocaleIntlProvider({ locale, children }: { locale: Locale; children: React.ReactNode }) {
+  return (
+    <NextIntlClientProvider
+      locale={locale}
+      messages={messagesMap[locale]}
+      now={new Date()}
+      timeZone="Asia/Shanghai"
+      onError={(err) => {
+        if (err.code === 'ENVIRONMENT_FALLBACK') return;
+        console.error(err);
+      }}
+    >
+      {children}
+    </NextIntlClientProvider>
+  );
+}
+
 function subscribe(callback: () => void) {
   window.addEventListener('storage', callback);
   return () => window.removeEventListener('storage', callback);
@@ -61,18 +78,9 @@ export function LocaleProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <LocaleContext.Provider value={{ locale, setLocale }}>
-      <NextIntlClientProvider
-        locale={locale}
-        messages={messagesMap[locale]}
-        now={new Date()}
-        timeZone="Asia/Shanghai"
-        onError={(err) => {
-          if (err.code === 'ENVIRONMENT_FALLBACK') return;
-          console.error(err);
-        }}
-      >
+      <LocaleIntlProvider locale={locale}>
         {children}
-      </NextIntlClientProvider>
+      </LocaleIntlProvider>
     </LocaleContext.Provider>
   );
 }
