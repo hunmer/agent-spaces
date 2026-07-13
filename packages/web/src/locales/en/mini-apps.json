@@ -9,7 +9,26 @@
     "loading": "Loading...",
     "empty": "No custom pages yet.",
     "createFirst": "Create your first page",
-    "noMatch": "No pages match your search."
+    "noMatch": "No pages match your search.",
+    "select": "Select"
+  },
+  "filters": {
+    "typeAll": "All types",
+    "typeReact": "React",
+    "typeHtml": "HTML",
+    "tags": "Tags",
+    "updatedAt": "Updated",
+    "createdAt": "Created",
+    "asc": "Ascending",
+    "desc": "Descending",
+    "clear": "Clear filter",
+    "confirm": "Confirm"
+  },
+  "listDialog": {
+    "title": "Select Pages",
+    "cancel": "Cancel",
+    "selectedCount": "{count} selected",
+    "selected": "{count} selected"
   },
   "card": {
     "edit": "Edit",

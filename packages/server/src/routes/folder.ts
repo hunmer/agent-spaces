@@ -13,33 +13,59 @@ interface DirEntry {
   path: string;
 }
 
+/** 枚举可用盘符/根路径。Windows 下探测 A-Z:，其它平台返回 ['/']。 */
+async function listDrives(): Promise<string[]> {
+  if (process.platform !== 'win32') return ['/'];
+  const drives: string[] = [];
+  for (let code = 65; code <= 90; code++) { // A-Z
+    const letter = String.fromCharCode(code);
+    const root = `${letter}:\\`;
+    try {
+      await stat(root);
+      drives.push(root);
+    } catch {
+      // 盘符不存在
+    }
+  }
+  return drives;
+}
+
 router.get('/browse', async (req: Request, res: Response) => {
   const raw = (req.query.path as string) || '';
   const includeFiles = req.query.files === '1';
   const fileFilter = (req.query.fileFilter as string) || '';
+  const limit = Math.max(1, Math.min(1000, parseInt(req.query.limit as string, 10) || 200));
+  const offset = Math.max(0, parseInt(req.query.offset as string, 10) || 0);
   const rawPath = raw === '~' || raw === '' ? homedir() : raw.replace(/^~[/\\]/, homedir() + sep);
   const dirPath = resolve(rawPath);
 
   try {
-    const entries = await readdir(dirPath, { withFileTypes: true });
+    const [entries, drives] = await Promise.all([
+      readdir(dirPath, { withFileTypes: true }),
+      listDrives(),
+    ]);
     const directories: DirEntry[] = [];
     const files: DirEntry[] = [];
 
     for (const entry of entries) {
       // Skip hidden entries
       if (entry.name.startsWith('.')) continue;
+      let isDir = false;
+      let isFile = false;
       try {
-        const fullPath = join(dirPath, entry.name);
-        await stat(fullPath);
-        if (entry.isDirectory()) {
-          directories.push({ name: entry.name, path: fullPath });
-        } else if (includeFiles && entry.isFile()) {
-          if (!fileFilter || entry.name.endsWith(fileFilter)) {
-            files.push({ name: entry.name, path: fullPath });
-          }
-        }
+        isDir = entry.isDirectory();
+        isFile = entry.isFile();
       } catch {
-        // Skip inaccessible entries
+        // Dirent 调用失败（如权限不足），跳过
+        continue;
+      }
+      const fullPath = join(dirPath, entry.name);
+      if (isDir) {
+        directories.push({ name: entry.name, path: fullPath });
+      } else if (includeFiles && isFile) {
+        if (!fileFilter || entry.name.endsWith(fileFilter)) {
+          files.push({ name: entry.name, path: fullPath });
+        }
       }
     }
 
@@ -50,13 +76,21 @@ router.get('/browse', async (req: Request, res: Response) => {
     directories.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
     files.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
 
+    // 文件分页（目录全量返回）
+    const filesTotal = files.length;
+    const pagedFiles = files.slice(offset, offset + limit);
+
     res.json({
       path: dirPath,
       parent: isRoot ? null : parentPath,
       separator: sep,
       home: homedir(),
+      drives,
       directories,
-      files,
+      files: pagedFiles,
+      filesTotal,
+      limit,
+      offset,
     });
   } catch (err: any) {
     res.status(400).json({ error: err.message || 'Cannot read directory' });

@@ -7,12 +7,16 @@ import type { MiniAppProject } from '@agent-spaces/sdk';
 import { sdk } from '@/lib/sdk';
 import { pluginApi } from '@/lib/workflow-plugin-api';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Search, Plus, Upload, FileQuestion, Store } from 'lucide-react';
+import { Search, Plus, Upload, FileQuestion, Store, CheckSquare } from 'lucide-react';
 import { MiniAppCard } from './mini-apps-card';
 import { MiniAppCreateDialog } from './mini-apps-create-dialog';
 import { MiniAppStoreDialog } from './mini-apps-store-dialog';
 import { MiniAppEditor } from './mini-app-editor';
+import { MiniAppListDialog } from './mini-apps-list-dialog';
+import {
+  MiniAppFilterToolbar,
+  useMiniAppFilters,
+} from './mini-apps-filters';
 import { useSearchParams } from 'next/navigation';
 
 function fileToBase64(file: File): Promise<string> {
@@ -41,11 +45,15 @@ export function MiniAppPage() {
 function MiniAppListPage() {
   const t = useTranslations('mini-apps');
   const [projects, setProjects] = useState<MiniAppProject[]>([]);
-  const [search, setSearch] = useState('');
   const [createOpen, setCreateOpen] = useState(false);
   const [storeOpen, setStoreOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [allPlugins, setAllPlugins] = useState<{ id: string; name: string; iconPath?: string }[]>([]);
+  // 多选 Dialog 状态
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [pickerSelectedIds, setPickerSelectedIds] = useState<string[]>([]);
+
+  const filters = useMiniAppFilters({ projects });
 
   const loadProjects = useCallback(async () => {
     try {
@@ -66,17 +74,6 @@ function MiniAppListPage() {
       setAllPlugins(list.map(p => ({ id: p.id, name: p.name, iconPath: p.iconPath })));
     }).catch(() => {});
   }, []);
-
-  const filtered = useMemo(() => {
-    if (!search) return projects;
-    const q = search.toLowerCase();
-    return projects.filter(
-      (p) =>
-        p.name.toLowerCase().includes(q) ||
-        p.description?.toLowerCase().includes(q) ||
-        p.tags?.some((t) => t.toLowerCase().includes(q)),
-    );
-  }, [projects, search]);
 
   const handleDelete = useCallback(async (id: string) => {
     await sdk.miniApp.delete_(id);
@@ -106,6 +103,21 @@ function MiniAppListPage() {
     input.click();
   }, [loadProjects]);
 
+  // 多选 Dialog 确认回调：返回选中的完整项目数据
+  const handlePickerConfirm = useCallback((selected: MiniAppProject[]) => {
+    setPickerOpen(false);
+    setPickerSelectedIds([]);
+    toast.success(t('listDialog.selected', { count: selected.length }));
+    // TODO: 在此消费 selected —— 例如绑定到工作流、批量导出等
+    // eslint-disable-next-line no-console
+    console.log('[mini-apps picker] selected:', selected);
+  }, [t]);
+
+  const openPicker = useCallback(() => {
+    setPickerSelectedIds([]);
+    setPickerOpen(true);
+  }, []);
+
   return (
     <div className="p-6 h-full flex flex-col overflow-y-auto">
       {/* Header */}
@@ -117,6 +129,10 @@ function MiniAppListPage() {
           </p>
         </div>
         <div className="flex gap-2">
+          <Button variant="outline" onClick={openPicker}>
+            <CheckSquare className="h-4 w-4 mr-2" />
+            {t('page.select')}
+          </Button>
           <Button variant="outline" onClick={() => setStoreOpen(true)}>
             <Store className="h-4 w-4 mr-2" />
             {t('page.store')}
@@ -138,7 +154,11 @@ function MiniAppListPage() {
         <p className="text-sm text-muted-foreground mb-3">
           {t('page.subtitle')}
         </p>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
+          <Button variant="outline" size="sm" onClick={openPicker}>
+            <CheckSquare className="h-4 w-4 mr-2" />
+            {t('page.select')}
+          </Button>
           <Button variant="outline" size="sm" onClick={() => setStoreOpen(true)}>
             <Store className="h-4 w-4 mr-2" />
             {t('page.store')}
@@ -154,23 +174,15 @@ function MiniAppListPage() {
         </div>
       </div>
 
-      {/* Search */}
-      <div className="relative mb-4">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder={t('page.searchPlaceholder')}
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="pl-9"
-        />
-      </div>
+      {/* Filters toolbar (search / type / sort / tags) */}
+      <MiniAppFilterToolbar state={filters} className="mb-4" />
 
       {/* Content */}
       {loading ? (
         <div className="flex items-center justify-center py-12 text-muted-foreground text-sm">
           {t('page.loading')}
         </div>
-      ) : filtered.length === 0 ? (
+      ) : filters.filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center flex-1 text-muted-foreground">
           <FileQuestion className="h-10 w-10 mb-3" />
           {projects.length === 0 ? (
@@ -187,7 +199,7 @@ function MiniAppListPage() {
         </div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 flex-1 content-start">
-          {filtered.map((project) => (
+          {filters.filtered.map((project) => (
             <MiniAppCard
               key={project.id}
               project={project}
@@ -201,6 +213,16 @@ function MiniAppListPage() {
 
       <MiniAppCreateDialog open={createOpen} onOpenChange={setCreateOpen} />
       <MiniAppStoreDialog open={storeOpen} onOpenChange={setStoreOpen} onImported={loadProjects} />
+      <MiniAppListDialog
+        open={pickerOpen}
+        projects={projects}
+        selectable
+        selectedIds={pickerSelectedIds}
+        onSelectedIdsChange={setPickerSelectedIds}
+        onConfirm={handlePickerConfirm}
+        onClose={() => setPickerOpen(false)}
+        confirmLabelKey="filters.confirm"
+      />
     </div>
   );
 }

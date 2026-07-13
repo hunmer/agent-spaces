@@ -9,7 +9,26 @@
     "loading": "加载中…",
     "empty": "暂无自定义页面。",
     "createFirst": "创建第一个页面",
-    "noMatch": "没有匹配的页面。"
+    "noMatch": "没有匹配的页面。",
+    "select": "选择"
+  },
+  "filters": {
+    "typeAll": "全部类型",
+    "typeReact": "React",
+    "typeHtml": "HTML",
+    "tags": "标签",
+    "updatedAt": "更新时间",
+    "createdAt": "创建时间",
+    "asc": "升序",
+    "desc": "降序",
+    "clear": "清除筛选",
+    "confirm": "确定"
+  },
+  "listDialog": {
+    "title": "选择页面",
+    "cancel": "取消",
+    "selectedCount": "已选 {count} 项",
+    "selected": "已选择 {count} 项"
   },
   "card": {
     "edit": "编辑",

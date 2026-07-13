@@ -18,9 +18,15 @@ interface FolderBrowseResult {
   parent: string | null;
   separator: string;
   home: string;
+  drives?: string[];
   directories: BrowseEntry[];
   files?: BrowseEntry[];
+  filesTotal?: number;
+  limit?: number;
+  offset?: number;
 }
+
+const FILES_PAGE_SIZE = 200;
 
 interface PermissionCheckResult {
   path: string;
@@ -46,7 +52,10 @@ export function FolderPicker({ value, onChange, className, placeholder = "/path/
   const [files, setFiles] = useState<BrowseEntry[]>([]);
   const t = useTranslations('folderPicker');
   const [parentPath, setParentPath] = useState<string | null>(null);
+  const [drives, setDrives] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [filesTotal, setFilesTotal] = useState(0);
   const [error, setError] = useState("");
   const [creating, setCreating] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
@@ -55,6 +64,8 @@ export function FolderPicker({ value, onChange, className, placeholder = "/path/
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const newFolderInputRef = useRef<HTMLInputElement>(null);
+  // 保留当前 browse 的路径，供 loadMore 复用
+  const browsePathRef = useRef("");
 
   const checkPermission = useCallback(async (path: string) => {
     if (!path) {
@@ -72,27 +83,64 @@ export function FolderPicker({ value, onChange, className, placeholder = "/path/
     }
   }, []);
 
+  const buildBrowseUrl = useCallback((path: string, offset: number) => {
+    let url = `/api/folder/browse?path=${encodeURIComponent(path)}&limit=${FILES_PAGE_SIZE}&offset=${offset}`;
+    if (allowFiles) {
+      url += '&files=1';
+      if (fileFilter) url += `&fileFilter=${encodeURIComponent(fileFilter)}`;
+    }
+    return url;
+  }, [allowFiles, fileFilter]);
+
   const browse = useCallback(async (path: string) => {
     setLoading(true);
+    setLoadingMore(false);
     setError("");
+    browsePathRef.current = path;
     try {
-      let url = `/api/folder/browse?path=${encodeURIComponent(path)}`;
-      if (allowFiles) {
-        url += '&files=1';
-        if (fileFilter) url += `&fileFilter=${encodeURIComponent(fileFilter)}`;
-      }
-      const data = await sdk.http.get<FolderBrowseResult>(url);
+      const data = await sdk.http.get<FolderBrowseResult>(buildBrowseUrl(path, 0));
+      // 若期间用户已切换到其它路径，丢弃本次结果
+      if (browsePathRef.current !== path) return;
       setCurrentPath(data.path);
       setDirectories(data.directories);
       setFiles(data.files ?? []);
+      setFilesTotal(data.filesTotal ?? (data.files?.length ?? 0));
       setParentPath(data.parent);
+      setDrives(data.drives ?? []);
       checkPermission(data.path);
     } catch (err: unknown) {
+      if (browsePathRef.current !== path) return;
       setError(err instanceof Error ? err.message : String(err));
     } finally {
-      setLoading(false);
+      if (browsePathRef.current === path) setLoading(false);
     }
-  }, [checkPermission, allowFiles, fileFilter]);
+  }, [checkPermission, buildBrowseUrl]);
+
+  // 加载更多文件（滚动到底部触发）
+  const loadMoreFiles = useCallback(async () => {
+    const path = browsePathRef.current;
+    if (!path || loading || loadingMore) return;
+    if (files.length >= filesTotal) return;
+    setLoadingMore(true);
+    try {
+      const data = await sdk.http.get<FolderBrowseResult>(buildBrowseUrl(path, files.length));
+      if (browsePathRef.current !== path) return;
+      setFiles(prev => [...prev, ...(data.files ?? [])]);
+      setFilesTotal(data.filesTotal ?? filesTotal);
+    } catch {
+      // 静默失败，不打断浏览
+    } finally {
+      if (browsePathRef.current === path) setLoadingMore(false);
+    }
+  }, [loading, loadingMore, files.length, filesTotal, buildBrowseUrl]);
+
+  const handleListScroll = useCallback(() => {
+    const el = listRef.current;
+    if (!el) return;
+    if (el.scrollTop + el.clientHeight >= el.scrollHeight - 24) {
+      loadMoreFiles();
+    }
+  }, [loadMoreFiles]);
 
   useEffect(() => {
     if (open) {
@@ -214,6 +262,18 @@ export function FolderPicker({ value, onChange, className, placeholder = "/path/
             >
               <ArrowUp className="size-3.5" />
             </button>
+            {drives.length > 1 && (
+              <select
+                value={drives.find(d => currentPath.toLowerCase().startsWith(d.toLowerCase())) ?? ''}
+                onChange={(e) => browse(e.target.value)}
+                className="h-7 shrink-0 rounded-md border border-border bg-muted px-1.5 text-xs text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring cursor-pointer"
+                title="Switch drive"
+              >
+                {drives.map(d => (
+                  <option key={d} value={d}>{d.replace(/[\\/]+$/, '')}</option>
+                ))}
+              </select>
+            )}
             <Input
               className="truncate bg-muted text-xs text-muted-foreground font-mono focus-visible:bg-background h-7"
               value={currentPath}
@@ -276,7 +336,7 @@ export function FolderPicker({ value, onChange, className, placeholder = "/path/
           )}
 
           {/* Directory + file list */}
-          <div ref={listRef} className="flex-1 overflow-y-auto p-1.5">
+          <div ref={listRef} onScroll={handleListScroll} className="flex-1 overflow-y-auto p-1.5">
             {loading ? (
               <div className="flex items-center justify-center py-8 text-muted-foreground">
                 <Loader2 className="size-4 animate-spin mr-2" />
@@ -315,6 +375,16 @@ export function FolderPicker({ value, onChange, className, placeholder = "/path/
                     <span className="flex-1 truncate font-mono text-xs">{file.name}</span>
                   </button>
                 ))}
+                {loadingMore ? (
+                  <div className="flex items-center justify-center py-3 text-xs text-muted-foreground">
+                    <Loader2 className="size-3.5 animate-spin mr-2" />
+                    Loading more...
+                  </div>
+                ) : files.length > 0 && files.length < filesTotal ? (
+                  <div className="py-2 text-center text-xs text-muted-foreground">
+                    {files.length} / {filesTotal}
+                  </div>
+                ) : null}
               </>
             )}
           </div>
