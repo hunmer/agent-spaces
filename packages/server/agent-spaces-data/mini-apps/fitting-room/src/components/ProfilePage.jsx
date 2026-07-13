@@ -194,6 +194,7 @@ export default function ProfilePage() {
           value={profile.photos}
           onChange={onPhotosChange}
           onUploadStatusChange={(s) => setUploading(!!s?.uploading)}
+          autoUpload
           accept="image/*"
           maxFiles={20}
           placeholder="拖拽照片到此处，或点击选择（可多选）"

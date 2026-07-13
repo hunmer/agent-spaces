@@ -228,9 +228,10 @@ export function useMiniAppReactRenderer({
     const root = getMiniAppRoot(container);
     root.render(
       React.createElement(RenderErrorBoundary, { onError },
-        React.createElement(LocaleIntlProvider, { locale },
-          React.createElement(Component, componentPropsRef.current)
-        )
+        React.createElement(LocaleIntlProvider, {
+          locale,
+          children: React.createElement(Component, componentPropsRef.current),
+        })
       )
     );
     onError(null);

@@ -209,6 +209,7 @@ export default function GenerateDialog({ open, onClose, kind, workflowId, workfl
               value={uploadedSource}
               onChange={onUploadedSourceChange}
               onUploadStatusChange={(s) => setUploadingSource(!!s?.uploading)}
+              autoUpload
               accept="image/*"
               maxFiles={1}
               placeholder="拖拽或点击上传 1 张形象图"
@@ -224,6 +225,7 @@ export default function GenerateDialog({ open, onClose, kind, workflowId, workfl
             value={references}
             onChange={onReferencesChange}
             onUploadStatusChange={(s) => setUploadingRefs(!!s?.uploading)}
+            autoUpload
             accept="image/*"
             maxFiles={6}
             placeholder="拖拽参考图到此处，或点击选择"

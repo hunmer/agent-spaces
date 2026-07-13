@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState, type MouseEvent } from "react";
+import { useCallback, useEffect, useState, type MouseEvent } from "react";
 import { useDropzone, type Accept, type FileRejection } from "react-dropzone";
 import { Upload, X, FileIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -11,6 +11,8 @@ export interface FileUploadFileLike {
   type: string;
   url?: string;
   httpPath?: string;
+  uploadedUrl?: string;
+  uploadedHttpPath?: string;
   uploading?: boolean;
   uploadProgress?: number;
   uploadError?: string;
@@ -53,6 +55,14 @@ export function FileUpload<TFile extends FileUploadFileLike = File>({
 }: FileUploadProps<TFile>) {
   const [dragError, setDragError] = useState<string | null>(null);
   const dropzoneAccept = accept ?? getAcceptFromFileNameFilter(fileNameFilter);
+
+  useEffect(() => {
+    for (const item of value) {
+      if (item.preview?.startsWith("blob:") && getUploadedFileUrl(item.file)) {
+        URL.revokeObjectURL(item.preview);
+      }
+    }
+  }, [value]);
 
   const onDrop = useCallback(
     (accepted: File[], rejected: FileRejection[]) => {
@@ -148,6 +158,7 @@ export function FileUpload<TFile extends FileUploadFileLike = File>({
         <div className="flex flex-col gap-2">
           {value.map((item) => {
             const preview = getFilePreview(item);
+            const uploaded = Boolean(getUploadedFileUrl(item.file));
             return (
               <div
                 key={item.id}
@@ -170,7 +181,7 @@ export function FileUpload<TFile extends FileUploadFileLike = File>({
                     )}
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    {item.file.uploadError || (item.file.uploading ? "上传中" : formatSize(item.file.size))}
+                    {item.file.uploadError || (item.file.uploading ? "上传中" : uploaded ? "已上传" : formatSize(item.file.size))}
                   </p>
                   {item.file.uploading && (
                     <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-muted">
@@ -206,9 +217,12 @@ export function FileUpload<TFile extends FileUploadFileLike = File>({
 }
 
 function getFilePreview(item: FileUploadFile<FileUploadFileLike>): string | undefined {
-  if (item.preview) return item.preview;
   if (!item.file.type.startsWith("image/")) return undefined;
-  return item.file.url || item.file.httpPath;
+  return getUploadedFileUrl(item.file) || item.preview;
+}
+
+function getUploadedFileUrl(file: FileUploadFileLike): string | undefined {
+  return file.uploadedHttpPath || file.uploadedUrl || file.httpPath || file.url;
 }
 
 function formatSize(bytes: number): string {
