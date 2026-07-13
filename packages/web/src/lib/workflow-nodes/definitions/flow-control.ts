@@ -286,6 +286,16 @@ export const flowControlNodes: NodeTypeDefinition[] = [
     ],
   },
   {
+    type: 'sub_workflow',
+    label: 'nodes.sub_workflow.label',
+    category: 'nodes.categories.flowControl',
+    icon: 'Workflow',
+    description: 'nodes.sub_workflow.description',
+    properties: [],
+    allowInputFields: true,
+    outputs: [{ key: 'result', type: 'any' }],
+  },
+  {
     type: LOOP_BREAK_NODE_TYPE,
     label: 'nodes.loop_break.label',
     category: 'nodes.categories.flowControl',

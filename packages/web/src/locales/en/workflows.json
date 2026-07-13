@@ -733,6 +733,10 @@
         "key": "Variable Name"
       }
     },
+    "sub_workflow": {
+      "label": "Sub-workflow",
+      "description": "Execute an independent sub-workflow"
+    },
     "loop_break": {
       "label": "Break Loop",
       "description": "Mark the end of the current iteration and stop further looping in loop_body"

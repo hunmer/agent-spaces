@@ -733,6 +733,10 @@
         "key": "变量名"
       }
     },
+    "sub_workflow": {
+      "label": "子工作流",
+      "description": "执行一个独立的子工作流"
+    },
     "loop_break": {
       "label": "跳出循环",
       "description": "在 loop_body 中标记本轮结束后停止后续循环"

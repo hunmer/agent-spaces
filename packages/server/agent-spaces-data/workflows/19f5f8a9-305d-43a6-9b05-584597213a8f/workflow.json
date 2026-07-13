@@ -457,6 +457,48 @@
         "image": "{{ __data__[\"node_1781681576137_start\"].images }}",
         "prompt": "{{ __data__[\"node_1781681576137_start\"].prompt }}"
       }
+    },
+    {
+      "id": "node_1783940935348_adxsie",
+      "type": "sub_workflow",
+      "label": "nodes.sub_workflow.label",
+      "position": {
+        "x": -7.5,
+        "y": 548.75
+      },
+      "data": {
+        "outputs": [
+          {
+            "key": "result",
+            "type": "any"
+          }
+        ],
+        "sourceNodeId": "node_1781681576137_start",
+        "sourceHandle": "source",
+        "inputFields": []
+      }
+    },
+    {
+      "id": "node_1783940994363_34zl03",
+      "type": "agent_run",
+      "label": "nodes.agent_run.label",
+      "position": {
+        "x": 255,
+        "y": 720
+      },
+      "data": {
+        "permissionMode": "dontAsk",
+        "outputs": [
+          {
+            "key": "result",
+            "type": "string"
+          },
+          {
+            "key": "usage",
+            "type": "object"
+          }
+        ]
+      }
     }
   ],
   "edges": [
@@ -511,12 +553,6 @@
       "target": "node_1782272119586_dim19h",
       "sourceHandle": "source",
       "targetHandle": "target"
-    },
-    {
-      "id": "e-node_1781681576137_start-source-node_1782281779113_6rk17s-target",
-      "source": "node_1781681576137_start",
-      "target": "node_1782281779113_6rk17s",
-      "sourceHandle": "source"
     },
     {
       "id": "e-node_1782281779113_6rk17s-source-node_1781686908308_6flfam-target",
@@ -791,10 +827,21 @@
       "edgeKind": "reference",
       "sourceHandle": "output:target",
       "targetHandle": "property:conditions[3].conditions[0].field"
+    },
+    {
+      "id": "e-node_1781681576137_start-source-node_1783940935348_adxsie-target",
+      "source": "node_1781681576137_start",
+      "target": "node_1783940935348_adxsie",
+      "sourceHandle": "source"
+    },
+    {
+      "id": "e-node_1783940935348_adxsie-source-node_1782281779113_6rk17s-target",
+      "source": "node_1783940935348_adxsie",
+      "target": "node_1782281779113_6rk17s"
     }
   ],
   "createdAt": 1782271756656,
-  "updatedAt": 1783937374869,
+  "updatedAt": 1783941004611,
   "published": false,
   "enabledPlugins": [
     "workflow.openai",
