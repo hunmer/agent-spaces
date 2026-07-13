@@ -131,3 +131,58 @@ test('reference edge injects source output into target input field', async () =>
   assert.equal(result, 'completed');
   assert.deepEqual(session.steps[0]?.output, { echoed: 'from upstream' });
 });
+
+test('reference edge preserves switch condition fields inside arrays', async () => {
+  const manager = new ExecutionManager({
+    emit: () => {},
+    interactionManager: {} as never,
+    clientNodeManager: {} as never,
+  });
+  const sourceNode: WorkflowNode = {
+    id: 'source',
+    type: 'start',
+    label: 'Source',
+    position: { x: 0, y: 0 },
+    data: {},
+  };
+  const switchNode: WorkflowNode = {
+    id: 'switch',
+    type: 'switch',
+    label: 'Switch',
+    position: { x: 0, y: 0 },
+    data: {
+      conditions: [{
+        id: 'group',
+        joiner: 'and',
+        conditions: [{
+          id: 'condition',
+          variable: '',
+          field: '',
+          compareMode: 'value',
+          operator: 'equals',
+          value: 'a',
+        }],
+      }],
+    },
+  };
+  const edges: WorkflowEdge[] = [
+    {
+      id: 'source-switch-reference',
+      source: 'source',
+      target: 'switch',
+      edgeKind: 'reference',
+      sourceHandle: 'output:value',
+      targetHandle: 'property:conditions[0].conditions[0].variable',
+    },
+  ];
+  const session = createBaseSession([sourceNode, switchNode], edges, {
+    source: { value: 'a' },
+  });
+
+  const result = await (manager as unknown as {
+    executeNode(session: ExecutionSession, node: WorkflowNode): Promise<'completed' | 'interrupted'>;
+  }).executeNode(session, switchNode);
+
+  assert.equal(result, 'completed');
+  assert.deepEqual(session.steps[0]?.output, { __branch__: 'case-0', matchedIndex: 0 });
+});

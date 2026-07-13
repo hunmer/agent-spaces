@@ -33,7 +33,7 @@ export function setNestedValue(obj: Record<string, any>, path: string, value: un
   let current: Record<string, any> = obj;
   for (const part of parts.slice(0, -1)) {
     const next = current[part];
-    if (!next || typeof next !== 'object' || Array.isArray(next)) current[part] = {};
+    if (!next || typeof next !== 'object') current[part] = {};
     current = current[part];
   }
   current[parts[parts.length - 1]] = value;

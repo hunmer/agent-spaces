@@ -1,0 +1,196 @@
+{
+  "id": "26c02fe3-3363-4932-8d36-fc1f4a7b0fa8",
+  "name": "switch测试",
+  "type": "normal",
+  "folderId": null,
+  "nodes": [
+    {
+      "id": "node_1783932675883_start",
+      "type": "start",
+      "label": "开始",
+      "position": {
+        "x": 250,
+        "y": 50
+      },
+      "data": {
+        "inputFields": [
+          {
+            "key": "value",
+            "type": "string",
+            "value": "",
+            "children": []
+          }
+        ]
+      },
+      "inputFields": [
+        {
+          "key": "value",
+          "type": "string",
+          "value": "",
+          "children": []
+        }
+      ]
+    },
+    {
+      "id": "node_1783932675883_end",
+      "type": "end",
+      "label": "结束",
+      "position": {
+        "x": 990,
+        "y": 450
+      },
+      "data": {}
+    },
+    {
+      "id": "node_1783932685949_9hvbxk",
+      "type": "switch",
+      "label": "nodes.switch.label",
+      "position": {
+        "x": 540,
+        "y": 165
+      },
+      "data": {
+        "conditions": [
+          {
+            "id": "group_1783932701018_lfbj",
+            "joiner": "and",
+            "conditions": [
+              {
+                "id": "cond_1783932701018_v6ng",
+                "variable": "{{ __data__[\"node_1783932675883_start\"].value }}",
+                "field": "{{ __data__[\"node_1783932675883_start\"].value }}",
+                "compareMode": "value",
+                "operator": "equals",
+                "value": "a"
+              }
+            ]
+          },
+          {
+            "id": "group_1783932709331_o9nk",
+            "joiner": "and",
+            "conditions": [
+              {
+                "id": "cond_1783932709331_cz93",
+                "variable": "{{ __data__[\"node_1783932675883_start\"].value }}",
+                "field": "{{ __data__[\"node_1783932675883_start\"].value }}",
+                "compareMode": "value",
+                "operator": "equals",
+                "value": "b"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "node_1783932802052_uwedd5",
+      "type": "alert",
+      "label": "nodes.alert.label",
+      "position": {
+        "x": 975,
+        "y": 180
+      },
+      "data": {
+        "title": "nodes.alert.props.title_default",
+        "outputs": [
+          {
+            "key": "confirmed",
+            "type": "boolean"
+          }
+        ],
+        "sourceNodeId": "node_1783932685949_9hvbxk",
+        "sourceHandle": "case-0",
+        "message": "a"
+      }
+    },
+    {
+      "id": "node_1783932805883_ymrqdt",
+      "type": "alert",
+      "label": "nodes.alert.label",
+      "position": {
+        "x": 1005,
+        "y": 315
+      },
+      "data": {
+        "title": "nodes.alert.props.title_default",
+        "outputs": [
+          {
+            "key": "confirmed",
+            "type": "boolean"
+          }
+        ],
+        "sourceNodeId": "node_1783932685949_9hvbxk",
+        "sourceHandle": "case-1",
+        "message": "b"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e-node_1783932675883_start-source-node_1783932685949_9hvbxk-target",
+      "source": "node_1783932675883_start",
+      "target": "node_1783932685949_9hvbxk",
+      "edgeKind": "runtime",
+      "sourceHandle": "source",
+      "targetHandle": "target"
+    },
+    {
+      "id": "e-node_1783932675883_start-output:value-node_1783932685949_9hvbxk-property:conditions[0].conditions[0].variable",
+      "source": "node_1783932675883_start",
+      "target": "node_1783932685949_9hvbxk",
+      "edgeKind": "reference",
+      "sourceHandle": "output:value",
+      "targetHandle": "property:conditions[0].conditions[0].variable"
+    },
+    {
+      "id": "e-node_1783932675883_start-output:value-node_1783932685949_9hvbxk-property:conditions[0].conditions[0].field",
+      "source": "node_1783932675883_start",
+      "target": "node_1783932685949_9hvbxk",
+      "edgeKind": "reference",
+      "sourceHandle": "output:value",
+      "targetHandle": "property:conditions[0].conditions[0].field"
+    },
+    {
+      "id": "e-node_1783932675883_start-output:value-node_1783932685949_9hvbxk-property:conditions[1].conditions[0].variable",
+      "source": "node_1783932675883_start",
+      "target": "node_1783932685949_9hvbxk",
+      "edgeKind": "reference",
+      "sourceHandle": "output:value",
+      "targetHandle": "property:conditions[1].conditions[0].variable"
+    },
+    {
+      "id": "e-node_1783932675883_start-output:value-node_1783932685949_9hvbxk-property:conditions[1].conditions[0].field",
+      "source": "node_1783932675883_start",
+      "target": "node_1783932685949_9hvbxk",
+      "edgeKind": "reference",
+      "sourceHandle": "output:value",
+      "targetHandle": "property:conditions[1].conditions[0].field"
+    },
+    {
+      "id": "e-node_1783932685949_9hvbxk-case-0-node_1783932802052_uwedd5-target",
+      "source": "node_1783932685949_9hvbxk",
+      "target": "node_1783932802052_uwedd5",
+      "sourceHandle": "case-0"
+    },
+    {
+      "id": "e-node_1783932685949_9hvbxk-case-1-node_1783932805883_ymrqdt-target",
+      "source": "node_1783932685949_9hvbxk",
+      "target": "node_1783932805883_ymrqdt",
+      "sourceHandle": "case-1"
+    },
+    {
+      "id": "e-node_1783932685949_9hvbxk-default-node_1783932675883_end-target",
+      "source": "node_1783932685949_9hvbxk",
+      "target": "node_1783932675883_end",
+      "edgeKind": "runtime",
+      "sourceHandle": "default",
+      "targetHandle": "target"
+    }
+  ],
+  "createdAt": 1783932675889,
+  "updatedAt": 1783932821810,
+  "published": false,
+  "lastOpenedAt": 1783932675901,
+  "lastRunAt": 1783933544530,
+  "groups": []
+}

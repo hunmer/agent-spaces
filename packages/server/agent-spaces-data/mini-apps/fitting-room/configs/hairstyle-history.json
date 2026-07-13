@@ -1,38 +1,22 @@
 [
   {
-    "id": "1783931154715-0",
+    "id": "1783933924035-0",
     "type": "image",
-    "url": "http://127.0.0.1:3100/static/uploads/微信图片_20260713093538_17_1072 (2)-dcc1bbc3-ac34-4725-bac9-82c14c9142da.jpg",
+    "url": "https://files.closeai.fans/filesystem/output/20260713/f6759f60-6dbf-474a-bad7-df6fbe20575f.png",
     "prompt": "保留脸部特征，仅替换为参考图中的发型",
     "model": "gpt-image-2",
+    "aspect": "1:1",
+    "size": "1k",
     "workflowId": "19f5f8a9-305d-43a6-9b05-584597213a8f",
     "workflowName": "edit_image",
     "sourceImage": "http://127.0.0.1:3100/static/uploads/微信图片_20260713093538_17_1072 (2)-dcc1bbc3-ac34-4725-bac9-82c14c9142da.jpg",
     "references": [
       {
-        "url": "http://127.0.0.1:3100/static/uploads/3869ad38b8d70340280f04c723fe2711 (1)-9e964ff2-c288-413d-a99d-62601d3ad2f5.jpeg",
-        "path": "G:\\agent_spaces\\packages\\server\\public\\uploads\\3869ad38b8d70340280f04c723fe2711 (1)-9e964ff2-c288-413d-a99d-62601d3ad2f5.jpeg",
+        "url": "http://127.0.0.1:3100/static/uploads/3869ad38b8d70340280f04c723fe2711 (1)-0464a65e-9fcf-4053-a823-48dea9764490.jpeg",
+        "path": "G:\\agent_spaces\\packages\\server\\public\\uploads\\3869ad38b8d70340280f04c723fe2711 (1)-0464a65e-9fcf-4053-a823-48dea9764490.jpeg",
         "name": "3869ad38b8d70340280f04c723fe2711 (1).jpeg"
       }
     ],
-    "createdAt": "2026/7/13 16:25:54"
-  },
-  {
-    "id": "1783931154715-1",
-    "type": "image",
-    "url": "http://127.0.0.1:3100/static/uploads/3869ad38b8d70340280f04c723fe2711 (1)-9e964ff2-c288-413d-a99d-62601d3ad2f5.jpeg",
-    "prompt": "保留脸部特征，仅替换为参考图中的发型",
-    "model": "gpt-image-2",
-    "workflowId": "19f5f8a9-305d-43a6-9b05-584597213a8f",
-    "workflowName": "edit_image",
-    "sourceImage": "http://127.0.0.1:3100/static/uploads/微信图片_20260713093538_17_1072 (2)-dcc1bbc3-ac34-4725-bac9-82c14c9142da.jpg",
-    "references": [
-      {
-        "url": "http://127.0.0.1:3100/static/uploads/3869ad38b8d70340280f04c723fe2711 (1)-9e964ff2-c288-413d-a99d-62601d3ad2f5.jpeg",
-        "path": "G:\\agent_spaces\\packages\\server\\public\\uploads\\3869ad38b8d70340280f04c723fe2711 (1)-9e964ff2-c288-413d-a99d-62601d3ad2f5.jpeg",
-        "name": "3869ad38b8d70340280f04c723fe2711 (1).jpeg"
-      }
-    ],
-    "createdAt": "2026/7/13 16:25:54"
+    "createdAt": "2026/7/13 17:12:04"
   }
 ]

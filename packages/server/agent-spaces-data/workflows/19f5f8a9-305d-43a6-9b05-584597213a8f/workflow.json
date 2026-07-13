@@ -89,31 +89,59 @@
         "conditions": [
           {
             "id": "cond_1781686912427_7hb8",
-            "variable": "{{ __data__[\"node_1782281779113_6rk17s\"].target }}",
-            "field": "{{ __data__[\"node_1782281779113_6rk17s\"].target }}",
-            "operator": "equals",
-            "value": "case-0"
+            "joiner": "and",
+            "conditions": [
+              {
+                "id": "cond_1781686912427_7hb8",
+                "variable": "{{ __data__[\"node_1782281779113_6rk17s\"].target }}",
+                "field": "{{ __data__[\"node_1782281779113_6rk17s\"].target }}",
+                "compareMode": "value",
+                "operator": "equals",
+                "value": "case-0"
+              }
+            ]
           },
           {
             "id": "cond_1782273364173_chpi",
-            "variable": "{{ __data__[\"node_1782281779113_6rk17s\"].target }}",
-            "field": "{{ __data__[\"node_1782281779113_6rk17s\"].target }}",
-            "operator": "equals",
-            "value": "case-1"
+            "joiner": "and",
+            "conditions": [
+              {
+                "id": "cond_1782273364173_chpi",
+                "variable": "{{ __data__[\"node_1782281779113_6rk17s\"].target }}",
+                "field": "{{ __data__[\"node_1782281779113_6rk17s\"].target }}",
+                "compareMode": "value",
+                "operator": "equals",
+                "value": "case-1"
+              }
+            ]
           },
           {
             "id": "cond_1782281410888_ywvg",
-            "variable": "{{ __data__[\"node_1782281779113_6rk17s\"].target }}",
-            "field": "{{ __data__[\"node_1782281779113_6rk17s\"].target }}",
-            "operator": "equals",
-            "value": "case-2"
+            "joiner": "and",
+            "conditions": [
+              {
+                "id": "cond_1782281410888_ywvg",
+                "variable": "{{ __data__[\"node_1782281779113_6rk17s\"].target }}",
+                "field": "{{ __data__[\"node_1782281779113_6rk17s\"].target }}",
+                "compareMode": "value",
+                "operator": "equals",
+                "value": "case-2"
+              }
+            ]
           },
           {
             "id": "cond_1782282908847_d6nx",
-            "variable": "{{ __data__[\"node_1782281779113_6rk17s\"].target }}",
-            "field": "{{ __data__[\"node_1782281779113_6rk17s\"].target }}",
-            "operator": "equals",
-            "value": "case-3"
+            "joiner": "and",
+            "conditions": [
+              {
+                "id": "cond_1782282908847_d6nx",
+                "variable": "{{ __data__[\"node_1782281779113_6rk17s\"].target }}",
+                "field": "{{ __data__[\"node_1782281779113_6rk17s\"].target }}",
+                "compareMode": "value",
+                "operator": "equals",
+                "value": "case-3"
+              }
+            ]
           }
         ]
       }
@@ -509,70 +537,6 @@
       "targetHandle": "target"
     },
     {
-      "id": "e-node_1782281779113_6rk17s-output:target-node_1781686908308_6flfam-property:conditions[0].variable",
-      "source": "node_1782281779113_6rk17s",
-      "target": "node_1781686908308_6flfam",
-      "edgeKind": "reference",
-      "sourceHandle": "output:target",
-      "targetHandle": "property:conditions[0].variable"
-    },
-    {
-      "id": "e-node_1782281779113_6rk17s-output:target-node_1781686908308_6flfam-property:conditions[0].field",
-      "source": "node_1782281779113_6rk17s",
-      "target": "node_1781686908308_6flfam",
-      "edgeKind": "reference",
-      "sourceHandle": "output:target",
-      "targetHandle": "property:conditions[0].field"
-    },
-    {
-      "id": "e-node_1782281779113_6rk17s-output:target-node_1781686908308_6flfam-property:conditions[1].variable",
-      "source": "node_1782281779113_6rk17s",
-      "target": "node_1781686908308_6flfam",
-      "edgeKind": "reference",
-      "sourceHandle": "output:target",
-      "targetHandle": "property:conditions[1].variable"
-    },
-    {
-      "id": "e-node_1782281779113_6rk17s-output:target-node_1781686908308_6flfam-property:conditions[1].field",
-      "source": "node_1782281779113_6rk17s",
-      "target": "node_1781686908308_6flfam",
-      "edgeKind": "reference",
-      "sourceHandle": "output:target",
-      "targetHandle": "property:conditions[1].field"
-    },
-    {
-      "id": "e-node_1782281779113_6rk17s-output:target-node_1781686908308_6flfam-property:conditions[2].variable",
-      "source": "node_1782281779113_6rk17s",
-      "target": "node_1781686908308_6flfam",
-      "edgeKind": "reference",
-      "sourceHandle": "output:target",
-      "targetHandle": "property:conditions[2].variable"
-    },
-    {
-      "id": "e-node_1782281779113_6rk17s-output:target-node_1781686908308_6flfam-property:conditions[2].field",
-      "source": "node_1782281779113_6rk17s",
-      "target": "node_1781686908308_6flfam",
-      "edgeKind": "reference",
-      "sourceHandle": "output:target",
-      "targetHandle": "property:conditions[2].field"
-    },
-    {
-      "id": "e-node_1782281779113_6rk17s-output:target-node_1781686908308_6flfam-property:conditions[3].variable",
-      "source": "node_1782281779113_6rk17s",
-      "target": "node_1781686908308_6flfam",
-      "edgeKind": "reference",
-      "sourceHandle": "output:target",
-      "targetHandle": "property:conditions[3].variable"
-    },
-    {
-      "id": "e-node_1782281779113_6rk17s-output:target-node_1781686908308_6flfam-property:conditions[3].field",
-      "source": "node_1782281779113_6rk17s",
-      "target": "node_1781686908308_6flfam",
-      "edgeKind": "reference",
-      "sourceHandle": "output:target",
-      "targetHandle": "property:conditions[3].field"
-    },
-    {
       "id": "e-node_1781681576137_start-output:model-node_1782272004979_7i96r6-property:model",
       "source": "node_1781681576137_start",
       "target": "node_1782272004979_7i96r6",
@@ -763,10 +727,74 @@
       "edgeKind": "reference",
       "sourceHandle": "output:prompt",
       "targetHandle": "property:prompt"
+    },
+    {
+      "id": "e-node_1782281779113_6rk17s-output:target-node_1781686908308_6flfam-property:conditions[0].conditions[0].variable",
+      "source": "node_1782281779113_6rk17s",
+      "target": "node_1781686908308_6flfam",
+      "edgeKind": "reference",
+      "sourceHandle": "output:target",
+      "targetHandle": "property:conditions[0].conditions[0].variable"
+    },
+    {
+      "id": "e-node_1782281779113_6rk17s-output:target-node_1781686908308_6flfam-property:conditions[0].conditions[0].field",
+      "source": "node_1782281779113_6rk17s",
+      "target": "node_1781686908308_6flfam",
+      "edgeKind": "reference",
+      "sourceHandle": "output:target",
+      "targetHandle": "property:conditions[0].conditions[0].field"
+    },
+    {
+      "id": "e-node_1782281779113_6rk17s-output:target-node_1781686908308_6flfam-property:conditions[1].conditions[0].variable",
+      "source": "node_1782281779113_6rk17s",
+      "target": "node_1781686908308_6flfam",
+      "edgeKind": "reference",
+      "sourceHandle": "output:target",
+      "targetHandle": "property:conditions[1].conditions[0].variable"
+    },
+    {
+      "id": "e-node_1782281779113_6rk17s-output:target-node_1781686908308_6flfam-property:conditions[1].conditions[0].field",
+      "source": "node_1782281779113_6rk17s",
+      "target": "node_1781686908308_6flfam",
+      "edgeKind": "reference",
+      "sourceHandle": "output:target",
+      "targetHandle": "property:conditions[1].conditions[0].field"
+    },
+    {
+      "id": "e-node_1782281779113_6rk17s-output:target-node_1781686908308_6flfam-property:conditions[2].conditions[0].variable",
+      "source": "node_1782281779113_6rk17s",
+      "target": "node_1781686908308_6flfam",
+      "edgeKind": "reference",
+      "sourceHandle": "output:target",
+      "targetHandle": "property:conditions[2].conditions[0].variable"
+    },
+    {
+      "id": "e-node_1782281779113_6rk17s-output:target-node_1781686908308_6flfam-property:conditions[2].conditions[0].field",
+      "source": "node_1782281779113_6rk17s",
+      "target": "node_1781686908308_6flfam",
+      "edgeKind": "reference",
+      "sourceHandle": "output:target",
+      "targetHandle": "property:conditions[2].conditions[0].field"
+    },
+    {
+      "id": "e-node_1782281779113_6rk17s-output:target-node_1781686908308_6flfam-property:conditions[3].conditions[0].variable",
+      "source": "node_1782281779113_6rk17s",
+      "target": "node_1781686908308_6flfam",
+      "edgeKind": "reference",
+      "sourceHandle": "output:target",
+      "targetHandle": "property:conditions[3].conditions[0].variable"
+    },
+    {
+      "id": "e-node_1782281779113_6rk17s-output:target-node_1781686908308_6flfam-property:conditions[3].conditions[0].field",
+      "source": "node_1782281779113_6rk17s",
+      "target": "node_1781686908308_6flfam",
+      "edgeKind": "reference",
+      "sourceHandle": "output:target",
+      "targetHandle": "property:conditions[3].conditions[0].field"
     }
   ],
   "createdAt": 1782271756656,
-  "updatedAt": 1782652026524,
+  "updatedAt": 1783932361350,
   "published": false,
   "enabledPlugins": [
     "workflow.openai",
@@ -775,8 +803,9 @@
     "workflow.jimeng",
     "workflow.ai-image"
   ],
-  "lastRunAt": 1783931154105,
+  "lastRunAt": 1783934081376,
   "groups": [],
   "description": "编辑图片",
-  "variables": []
+  "variables": [],
+  "lastOpenedAt": 1783933556910
 }

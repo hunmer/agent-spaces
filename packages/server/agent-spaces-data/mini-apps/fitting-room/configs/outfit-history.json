@@ -1,0 +1,42 @@
+[
+  {
+    "id": "1783934150305-0",
+    "type": "image",
+    "url": "http://127.0.0.1:3100/static/uploads/微信图片_20260713093538_17_1072 (2)-dcc1bbc3-ac34-4725-bac9-82c14c9142da.jpg",
+    "prompt": "保留脸部特征，换上参考图中的服装",
+    "model": "gpt-image-2",
+    "aspect": "1:1",
+    "size": "1k",
+    "workflowId": "19f5f8a9-305d-43a6-9b05-584597213a8f",
+    "workflowName": "edit_image",
+    "sourceImage": "http://127.0.0.1:3100/static/uploads/微信图片_20260713093538_17_1072 (2)-dcc1bbc3-ac34-4725-bac9-82c14c9142da.jpg",
+    "references": [
+      {
+        "url": "http://127.0.0.1:3100/static/uploads/fe5de0ac51f72687219c5951c3e51d03-aaa1c11e-d60f-4017-9bff-f4c77355c4e2.jpeg",
+        "path": "G:\\agent_spaces\\packages\\server\\public\\uploads\\fe5de0ac51f72687219c5951c3e51d03-aaa1c11e-d60f-4017-9bff-f4c77355c4e2.jpeg",
+        "name": "fe5de0ac51f72687219c5951c3e51d03.jpeg"
+      }
+    ],
+    "createdAt": "2026/7/13 17:15:50"
+  },
+  {
+    "id": "1783934150305-1",
+    "type": "image",
+    "url": "http://127.0.0.1:3100/static/uploads/fe5de0ac51f72687219c5951c3e51d03-aaa1c11e-d60f-4017-9bff-f4c77355c4e2.jpeg",
+    "prompt": "保留脸部特征，换上参考图中的服装",
+    "model": "gpt-image-2",
+    "aspect": "1:1",
+    "size": "1k",
+    "workflowId": "19f5f8a9-305d-43a6-9b05-584597213a8f",
+    "workflowName": "edit_image",
+    "sourceImage": "http://127.0.0.1:3100/static/uploads/微信图片_20260713093538_17_1072 (2)-dcc1bbc3-ac34-4725-bac9-82c14c9142da.jpg",
+    "references": [
+      {
+        "url": "http://127.0.0.1:3100/static/uploads/fe5de0ac51f72687219c5951c3e51d03-aaa1c11e-d60f-4017-9bff-f4c77355c4e2.jpeg",
+        "path": "G:\\agent_spaces\\packages\\server\\public\\uploads\\fe5de0ac51f72687219c5951c3e51d03-aaa1c11e-d60f-4017-9bff-f4c77355c4e2.jpeg",
+        "name": "fe5de0ac51f72687219c5951c3e51d03.jpeg"
+      }
+    ],
+    "createdAt": "2026/7/13 17:15:50"
+  }
+]
