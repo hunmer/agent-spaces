@@ -27,8 +27,8 @@
       "type": "end",
       "label": "结束",
       "position": {
-        "x": 600,
-        "y": 0
+        "x": 315,
+        "y": 210
       },
       "data": {
         "outputs": [
@@ -79,13 +79,13 @@
       "label": "nodes.loop_body.label",
       "position": {
         "x": 658,
-        "y": 113.9375
+        "y": 45.6875
       },
       "data": {
         "width": 150,
         "height": 260,
-        "nodeWidth": 1304,
-        "nodeHeight": 383
+        "nodeWidth": 1703,
+        "nodeHeight": 658
       },
       "composite": {
         "role": "loop_body",
@@ -117,15 +117,15 @@
       "type": "end",
       "label": "nodes.loop.label结束",
       "position": {
-        "x": 1685.53515625,
-        "y": 250
+        "x": 2085,
+        "y": 540
       },
       "data": {
         "outputs": [
           {
             "key": "url",
             "type": "string",
-            "value": "{{ __data__[\"node_1783937491901_egfvn5\"].data.url }}",
+            "value": "{{ __data__[\"node_1783940181073_nv944x\"].result.url }}",
             "children": []
           }
         ]
@@ -138,12 +138,141 @@
       }
     },
     {
-      "id": "node_1783937491901_egfvn5",
+      "id": "node_1783938901671_8m73z0",
+      "type": "run_code",
+      "label": "生成文件名",
+      "position": {
+        "x": 1045,
+        "y": 301.6875
+      },
+      "data": {
+        "code": "async function main({ params }) {\n  const url = (params.item || '').toString();\n  let ext = '';\n  try {\n    const u = new URL(url);\n    const pathname = u.pathname || '';\n    const slashIdx = pathname.lastIndexOf('/');\n    const dotIdx = pathname.lastIndexOf('.');\n    if (dotIdx !== -1 && dotIdx > slashIdx) {\n      ext = pathname.substring(dotIdx);\n    }\n  } catch (e) {\n    const qIdx = url.indexOf('?');\n    const hashIdx = url.indexOf('#');\n    const cut = Math.min(\n      qIdx === -1 ? url.length : qIdx,\n      hashIdx === -1 ? url.length : hashIdx\n    );\n    const clean = url.substring(0, cut);\n    const slashIdx = clean.lastIndexOf('/');\n    const dotIdx = clean.lastIndexOf('.');\n    if (dotIdx !== -1 && dotIdx > slashIdx) {\n      ext = clean.substring(dotIdx);\n    }\n  }\n  if (!ext) ext = '.bin';\n  const random =\n    Math.random().toString(36).slice(2, 10) + Date.now().toString(36);\n  const key = `uploads/${random}${ext}`;\n  return { key, isHttp: url.startsWith('http') };\n}",
+        "inputFields": [
+          {
+            "key": "item",
+            "type": "string",
+            "value": "{{ __loop__.item }}",
+            "children": []
+          }
+        ],
+        "outputs": [
+          {
+            "key": "key",
+            "type": "string",
+            "description": "带扩展名的 COS 路径（uploads/{random}{ext}）",
+            "children": []
+          },
+          {
+            "key": "isHttp",
+            "type": "boolean",
+            "value": ""
+          }
+        ]
+      },
+      "composite": {
+        "rootId": "node_1783937435786_dsqbxm",
+        "parentId": "node_1783937435786_dsqbxm",
+        "generated": false,
+        "hidden": false
+      }
+    },
+    {
+      "id": "node_1783940052161_s24vcg",
+      "type": "switch",
+      "label": "nodes.switch.label",
+      "position": {
+        "x": 1296.8509542618995,
+        "y": 145.6875
+      },
+      "data": {
+        "sourceNodeId": "node_1783938901671_8m73z0",
+        "sourceHandle": "source",
+        "conditions": [
+          {
+            "id": "group_1783940104072_e9fg",
+            "joiner": "and",
+            "conditions": [
+              {
+                "id": "cond_1783940104072_eur8",
+                "variable": "{{ __data__[\"node_1783938901671_8m73z0\"].isHttp }}",
+                "field": "{{ __data__[\"node_1783938901671_8m73z0\"].isHttp }}",
+                "compareMode": "value",
+                "operator": "is_true",
+                "value": ""
+              }
+            ]
+          }
+        ]
+      },
+      "composite": {
+        "rootId": "node_1783937435786_dsqbxm",
+        "parentId": "node_1783937435786_dsqbxm",
+        "generated": false,
+        "hidden": false
+      }
+    },
+    {
+      "id": "node_1783940156657_vzmktu",
+      "type": "cos_upload_http_url",
+      "label": "COS Upload HTTP URL",
+      "position": {
+        "x": 1680,
+        "y": 195
+      },
+      "data": {
+        "secretId": "{{ __config__[\"workflow.tencent-cos\"][\"secretId\"]}}",
+        "secretKey": "{{ __config__[\"workflow.tencent-cos\"][\"secretKey\"]}}",
+        "bucket": "{{ __config__[\"workflow.tencent-cos\"][\"bucket\"]}}",
+        "region": "{{ __config__[\"workflow.tencent-cos\"][\"region\"]}}",
+        "outputs": [
+          {
+            "key": "success",
+            "type": "boolean",
+            "dataType": "boolean"
+          },
+          {
+            "key": "message",
+            "type": "string"
+          },
+          {
+            "key": "data",
+            "type": "object",
+            "dataType": "object",
+            "children": [
+              {
+                "key": "Key",
+                "type": "string"
+              },
+              {
+                "key": "ETag",
+                "type": "string"
+              },
+              {
+                "key": "Location",
+                "type": "string"
+              }
+            ]
+          }
+        ],
+        "sourceNodeId": "node_1783940052161_s24vcg",
+        "sourceHandle": "case-0",
+        "key": "{{ __data__[\"node_1783938901671_8m73z0\"].key }}",
+        "url": "{{ __loop__.item }}"
+      },
+      "composite": {
+        "rootId": "node_1783937435786_dsqbxm",
+        "parentId": "node_1783937435786_dsqbxm",
+        "generated": false,
+        "hidden": false
+      }
+    },
+    {
+      "id": "node_1783940171136_wuwsln",
       "type": "cos_upload_file",
       "label": "COS上传文件",
       "position": {
-        "x": 1405.53515625,
-        "y": 287.5
+        "x": 1680,
+        "y": 435
       },
       "data": {
         "secretId": "{{ __config__[\"workflow.tencent-cos\"][\"secretId\"]}}",
@@ -184,7 +313,8 @@
             ]
           }
         ],
-        "sourceNodeId": "node_1783937435787_sqs5a9",
+        "sourceNodeId": "node_1783940052161_s24vcg",
+        "sourceHandle": "default",
         "key": "{{ __data__[\"node_1783938901671_8m73z0\"].key }}",
         "filePath": "{{ __loop__.item }}"
       },
@@ -196,82 +326,50 @@
       }
     },
     {
-      "id": "node_1783938901671_8m73z0",
-      "type": "run_code",
-      "label": "生成文件名",
+      "id": "node_1783940181073_nv944x",
+      "type": "variable_aggregate",
+      "label": "nodes.variable_aggregate.label",
       "position": {
-        "x": 1014,
-        "y": 213.9375
+        "x": 2025,
+        "y": 390
       },
       "data": {
-        "code": "async function main({ params }) {\n  const url = (params.item || '').toString();\n  let ext = '';\n  try {\n    const u = new URL(url);\n    const pathname = u.pathname || '';\n    const slashIdx = pathname.lastIndexOf('/');\n    const dotIdx = pathname.lastIndexOf('.');\n    if (dotIdx !== -1 && dotIdx > slashIdx) {\n      ext = pathname.substring(dotIdx);\n    }\n  } catch (e) {\n    const qIdx = url.indexOf('?');\n    const hashIdx = url.indexOf('#');\n    const cut = Math.min(\n      qIdx === -1 ? url.length : qIdx,\n      hashIdx === -1 ? url.length : hashIdx\n    );\n    const clean = url.substring(0, cut);\n    const slashIdx = clean.lastIndexOf('/');\n    const dotIdx = clean.lastIndexOf('.');\n    if (dotIdx !== -1 && dotIdx > slashIdx) {\n      ext = clean.substring(dotIdx);\n    }\n  }\n  if (!ext) ext = '.bin';\n  const random =\n    Math.random().toString(36).slice(2, 10) + Date.now().toString(36);\n  const key = `uploads/${random}${ext}`;\n  return { key };\n}",
-        "inputFields": [
+        "strategy": "first_non_empty",
+        "groups": [
           {
-            "key": "item",
-            "type": "string",
-            "value": "{{ __loop__.item }}",
-            "children": []
+            "key": "url",
+            "variables": [
+              {
+                "key": "",
+                "type": "string",
+                "value": "{{ __data__[\"node_1783940156657_vzmktu\"].data.Location }}",
+                "children": []
+              },
+              {
+                "key": "",
+                "type": "string",
+                "value": "{{ __data__[\"node_1783940171136_wuwsln\"].data.url }}",
+                "children": []
+              }
+            ],
+            "id": 1783940221434
           }
         ],
         "outputs": [
           {
-            "key": "key",
-            "type": "string",
-            "description": "带扩展名的 COS 路径（uploads/{random}{ext}）"
-          }
-        ]
-      },
-      "composite": {
-        "rootId": "node_1783937435786_dsqbxm",
-        "parentId": "node_1783937435786_dsqbxm",
-        "generated": false,
-        "hidden": false
-      }
-    },
-    {
-      "id": "node_1783939405008_4dxij9",
-      "type": "cos_upload_buffer",
-      "label": "COS上传二进制",
-      "position": {
-        "x": 1125.9296875,
-        "y": 332.9375
-      },
-      "data": {
-        "secretId": "{{ __config__[\"workflow.tencent-cos\"][\"secretId\"]}}",
-        "secretKey": "{{ __config__[\"workflow.tencent-cos\"][\"secretKey\"]}}",
-        "bucket": "{{ __config__[\"workflow.tencent-cos\"][\"bucket\"]}}",
-        "region": "{{ __config__[\"workflow.tencent-cos\"][\"region\"]}}",
-        "outputs": [
-          {
-            "key": "success",
-            "type": "boolean",
-            "dataType": "boolean"
-          },
-          {
-            "key": "message",
-            "type": "string"
-          },
-          {
-            "key": "data",
+            "key": "result",
             "type": "object",
-            "dataType": "object",
             "children": [
               {
-                "key": "Key",
-                "type": "string"
-              },
-              {
-                "key": "ETag",
-                "type": "string"
-              },
-              {
-                "key": "Location",
-                "type": "string"
+                "key": "url",
+                "type": "string",
+                "value": "",
+                "children": []
               }
             ]
           }
         ],
-        "sourceNodeId": "node_1783938901671_8m73z0",
+        "sourceNodeId": "node_1783940156657_vzmktu",
         "sourceHandle": "source"
       },
       "composite": {
@@ -334,11 +432,6 @@
       "targetHandle": "property:arrayPath"
     },
     {
-      "id": "e-node_1783937491901_egfvn5-source-node_1783937435787_1zkvk0-target",
-      "source": "node_1783937491901_egfvn5",
-      "target": "node_1783937435787_1zkvk0"
-    },
-    {
       "id": "e-node_1783937435787_sqs5a9-node_1783938901671_8m73z0-mrj366vh",
       "source": "node_1783937435787_sqs5a9",
       "target": "node_1783938901671_8m73z0",
@@ -346,27 +439,107 @@
       "targetHandle": "target"
     },
     {
-      "id": "e-node_1783938901671_8m73z0-node_1783937491901_egfvn5-mrj366vi",
+      "id": "e-node_1783938901671_8m73z0-output:key-node_1783937435787_1zkvk0-target",
       "source": "node_1783938901671_8m73z0",
-      "target": "node_1783937491901_egfvn5",
-      "sourceHandle": "output:key",
-      "targetHandle": "property:key",
-      "edgeKind": "reference"
+      "target": "node_1783937435787_1zkvk0",
+      "sourceHandle": "output:key"
     },
     {
-      "id": "e-node_1783938901671_8m73z0-source-node_1783939405008_4dxij9-target",
+      "id": "e-node_1783938901671_8m73z0-source-node_1783940052161_s24vcg-target",
       "source": "node_1783938901671_8m73z0",
-      "target": "node_1783939405008_4dxij9",
+      "target": "node_1783940052161_s24vcg",
       "sourceHandle": "source"
     },
     {
-      "id": "e-node_1783939405008_4dxij9-source-node_1783937491901_egfvn5-target",
-      "source": "node_1783939405008_4dxij9",
-      "target": "node_1783937491901_egfvn5"
+      "id": "e-node_1783938901671_8m73z0-output:isHttp-node_1783940052161_s24vcg-property:conditions[0].conditions[0].variable",
+      "source": "node_1783938901671_8m73z0",
+      "target": "node_1783940052161_s24vcg",
+      "edgeKind": "reference",
+      "sourceHandle": "output:isHttp",
+      "targetHandle": "property:conditions[0].conditions[0].variable"
+    },
+    {
+      "id": "e-node_1783938901671_8m73z0-output:isHttp-node_1783940052161_s24vcg-property:conditions[0].conditions[0].field",
+      "source": "node_1783938901671_8m73z0",
+      "target": "node_1783940052161_s24vcg",
+      "edgeKind": "reference",
+      "sourceHandle": "output:isHttp",
+      "targetHandle": "property:conditions[0].conditions[0].field"
+    },
+    {
+      "id": "e-node_1783940052161_s24vcg-source-node_1783937435787_1zkvk0-target",
+      "source": "node_1783940052161_s24vcg",
+      "target": "node_1783937435787_1zkvk0"
+    },
+    {
+      "id": "e-node_1783940052161_s24vcg-case-0-node_1783940156657_vzmktu-target",
+      "source": "node_1783940052161_s24vcg",
+      "target": "node_1783940156657_vzmktu",
+      "sourceHandle": "case-0"
+    },
+    {
+      "id": "e-node_1783940052161_s24vcg-default-node_1783940171136_wuwsln-target",
+      "source": "node_1783940052161_s24vcg",
+      "target": "node_1783940171136_wuwsln",
+      "sourceHandle": "default"
+    },
+    {
+      "id": "e-node_1783940156657_vzmktu-source-node_1783940181073_nv944x-target",
+      "source": "node_1783940156657_vzmktu",
+      "target": "node_1783940181073_nv944x",
+      "sourceHandle": "source"
+    },
+    {
+      "id": "e-node_1783940171136_wuwsln-source-node_1783940181073_nv944x-target",
+      "source": "node_1783940171136_wuwsln",
+      "target": "node_1783940181073_nv944x",
+      "edgeKind": "runtime",
+      "sourceHandle": "source",
+      "targetHandle": "target"
+    },
+    {
+      "id": "e-node_1783940181073_nv944x-source-node_1783937435787_1zkvk0-target",
+      "source": "node_1783940181073_nv944x",
+      "target": "node_1783937435787_1zkvk0",
+      "edgeKind": "runtime",
+      "sourceHandle": "source",
+      "targetHandle": "target"
+    },
+    {
+      "id": "e-node_1783938901671_8m73z0-output:key-node_1783940156657_vzmktu-property:key",
+      "source": "node_1783938901671_8m73z0",
+      "target": "node_1783940156657_vzmktu",
+      "edgeKind": "reference",
+      "sourceHandle": "output:key",
+      "targetHandle": "property:key"
+    },
+    {
+      "id": "e-node_1783938901671_8m73z0-output:key-node_1783940171136_wuwsln-property:key",
+      "source": "node_1783938901671_8m73z0",
+      "target": "node_1783940171136_wuwsln",
+      "edgeKind": "reference",
+      "sourceHandle": "output:key",
+      "targetHandle": "property:key"
+    },
+    {
+      "id": "e-node_1783940171136_wuwsln-output:data.url-node_1783940181073_nv944x-property:groups[0].variables[1].value",
+      "source": "node_1783940171136_wuwsln",
+      "target": "node_1783940181073_nv944x",
+      "edgeKind": "reference",
+      "sourceHandle": "output:data.url",
+      "targetHandle": "property:groups[0].variables[1].value"
+    },
+    {
+      "id": "e-node_1783940156657_vzmktu-output:data.Location-node_1783940181073_nv944x-property:groups[0].variables[0].value",
+      "source": "node_1783940156657_vzmktu",
+      "target": "node_1783940181073_nv944x",
+      "edgeKind": "reference",
+      "sourceHandle": "output:data.Location",
+      "targetHandle": "property:groups[0].variables[0].value"
     }
   ],
   "createdAt": 1783937424479,
-  "updatedAt": 1783939415803,
+  "updatedAt": 1783940302157,
   "published": false,
   "lastOpenedAt": 1783937424492,
   "groups": [],
@@ -374,5 +547,5 @@
     "workflow.tencent-cos"
   ],
   "variables": [],
-  "lastRunAt": 1783938528627
+  "lastRunAt": 1783940345008
 }

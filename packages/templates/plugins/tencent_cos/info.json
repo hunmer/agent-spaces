@@ -4,7 +4,7 @@
   "name": "腾讯云COS",
   "name_zh": "腾讯云COS",
   "name_en": "Tencent COS",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "腾讯云COS对象存储，支持上传、下载、删除、列举、签名URL等操作",
   "description_zh": "腾讯云COS对象存储，支持上传、下载、删除、列举、签名URL等操作",
   "description_en": "Tencent COS object storage with upload, download, delete, list, signed URL, copy, and file metadata operations.",

@@ -878,7 +878,7 @@
   {
     "id": "workflow.tencent-cos",
     "name": "Tencent COS",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "description": "Tencent COS object storage with upload, download, delete, list, signed URL, copy, and file metadata operations.",
     "author": {
       "name": "workflow"
@@ -893,8 +893,8 @@
     "hasWorkflow": true,
     "path": "tencent_cos",
     "iconUrl": "plugins/tencent_cos/icon.svg",
-    "md5": "750d53e3c9d5dd6536dc7f71374772c5",
-    "updatedAt": "2026-06-24T01:59:27.199Z",
+    "md5": "5479bce038341420952ec8decfbb7bb0",
+    "updatedAt": "2026-07-13T10:51:39.603Z",
     "files": [
       "actions.js",
       "icon.svg",

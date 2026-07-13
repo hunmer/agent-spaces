@@ -18,6 +18,24 @@ function createConfigProperties(t) {
 
 module.exports = (t) => {
   const configProperties = createConfigProperties(t)
+  const uploadBuffer = async (ctx, args, buffer) => {
+    const cos = createClient(args)
+    const base = getBucketParams(args)
+    ctx.logger.info(`上传二进制: -> ${args.key}`)
+    const params = {
+      ...base,
+      Key: args.key,
+      Body: buffer,
+      ContentLength: buffer.length,
+    }
+    if (args.contentType) params.ContentType = args.contentType
+    const result = await cos.putObject(params)
+    return {
+      success: true,
+      message: t('message.bufferUploaded', 'Binary uploaded: {key}').replace('{key}', args.key),
+      data: { Key: result.Key || args.key, ETag: result.ETag, Location: normalizeLocation(result.Location) },
+    }
+  }
 
   return [
   // ─── 上传文件 ─────────────────────────────
@@ -128,49 +146,25 @@ module.exports = (t) => {
       ] },
     ],
     run: async (ctx, args) => {
-      const cos = createClient(args)
-      const base = getBucketParams(args)
-      ctx.logger.info(`上传二进制: -> ${args.key}`)
       const buffer = Buffer.from(args.base64Data, 'base64')
-      const params = {
-        ...base,
-        Key: args.key,
-        Body: buffer,
-        ContentLength: buffer.length,
-      }
-      if (args.contentType) params.ContentType = args.contentType
-      const result = await cos.putObject(params)
-      return {
-        success: true,
-        message: t('message.bufferUploaded', 'Binary uploaded: {key}').replace('{key}', args.key),
-        data: { Key: result.Key || args.key, ETag: result.ETag, Location: normalizeLocation(result.Location) },
-      }
+      return uploadBuffer(ctx, args, buffer)
     },
   },
 
-  // ─── 上传（agent tool 合并版）──────────────
+  // ─── 上传 HTTP URL ────────────────────────
   {
-    name: 'cos_upload',
-    label: t('action.upload.label', 'COS Upload'),
+    name: 'cos_upload_http_url',
+    label: t('action.uploadHttpUrl.label', 'COS Upload HTTP URL'),
     category: t('category', 'Tencent COS'),
-    icon: 'Upload',
-    description: t('action.upload.description', 'Upload files or content to Tencent COS. Supports local file paths, text content, and Base64 binary data.'),
-    toolOnly: true,
-    toolProperties: {
-      type: 'object',
-      properties: {
-        secretId: { type: 'string', description: '腾讯云 SecretId' },
-        secretKey: { type: 'string', description: '腾讯云 SecretKey' },
-        bucket: { type: 'string', description: '存储桶名称（格式: bucket-appid）' },
-        region: { type: 'string', description: '地域，如 ap-guangzhou' },
-        key: { type: 'string', description: 'COS 目标路径' },
-        filePath: { type: 'string', description: '本地文件路径（与 content/base64Data 三选一）' },
-        content: { type: 'string', description: '文本内容（与 filePath/base64Data 三选一）' },
-        base64Data: { type: 'string', description: 'Base64 编码的二进制数据（与 filePath/content 三选一）' },
-        contentType: { type: 'string', description: 'Content-Type，如 image/jpeg' },
-      },
-      required: ['secretId', 'secretKey', 'bucket', 'region', 'key'],
-    },
+    icon: 'CloudDownload',
+    description: t('action.uploadHttpUrl.description', 'Download an HTTP URL and upload it to COS'),
+    tool: false,
+    properties: [
+      { key: 'key', label: t('field.key.label', 'Object Path'), type: 'text', dataType: 'string', required: true, tooltip: t('field.key.tooltip', 'Full path in COS') },
+      { key: 'url', label: t('field.url.label', 'HTTP URL'), type: 'text', dataType: 'string', required: true, tooltip: t('field.url.tooltip', 'HTTP(S) resource URL') },
+      { key: 'contentType', label: t('field.contentType.label', 'Content-Type'), type: 'text', dataType: 'string', tooltip: t('field.contentTypeImage.tooltip', 'Defaults to the HTTP response Content-Type') },
+      ...configProperties,
+    ],
     outputs: [
       { key: 'success', type: 'boolean', dataType: 'boolean' },
       { key: 'message', type: 'string' },
@@ -181,26 +175,13 @@ module.exports = (t) => {
       ] },
     ],
     run: async (ctx, args) => {
-      const cos = createClient(args)
-      const base = getBucketParams(args)
-      if (!args.key) return { success: false, message: t('message.missingKey', 'Missing key') }
-      if (args.filePath) {
-        const result = await cos.sliceUploadFile({ ...base, Key: args.key, FilePath: args.filePath })
-        return { success: true, message: t('message.uploadOk', 'Upload succeeded: {key}').replace('{key}', args.key), data: { Key: args.key, ETag: result.ETag, Location: normalizeLocation(result.Location) } }
-      }
-      const params = { ...base, Key: args.key }
-      if (args.content) {
-        params.Body = args.content
-      } else if (args.base64Data) {
-        const buf = Buffer.from(args.base64Data, 'base64')
-        params.Body = buf
-        params.ContentLength = buf.length
-      } else {
-        return { success: false, message: t('message.needDataSource', 'Provide filePath, content, or base64Data') }
-      }
-      if (args.contentType) params.ContentType = args.contentType
-      const result = await cos.putObject(params)
-      return { success: true, message: t('message.uploadOk', 'Upload succeeded: {key}').replace('{key}', args.key), data: { Key: args.key, ETag: result.ETag, Location: normalizeLocation(result.Location) } }
+      const url = new URL(args.url)
+      if (!['http:', 'https:'].includes(url.protocol)) throw new Error('Only HTTP(S) URLs are supported')
+      ctx.logger.info(`读取 HTTP 资源: ${url}`)
+      const response = await globalThis.fetch(url)
+      if (!response.ok) throw new Error(`HTTP request failed: ${response.status} ${response.statusText}`)
+      const buffer = Buffer.from(await response.arrayBuffer())
+      return uploadBuffer(ctx, { ...args, contentType: args.contentType || response.headers.get('content-type') }, buffer)
     },
   },
 
