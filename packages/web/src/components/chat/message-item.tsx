@@ -200,7 +200,7 @@ export function MessageItem({ message, workspaceId, agent: fallbackAgent, teamId
             <Reply className="h-3.5 w-3.5" />
           </button>
           <button
-            onClick={handleCopy}
+            onClick={() => handleCopy()}
             className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
             title={tc('copy')}
           >
