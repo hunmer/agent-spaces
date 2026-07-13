@@ -185,3 +185,42 @@ test('scoped body reports missing data references instead of resolving them to e
     /missing node output: __data__\["slow_image"\]/,
   );
 });
+
+test('scoped body does not reuse dependency completion from a previous run', async () => {
+  const iterationNodes: WorkflowNode[] = [
+    { id: 'body', type: 'loop_body', label: 'Body', position: { x: 0, y: 0 }, data: {} },
+    { id: 'start', type: 'start', label: 'Start', position: { x: 0, y: 0 }, data: {}, composite: { parentId: 'body' } },
+    { id: 'producer', type: 'run_code', label: 'Producer', position: { x: 0, y: 0 }, data: { code: 'async function main() { return { value: "ok" }; }' }, composite: { parentId: 'body' } },
+    { id: 'aggregate', type: 'run_code', label: 'Aggregate', position: { x: 0, y: 0 }, data: { code: 'async function main() { return { url: "done" }; }' }, composite: { parentId: 'body' } },
+    {
+      id: 'end', type: 'end', label: 'End', position: { x: 0, y: 0 },
+      data: { outputs: [{ key: 'url', type: 'string', value: '{{ __data__["aggregate"].url }}' }] },
+      outputs: [{ key: 'url', type: 'string', value: '{{ __data__["aggregate"].url }}' }],
+      composite: { parentId: 'body' },
+    },
+  ];
+  const iterationEdges: WorkflowEdge[] = [
+    { id: 'body-start', source: 'body', target: 'start' },
+    { id: 'start-producer', source: 'start', target: 'producer' },
+    { id: 'producer-end', source: 'producer', target: 'end' },
+    { id: 'producer-aggregate', source: 'producer', target: 'aggregate' },
+    { id: 'aggregate-end', source: 'aggregate', target: 'end' },
+  ];
+  const manager = new ExecutionManager({
+    emit: () => {}, interactionManager: {} as never, clientNodeManager: {} as never,
+  });
+  const session = {
+    id: 'session',
+    workflow: { id: 'workflow', name: 'Workflow', folderId: null, nodes: iterationNodes, edges: iterationEdges, createdAt: 0, updatedAt: 0 },
+    ownerClientId: 'test', nodes: iterationNodes, edges: iterationEdges,
+    context: { __data__: {}, __env__: {}, __inputs__: {} },
+    status: 'running', executionOrder: [], currentIndex: 0, pauseRequested: false, stopRequested: false,
+    startedAt: Date.now(), steps: [], activeBranches: new Map(), persisted: false,
+    lastUpdatedAt: Date.now(), eventSequence: 0, recentEvents: [], loopStack: [], breakpointBypassKeys: new Set(),
+  } satisfies ExecutionSession;
+
+  assert.deepEqual(await manager.__executeScopedBodyForTest(session, iterationNodes[0], iterationNodes.slice(1)), { url: 'done' });
+  session.context.__data__ = {};
+  assert.deepEqual(await manager.__executeScopedBodyForTest(session, iterationNodes[0], iterationNodes.slice(1)), { url: 'done' });
+  assert.equal(session.status, 'running');
+});

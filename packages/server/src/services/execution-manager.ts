@@ -1882,7 +1882,7 @@ export class ExecutionManager {
     nodeId: string,
     completedNodeIds?: Set<string>,
   ): boolean {
-    if (completedNodeIds?.has(nodeId)) return true;
+    if (completedNodeIds) return completedNodeIds.has(nodeId);
     const step = [...session.steps].reverse().find(s => s.nodeId === nodeId);
     return this.doesStepSatisfyDownstreamDependency(step);
   }

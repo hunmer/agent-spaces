@@ -469,35 +469,24 @@
       "data": {
         "outputs": [
           {
-            "key": "result",
-            "type": "any"
+            "key": "urls",
+            "type": "string[]",
+            "value": [],
+            "children": []
           }
         ],
         "sourceNodeId": "node_1781681576137_start",
         "sourceHandle": "source",
-        "inputFields": []
-      }
-    },
-    {
-      "id": "node_1783940994363_34zl03",
-      "type": "agent_run",
-      "label": "nodes.agent_run.label",
-      "position": {
-        "x": 255,
-        "y": 720
-      },
-      "data": {
-        "permissionMode": "dontAsk",
-        "outputs": [
+        "inputFields": [
           {
-            "key": "result",
-            "type": "string"
-          },
-          {
-            "key": "usage",
-            "type": "object"
+            "key": "urls",
+            "type": "string[]",
+            "value": "{{ __data__[\"node_1781681576137_start\"].images }}",
+            "children": []
           }
-        ]
+        ],
+        "workflowId": "c72d5ba1-9b64-4e14-a67b-8d32a96a48a0",
+        "workflowName": "批量上传文件"
       }
     }
   ],
@@ -838,10 +827,18 @@
       "id": "e-node_1783940935348_adxsie-source-node_1782281779113_6rk17s-target",
       "source": "node_1783940935348_adxsie",
       "target": "node_1782281779113_6rk17s"
+    },
+    {
+      "id": "e-node_1781681576137_start-output:images-node_1783940935348_adxsie-input:urls",
+      "source": "node_1781681576137_start",
+      "target": "node_1783940935348_adxsie",
+      "edgeKind": "reference",
+      "sourceHandle": "output:images",
+      "targetHandle": "input:urls"
     }
   ],
   "createdAt": 1782271756656,
-  "updatedAt": 1783941004611,
+  "updatedAt": 1783942163379,
   "published": false,
   "enabledPlugins": [
     "workflow.openai",
@@ -850,7 +847,7 @@
     "workflow.jimeng",
     "workflow.ai-image"
   ],
-  "lastRunAt": 1783937220939,
+  "lastRunAt": 1783942194438,
   "groups": [],
   "description": "编辑图片",
   "variables": [],

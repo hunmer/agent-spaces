@@ -175,6 +175,7 @@ export function WorkflowPropertiesPanel({
     if (node?.type === 'sub_workflow' && key === 'workflowId' && value && typeof value === 'object' && 'id' in value) {
       const selectedWorkflow = value as Workflow;
       const startNode = selectedWorkflow.nodes.find(item => item.type === 'start');
+      const endNode = selectedWorkflow.nodes.find(item => item.type === 'end');
       const currentFields = new Map(getOutputFields(data.inputFields).map(field => [field.key, field]));
       const inputFields = getOutputFields(startNode?.data.inputFields).map(field => {
         const current = currentFields.get(field.key);
@@ -186,6 +187,7 @@ export function WorkflowPropertiesPanel({
         workflowId: selectedWorkflow.id,
         workflowName: selectedWorkflow.name,
         inputFields,
+        outputs: getOutputFields(endNode?.data.outputs),
       });
       return;
     }
