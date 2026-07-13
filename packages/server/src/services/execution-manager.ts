@@ -118,6 +118,41 @@ export function __isWorkflowEdgeActiveForTest(
   return isBranchActiveEdge(edge, edges, activeHandle);
 }
 
+interface SubWorkflowExecutionContext {
+  id: string
+  workflow: Workflow
+  startedAt: number
+  finishedAt?: number
+  status: ExecutionLog['status']
+}
+
+function buildSubWorkflowExecutionLog(
+  execution: SubWorkflowExecutionContext,
+  steps: ExecutionStep[],
+): ExecutionLog {
+  return {
+    id: execution.id,
+    workflowId: execution.workflow.id,
+    startedAt: execution.startedAt,
+    finishedAt: execution.finishedAt,
+    status: execution.status,
+    steps: clone(steps.filter(step => step.subWorkflowExecutionIds?.includes(execution.id))),
+    snapshot: {
+      nodes: normalizeExecutionSnapshotNodes(clone(execution.workflow.nodes)),
+      edges: clone(execution.workflow.edges),
+      groups: clone(execution.workflow.groups || []),
+      variables: clone(execution.workflow.variables || []),
+    },
+  };
+}
+
+export function __buildSubWorkflowExecutionLogForTest(
+  execution: SubWorkflowExecutionContext,
+  steps: ExecutionStep[],
+): ExecutionLog {
+  return buildSubWorkflowExecutionLog(execution, steps);
+}
+
 const MAX_RECENT_EVENTS = 100;
 const FINISHED_RECOVERY_TTL_MS = 2 * 60_000;
 const DELAY_NODE_MIN_MS = 100;
@@ -240,6 +275,8 @@ export class ExecutionManager {
   private sessions = new Map<string, ExecutionSession>();
   private finishedRecoveries = new Map<string, FinishedExecutionRecovery>();
   private loopWorkerState = new AsyncLocalStorage<LoopWorkerState>();
+  private subWorkflowExecutionScope = new AsyncLocalStorage<string[]>();
+  private subWorkflowExecutions = new Map<string, SubWorkflowExecutionContext[]>();
 
   constructor(private deps: ExecutionManagerDeps) {}
 
@@ -881,6 +918,9 @@ export class ExecutionManager {
     const dryRunInput = this.getDryRunNodeValue(session, 'inputs', node.id);
     const step: ExecutionStep = {
       nodeId: node.id, nodeLabel: node.label, startedAt: Date.now(), status: 'running',
+      ...(this.subWorkflowExecutionScope.getStore()?.length
+        ? { subWorkflowExecutionIds: [...this.subWorkflowExecutionScope.getStore()!] }
+        : {}),
     };
     session.steps.push(step);
 
@@ -1060,7 +1100,7 @@ export class ExecutionManager {
       case 'delete_variable':
         return executeDeleteVariable(session, resolvedData, appendLog);
       case 'sub_workflow':
-        return this.executeSubWorkflow(session, resolvedData, appendLog);
+        return this.executeSubWorkflow(session, node, resolvedData, appendLog);
       case 'loop':
         return this.executeLoopNode(session, node, resolvedData, appendLog);
       case 'agent_run':
@@ -1562,7 +1602,7 @@ export class ExecutionManager {
   }
 
   private async executeSubWorkflow(
-    session: ExecutionSession, resolvedData: Record<string, any>,
+    session: ExecutionSession, node: WorkflowNode, resolvedData: Record<string, any>,
     appendLog: (level: ExecutionLogEntry['level'], message: string) => void,
   ): Promise<unknown> {
     const workflowId = typeof resolvedData.workflowId === 'string' ? resolvedData.workflowId : '';
@@ -1572,12 +1612,46 @@ export class ExecutionManager {
     const target = workflowStore.getWorkflow(workflowId);
     if (!target) throw new Error(`sub_workflow target not found: ${workflowId}`);
 
+    const execution: SubWorkflowExecutionContext = {
+      id: randomUUID(),
+      workflow: target,
+      startedAt: Date.now(),
+      status: 'running',
+    };
+    const executions = this.subWorkflowExecutions.get(session.id) ?? [];
+    executions.push(execution);
+    this.subWorkflowExecutions.set(session.id, executions);
+    const parentStep = session.steps.at(-1);
+    if (parentStep?.nodeId === node.id) {
+      parentStep.subWorkflowId = target.id;
+      parentStep.subWorkflowExecutionId = execution.id;
+    }
+    this.emitLog(session);
+
     appendLog('info', `Starting sub_workflow: ${target.name}`);
-    const result = await this.executeEmbeddedWorkflow(session, {
-      nodes: clone(target.nodes), edges: clone(target.edges),
-    }, buildOutputObject(resolvedData.inputFields) ?? {});
-    appendLog('info', `Completed sub_workflow: ${target.name}`);
-    return result;
+    try {
+      const parentScope = this.subWorkflowExecutionScope.getStore() ?? [];
+      const result = await this.subWorkflowExecutionScope.run(
+        [...parentScope, execution.id],
+        () => this.executeEmbeddedWorkflow(session, {
+          nodes: clone(target.nodes), edges: clone(target.edges),
+        }, buildOutputObject(resolvedData.inputFields) ?? {}),
+      );
+      execution.status = session.status === 'error' || session.stopRequested ? 'error' : 'completed';
+      execution.finishedAt = Date.now();
+      this.emitSubWorkflowLog(session, execution);
+      appendLog('info', `Completed sub_workflow: ${target.name}`);
+      return result;
+    } catch (error) {
+      execution.status = 'error';
+      execution.finishedAt = Date.now();
+      this.emitSubWorkflowLog(session, execution);
+      throw error;
+    } finally {
+      const active = this.subWorkflowExecutions.get(session.id)?.filter(item => item.id !== execution.id) ?? [];
+      if (active.length > 0) this.subWorkflowExecutions.set(session.id, active);
+      else this.subWorkflowExecutions.delete(session.id);
+    }
   }
 
   private async executeEmbeddedWorkflow(
@@ -2056,6 +2130,25 @@ export class ExecutionManager {
       executionId: session.id, workflowId: session.workflow.id,
       timestamp: Date.now(), log: this.currentLog(session),
     });
+    for (const execution of this.subWorkflowExecutions.get(session.id) ?? []) {
+      this.emitSubWorkflowLog(session, execution);
+    }
+  }
+
+  private emitSubWorkflowLog(session: ExecutionSession, execution: SubWorkflowExecutionContext): void {
+    const status = execution.status === 'running' && session.status === 'paused' ? 'paused' : execution.status;
+    const log = buildSubWorkflowExecutionLog({ ...execution, status }, session.steps);
+    // ponytail: overwrite the small running log on each existing emit; throttle only if nested-log I/O becomes measurable.
+    workflowStore.addExecutionLog(execution.workflow.id, log);
+    const payload = {
+      executionId: execution.id,
+      workflowId: execution.workflow.id,
+      timestamp: Date.now(),
+      log,
+    };
+    if (session.workspaceId) this.deps.emit('execution:log', payload, session.workspaceId);
+    else if (session.eventSink) session.eventSink('execution:log', payload);
+    else this.deps.emit('execution:log', payload);
   }
 
   private emitContext(session: ExecutionSession): void {

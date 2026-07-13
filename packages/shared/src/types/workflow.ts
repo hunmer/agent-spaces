@@ -336,6 +336,11 @@ export interface ExecutionStep {
   output?: unknown
   error?: string
   logs?: ExecutionLogEntry[]
+  /** 子工作流节点关联的目标工作流和本次执行。 */
+  subWorkflowId?: string
+  subWorkflowExecutionId?: string
+  /** 当前步骤所属的子工作流执行作用域，支持嵌套与并行子工作流。 */
+  subWorkflowExecutionIds?: string[]
 }
 
 export interface ExecutionLog {

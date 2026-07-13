@@ -11,6 +11,7 @@ import {
   ChevronDown,
   ChevronUp,
   Copy,
+  ExternalLink,
   Info,
   Loader2,
   X,
@@ -425,6 +426,23 @@ export function WorkflowNodeExecutionLog({
 
       {isLogExpanded && (
         <div className="nodrag nopan rounded-b-md border border-t-0 border-border bg-background">
+          {nodeType === 'sub_workflow' && selectedExecutionStep.subWorkflowId && selectedExecutionStep.subWorkflowExecutionId && (
+            <div className="border-b border-border p-2">
+              <button
+                type="button"
+                className="flex h-7 w-full items-center justify-center gap-1.5 rounded-md border border-input bg-background px-2 text-[10px] hover:bg-muted"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  const workflowId = encodeURIComponent(selectedExecutionStep.subWorkflowId!);
+                  const executionLogId = encodeURIComponent(selectedExecutionStep.subWorkflowExecutionId!);
+                  window.open(`/workflows/${workflowId}?executionLogId=${executionLogId}&preview=1`, '_blank', 'noopener,noreferrer');
+                }}
+              >
+                <ExternalLink className="h-3 w-3" />
+                {t('execution.viewSubWorkflow')}
+              </button>
+            </div>
+          )}
           {/* Error */}
           {selectedExecutionStep.error && (
             <div className="px-2 py-1.5 text-[10px] text-red-500 bg-red-500/10 border-b border-border flex items-start gap-1">

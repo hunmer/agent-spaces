@@ -178,6 +178,7 @@
     "copyLog": "Copy log",
     "copyLogPath": "Copy log file path",
     "deleteLog": "Delete log",
+    "viewSubWorkflow": "View sub-workflow",
     "noSteps": "No execution steps",
     "selectLog": "Select a record to view details",
     "copy": "Copy",

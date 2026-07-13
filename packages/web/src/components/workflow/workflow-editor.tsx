@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
+import { useSearchParams } from 'next/navigation';
 import { ReactFlowProvider } from '@xyflow/react';
 import { useJoyride, STATUS } from 'react-joyride';
 import type { Status, Step } from 'react-joyride';
@@ -442,6 +443,7 @@ function WorkflowEditorInner({
   returnToIssue?: { workspaceId: string; issueId: string } | null;
 }) {
   const t = useTranslations('workflows');
+  const searchParams = useSearchParams();
   const canvasExportRef = useRef<WorkflowCanvasViewportRef | null>(null);
   // ---- State ----
   const state = useWorkflowEditorState(template);
@@ -759,6 +761,19 @@ function WorkflowEditorInner({
     clearSelectedExecutionLog();
   }, [clearSelectedExecutionLog, exitPreview]);
   const autoPreviewLogIdRef = useRef<string | null>(null);
+  const urlPreviewExecutionLogs = execution.executionLogs;
+  const selectUrlPreviewExecutionLog = execution.handleSelectExecutionLog;
+
+  useEffect(() => {
+    if (searchParams.get('preview') !== '1') return;
+    const executionLogId = searchParams.get('executionLogId');
+    if (!executionLogId || autoPreviewLogIdRef.current === executionLogId) return;
+    const log = urlPreviewExecutionLogs.find(item => item.id === executionLogId);
+    if (!log?.snapshot) return;
+    autoPreviewLogIdRef.current = log.id;
+    selectUrlPreviewExecutionLog(log);
+    enterPreview(log);
+  }, [enterPreview, searchParams, selectUrlPreviewExecutionLog, urlPreviewExecutionLogs]);
 
   // Auto-preview when execution finishes in the current session
   useEffect(() => {

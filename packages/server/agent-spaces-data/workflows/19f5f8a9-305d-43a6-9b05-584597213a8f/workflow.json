@@ -487,8 +487,7 @@
         ],
         "workflowId": "c72d5ba1-9b64-4e14-a67b-8d32a96a48a0",
         "workflowName": "批量上传文件"
-      },
-      "breakpoint": "end"
+      }
     }
   ],
   "edges": [
@@ -839,7 +838,7 @@
     }
   ],
   "createdAt": 1782271756656,
-  "updatedAt": 1783944185329,
+  "updatedAt": 1783945892261,
   "published": false,
   "enabledPlugins": [
     "workflow.openai",
@@ -848,7 +847,7 @@
     "workflow.jimeng",
     "workflow.ai-image"
   ],
-  "lastRunAt": 1783943942533,
+  "lastRunAt": 1783945896211,
   "groups": [],
   "description": "编辑图片",
   "variables": [],

@@ -178,6 +178,7 @@
     "copyLog": "复制日志",
     "copyLogPath": "复制日志文件位置",
     "deleteLog": "删除日志",
+    "viewSubWorkflow": "查看子工作流",
     "noSteps": "暂无执行步骤",
     "selectLog": "选择一条执行记录查看详情",
     "copy": "复制",
