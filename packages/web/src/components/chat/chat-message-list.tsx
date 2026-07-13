@@ -214,7 +214,7 @@ export function ChatMessageList<TMessage extends DisplayChatMessage>({
     const showTimelineMessages = streaming && hasTimelineMessage;
     const visibleTimeline = showTimelineMessages ? timeline : timeline.filter((item) => item.type !== "message");
     const hasToolTimeline = timeline.some((item) => item.type === "tool");
-    const showTools = streaming || visibleToolTimelineMessageIds[msg.id] === true;
+    const showTools = streaming || visibleToolTimelineMessageIds[msg.id] !== false;
     const showTimeline = visibleTimeline.some((item) => item.type !== "tool" || showTools);
     const canToggleTimeline = msg.role === "agent" && hasToolTimeline && !streaming;
     const bodyMessage = showTimelineMessages ? "" : message;
@@ -336,7 +336,7 @@ export function ChatMessageList<TMessage extends DisplayChatMessage>({
                 onClick={() => {
                   setVisibleToolTimelineMessageIds((current) => ({
                     ...current,
-                    [msg.id]: current[msg.id] !== true,
+                    [msg.id]: current[msg.id] === false,
                   }));
                 }}
                 className={cn(
