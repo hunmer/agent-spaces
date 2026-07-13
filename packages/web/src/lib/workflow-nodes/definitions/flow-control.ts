@@ -291,7 +291,9 @@ export const flowControlNodes: NodeTypeDefinition[] = [
     category: 'nodes.categories.flowControl',
     icon: 'Workflow',
     description: 'nodes.sub_workflow.description',
-    properties: [],
+    properties: [
+      { key: 'workflowId', label: 'nodes.sub_workflow.props.workflow', type: 'workflow', required: true },
+    ],
     allowInputFields: true,
     outputs: [{ key: 'result', type: 'any' }],
   },

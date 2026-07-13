@@ -221,7 +221,7 @@ export interface NodePropertyDynamicOptions {
 export interface NodeProperty {
   key: string
   label: string
-  type: 'text' | 'textarea' | 'number' | 'select' | 'checkbox' | 'code' | 'conditions' | 'array' | 'output_fields' | 'agent' | 'sqlite' | 'knowledge-base'
+  type: 'text' | 'textarea' | 'number' | 'select' | 'checkbox' | 'code' | 'conditions' | 'array' | 'output_fields' | 'agent' | 'workflow' | 'sqlite' | 'knowledge-base'
   dataType?: DataType
   required?: boolean
   readonly?: boolean

@@ -21,6 +21,7 @@ import {
   DebouncedNumberInput,
 } from './workflow-fields-debounced';
 import { AgentPropertyEditor } from './workflow-fields-agent';
+import { WorkflowPropertyEditor } from './workflow-fields-workflow';
 import { CodePropertyEditor } from './workflow-fields-code';
 import { SqliteDatabasePicker } from './workflow-fields-sqlite';
 import { KnowledgeBasePicker } from './workflow-fields-knowledge-base';
@@ -179,6 +180,9 @@ export function PropertyField({
           onChange={onChange}
         />
       );
+
+    case 'workflow':
+      return <WorkflowPropertyEditor value={value} disabled={disabled} onChange={onChange} />;
 
     case 'sqlite':
       return <SqliteDatabasePicker value={String(value ?? '')} onChange={(v) => onChange(v)} />;

@@ -735,7 +735,11 @@
     },
     "sub_workflow": {
       "label": "子工作流",
-      "description": "执行一个独立的子工作流"
+      "description": "执行一个独立的子工作流",
+      "select": "选择工作流",
+      "props": {
+        "workflow": "工作流"
+      }
     },
     "loop_break": {
       "label": "跳出循环",

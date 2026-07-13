@@ -3,7 +3,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { useLocalizedNodeDefinition } from '@/lib/workflow-nodes';
-import type { ExecutionLog, OutputField, WorkflowEdge, WorkflowNode } from '@agent-spaces/shared';
+import type { ExecutionLog, OutputField, Workflow, WorkflowEdge, WorkflowNode } from '@agent-spaces/shared';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Copy, Image as ImageIcon, Save, X } from 'lucide-react';
@@ -172,8 +172,25 @@ export function WorkflowPropertiesPanel({
       });
       return;
     }
+    if (node?.type === 'sub_workflow' && key === 'workflowId' && value && typeof value === 'object' && 'id' in value) {
+      const selectedWorkflow = value as Workflow;
+      const startNode = selectedWorkflow.nodes.find(item => item.type === 'start');
+      const currentFields = new Map(getOutputFields(data.inputFields).map(field => [field.key, field]));
+      const inputFields = getOutputFields(startNode?.data.inputFields).map(field => {
+        const current = currentFields.get(field.key);
+        return current?.type === field.type && current.value !== undefined
+          ? { ...field, value: current.value }
+          : field;
+      });
+      onUpdateData(nodeId, {
+        workflowId: selectedWorkflow.id,
+        workflowName: selectedWorkflow.name,
+        inputFields,
+      });
+      return;
+    }
     onUpdateData(nodeId, { [key]: value });
-  }, [data.outputs, node?.type, nodeId, onUpdateData, readOnly]);
+  }, [data.inputFields, data.outputs, node?.type, nodeId, onUpdateData, readOnly]);
   const handlePreviewDataChange = useCallback((key: string, value: unknown) => {
     if (readOnly) return;
     if (!nodeId) return;

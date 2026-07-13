@@ -735,7 +735,11 @@
     },
     "sub_workflow": {
       "label": "Sub-workflow",
-      "description": "Execute an independent sub-workflow"
+      "description": "Execute an independent sub-workflow",
+      "select": "Select workflow",
+      "props": {
+        "workflow": "Workflow"
+      }
     },
     "loop_break": {
       "label": "Break Loop",
