@@ -1,1 +1,66 @@
-[]
+[
+  {
+    "id": "1784008154513-0",
+    "url": "http://127.0.0.1:3100/api/mini-apps/stickerGenerator/data/file?path=output%2Fsticker-1784008153069-0.jpg&token=",
+    "thumbUrl": "http://127.0.0.1:3100/api/mini-apps/stickerGenerator/data/file?path=thumbs%2Fsticker-1784008153069-0.jpg&token=",
+    "prompt": "动漫女孩工作的一天",
+    "model": "jimeng-5.0",
+    "styleId": "classic-cartoon",
+    "styleName": "",
+    "aspect": "1:1",
+    "size": "1k",
+    "kind": "text_to_image",
+    "workflowId": "d88dcb7c-7f5f-47c8-962c-89217a2c0ad6",
+    "layoutMode": "single",
+    "collectionCount": 0,
+    "createdAt": "2026/7/14 13:49:14"
+  },
+  {
+    "id": "1784008154513-1",
+    "url": "http://127.0.0.1:3100/api/mini-apps/stickerGenerator/data/file?path=output%2Fsticker-1784008153069-1.jpg&token=",
+    "thumbUrl": "http://127.0.0.1:3100/api/mini-apps/stickerGenerator/data/file?path=thumbs%2Fsticker-1784008153069-1.jpg&token=",
+    "prompt": "动漫女孩工作的一天",
+    "model": "jimeng-5.0",
+    "styleId": "classic-cartoon",
+    "styleName": "",
+    "aspect": "1:1",
+    "size": "1k",
+    "kind": "text_to_image",
+    "workflowId": "d88dcb7c-7f5f-47c8-962c-89217a2c0ad6",
+    "layoutMode": "single",
+    "collectionCount": 0,
+    "createdAt": "2026/7/14 13:49:14"
+  },
+  {
+    "id": "1784008154513-2",
+    "url": "http://127.0.0.1:3100/api/mini-apps/stickerGenerator/data/file?path=output%2Fsticker-1784008153069-2.jpg&token=",
+    "thumbUrl": "http://127.0.0.1:3100/api/mini-apps/stickerGenerator/data/file?path=thumbs%2Fsticker-1784008153069-2.jpg&token=",
+    "prompt": "动漫女孩工作的一天",
+    "model": "jimeng-5.0",
+    "styleId": "classic-cartoon",
+    "styleName": "",
+    "aspect": "1:1",
+    "size": "1k",
+    "kind": "text_to_image",
+    "workflowId": "d88dcb7c-7f5f-47c8-962c-89217a2c0ad6",
+    "layoutMode": "single",
+    "collectionCount": 0,
+    "createdAt": "2026/7/14 13:49:14"
+  },
+  {
+    "id": "1784008154513-3",
+    "url": "http://127.0.0.1:3100/api/mini-apps/stickerGenerator/data/file?path=output%2Fsticker-1784008153069-3.jpg&token=",
+    "thumbUrl": "http://127.0.0.1:3100/api/mini-apps/stickerGenerator/data/file?path=thumbs%2Fsticker-1784008153069-3.jpg&token=",
+    "prompt": "动漫女孩工作的一天",
+    "model": "jimeng-5.0",
+    "styleId": "classic-cartoon",
+    "styleName": "",
+    "aspect": "1:1",
+    "size": "1k",
+    "kind": "text_to_image",
+    "workflowId": "d88dcb7c-7f5f-47c8-962c-89217a2c0ad6",
+    "layoutMode": "single",
+    "collectionCount": 0,
+    "createdAt": "2026/7/14 13:49:14"
+  }
+]

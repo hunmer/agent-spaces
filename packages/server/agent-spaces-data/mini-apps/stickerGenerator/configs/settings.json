@@ -3,7 +3,7 @@
   "textToImageWorkflowName": "text_to_image",
   "editImageWorkflowId": "19f5f8a9-305d-43a6-9b05-584597213a8f",
   "editImageWorkflowName": "edit_image",
-  "defaultModel": "",
+  "defaultModel": "jimeng-5.0",
   "agentConfigId": "df30254a-17d7-423a-8741-f2fe0643fa61",
   "agentName": "贴图助手",
   "agentModelProvider": "openai-chat-completions"
