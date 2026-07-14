@@ -153,6 +153,7 @@ interface ChatStore {
       activeEditorDirectoryTabId?: string;
     },
   ) => Promise<void>;
+  updateSessionContextLength: (sessionId: string, contextLength: number) => Promise<void>;
 
   // Session messages
   loadSessionMessages: (workspaceId: string, sessionId: string) => Promise<void>;
@@ -454,6 +455,15 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       `/api/chat/workspaces/${wsId}/sessions/${sessionId}`,
       data,
     );
+    set((s) => ({
+      sessions: s.sessions.map((session) => session.id === sessionId ? updated : session),
+    }));
+  },
+
+  updateSessionContextLength: async (sessionId, contextLength) => {
+    const wsId = get().activeWorkspaceId;
+    if (!wsId) return;
+    const updated = await sdk.chat.updateSession(wsId, sessionId, { contextLength });
     set((s) => ({
       sessions: s.sessions.map((session) => session.id === sessionId ? updated : session),
     }));

@@ -1,0 +1,14 @@
+{
+  "type": "skillhub-expert-package",
+  "slug": "media-storyboard-design",
+  "displayName": "分镜设计",
+  "summary": "从剧本文本到标准分镜表格转换（镜号/景别/拍摄角度/画面内容/人物/音效）与电影感镜头运动设计（推拉摇移/景别/构图），到AI视频提示词与分镜脚本构思（文生视频/图生视频/多模态参考）与AI绘画视频提示词参数化构建，再到专业四幕分镜脚本生成与视频脚本分镜描述画面提示词输出的完整分镜设计工作流。覆盖分镜规划、镜头设计、画面提示词、视觉预览全链路。",
+  "skillSlugs": [
+    "script-to-storyboard",
+    "video-cinematography",
+    "seedance2-video-prompter",
+    "prompt-bozo",
+    "seedance2-storyboard-generator",
+    "ai-video-script"
+  ]
+}

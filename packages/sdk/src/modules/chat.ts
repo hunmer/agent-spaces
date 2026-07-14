@@ -71,6 +71,7 @@ export interface ChatSession {
   archived?: boolean;
   editorDirectoryTabs?: Array<{ id: string; path: string }>;
   activeEditorDirectoryTabId?: string;
+  contextLength?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -152,7 +153,7 @@ export function createChatApi(http: { get: Function; post: Function; put: Functi
     renameSession: (workspaceId: string, sessionId: string, title: string): Promise<ChatSession> =>
       http.put(`/api/chat/workspaces/${workspaceId}/sessions/${sessionId}`, { title }),
 
-    updateSession: (workspaceId: string, sessionId: string, data: Partial<Pick<ChatSession, 'title' | 'archived' | 'editorDirectoryTabs' | 'activeEditorDirectoryTabId'>>): Promise<ChatSession> =>
+    updateSession: (workspaceId: string, sessionId: string, data: Partial<Pick<ChatSession, 'title' | 'archived' | 'editorDirectoryTabs' | 'activeEditorDirectoryTabId' | 'contextLength'>>): Promise<ChatSession> =>
       http.patch(`/api/chat/workspaces/${workspaceId}/sessions/${sessionId}`, data),
 
     deleteSession: (workspaceId: string, sessionId: string): Promise<void> =>

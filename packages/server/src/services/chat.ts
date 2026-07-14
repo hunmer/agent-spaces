@@ -168,6 +168,7 @@ export function updateSession(
     archived?: boolean;
     editorDirectoryTabs?: Array<{ id: string; path: string }>;
     activeEditorDirectoryTabId?: string;
+    contextLength?: number;
   },
 ): ChatSession | null {
   return store.updateSession(workspaceId, sessionId, data);

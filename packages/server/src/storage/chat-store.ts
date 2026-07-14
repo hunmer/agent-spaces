@@ -75,6 +75,7 @@ export interface ChatSession {
   archived?: boolean;
   editorDirectoryTabs?: Array<{ id: string; path: string }>;
   activeEditorDirectoryTabId?: string;
+  contextLength?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -370,6 +371,7 @@ export function createSession(workspaceId: string, agentId: string): ChatSession
     workspaceId,
     agentId,
     title: undefined,
+    contextLength: 20,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
@@ -387,6 +389,7 @@ export function updateSession(
     archived?: boolean;
     editorDirectoryTabs?: Array<{ id: string; path: string }>;
     activeEditorDirectoryTabId?: string;
+    contextLength?: number;
   },
 ): ChatSession | null {
   const sessions = readJsonFile<ChatSession[]>(sessionsFile(workspaceId)) ?? [];
@@ -398,6 +401,7 @@ export function updateSession(
     ...(data.archived !== undefined && { archived: data.archived }),
     ...(data.editorDirectoryTabs !== undefined && { editorDirectoryTabs: data.editorDirectoryTabs }),
     ...(data.activeEditorDirectoryTabId !== undefined && { activeEditorDirectoryTabId: data.activeEditorDirectoryTabId }),
+    ...(data.contextLength !== undefined && { contextLength: data.contextLength }),
     updatedAt: new Date().toISOString(),
   };
   writeJsonFile(sessionsFile(workspaceId), sessions);

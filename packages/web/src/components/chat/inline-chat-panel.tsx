@@ -26,6 +26,8 @@ const EMPTY_COMPOSER_STATE: ChatComposerInputState = {
   activeWorkflowPluginTools: [],
 };
 
+const DEFAULT_CONTEXT_LENGTH = 20;
+
 function normalizeSkills(skills?: Array<string | { name: string; content?: string }>): string[] | undefined {
   return skills?.map((item) => typeof item === "string" ? item : item.name).filter(Boolean);
 }
@@ -97,7 +99,9 @@ export function InlineChatPanel({
   const [selectedVersions, setSelectedVersions] = useState<Record<string, number>>({});
   const [regeneratingVersionKey, setRegeneratingVersionKey] = useState<string | null>(null);
   const [regenerationStartedAt, setRegenerationStartedAt] = useState<string | null>(null);
-  const [contextLength, setContextLength] = useState(0);
+  const savedContextLength = useChatStore((s) => s.sessions.find((session) => session.id === sessionId)?.contextLength);
+  const updateSessionContextLength = useChatStore((s) => s.updateSessionContextLength);
+  const [contextLength, setContextLength] = useState(savedContextLength ?? DEFAULT_CONTEXT_LENGTH);
   const [composerState, setComposerState] = useState<ChatComposerInputState>(EMPTY_COMPOSER_STATE);
   const ensureAgents = useAgentStore((s) => s.ensure);
   const storeAgents = useAgentStore((s) => s.agents);
@@ -139,6 +143,15 @@ export function InlineChatPanel({
   useEffect(() => {
     void ensureAgents();
   }, [ensureAgents]);
+
+  useEffect(() => {
+    setContextLength(savedContextLength ?? DEFAULT_CONTEXT_LENGTH);
+  }, [savedContextLength, sessionId]);
+
+  const handleContextLengthChange = useCallback((value: number) => {
+    setContextLength(value);
+    void updateSessionContextLength(sessionId, value);
+  }, [sessionId, updateSessionContextLength]);
 
   useEffect(() => {
     if (!listRef.current) return;
@@ -376,7 +389,7 @@ export function InlineChatPanel({
             workflowPluginTools={composerState.activeWorkflowPluginTools}
             todos={[]}
             contextLength={contextLength}
-            onContextLengthChange={setContextLength}
+            onContextLengthChange={handleContextLengthChange}
             enableRecentCode={false}
             onInsertText={(text) => composerRef.current?.insertText(text)}
           />

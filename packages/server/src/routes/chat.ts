@@ -167,11 +167,13 @@ router.patch('/workspaces/:wsId/sessions/:sessionId', (req, res) => {
     archived,
     editorDirectoryTabs,
     activeEditorDirectoryTabId,
+    contextLength,
   } = req.body as {
     title?: string;
     archived?: boolean;
     editorDirectoryTabs?: Array<{ id: string; path: string }>;
     activeEditorDirectoryTabId?: string;
+    contextLength?: number;
   };
   try {
     const session = svc.updateSession(wsId, sessionId, {
@@ -179,6 +181,7 @@ router.patch('/workspaces/:wsId/sessions/:sessionId', (req, res) => {
       archived,
       editorDirectoryTabs,
       activeEditorDirectoryTabId,
+      contextLength,
     });
     if (!session) {
       res.status(404).json({ error: 'Session not found' });
