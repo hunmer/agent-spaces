@@ -119,29 +119,41 @@ export default function App() {
     setGeneratingAlert(false);
   }, []);
 
-  const handleGenerate = useCallback(async ({ audioUrl, prompt, lyrics }) => {
-    player.loadAudio(audioUrl, true);
-    const title = prompt.length > 30 ? prompt.slice(0, 30) + '...' : prompt;
-    const artist = 'MiniMax Music AI';
-    setTrackInfo({ title, artist });
-    setCurrentLyrics(lyrics || '');
-    writeLastTrack({ audioUrl, title, artist, lyrics: lyrics || '' });
+  const handleGenerate = useCallback(async ({ songs, prompt, lyrics }) => {
+    // 规一化歌曲列表（兼容旧的单首 { audioUrl } 调用）
+    const list = Array.isArray(songs) && songs.length
+      ? songs
+      : [];
 
-    // Save to local storage (per-project)
+    if (!list.length) return;
+
+    // 按生成顺序倒序入库，保证第一首在列表最前（index 0）
+    const now = Date.now();
+    const newItems = list.map((s, i) => {
+      const title = (s.title && s.title.length > 30) ? s.title.slice(0, 30) + '...' : (s.title || prompt.slice(0, 30));
+      const artist = s.artist || 'AI Music';
+      return {
+        id: `${now}-${i}`,
+        audioUrl: s.audioUrl,
+        title,
+        artist,
+        prompt: s.prompt || prompt,
+        lyrics: s.lyrics ?? lyrics ?? '',
+        createdAt: new Date().toISOString(),
+      };
+    });
+
+    // 立即播放第一首
+    const first = newItems[0];
+    player.loadAudio(first.audioUrl, true);
+    setTrackInfo({ title: first.title, artist: first.artist });
+    setCurrentLyrics(first.lyrics || '');
+    writeLastTrack({ audioUrl: first.audioUrl, title: first.title, artist: first.artist, lyrics: first.lyrics || '' });
+
+    // Save to local storage (per-project)：新歌按顺序置于最前
     try {
       const existing = await readHistory();
-      await writeHistory([
-        {
-          id: Date.now().toString(),
-          audioUrl,
-          title,
-          artist,
-          prompt,
-          lyrics: lyrics || '',
-          createdAt: new Date().toISOString(),
-        },
-        ...existing,
-      ]);
+      await writeHistory([...newItems, ...existing]);
     } catch (e) {
       console.error('Failed to save music history:', e);
     }
