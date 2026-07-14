@@ -3,10 +3,11 @@ import { join, dirname, basename } from 'node:path';
 import { tmpdir } from 'node:os';
 import { v4 as uuid } from 'uuid';
 import yauzl from 'yauzl';
-import type { AgentConfig } from '@agent-spaces/shared';
+import type { AgentConfig, BuiltInAgentToolName } from '@agent-spaces/shared';
 import { BUILT_IN_AGENT_TOOLS } from '@agent-spaces/shared';
 import { ensureDir, getDataDir } from '../storage/json-store.js';
 import { listTemplates, resolveGlobalDefaultModel } from './agent.js';
+import { deleteGlobalPreset } from './agent.js';
 
 export interface InstalledSkillsPackage {
   agent: AgentConfig;
@@ -16,6 +17,15 @@ export interface InstalledSkillsPackage {
 
 function getGlobalAgentTemplatesDir(): string {
   return join(getDataDir(), 'agent-templates');
+}
+
+const VALID_TOOL_NAMES = new Set<string>(BUILT_IN_AGENT_TOOLS.map((t) => t.name));
+/** 过滤 manifest 声明的 tools，只保留合法的内置工具名 */
+function normalizeTools(tools: unknown): NonNullable<AgentConfig['tools']> {
+  if (!Array.isArray(tools)) return [];
+  return tools.filter(
+    (t): t is BuiltInAgentToolName => typeof t === 'string' && VALID_TOOL_NAMES.has(t),
+  );
 }
 
 function getGlobalAgentTemplateDir(agentId: string): string {
@@ -66,6 +76,14 @@ interface PackageManifest {
   displayName?: string;
   summary?: string;
   skillSlugs?: string[];
+  /** 可选：覆盖默认模型配置 */
+  modelProvider?: AgentConfig['modelProvider'];
+  modelId?: string;
+  /** 可选：图标资源（emoji 或图片 url） */
+  icon?: string;
+  avatarUrl?: string;
+  /** 可选：要开启的内置工具名（默认空，保持最小权限） */
+  tools?: string[];
 }
 
 function readManifest(extractDir: string): { manifest: PackageManifest; slugDir: string } | null {
@@ -100,17 +118,25 @@ function readManifest(extractDir: string): { manifest: PackageManifest; slugDir:
  * 5. 手写 agent.json（绕开 writeAgentTemplate 的全局 skill 同步逻辑）
  */
 export async function installSkillsPackage(zipBuffer: Buffer): Promise<InstalledSkillsPackage> {
+  if (!zipBuffer || zipBuffer.length === 0) {
+    throw new Error('Empty package: zip buffer is empty');
+  }
+
   const extractDir = join(tmpdir(), `skills-pkg-${uuid()}`);
   const zipPath = join(extractDir, 'package.zip');
   mkdirSync(extractDir, { recursive: true });
   writeFileSync(zipPath, zipBuffer);
 
   try {
-    await extractZip(zipPath, join(extractDir, 'content'));
+    try {
+      await extractZip(zipPath, join(extractDir, 'content'));
+    } catch (err) {
+      throw new Error(`Failed to extract package zip: ${err instanceof Error ? err.message : String(err)}`);
+    }
     const contentDir = join(extractDir, 'content');
 
     const parsed = readManifest(contentDir);
-    if (!parsed) throw new Error('manifest.json not found in package');
+    if (!parsed) throw new Error('manifest.json not found in package root or first-level directory');
     const { manifest, slugDir } = parsed;
     const slug = manifest.slug || basename(slugDir);
     if (!slug) throw new Error('manifest.slug is required');
@@ -143,7 +169,12 @@ export async function installSkillsPackage(zipBuffer: Buffer): Promise<Installed
         const skillSlug = basename(file, '.zip');
         const skillZipPath = join(pkgSkillsDir, file);
         const targetDir = join(agentSkillsDir, skillSlug);
-        await extractZip(skillZipPath, targetDir);
+        try {
+          await extractZip(skillZipPath, targetDir);
+        } catch (err) {
+          console.warn(`[skills-package] failed to extract skill ${skillSlug}:`, err);
+          continue;
+        }
         // 校验 SKILL.md 存在（zip 内 SKILL.md 在根目录，解压后即 targetDir/SKILL.md）
         if (existsSync(join(targetDir, 'SKILL.md'))) {
           installedSkills.push(skillSlug);
@@ -166,30 +197,30 @@ export async function installSkillsPackage(zipBuffer: Buffer): Promise<Installed
       role: 'agent',
       description: manifest.summary || '',
       runtimeKind: 'claude-code',
-      modelProvider: defaultModel?.modelProvider ?? 'anthropic-messages',
+      // 模型配置优先级：manifest > existing > 全局默认
+      modelProvider: manifest.modelProvider ?? existing?.modelProvider ?? defaultModel?.modelProvider ?? 'anthropic-messages',
       providerId: existing?.providerId || defaultModel?.providerId,
-      modelId: existing?.modelId || defaultModel?.modelId || 'claude-sonnet-4-6',
+      modelId: manifest.modelId ?? existing?.modelId ?? defaultModel?.modelId ?? 'claude-sonnet-4-6',
       workingDir: '',
       mcps: existing?.mcps ?? {},
       skills,
-      tools: existing?.tools ?? BUILT_IN_AGENT_TOOLS.map((t) => t.name),
+      // 默认不开启任何内置工具，保持最小权限；manifest 可显式声明
+      tools: normalizeTools(manifest.tools) ?? existing?.tools ?? [],
       systemPrompt,
       temperature: existing?.temperature ?? 0.3,
       maxTokens: existing?.maxTokens ?? 4096,
       templateId: slug,
       enabled: true,
-      ...(existing?.avatarUrl ? { avatarUrl: existing.avatarUrl } : {}),
-      ...(existing?.icon ? { icon: existing.icon } : {}),
+      avatarUrl: manifest.avatarUrl ?? existing?.avatarUrl ?? '',
+      icon: manifest.icon ?? existing?.icon ?? '',
     };
 
     writeFileSync(join(agentDir, 'agent.json'), JSON.stringify(preset, null, 2), 'utf-8');
     // mcp.json 兜底（与其他模板结构一致）
-    if (!existsSync(join(agentDir, 'mcp.json'))) {
-      writeFileSync(join(agentDir, 'mcp.json'), JSON.stringify(preset.mcps ?? {}, null, 2), 'utf-8');
-    }
+    writeFileSync(join(agentDir, 'mcp.json'), JSON.stringify(preset.mcps ?? {}, null, 2), 'utf-8');
 
     console.info('[skills-package] installed', {
-      slug, agentId, created, skillsCount: skills.length, skills,
+      slug, agentId, created, skillsCount: skills.length, skills, toolsCount: preset.tools?.length ?? 0,
     });
 
     return { agent: preset, skills, created };
@@ -199,11 +230,26 @@ export async function installSkillsPackage(zipBuffer: Buffer): Promise<Installed
 }
 
 /**
+ * 卸载技能包：删除对应的 agent 模板（含其私有 skills 目录）。
+ * 通过 templateId === slug 定位。返回是否删除成功。
+ */
+export function uninstallSkillsPackage(slug: string): boolean {
+  const existing = listTemplates().find((a) => a.templateId === slug);
+  if (!existing) return false;
+  return deleteGlobalPreset(existing.id);
+}
+
+/**
  * 从商店 URL 下载 zip 并安装。
  * storeUrl 是前端解析好的完整 URL（已含 base 前缀）。
  */
 export async function installSkillsPackageFromUrl(storeUrl: string): Promise<InstalledSkillsPackage> {
-  const res = await fetch(storeUrl);
+  let res: Response;
+  try {
+    res = await fetch(storeUrl);
+  } catch (err) {
+    throw new Error(`Download failed (network): ${err instanceof Error ? err.message : String(err)}`);
+  }
   if (!res.ok) {
     throw new Error(`Download failed: ${res.status} ${res.statusText}`);
   }

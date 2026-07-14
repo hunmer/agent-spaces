@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
-import { Download, Package, Search, Store } from "lucide-react";
+import { Download, Package, Search, Store, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -93,16 +93,33 @@ export function SkillsPackageDialog({ open, onOpenChange }: SkillsPackageDialogP
       const fullUrl = base
         ? `${base.replace(/\/+$/, "")}/${item.zipUrl.replace(/^\/+/, "")}`
         : `/agents-store/${item.zipUrl.replace(/^\/+/, "")}`;
-      const result = await sdk.skillsPackage.install(fullUrl);
+      await sdk.skillsPackage.install(fullUrl);
       await refreshInstalled();
-      toast.success(
-        t("installSuccess", { name: item.name }),
-      );
-      // 安装成功后可顺便刷新 agent 列表 store（如有全局 store 监听）
-      void result;
+      toast.success(t("installSuccess", { name: item.name }));
     } catch (err) {
       toast.error(
         t("installFailed", {
+          error: err instanceof Error ? err.message : String(err),
+        }),
+      );
+    }
+    setImportingIds((prev) => {
+      const next = new Set(prev);
+      next.delete(item.id);
+      return next;
+    });
+  };
+
+  const handleUninstall = async (item: StoreSkillsPackage) => {
+    if (importingIds.has(item.id)) return;
+    setImportingIds((prev) => new Set(prev).add(item.id));
+    try {
+      await sdk.skillsPackage.uninstall(item.id);
+      await refreshInstalled();
+      toast.success(t("uninstallSuccess", { name: item.name }));
+    } catch (err) {
+      toast.error(
+        t("uninstallFailed", {
           error: err instanceof Error ? err.message : String(err),
         }),
       );
@@ -159,25 +176,44 @@ export function SkillsPackageDialog({ open, onOpenChange }: SkillsPackageDialogP
                         <div className="flex items-center gap-1.5 min-w-0">
                           <Store className="size-3.5 text-muted-foreground shrink-0" />
                           <span className="font-medium text-sm truncate">{item.name}</span>
-                        </div>
-                        <Button
-                          variant={isInstalled ? "ghost" : "outline"}
-                          size="sm"
-                          className="h-6 px-1.5 text-xs shrink-0"
-                          disabled={isImporting}
-                          onClick={() => handleInstall(item)}
-                        >
-                          {isImporting ? (
-                            t("installing")
-                          ) : isInstalled ? (
-                            t("update")
-                          ) : (
-                            <>
-                              <Download className="size-3 mr-0.5" />
-                              {t("install")}
-                            </>
+                          {isInstalled && (
+                            <span className="shrink-0 rounded bg-emerald-500/15 px-1 py-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
+                              {t("installed")}
+                            </span>
                           )}
-                        </Button>
+                        </div>
+                        <div className="flex items-center gap-1 shrink-0">
+                          {isInstalled && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 px-1.5 text-xs text-destructive hover:text-destructive"
+                              disabled={isImporting}
+                              onClick={() => handleUninstall(item)}
+                              title={t("uninstall")}
+                            >
+                              <Trash2 className="size-3" />
+                            </Button>
+                          )}
+                          <Button
+                            variant={isInstalled ? "ghost" : "outline"}
+                            size="sm"
+                            className="h-6 px-1.5 text-xs"
+                            disabled={isImporting}
+                            onClick={() => handleInstall(item)}
+                          >
+                            {isImporting ? (
+                              t("installing")
+                            ) : isInstalled ? (
+                              t("update")
+                            ) : (
+                              <>
+                                <Download className="size-3 mr-0.5" />
+                                {t("install")}
+                              </>
+                            )}
+                          </Button>
+                        </div>
                       </div>
                       <p className="text-xs text-muted-foreground line-clamp-3">
                         {item.summary}

@@ -11,5 +11,8 @@
   "skillsCount": "{count} 个技能",
   "installSuccess": "技能包「{name}」安装成功",
   "installFailed": "安装失败：{error}",
+  "uninstall": "卸载",
+  "uninstallSuccess": "技能包「{name}」已卸载",
+  "uninstallFailed": "卸载失败：{error}",
   "storeEmpty": "商店暂无技能包"
 }

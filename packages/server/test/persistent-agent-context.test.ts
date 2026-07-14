@@ -59,6 +59,33 @@ test('buildPersistentAgentContextDetails loads instruction files from boundDirs 
   }
 });
 
+test('buildPersistentAgentContextDetails excludes every CLAUDE.md casing for native Claude Code loading', () => {
+  const dataDir = mkdtempSync(join(tmpdir(), 'agent-spaces-data-'));
+  const workspaceDir = mkdtempSync(join(tmpdir(), 'persistent-context-workspace-'));
+  const previousDataDir = process.env.AGENT_SPACES_DATA_DIR;
+  process.env.AGENT_SPACES_DATA_DIR = dataDir;
+
+  try {
+    writeFileSync(join(dataDir, 'CLAUDE.md'), 'server instructions', 'utf-8');
+    writeFileSync(join(workspaceDir, 'CLAUDE.md'), 'workspace instructions', 'utf-8');
+
+    const details = buildPersistentAgentContextDetails({
+      workspaceId: 'ws-1',
+      workingDir: workspaceDir,
+      boundDirs: [workspaceDir],
+      excludeNativeClaudeMd: true,
+    });
+
+    assert.equal(details.summary.counts.claudeMd, 0);
+    assert.doesNotMatch(details.instructionContext, /server instructions|workspace instructions/);
+  } finally {
+    if (previousDataDir === undefined) delete process.env.AGENT_SPACES_DATA_DIR;
+    else process.env.AGENT_SPACES_DATA_DIR = previousDataDir;
+    rmSync(dataDir, { recursive: true, force: true });
+    rmSync(workspaceDir, { recursive: true, force: true });
+  }
+});
+
 test('buildPersistentAgentContextDetails deduplicates instruction files by case on Windows', () => {
   const dataDir = mkdtempSync(join(tmpdir(), 'agent-spaces-data-'));
   const workspaceDir = mkdtempSync(join(tmpdir(), 'persistent-context-dedupe-'));

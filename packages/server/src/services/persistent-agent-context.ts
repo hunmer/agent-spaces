@@ -177,7 +177,7 @@ function globalInstructionPaths(options: Pick<PersistentAgentContextOptions, 'ex
 
 function getInstructionFilenames(options: Pick<PersistentAgentContextOptions, 'excludeNativeClaudeMd'>): string[] {
   if (!options.excludeNativeClaudeMd) return INSTRUCTION_FILENAMES;
-  return INSTRUCTION_FILENAMES.filter((filename) => filename !== 'CLAUDE.md');
+  return INSTRUCTION_FILENAMES.filter((filename) => filename.toLowerCase() !== 'claude.md');
 }
 
 function resolveInstructionRoot(cwd: string, boundDirs?: string[]): string {

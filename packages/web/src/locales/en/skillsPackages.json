@@ -11,5 +11,8 @@
   "skillsCount": "{count} skills",
   "installSuccess": "Package \"{name}\" installed",
   "installFailed": "Install failed: {error}",
+  "uninstall": "Uninstall",
+  "uninstallSuccess": "Package \"{name}\" uninstalled",
+  "uninstallFailed": "Uninstall failed: {error}",
   "storeEmpty": "No packages in store"
 }

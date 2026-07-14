@@ -16,5 +16,9 @@ export function createSkillsPackageApi(http: HttpClient) {
     /** 直接传 zip base64 内容安装 */
     installFromBase64: (zipBase64: string): Promise<InstalledSkillsPackage> =>
       http.post('/api/skills-packages/install', { zipBase64 }),
+
+    /** 按 slug 卸载技能包（删除对应 agent 模板 + 私有 skills） */
+    uninstall: (slug: string): Promise<void> =>
+      http.delete(`/api/skills-packages/${encodeURIComponent(slug)}`),
   };
 }
