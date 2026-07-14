@@ -1,5 +1,24 @@
 [
   {
+    "id": "1783998045413-0",
+    "type": "image",
+    "url": "https://files.closeai.fans/filesystem/output/20260714/1c0b0542-6ad8-49d8-98d0-6ef81072f516.png",
+    "prompt": "保留人物面部与发型特征，换上参考图中的服装款式",
+    "model": "gpt-image-2",
+    "aspect": "1:1",
+    "size": "1k",
+    "workflowName": "edit_image",
+    "sourceImage": "http://127.0.0.1:3100/static/uploads/微信图片_20260713093538_17_1072 (2)-dcc1bbc3-ac34-4725-bac9-82c14c9142da.jpg",
+    "references": [
+      {
+        "url": "http://127.0.0.1:3100/static/uploads/8bdaa26bac96a36b00af3230792d4694-30d1511a-db81-4e98-b0ef-bed633023260.jpg",
+        "path": "G:\\agent_spaces\\packages\\server\\public\\uploads\\8bdaa26bac96a36b00af3230792d4694-30d1511a-db81-4e98-b0ef-bed633023260.jpg",
+        "name": "8bdaa26bac96a36b00af3230792d4694.jpg"
+      }
+    ],
+    "createdAt": "2026/7/14 11:00:45"
+  },
+  {
     "id": "1783997926681-0",
     "type": "image",
     "url": "https://files.closeai.fans/filesystem/output/20260714/41f01cb9-6eb4-4e89-8f98-21caf7b1a408.png",

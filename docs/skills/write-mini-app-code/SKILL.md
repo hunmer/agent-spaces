@@ -146,6 +146,9 @@ The built-in routing symbols (`Router`, `useRouter`, `Link`, `serializeRoute`, `
 
 Use Tailwind utility classes through `className` for ordinary styling.
 
+- Size full-height app roots against the renderer parent with `h-full min-h-0` or `height: 100%`; never use `h-screen` or `height: 100vh`. The standalone preview includes a host toolbar, so viewport height exceeds the available render area and the overflow is clipped.
+- Put scrolling on a `min-h-0 overflow-auto` child inside the full-height root.
+
 Prefer theme-aware tokens:
 
 - `bg-background`
@@ -452,6 +455,7 @@ Before finishing, inspect the changed files for these invariants:
 - Large code was split into focused files under `components/`, `hooks/`, or `utils/`.
 - Local imports are relative and resolve inside `src/`.
 - Host UI components and lucide icons come from `window.AgentSpacesUI` or `@agent-spaces/ui`, not host source paths.
+- Full-height roots use parent-relative height (`h-full` / `height: 100%`), not viewport height (`h-screen` / `100vh`).
 - Styling uses Tailwind `className` and theme tokens where practical.
 - Light and dark themes remain readable.
 - Plugin tool responses are read according to their documented output shape.

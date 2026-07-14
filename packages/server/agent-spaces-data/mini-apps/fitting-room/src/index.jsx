@@ -18,7 +18,7 @@ function App() {
   };
 
   return (
-    <div className="fr-app" style={{ height: "100vh" }}>
+    <div className="fr-app" style={{ height: "100%" }}>
       <header className="fr-header">
         <div className="fr-header-title">👗 试衣间</div>
         <nav className="fr-tabs">
