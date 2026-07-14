@@ -35,7 +35,7 @@
           {
             "key": "urls",
             "type": "string[]",
-            "value": "{{ __data__[\"node_1783937435786_la4or4\"].items }}",
+            "value": "{{ __data__[\"node_1783994642480_afsx8y\"].result }}",
             "children": []
           }
         ]
@@ -378,6 +378,27 @@
         "generated": false,
         "hidden": false
       }
+    },
+    {
+      "id": "node_1783994642480_afsx8y",
+      "type": "pluck_array_key",
+      "label": "nodes.pluck_array_key.label",
+      "position": {
+        "x": 300,
+        "y": 161.625
+      },
+      "data": {
+        "array": "{{ __data__[\"node_1783937435786_la4or4\"].items }}",
+        "outputs": [
+          {
+            "key": "result",
+            "type": "string[]"
+          }
+        ],
+        "sourceNodeId": "node_1783937435786_la4or4",
+        "sourceHandle": "loop-next",
+        "key": "url"
+      }
     }
   ],
   "edges": [
@@ -530,20 +551,33 @@
       "targetHandle": "property:groups[0].variables[0].value"
     },
     {
-      "id": "e-node_1783937435786_la4or4-loop-next-node_1783937424474_end-target",
-      "source": "node_1783937435786_la4or4",
-      "target": "node_1783937424474_end",
-      "sourceHandle": "loop-next"
-    },
-    {
       "id": "e-node_1783937435786_la4or4-output:items-node_1783937424474_end-target",
       "source": "node_1783937435786_la4or4",
       "target": "node_1783937424474_end",
       "sourceHandle": "output:items"
+    },
+    {
+      "id": "e-node_1783937435786_la4or4-loop-next-node_1783994642480_afsx8y-target",
+      "source": "node_1783937435786_la4or4",
+      "target": "node_1783994642480_afsx8y",
+      "sourceHandle": "loop-next"
+    },
+    {
+      "id": "e-node_1783994642480_afsx8y-source-node_1783937424474_end-target",
+      "source": "node_1783994642480_afsx8y",
+      "target": "node_1783937424474_end"
+    },
+    {
+      "id": "e-node_1783937435786_la4or4-output:items-node_1783994642480_afsx8y-property:array",
+      "source": "node_1783937435786_la4or4",
+      "target": "node_1783994642480_afsx8y",
+      "edgeKind": "reference",
+      "sourceHandle": "output:items",
+      "targetHandle": "property:array"
     }
   ],
   "createdAt": 1783937424479,
-  "updatedAt": 1783945710340,
+  "updatedAt": 1783994770669,
   "published": false,
   "lastOpenedAt": 1783944076018,
   "groups": [],

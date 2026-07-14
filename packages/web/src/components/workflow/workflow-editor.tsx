@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { useSearchParams } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { ReactFlowProvider } from '@xyflow/react';
 import { useJoyride, STATUS } from 'react-joyride';
 import type { Status, Step } from 'react-joyride';
@@ -443,6 +443,8 @@ function WorkflowEditorInner({
   returnToIssue?: { workspaceId: string; issueId: string } | null;
 }) {
   const t = useTranslations('workflows');
+  const pathname = usePathname();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const canvasExportRef = useRef<WorkflowCanvasViewportRef | null>(null);
   // ---- State ----
@@ -759,7 +761,11 @@ function WorkflowEditorInner({
   const exitExecutionPreview = useCallback(() => {
     exitPreview();
     clearSelectedExecutionLog();
-  }, [clearSelectedExecutionLog, exitPreview]);
+    const nextParams = new URLSearchParams(searchParams.toString());
+    nextParams.delete('executionLogId');
+    const nextQuery = nextParams.toString();
+    router.replace(nextQuery ? `${pathname}?${nextQuery}` : pathname, { scroll: false });
+  }, [clearSelectedExecutionLog, exitPreview, pathname, router, searchParams]);
   const autoPreviewLogIdRef = useRef<string | null>(null);
   const urlPreviewExecutionLogs = execution.executionLogs;
   const selectUrlPreviewExecutionLog = execution.handleSelectExecutionLog;
