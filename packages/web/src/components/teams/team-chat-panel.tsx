@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { AgentConfig, Channel, ExecutionLog, Message, Workflow } from "@agent-spaces/shared";
 import { useTranslations } from "next-intl";
-import { Loader2, PanelRight, Plus, Trash2, Workflow as WorkflowIcon } from "lucide-react";
+import { Loader2, MoreVertical, PanelRight, Plus, Trash2, Workflow as WorkflowIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MessageItem } from "@/components/chat/message-item";
 import { MessageNavigator } from "@/components/chat/message-navigator";
@@ -13,6 +13,13 @@ import { sdk } from "@/lib/sdk";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { AgentEditor } from "@/components/sidebar/agent-editor";
 import { normalizeAgent, type AgentPreset } from "@/components/sidebar/agent-shared";
 import type {
@@ -153,6 +160,7 @@ export function TeamChatPanel({ teamId, actorAgentId, initialSessionId, sidebarO
   const t = useTranslations("teams");
   const agents = useAgentStore((store) => store.agents);
   const ensureAgents = useAgentStore((store) => store.ensure);
+  const isMobile = useIsMobile();
   const [runtime, setRuntime] = useState<TeamRuntimeView | null>(null);
   const [sessionId, setSessionId] = useState(() => initialSessionId || crypto.randomUUID());
   const [sessions, setSessions] = useState<TeamSessionView[]>([]);
@@ -433,49 +441,91 @@ export function TeamChatPanel({ teamId, actorAgentId, initialSessionId, sidebarO
               ))}
             </SelectContent>
           </Select>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="size-7"
-            onClick={handleNewSession}
-            disabled={loading || sending}
-            title={t("chat.newSession")}
-            aria-label={t("chat.newSession")}
-          >
-            <Plus className="size-3.5" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="size-7"
-            onClick={() => void handleOpenWorkflow()}
-            disabled={!teamId || workflowLoading}
-            title={t("chat.viewWorkflow")}
-            aria-label={t("chat.viewWorkflow")}
-          >
-            {workflowLoading ? <Loader2 className="size-3.5 animate-spin" /> : <WorkflowIcon className="size-3.5" />}
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="size-7"
-            onClick={handleClearMessages}
-            disabled={viewMessages.length === 0 || sending}
-            title={t("chat.clearMessages")}
-          >
-            <Trash2 className="size-3.5" />
-          </Button>
-          {onToggleSidebar ? (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="size-7"
-              onClick={onToggleSidebar}
-              title={sidebarOpen ? t("chat.hideSidebar") : t("chat.showSidebar")}
-            >
-              <PanelRight className="size-4" />
-            </Button>
-          ) : null}
+          {isMobile ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                render={
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="size-7"
+                    aria-label={t("chat.actions")}
+                  />
+                }
+              >
+                <MoreVertical className="size-4" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={handleNewSession} disabled={loading || sending}>
+                  <Plus className="size-3.5" /> {t("chat.newSession")}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => void handleOpenWorkflow()}
+                  disabled={!teamId || workflowLoading}
+                >
+                  <WorkflowIcon className="size-3.5" /> {t("chat.viewWorkflow")}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={handleClearMessages}
+                  disabled={viewMessages.length === 0 || sending}
+                >
+                  <Trash2 className="size-3.5" /> {t("chat.clearMessages")}
+                </DropdownMenuItem>
+                {onToggleSidebar ? (
+                  <DropdownMenuItem onClick={onToggleSidebar}>
+                    <PanelRight className="size-3.5" />
+                    {sidebarOpen ? t("chat.hideSidebar") : t("chat.showSidebar")}
+                  </DropdownMenuItem>
+                ) : null}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-7"
+                onClick={handleNewSession}
+                disabled={loading || sending}
+                title={t("chat.newSession")}
+                aria-label={t("chat.newSession")}
+              >
+                <Plus className="size-3.5" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-7"
+                onClick={() => void handleOpenWorkflow()}
+                disabled={!teamId || workflowLoading}
+                title={t("chat.viewWorkflow")}
+                aria-label={t("chat.viewWorkflow")}
+              >
+                {workflowLoading ? <Loader2 className="size-3.5 animate-spin" /> : <WorkflowIcon className="size-3.5" />}
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-7"
+                onClick={handleClearMessages}
+                disabled={viewMessages.length === 0 || sending}
+                title={t("chat.clearMessages")}
+              >
+                <Trash2 className="size-3.5" />
+              </Button>
+              {onToggleSidebar ? (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-7"
+                  onClick={onToggleSidebar}
+                  title={sidebarOpen ? t("chat.hideSidebar") : t("chat.showSidebar")}
+                >
+                  <PanelRight className="size-4" />
+                </Button>
+              ) : null}
+            </>
+          )}
         </div>
       </div>
 

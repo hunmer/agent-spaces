@@ -62,10 +62,12 @@ export default function useFittingTasks() {
     return { url, thumbUrl };
   }, [AS]);
 
+  // 下载图片到本地 + 生成缩略图 + 入库。返回 localized 图片列表（含本地 url/thumbUrl），
+  // 供调用方同步更新 task 卡片显示。失败回退远程 url，不阻断。
   const persistResult = React.useCallback(async (item) => {
+    let localized = [];
     try {
-      // 先把每张结果图下载到本地 data/output + 生成 data/thumbs 缩略图
-      const localized = await Promise.all(
+      localized = await Promise.all(
         (item.resultImages || []).map((img, i) => localizeImage(img.url, `${item.taskId}-${i}`)),
       );
       const service = item.kind === "hairstyle" ? "add_hairstyle_results" : "add_outfit_results";
@@ -82,6 +84,7 @@ export default function useFittingTasks() {
     } catch (err) {
       console.warn("[fitting-room] persistResult failed", err);
     }
+    return localized;
   }, [AS, localizeImage]);
 
   React.useEffect(() => {
@@ -132,6 +135,13 @@ export default function useFittingTasks() {
       }
 
       if (event === "miniApp.taskFinished" || event === "miniApp.taskFailed") {
+        let remoteImages = [];
+        try {
+          const payload = unwrapWorkflowPayload(data.result);
+          remoteImages = extractImages(payload);
+        } catch { remoteImages = []; }
+
+        // 先用远程 url 占位更新卡片状态（立即可见，不阻塞）
         setTasks((prev) => prev.map((t) => {
           if (t.taskId !== data.taskId) return t;
           const next = { ...t, status: event === "miniApp.taskFinished" ? "completed" : "failed", finishedAt: data.finishedAt || Date.now() };
@@ -139,38 +149,32 @@ export default function useFittingTasks() {
             next.error = data.error || "生成失败";
             return next;
           }
-          try {
-            const payload = unwrapWorkflowPayload(data.result);
-            next.resultImages = extractImages(payload);
-            next.error = "";
-          } catch (err) {
-            next.resultImages = [];
-            next.error = err?.message || "未能解析结果图片";
-          }
+          next.resultImages = remoteImages;
+          next.error = remoteImages.length ? "" : "未能解析结果图片";
           return next;
         }));
 
-        // completed 且有图片 → 入库（single source of truth，跨端共享）
-        if (event === "miniApp.taskFinished") {
-          let payload;
-          try {
-            payload = unwrapWorkflowPayload(data.result);
-            const images = extractImages(payload);
-            if (images.length) {
-              const meta = data.meta || {};
-              persistResult({
-                kind: meta.kind,
-                resultImages: images,
-                prompt: meta.prompt || "",
-                model: meta.model,
-                aspect: meta.aspect,
-                size: meta.size,
-                workflowName: meta.workflowName || "",
-                sourceImage: meta.sourceImage || null,
-                references: Array.isArray(meta.references) ? meta.references : [],
-              });
+        // completed 且有图片 → 下载本地副本 + 缩略图 + 入库，再用本地 url 更新卡片
+        if (event === "miniApp.taskFinished" && remoteImages.length) {
+          const meta = data.meta || {};
+          persistResult({
+            taskId: data.taskId,
+            kind: meta.kind,
+            resultImages: remoteImages,
+            prompt: meta.prompt || "",
+            model: meta.model,
+            aspect: meta.aspect,
+            size: meta.size,
+            workflowName: meta.workflowName || "",
+            sourceImage: meta.sourceImage || null,
+            references: Array.isArray(meta.references) ? meta.references : [],
+          }).then((localized) => {
+            if (localized && localized.length) {
+              setTasks((prev) => prev.map((t) => t.taskId === data.taskId
+                ? { ...t, resultImages: localized.map((l) => ({ url: l.url, thumbUrl: l.thumbUrl })) }
+                : t));
             }
-          } catch { /* 无图片则不入库 */ }
+          });
         }
         return;
       }

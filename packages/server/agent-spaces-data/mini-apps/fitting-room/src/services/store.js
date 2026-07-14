@@ -15,6 +15,7 @@ function addResultsHelper(historyPath) {
           id: `${now}-${index}`,
           type: 'image',
           url: item.url,
+          thumbUrl: item.thumbUrl || item.url,
           prompt,
           model,
           aspect,

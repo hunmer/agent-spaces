@@ -121,7 +121,7 @@ function TaskCard({ task, executorId, onRemove }) {
         <div className="fr-task-results">
           {task.resultImages.map((img, i) => (
             <a key={i} className="fr-task-result" href={img.url} target="_blank" rel="noreferrer" title="点击查看大图">
-              <img src={img.url} alt={`结果${i + 1}`} />
+              <img src={img.thumbUrl || img.url} alt={`结果${i + 1}`} />
               <ExternalLink className="fr-task-result-open" />
             </a>
           ))}

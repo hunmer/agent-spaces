@@ -1,8 +1,8 @@
 [
   {
-    "id": "1783999791941-0",
+    "id": "1784001734019-0",
     "type": "image",
-    "url": "https://files.closeai.fans/filesystem/output/20260714/d73e38dc-5b5d-4e05-adb0-3e83f5cf1e18.png",
+    "url": "http://127.0.0.1:3100/api/mini-apps/fitting-room/data/file?path=output%2Fundefined-0.jpg&token=",
     "prompt": "只迁移发型，不修改脸部特征与服饰",
     "model": "gpt-image-2",
     "aspect": "1:1",
@@ -11,87 +11,11 @@
     "sourceImage": "http://127.0.0.1:3100/static/uploads/微信图片_20260713093538_17_1072 (2)-dcc1bbc3-ac34-4725-bac9-82c14c9142da.jpg",
     "references": [
       {
-        "url": "http://127.0.0.1:3100/static/uploads/7d3bd3c8f50020dbf44559ba53754218-02a22e20-78c3-4ca4-998c-6c1d9a695301.jpg",
-        "path": "G:\\agent_spaces\\packages\\server\\public\\uploads\\7d3bd3c8f50020dbf44559ba53754218-02a22e20-78c3-4ca4-998c-6c1d9a695301.jpg",
-        "name": "7d3bd3c8f50020dbf44559ba53754218.jpg"
-      }
-    ],
-    "createdAt": "2026/7/14 11:29:51"
-  },
-  {
-    "id": "1783998932274-0",
-    "type": "image",
-    "url": "https://files.closeai.fans/filesystem/output/20260714/d2039b85-4c05-4c84-8944-977f28debca8.png",
-    "prompt": "只迁移发型，不修改脸部特征与服饰",
-    "model": "gpt-image-2",
-    "aspect": "1:1",
-    "size": "1k",
-    "workflowName": "edit_image",
-    "sourceImage": "http://127.0.0.1:3100/static/uploads/微信图片_20260713093538_17_1072 (2)-dcc1bbc3-ac34-4725-bac9-82c14c9142da.jpg",
-    "references": [
-      {
-        "url": "http://127.0.0.1:3100/static/uploads/0f9ede45f5e89926e1dc62af1b8b9f01-7c3ee20b-601b-43d5-9dd0-1f55a9ed0a32.jpg",
-        "path": "G:\\agent_spaces\\packages\\server\\public\\uploads\\0f9ede45f5e89926e1dc62af1b8b9f01-7c3ee20b-601b-43d5-9dd0-1f55a9ed0a32.jpg",
-        "name": "0f9ede45f5e89926e1dc62af1b8b9f01.jpg"
-      }
-    ],
-    "createdAt": "2026/7/14 11:15:32"
-  },
-  {
-    "id": "1783998561788-0",
-    "type": "image",
-    "url": "https://files.closeai.fans/filesystem/output/20260714/bd7fec3e-fa98-4310-ae11-6fc20e6219b9.png",
-    "prompt": "只迁移发型，不修改脸部特征与服饰",
-    "model": "gpt-image-2",
-    "aspect": "1:1",
-    "size": "1k",
-    "workflowName": "edit_image",
-    "sourceImage": "http://127.0.0.1:3100/static/uploads/微信图片_20260713093538_17_1072 (2)-dcc1bbc3-ac34-4725-bac9-82c14c9142da.jpg",
-    "references": [
-      {
-        "url": "http://127.0.0.1:3100/static/uploads/5d9789d4b3a759784e9026ffa909ecf3 (1)-5a277072-2207-48dc-9cc1-659afe82d8f6.jpeg",
-        "path": "G:\\agent_spaces\\packages\\server\\public\\uploads\\5d9789d4b3a759784e9026ffa909ecf3 (1)-5a277072-2207-48dc-9cc1-659afe82d8f6.jpeg",
-        "name": "5d9789d4b3a759784e9026ffa909ecf3 (1).jpeg"
-      }
-    ],
-    "createdAt": "2026/7/14 11:09:21"
-  },
-  {
-    "id": "1783998359699-0",
-    "type": "image",
-    "url": "https://files.closeai.fans/filesystem/output/20260714/af306025-0f1f-4347-876c-6e9509a3b797.png",
-    "prompt": "只迁移发型，不修改脸部特征与服饰",
-    "model": "gpt-image-2",
-    "aspect": "1:1",
-    "size": "1k",
-    "workflowName": "edit_image",
-    "sourceImage": "http://127.0.0.1:3100/static/uploads/微信图片_20260713093538_17_1072 (2)-dcc1bbc3-ac34-4725-bac9-82c14c9142da.jpg",
-    "references": [
-      {
-        "url": "http://127.0.0.1:3100/static/uploads/e76047d61c4f8f4ba1b4045aec282843-f6034cb2-0115-4a3e-b874-13f09a9c5173.jpeg",
-        "path": "G:\\agent_spaces\\packages\\server\\public\\uploads\\e76047d61c4f8f4ba1b4045aec282843-f6034cb2-0115-4a3e-b874-13f09a9c5173.jpeg",
-        "name": "e76047d61c4f8f4ba1b4045aec282843.jpeg"
-      }
-    ],
-    "createdAt": "2026/7/14 11:05:59"
-  },
-  {
-    "id": "1783998113537-0",
-    "type": "image",
-    "url": "https://files.closeai.fans/filesystem/output/20260714/ade584ea-ee8c-4282-b666-5bb5838be482.png",
-    "prompt": "只迁移发型，不修改脸部特征与服饰",
-    "model": "gpt-image-2",
-    "aspect": "1:1",
-    "size": "1k",
-    "workflowName": "edit_image",
-    "sourceImage": "http://127.0.0.1:3100/static/uploads/微信图片_20260713093538_17_1072 (2)-dcc1bbc3-ac34-4725-bac9-82c14c9142da.jpg",
-    "references": [
-      {
-        "url": "http://127.0.0.1:3100/static/uploads/fe26f80b33ebdef71d041334968d6982-998e6a3f-e554-404b-a12b-e7c760e5cc67.jpeg",
-        "path": "G:\\agent_spaces\\packages\\server\\public\\uploads\\fe26f80b33ebdef71d041334968d6982-998e6a3f-e554-404b-a12b-e7c760e5cc67.jpeg",
+        "url": "http://127.0.0.1:3100/static/uploads/fe26f80b33ebdef71d041334968d6982-7f935e07-aa9e-4db2-a3d6-a0716fe1f181.jpeg",
+        "path": "G:\\agent_spaces\\packages\\server\\public\\uploads\\fe26f80b33ebdef71d041334968d6982-7f935e07-aa9e-4db2-a3d6-a0716fe1f181.jpeg",
         "name": "fe26f80b33ebdef71d041334968d6982.jpeg"
       }
     ],
-    "createdAt": "2026/7/14 11:01:53"
+    "createdAt": "2026/7/14 12:02:14"
   }
 ]

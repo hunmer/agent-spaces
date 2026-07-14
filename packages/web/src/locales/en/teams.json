@@ -141,6 +141,7 @@
     "clearMessages": "Clear messages",
     "selectSession": "Switch session",
     "newSession": "New session",
+    "actions": "Actions",
     "workflowTitle": "Message workflow",
     "workflowDescription": "{count} deliveries, temporary read-only view",
     "saveFailed": "Save failed",

@@ -166,7 +166,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
         </button>
       </div>
       {!collapsed && (
-        <div className="border-t px-4 py-2">
+        <div className="border-t py-2">
           {!replyTo && showAgentBar && (
             <ChatInputAgentBar
               agents={sortedAgents}
