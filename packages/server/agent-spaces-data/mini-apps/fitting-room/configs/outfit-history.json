@@ -1,1 +1,40 @@
-[]
+[
+  {
+    "id": "1783997926681-0",
+    "type": "image",
+    "url": "https://files.closeai.fans/filesystem/output/20260714/41f01cb9-6eb4-4e89-8f98-21caf7b1a408.png",
+    "prompt": "保留人物面部与发型特征，换上参考图中的服装款式",
+    "model": "gpt-image-2",
+    "aspect": "1:1",
+    "size": "1k",
+    "workflowName": "edit_image",
+    "sourceImage": "http://127.0.0.1:3100/static/uploads/微信图片_20260713093538_17_1072 (2)-dcc1bbc3-ac34-4725-bac9-82c14c9142da.jpg",
+    "references": [
+      {
+        "url": "http://127.0.0.1:3100/static/uploads/bdec28253ebfdce7a29ee98ebda2157f-909bbb46-1991-4619-a16c-cc52b0d862b8.jpg",
+        "path": "G:\\agent_spaces\\packages\\server\\public\\uploads\\bdec28253ebfdce7a29ee98ebda2157f-909bbb46-1991-4619-a16c-cc52b0d862b8.jpg",
+        "name": "bdec28253ebfdce7a29ee98ebda2157f.jpg"
+      }
+    ],
+    "createdAt": "2026/7/14 10:58:46"
+  },
+  {
+    "id": "1783997852917-0",
+    "type": "image",
+    "url": "https://files.closeai.fans/filesystem/output/20260714/16b827de-9bb0-4755-a4fd-929f8e783092.png",
+    "prompt": "保留人物面部与发型特征，换上参考图中的服装款式",
+    "model": "gpt-image-2",
+    "aspect": "1:1",
+    "size": "1k",
+    "workflowName": "edit_image",
+    "sourceImage": "http://127.0.0.1:3100/static/uploads/微信图片_20260713093538_17_1072 (2)-dcc1bbc3-ac34-4725-bac9-82c14c9142da.jpg",
+    "references": [
+      {
+        "url": "http://127.0.0.1:3100/static/uploads/88dab736dea3bb3e602142cb8561f6f6-824b003c-f88e-4280-9655-35a2cb96fdce.jpeg",
+        "path": "G:\\agent_spaces\\packages\\server\\public\\uploads\\88dab736dea3bb3e602142cb8561f6f6-824b003c-f88e-4280-9655-35a2cb96fdce.jpeg",
+        "name": "88dab736dea3bb3e602142cb8561f6f6.jpeg"
+      }
+    ],
+    "createdAt": "2026/7/14 10:57:32"
+  }
+]

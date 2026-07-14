@@ -1,4 +1,4 @@
-import { resolveUploadItem, persistableFiles, runImageToImage } from "../utils/helpers";
+import { resolveUploadItem, persistableFiles, fireImageToImage, DEFAULT_PROMPT } from "../utils/helpers";
 
 const {
   Button,
@@ -23,13 +23,13 @@ const {
 } = window.AgentSpacesUI;
 
 const PROFILE_PATH = "profile.json";
-const HAIRSTYLE_DEFAULT_PROMPT = "只迁移发型，不修改脸部特征与服饰";
 
 // dialog props:
 //   open, onClose
 //   kind: "hairstyle" | "outfit"
 //   workflowId, workflowName
-export default function GenerateDialog({ open, onClose, kind, workflowId, workflowName }) {
+//   onSubmit: (taskId) => void  // 提交后回调，父组件可据此跳转到任务列表
+export default function GenerateDialog({ open, onClose, kind, workflowId, workflowName, onSubmit }) {
   const AS = window.AgentSpaces;
   const [profile, setProfile] = React.useState({ photos: [], outfits: [] });
   const [tab, setTab] = React.useState("library"); // library | upload
@@ -37,7 +37,7 @@ export default function GenerateDialog({ open, onClose, kind, workflowId, workfl
   const [uploadedSource, setUploadedSource] = React.useState([]);
   const [references, setReferences] = React.useState([]);
   const [selectedOutfitUrls, setSelectedOutfitUrls] = React.useState([]);
-  const [prompt, setPrompt] = React.useState(kind === "hairstyle" ? HAIRSTYLE_DEFAULT_PROMPT : "");
+  const [prompt, setPrompt] = React.useState(kind === "hairstyle" ? DEFAULT_PROMPT.hairstyle : "");
   const [model, setModel] = React.useState("gpt-image-2");
   const [aspect, setAspect] = React.useState("1:1");
   const [size, setSize] = React.useState("1k");
@@ -68,7 +68,7 @@ export default function GenerateDialog({ open, onClose, kind, workflowId, workfl
     setUploadedSource([]);
     setReferences([]);
     setSelectedOutfitUrls([]);
-    setPrompt(kind === "hairstyle" ? HAIRSTYLE_DEFAULT_PROMPT : "");
+    setPrompt(kind === "hairstyle" ? DEFAULT_PROMPT.hairstyle : "");
     setError("");
     setStatus("");
     setTab("library");
@@ -137,37 +137,30 @@ export default function GenerateDialog({ open, onClose, kind, workflowId, workfl
       const selectedOutfits = outfitList.filter((item) => selectedOutfitUrls.includes(item.url));
       const refResolved = await Promise.all([...selectedOutfits, ...references].map(resolveUploadItem));
 
-      setStatus("正在执行工作流...");
-      const images = await runImageToImage({
+      // 空提示词套用默认值，而不是把空字符串送给工作流
+      const finalPrompt = (prompt || "").trim() || DEFAULT_PROMPT[kind] || "";
+
+      setStatus("已提交，可在「任务」查看进度");
+      // fire-and-forget：只触发工作流任务，不 await。结果由顶层 onTaskEvent(taskFinished) 解析入库。
+      const { taskId } = fireImageToImage({
         AS,
         workflowId,
+        workflowName,
         sourceImage: sourceResolved,
         references: refResolved,
-        prompt: prompt.trim(),
+        prompt: finalPrompt,
         model,
         aspect,
         size,
-        taskIdPrefix: `fitting-${kind}`,
-        label: kind === "hairstyle" ? "发型生成" : "服装生成",
+        kind,
+        taskIdPrefix: "fitting",
       });
 
-      const service = kind === "hairstyle" ? "add_hairstyle_results" : "add_outfit_results";
-      await AS.invokeService(service, {
-        items: images,
-        prompt: prompt.trim(),
-        model,
-        aspect,
-        size,
-        workflowId,
-        workflowName,
-        sourceImage: sourceResolved.url,
-        references: refResolved.map((r) => ({ url: r.url, path: r.path, name: r.name })),
-      });
-
-      setStatus(`已生成 ${images.length} 张图片`);
+      // 通知父组件并立即关闭对话框，用户去任务列表看进度
+      onSubmit?.(taskId);
       setTimeout(() => {
         onClose();
-      }, 900);
+      }, 500);
     } catch (err) {
       setError(err?.message || String(err));
       setStatus("");
@@ -280,7 +273,7 @@ export default function GenerateDialog({ open, onClose, kind, workflowId, workfl
           <Textarea
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
-            placeholder={kind === "hairstyle" ? HAIRSTYLE_DEFAULT_PROMPT : "例如：保留脸部特征，换上参考图中的服装"}
+            placeholder={kind === "hairstyle" ? DEFAULT_PROMPT.hairstyle : DEFAULT_PROMPT.outfit}
             rows={3}
           />
         </div>

@@ -66,3 +66,4 @@ packages/server/agent-spaces-data/team/*/logs/
 packages/server/agent-spaces-data/team/*/sessions/
 packages/server/agent-spaces-data/team/*/*/
 packages/logs/*
+packages/server/agent-spaces-data/mini-apps/fitting-room/configs/

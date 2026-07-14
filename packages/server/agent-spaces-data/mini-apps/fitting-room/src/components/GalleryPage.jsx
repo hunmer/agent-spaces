@@ -15,7 +15,8 @@ const {
 } = window.AgentSpacesUI;
 
 // kind: "hairstyle" | "outfit"
-export default function GalleryPage({ kind }) {
+// onSubmitTask: (taskId) => void  提交生成后回调（父组件用于跳转到任务列表）
+export default function GalleryPage({ kind, onSubmitTask }) {
   const AS = window.AgentSpaces;
   const isHair = kind === "hairstyle";
   const HISTORY_PATH = isHair ? "hairstyle-history.json" : "outfit-history.json";
@@ -167,6 +168,7 @@ export default function GalleryPage({ kind }) {
         kind={kind}
         workflowId={workflowId}
         workflowName={workflowName}
+        onSubmit={onSubmitTask}
       />
 
       <WorkflowListDialog

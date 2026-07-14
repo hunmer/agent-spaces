@@ -1,5 +1,11 @@
 // 上传/解析图片、调用工作流、解析工作流输出等通用工具
 
+// 默认提示词：发型/服装生成时，用户未填则套用此值（而非空）
+export const DEFAULT_PROMPT = {
+  hairstyle: '只迁移发型，不修改脸部特征与服饰',
+  outfit: '保留人物面部与发型特征，换上参考图中的服装款式',
+};
+
 export async function resolveUploadItem(item) {
   const file = item?.file || item;
   if (!file) throw new Error('图片无效');
@@ -151,4 +157,71 @@ export async function runImageToImage({
   const imagesOut = extractImages(payload);
   if (!imagesOut.length) throw new Error('工作流没有返回图片结果');
   return imagesOut;
+}
+
+// 触发即返回（fire-and-forget）：只提交工作流任务，不 await 结果。
+// 后端会通过 miniApp.* 事件把 taskStarted/taskFinished/taskFailed 广播到所有客户端，
+// 前端订阅 onTaskEvent 后在 taskFinished 回调里解析结果并入库（跨端同步的 single source of truth）。
+// 返回 { taskId } 供调用方立即关闭对话框、在队列里展示 running 项。
+export function fireImageToImage({
+  AS,
+  workflowId,
+  workflowName = '',
+  sourceImage,
+  references,
+  prompt,
+  model,
+  aspect = '1:1',
+  size = '1k',
+  kind = 'hairstyle',
+  taskIdPrefix = 'fitting',
+}) {
+  if (!workflowId) throw new Error('请先选择工作流');
+  if (!sourceImage?.url) throw new Error('请选择一张形象图');
+
+  const images = [
+    sourceImage.url,
+    ...(Array.isArray(references) ? references.map((ref) => ref.url) : []),
+  ].filter(Boolean);
+
+  const taskId = `${taskIdPrefix}-${kind}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+  const normalizedPrompt = (prompt || '').trim();
+
+  // 第 4 个参数 { taskId, meta } 让后端做任务跟踪 + miniApp.* 广播。
+  // 不 await：发起方拿到 taskId 即返回，真正结果由 onTaskEvent 统一处理。
+  AS.callPluginTool(
+    '@agent-spaces/builtin',
+    'execute_workflow_sync',
+    {
+      workflow_id: workflowId,
+      input: {
+        images,
+        prompt: normalizedPrompt,
+        model: model || 'gpt-image-2',
+        aspect,
+        size,
+      },
+      max_wait_ms: 1200000,
+    },
+    {
+      taskId,
+      meta: {
+        kind,                       // 'hairstyle' | 'outfit' — 关键：taskFinished 据此入库
+        label: kind === 'hairstyle' ? '发型生成' : '服装生成',
+        workflowId,
+        workflowName,
+        prompt: normalizedPrompt,
+        model,
+        aspect,
+        size,
+        sourceImage: sourceImage.url,
+        references: (Array.isArray(references) ? references : []).map((r) => ({ url: r.url, path: r.path, name: r.name })),
+      },
+    },
+  ).catch((err) => {
+    // 发起方的错误也会由后端 taskFailed 广播；这里静默，避免 unhandledrejection。
+    console.warn('[fitting-room] fire workflow failed', err);
+  });
+
+  return { taskId };
 }
