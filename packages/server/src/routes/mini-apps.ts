@@ -183,6 +183,71 @@ router.put('/:id/data/content', (req: Request<{ id: string }>, res: Response) =>
   } catch (error: any) { res.status(500).json({ error: error.message }); }
 });
 
+// 生成缩略图（服务端 sharp）。源图来自 data 目录本地文件或远程 URL；结果写到 data 目录。
+// Body: { source?, url?, target, width?, height?, quality?, fit? }
+//   - source: 相对 data 目录的源图路径（优先于 url）
+//   - url:    远程图片地址（当无 source 时下载后处理）
+//   - target: 相对 data 目录的输出路径（如 thumbs/xxx.jpg）
+//   - width/height: 缩略图尺寸，默认 width=320
+//   - quality: JPEG 质量 1-100，默认 80
+//   - fit: 'cover' | 'inside' | 'fill'，默认 'cover'
+router.post('/:id/data/thumbnail', async (req: Request<{ id: string }>, res: Response) => {
+  try {
+    const { source, url, target, width, height, quality, fit } = req.body ?? {};
+    if (!target || typeof target !== 'string') { res.status(400).json({ error: 'target is required' }); return; }
+
+    // 取源图 Buffer：优先本地 data 文件，其次远程 URL
+    let buf: Buffer | null = null;
+    if (typeof source === 'string' && source.trim()) {
+      buf = svc.readDataFile(req.params.id, source);
+      if (!buf) { res.status(404).json({ error: `source not found: ${source}` }); return; }
+    } else if (typeof url === 'string' && url.trim()) {
+      const r = await fetch(url, { redirect: 'follow' });
+      if (!r.ok) { res.status(502).json({ error: `download failed: ${r.status} ${r.statusText}` }); return; }
+      buf = Buffer.from(await r.arrayBuffer());
+    } else {
+      res.status(400).json({ error: 'either source or url is required' }); return;
+    }
+
+    const sharp = (await import('sharp')).default;
+    const w = Math.max(1, Math.min(2048, Number(width) || 320));
+    const h = height ? Math.max(1, Math.min(2048, Number(height))) : undefined;
+    const q = Math.max(1, Math.min(100, Number(quality) || 80));
+    const fitMode = fit === 'inside' || fit === 'fill' ? fit : 'cover';
+
+    const thumbBuf = await sharp(buf)
+      .resize(w, h, { fit: fitMode as 'cover' | 'inside' | 'fill', withoutEnlargement: true })
+      .jpeg({ quality: q, mozjpeg: false })
+      .toBuffer();
+
+    const size = svc.writeDataFile(req.params.id, target, thumbBuf);
+    res.json({ ok: true, path: `data/${target}`, width: w, height: h, size });
+  } catch (error: any) { res.status(500).json({ error: error.message }); }
+});
+
+// 读取 data 目录下的文件并以 HTTP 响应（供前端 <img>/<video> 直接引用本地产物）。
+// Query: path（相对 data 目录）、download?
+router.get('/:id/data/file', (req: Request<{ id: string }>, res: Response) => {
+  try {
+    const rawPath = req.query.path as string;
+    if (!rawPath) { res.status(400).json({ error: 'path is required' }); return; }
+    const abs = svc.resolveDataPath(req.params.id, rawPath); // safeProjectSubdirPath 已防穿越
+    if (!existsSync(abs)) { res.status(404).json({ error: 'File not found' }); return; }
+    const stat = statSync(abs);
+    if (stat.isDirectory()) { res.status(400).json({ error: 'Cannot serve a directory' }); return; }
+    const ext = extname(abs).toLowerCase();
+    const mime = LOCAL_FILE_MIME[ext];
+    if (!mime) { res.status(415).json({ error: `Unsupported file type: ${ext || '(none)'}` }); return; }
+
+    if (req.query.download === 'true') {
+      res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(basename(abs))}"`);
+    }
+    res.setHeader('Content-Type', mime);
+    res.setHeader('Content-Length', stat.size);
+    createReadStream(abs).pipe(res);
+  } catch (error: any) { res.status(500).json({ error: error.message }); }
+});
+
 // DB (SQLite): execute a single statement. Body: { sql, params?, mode: 'all'|'get'|'run'|'exec' }
 router.post('/:id/db/:dbName', (req: Request<{ id: string; dbName: string }>, res: Response) => {
   try {

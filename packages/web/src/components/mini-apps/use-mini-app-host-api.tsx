@@ -436,6 +436,17 @@ export function useMiniAppHostApi(projectId: string, runtimeContext?: MiniAppRun
       return resp.json();
     };
 
+    // 把相对 data 目录的路径转成可直接用于 <img>/<video> src 的 HTTP URL（query token 鉴权）。
+    const dataFileUrl = (relPath: string, opts?: { download?: boolean }): string => {
+      const baseUrl = getActiveServerUrl();
+      const token = getToken() || '';
+      const params = new URLSearchParams();
+      params.set('path', relPath);
+      params.set('token', token);
+      if (opts?.download) params.set('download', 'true');
+      return `${baseUrl || ''}/api/mini-apps/${encodedProjectId}/data/file?${params.toString()}`;
+    };
+
     const downloadFile = async (url: string, filePath?: string, init?: RequestInit) => {
       const response = await fetch(url, init);
       if (!response.ok) throw new Error(`Download failed: ${response.status} ${response.statusText}`);
@@ -448,6 +459,62 @@ export function useMiniAppHostApi(projectId: string, runtimeContext?: MiniAppRun
       });
       if (!resp.ok) throw new Error(`Failed to save downloaded file: ${resp.status} ${resp.statusText}`);
       return resp.json();
+    };
+
+    // 下载远程图片到 data 目录的指定路径（默认 output/<文件名>）。
+    // 返回 { ok, path, httpUrl }：path 相对 data 目录；httpUrl 可直接用于 <img src>。
+    const downloadImage = async (
+      url: string,
+      filePath?: string,
+      init?: RequestInit,
+    ): Promise<{ ok: boolean; path: string; httpUrl: string; filename: string }> => {
+      const filename = normalizeRelativePath(filePath || `output/${inferDownloadFileName(url)}`, `output/${inferDownloadFileName(url)}`);
+      const result = await downloadFile(url, filename, init);
+      const rel = String(result?.path || `data/${filename}`).replace(/^data\//, '');
+      return {
+        ok: true,
+        path: `data/${rel}`,
+        filename: rel.split('/').pop() || rel,
+        httpUrl: dataFileUrl(rel),
+      };
+    };
+
+    // 生成缩略图（服务端 sharp）。源图来自 data 目录本地文件或远程 URL，结果写到 data 目录。
+    // 返回 { ok, path, httpUrl, width, height, size }。
+    const generateThumbnail = async (opts: {
+      source?: string;          // 相对 data 目录的源图路径（优先于 url）
+      url?: string;             // 远程图片地址
+      target: string;           // 相对 data 目录的输出路径，如 thumbs/xxx.jpg
+      width?: number;           // 默认 320
+      height?: number;
+      quality?: number;         // 1-100，默认 80
+      fit?: 'cover' | 'inside' | 'fill';
+    }): Promise<{ ok: boolean; path: string; httpUrl: string; width: number; height: number; size: number }> => {
+      const target = normalizeRelativePath(opts.target, 'thumbs/thumb.jpg');
+      const resp = await fetchWithAuth(`/api/mini-apps/${encodedProjectId}/data/thumbnail`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          source: opts.source,
+          url: opts.url,
+          target,
+          width: opts.width,
+          height: opts.height,
+          quality: opts.quality,
+          fit: opts.fit,
+        }),
+      });
+      const payload = await resp.json();
+      if (!resp.ok) throw new Error(payload?.error || `Failed to generate thumbnail: ${resp.status} ${resp.statusText}`);
+      const rel = String(payload?.path || `data/${target}`).replace(/^data\//, '');
+      return {
+        ok: true,
+        path: `data/${rel}`,
+        httpUrl: dataFileUrl(rel),
+        width: payload.width,
+        height: payload.height,
+        size: payload.size,
+      };
     };
 
     const downloadZip = async (
@@ -788,6 +855,9 @@ export function useMiniAppHostApi(projectId: string, runtimeContext?: MiniAppRun
       saveDataFile,
       downloadFile,
       downloadZip,
+      downloadImage,
+      generateThumbnail,
+      dataFileUrl,
     };
     (window as any).AgentSpacesAPI = {
       ...pluginApi,
@@ -804,6 +874,9 @@ export function useMiniAppHostApi(projectId: string, runtimeContext?: MiniAppRun
       saveDataFile,
       downloadFile,
       downloadZip,
+      downloadImage,
+      generateThumbnail,
+      dataFileUrl,
     };
 
     const handleOpenFile = (e: Event) => {

@@ -17,6 +17,12 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction) 
     if (typeof queryToken === 'string' && queryToken === secret) return next();
   }
 
+  // mini-app data 目录文件（原图/缩略图等本地产物）：<img src> 同样需要 query token。
+  if (/^\/api\/mini-apps\/[^/]+\/data\/file$/.test(req.path)) {
+    const queryToken = req.query.token;
+    if (typeof queryToken === 'string' && queryToken === secret) return next();
+  }
+
   const auth = req.headers.authorization;
   const token = auth?.startsWith('Bearer ') ? auth.slice(7) : '';
   if (token !== secret) {

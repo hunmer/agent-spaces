@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Search, Filter, ArrowUpDown } from 'lucide-react';
 import { toPinyinSearchKey } from '@/lib/utils';
+import { usePersistentState } from '@/hooks/use-persistent-state';
 
 export type MiniAppTypeFilter = 'all' | 'react' | 'html';
 export type MiniAppSortField = 'createdAt' | 'updatedAt';
@@ -18,6 +19,8 @@ export interface UseMiniAppFiltersOptions {
   initialTypeFilter?: MiniAppTypeFilter;
   initialSortField?: MiniAppSortField;
   initialSortOrder?: MiniAppSortOrder;
+  /** 传入 localStorage 命名空间前缀以持久化过滤条件；不传则不持久化（如选择弹窗）。 */
+  persistKey?: string;
 }
 
 export interface MiniAppFiltersState {
@@ -44,12 +47,14 @@ export function useMiniAppFilters({
   initialTypeFilter = 'all',
   initialSortField = 'updatedAt',
   initialSortOrder = 'desc',
+  persistKey,
 }: UseMiniAppFiltersOptions = {}): MiniAppFiltersState {
-  const [search, setSearch] = useState('');
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [typeFilter, setTypeFilter] = useState<MiniAppTypeFilter>(initialTypeFilter);
-  const [sortField, setSortField] = useState<MiniAppSortField>(initialSortField);
-  const [sortOrder, setSortOrder] = useState<MiniAppSortOrder>(initialSortOrder);
+  const pk = (sub: string) => (persistKey ? `${persistKey}:${sub}` : undefined);
+  const [search, setSearch] = usePersistentState(pk('search'), '');
+  const [selectedTags, setSelectedTags] = usePersistentState<string[]>(pk('tags'), []);
+  const [typeFilter, setTypeFilter] = usePersistentState<MiniAppTypeFilter>(pk('type'), initialTypeFilter);
+  const [sortField, setSortField] = usePersistentState<MiniAppSortField>(pk('sortField'), initialSortField);
+  const [sortOrder, setSortOrder] = usePersistentState<MiniAppSortOrder>(pk('sortOrder'), initialSortOrder);
 
   const allTags = useMemo(() => {
     const tagSet = new Set<string>();

@@ -124,7 +124,7 @@ export default function GalleryPage({ kind, onSubmitTask }) {
         <div className="fr-gallery">
           {history.map((item) => (
             <article className="fr-card" key={item.id}>
-              <img src={item.url} alt={item.prompt || "result"} onClick={() => window.open(item.url, "_blank")} />
+              <img src={item.thumbUrl || item.url} alt={item.prompt || "result"} onClick={() => window.open(item.url, "_blank")} />
               <div className="fr-card-body">
                 <div className="fr-card-meta">
                   <Badge>{item.model || "gpt-image-2"}</Badge>

@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Search, Filter, ArrowUpDown, Clock } from 'lucide-react';
 import { toPinyinSearchKey } from '@/lib/utils';
+import { usePersistentState } from '@/hooks/use-persistent-state';
 
 export type WorkflowSortField = 'createdAt' | 'updatedAt' | 'lastRunAt' | 'lastOpenedAt';
 export type WorkflowSortOrder = 'asc' | 'desc';
@@ -48,12 +49,12 @@ export function useWorkflowFilters({
   initialSortOrder = 'desc',
   initialTypeFilter = 'normal',
 }: UseWorkflowFiltersOptions = {}): WorkflowFiltersState {
-  const [search, setSearch] = useState('');
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [scheduleFilter, setScheduleFilter] = useState<WorkflowScheduleFilter>('all');
-  const [typeFilter, setTypeFilter] = useState<WorkflowTypeFilter>(initialTypeFilter);
-  const [sortField, setSortField] = useState<WorkflowSortField>(initialSortField);
-  const [sortOrder, setSortOrder] = useState<WorkflowSortOrder>(initialSortOrder);
+  const [search, setSearch] = usePersistentState('wf-filter:search', '');
+  const [selectedTags, setSelectedTags] = usePersistentState<string[]>('wf-filter:tags', []);
+  const [scheduleFilter, setScheduleFilter] = usePersistentState<WorkflowScheduleFilter>('wf-filter:schedule', 'all');
+  const [typeFilter, setTypeFilter] = usePersistentState<WorkflowTypeFilter>('wf-filter:type', initialTypeFilter);
+  const [sortField, setSortField] = usePersistentState<WorkflowSortField>('wf-filter:sortField', initialSortField);
+  const [sortOrder, setSortOrder] = usePersistentState<WorkflowSortOrder>('wf-filter:sortOrder', initialSortOrder);
 
   const allTags = useMemo(() => {
     const tagSet = new Set<string>();

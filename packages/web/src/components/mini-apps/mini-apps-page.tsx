@@ -53,7 +53,7 @@ function MiniAppListPage() {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pickerSelectedIds, setPickerSelectedIds] = useState<string[]>([]);
 
-  const filters = useMiniAppFilters({ projects });
+  const filters = useMiniAppFilters({ projects, persistKey: 'miniapp-filter' });
 
   const loadProjects = useCallback(async () => {
     try {

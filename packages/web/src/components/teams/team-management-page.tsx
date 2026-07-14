@@ -19,6 +19,10 @@ import { WorkflowListDialog } from "@/components/workflow/workflow-list-dialog";
 import { TeamListPanel } from "@/components/teams/team-list-panel";
 import { TeamDetailPanel } from "@/components/teams/team-detail-panel";
 import { confirmDialog } from "@/stores/confirm";
+import { Drawer, DrawerContent } from "@/components/ui/drawer";
+import { Button } from "@/components/ui/button";
+import { PanelLeft, PanelRight } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
 import {
   PANEL_ID_LIST,
   PANEL_ID_CHAT,
@@ -65,6 +69,9 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
   // 右栏初始是否展开，由持久化布局决定（detail 占比 > 0 即展开）
   const [infoSidebarOpen, setInfoSidebarOpen] = useState(() => (loadSavedLayout()[PANEL_ID_DETAIL] ?? DEFAULT_LAYOUT[PANEL_ID_DETAIL]) > 0);
   const [workflowListOpen, setWorkflowListOpen] = useState(false);
+  const isMobile = useIsMobile();
+  const [leftDrawerOpen, setLeftDrawerOpen] = useState(false);
+  const [rightDrawerOpen, setRightDrawerOpen] = useState(false);
   const [activeSession, setActiveSession] = useState<{ teamId: string; sessionId: string } | null>(() =>
     initialTeamId && initialSessionId ? { teamId: initialTeamId, sessionId: initialSessionId } : null);
   const detailPanelRef = useRef<PanelImperativeHandle>(null);
@@ -348,12 +355,101 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
     }
   }
 
+  const listPanel = (
+    <TeamListPanel
+      error={error}
+      loadingTeams={loadingTeams}
+      loadingArchived={loadingArchived}
+      canCreateTeam={canCreateTeam}
+      teams={teams}
+      archivedTeams={archivedTeams}
+      selectedTeamId={selectedTeamId}
+      availableAgents={availableAgents}
+      onCreateTeam={openCreateDialog}
+      onImportFromWorkflow={() => setWorkflowListOpen(true)}
+      onSelectTeam={(item) => {
+        setSelectedTeamId(item.team_id);
+        setLeftDrawerOpen(false);
+      }}
+      onEditTeam={openEditDialog}
+      onDissolveTeam={(item) => void dissolveTeam(item)}
+      onRestoreArchived={(item) => void restoreArchivedTeam(item)}
+      onDeleteArchived={(item) => void deleteArchivedTeam(item)}
+      onClearArchived={() => void clearAllArchived()}
+    />
+  );
+
+  const chatPanel = (
+    <TeamChatPanel
+      key={selectedTeamId}
+      teamId={selectedTeamId}
+      actorAgentId={selectedActorId}
+      initialSessionId={activeSession?.teamId === selectedTeamId ? activeSession.sessionId : undefined}
+      sidebarOpen={infoSidebarOpen}
+      onToggleSidebar={toggleInfoSidebar}
+      teamDescription={selectedTeam?.description}
+      onSessionIdChange={handleActiveSessionChange}
+    />
+  );
+
+  const detailPanel = infoSidebarOpen ? (
+    <TeamDetailPanel
+      selectedTeam={selectedTeam}
+      teamDetail={teamDetail}
+      selectedActorId={selectedActorId}
+      availableAgents={availableAgents}
+      activeSessionId={activeSession && activeSession.teamId === selectedTeam?.team_id ? activeSession.sessionId : undefined}
+      onEditTeam={openEditDialog}
+      onDissolveTeam={(item) => void dissolveTeam(item)}
+      onRefreshDetail={(teamId) => void loadTeamDetail(teamId)}
+    />
+  ) : null;
+
   return (
     <div className="flex min-h-dvh w-full flex-col">
-      <main className="mx-auto flex size-full flex-1 flex-col gap-4 px-4 py-6 sm:px-6">
+      <main className="mx-auto flex size-full flex-1 flex-col gap-4 p-2">
         {!selectedActorId ? (
           <div className="rounded-2xl border border-dashed border-border p-10 text-center text-sm text-muted-foreground">
             {t("empty.setup")}
+          </div>
+        ) : isMobile ? (
+          <div className="relative flex flex-1 flex-col overflow-hidden">
+            {/* 边缘切换按钮：左/右，始终可见 */}
+            <Button
+              aria-label="Toggle left panel"
+              className="absolute top-1/2 left-0 z-20 -translate-y-1/2 rounded-full border border-border/40 bg-background shadow-md hover:bg-accent"
+              onClick={() => setLeftDrawerOpen(true)}
+              size="icon"
+              variant="ghost"
+              type="button"
+            >
+              <PanelLeft className="size-4" />
+            </Button>
+            <Button
+              aria-label="Toggle right panel"
+              className="absolute top-1/2 right-0 z-20 -translate-y-1/2 rounded-full border border-border/40 bg-background shadow-md hover:bg-accent"
+              onClick={() => setRightDrawerOpen(true)}
+              size="icon"
+              variant="ghost"
+              type="button"
+            >
+              <PanelRight className="size-4" />
+            </Button>
+            {chatPanel}
+
+            {/* 左 Drawer：团队列表 */}
+            <Drawer open={leftDrawerOpen} onOpenChange={setLeftDrawerOpen} direction="left">
+              <DrawerContent className="h-full w-4/5 max-w-sm p-2">
+                {listPanel}
+              </DrawerContent>
+            </Drawer>
+
+            {/* 右 Drawer：团队详情 */}
+            <Drawer open={rightDrawerOpen} onOpenChange={setRightDrawerOpen} direction="right">
+              <DrawerContent className="h-full w-4/5 max-w-sm p-2">
+                {detailPanel}
+              </DrawerContent>
+            </Drawer>
           </div>
         ) : (
           <ResizablePanelGroup
@@ -363,39 +459,13 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
             onLayoutChange={handleLayoutChange}
           >
             <ResizablePanel id={PANEL_ID_LIST} defaultSize="25%" minSize="18%" maxSize="35%">
-              <TeamListPanel
-                error={error}
-                loadingTeams={loadingTeams}
-                loadingArchived={loadingArchived}
-                canCreateTeam={canCreateTeam}
-                teams={teams}
-                archivedTeams={archivedTeams}
-                selectedTeamId={selectedTeamId}
-                availableAgents={availableAgents}
-                onCreateTeam={openCreateDialog}
-                onImportFromWorkflow={() => setWorkflowListOpen(true)}
-                onSelectTeam={(item) => setSelectedTeamId(item.team_id)}
-                onEditTeam={openEditDialog}
-                onDissolveTeam={(item) => void dissolveTeam(item)}
-                onRestoreArchived={(item) => void restoreArchivedTeam(item)}
-                onDeleteArchived={(item) => void deleteArchivedTeam(item)}
-                onClearArchived={() => void clearAllArchived()}
-              />
+              {listPanel}
             </ResizablePanel>
 
             <ResizableHandle withHandle />
 
             <ResizablePanel id={PANEL_ID_CHAT} defaultSize="40%" minSize="30%" className="min-w-0">
-              <TeamChatPanel
-                key={selectedTeamId}
-                teamId={selectedTeamId}
-                actorAgentId={selectedActorId}
-                initialSessionId={activeSession?.teamId === selectedTeamId ? activeSession.sessionId : undefined}
-                sidebarOpen={infoSidebarOpen}
-                onToggleSidebar={toggleInfoSidebar}
-                teamDescription={selectedTeam?.description}
-                onSessionIdChange={handleActiveSessionChange}
-              />
+              {chatPanel}
             </ResizablePanel>
 
             <ResizableHandle withHandle />
@@ -412,18 +482,7 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
                 setInfoSidebarOpen(size.asPercentage > 0);
               }}
             >
-              {infoSidebarOpen ? (
-                <TeamDetailPanel
-                  selectedTeam={selectedTeam}
-                  teamDetail={teamDetail}
-                  selectedActorId={selectedActorId}
-                  availableAgents={availableAgents}
-                  activeSessionId={activeSession && activeSession.teamId === selectedTeam?.team_id ? activeSession.sessionId : undefined}
-                  onEditTeam={openEditDialog}
-                  onDissolveTeam={(item) => void dissolveTeam(item)}
-                  onRefreshDetail={(teamId) => void loadTeamDetail(teamId)}
-                />
-              ) : null}
+              {detailPanel}
             </ResizablePanel>
           </ResizablePanelGroup>
         )}

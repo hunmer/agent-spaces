@@ -343,6 +343,18 @@ export function writeDataFile(projectId: string, filePath: string, content: Buff
   return Buffer.byteLength(content);
 }
 
+// 读取 data 目录下的文件为 Buffer（缩略图生成、本地资源访问等用）。
+export function readDataFile(projectId: string, filePath: string): Buffer | null {
+  const fullPath = safeProjectSubdirPath(projectId, 'data', filePath);
+  if (!existsSync(fullPath)) return null;
+  return readFileSync(fullPath);
+}
+
+// 解析 data 目录下文件的绝对路径（不要求存在），供需要 fs 路径的调用方使用。
+export function resolveDataPath(projectId: string, filePath: string): string {
+  return safeProjectSubdirPath(projectId, 'data', filePath);
+}
+
 // ---- ZIP Import ----
 
 export function importFromDir(extractDir: string, manifest: Partial<MiniAppProject> & { name: string; type: 'react' | 'html'; mainFile: string }): MiniAppProject {

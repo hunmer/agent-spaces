@@ -42,11 +42,35 @@ export default function useFittingTasks() {
   const [tasks, setTasks] = React.useState([]);
   const executorId = React.useRef(AS?.getExecutorId?.() || "");
 
+  // 把单张远程图片下载到 data/output 并生成缩略图到 data/thumbs。
+  // 返回 { url, thumbUrl }：优先本地副本，下载/缩略图失败时回退到远程 url。
+  const localizeImage = React.useCallback(async (remoteUrl, name) => {
+    const baseName = `${name}.jpg`;
+    const outPath = `output/${baseName}`;
+    const thumbTarget = `thumbs/${baseName}`;
+    let url = remoteUrl;
+    let thumbUrl = remoteUrl;
+    try {
+      const dl = await AS.downloadImage(remoteUrl, outPath);
+      url = dl.httpUrl;
+      // 缩略图优先用已下载的本地源图（source），避免二次下载
+      const thumb = await AS.generateThumbnail({ source: outPath, target: thumbTarget, width: 400, quality: 80 });
+      thumbUrl = thumb.httpUrl;
+    } catch (err) {
+      console.warn("[fitting-room] localizeImage failed, fallback to remote", err);
+    }
+    return { url, thumbUrl };
+  }, [AS]);
+
   const persistResult = React.useCallback(async (item) => {
     try {
+      // 先把每张结果图下载到本地 data/output + 生成 data/thumbs 缩略图
+      const localized = await Promise.all(
+        (item.resultImages || []).map((img, i) => localizeImage(img.url, `${item.taskId}-${i}`)),
+      );
       const service = item.kind === "hairstyle" ? "add_hairstyle_results" : "add_outfit_results";
       await AS.invokeService(service, {
-        items: item.resultImages,
+        items: localized.map((l) => ({ url: l.url, thumbUrl: l.thumbUrl })),
         prompt: item.prompt,
         model: item.model,
         aspect: item.aspect,
@@ -58,7 +82,7 @@ export default function useFittingTasks() {
     } catch (err) {
       console.warn("[fitting-room] persistResult failed", err);
     }
-  }, [AS]);
+  }, [AS, localizeImage]);
 
   React.useEffect(() => {
     executorId.current = AS?.getExecutorId?.() || "";

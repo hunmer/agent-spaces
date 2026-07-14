@@ -164,6 +164,14 @@ export function writeDataFile(projectId: string, filePath: string, content: Buff
   return store.writeDataFile(projectId, filePath, content);
 }
 
+export function readDataFile(projectId: string, filePath: string): Buffer | null {
+  return store.readDataFile(projectId, filePath);
+}
+
+export function resolveDataPath(projectId: string, filePath: string): string {
+  return store.resolveDataPath(projectId, filePath);
+}
+
 // ---- DB (SQLite via better-sqlite3) ----
 export function executeDb(
   projectId: string,
