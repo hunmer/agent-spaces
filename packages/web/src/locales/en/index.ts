@@ -25,6 +25,7 @@ import settings from './settings.json';
 import shortcuts from './shortcuts.json';
 import sidebar from './sidebar.json';
 import skills from './skills.json';
+import skillsPackages from './skillsPackages.json';
 import sqlite from './sqlite.json';
 import terminal from './terminal.json';
 import teams from './teams.json';
@@ -64,6 +65,7 @@ const messages = {
   shortcuts,
   sidebar,
   skills,
+  skillsPackages,
   sqlite,
   terminal,
   teams,

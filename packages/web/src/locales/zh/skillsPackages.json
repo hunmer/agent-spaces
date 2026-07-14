@@ -1,0 +1,15 @@
+{
+  "title": "技能包商店",
+  "description": "浏览并一键安装技能包。每个技能包会创建一个智能体预设，并自带私有 Skill。",
+  "search": "搜索技能包...",
+  "empty": "商店暂无技能包",
+  "loading": "加载中...",
+  "install": "安装",
+  "installing": "安装中...",
+  "installed": "已安装",
+  "update": "更新",
+  "skillsCount": "{count} 个技能",
+  "installSuccess": "技能包「{name}」安装成功",
+  "installFailed": "安装失败：{error}",
+  "storeEmpty": "商店暂无技能包"
+}

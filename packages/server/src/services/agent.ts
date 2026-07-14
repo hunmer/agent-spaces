@@ -860,7 +860,7 @@ function withBuiltInTemplatesFirst(templates: AgentConfig[]): AgentConfig[] {
   return [...builtIns, ...custom];
 }
 
-interface BuiltInDefaultModel {
+export interface BuiltInDefaultModel {
   modelProvider?: AgentConfig['modelProvider'];
   providerId: string;
   modelId: string;
@@ -868,7 +868,7 @@ interface BuiltInDefaultModel {
   apiKey: string;
 }
 
-function resolveGlobalDefaultModel(): BuiltInDefaultModel | null {
+export function resolveGlobalDefaultModel(): BuiltInDefaultModel | null {
   const providers = listProviders();
   if (providers.length === 0) return null;
   const models = listModels();

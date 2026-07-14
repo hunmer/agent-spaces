@@ -5,6 +5,7 @@ import { ModelsDialog } from "@/components/sidebar/models-dialog";
 import { ProvidersDialog } from "@/components/sidebar/providers-dialog";
 import { SettingsDialog } from "@/components/sidebar/settings-dialog";
 import { SkillsDialog } from "@/components/sidebar/skills-dialog";
+import { SkillsPackageDialog } from "@/components/sidebar/skills-package-dialog";
 import { PromptsDialog } from "@/components/sidebar/prompts-dialog";
 import { OutputStylesDialog } from "@/components/sidebar/output-styles-dialog";
 import { McpsDialog } from "@/components/sidebar/mcps-dialog";
@@ -30,6 +31,7 @@ export function SidebarDialogGroup({
     <>
       <AgentDialog open={dialogs.agentDialogOpen} onOpenChange={dialogs.setAgentDialogOpen} />
       <SkillsDialog open={dialogs.skillsDialogOpen} onOpenChange={dialogs.setSkillsDialogOpen} />
+      <SkillsPackageDialog open={dialogs.skillsPackageDialogOpen} onOpenChange={dialogs.setSkillsPackageDialogOpen} />
       <PromptsDialog open={dialogs.promptsDialogOpen} onOpenChange={dialogs.setPromptsDialogOpen} />
       <OutputStylesDialog open={dialogs.outputStylesDialogOpen} onOpenChange={dialogs.setOutputStylesDialogOpen} />
       <McpsDialog open={dialogs.mcpsDialogOpen} onOpenChange={dialogs.setMcpsDialogOpen} />

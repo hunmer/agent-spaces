@@ -2,6 +2,7 @@
 
 import { useState, useRef } from 'react';
 import type { ImportItem } from './types';
+import { getZipSkillEntries } from './zip-skill-entries';
 
 interface UseImportOptions {
   /** Called with the user-confirmed, selected items. */
@@ -100,41 +101,23 @@ export function useImport({ onImportBatch, onImportFromGit }: UseImportOptions) 
       const zip = await JSZip.loadAsync(file);
       const zipName = file.name.replace(/\.zip$/i, '');
 
-      const folderMap = new Map<string, { file: string; path: string }[]>();
-
-      zip.forEach((relativePath, zipEntry) => {
-        if (zipEntry.dir) return;
-        const fileName = relativePath.split('/').pop() || '';
-        const folderPath = relativePath.substring(0, relativePath.lastIndexOf('/'));
-
-        if (!folderPath) {
-          if (fileName.endsWith('.md') && fileName !== 'SKILL.md') {
-            const name = fileName.replace(/\.md$/i, '');
-            if (!folderMap.has(name)) folderMap.set(name, []);
-            folderMap.get(name)!.push({ file: fileName, path: relativePath });
-          }
-          return;
-        }
-
-        const topFolder = folderPath.split('/')[0];
-        if (!folderMap.has(topFolder)) folderMap.set(topFolder, []);
-        folderMap.get(topFolder)!.push({ file: fileName, path: relativePath });
-      });
-
       const items: ImportItem[] = [];
-      for (const [folderName, entries] of folderMap) {
-        let skillEntry = entries.find((e) => e.file === 'SKILL.md');
-        if (!skillEntry) skillEntry = entries.find((e) => e.file.endsWith('.md'));
-        if (!skillEntry) continue;
-
+      for (const skillEntry of getZipSkillEntries(Object.keys(zip.files), zipName)) {
         const content = await zip.file(skillEntry.path)!.async('string');
+        const files = await Promise.all(skillEntry.files
+          .filter((path) => !zip.files[path].dir)
+          .map(async (path) => ({
+            path: skillEntry.root ? path.slice(skillEntry.root.length + 1) : path,
+            content: await zip.file(path)!.async('base64'),
+          })));
         items.push({
-          id: `zip-${folderName}-${Math.random().toString(36).slice(2, 8)}`,
-          name: folderName,
+          id: `zip-${skillEntry.name}-${Math.random().toString(36).slice(2, 8)}`,
+          name: skillEntry.name,
           group: '',
           content,
           selected: true,
-          sourceName: folderName,
+          sourceName: skillEntry.name,
+          files,
         });
       }
 

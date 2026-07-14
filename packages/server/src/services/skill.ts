@@ -1,5 +1,5 @@
 import { copyFileSync, cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, unlinkSync, writeFileSync } from 'node:fs';
-import { basename, join, relative } from 'node:path';
+import { basename, join, relative, resolve, sep } from 'node:path';
 import { tmpdir } from 'node:os';
 import { randomUUID } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
@@ -182,12 +182,19 @@ export function importSkill(filename: string, content: string, group?: string): 
   };
 }
 
-export function importSkillsBatch(items: Array<{ name: string; content: string; group?: string }>): SkillInfo[] {
+export function importSkillsBatch(items: Array<{ name: string; content: string; group?: string; files?: Array<{ path: string; content: string }> }>): SkillInfo[] {
   const meta = readMeta();
   const results: SkillInfo[] = [];
 
   for (const item of items) {
     const folderName = writeSkillFolder(item.name, item.content);
+    const folderPath = resolve(getSkillsDir(), folderName);
+    for (const file of item.files ?? []) {
+      const filePath = resolve(folderPath, file.path);
+      if (!filePath.startsWith(`${folderPath}${sep}`)) continue;
+      ensureDir(join(filePath, '..'));
+      writeFileSync(filePath, Buffer.from(file.content, 'base64'));
+    }
     if (item.group) {
       meta.groups[folderName] = item.group;
     }

@@ -110,10 +110,11 @@ export function useSkillActions(skills: SkillInfo[], setSkills: (fn: (prev: Skil
       name: item.name,
       content: item.content,
       group: item.group,
+      files: item.files,
     }));
     try {
       await sdk.skills.importBatch(batchItems);
-      fetchSkills();
+      await fetchSkills();
     } catch { /* ignore */ }
   };
 

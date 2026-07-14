@@ -1,0 +1,15 @@
+{
+  "title": "Skill Package Store",
+  "description": "Browse and install skill packages. Each package creates an agent preset with its own private skills.",
+  "search": "Search packages...",
+  "empty": "No packages in store",
+  "loading": "Loading...",
+  "install": "Install",
+  "installing": "Installing...",
+  "installed": "Installed",
+  "update": "Update",
+  "skillsCount": "{count} skills",
+  "installSuccess": "Package \"{name}\" installed",
+  "installFailed": "Install failed: {error}",
+  "storeEmpty": "No packages in store"
+}

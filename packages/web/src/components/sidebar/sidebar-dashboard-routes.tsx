@@ -22,6 +22,7 @@ import {
   Workflow,
   Database,
   Users,
+  Package,
 } from "lucide-react";
 import type { Workspace } from "@agent-spaces/shared";
 import { sdk } from "@/lib/sdk";
@@ -132,6 +133,7 @@ export function buildDashboardRoutes(config: DashboardRoutesConfig): Route[] {
         ? [
             { title: ts("nav.agents"), link: "/settings/agents", icon: <Bot className="size-4" /> },
             { title: ts("nav.skills"), link: "/settings/skills", icon: <Sparkles className="size-4" /> },
+            { title: ts("nav.skillPackages"), link: "/settings/skills-packages", icon: <Package className="size-4" /> },
             { title: ts("nav.prompts"), link: "/settings/prompts", icon: <MessageSquare className="size-4" /> },
             { title: ts("nav.outputStyles"), link: "/settings/output-styles", icon: <Pencil className="size-4" /> },
             { title: ts("nav.dataFiles"), link: "/settings/data-files", icon: <Database className="size-4" /> },
@@ -143,6 +145,7 @@ export function buildDashboardRoutes(config: DashboardRoutesConfig): Route[] {
         : [
             { title: ts("nav.agents"), link: "#", icon: <Bot className="size-4" />, onClick: () => setterMap.agents?.(true) },
             { title: ts("nav.skills"), link: "#", icon: <Sparkles className="size-4" />, onClick: () => setterMap.skills?.(true) },
+            { title: ts("nav.skillPackages"), link: "#", icon: <Package className="size-4" />, onClick: () => setterMap.skillsPackages?.(true) },
             { title: ts("nav.prompts"), link: "#", icon: <MessageSquare className="size-4" />, onClick: () => setterMap.prompts?.(true) },
             { title: ts("nav.outputStyles"), link: "#", icon: <Pencil className="size-4" />, onClick: () => setterMap["output-styles"]?.(true) },
             { title: ts("nav.dataFiles"), link: "/settings/data-files", icon: <Database className="size-4" /> },

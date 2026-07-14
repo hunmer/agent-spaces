@@ -44,6 +44,7 @@ export { createSpeechApi } from './modules/speech';
 export { createCodeFavoritesApi } from './modules/code-favorites';
 export { createPromptsApi, type PromptTemplate } from './modules/prompts';
 export { createSkillsApi, type SkillInfo, type SkillSyncItem } from './modules/skills';
+export { createSkillsPackageApi, type InstalledSkillsPackage } from './modules/skills-package';
 export { createMcpsApi, type McpServerInfo } from './modules/mcps';
 export { createNpmSettingsApi, type NpmSettings } from './modules/npm-settings';
 export { createWorkflowSettingsApi, type WorkflowSettings, type WorkflowFaultTolerance } from './modules/workflow-settings';
@@ -105,6 +106,7 @@ import { createSpeechApi } from './modules/speech';
 import { createCodeFavoritesApi } from './modules/code-favorites';
 import { createPromptsApi } from './modules/prompts';
 import { createSkillsApi } from './modules/skills';
+import { createSkillsPackageApi } from './modules/skills-package';
 import { createMcpsApi } from './modules/mcps';
 import { createNpmSettingsApi } from './modules/npm-settings';
 import { createWorkflowSettingsApi } from './modules/workflow-settings';
@@ -154,6 +156,7 @@ export interface SDK {
   readonly codeFavorites: ReturnType<typeof createCodeFavoritesApi>;
   readonly prompts: ReturnType<typeof createPromptsApi>;
   readonly skills: ReturnType<typeof createSkillsApi>;
+  readonly skillsPackage: ReturnType<typeof createSkillsPackageApi>;
   readonly mcps: ReturnType<typeof createMcpsApi>;
   readonly npmSettings: ReturnType<typeof createNpmSettingsApi>;
   readonly workflowSettings: ReturnType<typeof createWorkflowSettingsApi>;
@@ -211,6 +214,7 @@ export function createSDK(config: SDKConfig): SDK {
     codeFavorites: createCodeFavoritesApi(http),
     prompts: createPromptsApi(http),
     skills: createSkillsApi(http),
+    skillsPackage: createSkillsPackageApi(http),
     mcps: createMcpsApi(http),
     npmSettings: createNpmSettingsApi(http),
     workflowSettings: createWorkflowSettingsApi(http),

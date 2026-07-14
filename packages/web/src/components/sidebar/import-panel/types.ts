@@ -6,4 +6,5 @@ export interface ImportItem {
   content: string;
   selected: boolean;
   sourceName: string;
+  files?: Array<{ path: string; content: string }>;
 }

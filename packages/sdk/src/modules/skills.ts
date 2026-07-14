@@ -32,7 +32,7 @@ export function createSkillsApi(http: HttpClient) {
     importStore: (path: string, group?: string): Promise<void> =>
       http.postVoid('/api/skills/import-store', { path, group }),
 
-    importBatch: (items: Array<{ name: string; content: string; group?: string }>): Promise<void> =>
+    importBatch: (items: Array<{ name: string; content: string; group?: string; files?: Array<{ path: string; content: string }> }>): Promise<void> =>
       http.postVoid('/api/skills/import-batch', { items }),
 
     importGit: (url: string): Promise<Array<{ name: string; content: string }> | null> =>

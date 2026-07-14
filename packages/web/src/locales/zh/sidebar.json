@@ -7,6 +7,7 @@
     "general": "通用",
     "agents": "智能体",
     "skills": "技能管理",
+    "skillPackages": "技能包",
     "prompts": "提示词管理",
     "outputStyles": "输出风格",
     "dataFiles": "数据文件",

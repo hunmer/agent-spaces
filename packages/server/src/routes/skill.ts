@@ -37,7 +37,7 @@ router.post('/import', (req: Request, res: Response) => {
 });
 
 router.post('/import-batch', (req: Request, res: Response) => {
-  const { items } = req.body as { items?: Array<{ name: string; content: string; group?: string }> };
+  const { items } = req.body as { items?: Array<{ name: string; content: string; group?: string; files?: Array<{ path: string; content: string }> }> };
   if (!Array.isArray(items) || items.length === 0) {
     res.status(400).json({ error: 'items required' });
     return;

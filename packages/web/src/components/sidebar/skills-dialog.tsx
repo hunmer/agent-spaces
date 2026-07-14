@@ -300,7 +300,7 @@ export function SkillsDialog({ open, onOpenChange, standalone, selectable, selec
               : <DialogDescription>{t('description')}</DialogDescription>
             }
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 me-8">
             {tabs}
             {activeTab === 'local' && (
               <ImportButton

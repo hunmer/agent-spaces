@@ -9,6 +9,7 @@ export type DialogSetterMap = Record<string, React.Dispatch<React.SetStateAction
 const DIALOG_HASH_PATHS: Record<string, string> = {
   agents: "/settings/agents",
   skills: "/settings/skills",
+  skillsPackages: "/settings/skills-packages",
   prompts: "/settings/prompts",
   "output-styles": "/settings/output-styles",
   mcps: "/settings/mcps",
@@ -36,6 +37,7 @@ export function useSidebarDialogs(isMobile = false) {
   const [modelsDialogOpen, setModelsDialogOpenRaw] = useState(false);
   const [providersDialogOpen, setProvidersDialogOpenRaw] = useState(false);
   const [skillsDialogOpen, setSkillsDialogOpenRaw] = useState(false);
+  const [skillsPackageDialogOpen, setSkillsPackageDialogOpenRaw] = useState(false);
   const [promptsDialogOpen, setPromptsDialogOpenRaw] = useState(false);
   const [outputStylesDialogOpen, setOutputStylesDialogOpenRaw] = useState(false);
   const [mcpsDialogOpen, setMcpsDialogOpenRaw] = useState(false);
@@ -50,6 +52,7 @@ export function useSidebarDialogs(isMobile = false) {
   openStateRef.current = {
     agents: agentDialogOpen,
     skills: skillsDialogOpen,
+    skillsPackages: skillsPackageDialogOpen,
     prompts: promptsDialogOpen,
     "output-styles": outputStylesDialogOpen,
     mcps: mcpsDialogOpen,
@@ -100,6 +103,7 @@ export function useSidebarDialogs(isMobile = false) {
   const setModelsDialogOpen = useMemo(() => wrap(setModelsDialogOpenRaw, "models"), [wrap, setModelsDialogOpenRaw]);
   const setProvidersDialogOpen = useMemo(() => wrap(setProvidersDialogOpenRaw, "providers"), [wrap, setProvidersDialogOpenRaw]);
   const setSkillsDialogOpen = useMemo(() => wrap(setSkillsDialogOpenRaw, "skills"), [wrap, setSkillsDialogOpenRaw]);
+  const setSkillsPackageDialogOpen = useMemo(() => wrap(setSkillsPackageDialogOpenRaw, "skillsPackages"), [wrap, setSkillsPackageDialogOpenRaw]);
   const setPromptsDialogOpen = useMemo(() => wrap(setPromptsDialogOpenRaw, "prompts"), [wrap, setPromptsDialogOpenRaw]);
   const setOutputStylesDialogOpen = useMemo(() => wrap(setOutputStylesDialogOpenRaw, "output-styles"), [wrap, setOutputStylesDialogOpenRaw]);
   const setMcpsDialogOpen = useMemo(() => wrap(setMcpsDialogOpenRaw, "mcps"), [wrap, setMcpsDialogOpenRaw]);
@@ -113,6 +117,7 @@ export function useSidebarDialogs(isMobile = false) {
     () => ({
       agents: setAgentDialogOpen,
       skills: setSkillsDialogOpen,
+      skillsPackages: setSkillsPackageDialogOpen,
       prompts: setPromptsDialogOpen,
       "output-styles": setOutputStylesDialogOpen,
       mcps: setMcpsDialogOpen,
@@ -127,6 +132,7 @@ export function useSidebarDialogs(isMobile = false) {
     [
       setAgentDialogOpen,
       setSkillsDialogOpen,
+      setSkillsPackageDialogOpen,
       setPromptsDialogOpen,
       setOutputStylesDialogOpen,
       setMcpsDialogOpen,
@@ -169,6 +175,8 @@ export function useSidebarDialogs(isMobile = false) {
     setProvidersDialogOpen,
     skillsDialogOpen,
     setSkillsDialogOpen,
+    skillsPackageDialogOpen,
+    setSkillsPackageDialogOpen,
     promptsDialogOpen,
     setPromptsDialogOpen,
     outputStylesDialogOpen,
