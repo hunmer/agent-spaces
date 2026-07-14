@@ -215,11 +215,11 @@ export function importSkillsBatch(items: Array<{ name: string; content: string; 
 }
 
 export function importSkillFromStore(storePath: string, group: string): SkillInfo | null {
-  // storePath is like "group-name/skill-name", relative to public/skills/
-  const publicSkillsDir = join(getDataDir(), '..', 'public', 'skills');
-  // Try relative to package first
+  // storePath is like "group-name/skill-name".
   let srcDir: string | null = null;
   const candidates = [
+    join(process.cwd(), 'packages', 'templates', 'skills', storePath),
+    join(process.cwd(), '..', 'templates', 'skills', storePath),
     join(process.cwd(), 'public', 'skills', storePath),
     join(import.meta.dirname ?? '', '..', 'public', 'skills', storePath),
     join(process.cwd(), 'packages', 'agents', 'skills', storePath),
