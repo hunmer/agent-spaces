@@ -21,6 +21,7 @@ export default {
         .map((item, index) => ({
           id: `${now}-${index}`,
           url: item.url,
+          thumbUrl: item.thumbUrl || item.url,
           prompt,
           model,
           styleId,

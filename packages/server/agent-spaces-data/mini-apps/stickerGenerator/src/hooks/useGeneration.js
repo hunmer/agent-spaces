@@ -1,6 +1,7 @@
 // 生成 + 任务事件订阅
 import { runStickerWorkflow } from '../utils/workflow';
 import { buildPrompt } from '../utils/styles';
+import { localizeImages } from '../utils/download';
 
 // 监听 miniApp.taskSnapshot / taskStarted / taskFinished / taskFailed，
 // 让本标签发起的生成在 running 时显示，结束时落库
@@ -40,8 +41,14 @@ export function useGeneration({ form, customStyles, settings, onComplete }) {
 
       const matched = [...customStyles].find((s) => s.id === form.styleId);
       const styleName = matched?.label_zh || matched?.name || '';
+
+      // 入库前把远程图片保存到本地 data/output + 生成 data/thumbs 缩略图，
+      // history 用本地副本（离线可用、永久保存）；失败回退远程 url
+      const stamp = Date.now();
+      const localized = await localizeImages(AS, out.images, `sticker-${stamp}`);
+
       await AS.invokeService('add_results', {
-        items: out.images,
+        items: localized,
         prompt: userPrompt,
         model,
         styleId: form.styleId,

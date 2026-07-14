@@ -21,7 +21,7 @@ export default function StickerCard({ item, onPreview, onDelete, onSplit, splitt
   return (
     <article className="sg-card">
       <button type="button" className="sg-card-thumb" onClick={() => onPreview?.(item)}>
-        <img src={item.url} alt={item.prompt || 'sticker'} loading="lazy" />
+        <img src={item.thumbUrl || item.url} alt={item.prompt || 'sticker'} loading="lazy" />
         <span className="sg-card-zoom"><Maximize2 className="sg-icon-sm" /></span>
         {item.isSplitPiece && <span className="sg-card-split-tag">拆分</span>}
       </button>
