@@ -10,7 +10,7 @@ function App() {
   const tab = path[0] || "profile";
 
   return (
-    <div className="fr-app">
+    <div className="fr-app" style={{ height: "100vh" }}>
       <header className="fr-header">
         <div className="fr-header-title">👗 试衣间</div>
         <nav className="fr-tabs">

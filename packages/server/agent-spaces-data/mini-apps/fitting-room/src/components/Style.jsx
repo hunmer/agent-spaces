@@ -16,7 +16,7 @@ export default function Style() {
       @keyframes fr-spin { to { transform: rotate(360deg); } }
       .fr-grid { max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: 380px minmax(0, 1fr); gap: 20px; }
       .fr-grid-1 { max-width: 1200px; margin: 0 auto; }
-      .fr-panel { background: var(--card, #ffffff); border: 1px solid var(--border, #e4e4e7); border-radius: 10px; padding: 16px; }
+      .fr-panel { background: var(--card, #ffffff); border: 1px solid var(--border, #e4e4e7); border-radius: 10px; padding: 16px; margin-bottom: 40px; }
       .fr-panel-title { display: flex; align-items: center; gap: 8px; font-weight: 650; font-size: 14px; margin-bottom: 4px; }
       .fr-subtitle { color: var(--muted-foreground, #71717a); font-size: 12px; margin-bottom: 14px; }
       .fr-field { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
