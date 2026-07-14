@@ -5,7 +5,6 @@ import { BotIcon } from "lucide-react"
 import { useTranslations } from "next-intl"
 import { useEffect, useMemo, useState } from "react"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useLLMStore } from "@/stores/llm"
 import {
@@ -102,12 +101,12 @@ export function MessageContextUsage({ message }: { message: Message }) {
             <Tabs
               value={selectedAgent?.id}
               onValueChange={setActiveAgentId}
-              className="min-h-0 flex flex-1 gap-0"
+              className="min-h-0 flex flex-1 flex-col gap-0"
             >
-              <div className="flex w-56 shrink-0 flex-col border-r">
-                <TabsList className="!flex h-auto w-full flex-col items-stretch gap-1 rounded-none border-0 bg-transparent p-2">
+              <div className="flex shrink-0 flex-col border-b">
+                <TabsList className="!flex h-auto w-full flex-row flex-wrap items-stretch gap-1 overflow-x-auto rounded-none border-0 bg-transparent p-2">
                   {contextParts.map((item, index) => (
-                    <TabsTrigger key={item.id} value={item.id} className="!w-full justify-start gap-2 px-3 py-2 text-xs">
+                    <TabsTrigger key={item.id} value={item.id} className="shrink-0 justify-start gap-2 px-3 py-2 text-xs">
                       <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-muted font-mono text-[10px] text-muted-foreground">{index + 1}</span>
                       <BotIcon className="size-3.5 shrink-0" />
                       <span className="min-w-0 truncate">{item.agentContext?.name || item.agentContext?.role || `Agent ${index + 1}`}</span>
@@ -115,13 +114,13 @@ export function MessageContextUsage({ message }: { message: Message }) {
                   ))}
                 </TabsList>
               </div>
-              <ScrollArea className="max-h-[min(68vh,720px)] min-w-0 flex-1">
+              <div className="h-[min(68vh,720px)] min-h-0 min-w-0 flex-1 overflow-y-auto">
                 {contextParts.map((item) => (
                   <TabsContent key={item.id} value={item.id} className="m-0 min-w-0 p-5">
                     <ContextPartChatView part={item} />
                   </TabsContent>
                 ))}
-              </ScrollArea>
+              </div>
             </Tabs>
           ) : null}
         </DialogContent>

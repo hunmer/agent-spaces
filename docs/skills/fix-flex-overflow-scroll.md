@@ -116,6 +116,22 @@ className="flex min-h-0 flex-1 flex-col overflow-auto group-data-[collapsible=ic
 
 注意：使用 `tailwind-merge` / `cn` 时，后传入的同类 class 通常会覆盖前面的 class。需要确认调用处 class 是否在底层默认 class 之后合并。
 
+### 模式 D：组件外层不是实际滚动节点
+
+`ScrollArea` 等封装组件通常包含 Root 和内部 Viewport。高度可能加在 Root 上，但真正负责滚动的 Viewport 没有获得确定高度，结果是内容直接越界、滚动条不出现。
+
+先在 DevTools 中确认 `scrollHeight > clientHeight` 的节点是否同时拥有高度约束和 `overflow-y: auto`。如果当前场景不需要自定义滚动条，最小修复是让原生滚动节点直接承担高度和 overflow：
+
+```diff
+- <ScrollArea className="h-[min(68vh,720px)]">
++ <div className="h-[min(68vh,720px)] overflow-y-auto">
+    ...
+- </ScrollArea>
++ </div>
+```
+
+如果必须使用封装组件，则需要同时约束 Root 和其内部 Viewport，具体 class 应加到组件提供的 `viewportClassName` 等属性上。
+
 ## 排查清单
 
 按顺序检查，避免靠猜：
@@ -128,6 +144,7 @@ className="flex min-h-0 flex-1 flex-col overflow-auto group-data-[collapsible=ic
 6. 中间是否有普通 `div` 断开了 `flex-1` 的高度约束链？
 7. 是否有响应式或状态变体覆盖了 `overflow`？
 8. 是否被 `overflow-hidden` 加在了错误层级，导致滚动条被裁掉？
+9. 使用 `ScrollArea` 等封装组件时，Root 和实际滚动的 Viewport 是否是同一节点？
 
 ## 快速修复模板
 
@@ -183,6 +200,7 @@ className="flex min-h-0 flex-1 flex-col overflow-auto group-data-[collapsible=ic
 | 折叠态不滚动 | 检查并覆盖状态变体中的 `overflow-hidden` |
 | 嵌套 Flex 中间层断裂 | 中间层加 `flex flex-col overflow-hidden` |
 | fixed/h-screen 容器内不滚动 | 根容器使用 `h-dvh` / `h-screen` + `overflow-hidden` |
+| 自定义 ScrollArea 内容越界 | 约束内部 Viewport，或改用同一节点上的原生 `overflow-y-auto` |
 
 ## 验证步骤
 

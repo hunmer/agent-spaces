@@ -4,13 +4,13 @@ sidebar_position: 22
 
 # Agent Store（模板市场）
 
-Agent Store 是 Agent Spaces 的**在线模板市场**。它把仓库内置的 `packages/templates` 模板库以静态资源方式对外暴露，让用户无需手动复制文件，就能在侧边栏各类「商店」对话框里浏览、搜索并一键导入 Agent 预设、Chat 助手、MCP 服务器、Skill、Plugin、Workflow、Prompt、输出风格、Mini-app 等九类资源。
+Agent Store 是 Agent Spaces 的**在线模板市场**。它把仓库内置的 `packages/templates` 模板库以静态资源方式对外暴露，让用户无需手动复制文件，就能在侧边栏各类「商店」对话框里浏览、搜索并一键导入 Agent 预设、Chat 助手、MCP 服务器、Skill、Plugin、Workflow、Prompt、输出风格、Mini-app、技能包（Skill Package）等十类资源。
 
 默认情况下商店指向官方远程仓库（经 gh-proxy 代理 GitHub raw 地址），你也可以把 Base URL 改成自建服务器或留空回退到本地内置资源。所有索引由 `packages/templates/generate-index.mjs` 自动生成。
 
-## 覆盖的九类资源
+## 覆盖的十类资源
 
-`packages/templates` 下按子目录组织九类模板，每类目录都有对应的 `index.json` 索引：
+`packages/templates` 下按子目录组织十类模板，每类目录都有对应的 `index.json` 索引：
 
 | 资源类型 | 目录 | 形态 | 数量（约） |
 |---------|------|------|-----------|
@@ -23,6 +23,7 @@ Agent Store 是 Agent Spaces 的**在线模板市场**。它把仓库内置的 `
 | Prompt 模板 | `prompt/` | Markdown | 约 2 个 |
 | 输出风格 | `output-styles/` | Markdown | 约 7 个 |
 | Mini-app | `mini-app/` | 目录（含 `manifest.json` + 源码） | 约 1 个 |
+| 技能包 | `skillspackage/` | 目录（`manifest.json` + `PROMPT.md` + `skills/*.zip`） | 约 1 个 |
 
 > 数量随仓库迭代持续增长，此处为当前快照的约数。具体以各目录 `index.json` 为准。
 
@@ -46,9 +47,9 @@ node generate-index.mjs
 
 1. **遍历目标子目录**，过滤出合法模板（按 `.md` / `.json` / 子目录区分）
 2. **解析 frontmatter / manifest** 提取 `name`、`description`、`group`、`emoji` 等字段
-3. **计算 MD5 指纹**——文件级用 `fileMD5`，目录级（Skill / Plugin / Mini-app）用 `folderMD5`（递归哈希所有文件后聚合）
+3. **计算 MD5 指纹**——文件级用 `fileMD5`，目录级（Skill / Plugin / Mini-app / 技能包）用 `folderMD5`（递归哈希所有文件后聚合）
 4. **保留 `updatedAt`**：若 MD5 与上次索引一致则沿用旧时间戳，否则取最新 mtime，避免索引无谓变动
-5. **写出 `index.json`**
+5. **写出 `index.json`**；技能包额外会把整个目录打成 `{slug}.zip`（store + deflate 混合，zero-dep 手写打包器），MD5 变化时才重打包
 
 各扫描函数关键产出字段：
 
@@ -63,6 +64,7 @@ node generate-index.mjs
 | `scanPromptStore` | `generate-index.mjs:57` | `{ id, name, filename, md5, updatedAt }` |
 | `scanOutputStyleStore` | `generate-index.mjs:78` | `{ id, name, filename, md5, updatedAt }` |
 | `scanMiniAppStore` | `generate-index.mjs:336` | `{ id, name, icon, iconUrl, files, md5, updatedAt }` |
+| `scanSkillsPackageStore` | `generate-index.mjs:461` | `{ id, name, summary, skillSlugs, skillCount, zipUrl, md5, updatedAt }` |
 
 ### Plugin 的多语言索引
 
@@ -124,6 +126,7 @@ getStoreApiBase()（localStorage: agent-spaces:store-api-base）
 | `sidebar/prompts-dialog.tsx:125` | `prompt/index.json` | Prompt 模板 |
 | `sidebar/output-styles-dialog.tsx:125` | `output-styles/index.json` | 输出风格 |
 | `mini-apps/mini-apps-store-dialog.tsx:43` | `mini-app/index.json` | Mini-app |
+| `sidebar/skills-package-dialog.tsx` | `skillspackage/index.json` | 技能包 |
 
 ## 浏览模板
 
@@ -163,6 +166,20 @@ Workflow 商店导入走纯前端：`workflow-templates-dialog.tsx:56` 的 `hand
 
 Plugin 商店列表请求 `plugins/index_${locale}.json`（失败回退 `plugins/index.json`），点击安装时通过 `plugins/${plugin.path}` 路径下载插件。详见 [插件系统](/docs/features/plugins)。
 
+### 技能包（Skill Package）
+
+技能包是「Agent 预设 + 若干私有 Skill」的组合包。安装时会自动创建一个 agent 模板，把 `PROMPT.md` 转成 `systemPrompt`，并解压包内每个 `skills/*.zip` 到该 agent 的私有 skills 目录。
+
+- SDK：`packages/sdk/src/modules/skills-package.ts` → `POST /api/skills-packages/install`，body `{ zipUrl }`
+- 后端服务：`packages/server/src/services/skills-package.ts` 的 `installSkillsPackage(zipBuffer)`
+- 后端路由：`packages/server/src/routes/skills-package.ts`
+
+流程参见 `skills-package-dialog.tsx` 的 `handleInstall`：前端解析出商店 zip 完整 URL 传给后端，后端 `fetch` 下载 zip 后解压、读 `manifest.json`/`PROMPT.md`，按 `templateId = manifest.slug` 去重（已存在则复用 agentId 更新，否则新建 uuid），解压 skills zips 到 `agent-templates/{agentId}/skills/{skillSlug}/`，最后写 `agent.json`（`skills` = manifest 声明 ∩ 实际解压成功，`tools` 默认空，`modelProvider`/`modelId`/`icon`/`avatarUrl` 可在 manifest 中覆盖）。
+
+卸载走 `DELETE /api/skills-packages/:slug`（`sdk.skillsPackage.uninstall(slug)`），删除对应的 agent 模板及其私有 skills 目录。
+
+> 技能包创建的 agent 默认不开启任何内置工具（`tools: []`），保持最小权限；如需开启，在 manifest 中显式声明 `tools` 数组（值为合法的 `BuiltInAgentToolName`，非法名会被过滤）。
+
 ### 其他资源
 
 - **Agent 预设 / Chat 助手 / Prompt / 输出风格**：均为 Markdown 模板，导入方式是拉取内容后写入对应本地资源（具体由各自的对话框驱动）
@@ -197,6 +214,7 @@ Base URL 持久化在 localStorage 的 `agent-spaces:store-api-base` 键（`agen
 - **Workflow**：在 `workflows/` 下新建 `.json`，含 `id`/`name`/`description`/`data`
 - **Plugin**：在 `plugins/{plugin-dir}/` 下放置 manifest（`plugin.json`/`info.json`/`manifest.json`/`web-plugin.json`/`package.json` 任一）。多语言字段加 `_zh`/`_en` 后缀
 - **Mini-app**：在 `mini-app/{name}/` 下放置 `manifest.json` + 源码 + 可选 `avatar.png`
+- **技能包**：在 `skillspackage/{slug}/` 下放置 `manifest.json`（含 `slug`/`displayName`/`summary`/`skillSlugs`，可选 `modelProvider`/`modelId`/`icon`/`avatarUrl`/`tools`）、`PROMPT.md`（系统提示词）和 `skills/*.zip`（每个 zip 内 `SKILL.md` 在根目录）
 
 新增后务必运行 `pnpm --filter @agent-spaces/agents generate-index` 重建索引，前端才能发现新资源。
 
