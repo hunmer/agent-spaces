@@ -134,6 +134,45 @@ test('partial execution from loop node only continues through top-level downstre
   assert.equal(rerunLoopChild, undefined);
 });
 
+test('embedded workflow executes loop against child graph instead of parent session graph', async () => {
+  const manager = new ExecutionManager({
+    emit: () => {},
+    interactionManager: {} as never,
+    clientNodeManager: {} as never,
+  });
+  const session = createSession();
+  session.nodes = [
+    { id: 'parent_start', type: 'start', label: 'Parent Start', position: { x: 0, y: 0 }, data: {} },
+  ];
+  session.edges = [];
+
+  const embeddedStart: WorkflowNode = {
+    id: 'embedded_start',
+    type: 'start',
+    label: 'Embedded Start',
+    position: { x: 0, y: 0 },
+    data: {},
+  };
+  const embeddedNodes = nodes.map(node => node.id === 'loop'
+    ? { ...node, data: { ...node.data, arrayPath: '{{ __data__["embedded_start"].urls }}' } }
+    : node);
+  const result = await (manager as any).executeEmbeddedWorkflow(session, {
+    nodes: [embeddedStart, ...embeddedNodes],
+    edges: [
+      { id: 'embedded-start-loop', source: embeddedStart.id, target: 'loop' },
+      ...edges,
+    ],
+  }, {
+    urls: [{ text: 'first' }, { text: 'second' }],
+  });
+
+  assert.equal(result.count, 2);
+  assert.deepEqual(session.context.__data__.loop.items, [
+    { text: 'first' },
+    { text: 'second' },
+  ]);
+});
+
 test('partial reachable snapshot includes upstream data dependencies for reachable nodes', () => {
   const manager = new ExecutionManager({
     emit: () => {},

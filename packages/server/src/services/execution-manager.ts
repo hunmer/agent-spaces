@@ -275,10 +275,27 @@ export class ExecutionManager {
   private sessions = new Map<string, ExecutionSession>();
   private finishedRecoveries = new Map<string, FinishedExecutionRecovery>();
   private loopWorkerState = new AsyncLocalStorage<LoopWorkerState>();
+  private executionGraphScope = new AsyncLocalStorage<{
+    nodes: WorkflowNode[];
+    edges: WorkflowEdge[];
+    config: Record<string, Record<string, string>>;
+  }>();
   private subWorkflowExecutionScope = new AsyncLocalStorage<string[]>();
   private subWorkflowExecutions = new Map<string, SubWorkflowExecutionContext[]>();
 
   constructor(private deps: ExecutionManagerDeps) {}
+
+  private getExecutionNodes(session: ExecutionSession): WorkflowNode[] {
+    return this.executionGraphScope.getStore()?.nodes ?? session.nodes;
+  }
+
+  private getExecutionEdges(session: ExecutionSession): WorkflowEdge[] {
+    return this.executionGraphScope.getStore()?.edges ?? session.edges;
+  }
+
+  private getExecutionConfig(session: ExecutionSession): Record<string, Record<string, string>> {
+    return this.executionGraphScope.getStore()?.config ?? session.context.__config__ ?? {};
+  }
 
   getRunningSessionCount(): number {
     let count = 0;
@@ -1398,7 +1415,7 @@ export class ExecutionManager {
 
     const sourceNodeId = typeof resolvedData.sourceNodeId === 'string' && resolvedData.sourceNodeId
       ? resolvedData.sourceNodeId
-      : session.edges.find(edge => isRuntimeWorkflowEdge(edge) && edge.target === node.id && this.isActiveEdge(session, edge))?.source;
+      : this.getExecutionEdges(session).find(edge => isRuntimeWorkflowEdge(edge) && edge.target === node.id && this.isActiveEdge(session, edge))?.source;
     if (!sourceNodeId) return {};
 
     const sourceOutput = this.getNodeExecutionData(session, sourceNodeId);
@@ -1414,7 +1431,7 @@ export class ExecutionManager {
     resolvedData: Record<string, any>,
   ): Record<string, any> | null {
     const output = buildOutputObject(resolvedData.outputs) ?? {};
-    const incomingEdges = session.edges.filter((edge) => (
+    const incomingEdges = this.getExecutionEdges(session).filter((edge) => (
       isRuntimeWorkflowEdge(edge)
       && edge.target === node.id
       && this.isActiveEdge(session, edge)
@@ -1447,10 +1464,11 @@ export class ExecutionManager {
     node: WorkflowNode,
   ): Record<string, any> {
     const nodeData = clone({ ...node.data });
-    const incomingReferenceEdges = session.edges.filter((edge) => (
+    const executionEdges = this.getExecutionEdges(session);
+    const incomingReferenceEdges = executionEdges.filter((edge) => (
       edge.edgeKind === 'reference'
       && edge.target === node.id
-      && isBranchActiveEdge(edge, session.edges, this.getActiveBranches(session).get(edge.source))
+      && isBranchActiveEdge(edge, executionEdges, this.getActiveBranches(session).get(edge.source))
     ));
 
     for (const edge of incomingReferenceEdges) {
@@ -1479,7 +1497,7 @@ export class ExecutionManager {
     resolvedData: Record<string, any>,
     appendLog: (level: ExecutionLogEntry['level'], message: string) => void,
   ): Promise<any> {
-    const bodyNode = findCompositeChildByRole(session.nodes, node.id, 'loop_body');
+    const bodyNode = findCompositeChildByRole(this.getExecutionNodes(session), node.id, 'loop_body');
     if (!bodyNode) throw new Error('Loop node missing body');
 
     const loopType = typeof resolvedData.loopType === 'string' ? resolvedData.loopType : 'count';
@@ -1554,7 +1572,7 @@ export class ExecutionManager {
   }
 
   private async executeLoopBody(session: ExecutionSession, bodyNode: WorkflowNode): Promise<unknown> {
-    const scopeNodes = getNodesForExecutionScope(session.nodes, bodyNode.id);
+    const scopeNodes = getNodesForExecutionScope(this.getExecutionNodes(session), bodyNode.id);
     if (scopeNodes.length > 0) return this.executeScopedBody(session, bodyNode, scopeNodes);
 
     const bodyData = bodyNode.data?.bodyWorkflow;
@@ -1568,7 +1586,7 @@ export class ExecutionManager {
     session: ExecutionSession, bodyNode: WorkflowNode, scopeNodes: WorkflowNode[],
   ): Promise<unknown> {
     const scopeIds = new Set(scopeNodes.map(n => n.id));
-    const bodyEdges = session.edges.filter(e => {
+    const bodyEdges = this.getExecutionEdges(session).filter(e => {
       if (!isRuntimeWorkflowEdge(e)) return false;
       if (e.sourceHandle === 'loop_next') return false;
       const srcEntry = e.source === bodyNode.id && scopeIds.has(e.target);
@@ -1631,11 +1649,15 @@ export class ExecutionManager {
     appendLog('info', `Starting sub_workflow: ${target.name}`);
     try {
       const parentScope = this.subWorkflowExecutionScope.getStore() ?? [];
+      const config = {
+        ...this.getExecutionConfig(session),
+        ...this.loadPluginConfigs(session, target, target.nodes),
+      };
       const result = await this.subWorkflowExecutionScope.run(
         [...parentScope, execution.id],
         () => this.executeEmbeddedWorkflow(session, {
           nodes: clone(target.nodes), edges: clone(target.edges),
-        }, buildOutputObject(resolvedData.inputFields) ?? {}),
+        }, buildOutputObject(resolvedData.inputFields) ?? {}, config),
       );
       execution.status = session.status === 'error' || session.stopRequested ? 'error' : 'completed';
       execution.finishedAt = Date.now();
@@ -1658,40 +1680,43 @@ export class ExecutionManager {
     session: ExecutionSession,
     workflow: { nodes: WorkflowNode[]; edges: WorkflowEdge[] },
     input?: Record<string, any>,
+    config: Record<string, Record<string, string>> = this.getExecutionConfig(session),
   ): Promise<unknown> {
-    const nodeMap = new Map(workflow.nodes.map(n => [n.id, n]));
-    const adjacency = new Map<string, WorkflowEdge[]>();
-    const runtimeEdges = workflow.edges.filter(isRuntimeWorkflowEdge);
-    for (const edge of runtimeEdges) {
-      const arr = adjacency.get(edge.source) || [];
-      arr.push(edge);
-      adjacency.set(edge.source, arr);
-    }
+    return this.executionGraphScope.run({ nodes: workflow.nodes, edges: workflow.edges, config }, async () => {
+      const nodeMap = new Map(workflow.nodes.map(n => [n.id, n]));
+      const adjacency = new Map<string, WorkflowEdge[]>();
+      const runtimeEdges = workflow.edges.filter(isRuntimeWorkflowEdge);
+      for (const edge of runtimeEdges) {
+        const arr = adjacency.get(edge.source) || [];
+        arr.push(edge);
+        adjacency.set(edge.source, arr);
+      }
 
-    const startNode = workflow.nodes.find(n => n.type === 'start');
-    if (!startNode) throw new Error('Embedded workflow missing start node');
+      const startNode = workflow.nodes.find(n => n.type === 'start');
+      if (!startNode) throw new Error('Embedded workflow missing start node');
 
-    if (input && Object.keys(input).length > 0) {
-      this.setNodeExecutionData(session, startNode.id, input);
-      this.setNodeExecutionInput(session, startNode.id, input);
-    }
+      if (input && Object.keys(input).length > 0) {
+        this.setNodeExecutionData(session, startNode.id, input);
+        this.setNodeExecutionInput(session, startNode.id, input);
+      }
 
-    const visited = new Set<string>([startNode.id]);
-    const completedNodeIds = new Set<string>([startNode.id]);
-    const execFrom = async (nodeId: string): Promise<unknown> => {
-      return this.executeDownstreamBranches(
-        session,
-        nodeId,
-        adjacency.get(nodeId) || [],
-        runtimeEdges,
-        visited,
-        completedNodeIds,
-        id => nodeMap.get(id),
-        execFrom,
-        node => node.type !== 'start',
-      );
-    };
-    return execFrom(startNode.id);
+      const visited = new Set<string>([startNode.id]);
+      const completedNodeIds = new Set<string>([startNode.id]);
+      const execFrom = async (nodeId: string): Promise<unknown> => {
+        return this.executeDownstreamBranches(
+          session,
+          nodeId,
+          adjacency.get(nodeId) || [],
+          runtimeEdges,
+          visited,
+          completedNodeIds,
+          id => nodeMap.get(id),
+          execFrom,
+          node => node.type !== 'start',
+        );
+      };
+      return execFrom(startNode.id);
+    });
   }
 
   private async executeDownstreamBranches(
@@ -1740,16 +1765,20 @@ export class ExecutionManager {
 
   // ---- Private: Condition evaluation ----
 
-  private loadPluginConfigs(session: ExecutionSession): Record<string, Record<string, string>> {
-    const pluginIds = this.getReferencedPluginIds(session);
-    const schemes = session.workflow.pluginConfigSchemes || {};
+  private loadPluginConfigs(
+    session: ExecutionSession,
+    workflow: Workflow = session.workflow,
+    nodes: WorkflowNode[] = session.nodes,
+  ): Record<string, Record<string, string>> {
+    const pluginIds = this.getReferencedPluginIds(workflow, nodes);
+    const schemes = workflow.pluginConfigSchemes || {};
     const config: Record<string, Record<string, string>> = {};
 
     for (const pluginId of pluginIds) {
       try {
         const schemeName = schemes[pluginId];
         config[pluginId] = schemeName
-          ? workflowStore.readPluginScheme(session.workflow.id, pluginId, schemeName)
+          ? workflowStore.readPluginScheme(workflow.id, pluginId, schemeName)
           : pluginService.getPluginConfig(pluginId);
       } catch {
         config[pluginId] = pluginService.getPluginConfig(pluginId);
@@ -1759,8 +1788,8 @@ export class ExecutionManager {
     return config;
   }
 
-  private getReferencedPluginIds(session: ExecutionSession): string[] {
-    const pluginIds = new Set(session.workflow.enabledPlugins || []);
+  private getReferencedPluginIds(workflow: Workflow, nodes: WorkflowNode[]): string[] {
+    const pluginIds = new Set(workflow.enabledPlugins || []);
     const collect = (value: any) => {
       if (typeof value === 'string') {
         const matches = value.matchAll(/__config__\[(["'])([^"']+)\1\]/g);
@@ -1776,7 +1805,7 @@ export class ExecutionManager {
       }
     };
 
-    session.nodes.forEach(node => collect(node.data));
+    nodes.forEach(node => collect(node.data));
     return [...pluginIds];
   }
 
@@ -1845,7 +1874,7 @@ export class ExecutionManager {
     }
 
     const configMatch = value.match(/^\s*\{\{\s*__config__\[(["'])([^"']+)\1\]\[(["'])([^"']+)\3\](?:\.(\w+(?:\.\w+)*))?(?:\s*\|\|\s*(["'])(.*?)\6)?\s*\}\}\s*$/);
-    if (configMatch) return resolveWorkflowConfigString(session.context.__config__ ?? {}, value);
+    if (configMatch) return resolveWorkflowConfigString(this.getExecutionConfig(session), value);
 
     const ctxMatch = value.match(/^\s*\{\{\s*context\.([^}]+?)\s*\}\}\s*$/);
     if (ctxMatch) return getNestedValue(session.context, ctxMatch[1]) ?? '';
@@ -1878,7 +1907,7 @@ export class ExecutionManager {
       })
       .replace(
         /\{\{\s*__config__\[(["'])([^"']+)\1\]\[(["'])([^"']+)\3\](?:\.(\w+(?:\.\w+)*))?(?:\s*\|\|\s*(["'])(.*?)\6)?\s*\}\}/g,
-        (match) => String(resolveWorkflowConfigString(session.context.__config__ ?? {}, match) ?? ''),
+        (match) => String(resolveWorkflowConfigString(this.getExecutionConfig(session), match) ?? ''),
       )
       .replace(/\{\{\s*context\.([^}]+?)\s*\}\}/g, (_m, p) => String(getNestedValue(session.context, p) ?? ''));
 
@@ -1948,7 +1977,7 @@ export class ExecutionManager {
 
   private isActiveEdge(session: ExecutionSession, edge: WorkflowEdge): boolean {
     const activeHandle = this.getActiveBranches(session).get(edge.source);
-    return isRuntimeWorkflowEdge(edge) && isBranchActiveEdge(edge, session.edges.filter(isRuntimeWorkflowEdge), activeHandle);
+    return isRuntimeWorkflowEdge(edge) && isBranchActiveEdge(edge, this.getExecutionEdges(session).filter(isRuntimeWorkflowEdge), activeHandle);
   }
 
   private isNodeCompleted(

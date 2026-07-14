@@ -408,7 +408,8 @@
             "type": "string"
           }
         ]
-      }
+      },
+      "breakpoint": "start"
     },
     {
       "id": "node_1782282946001_rr0sss",
@@ -838,7 +839,7 @@
     }
   ],
   "createdAt": 1782271756656,
-  "updatedAt": 1783945892261,
+  "updatedAt": 1783994139636,
   "published": false,
   "enabledPlugins": [
     "workflow.openai",
@@ -851,5 +852,5 @@
   "groups": [],
   "description": "编辑图片",
   "variables": [],
-  "lastOpenedAt": 1783943930837
+  "lastOpenedAt": 1783994106164
 }

@@ -137,6 +137,14 @@ export function getOutputFields(value: unknown): OutputField[] {
   }));
 }
 
+export function getOutputFieldSchemas(value: unknown): OutputField[] {
+  return getOutputFields(value).map(field => ({
+    key: field.key,
+    type: field.type,
+    ...(field.children?.length ? { children: getOutputFieldSchemas(field.children) } : {}),
+  }));
+}
+
 export function getJsonPresets(value: unknown): JsonPreset[] {
   if (!Array.isArray(value)) return [];
   return value.filter(isPlainObject).map(item => ({

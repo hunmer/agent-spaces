@@ -12,6 +12,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Toggle } from '@/components/ui/toggle';
 import { copyToClipboard } from '@/lib/utils';
 import {
+  getOutputFieldSchemas,
   getOutputFields,
   getJsonPresets,
   isVisible,
@@ -187,7 +188,7 @@ export function WorkflowPropertiesPanel({
         workflowId: selectedWorkflow.id,
         workflowName: selectedWorkflow.name,
         inputFields,
-        outputs: getOutputFields(endNode?.data.outputs),
+        outputs: getOutputFieldSchemas(endNode?.data.outputs),
       });
       return;
     }
