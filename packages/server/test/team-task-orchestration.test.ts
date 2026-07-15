@@ -5,8 +5,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { createPreset, getSessionDetail } from '../src/services/agent.js';
-import { handleTeamManage } from '../src/services/team.js';
-import { getTeamRuntime, handleTeamAgentSessionList, handleTeamTaskManage, postTeamRuntimeMessage, setTeamRuntimeFactoryForTests } from '../src/services/team-runtime.js';
+import { handleTeamManage, handleTeamMessageSend } from '../src/services/team.js';
+import { getTeamRuntime, handleTeamAgentSessionList, handleTeamTaskComplete, handleTeamTaskManage, postTeamRuntimeMessage, setTeamRuntimeFactoryForTests } from '../src/services/team-runtime.js';
 import { closeDb } from '../src/storage/agent-store.js';
 
 test('owner polling starts member concurrently without inheriting owner context', async () => {
@@ -156,6 +156,7 @@ test('successful member handoff completes its running task', async () => {
     let resolveReviewerDone: (() => void) | undefined;
     const reviewerDone = new Promise<void>((resolve) => { resolveReviewerDone = resolve; });
     let reviewerRuns = 0;
+    let ownerWaitResult: { message: string; data: { tasks: Array<{ status: string }>; unread_messages?: Array<{ sender_agent_id: string; body: string }> } } | undefined;
 
     setTeamRuntimeFactoryForTests(() => ({
       async execute(prompt, _workingDir, options) {
@@ -169,7 +170,10 @@ test('successful member handoff completes its running task', async () => {
             { title: 'Review', assignee_agent_id: reviewer.id },
           ] });
           await sendTool?.execute({ action: 'send', mode: 'direct', recipient_agent_ids: [member.id], subject: 'write', body: 'write' });
-          await waitTool?.execute({ wait_seconds: 1 });
+          for (let attempt = 0; attempt < 3; attempt++) {
+            ownerWaitResult = await waitTool?.execute({ wait_seconds: 1 }) as typeof ownerWaitResult;
+            if (ownerWaitResult?.data.tasks.every((task) => task.status === 'completed')) break;
+          }
         } else if (prompt.includes(`Your actor_agent_id: ${member.id}`)) {
           await sendTool?.execute({ action: 'send', mode: 'direct', recipient_agent_ids: [reviewer.id], subject: 'review', body: 'review' });
         } else {
@@ -197,6 +201,21 @@ test('successful member handoff completes its running task', async () => {
     assert.notEqual((runtime.data as { runtime: { status: string } }).runtime.status, 'error');
     assert.equal((runtime.data as { runtime: { leader_agent_id: string } }).runtime.leader_agent_id, owner.id);
     assert.equal(reviewerRuns, 2);
+    assert.match(ownerWaitResult?.message ?? '', /process unread_messages/);
+    assert.deepEqual(ownerWaitResult?.data.unread_messages?.map(({ sender_agent_id, body }) => ({ sender_agent_id, body })), [{ sender_agent_id: reviewer.id, body: 'approved' }]);
+    handleTeamMessageSend({
+      action: 'send', team_id: teamId, session_id: sessionId, actor_agent_id: reviewer.id,
+      mode: 'direct', recipient_agent_ids: [owner.id], subject: 'late approval', body: 'late approval',
+    });
+    const unreadCount = () => {
+      const detail = handleTeamManage({ action: 'get', actor_agent_id: owner.id, team_id: teamId, session_id: sessionId, include_members_preview: true });
+      return (detail.data as { members_preview: Array<{ agent_id: string; unread_count: number }> }).members_preview.find((item) => item.agent_id === owner.id)?.unread_count;
+    };
+    assert.equal(unreadCount(), 1);
+    assert.equal(handleTeamTaskComplete({
+      action: 'complete', team_id: teamId, session_id: sessionId, actor_agent_id: owner.id, output: 'approved',
+    }).success, true);
+    assert.equal(unreadCount(), 0);
     const reviewerSessions = handleTeamAgentSessionList({ team_id: teamId, session_id: sessionId, actor_agent_id: owner.id, agent_id: reviewer.id });
     const reviewerSessionId = (reviewerSessions.data as { sessions: Array<{ session_id: string }> }).sessions[0]!.session_id;
     assert.match(getSessionDetail(reviewerSessionId)?.messages.at(-1)?.content ?? '', /review ready/);

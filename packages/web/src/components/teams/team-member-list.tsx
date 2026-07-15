@@ -29,10 +29,11 @@ interface TeamMemberListProps {
   agents: AgentConfig[];
   sessionId?: string;
   myRole?: string | null;
+  teamRunning?: boolean;
   onChange: () => void;
 }
 
-export function TeamMemberList({ teamId, actorAgentId, members, agents, sessionId, myRole, onChange }: TeamMemberListProps) {
+export function TeamMemberList({ teamId, actorAgentId, members, agents, sessionId, myRole, teamRunning = false, onChange }: TeamMemberListProps) {
   const t = useTranslations("teams");
   const tm = useTranslations("chat.messageItem");
   const [addOpen, setAddOpen] = useState(false);
@@ -46,6 +47,7 @@ export function TeamMemberList({ teamId, actorAgentId, members, agents, sessionI
   const [inboxAgentId, setInboxAgentId] = useState<string>("");
 
   const canManage = myRole === "owner" || myRole === "admin";
+  const canRemove = canManage && !teamRunning;
   const memberIds = useMemo(() => new Set(members.map((m) => m.agent_id)), [members]);
   const candidates = useMemo(() => buildCandidates(agents, memberIds), [agents, memberIds]);
   const replacementOwnerCandidates = useMemo(
@@ -174,7 +176,7 @@ export function TeamMemberList({ teamId, actorAgentId, members, agents, sessionI
                     setConfigCustomMemberId(member.agent_id);
                   }
                 }}
-                onRemove={canManage ? () => void removeMember(member.agent_id) : undefined}
+                onRemove={canRemove ? () => void removeMember(member.agent_id) : undefined}
               />
             );
 
@@ -192,14 +194,16 @@ export function TeamMemberList({ teamId, actorAgentId, members, agents, sessionI
                       {t("detail.setOwner")}
                     </ContextMenuItem>
                   )}
-                  <ContextMenuItem
-                    variant="destructive"
-                    onClick={() => void removeMember(member.agent_id)}
-                    disabled={isBusy}
-                  >
-                    <Trash2 className="size-4" />
-                    {t("detail.removeMember")}
-                  </ContextMenuItem>
+                  {!teamRunning && (
+                    <ContextMenuItem
+                      variant="destructive"
+                      onClick={() => void removeMember(member.agent_id)}
+                      disabled={isBusy}
+                    >
+                      <Trash2 className="size-4" />
+                      {t("detail.removeMember")}
+                    </ContextMenuItem>
+                  )}
                 </ContextMenuContent>
               </ContextMenu>
             );

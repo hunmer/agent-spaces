@@ -4,9 +4,8 @@ import type { AgentConfig } from "@agent-spaces/shared";
 import { useEffect, useState } from "react";
 import type { TeamDetail, TeamRuntimeResponse, TeamView } from "@agent-spaces/sdk";
 import { useTranslations } from "next-intl";
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Trash2, Clock, Loader2, Check, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { TeamMemberList } from "@/components/teams/team-member-list";
 import { Markdown } from "@/components/ui/markdown";
 import { sdk } from "@/lib/sdk";
@@ -81,6 +80,19 @@ export function TeamDetailPanel({
             <p className="mt-1 text-sm text-muted-foreground">{teamDetail.team.purpose || t("detail.noPurpose")}</p>
           </div>
 
+          <div className="rounded-xl border border-border p-3">
+            <TeamMemberList
+              teamId={selectedTeam.team_id}
+              actorAgentId={selectedActorId}
+              members={teamDetail.members_preview ?? []}
+              agents={availableAgents}
+              sessionId={activeSessionId}
+              myRole={teamDetail.team.my_role}
+              teamRunning={sessionDetail?.runtime.status === "running"}
+              onChange={() => onRefreshDetail(selectedTeam.team_id)}
+            />
+          </div>
+
           {activeSessionId ? (
             <div className="rounded-xl border border-border bg-background p-3">
               <div className="text-sm font-medium">{t("detail.tasks")}</div>
@@ -90,7 +102,15 @@ export function TeamDetailPanel({
                     <div key={task.id} className="rounded-lg border border-border p-2 text-xs">
                       <div className="flex items-start justify-between gap-2">
                         <span className="font-medium">{task.title}</span>
-                        <Badge variant="outline">{t(`detail.taskStatus.${task.status}`)}</Badge>
+                        {task.status === "running" ? (
+                          <Loader2 className="mt-0.5 size-3.5 shrink-0 animate-spin text-blue-500" />
+                        ) : task.status === "completed" ? (
+                          <Check className="mt-0.5 size-3.5 shrink-0 text-emerald-500" />
+                        ) : task.status === "failed" ? (
+                          <XCircle className="mt-0.5 size-3.5 shrink-0 text-destructive" />
+                        ) : (
+                          <Clock className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
+                        )}
                       </div>
                       <div className="mt-1 text-muted-foreground">{task.assigneeAgentId}</div>
                       {task.agentSessionId ? <div className="mt-1 break-all font-mono text-muted-foreground">{task.agentSessionId}</div> : null}
@@ -105,23 +125,15 @@ export function TeamDetailPanel({
               {sessionDetail?.runtime.output ? (
                 <div className="mt-4 border-t border-border pt-3">
                   <div className="text-sm font-medium">{t("detail.finalOutput")}</div>
-                  <Markdown content={sessionDetail.runtime.output} />
+                  <div className="mt-2 max-h-[500px] overflow-auto">
+                    <Markdown content={sessionDetail.runtime.output} />
+                  </div>
                 </div>
               ) : null}
             </div>
           ) : null}
 
-          <div className="rounded-xl border border-border p-3">
-            <TeamMemberList
-              teamId={selectedTeam.team_id}
-              actorAgentId={selectedActorId}
-              members={teamDetail.members_preview ?? []}
-              agents={availableAgents}
-              sessionId={activeSessionId}
-              myRole={teamDetail.team.my_role}
-              onChange={() => onRefreshDetail(selectedTeam.team_id)}
-            />
-          </div>
+   
 
         </div>
       ) : (

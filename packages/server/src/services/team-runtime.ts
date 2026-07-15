@@ -508,7 +508,7 @@ function buildAdHocWorkspace(workingDir: string): Workspace {
   };
 }
 
-function createTeamTaskWaitTool(teamId: string, sessionId: string, beforeWait: () => void) {
+function createTeamTaskWaitTool(teamId: string, sessionId: string, actorAgentId: string, beforeWait: () => void) {
   return {
     name: 'team_task_wait',
     description: 'Wait briefly, then return the latest team task statuses. Use this to poll active team work without busy-looping.',
@@ -524,7 +524,35 @@ function createTeamTaskWaitTool(teamId: string, sessionId: string, beforeWait: (
       beforeWait();
       const seconds = Math.min(30, Math.max(1, Number((input as { wait_seconds?: unknown } | null)?.wait_seconds) || 10));
       await new Promise((resolve) => setTimeout(resolve, seconds * 1000));
-      return ok('team task statuses refreshed', { tasks: listTasks(teamId, sessionId) });
+      const tasks = listTasks(teamId, sessionId);
+      const messages = new Map(listMessages(teamId, sessionId).map((message) => [message.id, message]));
+      const unreadDeliveries = listDeliveries(teamId, sessionId).filter((delivery) =>
+        delivery.recipientAgentId === actorAgentId && delivery.inboxStatus === 'unread');
+      const unreadMessages = unreadDeliveries.flatMap((delivery) => {
+        const message = messages.get(delivery.messageId);
+        if (!message) return [];
+        handleTeamMessageUpdate({
+          action: 'update_status',
+          team_id: teamId,
+          session_id: sessionId,
+          actor_agent_id: actorAgentId,
+          delivery_id: delivery.id,
+          inbox_status: 'read',
+        });
+        return [{
+          message_id: message.id,
+          sender_agent_id: message.senderAgentId,
+          subject: message.subject,
+          body: message.body,
+        }];
+      });
+      const allCompleted = tasks.length > 0 && tasks.every((task) => task.status === 'completed');
+      const message = unreadMessages.length > 0
+        ? 'new team messages received; process unread_messages before waiting again'
+        : allCompleted
+          ? 'all team tasks completed; continue finalization and do not call team_task_wait again'
+          : 'team task statuses refreshed';
+      return ok(message, { tasks, unread_messages: unreadMessages });
     },
   };
 }
@@ -574,7 +602,7 @@ function resolveTeamRuntimeTools(
         return result;
       },
     }),
-    ...(isOwner ? [createTeamTaskWaitTool(teamId, sessionId, () => {
+    ...(isOwner ? [createTeamTaskWaitTool(teamId, sessionId, actorAgentId, () => {
       const currentRuntime = listRuntimes(teamId, sessionId).find((item) => item.sessionId === sessionId);
       if (!currentRuntime) return;
       for (const handoff of handoffs.filter((item) => !item.dispatched)) {
@@ -1245,6 +1273,17 @@ export function handleTeamTaskComplete(input: unknown): TeamServiceResult {
   if (!owner) return fail('only the active team owner can complete the team task', 'PERMISSION_DENIED');
   const runtime = findLatestRuntime(teamId, sessionId, actorAgentId);
   if (!runtime) return fail('team runtime not found', 'RUNTIME_NOT_FOUND');
+  for (const delivery of listDeliveries(teamId, sessionId).filter((item) =>
+    item.recipientAgentId === actorAgentId && item.inboxStatus === 'unread')) {
+    handleTeamMessageUpdate({
+      action: 'update_status',
+      team_id: teamId,
+      session_id: sessionId,
+      actor_agent_id: actorAgentId,
+      delivery_id: delivery.id,
+      inbox_status: 'read',
+    });
+  }
   if (runtime.status === 'completed') {
     const completed = updateRuntime(teamId, sessionId, { ...runtime, output, updatedAt: new Date().toISOString() });
     return ok('team task already completed', { session_id: completed.sessionId, status: completed.status, output });
