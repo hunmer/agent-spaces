@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { createPreset } from '../src/services/agent.js';
+import { createPreset, getSessionDetail } from '../src/services/agent.js';
 import { handleTeamManage } from '../src/services/team.js';
 import { getTeamRuntime, handleTeamAgentSessionList, handleTeamTaskManage, postTeamRuntimeMessage, setTeamRuntimeFactoryForTests } from '../src/services/team-runtime.js';
 import { closeDb } from '../src/storage/agent-store.js';
@@ -132,6 +132,7 @@ test('successful member handoff completes its running task', async () => {
     const sessionId = '88888888-8888-4888-8888-888888888888';
     let resolveReviewerDone: (() => void) | undefined;
     const reviewerDone = new Promise<void>((resolve) => { resolveReviewerDone = resolve; });
+    let reviewerRuns = 0;
 
     setTeamRuntimeFactoryForTests(() => ({
       async execute(prompt, _workingDir, options) {
@@ -149,6 +150,12 @@ test('successful member handoff completes its running task', async () => {
         } else if (prompt.includes(`Your actor_agent_id: ${member.id}`)) {
           await sendTool?.execute({ action: 'send', mode: 'direct', recipient_agent_ids: [reviewer.id], subject: 'review', body: 'review' });
         } else {
+          reviewerRuns++;
+          if (reviewerRuns === 1) {
+            return { success: true, summary: 'review ready', output: ['review ready'], artifacts: [], sessionId: 'runtime-reviewer' };
+          }
+          assert.match(prompt, /still running/);
+          assert.equal(options?.resumeSessionId, 'runtime-reviewer');
           const listed = await taskTool?.execute({ action: 'list' }) as { data: { tasks: Array<{ id: string; assigneeAgentId: string }> } };
           const task = listed.data.tasks.find((item) => item.assigneeAgentId === reviewer.id)!;
           await taskTool?.execute({ action: 'complete', task_id: task.id });
@@ -166,6 +173,10 @@ test('successful member handoff completes its running task', async () => {
     assert.deepEqual((runtime.data as { tasks: Array<{ status: string }> }).tasks.map((task) => task.status), ['completed', 'completed']);
     assert.notEqual((runtime.data as { runtime: { status: string } }).runtime.status, 'error');
     assert.equal((runtime.data as { runtime: { leader_agent_id: string } }).runtime.leader_agent_id, owner.id);
+    assert.equal(reviewerRuns, 2);
+    const reviewerSessions = handleTeamAgentSessionList({ team_id: teamId, session_id: sessionId, actor_agent_id: owner.id, agent_id: reviewer.id });
+    const reviewerSessionId = (reviewerSessions.data as { sessions: Array<{ session_id: string }> }).sessions[0]!.session_id;
+    assert.match(getSessionDetail(reviewerSessionId)?.messages.at(-1)?.content ?? '', /review ready/);
   } finally {
     setTeamRuntimeFactoryForTests();
     closeDb();

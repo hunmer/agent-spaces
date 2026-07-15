@@ -450,7 +450,7 @@ function buildTeamAgentPrompt(
     `Your actor_agent_id: ${actorAgentId}`,
     'Always use these exact ids in team tool calls; never use a recipient agent id as team_id.',
     'If another teammate should continue the work, call `team_message_send` with that teammate\'s agent id instead of only mentioning them in plain text.',
-    'When prior teammate output is needed, call `team_agent_session_list` with the upstream agent id, then pass the returned session_id to `GetAgentSessionDetail`. Never guess a session id or use a task id as a session id.',
+    'Treat the latest user message as authoritative. Only call `team_agent_session_list` and `GetAgentSessionDetail` when required upstream material is explicitly omitted; never reload material already present in the latest message.',
     'If a requested tool like `AddCurrentChannelComment` is unavailable, use the available team tools to hand off work to the correct teammate.',
     ...(isOwner ? [
       'After the first request, call `team_manage` with action=get and include_members_preview=true to inspect every active member, then create the complete multi-agent task list with `team_task_manage` action=create before delegating work. Create tasks only for non-owner members; never assign a task to yourself. Create all known downstream tasks at once, not only the next task.',
@@ -475,7 +475,7 @@ function buildTeamAgentSystemPrompt(teamId: string, agentId: string, base?: stri
   const isOwner = isOwnerAgent(teamId, agentId);
   const policy = isOwner
     ? 'Mandatory team policy: before the first team_message_send, call team_manage with action=get and include_members_preview=true to inspect every active member, then create the complete multi-agent task list with team_task_manage action=create. Create tasks only for non-owner members; never assign a task to yourself. Create all known downstream tasks at once, not only the next task. This overrides any earlier instruction that says to use only team_message_send.'
-    : 'Mandatory team policy: before finishing, complete your assigned task with team_task_manage action=complete. To read upstream output, call team_agent_session_list first and pass its returned session_id to GetAgentSessionDetail. Never guess a session id.';
+    : 'Mandatory team policy: before finishing, complete your assigned task with team_task_manage action=complete, then call team_message_send when the next teammate must act. The latest user message is authoritative; do not reload upstream session details when it already contains the required material.';
   return [base?.trim(), policy].filter(Boolean).join('\n\n') || undefined;
 }
 
@@ -970,14 +970,34 @@ async function dispatchTeamReply(teamId: string, sessionId: string, actorAgentId
     broadcastTeamRuntimeEvent('team.message.created', { teamId, actorAgentId, message: pendingResult.data });
   }
   try {
-      const reply = await executeTeamReply(teamId, sessionId, targetAgentId, content, history, (activeRuntime) => {
+      let reply = await executeTeamReply(teamId, sessionId, targetAgentId, content, history, (activeRuntime) => {
         activeTeamRuns.set(runKey, { runtime: activeRuntime, token, teamId, sessionId, targetAgentId });
       }, (event) => {
         appendTeamRunToolEvent(logLines, event);
         partsTracker.handleEvent(event);
       }, handoffs, (input) => logLines.push('', '[INPUT]', input), resumeSession?.runtimeSessionId, resumeSession?.sessionId);
       if (targetMembership?.role !== 'owner') {
-        const task = listTasks(teamId, sessionId).find((item) => item.assigneeAgentId === targetAgentId && item.status === 'running');
+        let task = listTasks(teamId, sessionId).find((item) => item.assigneeAgentId === targetAgentId && item.status === 'running');
+        if (task && handoffs.length === 0) {
+          const initialReply = reply;
+          const finishPrompt = `Your task "${task.title}" is still running. Do not repeat analysis or produce another report. Call team_task_manage action=complete for this task, then call team_message_send with the result to the teammate required by your workflow.`;
+          logLines.push('', '[TOOL COMPLETION RETRY]', finishPrompt);
+          reply = await executeTeamReply(teamId, sessionId, targetAgentId, finishPrompt, [], (activeRuntime) => {
+            activeTeamRuns.set(runKey, { runtime: activeRuntime, token, teamId, sessionId, targetAgentId });
+          }, (event) => {
+            appendTeamRunToolEvent(logLines, event);
+            partsTracker.handleEvent(event);
+          }, handoffs, (input) => logLines.push('', '[INPUT]', input), reply.runtimeSessionId, reply.agentContext.sessionId);
+          reply = {
+            ...reply,
+            content: [initialReply.content, reply.content].filter(Boolean).join('\n\n'),
+            agentContext: {
+              ...reply.agentContext,
+              output: [initialReply.agentContext.output, reply.agentContext.output].filter(Boolean).join('\n\n'),
+            },
+          };
+          task = listTasks(teamId, sessionId).find((item) => item.assigneeAgentId === targetAgentId && item.status === 'running');
+        }
         if (task && handoffs.length > 0) markAgentTaskCompleted(teamId, sessionId, targetAgentId, reply.agentContext.sessionId);
         else if (task) throw new Error(`agent completed without marking task complete: ${task.title}`);
       }
