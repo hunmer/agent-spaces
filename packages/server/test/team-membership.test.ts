@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import type { AddressInfo } from 'node:net';
@@ -562,6 +562,9 @@ test('owner runtime gets a completion tool and can finish the current team task'
     await started;
 
     assert.match(prompt, /team_task_complete/);
+    const runtimePath = join(dataDir, 'team', teamId, sessionId, 'runtimes.json');
+    const runtimes = JSON.parse(readFileSync(runtimePath, 'utf-8')) as Array<Record<string, unknown>>;
+    writeFileSync(runtimePath, JSON.stringify(runtimes.map((runtime) => ({ ...runtime, leaderAgentId: 'member-running-concurrently' })), null, 2));
     const completionTool = functionTools.find((tool) => tool.name === 'team_task_complete');
     assert.ok(completionTool);
     const completed = await completionTool.execute({ action: 'complete', output: 'final team result' });

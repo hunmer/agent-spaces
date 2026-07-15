@@ -3,6 +3,7 @@ import type { Team, TeamMembership, TeamMessage, Workspace, BuiltInAgentToolName
 import { appendFileSync, existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { inspect } from 'node:util';
+import { AsyncResource } from 'node:async_hooks';
 import { createAgentRuntime } from '../adapters/agent-runtime.js';
 import type { AgentRuntime, AgentRuntimeKind, AgentRuntimeConfig, AgentRuntimeEvent } from '../adapters/agent-runtime-types.js';
 import { ensureDir, getDataDir, readJsonFile, writeJsonFile } from '../storage/json-store.js';
@@ -16,7 +17,7 @@ import { getThinkingRuntimeConfig } from './llm-model-config.js';
 import { prependPersistentAgentContext } from './persistent-agent-context.js';
 import { broadcastToWorkspace } from '../ws/connection-manager.js';
 import { createAgentMessagePartsTracker } from '../agents/agent-message-parts.js';
-import { asSessionId } from './team-internal.js';
+import { activeTeamRuns, asSessionId } from './team-internal.js';
 import {
   createAgentFunctionTools,
   createCommandFunctionTools,
@@ -27,8 +28,8 @@ import {
 } from './builtin-tools/index.js';
 
 const TEAM_RUNTIME_WORKSPACE_ID = '__team__';
+const detachedTeamRunScope = new AsyncResource('team-runtime-detached');
 let runtimeFactory: (config?: AgentRuntimeConfig) => AgentRuntime = createAgentRuntime;
-const activeTeamRuns = new Map<string, { runtime: AgentRuntime; token: string; teamId: string; sessionId: string; targetAgentId: string }>();
 
 export function setTeamRuntimeFactoryForTests(factory?: (config?: AgentRuntimeConfig) => AgentRuntime): void {
   runtimeFactory = factory ?? createAgentRuntime;
@@ -578,8 +579,10 @@ function resolveTeamRuntimeTools(
       if (!currentRuntime) return;
       for (const handoff of handoffs.filter((item) => !item.dispatched)) {
         handoff.dispatched = true;
-        void dispatchQueuedHandoff(teamId, sessionId, currentRuntime.actorAgentId, currentRuntime, handoff).catch((error) => {
-          console.error('[team-runtime] owner handoff failed', error);
+        detachedTeamRunScope.runInAsyncScope(() => {
+          void dispatchQueuedHandoff(teamId, sessionId, currentRuntime.actorAgentId, currentRuntime, handoff).catch((error) => {
+            console.error('[team-runtime] owner handoff failed', error);
+          });
         });
       }
     })] : []),
@@ -1240,10 +1243,7 @@ export function handleTeamTaskComplete(input: unknown): TeamServiceResult {
   }
   const owner = listMemberships(teamId).find((item) => item.status === 'active' && item.agentId === actorAgentId && item.role === 'owner');
   if (!owner) return fail('only the active team owner can complete the team task', 'PERMISSION_DENIED');
-  const runtimes = listRuntimes(teamId, sessionId)
-    .filter((item) => item.leaderAgentId === actorAgentId)
-    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
-  const runtime = runtimes.find((item) => item.status === 'running') ?? runtimes[0];
+  const runtime = findLatestRuntime(teamId, sessionId, actorAgentId);
   if (!runtime) return fail('team runtime not found', 'RUNTIME_NOT_FOUND');
   if (runtime.status === 'completed') {
     const completed = updateRuntime(teamId, sessionId, { ...runtime, output, updatedAt: new Date().toISOString() });

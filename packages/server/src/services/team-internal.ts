@@ -2,6 +2,7 @@ import { existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { validate as isUuid } from 'uuid';
 import type { AgentConfig } from '@agent-spaces/shared';
+import type { AgentRuntime } from '../adapters/agent-runtime-types.js';
 import { listPresets } from './agent.js';
 import { findAgent as findChatAgent } from './chat.js';
 import { listWorkflows } from './workflow.js';
@@ -24,6 +25,14 @@ import type {
   TeamServiceResult,
   TeamVisibility,
 } from './team-types.js';
+
+export const activeTeamRuns = new Map<string, {
+  runtime: AgentRuntime;
+  token: string;
+  teamId: string;
+  sessionId: string;
+  targetAgentId: string;
+}>();
 
 export function ok<T>(message: string, data?: T, code = 'OK', warnings?: string[]): TeamServiceResult<T> {
   return { success: true, code, message, data, ...(warnings?.length ? { warnings } : {}) };
@@ -417,8 +426,8 @@ export function membershipView(item: TeamMembership, sessionId?: string) {
   const unreadCount = listDeliveries(item.teamId, sessionId)
     .filter((delivery) => delivery.recipientAgentId === item.agentId && delivery.inboxStatus === 'unread')
     .length;
-  const runningCount = listRuntimes(item.teamId)
-    .filter((runtime) => runtime.leaderAgentId === item.agentId && runtime.status === 'running')
+  const runningCount = [...activeTeamRuns.values()]
+    .filter((runtime) => runtime.teamId === item.teamId && runtime.targetAgentId === item.agentId)
     .length;
   return {
     ...item,

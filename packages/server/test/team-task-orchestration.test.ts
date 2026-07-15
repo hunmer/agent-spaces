@@ -3,12 +3,13 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { AsyncLocalStorage } from 'node:async_hooks';
 import { createPreset, getSessionDetail } from '../src/services/agent.js';
 import { handleTeamManage } from '../src/services/team.js';
 import { getTeamRuntime, handleTeamAgentSessionList, handleTeamTaskManage, postTeamRuntimeMessage, setTeamRuntimeFactoryForTests } from '../src/services/team-runtime.js';
 import { closeDb } from '../src/storage/agent-store.js';
 
-test('idle member run wakes owner to inspect incomplete tasks', async () => {
+test('owner polling starts member concurrently without inheriting owner context', async () => {
   const previousDataDir = process.env.AGENT_SPACES_DATA_DIR;
   const dataDir = mkdtempSync(join(tmpdir(), 'agent-spaces-team-tasks-'));
   process.env.AGENT_SPACES_DATA_DIR = dataDir;
@@ -17,6 +18,12 @@ test('idle member run wakes owner to inspect incomplete tasks', async () => {
   const ownerChecked = new Promise<void>((resolve) => { resolveOwnerCheck = resolve; });
   let resolveMemberStarted: (() => void) | undefined;
   const memberStarted = new Promise<void>((resolve) => { resolveMemberStarted = resolve; });
+  let releaseMember: (() => void) | undefined;
+  const memberGate = new Promise<void>((resolve) => { releaseMember = resolve; });
+  let resolveMemberDone: (() => void) | undefined;
+  const memberDone = new Promise<void>((resolve) => { resolveMemberDone = resolve; });
+  const runContext = new AsyncLocalStorage<string>();
+  let memberRunContext: string | undefined;
 
   try {
     const owner = createPreset('', { name: 'Owner' });
@@ -35,6 +42,7 @@ test('idle member run wakes owner to inspect incomplete tasks', async () => {
     setTeamRuntimeFactoryForTests(() => ({
       async execute(prompt, _workingDir, options) {
         if (prompt.includes(`Your actor_agent_id: ${owner.id}`)) {
+          runContext.enterWith('owner');
           ownerRuns++;
           assert.equal(options?.tools?.includes('AskUserQuestion'), false);
           assert.equal(options?.pauseAfterTools, undefined);
@@ -44,7 +52,7 @@ test('idle member run wakes owner to inspect incomplete tasks', async () => {
             const taskTool = options?.functionTools?.find((tool) => tool.name === 'team_task_manage');
             const sendTool = options?.functionTools?.find((tool) => tool.name === 'team_message_send');
             const waitTool = options?.functionTools?.find((tool) => tool.name === 'team_task_wait');
-            const team = await teamTool?.execute({ action: 'get', include_members_preview: true }) as { data: { members_preview: Array<{ agent_id: string }> } };
+            const team = await teamTool?.execute({ action: 'get', include_members_preview: true }) as { data: { members_preview: Array<{ agent_id: string; runtime_status: string }> } };
             assert.equal(team.data.members_preview.length, 3);
             const blocked = await sendTool?.execute({ action: 'send', mode: 'direct', recipient_agent_ids: [member.id], subject: 'work', body: 'do work' }) as { code: string };
             assert.equal(blocked.code, 'TASK_LIST_REQUIRED');
@@ -55,16 +63,29 @@ test('idle member run wakes owner to inspect incomplete tasks', async () => {
             await sendTool?.execute({ action: 'send', mode: 'direct', recipient_agent_ids: [member.id], subject: 'work', body: 'do work' });
             await waitTool?.execute({ wait_seconds: 1 });
             await memberStarted;
+            const runningTeam = await teamTool?.execute({ action: 'get', include_members_preview: true }) as { data: { members_preview: Array<{ agent_id: string; runtime_status: string }> } };
+            assert.deepEqual(
+              runningTeam.data.members_preview
+                .filter((item) => item.runtime_status === 'running')
+                .map((item) => item.agent_id)
+                .sort(),
+              [member.id, owner.id].sort(),
+            );
+            releaseMember?.();
+            await memberDone;
             const listed = await taskTool?.execute({ action: 'list' }) as { data: { tasks: Array<{ status: string }> } };
             assert.equal(listed.data.tasks.some((task) => task.status === 'pending'), true);
             resolveOwnerCheck?.();
           }
         } else if (prompt.includes(`Your actor_agent_id: ${member.id}`)) {
+          memberRunContext = runContext.getStore();
           resolveMemberStarted?.();
+          await memberGate;
           const taskTool = options?.functionTools?.find((tool) => tool.name === 'team_task_manage');
           const listed = await taskTool?.execute({ action: 'list' }) as { data: { tasks: Array<{ id: string; assigneeAgentId: string }> } };
           const task = listed.data.tasks.find((item) => item.assigneeAgentId === member.id)!;
           await taskTool?.execute({ action: 'complete', task_id: task.id });
+          resolveMemberDone?.();
         }
         return {
           success: true,
@@ -85,6 +106,7 @@ test('idle member run wakes owner to inspect incomplete tasks', async () => {
       content: 'start',
     }, true);
     await ownerChecked;
+    assert.equal(memberRunContext, undefined);
     assert.equal(ownerRuns, 1);
     const ownerSessions = handleTeamAgentSessionList({
       team_id: teamId,
@@ -106,6 +128,7 @@ test('idle member run wakes owner to inspect incomplete tasks', async () => {
     assert.equal(sessions[0]?.agent_id, member.id);
     assert.match(sessions[0]?.session_id ?? '', /^[0-9a-f-]{36}$/);
   } finally {
+    releaseMember?.();
     setTeamRuntimeFactoryForTests();
     closeDb();
     if (previousDataDir === undefined) delete process.env.AGENT_SPACES_DATA_DIR;
