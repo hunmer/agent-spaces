@@ -132,6 +132,7 @@ type QueuedTeamHandoff = {
   targetAgentId: string;
   content: string;
   messageId: string;
+  dispatched?: boolean;
 };
 
 type TeamTask = {
@@ -329,6 +330,16 @@ function markAgentTaskFailed(teamId: string, sessionId: string, agentId: string,
     : item));
 }
 
+function markAgentTaskCompleted(teamId: string, sessionId: string, agentId: string, agentSessionId: string): void {
+  const tasks = listTasks(teamId, sessionId);
+  const task = tasks.find((item) => item.assigneeAgentId === agentId && item.status === 'running');
+  if (!task) return;
+  const now = new Date().toISOString();
+  saveTasks(teamId, sessionId, tasks.map((item) => item.id === task.id
+    ? { ...item, status: 'completed', agentSessionId, updatedAt: now }
+    : item));
+}
+
 function loadTeam(teamId: string): Team | null {
   return readJsonFile<Team>(teamFilePath(teamId));
 }
@@ -496,6 +507,27 @@ function buildAdHocWorkspace(workingDir: string): Workspace {
   };
 }
 
+function createTeamTaskWaitTool(teamId: string, sessionId: string, beforeWait: () => void) {
+  return {
+    name: 'team_task_wait',
+    description: 'Wait briefly, then return the latest team task statuses. Use this to poll active team work without busy-looping.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        wait_seconds: { type: 'integer', minimum: 1, maximum: 30, description: 'Seconds to wait before checking. Defaults to 10.' },
+      },
+      additionalProperties: false,
+    },
+    annotations: { readOnly: true, openWorld: false },
+    execute: async (input: unknown) => {
+      beforeWait();
+      const seconds = Math.min(30, Math.max(1, Number((input as { wait_seconds?: unknown } | null)?.wait_seconds) || 10));
+      await new Promise((resolve) => setTimeout(resolve, seconds * 1000));
+      return ok('team task statuses refreshed', { tasks: listTasks(teamId, sessionId) });
+    },
+  };
+}
+
 function resolveTeamRuntimeTools(
   tools: unknown,
   workingDir: string,
@@ -541,6 +573,16 @@ function resolveTeamRuntimeTools(
         return result;
       },
     }),
+    ...(isOwner ? [createTeamTaskWaitTool(teamId, sessionId, () => {
+      const currentRuntime = listRuntimes(teamId, sessionId).find((item) => item.sessionId === sessionId);
+      if (!currentRuntime) return;
+      for (const handoff of handoffs.filter((item) => !item.dispatched)) {
+        handoff.dispatched = true;
+        void dispatchQueuedHandoff(teamId, sessionId, currentRuntime.actorAgentId, currentRuntime, handoff).catch((error) => {
+          console.error('[team-runtime] owner handoff failed', error);
+        });
+      }
+    })] : []),
     ...createCommandFunctionTools('', allowedToolNames),
     ...createAgentFunctionTools(TEAM_RUNTIME_WORKSPACE_ID, allowedToolNames),
     ...createDatabaseFunctionTools('', allowedToolNames),
@@ -565,10 +607,12 @@ async function executePresetTeamReply(
   handoffs: QueuedTeamHandoff[] = [],
   onInput?: (input: string) => void,
   resumeSessionId?: string,
+  resumeAgentSessionId?: string,
 ): Promise<TeamAgentReply> {
   const preset = listPresets('').find((item) => item.id === targetAgentId);
   if (!preset) throw new Error(`agent not found: ${targetAgentId}`);
-  const session = agentService.getOrCreateSessionForConfig(TEAM_RUNTIME_WORKSPACE_ID, preset);
+  const session = (resumeAgentSessionId ? agentService.getById(TEAM_RUNTIME_WORKSPACE_ID, resumeAgentSessionId) : null)
+    ?? agentService.getOrCreateSessionForConfig(TEAM_RUNTIME_WORKSPACE_ID, preset);
   agentService.updateStatus(TEAM_RUNTIME_WORKSPACE_ID, session.id, 'active');
   const startedAt = Date.now();
   const runtime = runtimeFactory({
@@ -596,7 +640,7 @@ async function executePresetTeamReply(
       fullPrompt,
       workingDir,
       {
-        maxTurns: 20,
+        maxTurns: isOwnerAgent(teamId, targetAgentId) ? 60 : 20,
         tools: runtimeTools.tools,
         functionTools: runtimeTools.functionTools,
         userPrompt,
@@ -607,7 +651,6 @@ async function executePresetTeamReply(
         systemPrompt: buildTeamAgentSystemPrompt(teamId, targetAgentId, preset.systemPrompt),
         outputStyle: preset.outputStyle,
         resumeSessionId,
-        pauseAfterTools: isOwnerAgent(teamId, targetAgentId) ? ['mcp__agent-spaces__team_message_send'] : undefined,
         onEvent,
       },
     );
@@ -657,10 +700,13 @@ async function executeChatTeamReply(
   handoffs: QueuedTeamHandoff[] = [],
   onInput?: (input: string) => void,
   resumeSessionId?: string,
+  resumeAgentSessionId?: string,
 ): Promise<TeamAgentReply> {
   const agent = chatService.findAgent(targetAgentId);
   if (!agent) throw new Error(`chat agent not found: ${targetAgentId}`);
-  const session = agentService.create(TEAM_RUNTIME_WORKSPACE_ID, agent.role ?? 'assistant', agent.id);
+  const session = (resumeAgentSessionId ? agentService.getById(TEAM_RUNTIME_WORKSPACE_ID, resumeAgentSessionId) : null)
+    ?? agentService.create(TEAM_RUNTIME_WORKSPACE_ID, agent.role ?? 'assistant', agent.id);
+  agentService.updateStatus(TEAM_RUNTIME_WORKSPACE_ID, session.id, 'active');
   const startedAt = Date.now();
   const runtime = runtimeFactory({
     kind: agent.runtimeKind ?? 'langchain',
@@ -676,7 +722,7 @@ async function executeChatTeamReply(
   const runtimeTools = resolveTeamRuntimeTools(agent.tools, workingDir, teamId, sessionId, targetAgentId, session.id, handoffs);
   onInput?.(userPrompt);
   const result = await runtime.execute(userPrompt, workingDir, {
-    maxTurns: 20,
+    maxTurns: isOwnerAgent(teamId, targetAgentId) ? 60 : 20,
     tools: runtimeTools.tools,
     functionTools: runtimeTools.functionTools,
     userPrompt,
@@ -686,7 +732,6 @@ async function executeChatTeamReply(
     systemPrompt: buildTeamAgentSystemPrompt(teamId, targetAgentId, agent.systemPrompt),
     outputStyle: agent.outputStyle,
     resumeSessionId,
-    pauseAfterTools: isOwnerAgent(teamId, targetAgentId) ? ['mcp__agent-spaces__team_message_send'] : undefined,
     onEvent,
   });
   const model = agent.modelId ?? agent.model;
@@ -732,9 +777,12 @@ async function executeCustomTeamReply(
   handoffs: QueuedTeamHandoff[] = [],
   onInput?: (input: string) => void,
   resumeSessionId?: string,
+  resumeAgentSessionId?: string,
 ): Promise<TeamAgentReply> {
   const provider = resolveCustomAgentProvider(agent);
-  const session = agentService.create(TEAM_RUNTIME_WORKSPACE_ID, asString(agent.role) ?? 'assistant', targetAgentId);
+  const session = (resumeAgentSessionId ? agentService.getById(TEAM_RUNTIME_WORKSPACE_ID, resumeAgentSessionId) : null)
+    ?? agentService.create(TEAM_RUNTIME_WORKSPACE_ID, asString(agent.role) ?? 'assistant', targetAgentId);
+  agentService.updateStatus(TEAM_RUNTIME_WORKSPACE_ID, session.id, 'active');
   const startedAt = Date.now();
   const runtime = runtimeFactory({
     kind: (asString(agent.runtimeKind) ?? 'claude-code') as AgentRuntimeKind,
@@ -761,7 +809,7 @@ async function executeCustomTeamReply(
     fullPrompt,
     workingDir,
     {
-      maxTurns: 20,
+      maxTurns: isOwnerAgent(teamId, targetAgentId) ? 60 : 20,
       tools: runtimeTools.tools,
       functionTools: runtimeTools.functionTools,
       userPrompt,
@@ -772,7 +820,6 @@ async function executeCustomTeamReply(
       systemPrompt: buildTeamAgentSystemPrompt(teamId, targetAgentId, asString(agent.systemPrompt)),
       outputStyle: asString(agent.outputStyle),
       resumeSessionId,
-      pauseAfterTools: isOwnerAgent(teamId, targetAgentId) ? ['mcp__agent-spaces__team_message_send'] : undefined,
       onEvent,
     },
   );
@@ -818,6 +865,7 @@ async function executeTeamReply(
   handoffs: QueuedTeamHandoff[] = [],
   onInput?: (input: string) => void,
   resumeSessionId?: string,
+  resumeAgentSessionId?: string,
 ): Promise<TeamAgentReply> {
   const membership = listMemberships(teamId).find((item) => item.status === 'active' && item.agentId === targetAgentId) as
     | (TeamMembership & { agentStore?: 'agent' | 'chat' | 'custom'; agent?: Record<string, unknown> })
@@ -827,12 +875,12 @@ async function executeTeamReply(
     : resolveTeamAgentSource(targetAgentId);
 
   if (source?.agentStore === 'agent') {
-    return executePresetTeamReply(teamId, sessionId, targetAgentId, content, history, onRuntime, onEvent, handoffs, onInput, resumeSessionId);
+    return executePresetTeamReply(teamId, sessionId, targetAgentId, content, history, onRuntime, onEvent, handoffs, onInput, resumeSessionId, resumeAgentSessionId);
   }
   if (source?.agentStore === 'custom' && source.agent && typeof source.agent === 'object') {
-    return executeCustomTeamReply(teamId, sessionId, targetAgentId, source.agent, content, history, onRuntime, onEvent, handoffs, onInput, resumeSessionId);
+    return executeCustomTeamReply(teamId, sessionId, targetAgentId, source.agent, content, history, onRuntime, onEvent, handoffs, onInput, resumeSessionId, resumeAgentSessionId);
   }
-  return executeChatTeamReply(teamId, sessionId, targetAgentId, content, history, onRuntime, onEvent, handoffs, onInput, resumeSessionId);
+  return executeChatTeamReply(teamId, sessionId, targetAgentId, content, history, onRuntime, onEvent, handoffs, onInput, resumeSessionId, resumeAgentSessionId);
 }
 
 async function dispatchQueuedHandoff(
@@ -842,7 +890,21 @@ async function dispatchQueuedHandoff(
   runtime: StoredTeamRuntime,
   handoff: QueuedTeamHandoff,
 ): Promise<void> {
+  const targetRunning = [...activeTeamRuns.values()].some((run) =>
+    run.teamId === teamId && run.sessionId === sessionId && run.targetAgentId === handoff.targetAgentId);
   const message = listMessages(teamId, sessionId).find((item) => item.id === handoff.messageId);
+  if (targetRunning) {
+    const current = listRuntimes(teamId, sessionId).find((item) => item.sessionId === sessionId) ?? runtime;
+    updateRuntime(teamId, sessionId, {
+      ...current,
+      leaderAgentId: handoff.targetAgentId,
+      status: 'running',
+      lastMessageId: handoff.messageId,
+      updatedAt: new Date().toISOString(),
+    });
+    broadcastTeamRuntimeEvent('team.message.created', { teamId, actorAgentId, message });
+    return;
+  }
   const nextRuntime = updateRuntime(teamId, sessionId, {
     ...runtime,
     leaderAgentId: handoff.targetAgentId,
@@ -874,9 +936,7 @@ async function dispatchTeamReply(teamId: string, sessionId: string, actorAgentId
   const logLines = [`team: ${teamId}`, `agent: ${targetAgentId}`, `startedAt: ${logStartedAt}`];
   const handoffs: QueuedTeamHandoff[] = [];
   let runSucceeded = false;
-  const resumeSessionId = targetMembership?.role === 'owner'
-    ? [...(runtime.agentSessions ?? [])].reverse().find((item) => item.agentId === targetAgentId)?.runtimeSessionId
-    : undefined;
+  const resumeSession = [...(runtime.agentSessions ?? [])].reverse().find((item) => item.agentId === targetAgentId);
   const ownerAgentId = listMemberships(teamId).find((item) => item.status === 'active' && item.role === 'owner')?.agentId;
   const recipientAgentIds = [...new Set([actorAgentId, ownerAgentId].filter((id): id is string => Boolean(id) && id !== targetAgentId))];
   const pendingResult = handleTeamMessageSend({
@@ -915,10 +975,11 @@ async function dispatchTeamReply(teamId: string, sessionId: string, actorAgentId
       }, (event) => {
         appendTeamRunToolEvent(logLines, event);
         partsTracker.handleEvent(event);
-      }, handoffs, (input) => logLines.push('', '[INPUT]', input), resumeSessionId);
+      }, handoffs, (input) => logLines.push('', '[INPUT]', input), resumeSession?.runtimeSessionId, resumeSession?.sessionId);
       if (targetMembership?.role !== 'owner') {
         const task = listTasks(teamId, sessionId).find((item) => item.assigneeAgentId === targetAgentId && item.status === 'running');
-        if (task) throw new Error(`agent completed without marking task complete: ${task.title}`);
+        if (task && handoffs.length > 0) markAgentTaskCompleted(teamId, sessionId, targetAgentId, reply.agentContext.sessionId);
+        else if (task) throw new Error(`agent completed without marking task complete: ${task.title}`);
       }
       runtime = recordAgentSession(teamId, sessionId, runtime, targetAgentId, reply.agentContext.sessionId, reply.runtimeSessionId);
       logLines.push('', '[OUTPUT]', reply.agentContext.output || reply.content);
@@ -1007,7 +1068,7 @@ async function dispatchTeamReply(teamId: string, sessionId: string, actorAgentId
   }
   if (!runSucceeded) return;
   for (const handoff of handoffs) {
-    await dispatchQueuedHandoff(teamId, sessionId, actorAgentId, runtime, handoff);
+    if (!handoff.dispatched) await dispatchQueuedHandoff(teamId, sessionId, actorAgentId, runtime, handoff);
   }
   if (handoffs.length === 0 && targetMembership?.role !== 'owner') maybeWakeOwnerForTasks(teamId, sessionId, targetAgentId);
 }
@@ -1020,9 +1081,11 @@ function maybeWakeOwnerForTasks(teamId: string, sessionId: string, actorAgentId:
   const memberships = listMemberships(teamId).filter((item) => item.status === 'active');
   const owner = memberships.find((item) => item.role === 'owner');
   const memberIds = new Set(memberships.filter((item) => item.role !== 'owner').map((item) => item.agentId));
+  const ownerRunning = [...activeTeamRuns.values()].some((run) =>
+    run.teamId === teamId && run.sessionId === sessionId && run.targetAgentId === owner?.agentId);
   const memberRunning = [...activeTeamRuns.values()].some((run) =>
     run.teamId === teamId && run.sessionId === sessionId && memberIds.has(run.targetAgentId));
-  if (!owner || memberRunning) return;
+  if (!owner || ownerRunning || memberRunning) return;
   const content = [
     'Team members are idle but the task list is incomplete.',
     'Use `team_task_manage` with action=list, inspect pending or running tasks, and send the next required task to its assigned agent.',
