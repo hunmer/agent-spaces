@@ -4,7 +4,7 @@ import type { AgentConfig } from "@agent-spaces/shared";
 import { useEffect, useState } from "react";
 import type { TeamDetail, TeamRuntimeResponse, TeamView } from "@agent-spaces/sdk";
 import { useTranslations } from "next-intl";
-import { Pencil, Trash2, Clock, Loader2, Check, XCircle } from "lucide-react";
+import { Pencil, Trash2, Clock, Loader2, Check, XCircle, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { TeamMemberList } from "@/components/teams/team-member-list";
 import { Markdown } from "@/components/ui/markdown";
@@ -33,6 +33,7 @@ export function TeamDetailPanel({
 }: TeamDetailPanelProps) {
   const t = useTranslations("teams");
   const [sessionDetail, setSessionDetail] = useState<TeamRuntimeResponse | null>(null);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     if (!selectedTeam?.team_id || !activeSessionId) {
@@ -124,7 +125,25 @@ export function TeamDetailPanel({
 
               {sessionDetail?.runtime.output ? (
                 <div className="mt-4 border-t border-border pt-3">
-                  <div className="text-sm font-medium">{t("detail.finalOutput")}</div>
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="text-sm font-medium">{t("detail.finalOutput")}</div>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="size-7 p-0 text-muted-foreground hover:text-foreground"
+                      onClick={async () => {
+                        try {
+                          await navigator.clipboard.writeText(sessionDetail.runtime.output ?? "");
+                          setCopied(true);
+                          setTimeout(() => setCopied(false), 1500);
+                        } catch {
+                          /* noop */
+                        }
+                      }}
+                    >
+                      {copied ? <Check className="size-3.5 text-emerald-500" /> : <Copy className="size-3.5" />}
+                    </Button>
+                  </div>
                   <div className="mt-2 max-h-[500px] overflow-auto">
                     <Markdown content={sessionDetail.runtime.output} />
                   </div>

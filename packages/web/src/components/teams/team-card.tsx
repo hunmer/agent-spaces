@@ -149,7 +149,6 @@ export function TeamCard({
             </div>
           </div>
         </div>
-        {!archived ? <Users className="mt-0.5 size-4 shrink-0 text-muted-foreground" /> : null}
       </div>
 
       {archived ? (

@@ -51,11 +51,6 @@ export function TeamListPanel({
 
   return (
     <section className="flex h-full flex-col rounded-2xl border border-border bg-card p-4">
-      {error ? (
-        <div className="mb-2 rounded-xl border border-destructive/40 bg-destructive/5 px-3 py-2 text-sm text-destructive">
-          {error}
-        </div>
-      ) : null}
       <div className=" flex items-center justify-between">
         <h2 className="font-medium">{t("list.title")}</h2>
         <div className="flex items-center gap-1">

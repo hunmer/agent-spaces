@@ -417,7 +417,7 @@ export function TeamChatPanel({ teamId, actorAgentId, initialSessionId, sidebarO
   const configCustomAgent = configAgent && !configStoreAgent ? configAgent.agent : undefined;
 
   return (
-    <section className="flex h-full min-h-0 flex-col rounded-2xl border border-border bg-card p-4">
+    <section className="flex h-full min-h-0 flex-col rounded-2xl border border-border bg-card p-3">
       <div className="mb-3 flex items-center justify-between gap-2">
         <div className="min-w-0">
           <h2 className="flex items-center gap-2 font-medium">
