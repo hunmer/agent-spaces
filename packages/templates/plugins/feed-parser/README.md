@@ -37,6 +37,7 @@
   - `timeout`：超时（毫秒），默认 `30000`
   - `headers`：自定义请求头（JSON 对象）
   - `encoding`：响应编码，默认 `utf-8`
+  - `proxy`：HTTP(S) 代理地址，例：`http://user:pass@host:8080`；留空直连
 - 出参 `data`：
   - `format`：探测到的格式（`rss / atom / rdf / json`，无法识别时为空）
   - `content`：响应正文

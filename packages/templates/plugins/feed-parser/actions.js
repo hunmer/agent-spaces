@@ -127,6 +127,13 @@ module.exports = (t) => [
         default: 'utf-8',
         tooltip: t('field.encoding.tooltip', 'Response encoding, e.g. utf-8 / gbk'),
       },
+      {
+        key: 'proxy',
+        label: t('field.proxy.label', 'HTTP Proxy'),
+        type: 'text',
+        dataType: 'string',
+        tooltip: t('field.proxy.tooltip', 'HTTP(S) proxy URL, e.g. http://user:pass@host:8080. Leave empty for direct connection.'),
+      },
     ],
     outputs: [
       { key: 'format', type: 'string' },
@@ -142,6 +149,7 @@ module.exports = (t) => [
         headers: args.headers,
         encoding: args.encoding,
         timeout,
+        proxy: args.proxy || undefined,
       })
       const format = args.type && args.type !== TYPE_AUTO ? args.type : detectFormat(content)
       ctx.logger.info(`feed_fetch url=${args.url} type=${args.type || TYPE_AUTO} detected=${format} length=${content.length}`)

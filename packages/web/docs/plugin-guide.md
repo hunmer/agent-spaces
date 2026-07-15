@@ -668,6 +668,96 @@ Web client 插件需要单独 manifest。
 - `entries.client.url` 可被浏览器 `import()`
 - `entries.view.url` 当前按文本拉取
 
+## 使用外部 npm 依赖
+
+server 插件可以像普通 Node 项目一样使用 npm 上的第三方包。
+
+### 声明依赖
+
+在插件根目录放一个标准 `package.json`，把依赖写进 `dependencies`：
+
+```json
+{
+  "name": "my-plugin",
+  "version": "1.0.0",
+  "main": "main.js",
+  "type": "commonjs",
+  "dependencies": {
+    "feedsmith": "^2.9.6",
+    "ali-oss": "^6.21.0"
+  }
+}
+```
+
+宿主在激活插件前会检查 `package.json`：
+
+- 若目录下还没有 `node_modules`，会自动执行一次 `npm install --omit=dev`（使用宿主配置的 registry / proxy）
+- `node_modules` 已存在则跳过，不会重复安装
+- 安装失败会抛出 `Failed to install plugin dependencies ...`，插件不会被激活
+
+> 插件目录下的 `node_modules` 和 `package-lock.json` 不要提交到仓库，让宿主在安装时生成即可。
+
+### 在代码里引用
+
+依赖装好后，**子模块**（如 `actions.js`、`shared.js`）里可以直接 `require` 裸包名：
+
+```javascript
+// actions.js —— 子模块，裸包名 require 正常工作
+const { parseFeed } = require('feedsmith')
+
+module.exports = (t) => [
+  {
+    name: 'parse_feed',
+    run: async (ctx, args) => {
+      const { format, feed } = parseFeed(args.content)
+      return { success: true, data: { format, feed } }
+    },
+  },
+]
+```
+
+### 重要限制：入口文件不能直接 require 裸包名
+
+插件入口 `main.js`（`entries.server`）是在 vm sandbox 中执行的，它的 `require` 被定制过：
+
+- 相对路径（`./`、`../`）和绝对路径：正常解析
+- Node 内置模块（`fs`、`path` 等）：正常返回
+- **裸包名（如 `feedsmith`）：返回一个空 stub，不会抛异常但无法使用**
+
+因此**不要在 `main.js` 顶层直接 `require('some-package')`**，而是把使用外部依赖的逻辑放到子模块里，由 `main.js` 通过相对路径 `require('./actions')` 间接加载：
+
+```javascript
+// main.js —— 正确写法：只 require 相对路径，把依赖留给子模块
+const actions = require('./actions')
+
+exports.activate = (context) => {
+  context.registerActions(actions)
+}
+```
+
+```javascript
+// main.js —— 错误写法：顶层裸包名 require 会拿到 stub，运行时报错
+const { parseFeed } = require('feedsmith') // ← 拿到的是空 stub
+
+exports.activate = (context) => {
+  context.registerActions([
+    { name: 'parse_feed', run: async (ctx, args) => parseFeed(args.content) }, // 运行时才报错
+  ])
+}
+```
+
+> 这条限制只针对 `main.js`（sandbox 入口）。`main.js` 通过 `require('./actions')` 间接加载的 `actions.js`、`shared.js` 等文件走 Node 原生模块加载，裸包名 require 完全正常。`workflow.js`、`tools.js` 如果作为入口被 sandbox 直接执行，同样受此限制——所以推荐统一用 `main.js` + `registerActions(actions)` 模式，把依赖集中在 `actions.js` / `shared.js`。
+
+### 判断插件是否需要安装依赖
+
+宿主用 `package.json` 的 `dependencies` 是否非空来判断要不要触发 `npm install`。没有外部依赖的插件不需要 `package.json`。
+
+### 参考实现
+
+- `packages/templates/plugins/mira-sdk`：`package.json` 声明 `mira-app-core`，在 `shared.js` 里 `require('mira-app-core/shared/sdk')`
+- `packages/templates/plugins/aliyun_oss`：`package.json` 声明 `ali-oss`，在 `shared.js` 里 `require('ali-oss')`
+- `packages/templates/plugins/feed-parser`：`package.json` 声明 `feedsmith`，在 `actions.js` 里 `require('feedsmith')`
+
 ## 配置系统
 
 在 `info.json` 中声明：
