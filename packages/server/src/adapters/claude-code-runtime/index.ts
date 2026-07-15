@@ -148,7 +148,10 @@ export class ClaudeCodeRuntime implements AgentRuntime {
       let costUsd: number | undefined;
       let sawResult = false;
       const pendingAskUserQuestionToolIds = new Set<string>();
+      const pendingPauseToolIds = new Set<string>();
+      const pauseAfterTools = new Set(options?.pauseAfterTools ?? []);
       let waitingForUserAnswer = false;
+      let waitingForExternalInput = false;
 
       for await (const message of this.activeQuery) {
         if (!sawFirstSdkMessage) {
@@ -177,8 +180,11 @@ export class ClaudeCodeRuntime implements AgentRuntime {
             waitingForUserAnswer = true;
             sawAskUserQuestion = true;
           }
+          if (pauseAfterTools.has(toolUse.name)) pendingPauseToolIds.add(toolUse.id);
         }
         const toolResult = extractToolResultEvent(message);
+        const pauseForExternalInput = Boolean(toolResult?.toolUseId && pendingPauseToolIds.has(toolResult.toolUseId));
+        if (pauseForExternalInput) waitingForExternalInput = true;
         const suppressAskUserQuestionResult = Boolean(
           toolResult
           && isAskUserQuestionAutoResult(toolResult.result)
@@ -225,15 +231,17 @@ export class ClaudeCodeRuntime implements AgentRuntime {
           }
         }
 
-        if (sawAskUserQuestion) break;
+        if (sawAskUserQuestion || pauseForExternalInput) break;
       }
 
       const elapsed = Date.now() - startTime;
-      if (waitingForUserAnswer) {
-        d(`waiting for user answer ${elapsed}ms | turns=${turns} tokens=${tokenCount}`);
-        const message = resultText || output.at(-1) || 'Waiting for user answer';
+      if (waitingForUserAnswer || waitingForExternalInput) {
+        const summary = waitingForUserAnswer ? 'Waiting for user answer' : 'Waiting for external input';
+        const status = waitingForUserAnswer ? 'waiting_for_user_answer' : 'waiting_for_external_input';
+        d(`${summary.toLowerCase()} ${elapsed}ms | turns=${turns} tokens=${tokenCount}`);
+        const message = resultText || output.at(-1) || summary;
         emitHook('Stop', '*', {
-          status: 'waiting_for_user_answer',
+          status,
           message,
           finalMessage: message,
           output,
@@ -244,7 +252,7 @@ export class ClaudeCodeRuntime implements AgentRuntime {
         });
         return {
           success: true,
-          summary: 'Waiting for user answer',
+          summary,
           artifacts: [],
           output,
           usage,

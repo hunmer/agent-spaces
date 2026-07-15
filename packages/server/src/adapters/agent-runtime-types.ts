@@ -32,6 +32,7 @@ export interface AgentRunOptions {
   userPrompt?: string;
   outputStyle?: string;
   resumeSessionId?: string;
+  pauseAfterTools?: string[];
   onEvent?: (event: AgentRuntimeEvent) => void;
 }
 

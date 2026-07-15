@@ -3,6 +3,9 @@ import assert from 'node:assert/strict';
 import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
+import type { AddressInfo } from 'node:net';
+import express from 'express';
+import teamRouter from '../src/routes/team.js';
 import { createPreset, queryRecentUsage } from '../src/services/agent.js';
 import { createAgent as createChatAgent } from '../src/services/chat.js';
 import { createWorkflow } from '../src/services/workflow.js';
@@ -99,7 +102,7 @@ test('team memberships persist agent store, validate invite target, and allow cu
   }
 });
 
-test('team detail unread counts are scoped to the requested session', () => {
+test('team detail unread counts are scoped to the requested session', async () => {
   const previousDataDir = process.env.AGENT_SPACES_DATA_DIR;
   const dataDir = mkdtempSync(join(tmpdir(), 'agent-spaces-team-session-unread-'));
   process.env.AGENT_SPACES_DATA_DIR = dataDir;
@@ -116,7 +119,7 @@ test('team detail unread counts are scoped to the requested session', () => {
     const sessionA = '11111111-1111-4111-8111-111111111111';
     const sessionB = '22222222-2222-4222-8222-222222222222';
 
-    for (const sessionId of [sessionA, sessionB]) {
+    for (const sessionId of [sessionA, sessionB, sessionB]) {
       const sent = handleTeamMessageSend({
         action: 'send', actor_agent_id: owner.id, team_id: teamId, session_id: sessionId,
         mode: 'direct', subject: 'unread', body: 'unread', recipient_agent_ids: [member.id],
@@ -124,10 +127,14 @@ test('team detail unread counts are scoped to the requested session', () => {
       assert.equal(sent.success, true);
     }
 
-    const detail = handleTeamManage({
-      action: 'get', actor_agent_id: owner.id, team_id: teamId, session_id: sessionA, include_members_preview: true,
-    });
-    const members = (detail.data as { members_preview: Array<{ agent_id: string; unread_count: number }> }).members_preview;
+    const app = express().use('/api/teams', teamRouter);
+    const server = app.listen(0);
+    await new Promise<void>((resolve) => server.once('listening', resolve));
+    const port = (server.address() as AddressInfo).port;
+    const detail = await fetch(`http://127.0.0.1:${port}/api/teams/${teamId}?actor_agent_id=${owner.id}&session_id=${sessionA}&include_members_preview=true`)
+      .then((response) => response.json()) as { data: { members_preview: Array<{ agent_id: string; unread_count: number }> } };
+    await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+    const members = detail.data.members_preview;
     assert.equal(members.find((item) => item.agent_id === member.id)?.unread_count, 1);
   } finally {
     closeAgentDb();

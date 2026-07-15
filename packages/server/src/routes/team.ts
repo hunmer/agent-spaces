@@ -48,6 +48,7 @@ router.get('/:teamId', (req: Request<{ teamId: string }>, res: Response) => {
     action: 'get',
     actor_agent_id: req.query.actor_agent_id,
     team_id: req.params.teamId,
+    session_id: req.query.session_id,
     include_members_preview: req.query.include_members_preview === 'true',
   }));
 });

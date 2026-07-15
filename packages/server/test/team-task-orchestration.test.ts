@@ -34,7 +34,10 @@ test('idle member run wakes owner to inspect incomplete tasks', async () => {
       async execute(prompt, _workingDir, options) {
         if (prompt.includes(`Your actor_agent_id: ${owner.id}`)) {
           ownerRuns++;
+          assert.equal(options?.tools?.includes('AskUserQuestion'), false);
+          assert.deepEqual(options?.pauseAfterTools, ['mcp__agent-spaces__team_message_send']);
           if (prompt.includes('Team members are idle')) {
+            assert.equal(options?.resumeSessionId, 'owner-runtime-session');
             const taskTool = options?.functionTools?.find((tool) => tool.name === 'team_task_manage');
             const listed = await taskTool?.execute({ action: 'list' }) as { data: { tasks: Array<{ status: string }> } };
             assert.equal(listed.data.tasks.some((task) => task.status === 'pending'), true);
@@ -59,7 +62,13 @@ test('idle member run wakes owner to inspect incomplete tasks', async () => {
           const task = listed.data.tasks.find((item) => item.assigneeAgentId === member.id)!;
           await taskTool?.execute({ action: 'complete', task_id: task.id });
         }
-        return { success: true, summary: 'done', output: ['done'], artifacts: [] };
+        return {
+          success: true,
+          summary: 'done',
+          output: ['done'],
+          artifacts: [],
+          sessionId: prompt.includes(`Your actor_agent_id: ${owner.id}`) ? 'owner-runtime-session' : undefined,
+        };
       },
       stop() {},
     }));
