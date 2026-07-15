@@ -94,8 +94,19 @@ export function CreateTeamDialog({
   const [smartLoading, setSmartLoading] = useState(false);
   const [smartError, setSmartError] = useState("");
 
+  // 记录上次初始化时使用的 open + 标识，避免父组件轮询导致 editTarget/defaultValues
+  // 引用频繁变化而反复重置表单，冲掉用户正在输入的值。
+  const [initializedKey, setInitializedKey] = useState<string>("");
+
   useEffect(() => {
     if (!open) return;
+    // 仅在「刚打开」或「切换编辑目标」时初始化一次表单
+    const key = mode === "edit"
+      ? `edit:${editTarget?.name ?? ""}`
+      : `create:${defaultValues?.name ?? ""}`;
+    if (key === initializedKey) return;
+    setInitializedKey(key);
+
     if (mode === "edit" && editTarget) {
       setValues({
         name: editTarget.name,
@@ -121,7 +132,7 @@ export function CreateTeamDialog({
         customAgents: [],
       });
     }
-  }, [open, mode, editTarget, defaultValues]);
+  }, [open, mode, editTarget, defaultValues, initializedKey]);
 
   const candidates = useMemo(() => {
     const visibleAgents = [
@@ -161,6 +172,7 @@ export function CreateTeamDialog({
     if (!next) {
       setValues(EMPTY);
       setSmartError("");
+      setInitializedKey("");
     }
     onOpenChange(next);
   };

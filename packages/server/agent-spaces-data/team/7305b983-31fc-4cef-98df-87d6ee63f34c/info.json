@@ -1,11 +1,11 @@
 {
   "id": "7305b983-31fc-4cef-98df-87d6ee63f34c",
-  "name": "公众号编写",
+  "name": "文章编写",
   "description": "选题agent->编辑agent->审批agent",
   "status": "active",
   "visibility": "private",
   "createdBy": "agent-generator",
   "createdAt": "2026-07-10T01:47:31.710Z",
-  "updatedAt": "2026-07-11T05:53:53.227Z",
+  "updatedAt": "2026-07-15T15:49:57.203Z",
   "memberCount": 3
 }
