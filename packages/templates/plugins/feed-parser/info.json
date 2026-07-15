@@ -4,7 +4,7 @@
   "name_zh": "订阅源解析",
   "name_en": "Feed Parser",
   "icon": "icon.png",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "订阅源解析器：抓取并解析 RSS / Atom / RDF / JSON Feed，返回结构化内容",
   "description_zh": "订阅源解析器：抓取并解析 RSS / Atom / RDF / JSON Feed，返回结构化内容",
   "description_en": "Feed parser: fetch and parse RSS / Atom / RDF / JSON Feed into structured content",

@@ -24,7 +24,7 @@
     "message.urlRequired": "URL 为必填项",
     "message.contentRequired": "订阅源内容为必填项",
     "message.unknownFormat": "无法识别的订阅源格式",
-    "message.fetched": "订阅源已抓取 ({format}, {length} 字符)",
+    "message.fetched": "订阅源已抓取 ({format}, {count} 条)",
     "message.parsed": "解析成功: {format}, {count} 条"
   },
   "en": {
@@ -52,7 +52,7 @@
     "message.urlRequired": "URL is required",
     "message.contentRequired": "Feed content is required",
     "message.unknownFormat": "Unrecognized feed format",
-    "message.fetched": "Feed fetched ({format}, {length} chars)",
+    "message.fetched": "Feed fetched ({format}, {count} items)",
     "message.parsed": "Feed parsed: {format}, {count} items"
   }
 }

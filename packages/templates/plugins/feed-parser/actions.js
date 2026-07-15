@@ -79,6 +79,30 @@ function pickLink(feed) {
   return feed.home_page_url || ''
 }
 
+/**
+ * 解析并归一化为统一的结构化输出
+ * @param {string|null} forcedType 强制格式，null 走自动识别
+ * @param {string} content 订阅源原始文本
+ * @param {number} [limit=0] 条目上限，0 = 不截断
+ * @returns {{ format, feed, title, description, link, itemCount }}
+ * @throws feedsmith 抛出的解析错误
+ */
+function parseAndNormalize(forcedType, content, limit = 0) {
+  const parsed = dispatchParse(forcedType, content)
+  const feed = normalizeItems(parsed.feed)
+  if (limit > 0 && Array.isArray(feed.items) && feed.items.length > limit) {
+    feed.items = feed.items.slice(0, limit)
+  }
+  return {
+    format: parsed.format,
+    feed,
+    title: feed.title || '',
+    description: feed.description || feed.subtitle || '',
+    link: pickLink(feed),
+    itemCount: countItems(feed),
+  }
+}
+
 module.exports = (t) => [
   {
     name: 'feed_fetch',
@@ -103,6 +127,14 @@ module.exports = (t) => [
         options: TYPE_OPTIONS,
         default: TYPE_AUTO,
         tooltip: t('field.type.tooltip', 'Force a specific feed format, or auto-detect.'),
+      },
+      {
+        key: 'limit',
+        label: t('field.limit.label', 'Item Limit'),
+        type: 'number',
+        dataType: 'number',
+        default: 0,
+        tooltip: t('field.limit.tooltip', 'Max number of items to keep. 0 = keep all.'),
       },
       {
         key: 'timeout',
@@ -137,6 +169,11 @@ module.exports = (t) => [
     ],
     outputs: [
       { key: 'format', type: 'string' },
+      { key: 'title', type: 'string' },
+      { key: 'description', type: 'string' },
+      { key: 'link', type: 'string' },
+      { key: 'itemCount', type: 'number', dataType: 'number' },
+      { key: 'feed', type: 'object', dataType: 'object' },
       { key: 'content', type: 'string' },
       { key: 'url', type: 'string' },
     ],
@@ -151,12 +188,34 @@ module.exports = (t) => [
         timeout,
         proxy: args.proxy || undefined,
       })
-      const format = args.type && args.type !== TYPE_AUTO ? args.type : detectFormat(content)
-      ctx.logger.info(`feed_fetch url=${args.url} type=${args.type || TYPE_AUTO} detected=${format} length=${content.length}`)
+      const forcedType = args.type && args.type !== TYPE_AUTO ? args.type : null
+      const limit = Number(args.limit) || 0
+      let parsed
+      try {
+        parsed = parseAndNormalize(forcedType, content, limit)
+      } catch (err) {
+        // 抓取成功但解析失败：仍返回原始内容，便于下游 feed_parse 手动重试或排查
+        ctx.logger.info(`feed_fetch url=${args.url} parse failed: ${err instanceof Error ? err.message : String(err)} length=${content.length}`)
+        return {
+          success: false,
+          message: t('message.parseFailed', 'Failed to parse feed: {error}').replace('{error}', err instanceof Error ? err.message : String(err)),
+          data: { format: forcedType || detectFormat(content), content, url: args.url },
+        }
+      }
+      ctx.logger.info(`feed_fetch url=${args.url} format=${parsed.format} items=${parsed.itemCount} length=${content.length}`)
       return {
         success: true,
-        message: t('message.fetched', 'Feed fetched ({format}, {length} chars)').replace('{format}', format || 'unknown').replace('{length}', content.length),
-        data: { format, content, url: args.url },
+        message: t('message.fetched', 'Feed fetched ({format}, {count} items)').replace('{format}', parsed.format).replace('{count}', parsed.itemCount),
+        data: {
+          format: parsed.format,
+          title: parsed.title,
+          description: parsed.description,
+          link: parsed.link,
+          itemCount: parsed.itemCount,
+          feed: parsed.feed,
+          content,
+          url: args.url,
+        },
       }
     },
   },
@@ -208,32 +267,27 @@ module.exports = (t) => [
         return { success: false, message: t('message.contentRequired', 'Feed content is required') }
       }
       const forcedType = args.type && args.type !== TYPE_AUTO ? args.type : null
+      const limit = Number(args.limit) || 0
       let parsed
       try {
-        parsed = dispatchParse(forcedType, content)
+        parsed = parseAndNormalize(forcedType, content, limit)
       } catch (err) {
         return {
           success: false,
           message: t('message.parseFailed', 'Failed to parse feed: {error}').replace('{error}', err instanceof Error ? err.message : String(err)),
         }
       }
-      const format = parsed.format
-      const feed = normalizeItems(parsed.feed)
-      const limit = Number(args.limit) || 0
-      if (limit > 0 && Array.isArray(feed.items) && feed.items.length > limit) {
-        feed.items = feed.items.slice(0, limit)
-      }
-      ctx.logger.info(`feed_parse type=${args.type || TYPE_AUTO} format=${format} count=${countItems(feed)}`)
+      ctx.logger.info(`feed_parse type=${args.type || TYPE_AUTO} format=${parsed.format} count=${parsed.itemCount}`)
       return {
         success: true,
-        message: t('message.parsed', 'Feed parsed: {format}, {count} items').replace('{format}', format).replace('{count}', countItems(feed)),
+        message: t('message.parsed', 'Feed parsed: {format}, {count} items').replace('{format}', parsed.format).replace('{count}', parsed.itemCount),
         data: {
-          format,
-          title: feed.title || '',
-          description: feed.description || feed.subtitle || '',
-          link: pickLink(feed),
-          itemCount: countItems(feed),
-          feed,
+          format: parsed.format,
+          title: parsed.title,
+          description: parsed.description,
+          link: parsed.link,
+          itemCount: parsed.itemCount,
+          feed: parsed.feed,
         },
       }
     },

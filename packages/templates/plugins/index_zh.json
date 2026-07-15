@@ -312,7 +312,7 @@
   {
     "id": "workflow.feed-parser",
     "name": "订阅源解析",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "description": "订阅源解析器：抓取并解析 RSS / Atom / RDF / JSON Feed，返回结构化内容",
     "author": {
       "name": "workflow"
@@ -328,8 +328,8 @@
     "hasWorkflow": true,
     "path": "feed-parser",
     "iconUrl": "plugins/feed-parser/icon.png",
-    "md5": "6ce539b79a4ce573fb1655235c317418",
-    "updatedAt": "2026-07-15T07:23:40.287Z",
+    "md5": "c23b55d92c26245bc87e23c389c49a8f",
+    "updatedAt": "2026-07-15T08:09:09.489Z",
     "files": [
       "actions.js",
       "icon.png",

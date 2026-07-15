@@ -34,14 +34,22 @@
 - 入参：
   - `url`：订阅源地址（必填），例：`https://example.com/feed.xml`
   - `type`：订阅源类型，可选 `auto / rss / atom / rdf / json`，默认 `auto`
+  - `limit`：条目上限，`0` 表示保留全部
   - `timeout`：超时（毫秒），默认 `30000`
   - `headers`：自定义请求头（JSON 对象）
   - `encoding`：响应编码，默认 `utf-8`
   - `proxy`：HTTP(S) 代理地址，例：`http://user:pass@host:8080`；留空直连
 - 出参 `data`：
-  - `format`：探测到的格式（`rss / atom / rdf / json`，无法识别时为空）
-  - `content`：响应正文
+  - `format`：解析格式（`rss / atom / rdf / json`，无法识别时为空）
+  - `title`：订阅源标题
+  - `description`：描述
+  - `link`：主页链接
+  - `itemCount`：条目数量
+  - `feed`：完整结构化对象（见下方「解析输出结构」）
+  - `content`：响应正文（原始文本，便于排查或交给 feed_parse 手动重试）
   - `url`：原 URL
+
+> 抓取后即解析，单节点直接输出结构化对象。若解析失败仍会返回 `content`，可接到 `feed_parse` 节点手动指定格式重试。
 
 ### feed_parse
 

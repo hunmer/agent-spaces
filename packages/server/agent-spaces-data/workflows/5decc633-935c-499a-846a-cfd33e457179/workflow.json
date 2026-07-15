@@ -25,12 +25,12 @@
       "data": {}
     },
     {
-      "id": "node_1784100557028_785kmz",
+      "id": "node_1784102986056_qfon7x",
       "type": "feed_fetch",
       "label": "抓取订阅源",
       "position": {
-        "x": 405,
-        "y": 225
+        "x": 795,
+        "y": 375
       },
       "data": {
         "type": "auto",
@@ -50,16 +50,18 @@
             "type": "string"
           }
         ],
-        "url": "https://rsshub.app/xiaoyuzhou/podcast/6021f949a789fca4eff4492c"
+        "url": "http://127.0.0.1:1200/sspai/index"
       }
     }
   ],
   "edges": [],
   "createdAt": 1784100529679,
-  "updatedAt": 1784100734391,
+  "updatedAt": 1784102993385,
   "published": false,
   "lastOpenedAt": 1784100529690,
   "enabledPlugins": [
     "workflow.feed-parser"
-  ]
+  ],
+  "groups": [],
+  "lastRunAt": 1784103072777
 }
