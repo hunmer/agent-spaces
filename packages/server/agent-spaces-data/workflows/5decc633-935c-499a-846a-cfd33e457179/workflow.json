@@ -1,0 +1,65 @@
+{
+  "id": "5decc633-935c-499a-846a-cfd33e457179",
+  "name": "测试订阅",
+  "type": "normal",
+  "folderId": null,
+  "nodes": [
+    {
+      "id": "node_1784100529674_start",
+      "type": "start",
+      "label": "开始",
+      "position": {
+        "x": 250,
+        "y": 50
+      },
+      "data": {}
+    },
+    {
+      "id": "node_1784100529674_end",
+      "type": "end",
+      "label": "结束",
+      "position": {
+        "x": 250,
+        "y": 400
+      },
+      "data": {}
+    },
+    {
+      "id": "node_1784100557028_785kmz",
+      "type": "feed_fetch",
+      "label": "抓取订阅源",
+      "position": {
+        "x": 405,
+        "y": 225
+      },
+      "data": {
+        "type": "auto",
+        "timeout": 30000,
+        "encoding": "utf-8",
+        "outputs": [
+          {
+            "key": "format",
+            "type": "string"
+          },
+          {
+            "key": "content",
+            "type": "string"
+          },
+          {
+            "key": "url",
+            "type": "string"
+          }
+        ],
+        "url": "https://rsshub.app/xiaoyuzhou/podcast/6021f949a789fca4eff4492c"
+      }
+    }
+  ],
+  "edges": [],
+  "createdAt": 1784100529679,
+  "updatedAt": 1784100734391,
+  "published": false,
+  "lastOpenedAt": 1784100529690,
+  "enabledPlugins": [
+    "workflow.feed-parser"
+  ]
+}

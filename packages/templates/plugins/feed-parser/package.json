@@ -1,0 +1,10 @@
+{
+  "name": "feed-parser-plugin",
+  "version": "1.0.0",
+  "description": "Feed parser plugin (RSS/Atom/RDF/JSON Feed) for workflow, powered by feedsmith",
+  "main": "main.js",
+  "type": "commonjs",
+  "dependencies": {
+    "feedsmith": "^2.9.6"
+  }
+}

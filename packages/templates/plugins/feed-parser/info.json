@@ -1,0 +1,39 @@
+{
+  "id": "workflow.feed-parser",
+  "name": "订阅源解析",
+  "name_zh": "订阅源解析",
+  "name_en": "Feed Parser",
+  "icon": "icon.png",
+  "version": "1.0.0",
+  "description": "订阅源解析器：抓取并解析 RSS / Atom / RDF / JSON Feed，返回结构化内容",
+  "description_zh": "订阅源解析器：抓取并解析 RSS / Atom / RDF / JSON Feed，返回结构化内容",
+  "description_en": "Feed parser: fetch and parse RSS / Atom / RDF / JSON Feed into structured content",
+  "author": { "name": "workflow" },
+  "tags": ["订阅", "RSS", "Atom", "解析"],
+  "tags_zh": ["订阅", "RSS", "Atom", "解析"],
+  "tags_en": ["Feed", "RSS", "Atom", "Parser"],
+  "type": "server",
+  "hasWorkflow": true,
+  "hasView": false,
+  "entries": {
+    "server": "main.js",
+    "workflow": "workflow.js",
+    "tools": "tools.js"
+  },
+  "config": [
+    {
+      "key": "defaultTimeout",
+      "label": "默认超时(ms)",
+      "desc": "抓取订阅源的默认超时时间",
+      "type": "number",
+      "value": "30000"
+    },
+    {
+      "key": "userAgent",
+      "label": "User-Agent",
+      "desc": "默认请求头 User-Agent",
+      "type": "string",
+      "value": "AgentSpaces-Feed/1.0"
+    }
+  ]
+}

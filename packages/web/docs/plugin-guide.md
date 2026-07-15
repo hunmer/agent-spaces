@@ -48,6 +48,7 @@ my-plugin/
 ├── main.js
 ├── workflow.js
 ├── tools.js
+├── package.json        # 声明 npm 依赖（可选，见「使用外部 npm 依赖」）
 └── icon.png
 ```
 

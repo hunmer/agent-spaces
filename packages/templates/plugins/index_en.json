@@ -310,6 +310,40 @@
     ]
   },
   {
+    "id": "workflow.feed-parser",
+    "name": "Feed Parser",
+    "version": "1.0.0",
+    "description": "Feed parser: fetch and parse RSS / Atom / RDF / JSON Feed into structured content",
+    "author": {
+      "name": "workflow"
+    },
+    "tags": [
+      "Feed",
+      "RSS",
+      "Atom",
+      "Parser"
+    ],
+    "type": "server",
+    "hasView": false,
+    "hasWorkflow": true,
+    "path": "feed-parser",
+    "iconUrl": "plugins/feed-parser/icon.png",
+    "md5": "6ce539b79a4ce573fb1655235c317418",
+    "updatedAt": "2026-07-15T07:23:40.287Z",
+    "files": [
+      "actions.js",
+      "icon.png",
+      "info.json",
+      "lang.json",
+      "main.js",
+      "package-lock.json",
+      "package.json",
+      "README.md",
+      "tools.js",
+      "workflow.js"
+    ]
+  },
+  {
     "id": "workflow.feishu",
     "name": "Feishu",
     "version": "1.0.0",
