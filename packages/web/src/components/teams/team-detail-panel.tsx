@@ -58,9 +58,9 @@ export function TeamDetailPanel({
   }, [activeSessionId, selectedTeam?.team_id]);
 
   return (
-    <section className="rounded-2xl border border-border bg-card p-4 h-full">
+    <section className="h-full w-full min-w-0 overflow-hidden rounded-2xl border border-border bg-card p-4 [contain:inline-size]">
       {selectedTeam && teamDetail ? (
-        <div className="flex h-full flex-col gap-4 overflow-auto">
+        <div className="flex h-full w-full min-w-0 flex-col gap-4 overflow-x-hidden overflow-y-auto">
           <div className="flex items-start justify-between gap-3 rounded-xl border border-border bg-background p-3">
             <div>
               <h2 className="text-xl font-semibold">{teamDetail.team.name}</h2>
@@ -81,7 +81,7 @@ export function TeamDetailPanel({
             <p className="mt-1 text-sm text-muted-foreground">{teamDetail.team.purpose || t("detail.noPurpose")}</p>
           </div>
 
-          <div className="rounded-xl border border-border p-3">
+          <div className="w-full min-w-0 max-w-full shrink-0 overflow-hidden rounded-xl border border-border p-3">
             <TeamMemberList
               teamId={selectedTeam.team_id}
               actorAgentId={selectedActorId}

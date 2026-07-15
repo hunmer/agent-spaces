@@ -93,7 +93,7 @@ export function TeamMemberRow({
             }
           : undefined
       }
-      className={`flex items-center gap-2 rounded-md px-2 py-1.5 transition-colors hover:bg-muted/50 ${rowClickable ? "cursor-pointer" : ""}`}
+      className={`flex w-full min-w-0 items-center gap-2 rounded-md px-2 py-1.5 transition-colors hover:bg-muted/50 ${rowClickable ? "cursor-pointer" : ""}`}
     >
       <MemberHoverCard
         agentId={a.id}

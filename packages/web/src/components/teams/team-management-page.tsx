@@ -474,6 +474,7 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
               id={PANEL_ID_DETAIL}
               defaultSize="35%"
               minSize="22%"
+              className="min-w-0"
               collapsible
               collapsedSize="0%"
               panelRef={detailPanelRef}

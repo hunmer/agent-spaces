@@ -128,7 +128,7 @@ export function TeamMemberList({ teamId, actorAgentId, members, agents, sessionI
   }
 
   return (
-    <div>
+    <div className="min-w-0">
       <div className="mb-3 flex items-center justify-between">
         <div className="text-sm font-medium">
           {t("detail.members")}
@@ -147,7 +147,7 @@ export function TeamMemberList({ teamId, actorAgentId, members, agents, sessionI
       {members.length === 0 ? (
         <p className="py-4 text-center text-sm text-muted-foreground">{t("detail.noMembers")}</p>
       ) : (
-        <div className="space-y-1">
+        <div className="min-w-0 space-y-1">
           {members.map((member) => {
             const storedAgent = agents.find((a) => a.id === member.agent_id);
             const agent = member.agent ?? storedAgent;
@@ -181,12 +181,12 @@ export function TeamMemberList({ teamId, actorAgentId, members, agents, sessionI
             );
 
             if (!canManage) {
-              return <div key={member.membership_id}>{row}</div>;
+              return <div key={member.membership_id} className="min-w-0">{row}</div>;
             }
 
             return (
               <ContextMenu key={member.membership_id}>
-                <ContextMenuTrigger>{row}</ContextMenuTrigger>
+                <ContextMenuTrigger className="block min-w-0 w-full text-left">{row}</ContextMenuTrigger>
                 <ContextMenuContent>
                   {!isOwner && (
                     <ContextMenuItem onClick={() => void setOwner(member.agent_id)} disabled={isBusy}>

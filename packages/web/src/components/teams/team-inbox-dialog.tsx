@@ -198,7 +198,7 @@ export function TeamInboxDialog({
           </div>
 
           {/* 右栏：消息列表 */}
-          <div className="flex min-h-0 flex-1 flex-col">
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col">
             {error ? (
               <div className="m-3 rounded-xl border border-destructive/40 bg-destructive/5 px-3 py-2 text-sm text-destructive">{error}</div>
             ) : null}
@@ -213,14 +213,14 @@ export function TeamInboxDialog({
             ) : items.length === 0 ? (
               <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">{t("inbox.empty")}</div>
             ) : (
-              <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-3">
+              <div className="min-h-0 min-w-0 flex-1 space-y-2 overflow-y-auto p-3">
                 {items.map((item) => {
                   const { name: senderName, agent } = resolveAgent(item.sender_agent_id);
                   const isUnread = item.inbox_status === "unread";
                   return (
                     <div
                       key={item.delivery_id}
-                      className={`relative rounded-xl border bg-card p-3 pr-20 ${
+                      className={`relative min-w-0 rounded-xl border bg-card p-3 pr-20 ${
                         isUnread ? "border-orange-500/40" : "border-border"
                       }`}
                     >
@@ -249,7 +249,7 @@ export function TeamInboxDialog({
                       </div>
 
                       {/* 标题行 */}
-                      <div className="mb-1.5 flex items-center gap-2 pr-1">
+                      <div className="mb-1.5 flex min-w-0 items-center gap-2 pr-1">
                         <AgentIcon
                           agentId={item.sender_agent_id}
                           name={senderName}
@@ -262,7 +262,7 @@ export function TeamInboxDialog({
                           className="size-5 shrink-0"
                           bordered={false}
                         />
-                        <span className="text-sm font-medium">{senderName}</span>
+                        <span className="min-w-0 flex-1 truncate text-sm font-medium">{senderName}</span>
                         {isUnread ? (
                           <Badge variant="outline" className="border-orange-500/40 bg-orange-500/10 px-1.5 py-0 text-xs text-orange-600">
                             {t("inboxStatus.unread")}
