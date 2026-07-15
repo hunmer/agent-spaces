@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { AgentConfig, Channel, ExecutionLog, Message, Workflow } from "@agent-spaces/shared";
 import { useTranslations } from "next-intl";
 import { Loader2, MoreVertical, PanelRight, Plus, Trash2, Workflow as WorkflowIcon } from "lucide-react";
@@ -175,6 +175,7 @@ export function TeamChatPanel({ teamId, actorAgentId, initialSessionId, sidebarO
   const [workflowOpen, setWorkflowOpen] = useState(false);
   const [workflowLoading, setWorkflowLoading] = useState(false);
   const [workflowDeliveries, setWorkflowDeliveries] = useState<TeamInboxItemView[]>([]);
+  const loadRequestIdRef = useRef(0);
 
   useEffect(() => onSessionIdChange?.(sessionId), [onSessionIdChange, sessionId]);
 
@@ -267,11 +268,15 @@ export function TeamChatPanel({ teamId, actorAgentId, initialSessionId, sidebarO
 
   const loadRuntime = useCallback(async () => {
     if (!teamId || !actorAgentId) return;
+    const requestId = ++loadRequestIdRef.current;
     setLoading(true);
     setError("");
     try {
-      const data = await sdk.team.getRuntime(teamId, TEAM_USER_ACTOR_ID, sessionId);
-      const sessionData = await sdk.team.listSessions(teamId);
+      const [data, sessionData] = await Promise.all([
+        sdk.team.getRuntime(teamId, TEAM_USER_ACTOR_ID, sessionId),
+        sdk.team.listSessions(teamId),
+      ]);
+      if (requestId !== loadRequestIdRef.current) return;
       setRuntime(data.runtime);
       setLeaderProfile(data.leader ?? null);
       setParticipants(data.participants ?? []);
@@ -279,6 +284,7 @@ export function TeamChatPanel({ teamId, actorAgentId, initialSessionId, sidebarO
       setSessions(sessionData.sessions);
       clearPendingAssistantIfResolved(data.messages);
     } catch (err) {
+      if (requestId !== loadRequestIdRef.current) return;
       setRuntime(null);
       setLeaderProfile(null);
       setParticipants([]);
@@ -286,7 +292,7 @@ export function TeamChatPanel({ teamId, actorAgentId, initialSessionId, sidebarO
       setPendingAssistantSince(null);
       setError(err instanceof Error ? err.message : String(err));
     } finally {
-      setLoading(false);
+      if (requestId === loadRequestIdRef.current) setLoading(false);
     }
   }, [actorAgentId, clearPendingAssistantIfResolved, sessionId, teamId]);
 

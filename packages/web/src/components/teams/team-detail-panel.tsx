@@ -8,6 +8,7 @@ import { Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { TeamMemberList } from "@/components/teams/team-member-list";
+import { Markdown } from "@/components/ui/markdown";
 import { sdk } from "@/lib/sdk";
 
 interface TeamDetailPanelProps {
@@ -104,7 +105,7 @@ export function TeamDetailPanel({
               {sessionDetail?.runtime.output ? (
                 <div className="mt-4 border-t border-border pt-3">
                   <div className="text-sm font-medium">{t("detail.finalOutput")}</div>
-                  <pre className="mt-2 whitespace-pre-wrap break-words text-xs leading-5">{sessionDetail.runtime.output}</pre>
+                  <Markdown content={sessionDetail.runtime.output} />
                 </div>
               ) : null}
             </div>
