@@ -1,0 +1,67 @@
+# RSS 订阅阅读器
+
+> 本文件随项目演进保持更新。
+
+## 项目概览
+
+订阅 RSS/Atom/RDF/JSON Feed 源 → 拉取更新 → 浏览/收藏文章 → AI 一键总结单篇正文。
+
+界面四栏（响应式隐藏）：
+- 左栏：订阅源列表（含「全部」、单源拉取、删除）
+- 中栏：当前过滤后的文章列表（收藏过滤、已读/未读）
+- 右栏：文章详情（元信息 + 收藏 + AI总结触发按钮 + 正文）
+- 最右栏：独立的 AI 总结面板（生成/重新总结/复制 + 总结内容）
+
+## 文件结构
+
+```
+src/
+  index.jsx              # 入口：useRss() + 三栏布局
+  components/
+    Toolbar.jsx          # 顶部：输入 URL 添加、拉取全部、收藏过滤、配置 AI、错误/提示
+    FeedList.jsx         # 左栏：订阅源目录（全部/单源、刷新、删除）
+    ArticleList.jsx      # 中栏：文章卡片（标题/预览/源/时间/收藏）
+    ArticleView.jsx      # 右栏：详情元信息 + 收藏 + AI总结触发按钮 + 正文(HTML优先)
+    SummaryPanel.jsx     # 最右栏：独立 AI 总结面板（生成/重新总结/复制 + 内容）
+  hooks/
+    useRss.js            # 集中状态：增删源、单/全拉取、收藏、已读、总结、Agent 配置
+  utils/
+    constants.js         # 插件 ID、上限阈值、SETTING_KEYS、uid()
+    feed.js              # normalizeItem / mergeArticles / htmlToText / articleKey
+    format.js            # formatDate / timeAgo
+manifest.json           # enabledPlugins: ["workflow.feed-parser"]
+```
+
+子组件纯展示（props 驱动）；状态全在 `useRss`。
+
+## 能力链 / 外部依赖
+
+| 能力 | 调用方式 |
+|------|----------|
+| 拉取订阅源 | `callPluginTool('workflow.feed-parser', 'feed_fetch', { url, limit })` → `data.data.feed.items[]` |
+| 配置 AI 模型 | `openAgentEditor({ initialName, initialPrompt, agentId })` → `{ id, name, modelProvider }` |
+| AI 总结 | `callPluginTool('@agent-spaces/builtin', 'agent_run', { prompt, agentConfigId, permissionMode: 'bypassPermissions' })` → `{ result }` |
+| 持久化 | `getUserSetting` / `saveUserSettings`（localStorage，per-project，同步） |
+
+feed_fetch 响应结构：`callPluginTool` 返回 `{ result: { success, data: { format, title, description, link, itemCount, feed: { items: [] }, content, url } } }`。
+代码里取 `resp.result.data`（兼容 `resp.result` 直接是 data 的情形）。
+
+## 关键设计
+
+- **文章去重合并**：`mergeArticles` 按 `articleKey(item)`（guid→link→title）去重，新条目前置；保留老条目的 `favorite/summary/readAt` 用户态，只刷新基础字段。
+- **正文渲染**：优先用源站 HTML（`dangerouslySetInnerHTML`），通过 Tailwind 任意值选择器给 a/img/code/blockquote 套主题安全样式；HTML 为空回退纯文本；都没有则提示打开原文。
+- **AI 总结**：正文截断到 `MAX_SUMMARY_CHARS`(12000)，prompt 强制输出「一句话观点 + 3~5 条要点 + 阅读建议」，`permissionMode: bypassPermissions` 避免卡权限确认。总结写入文章并持久化，UI 同时展示。
+- **任务跟踪**：`agent_run` 带 `{ taskId, meta }` 第 4 参，登记为 WS 任务频道，多端可见；发起方 `await` 拿结果直接落库（仅单端写，因为结果存的是文章级单字段，无并发覆盖问题）。
+- **拉取全部**：顺序 `await` 避免并发把服务打满；任一失败记入该源 `error` 字段并在左栏标红，不中断后续源。
+- **响应式**：左栏 `<sm` 隐藏、中栏 `<md` 隐藏，确保窄屏下详情可用；全高用 `h-full min-h-0`，滚动放 `ScrollArea` 子节点。
+
+## 持久化项（utils/constants.js 的 SETTING_KEYS）
+
+`feeds`（含 lastFetchAt/error）、`articles`（含 favorite/readAt/summary/summaryAt）、`agentConfigId`、`agentMeta`。
+首屏 `useState` 初始化器同步读取，刷新即恢复。
+
+## 已知限制
+
+- 无后台定时拉取，需用户手动点「拉取全部」或单源刷新。
+- 同源老文章不会主动清理（可在后续加「仅保留最近 N 篇」）。
+- 正文 HTML 直接渲染，依赖源站内容安全；如需更严格隔离可改 iframe sandbox。

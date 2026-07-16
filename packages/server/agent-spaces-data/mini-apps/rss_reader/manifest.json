@@ -1,0 +1,20 @@
+{
+  "id": "rss_reader",
+  "name": "RSS 订阅阅读器",
+  "description": "订阅 RSS/Atom 源，拉取更新、收藏文章，并用 AI 一键总结文章内容",
+  "version": "1.0.0",
+  "type": "react",
+  "tags": [
+    "RSS",
+    "订阅",
+    "阅读器",
+    "AI 总结"
+  ],
+  "mainFile": "index.jsx",
+  "createdAt": "2026-07-16T00:00:00.000Z",
+  "updatedAt": "2026-07-16T12:14:19.311Z",
+  "enabledPlugins": [
+    "workflow.feed-parser"
+  ],
+  "icon": "📰"
+}

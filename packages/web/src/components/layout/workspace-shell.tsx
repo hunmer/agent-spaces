@@ -4,7 +4,7 @@ import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useSearchParams, usePathname } from "next/navigation";
-import { TerminalSquare } from "lucide-react";
+import { TerminalSquare, Puzzle } from "lucide-react";
 import { Model, TabNode, IJsonModel, Actions, ITabRenderValues, Action } from "flexlayout-react";
 import { FlexLayoutShell, type AddableComponent } from "@/components/common/flex-layout-shell";
 import { WorkspaceSwitcher } from "@/components/layout/workspace-switcher";
@@ -162,8 +162,8 @@ const defaultJson: IJsonModel = {
   },
 };
 
-// 工具栏「添加 Tab」可加入的面板清单：单终端（独立 xterm）
-const WORKSPACE_ADDABLE_COMPONENTS: AddableComponent[] = [
+// 工具栏「添加 Tab」可加入的面板清单：单终端（独立 xterm）+ 当前 workspace 选用的 miniApp
+const WORKSPACE_STATIC_ADDABLE: AddableComponent[] = [
   { key: "single-terminal", name: "Terminal", icon: <TerminalSquare className="size-4" /> },
 ];
 
@@ -314,6 +314,23 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
   const createIssue = useIssueStore((s) => s.createIssue);
   const workspaceMiniAppIds = useWorkspaceStore((s) => s.workspaces.find((w) => w.id === workspaceId)?.miniAppIds ?? EMPTY_MINI_APP_IDS);
   const [workspaceMiniApps, setWorkspaceMiniApps] = useState<MiniAppProject[]>([]);
+  // 工具栏「添加 Tab」下拉项：静态项 + 当前 workspace 选用的 miniApp
+  const addableComponents = useMemo<AddableComponent[]>(() => {
+    const miniAppItems: AddableComponent[] = workspaceMiniApps.map((project) => {
+      const icon = project.icon?.trim();
+      return {
+        key: `mini-app:${project.id}`,
+        name: project.name,
+        defaultName: project.name,
+        icon: icon ? (
+          <span className="text-base leading-none">{icon}</span>
+        ) : (
+          <Puzzle className="size-4" />
+        ),
+      };
+    });
+    return [...WORKSPACE_STATIC_ADDABLE, ...miniAppItems];
+  }, [workspaceMiniApps]);
   // 用户首次交互后才允许 tab 联动，避免恢复期间覆盖选中状态
   const userInteractedRef = useRef(false);
   useEffect(() => {
@@ -361,40 +378,31 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
     return () => { cancelled = true; };
   }, [workspaceMiniAppIds]);
 
+  // 联动移除：workspace 不再选用的 miniApp，其已存在的 tab（含 popout 浮窗）自动删除。
+  // 用 Actions.deleteTab 增量操作，避免重建 model 导致其他 tab 内容（iframe/编辑器）重载。
   useEffect(() => {
-    setModel((current) => {
-      const json = current.toJson() as IJsonModel;
-      const tabsets: LayoutJsonNode[] = [];
-      const visit = (node: LayoutJsonNode | undefined) => {
-        if (!node || typeof node !== 'object') return;
-        if (node.type === 'tabset') tabsets.push(node);
-        if (Array.isArray(node.children)) node.children.forEach(visit);
-      };
-      visit(json.layout as unknown as LayoutJsonNode);
-      const target = tabsets.find((tabset) => tabset.children?.some((tab) => tab.component === 'chat')) ?? tabsets[0];
-      if (!target?.children) return current;
-      // 收集整个 model 中已存在的 mini-app tab id（用户可能已手动添加或拖拽到其他 tabset）
-      const existingMiniAppIds = new Set<string>();
-      tabsets.forEach((ts) => {
-        ts.children?.forEach((tab) => {
-          const comp = String(tab.component ?? '');
-          if (comp.startsWith('mini-app:') && tab.id) existingMiniAppIds.add(tab.id);
-        });
-      });
-      // 仅追加尚未存在于任何位置的 mini-app，避免重复 id 报错
-      const miniAppTabs = workspaceMiniApps
-        .filter((project) => !existingMiniAppIds.has(`mini-app:${project.id}`))
-        .map((project) => ({
-          type: 'tab',
-          name: project.name,
-          component: `mini-app:${project.id}`,
-          id: `mini-app:${project.id}`,
-        }));
-      if (miniAppTabs.length === 0) return current;
-      target.children = [...target.children, ...miniAppTabs];
-      return Model.fromJson(json);
+    const validIds = new Set(workspaceMiniApps.map((p) => `mini-app:${p.id}`));
+    const json = model.toJson() as IJsonModel;
+    const toDelete: string[] = [];
+    const visit = (node: LayoutJsonNode | undefined) => {
+      if (!node || typeof node !== 'object') return;
+      if (node.type === 'tab') {
+        const comp = String(node.component ?? '');
+        if (comp.startsWith('mini-app:') && !validIds.has(comp) && node.id) {
+          toDelete.push(node.id);
+        }
+      }
+      if (Array.isArray(node.children)) node.children.forEach(visit);
+    };
+    visit(json.layout as unknown as LayoutJsonNode);
+    (json.borders ?? []).forEach((b) => (b.children ?? []).forEach(visit));
+    if (toDelete.length === 0) return;
+    // 逐个删除（deleteTab 每次基于当前 model 状态生效）
+    toDelete.forEach((id) => {
+      const n = model.getNodeById(id);
+      if (n && n instanceof TabNode) model.doAction(Actions.deleteTab(id));
     });
-  }, [workspaceMiniApps]);
+  }, [workspaceMiniApps, model]);
 
   useEffect(() => {
     const saved = localStorage.getItem(LAYOUT_STORAGE_KEY);
@@ -764,7 +772,7 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
         onApplyLayout={(json) => applyLayoutToStorage(json)}
         onResetLayout={() => window.dispatchEvent(new CustomEvent("reset-layout"))}
         // 可添加的面板
-        addableComponents={WORKSPACE_ADDABLE_COMPONENTS}
+        addableComponents={addableComponents}
       />
       <SendToChannelDialog />
       <SendToIssueDialog />

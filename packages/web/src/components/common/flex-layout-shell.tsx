@@ -295,11 +295,11 @@ export function FlexLayoutShell({
   }, []);
 
   // 添加浮动窗口（参考 flexlayout demo 的 Actions.createPopout）
-  const handleAddFloat = useCallback(() => {
+  // 支持任意 addableComponent（含 miniApp）；调用方传入目标组件。
+  const handleAddFloat = useCallback((comp: AddableComponent) => {
     const api = layoutRef.current;
     const rootDiv = api?.getRootDiv();
-    const first = addableComponents[0];
-    if (!api || !rootDiv || !first) return;
+    if (!api || !rootDiv) return;
     const rect = rootDiv.getBoundingClientRect();
     const width = Math.round(rect.width / 3);
     const height = Math.round(rect.height / 3);
@@ -313,8 +313,8 @@ export function FlexLayoutShell({
             {
               type: "tabset",
               children: [{
-                component: first.key,
-                name: first.name,
+                component: comp.key,
+                name: comp.defaultName ?? comp.name,
                 enableClose: true,
                 enablePopout: true,
               }],
@@ -325,7 +325,7 @@ export function FlexLayoutShell({
         "float",
       ),
     );
-  }, [addableComponents]);
+  }, []);
 
   // ---- 右键菜单操作（通过 flexlayout onContextMenu 触发，不干扰 tab 内容）----
   // 全屏/还原：作用于 tab 所属的 tabset
@@ -482,14 +482,38 @@ export function FlexLayoutShell({
           )}
 
           {showAddFloat && addableComponents.length > 0 && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleAddFloat}
-              title={t("addFloat")}
-            >
-              <PictureInPicture2 className="size-4" />
-            </Button>
+            addableComponents.length === 1 ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handleAddFloat(addableComponents[0])}
+                title={t("addFloat")}
+              >
+                <PictureInPicture2 className="size-4" />
+              </Button>
+            ) : (
+              <DropdownMenu>
+                <DropdownMenuTrigger
+                  render={
+                    <Button variant="ghost" size="sm" title={t("addFloat")}>
+                      <PictureInPicture2 className="size-4" />
+                    </Button>
+                  }
+                />
+                <DropdownMenuContent align="start">
+                  {addableComponents.map((c) => (
+                    <DropdownMenuItem
+                      key={c.key}
+                      onClick={() => handleAddFloat(c)}
+                      className="gap-2"
+                    >
+                      {c.icon}
+                      <span>{c.name}</span>
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )
           )}
 
           {(showPresets || showReset) && (
