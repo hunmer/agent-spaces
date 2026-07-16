@@ -18,8 +18,6 @@
     "terminal": "在工作空间绑定的目录中执行 shell 命令。",
     "gitCommitsTitle": "提交",
     "gitCommits": "查看工作空间的 git 状态、差异与提交历史。",
-    "codeFavoritesTitle": "收藏",
-    "codeFavorites": "保存并快速跳转到常用的代码片段。",
     "worktreeTitle": "工作树",
     "worktree": "管理 git 工作树，便于并行处理多个分支。",
     "activityLogTitle": "日志",

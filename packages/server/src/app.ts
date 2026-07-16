@@ -62,7 +62,6 @@ import modelCatalogRouter from './routes/model-catalog.js';
 import authRouter from './routes/auth.js';
 import folderRouter from './routes/folder.js';
 import commandRouter from './routes/command.js';
-import codeFavoritesRouter from './routes/code-favorites.js';
 import hooksRouter from './routes/hooks.js';
 import skillRouter from './routes/skill.js';
 import skillsPackageRouter from './routes/skills-package.js';
@@ -321,7 +320,6 @@ app.use('/api/workflows', createWorkflowHookRouter(triggerService, executionMana
 // Register WS execution channels
 registerExecutionChannels(executionManager);
 app.use('/api/workspaces/:id/commands', commandRouter);
-app.use('/api/workspaces/:id/code-favorites', codeFavoritesRouter);
 app.use('/api/workspaces/:id/hooks', hooksRouter);
 app.use('/api/workspaces/:id/agents', agentRouter);
 app.use('/api/workspaces/:id/git', gitRouter);

@@ -100,11 +100,8 @@
   "switchToCode": "切换到代码",
   "switchToPreview": "切换到预览",
   "copyPosition": "复制代码位置",
-  "addToFavorites": "添加到代码收藏",
   "sendToNewChannel": "发送到新频道",
   "sendToNewIssue": "发送到新议题",
-  "noFavorites": "暂无代码收藏",
-  "noFavoritesHint": "在编辑器中右键 → 添加到代码收藏",
   "copiedPosition": "已复制: {pos}",
   "lines": "行"
 }

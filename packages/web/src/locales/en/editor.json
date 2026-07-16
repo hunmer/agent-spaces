@@ -100,11 +100,8 @@
   "switchToCode": "Switch to Code",
   "switchToPreview": "Switch to Preview",
   "copyPosition": "Copy Code Position",
-  "addToFavorites": "Add to Code Favorites",
   "sendToNewChannel": "Send to New Channel",
   "sendToNewIssue": "Send to New Issue",
-  "noFavorites": "No code favorites yet",
-  "noFavoritesHint": "Right-click in editor → Add to Code Favorites",
   "copiedPosition": "Copied: {pos}",
   "lines": "lines"
 }

@@ -110,7 +110,6 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
       isCommitDiff={isCommitDiff}
       commitDiffData={commitDiffData}
       pendingJump={pendingJump}
-      workspaceIdForFavorites={workspaceId}
       workspaceIdForMarkdown={workspaceId}
       tabs={<EditorTabs workspaceId={workspaceId} />}
       onChange={updateContent}

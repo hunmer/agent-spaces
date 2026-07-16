@@ -18,8 +18,6 @@
     "terminal": "Run shell commands inside the workspace's bound directories.",
     "gitCommitsTitle": "Commits",
     "gitCommits": "Review git status, diffs, and commit history for the workspace.",
-    "codeFavoritesTitle": "Favorites",
-    "codeFavorites": "Save and quickly jump to frequently used code snippets.",
     "worktreeTitle": "Worktrees",
     "worktree": "Manage git worktrees to work on multiple branches in parallel.",
     "activityLogTitle": "Logger",

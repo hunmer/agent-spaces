@@ -41,7 +41,6 @@ export { createCommandApi } from './modules/command';
 export { createSubscriptionApi } from './modules/subscription';
 export { createNotificationApi } from './modules/notification';
 export { createSpeechApi } from './modules/speech';
-export { createCodeFavoritesApi } from './modules/code-favorites';
 export { createPromptsApi, type PromptTemplate } from './modules/prompts';
 export { createSkillsApi, type SkillInfo, type SkillSyncItem } from './modules/skills';
 export { createSkillsPackageApi, type InstalledSkillsPackage } from './modules/skills-package';
@@ -103,7 +102,6 @@ import { createCommandApi } from './modules/command';
 import { createSubscriptionApi } from './modules/subscription';
 import { createNotificationApi } from './modules/notification';
 import { createSpeechApi } from './modules/speech';
-import { createCodeFavoritesApi } from './modules/code-favorites';
 import { createPromptsApi } from './modules/prompts';
 import { createSkillsApi } from './modules/skills';
 import { createSkillsPackageApi } from './modules/skills-package';
@@ -153,7 +151,6 @@ export interface SDK {
   readonly subscription: ReturnType<typeof createSubscriptionApi>;
   readonly notification: ReturnType<typeof createNotificationApi>;
   readonly speech: ReturnType<typeof createSpeechApi>;
-  readonly codeFavorites: ReturnType<typeof createCodeFavoritesApi>;
   readonly prompts: ReturnType<typeof createPromptsApi>;
   readonly skills: ReturnType<typeof createSkillsApi>;
   readonly skillsPackage: ReturnType<typeof createSkillsPackageApi>;
@@ -211,7 +208,6 @@ export function createSDK(config: SDKConfig): SDK {
     subscription: createSubscriptionApi(http),
     notification: createNotificationApi(http),
     speech: createSpeechApi(http),
-    codeFavorites: createCodeFavoritesApi(http),
     prompts: createPromptsApi(http),
     skills: createSkillsApi(http),
     skillsPackage: createSkillsPackageApi(http),

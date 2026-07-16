@@ -1,5 +1,4 @@
 import { registerMonacoAction, toRelativePath } from './monaco-action-registry';
-import { useCodeFavoritesStore } from '@/stores/code-favorites';
 import { useEditorSendStore } from '@/stores/editor-send';
 import { toast } from 'sonner';
 import zhEditor from '@/locales/zh/editor.json';
@@ -28,48 +27,6 @@ export const monacoBuiltinActions = [
     const pos = `${relPath || model.uri.path}:${sel.startLineNumber}:${sel.endLineNumber}`;
     copyToClipboard(pos).then(() => {
       toast.success(t('copiedPosition').replace('{pos}', pos));
-    });
-  },
-  },
-  {
-  id: 'addToFavorites',
-  label: t('addToFavorites'),
-  contextMenuGroupId: '9_cutcopypaste',
-  contextMenuOrder: 11,
-  run: (editor, ctx) => {
-    const model = editor.getModel();
-    const sel = editor.getSelection();
-    if (!model || !sel) return;
-
-    const line = sel.startLineNumber;
-    const column = sel.startColumn;
-    const endLine = sel.endLineNumber;
-    const endColumn = sel.endColumn;
-    const relPath = toRelativePath(model.uri.path, ctx);
-    if (!relPath) return;
-
-    // Extract snippet from selection range
-    const range = {
-      startLineNumber: line,
-      startColumn: 1,
-      endLineNumber: endLine,
-      endColumn: model.getLineMaxColumn(endLine),
-    };
-    let snippet = model.getValueInRange(range).trim();
-    if (snippet.length > 300) snippet = snippet.slice(0, 300) + '\n…';
-
-    const fileName = relPath.split('/').pop() || relPath;
-    const lineLabel = endLine > line ? `${line}-${endLine}` : `${line}`;
-
-    useCodeFavoritesStore.getState().setPendingFavorite({
-      workspaceId: ctx.workspaceId,
-      path: relPath,
-      line,
-      column,
-      endLine,
-      endColumn,
-      label: `${fileName}:${lineLabel}`,
-      snippet,
     });
   },
   },

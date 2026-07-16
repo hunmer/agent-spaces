@@ -81,14 +81,6 @@ const ProjectSettingsPanel = dynamic(() => import("@/components/settings/project
   ssr: false,
   loading: panelLoader,
 });
-const CodeFavoritesPanel = dynamic(() => import("@/components/editor/code-favorites-panel").then((mod) => mod.CodeFavoritesPanel), {
-  ssr: false,
-  loading: panelLoader,
-});
-const AddFavoriteDialog = dynamic(() => import("@/components/editor/add-favorite-dialog").then((mod) => mod.AddFavoriteDialog), {
-  ssr: false,
-  loading: () => null,
-});
 const SendToChannelDialog = dynamic(() => import("@/components/editor/send-to-channel-dialog").then((mod) => mod.SendToChannelDialog), {
   ssr: false,
   loading: () => null,
@@ -139,7 +131,6 @@ const defaultJson: IJsonModel = {
       children: [
         { type: "tab", name: "Terminal", component: "terminal" },
         { type: "tab", name: "Commits", component: "git-commits" },
-        { type: "tab", name: "Favorites", component: "code-favorites", id: "code-favorites" },
         { type: "tab", name: "Worktrees", component: "worktree-panel", id: "worktree-panel" },
         { type: "tab", name: "Logger", component: "activity-log", id: "activity-log" },
       ],
@@ -247,12 +238,6 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
       placement: "top",
     },
     {
-      target: '[data-tour-tab="code-favorites"]',
-      content: tTour("codeFavorites"),
-      title: tTour("codeFavoritesTitle"),
-      placement: "top",
-    },
-    {
       target: '[data-tour-tab="worktree-panel"]',
       content: tTour("worktree"),
       title: tTour("worktreeTitle"),
@@ -346,12 +331,8 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
       const saved = localStorage.getItem(LAYOUT_STORAGE_KEY);
       if (saved) {
         const json = JSON.parse(saved);
-        // Ensure bottom border has code-favorites tab
         const borders = json.borders as { type: string; location: string; children: unknown[] }[] | undefined;
         const bottom = borders?.find((b) => b.location === 'bottom');
-        if (bottom && !bottom.children.some((c) => { const t = c as Record<string, unknown>; return t.id === 'code-favorites' || t.component === 'code-favorites'; })) {
-          bottom.children.push({ type: 'tab', name: 'Favorites', component: 'code-favorites', id: 'code-favorites' });
-        }
         if (bottom && !bottom.children.some((c) => { const t = c as Record<string, unknown>; return t.id === 'worktree-panel' || t.component === 'worktree-panel'; })) {
           bottom.children.push({ type: 'tab', name: 'Worktrees', component: 'worktree-panel', id: 'worktree-panel' });
         }
@@ -667,8 +648,6 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
           return <GitCommitsPanel workspaceId={workspaceId} />;
         case "project-settings":
           return <ProjectSettingsPanel workspaceId={workspaceId} />;
-        case "code-favorites":
-          return <CodeFavoritesPanel workspaceId={workspaceId} />;
         case "worktree-panel":
           return <WorktreePanel workspaceId={workspaceId} />;
         case "activity-log":
@@ -750,7 +729,6 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
     return (
       <div className="relative h-full w-full">
         <MobilePanelRenderer panel={activePanel} workspaceId={workspaceId} boundDirs={boundDirs} />
-        <AddFavoriteDialog />
         <SendToChannelDialog />
         <SendToIssueDialog />
         <InspectorActionDialog />
@@ -788,7 +766,6 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
         // 可添加的面板
         addableComponents={WORKSPACE_ADDABLE_COMPONENTS}
       />
-      <AddFavoriteDialog />
       <SendToChannelDialog />
       <SendToIssueDialog />
       <InspectorActionDialog />
@@ -830,8 +807,6 @@ function MobilePanelRenderer({ panel, workspaceId, boundDirs }: { panel: string;
       return <GitCommitsPanel workspaceId={workspaceId} />;
     case "project-settings":
       return <ProjectSettingsPanel workspaceId={workspaceId} />;
-    case "code-favorites":
-      return <CodeFavoritesPanel workspaceId={workspaceId} />;
     default:
       return <ChannelList workspaceId={workspaceId} />;
   }

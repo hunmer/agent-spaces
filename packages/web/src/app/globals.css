@@ -1053,23 +1053,6 @@
   animation: star-movement-top 6s linear infinite alternate;
 }
 
-/* Monaco favorite glyph decoration */
-.favorite-glyph {
-  background: #FFD700 !important;
-  width: 4px !important;
-  margin-left: 2px;
-  border-radius: 1px;
-}
-.dark .favorite-glyph {
-  background: #FBBF24 !important;
-}
-.favorite-line-bg {
-  background-color: rgba(255, 215, 0, 0.06) !important;
-}
-.dark .favorite-line-bg {
-  background-color: rgba(251, 191, 36, 0.08) !important;
-}
-
 @layer utilities {
   .animate-shine {
     animation: shine 5s linear infinite;

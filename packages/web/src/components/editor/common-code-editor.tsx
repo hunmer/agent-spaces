@@ -4,7 +4,6 @@ import { useEffect, useRef, useCallback, useState } from "react";
 import "@/lib/monaco-builtin-actions";
 import "@/components/editor/code-editor-clipboard";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { useCodeFavoritesStore } from "@/stores/code-favorites";
 import { Code, Eye, FileText, AlignLeft, Binary } from "lucide-react";
 import { useTheme } from "@/components/layout/theme-provider";
 import { useTranslations } from "next-intl";
@@ -49,7 +48,6 @@ interface CommonCodeEditorProps {
   isCommitDiff: boolean;
   commitDiffData: CommitDiffData;
   pendingJump: PendingEditorJump | null;
-  workspaceIdForFavorites?: string;
   workspaceIdForMarkdown?: string;
   tabs?: React.ReactNode;
   onChange: (filePath: string, value: string) => void;
@@ -127,7 +125,6 @@ export function CommonCodeEditor({
   isCommitDiff,
   commitDiffData,
   pendingJump,
-  workspaceIdForFavorites,
   workspaceIdForMarkdown,
   tabs,
   onChange,
@@ -150,7 +147,6 @@ export function CommonCodeEditor({
   const monacoRef = useRef<typeof Monaco | null>(null);
   const navigationDisposablesRef = useRef<Monaco.IDisposable[]>([]);
   const actionRegistryDisposablesRef = useRef<Monaco.IDisposable[]>([]);
-  const favoriteDecorationsRef = useRef<string[]>([]);
   const wheelZoomCleanupRef = useRef<(() => void) | null>(null);
   const [isReadOnly, setIsReadOnly] = useState(getDefaultReadOnly);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -295,38 +291,8 @@ export function CommonCodeEditor({
       navigationDisposablesRef.current = [];
       for (const d of actionRegistryDisposablesRef.current) d.dispose();
       actionRegistryDisposablesRef.current = [];
-      favoriteDecorationsRef.current = [];
     };
   }, []);
-
-  const favorites = useCodeFavoritesStore((s) => s.favorites);
-  useEffect(() => {
-    const editor = editorRef.current;
-    const monaco = monacoRef.current;
-    if (!editor || !monaco || !activeFilePath || !editor.getModel() || !editor.getDomNode()) {
-      if (editor) {
-        try { favoriteDecorationsRef.current = editor.deltaDecorations(favoriteDecorationsRef.current, []); } catch {}
-      }
-      return;
-    }
-    const matched = favorites.filter(
-      (f) => f.path === activeFilePath && (!workspaceIdForFavorites || f.workspaceId === workspaceIdForFavorites),
-    );
-    if (matched.length === 0) {
-      try { favoriteDecorationsRef.current = editor.deltaDecorations(favoriteDecorationsRef.current, []); } catch {}
-      return;
-    }
-    const decorations = matched.map((f) => ({
-      range: new monaco.Range(f.line, 1, f.endLine || f.line, 1),
-      options: {
-        isWholeLine: true,
-        glyphMarginClassName: "favorite-glyph",
-        glyphMarginHoverMessage: { value: f.label || `${f.path}:${f.line}` },
-        className: "favorite-line-bg",
-      },
-    }));
-    try { favoriteDecorationsRef.current = editor.deltaDecorations(favoriteDecorationsRef.current, decorations); } catch {}
-  }, [activeFilePath, favorites, workspaceIdForFavorites, editorReadyTick]);
 
   useEffect(() => {
     if (!activeFilePath || !activeFile || activeFile.modified || isCommitDiff) return;
