@@ -20,7 +20,7 @@ import { NotificationsPopover } from "@/components/sidebar/nav-notifications";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { ServerSwitcher } from "@/components/sidebar/server-switcher";
 import { AnimatedThemeToggler } from "@/components/decorations/animated-theme-toggler";
-import { CommandIcon } from "lucide-react";
+import { CommandIcon, GraduationCap } from "lucide-react";
 import { useWorkspaceStore } from "@/stores/workspace";
 import { useNotificationStore } from "@/stores/notification";
 import { useKeyboardShortcuts } from "@/stores/keyboard-shortcuts";
@@ -208,6 +208,14 @@ export function DashboardSidebar() {
       <SidebarContent className="min-h-0 overflow-y-auto group-data-[collapsible=icon]:overflow-y-auto gap-2 mx-2 my-2 rounded-xl border border-sidebar-border bg-sidebar p-2 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
         <DashboardNavigation routes={dashboardRoutes} pathname={pathname} />
         <div className="mt-auto pt-2">
+          <button
+            type="button"
+            onClick={() => tauriNavigate(router, "/learn")}
+            title={ts("nav.learn")}
+            className="inline-flex size-8 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
+          >
+            <GraduationCap className="size-4" />
+          </button>
           <AnimatedThemeToggler />
         </div>
       </SidebarContent>
