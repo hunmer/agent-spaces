@@ -212,19 +212,23 @@ export function buildGrokCustomModelConfig(config: AgentRuntimeConfig): string |
   const lines = [
     `[model.${tomlString(config.model)}]`,
     `model = ${tomlString(config.model)}`,
-    `base_url = ${tomlString(config.baseURL)}`,
+    `base_url = ${tomlString(normalizeGrokBaseURL(config.baseURL, backend))}`,
     `name = ${tomlString(config.model)}`,
     `api_backend = ${tomlString(backend)}`,
     `max_completion_tokens = ${config.maxTokens ?? 16384}`,
   ];
   if (config.apiKey) {
+    lines.push('env_key = "AGENT_SPACES_GROK_API_KEY"');
     if (backend === 'messages') {
       lines.push('extra_headers = { "x-api-key" = "${AGENT_SPACES_GROK_API_KEY}", "anthropic-version" = "2023-06-01" }');
-    } else {
-      lines.push('env_key = "AGENT_SPACES_GROK_API_KEY"');
     }
   }
   return `${lines.join('\n')}\n`;
+}
+
+function normalizeGrokBaseURL(baseURL: string, backend: 'chat_completions' | 'responses' | 'messages'): string {
+  const normalized = baseURL.replace(/\/+$/, '');
+  return backend === 'messages' && !normalized.endsWith('/v1') ? `${normalized}/v1` : normalized;
 }
 
 function normalizeGrokApiBackend(provider: AgentRuntimeConfig['provider']): 'chat_completions' | 'responses' | 'messages' | undefined {
