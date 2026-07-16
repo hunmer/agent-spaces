@@ -7,6 +7,7 @@ interface UseCanvasDomEventsParams {
   isCanvasLocked: boolean;
   workflowEdges: Workflow['edges'];
   onEdgesChange: (changes: EdgeChange[]) => void;
+  onEdgeSelect?: (id: string | null) => void;
   onNodeSelect: (id: string | null, multi?: boolean) => void;
   onNodeDelete: (id: string, options?: { reconnect?: boolean }) => void;
   onNodeDataUpdate: (id: string, data: Record<string, unknown>) => void;
@@ -33,6 +34,7 @@ export function useCanvasDomEvents({
   isCanvasLocked,
   workflowEdges,
   onEdgesChange,
+  onEdgeSelect,
   onNodeSelect,
   onNodeDelete,
   onNodeDataUpdate,
@@ -55,13 +57,15 @@ export function useCanvasDomEvents({
     const edge = workflowEdges.find(item => item.id === edgeId);
     if (!edge || edge.composite?.locked || isCanvasLocked) return;
     setSelectedEdgeId(null);
+    onEdgeSelect?.(null);
     onEdgesChange([{ id: edgeId, type: 'remove' }]);
-  }, [isCanvasLocked, onEdgesChange, workflowEdges]);
+  }, [isCanvasLocked, onEdgeSelect, onEdgesChange, workflowEdges]);
 
   const selectEdge = useCallback((edgeId: string | null) => {
     setSelectedEdgeId(edgeId);
+    onEdgeSelect?.(edgeId);
     if (edgeId) onNodeSelect(null);
-  }, [onNodeSelect]);
+  }, [onEdgeSelect, onNodeSelect]);
 
   const handleEdgeInsertNode = useCallback((e: Event) => {
     if (isCanvasLocked) return;
@@ -78,8 +82,15 @@ export function useCanvasDomEvents({
     const detail = (e as CustomEvent).detail as { nodeId?: string | null; multi?: boolean } | undefined;
     if (!detail?.nodeId) return;
     setSelectedEdgeId(null);
+    onEdgeSelect?.(null);
     onNodeSelect(detail.nodeId, detail.multi === true);
-  }, [onNodeSelect]);
+  }, [onEdgeSelect, onNodeSelect]);
+
+  useEffect(() => {
+    if (!selectedEdgeId || workflowEdges.some(edge => edge.id === selectedEdgeId)) return;
+    setSelectedEdgeId(null);
+    onEdgeSelect?.(null);
+  }, [onEdgeSelect, selectedEdgeId, workflowEdges]);
 
   const handleEdgeDelete = useCallback((e: Event) => {
     const detail = (e as CustomEvent).detail as { edgeId?: string | null } | undefined;

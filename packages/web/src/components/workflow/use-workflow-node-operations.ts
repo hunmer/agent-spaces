@@ -132,6 +132,91 @@ export function useNodeOperations({
     if (!open) setNodeSelectContext(null);
   }, []);
 
+  const handleInsertNodeOnEdge = useCallback((type: string, context: {
+    edgeId: string | null;
+    sourceNodeId: string;
+    targetNodeId: string;
+    sourceHandle: string | null;
+  }) => {
+    if (!workflow || isReadOnly) return;
+    const def = getNodeDefinition(type);
+    if (def?.manualCreate === false) return;
+    if (def?.singleton && workflow.nodes.some(node => node.type === type)) return;
+
+    const sourceNode = workflow.nodes.find(node => node.id === context.sourceNodeId);
+    const targetNode = workflow.nodes.find(node => node.id === context.targetNodeId);
+    if (!sourceNode || !targetNode) return;
+
+    const position = {
+      x: (sourceNode.position.x + targetNode.position.x) / 2,
+      y: (sourceNode.position.y + targetNode.position.y) / 2,
+    };
+    const scopeNode = getInsertScopeNode(
+      workflow.nodes,
+      context.sourceNodeId,
+      context.sourceHandle,
+    );
+    const sourceHandle = getNodeLevelSourceHandle(context.sourceHandle);
+    const created = createNodesForDefinition(type, position, {
+      sourceNodeId: context.sourceNodeId,
+      sourceHandle,
+    }, scopeNode);
+    if (!created) return;
+    const outgoingSourceHandle = getOutgoingSourceHandle(type);
+    const firstEdge: Workflow['edges'][0] = {
+      id: createWorkflowEdgeId({
+        source: context.sourceNodeId,
+        target: created.rootNode.id,
+        sourceHandle,
+      }),
+      source: context.sourceNodeId,
+      target: created.rootNode.id,
+      sourceHandle,
+      targetHandle: undefined,
+    };
+    const secondEdge: Workflow['edges'][0] = {
+      id: createWorkflowEdgeId({
+        source: created.rootNode.id,
+        target: context.targetNodeId,
+        sourceHandle: outgoingSourceHandle,
+      }),
+      source: created.rootNode.id,
+      target: context.targetNodeId,
+      sourceHandle: outgoingSourceHandle,
+      targetHandle: undefined,
+    };
+
+    pushUndo('insert node');
+    setWorkflow(current => {
+      if (!current) return null;
+      let nextNodes = [...current.nodes, ...created.nodes];
+      if (current.layoutSnapshot?.collisionBoxEnabled !== false) {
+        nextNodes = resolveWorkflowNodeCollisions(nextNodes);
+      }
+      if (scopeNode) syncScopeBoundaryLayout(nextNodes, scopeNode.id);
+      return {
+        ...current,
+        nodes: nextNodes,
+        edges: [
+          ...current.edges.filter(edge => {
+            if (context.edgeId && edge.id === context.edgeId) return false;
+            return !(
+              edge.source === context.sourceNodeId
+              && edge.target === context.targetNodeId
+              && isSameHandle(edge.sourceHandle, context.sourceHandle)
+            );
+          }),
+          firstEdge,
+          ...created.edges,
+          secondEdge,
+        ],
+      };
+    });
+    setSelectedNodeId(created.rootNode.id);
+    setSelectedNodeIds([created.rootNode.id]);
+    markDirty();
+  }, [workflow, isReadOnly, pushUndo, markDirty, setWorkflow, setSelectedNodeId, setSelectedNodeIds]);
+
   const handleNodeSelectFromDialog = useCallback((type: string) => {
     if (!workflow || !nodeSelectContext || isReadOnly) return;
     const def = getNodeDefinition(type);
@@ -201,79 +286,8 @@ export function useNodeOperations({
       return;
     }
 
-    const sourceNode = workflow.nodes.find(node => node.id === nodeSelectContext.sourceNodeId);
-    const targetNode = workflow.nodes.find(node => node.id === nodeSelectContext.targetNodeId);
-    if (!sourceNode || !targetNode) return;
-
-    const position = {
-      x: (sourceNode.position.x + targetNode.position.x) / 2,
-      y: (sourceNode.position.y + targetNode.position.y) / 2,
-    };
-    const scopeNode = getInsertScopeNode(
-      workflow.nodes,
-      nodeSelectContext.sourceNodeId,
-      nodeSelectContext.sourceHandle,
-    );
-    const sourceHandle = getNodeLevelSourceHandle(nodeSelectContext.sourceHandle);
-    const created = createNodesForDefinition(type, position, {
-      sourceNodeId: nodeSelectContext.sourceNodeId,
-      sourceHandle,
-    }, scopeNode);
-    if (!created) return;
-    const outgoingSourceHandle = getOutgoingSourceHandle(type);
-    const firstEdge: Workflow['edges'][0] = {
-      id: createWorkflowEdgeId({
-        source: nodeSelectContext.sourceNodeId,
-        target: created.rootNode.id,
-        sourceHandle,
-      }),
-      source: nodeSelectContext.sourceNodeId,
-      target: created.rootNode.id,
-      sourceHandle,
-      targetHandle: undefined,
-    };
-    const secondEdge: Workflow['edges'][0] = {
-      id: createWorkflowEdgeId({
-        source: created.rootNode.id,
-        target: nodeSelectContext.targetNodeId,
-        sourceHandle: outgoingSourceHandle,
-      }),
-      source: created.rootNode.id,
-      target: nodeSelectContext.targetNodeId,
-      sourceHandle: outgoingSourceHandle,
-      targetHandle: undefined,
-    };
-
-    pushUndo('insert node');
-    setWorkflow(current => {
-      if (!current) return null;
-      let nextNodes = [...current.nodes, ...created.nodes];
-      if (current.layoutSnapshot?.collisionBoxEnabled !== false) {
-        nextNodes = resolveWorkflowNodeCollisions(nextNodes);
-      }
-      if (scopeNode) syncScopeBoundaryLayout(nextNodes, scopeNode.id);
-      return {
-        ...current,
-        nodes: nextNodes,
-        edges: [
-          ...current.edges.filter(edge => {
-            if (nodeSelectContext.edgeId && edge.id === nodeSelectContext.edgeId) return false;
-            return !(
-              edge.source === nodeSelectContext.sourceNodeId
-              && edge.target === nodeSelectContext.targetNodeId
-              && isSameHandle(edge.sourceHandle, nodeSelectContext.sourceHandle)
-            );
-          }),
-          firstEdge,
-          ...created.edges,
-          secondEdge,
-        ],
-      };
-    });
-    setSelectedNodeId(created.rootNode.id);
-    setSelectedNodeIds([created.rootNode.id]);
-    markDirty();
-  }, [workflow, nodeSelectContext, isReadOnly, pushUndo, markDirty, setSelectedNodeId, setSelectedNodeIds]);
+    handleInsertNodeOnEdge(type, nodeSelectContext);
+  }, [workflow, nodeSelectContext, isReadOnly, pushUndo, markDirty, setSelectedNodeId, setSelectedNodeIds, handleInsertNodeOnEdge]);
 
   const handleNodeDelete = useCallback((nodeId: string, options?: DeleteNodeOptions) => {
     if (!workflow || isReadOnly) return;
@@ -578,6 +592,7 @@ export function useNodeOperations({
     handleNodeSelectOpenChange,
     handleNodeSelectFromDialog,
     handleNodeAdd,
+    handleInsertNodeOnEdge,
     handleRectangleDrawNodeSelect,
     handleConnectionDrop,
     handleNodeDelete,

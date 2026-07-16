@@ -81,6 +81,7 @@ export function useWorkflowEditorCanvas({
 
     // Node operations
     handleNodeAdd: nodeOps.handleNodeAdd,
+    handleInsertNodeOnEdge: nodeOps.handleInsertNodeOnEdge,
     handleNodeDelete: nodeOps.handleNodeDelete,
     handleNodeCopy: nodeOps.handleNodeCopy,
     handleNodeClone: nodeOps.handleNodeClone,

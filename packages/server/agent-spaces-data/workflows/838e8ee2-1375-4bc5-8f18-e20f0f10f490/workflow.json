@@ -26,21 +26,74 @@
         "y": 555
       },
       "data": {}
+    },
+    {
+      "id": "node_1784221724543_rzdo58",
+      "type": "agent_intent",
+      "label": "nodes.agent_intent.label",
+      "position": {
+        "x": 270,
+        "y": 315
+      },
+      "data": {
+        "permissionMode": "dontAsk",
+        "outputs": [
+          {
+            "key": "result",
+            "type": "object",
+            "children": []
+          }
+        ],
+        "sourceNodeId": "node_1784218983819_start",
+        "sourceHandle": "source",
+        "prompt": "1是否大于2，返回{ret: true or false}",
+        "agent": {
+          "id": "6005773f-07c1-4904-b9f7-bf85c91c8a9c",
+          "name": "Agent",
+          "role": "agent",
+          "description": "通用 Agent，可在 workflow 中承担任意执行节点",
+          "runtimeKind": "claude-code",
+          "modelProvider": "openai-chat-completions",
+          "providerId": "3e8b4ab0-6693-4913-9d7b-23c4b2300447",
+          "modelId": "GLM-4.7",
+          "apiBase": "https://open.bigmodel.cn/api/coding/paas/v4",
+          "workingDir": "",
+          "mcps": {
+            "mcpServers": {}
+          },
+          "skills": [
+            "coding.md",
+            "debugging.md",
+            "testing.md"
+          ],
+          "systemPrompt": "",
+          "outputStyle": "",
+          "temperature": 0.3,
+          "maxTokens": 8192,
+          "avatarUrl": "",
+          "icon": "",
+          "enabled": true
+        }
+      }
     }
   ],
   "edges": [
     {
-      "id": "e-node_1784218983819_start-source-node_1784218983819_end-target",
+      "id": "e-node_1784218983819_start-source-node_1784221724543_rzdo58-target",
       "source": "node_1784218983819_start",
-      "target": "node_1784218983819_end",
-      "edgeKind": "runtime",
-      "sourceHandle": "source",
-      "targetHandle": "target"
+      "target": "node_1784221724543_rzdo58",
+      "sourceHandle": "source"
+    },
+    {
+      "id": "e-node_1784221724543_rzdo58-source-node_1784218983819_end-target",
+      "source": "node_1784221724543_rzdo58",
+      "target": "node_1784218983819_end"
     }
   ],
   "createdAt": 1784218983829,
-  "updatedAt": 1784220960797,
+  "updatedAt": 1784221834289,
   "published": false,
   "lastOpenedAt": 1784218983842,
-  "groups": []
+  "groups": [],
+  "enabledPlugins": []
 }

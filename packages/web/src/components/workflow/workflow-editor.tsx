@@ -447,6 +447,7 @@ function WorkflowEditorInner({
   const router = useRouter();
   const searchParams = useSearchParams();
   const canvasExportRef = useRef<WorkflowCanvasViewportRef | null>(null);
+  const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
   // ---- State ----
   const state = useWorkflowEditorState(template);
   const [installedWorkflowPlugins, setInstalledWorkflowPlugins] = useState<Map<string, boolean>>(new Map());
@@ -1015,8 +1016,19 @@ function WorkflowEditorInner({
 
   const handleAddNodeFromSidebar = useCallback((type: string) => {
     if (isWorkflowReadOnly) return;
+    const selectedEdge = state.workflow?.edges.find(edge => edge.id === selectedEdgeId);
+    if (selectedEdge && !selectedEdge.composite?.locked) {
+      canvas.handleInsertNodeOnEdge(type, {
+        edgeId: selectedEdge.id,
+        sourceNodeId: selectedEdge.source,
+        targetNodeId: selectedEdge.target,
+        sourceHandle: selectedEdge.sourceHandle ?? null,
+      });
+      setSelectedEdgeId(null);
+      return;
+    }
     canvas.handleNodeAdd(type, getViewportCenter());
-  }, [canvas, getViewportCenter, isWorkflowReadOnly]);
+  }, [canvas, getViewportCenter, isWorkflowReadOnly, selectedEdgeId, state.workflow?.edges]);
 
   const onModelChange = useCallback((_model: Model, action: Action) => {
     try {
@@ -1233,6 +1245,7 @@ function WorkflowEditorInner({
                 onNodesChange={canvas.handleNodesChange}
                 onNodeDragStateChange={state.setAutoSaveSuspended}
                 onEdgesChange={canvas.handleEdgesChange}
+                onEdgeSelect={setSelectedEdgeId}
                 onConnect={canvas.handleConnect}
                 onConnectionDrop={canvas.handleConnectionDrop}
                 onRectangleDrawNodeSelect={canvas.handleRectangleDrawNodeSelect}
