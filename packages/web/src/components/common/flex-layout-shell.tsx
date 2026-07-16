@@ -40,6 +40,7 @@ import {
   Minimize2,
   X,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 export interface FlexLayoutTheme {
   key: string;
@@ -177,6 +178,7 @@ export function FlexLayoutShell({
 }: FlexLayoutShellProps) {
   // 是否受控：外部传入 model 即进入受控模式
   const isControlled = controlledModel !== undefined;
+  const t = useTranslations("flexLayout");
 
   const layoutStorageKey = useMemo(() => storageKey + LAYOUT_SUFFIX, [storageKey]);
   const templatesStorageKey = useMemo(
@@ -396,11 +398,11 @@ export function FlexLayoutShell({
       }
       return (
         <div className="flex h-full items-center justify-center p-4 text-sm text-muted-foreground">
-          未知组件: {comp ?? "(空)"}
+          {t("unknownComponent", { name: comp ?? t("unknownComponentEmpty") })}
         </div>
       );
     },
-    [components, controlledFactory],
+    [components, controlledFactory, t],
   );
 
   const onAction = useCallback((action: Action) => action, []);
@@ -459,7 +461,7 @@ export function FlexLayoutShell({
             <DropdownMenu>
               <DropdownMenuTrigger
                 render={
-                  <Button variant="ghost" size="sm" title="添加 Tab">
+                  <Button variant="ghost" size="sm" title={t("addTab")}>
                     <Plus className="size-4" />
                   </Button>
                 }
@@ -484,7 +486,7 @@ export function FlexLayoutShell({
               variant="ghost"
               size="sm"
               onClick={handleAddFloat}
-              title="添加浮动窗口"
+              title={t("addFloat")}
             >
               <PictureInPicture2 className="size-4" />
             </Button>
@@ -499,11 +501,15 @@ export function FlexLayoutShell({
               variant="ghost"
               size="sm"
               onClick={() => setLayoutDialogOpen(true)}
-              title="布局预设管理"
+              title={t("managePresets")}
               className="gap-1.5"
             >
               <LayoutTemplateIcon className="size-4" />
-              <span className="text-xs">预设{templateCount > 0 ? ` (${templateCount})` : ""}</span>
+              <span className="text-xs">
+                {templateCount > 0
+                  ? t("presetsWithCount", { count: templateCount })
+                  : t("presets")}
+              </span>
             </Button>
           )}
 
@@ -512,7 +518,7 @@ export function FlexLayoutShell({
               variant="ghost"
               size="sm"
               onClick={handleResetLayout}
-              title="重置为默认布局"
+              title={t("resetLayout")}
             >
               <RotateCcw className="size-4" />
             </Button>
@@ -529,7 +535,7 @@ export function FlexLayoutShell({
                 value={theme}
                 onChange={(e) => changeTheme(e.target.value)}
                 className="h-7 rounded-md border bg-background px-1.5 text-xs outline-none"
-                aria-label="切换样式"
+                aria-label={t("switchTheme")}
               >
                 {themes.map((t) => (
                   <option key={t.key} value={t.key}>
@@ -581,7 +587,7 @@ export function FlexLayoutShell({
                     }}
                   >
                     {maximized ? <Minimize2 className="size-4" /> : <Maximize2 className="size-4" />}
-                    {maximized ? "还原" : "全屏"}
+                    {maximized ? t("restore") : t("maximize")}
                   </button>
                 )}
                 {canPopout && (
@@ -594,7 +600,7 @@ export function FlexLayoutShell({
                     }}
                   >
                     <PictureInPicture2 className="size-4" />
-                    悬浮查看
+                    {t("popout")}
                   </button>
                 )}
                 {canClose && (
@@ -609,7 +615,7 @@ export function FlexLayoutShell({
                       }}
                     >
                       <X className="size-4" />
-                      关闭
+                      {t("close")}
                     </button>
                   </>
                 )}

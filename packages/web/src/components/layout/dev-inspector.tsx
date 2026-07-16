@@ -96,12 +96,16 @@ export function DevInspector() {
   if (process.env.NODE_ENV !== "development") return null;
   if (!mounted) return null;
 
+  const isMac = /Mac|iPhone|iPad|iPod/i.test(navigator.platform);
+  const inspectorKeys = isMac
+    ? ["Ctrl", "Shift", "Command", "C"]
+    : ["Ctrl", "Shift", "Alt", "C"];
+  const hotkey = inspectorKeys.join(" + ");
+
   return (
     <>
       <Inspector
-        keys={mounted && /Mac|iPhone|iPad|iPod/i.test(navigator.platform)
-          ? ["Ctrl", "Shift", "Command", "C"]
-          : ["Ctrl", "Shift", "Alt", "C"]}
+        keys={inspectorKeys}
         active={active}
         onActiveChange={setActive}
         onClickElement={() => {}}
@@ -113,7 +117,7 @@ export function DevInspector() {
         type="button"
         onClick={() => setActive((value) => !value)}
         aria-pressed={active}
-        title="Inspect React component source"
+        title={`Inspect React component source (${hotkey})`}
         className="fixed bottom-3 right-3 z-[2147483647] flex h-8 w-8 items-center justify-center rounded border border-border bg-background shadow hover:bg-muted"
       >
         <MousePointer2 className={active ? "text-primary" : "text-muted-foreground"} size={16} />

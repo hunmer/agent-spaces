@@ -333,7 +333,7 @@ export function CommandPalette({
                       <div key={group.key} className="px-2 py-1">
                         <div className="flex items-center gap-2 px-2 text-xs">
                           <span className="font-medium">{group.label}</span>
-                          <span className="text-xs text-muted-foreground">
+                          <span className="ml-auto text-xs text-muted-foreground">
                             {group.items.length} items
                           </span>
                         </div>

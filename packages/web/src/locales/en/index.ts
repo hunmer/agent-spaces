@@ -7,6 +7,7 @@ import common from './common.json';
 import composer from './composer.json';
 import database from './database.json';
 import editor from './editor.json';
+import flexLayout from './flexLayout.json';
 import folderPicker from './folderPicker.json';
 import git from './git.json';
 import home from './home.json';
@@ -47,6 +48,7 @@ const messages = {
   composer,
   database,
   editor,
+  flexLayout,
   folderPicker,
   git,
   home,
