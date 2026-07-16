@@ -55,13 +55,16 @@ export interface AddableComponent {
 export interface FlexLayoutShellProps {
   /** 实例隔离 key，会派生出 layout/templates/theme 三个 localStorage 子 key */
   storageKey: string;
-  /** 组件工厂注册表：tab 的 component 字段 -> 渲染函数 */
-  components: Record<string, (node: TabNode) => React.ReactNode>;
-  /** 首次加载（localStorage 无数据时）使用的默认布局 */
-  defaultLayout: IJsonModel;
+  /**
+   * 组件工厂注册表：tab 的 component 字段 -> 渲染函数。
+   * 受控模式下若传入 `factory` prop，则以 `factory` 为准，本字段可省略。
+   */
+  components?: Record<string, (node: TabNode) => React.ReactNode>;
+  /** 首次加载（localStorage 无数据时）使用的默认布局。受控模式下可省略 */
+  defaultLayout?: IJsonModel;
   /** 可通过工具栏"添加 Tab"打开的页面列表 */
   addableComponents?: AddableComponent[];
-  /** 可切换的样式列表，默认提供 5 个内置主题 */
+  /** 可切换的样式列表，默认提供 8 个内置主题 */
   themes?: FlexLayoutTheme[];
   /** 默认主题 key，默认 "light" */
   defaultTheme?: string;
@@ -71,8 +74,39 @@ export interface FlexLayoutShellProps {
   title?: string;
   /** 附加到根容器的 className */
   className?: string;
-  /** popout 浮动窗口顶层 className，用于让浮窗跟随主题，默认 "flexlayout__theme_light" */
+  /** popout 浮动窗口顶层 className，用于让浮窗跟随主题，默认按当前 theme 派生 */
   popoutClassName?: string;
+  /**
+   * 预设列表存储 key，默认由 storageKey 派生（`:templates`）。
+   * 受控场景可显式传入以复用外部既有的预设数据源（如 workspace 侧边栏）。
+   */
+  templatesStorageKey?: string;
+
+  // ---- 工具栏细粒度开关（默认全开，受控场景可按需关闭避免与外部入口重复）----
+  /** 显示「添加 Tab」下拉，默认 true */
+  showAddTab?: boolean;
+  /** 显示「添加浮窗」按钮，默认 true */
+  showAddFloat?: boolean;
+  /** 显示「预设管理」按钮，默认 true */
+  showPresets?: boolean;
+  /** 显示「重置布局」按钮，默认 true */
+  showReset?: boolean;
+  /** 显示「主题切换」下拉，默认 true */
+  showThemeSwitch?: boolean;
+
+  // ---- 受控模式 props（传入 model 即进入受控模式，FlexLayoutShell 不再自管理 model）----
+  /** 受控 model；传入后由外部负责创建/更新，预设的 apply/reset 会回调 `onApplyLayout`/`onResetLayout` */
+  model?: Model;
+  /** 受控模式下的 factory（覆盖 components 注册表逻辑） */
+  factory?: (node: TabNode) => React.ReactNode;
+  /** 受控模式下的 tab header 渲染钩子 */
+  onRenderTab?: (node: TabNode, renderValues: ITabRenderValues) => void;
+  /** 受控模式下的 model change 回调（用于持久化等）；非受控时内部默认持久化 */
+  onModelChangeExternal?: (model: Model, action: Action) => void;
+  /** 受控模式下应用预设时回调（外部 setModel） */
+  onApplyLayout?: (json: IJsonModel) => void;
+  /** 受控模式下重置布局时回调（外部 setModel(defaultLayout)） */
+  onResetLayout?: () => void;
 }
 
 const DEFAULT_THEMES: FlexLayoutTheme[] = [
@@ -110,12 +144,35 @@ export function FlexLayoutShell({
   title,
   className,
   popoutClassName,
+  templatesStorageKey: templatesStorageKeyProp,
+  showAddTab = true,
+  showAddFloat = true,
+  showPresets = true,
+  showReset = true,
+  showThemeSwitch = true,
+  model: controlledModel,
+  factory: controlledFactory,
+  onRenderTab: controlledOnRenderTab,
+  onModelChangeExternal,
+  onApplyLayout,
+  onResetLayout,
 }: FlexLayoutShellProps) {
+  // 是否受控：外部传入 model 即进入受控模式
+  const isControlled = controlledModel !== undefined;
+
   const layoutStorageKey = useMemo(() => storageKey + LAYOUT_SUFFIX, [storageKey]);
-  const templatesStorageKey = useMemo(() => storageKey + TEMPLATES_SUFFIX, [storageKey]);
+  const templatesStorageKey = useMemo(
+    () => templatesStorageKeyProp ?? storageKey + TEMPLATES_SUFFIX,
+    [templatesStorageKeyProp, storageKey],
+  );
   const themeStorageKey = useMemo(() => storageKey + THEME_SUFFIX, [storageKey]);
 
-  const [model, setModel] = useState<Model>(() => {
+  // 非受控模式：内部自管理 model（受控模式下不会使用 internalModel，初始化器仅作占位）
+  const [internalModel, setInternalModel] = useState<Model>(() => {
+    // 受控模式不消费 defaultLayout，返回空 model 占位避免抛错
+    if (isControlled || !defaultLayout) {
+      return Model.fromJson({ global: {}, layout: { type: "row", children: [] } });
+    }
     try {
       const saved = localStorage.getItem(layoutStorageKey);
       if (saved) return Model.fromJson(JSON.parse(saved));
@@ -124,6 +181,8 @@ export function FlexLayoutShell({
     }
     return Model.fromJson(defaultLayout);
   });
+
+  const model = isControlled ? controlledModel! : internalModel;
 
   const [theme, setTheme] = useState<string>(() => {
     const saved = localStorage.getItem(themeStorageKey);
@@ -140,16 +199,20 @@ export function FlexLayoutShell({
     latestModel.current = model;
   }, [model]);
 
-  // 持久化布局
+  // 持久化布局：受控模式委派给外部回调，非受控模式默认持久化到 localStorage
   const onModelChange = useCallback(
-    (_model: Model) => {
+    (_model: Model, action: Action) => {
+      if (onModelChangeExternal) {
+        onModelChangeExternal(_model, action);
+        return;
+      }
       try {
         localStorage.setItem(layoutStorageKey, JSON.stringify(_model.toJson()));
       } catch {
         /* quota exceeded — ignore */
       }
     },
-    [layoutStorageKey],
+    [layoutStorageKey, onModelChangeExternal],
   );
 
   // 浮窗跟随主题：未显式传入时，按当前 theme 派生 className
@@ -168,20 +231,31 @@ export function FlexLayoutShell({
     [themeStorageKey],
   );
 
-  // 应用预设
-  const handleApplyLayout = useCallback((json: IJsonModel) => {
-    setModel(Model.fromJson(json));
-  }, []);
+  // 应用预设：受控模式回调外部 setModel，非受控模式更新内部 model
+  const handleApplyLayout = useCallback(
+    (json: IJsonModel) => {
+      if (onApplyLayout) {
+        onApplyLayout(json);
+      } else {
+        setInternalModel(Model.fromJson(json));
+      }
+    },
+    [onApplyLayout],
+  );
 
   // 重置为默认布局
   const handleResetLayout = useCallback(() => {
-    setModel(Model.fromJson(defaultLayout));
-    try {
-      localStorage.setItem(layoutStorageKey, JSON.stringify(defaultLayout));
-    } catch {
-      /* ignore */
+    if (onResetLayout) {
+      onResetLayout();
+    } else if (defaultLayout) {
+      setInternalModel(Model.fromJson(defaultLayout));
+      try {
+        localStorage.setItem(layoutStorageKey, JSON.stringify(defaultLayout));
+      } catch {
+        /* ignore */
+      }
     }
-  }, [defaultLayout, layoutStorageKey]);
+  }, [defaultLayout, layoutStorageKey, onResetLayout]);
 
   const getCurrentLayout = useCallback(
     () => latestModel.current?.toJson() as IJsonModel | null,
@@ -224,12 +298,13 @@ export function FlexLayoutShell({
     );
   }, [addableComponents]);
 
+  // factory：受控模式优先用外部传入，否则用 components 注册表
   const factory = useCallback(
     (node: TabNode) => {
+      if (controlledFactory) return controlledFactory(node);
       const comp = node.getComponent();
-      if (comp && Object.prototype.hasOwnProperty.call(components, comp)) {
-        const render = components[comp];
-        return render(node);
+      if (comp && components && Object.prototype.hasOwnProperty.call(components, comp)) {
+        return components[comp](node);
       }
       return (
         <div className="flex h-full items-center justify-center p-4 text-sm text-muted-foreground">
@@ -237,7 +312,7 @@ export function FlexLayoutShell({
         </div>
       );
     },
-    [components],
+    [components, controlledFactory],
   );
 
   const onAction = useCallback((action: Action) => action, []);
@@ -251,7 +326,7 @@ export function FlexLayoutShell({
     return m;
   }, [addableComponents]);
 
-  const onRenderTab = useCallback(
+  const internalOnRenderTab = useCallback(
     (node: TabNode, renderValues: ITabRenderValues) => {
       const comp = node.getComponent();
       const icon = comp ? iconByComponent[comp] : undefined;
@@ -261,6 +336,9 @@ export function FlexLayoutShell({
     },
     [iconByComponent],
   );
+
+  // onRenderTab：受控模式优先用外部传入，否则用内部图标渲染
+  const onRenderTab = controlledOnRenderTab ?? internalOnRenderTab;
 
   // 对话框关闭后刷新本地 templatesVersion（删除/重命名后工具栏无需感知，此处仅为将来扩展）
   useEffect(() => {
@@ -285,7 +363,7 @@ export function FlexLayoutShell({
             <span className="mr-2 text-sm font-medium">{title}</span>
           )}
 
-          {addableComponents.length > 0 && (
+          {showAddTab && addableComponents.length > 0 && (
             <DropdownMenu>
               <DropdownMenuTrigger
                 render={
@@ -309,7 +387,7 @@ export function FlexLayoutShell({
             </DropdownMenu>
           )}
 
-          {addableComponents.length > 0 && (
+          {showAddFloat && addableComponents.length > 0 && (
             <Button
               variant="ghost"
               size="sm"
@@ -320,45 +398,53 @@ export function FlexLayoutShell({
             </Button>
           )}
 
-          <div className="mx-1 h-5 w-px bg-border" />
+          {(showPresets || showReset) && (
+            <div className="mx-1 h-5 w-px bg-border" />
+          )}
 
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setLayoutDialogOpen(true)}
-            title="布局预设管理"
-            className="gap-1.5"
-          >
-            <LayoutTemplateIcon className="size-4" />
-            <span className="text-xs">预设{templateCount > 0 ? ` (${templateCount})` : ""}</span>
-          </Button>
+          {showPresets && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setLayoutDialogOpen(true)}
+              title="布局预设管理"
+              className="gap-1.5"
+            >
+              <LayoutTemplateIcon className="size-4" />
+              <span className="text-xs">预设{templateCount > 0 ? ` (${templateCount})` : ""}</span>
+            </Button>
+          )}
 
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleResetLayout}
-            title="重置为默认布局"
-          >
-            <RotateCcw className="size-4" />
-          </Button>
+          {showReset && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleResetLayout}
+              title="重置为默认布局"
+            >
+              <RotateCcw className="size-4" />
+            </Button>
+          )}
 
           <div className="flex-1" />
 
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <Palette className="size-3.5" />
-            <select
-              value={theme}
-              onChange={(e) => changeTheme(e.target.value)}
-              className="h-7 rounded-md border bg-background px-1.5 text-xs outline-none"
-              aria-label="切换样式"
-            >
-              {themes.map((t) => (
-                <option key={t.key} value={t.key}>
-                  {t.label}
-                </option>
-              ))}
-            </select>
-          </div>
+          {showThemeSwitch && (
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Palette className="size-3.5" />
+              <select
+                value={theme}
+                onChange={(e) => changeTheme(e.target.value)}
+                className="h-7 rounded-md border bg-background px-1.5 text-xs outline-none"
+                aria-label="切换样式"
+              >
+                {themes.map((t) => (
+                  <option key={t.key} value={t.key}>
+                    {t.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
       )}
 

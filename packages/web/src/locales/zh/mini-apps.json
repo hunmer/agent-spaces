@@ -118,7 +118,21 @@
     "entryExportError": "入口文件必须 export default 一个 React 组件",
     "switchProject": "切换页面",
     "device": "设备外框",
-    "deviceNone": "无外框"
+    "deviceNone": "无外框",
+    "info": "应用信息",
+    "infoName": "名称",
+    "infoId": "ID",
+    "infoVersion": "版本",
+    "infoType": "类型",
+    "infoMainFile": "入口文件",
+    "infoDescription": "描述",
+    "infoDevices": "设备类型",
+    "infoTags": "标签",
+    "infoPlugins": "启用插件",
+    "infoCreatedAt": "创建时间",
+    "infoUpdatedAt": "更新时间",
+    "infoLoading": "加载中…",
+    "infoEmpty": "暂无信息"
   },
   "chat": {
     "assistantPrompt": "请作为 Workflow UI 项目 \"{name}\" 的开发助手。",

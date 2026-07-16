@@ -375,6 +375,8 @@ function formatRuntimeToolsLine(runtimeKind?: string): string {
     ? 'Read, Write, Edit, MultiEdit, Bash, Grep, Glob, Task, TodoWrite, WebFetch, WebSearch'
     : runtimeKind === 'codex'
       ? 'Bash, file edits, WebSearch, todo list, MCP tools'
+      : runtimeKind === 'grok'
+        ? 'Grok CLI built-in tools'
       : runtimeKind === 'langchain'
         ? 'Agent Spaces function tools and configured MCP tools'
         : runtimeKind === 'hermes'
@@ -392,6 +394,8 @@ function formatRuntimeName(runtimeKind?: string): string {
       return 'Claude Code';
     case 'codex':
       return 'Codex';
+    case 'grok':
+      return 'Grok';
     case 'langchain':
       return 'LangChain';
     case 'hermes':

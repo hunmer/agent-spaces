@@ -21,7 +21,7 @@ interface DiscoverRuntimeCliResponse {
 
 interface InstallRuntimeCliResponse extends DiscoverRuntimeCliResponse {
   ok: boolean;
-  runtimeId: "claude-code" | "codex" | "gemini-cli" | "hermes" | "pi" | "claude-code-sdk" | "codex-sdk" | "open-agent-sdk";
+  runtimeId: "claude-code" | "codex" | "grok" | "gemini-cli" | "hermes" | "pi" | "claude-code-sdk" | "codex-sdk" | "open-agent-sdk";
   packageManager: string;
   packages: string[];
   stdout: string;
@@ -30,7 +30,7 @@ interface InstallRuntimeCliResponse extends DiscoverRuntimeCliResponse {
 
 interface CheckSdkUpdatesResponse {
   updates: Array<{
-    runtimeId: "claude-code" | "codex" | "gemini-cli" | "hermes" | "pi" | "claude-code-sdk" | "codex-sdk" | "open-agent-sdk";
+    runtimeId: "claude-code" | "codex" | "grok" | "gemini-cli" | "hermes" | "pi" | "claude-code-sdk" | "codex-sdk" | "open-agent-sdk";
     latestVersion: string | null;
     debug: {
       packageName: string | null;

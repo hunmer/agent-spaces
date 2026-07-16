@@ -4,12 +4,17 @@ import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useSearchParams, usePathname } from "next/navigation";
-import { Layout, Model, TabNode, IJsonModel, Actions, ITabRenderValues, Action } from "flexlayout-react";
+import { Model, TabNode, IJsonModel, Actions, ITabRenderValues, Action } from "flexlayout-react";
+import { FlexLayoutShell, type AddableComponent } from "@/components/common/flex-layout-shell";
+import {
+  LAYOUT_STORAGE_KEY,
+  LAYOUT_TEMPLATES_KEY,
+  applyLayoutToStorage,
+} from "@/lib/layout-templates";
 import { useJoyride, STATUS } from "react-joyride";
 import type { Status, Step } from "react-joyride";
 import { RIGHT_TO_LEFT_TAB_MAP, renderTabIcon } from "./tab-config";
 
-import { LAYOUT_STORAGE_KEY } from "@/lib/layout-templates";
 import { getWS } from "@/lib/ws";
 import { useIssueStore } from "@/stores/issue";
 import { useEditorStore } from "@/stores/editor";
@@ -159,6 +164,22 @@ const defaultJson: IJsonModel = {
     ],
   },
 };
+
+// 工具栏「添加 Tab」可加入的面板清单（与 factory 中的 component 一致）
+const WORKSPACE_ADDABLE_COMPONENTS: AddableComponent[] = [
+  { key: "channel-list", name: "Channels" },
+  { key: "issue-list", name: "Issues" },
+  { key: "workfolder", name: "Workfolder" },
+  { key: "code-editor", name: "Code Editor" },
+  { key: "chat", name: "Chat" },
+  { key: "issue-detail", name: "Issue Detail" },
+  { key: "terminal", name: "Terminal" },
+  { key: "git-commits", name: "Commits" },
+  { key: "project-settings", name: "Settings" },
+  { key: "code-favorites", name: "Favorites" },
+  { key: "worktree-panel", name: "Worktrees" },
+  { key: "activity-log", name: "Logger" },
+];
 
 interface WorkspaceShellProps {
   workspaceId: string;
@@ -744,7 +765,21 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
 
   return (
     <div className="workspace-flexlayout-shell relative h-full w-full bg-sidebar">
-      <Layout model={model} factory={factory} onRenderTab={onRenderTab} onModelChange={onModelChange} />
+      <FlexLayoutShell
+        storageKey="agent-spaces:workspace"
+        templatesStorageKey={LAYOUT_TEMPLATES_KEY}
+        title="Workspace"
+        // 受控模式：model / factory / onRenderTab / onModelChange 全部由 workspace-shell 管理
+        model={model}
+        factory={factory}
+        onRenderTab={onRenderTab}
+        onModelChangeExternal={onModelChange}
+        // 预设复用侧边栏既有的数据源与事件机制
+        onApplyLayout={(json) => applyLayoutToStorage(json)}
+        onResetLayout={() => window.dispatchEvent(new CustomEvent("reset-layout"))}
+        // 可添加的面板
+        addableComponents={WORKSPACE_ADDABLE_COMPONENTS}
+      />
       <AddFavoriteDialog />
       <SendToChannelDialog />
       <SendToIssueDialog />

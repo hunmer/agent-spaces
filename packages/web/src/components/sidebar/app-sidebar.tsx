@@ -20,7 +20,7 @@ import { NotificationsPopover } from "@/components/sidebar/nav-notifications";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { ServerSwitcher } from "@/components/sidebar/server-switcher";
 import { AnimatedThemeToggler } from "@/components/decorations/animated-theme-toggler";
-import { LayoutTemplateIcon, CommandIcon } from "lucide-react";
+import { CommandIcon } from "lucide-react";
 import { useWorkspaceStore } from "@/stores/workspace";
 import { useNotificationStore } from "@/stores/notification";
 import { useKeyboardShortcuts } from "@/stores/keyboard-shortcuts";
@@ -201,18 +201,6 @@ export function DashboardSidebar() {
           >
             <CommandIcon className="size-4" />
           </button>
-          {currentWorkspaceId && (
-            <button
-              className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
-              onClick={() => {
-                if (isMobile) setOpenMobile(false);
-                dialogs.setLayoutDialogOpen(true);
-              }}
-              title={ts("layoutManagement")}
-            >
-              <LayoutTemplateIcon className="size-4" />
-            </button>
-          )}
           <NotificationsPopover workspaceId={currentWorkspaceId ?? ""} />
           <SidebarTrigger onClick={() => setUserToggled(true)} />
         </motion.div>

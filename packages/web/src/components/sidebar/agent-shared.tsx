@@ -104,6 +104,7 @@ export const RUNTIME_OPTIONS: Array<{ value: NonNullable<AgentConfig["runtimeKin
   { value: "claude-code", labelKey: "claudeCode" },
   { value: "open-agent-sdk", labelKey: "openAgentSdk" },
   { value: "codex", labelKey: "codex" },
+  { value: "grok", labelKey: "grok" },
   { value: "langchain", labelKey: "langchain" },
   { value: "hermes", labelKey: "hermes" },
   { value: "pi", labelKey: "pi" },

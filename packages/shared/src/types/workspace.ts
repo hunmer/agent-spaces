@@ -71,7 +71,7 @@ export interface AgentConfig {
   name: string;
   role: AgentRole;
   description?: string;
-  runtimeKind?: 'open-agent-sdk' | 'claude-code' | 'codex' | 'langchain' | 'hermes' | 'pi';
+  runtimeKind?: 'open-agent-sdk' | 'claude-code' | 'codex' | 'grok' | 'langchain' | 'hermes' | 'pi';
   modelProvider?: 'anthropic-messages' | 'openai-chat-completions' | 'openai-responses' | 'openai-responses-to-anthropic-messages' | 'openai-chat-completions-to-anthropic-messages' | 'gemini-generate-content';
   providerId?: string;
   modelId?: string;

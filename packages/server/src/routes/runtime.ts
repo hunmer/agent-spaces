@@ -12,7 +12,7 @@ const rootDir = join(__dirname, '../..');
 const workspaceRootDir = join(rootDir, '../..');
 const requireFromRoot = createRequire(join(rootDir, 'package.json'));
 
-type SupportedRuntimeKind = Extract<NonNullable<AgentConfig['runtimeKind']>, 'claude-code' | 'codex' | 'open-agent-sdk' | 'hermes' | 'pi'>;
+type SupportedRuntimeKind = Extract<NonNullable<AgentConfig['runtimeKind']>, 'claude-code' | 'codex' | 'grok' | 'open-agent-sdk' | 'hermes' | 'pi'>;
 type InstallableRuntimePackageId = RuntimeDescriptor['id'];
 type RuntimeCategory = 'cli' | 'sdk';
 type VersionSource = { type: 'npm'; packageName: string } | { type: 'github'; repo: string };
@@ -24,7 +24,7 @@ type InstallCommandSpec = {
 };
 
 interface RuntimeDescriptor {
-  id: 'claude-code' | 'codex' | 'gemini-cli' | 'hermes' | 'pi' | 'claude-code-sdk' | 'codex-sdk' | 'open-agent-sdk';
+  id: 'claude-code' | 'codex' | 'grok' | 'gemini-cli' | 'hermes' | 'pi' | 'claude-code-sdk' | 'codex-sdk' | 'open-agent-sdk';
   category: RuntimeCategory;
   label: string;
   commands?: string[];
@@ -70,6 +70,15 @@ const RUNTIME_DESCRIPTORS: RuntimeDescriptor[] = [
       args: ['update'],
       cwd: rootDir,
     },
+  },
+  {
+    id: 'grok',
+    category: 'cli',
+    label: 'Grok CLI',
+    commands: ['grok'],
+    runtimeKind: 'grok',
+    versionArgs: ['--version'],
+    installable: false,
   },
   {
     id: 'gemini-cli',
@@ -277,10 +286,16 @@ async function locateRuntimeCommand(descriptor: RuntimeDescriptor): Promise<stri
     ]);
   }
 
+  if (descriptor.id === 'grok') {
+    return resolveWindowsInstalledCliPath('GROK_CLI_PATH', [
+      ['.grok', 'bin', 'grok.exe'],
+    ]);
+  }
+
   return null;
 }
 
-function resolveWindowsInstalledCliPath(configEnvName: 'HERMES_CLI_PATH', relativeCandidates: string[][]): string | null {
+function resolveWindowsInstalledCliPath(configEnvName: 'HERMES_CLI_PATH' | 'GROK_CLI_PATH', relativeCandidates: string[][]): string | null {
   const configured = process.env[configEnvName]?.trim();
   if (configured && existsSync(configured)) return configured;
   if (process.platform !== 'win32') return null;

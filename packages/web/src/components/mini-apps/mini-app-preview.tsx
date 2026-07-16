@@ -19,7 +19,7 @@ import { AvatarGroup } from '@/components/ui/avatar-group';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ChatPanel, type ChatMessage } from '@/components/ui/chat-panel';
-import { PanelRightOpen, Loader2, Search, Sparkles, Settings2, Settings, Eraser, Smartphone, Monitor, Tablet } from 'lucide-react';
+import { PanelRightOpen, Loader2, Search, Sparkles, Settings2, Settings, Eraser, Smartphone, Monitor, Tablet, Info, X } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { AgentEditor } from '@/components/sidebar/agent-editor';
@@ -486,10 +486,83 @@ function MiniAppAgentPopover({ projectId }: { projectId: string }) {
   );
 }
 
+/** 右侧应用信息面板（左右布局，非 drawer）。 */
+function MiniAppInfoPanel({ projectId, onClose }: { projectId: string; onClose: () => void }) {
+  const t = useTranslations('mini-apps');
+  const [project, setProject] = useState<MiniAppProject | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let alive = true;
+    setLoading(true);
+    sdk.miniApp.get(projectId)
+      .then((p) => { if (alive) setProject(p); })
+      .catch(() => { if (alive) setProject(null); })
+      .finally(() => { if (alive) setLoading(false); });
+    return () => { alive = false; };
+  }, [projectId]);
+
+  const Row = ({ label, value }: { label: string; value?: ReactNode }) => {
+    if (value === undefined || value === null || value === '') return null;
+    return (
+      <div className="grid grid-cols-[88px_1fr] gap-2 px-3 py-1.5 text-xs">
+        <span className="text-muted-foreground">{label}</span>
+        <span className="break-all">{value}</span>
+      </div>
+    );
+  };
+
+  return (
+    <div className="flex h-full w-72 shrink-0 flex-col border-l bg-background">
+      <div className="flex shrink-0 items-center justify-between border-b px-3 py-2">
+        <span className="text-sm font-medium">{t('preview.info')}</span>
+        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onClose} aria-label="close">
+          <X className="h-4 w-4" />
+        </Button>
+      </div>
+      <ScrollArea className="min-h-0 flex-1">
+        {loading ? (
+          <div className="flex items-center justify-center gap-2 py-8 text-xs text-muted-foreground">
+            <Loader2 className="size-4 animate-spin" />
+            {t('preview.infoLoading')}
+          </div>
+        ) : project ? (
+          <div className="py-1">
+            <Row label={t('preview.infoName')} value={project.name} />
+            <Row label={t('preview.infoId')} value={<code className="text-[11px]">{project.id}</code>} />
+            <Row label={t('preview.infoVersion')} value={project.version} />
+            <Row label={t('preview.infoType')} value={project.type} />
+            <Row label={t('preview.infoMainFile')} value={<code className="text-[11px]">{project.mainFile}</code>} />
+            <Row label={t('preview.infoDescription')} value={project.description} />
+            {project.devices?.length ? (
+              <Row label={t('preview.infoDevices')} value={project.devices.join(', ')} />
+            ) : null}
+            {project.tags?.length ? (
+              <Row label={t('preview.infoTags')} value={(
+                <span className="flex flex-wrap gap-1">
+                  {project.tags.map((tag) => <Badge key={tag} variant="secondary" className="text-[10px]">{tag}</Badge>)}
+                </span>
+              )} />
+            ) : null}
+            {project.enabledPlugins?.length ? (
+              <Row label={t('preview.infoPlugins')} value={project.enabledPlugins.join(', ')} />
+            ) : null}
+            <Row label={t('preview.infoCreatedAt')} value={new Date(project.createdAt).toLocaleString()} />
+            <Row label={t('preview.infoUpdatedAt')} value={new Date(project.updatedAt).toLocaleString()} />
+          </div>
+        ) : (
+          <div className="py-8 text-center text-xs text-muted-foreground">{t('preview.infoEmpty')}</div>
+        )}
+      </ScrollArea>
+    </div>
+  );
+}
+
 export function MiniAppPreview({ type, sourceCode, error, onError, projectId, projectName, hideHeader, enabledPlugins, files, mainFile, enableAgents, devices, allowScroll = false }: MiniAppPreviewProps) {
   const t = useTranslations('mini-apps');
   const router = useRouter();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [infoOpen, setInfoOpen] = useState(false);
   const [projects, setProjects] = useState<MiniAppProject[]>([]);
   const [projectsLoading, setProjectsLoading] = useState(false);
   const [search, setSearch] = useState('');
@@ -682,6 +755,19 @@ export function MiniAppPreview({ type, sourceCode, error, onError, projectId, pr
               </Select>
             )}
             {enableAgents && projectId && <MiniAppAgentPopover projectId={projectId} />}
+            {projectId && (
+              <Button
+                variant={infoOpen ? 'secondary' : 'ghost'}
+                size="icon"
+                className="h-7 w-7"
+                onClick={() => setInfoOpen((v) => !v)}
+                title={t('preview.info')}
+                aria-label={t('preview.info')}
+                aria-pressed={infoOpen}
+              >
+                <Info className="h-4 w-4" />
+              </Button>
+            )}
             <Sheet open={drawerOpen} onOpenChange={handleDrawerOpen}>
               <SheetTrigger render={<Button variant="ghost" size="icon" className="h-7 w-7" />}>
                   <PanelRightOpen className="h-4 w-4" />
@@ -740,30 +826,35 @@ export function MiniAppPreview({ type, sourceCode, error, onError, projectId, pr
           {error}
         </div>
       )}
-      <div className={cn('min-h-0 flex-1', allowScroll ? 'overflow-auto' : 'overflow-hidden')}>
-        {(() => {
-          const rendererEl = (
-            <MiniAppRenderer
-              type={type}
-              sourceCode={sourceCode}
-              onError={handleRendererError}
-              taskEvents={taskEvents}
-              files={files}
-              mainFile={mainFile}
-              allowScroll={allowScroll}
-            />
-          );
+      <div className="flex min-h-0 flex-1">
+        <div className={cn('min-h-0 flex-1', allowScroll ? 'overflow-auto' : 'overflow-hidden')}>
+          {(() => {
+            const rendererEl = (
+              <MiniAppRenderer
+                type={type}
+                sourceCode={sourceCode}
+                onError={handleRendererError}
+                taskEvents={taskEvents}
+                files={files}
+                mainFile={mainFile}
+                allowScroll={allowScroll}
+              />
+            );
 
-          // 不套外框：原样渲染
-          if (device === 'none' || !DEVICE_FRAMES[device]) return rendererEl;
+            // 不套外框：原样渲染
+            if (device === 'none' || !DEVICE_FRAMES[device]) return rendererEl;
 
-          const meta = DEVICE_FRAMES[device];
-          return (
-            <div className="h-full w-full overflow-hidden flex items-center justify-center p-4">
-              <DeviceFrame meta={meta}>{rendererEl}</DeviceFrame>
-            </div>
-          );
-        })()}
+            const meta = DEVICE_FRAMES[device];
+            return (
+              <div className="h-full w-full overflow-hidden flex items-center justify-center p-4">
+                <DeviceFrame meta={meta}>{rendererEl}</DeviceFrame>
+              </div>
+            );
+          })()}
+        </div>
+        {infoOpen && projectId && (
+          <MiniAppInfoPanel projectId={projectId} onClose={() => setInfoOpen(false)} />
+        )}
       </div>
       <WorkflowPluginConfigDialog
         open={Boolean(configPlugin)}

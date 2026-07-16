@@ -11,6 +11,7 @@
     "openAgentSdk": "Open Agent SDK",
     "claudeCode": "Claude Code",
     "codex": "Codex",
+    "grok": "Grok",
     "langchain": "LangChain",
     "hermes": "Hermes",
     "pi": "Pi"

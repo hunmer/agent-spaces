@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 export type RuntimeCliId =
   | "claude-code"
   | "codex"
+  | "grok"
   | "gemini-cli"
   | "hermes"
   | "pi"
@@ -12,7 +13,7 @@ export type RuntimeCliId =
   | "codex-sdk"
   | "open-agent-sdk";
 export type RuntimeCategory = "cli" | "sdk";
-export type SupportedRuntimeKind = "claude-code" | "codex" | "open-agent-sdk" | "hermes" | "pi";
+export type SupportedRuntimeKind = "claude-code" | "codex" | "grok" | "open-agent-sdk" | "hermes" | "pi";
 
 export interface RuntimeCliDiscoveryItem {
   id: RuntimeCliId;
@@ -131,6 +132,7 @@ function normalizeStoredItem(item: unknown): RuntimeCliDiscoveryItem | null {
   if (
     value.id !== "claude-code"
     && value.id !== "codex"
+    && value.id !== "grok"
     && value.id !== "gemini-cli"
     && value.id !== "hermes"
     && value.id !== "pi"
@@ -151,6 +153,7 @@ function normalizeStoredItem(item: unknown): RuntimeCliDiscoveryItem | null {
     supportedRuntime: value.supportedRuntime === true,
     runtimeKind: value.runtimeKind === "claude-code"
       || value.runtimeKind === "codex"
+      || value.runtimeKind === "grok"
       || value.runtimeKind === "open-agent-sdk"
       || value.runtimeKind === "hermes"
       || value.runtimeKind === "pi"

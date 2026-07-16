@@ -118,7 +118,21 @@
     "entryExportError": "Entry file must export default a React component",
     "switchProject": "Switch Page",
     "device": "Device frame",
-    "deviceNone": "No frame"
+    "deviceNone": "No frame",
+    "info": "App Info",
+    "infoName": "Name",
+    "infoId": "ID",
+    "infoVersion": "Version",
+    "infoType": "Type",
+    "infoMainFile": "Entry file",
+    "infoDescription": "Description",
+    "infoDevices": "Devices",
+    "infoTags": "Tags",
+    "infoPlugins": "Enabled plugins",
+    "infoCreatedAt": "Created",
+    "infoUpdatedAt": "Updated",
+    "infoLoading": "Loading…",
+    "infoEmpty": "No info available"
   },
   "chat": {
     "assistantPrompt": "Please act as the development assistant for Workflow UI project \"{name}\".",
