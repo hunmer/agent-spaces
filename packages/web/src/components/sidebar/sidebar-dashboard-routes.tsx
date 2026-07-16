@@ -24,6 +24,7 @@ import {
   Users,
   Package,
   FlaskConical,
+  GraduationCap,
 } from "lucide-react";
 import type { Workspace } from "@agent-spaces/shared";
 import { sdk } from "@/lib/sdk";
@@ -124,6 +125,12 @@ export function buildDashboardRoutes(config: DashboardRoutesConfig): Route[] {
       title: ts("nav.chat"),
       icon: <MessageCircle className="size-4" />,
       link: "/chat",
+    },
+    {
+      id: "learn",
+      title: ts("nav.learn"),
+      icon: <GraduationCap className="size-4" />,
+      link: "/learn",
     },
     {
       id: "teams",

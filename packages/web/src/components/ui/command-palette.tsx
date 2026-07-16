@@ -290,7 +290,7 @@ export function CommandPalette({
                   {/* Search provider hints (when no query) */}
                   {query === '' && searchProviderHints.length > 0 && (
                     <div className="px-2 py-1">
-                      <div className="flex items-center gap-2 px-2 text-xs">
+                      <div className="flex items-center gap-2 px-2 text-sm">
                         <span className="font-medium">Search</span>
                       </div>
                       {searchProviderHints.map((hint, idx) => (

@@ -14,6 +14,7 @@ import home from './home.json';
 import importNs from './import.json';
 import issue from './issue.json';
 import knowledgeBase from './knowledgeBase.json';
+import learn from './learn.json';
 import login from './login.json';
 import mcps from './mcps.json';
 import models from './models.json';
@@ -55,6 +56,7 @@ const messages = {
   import: importNs,
   issue,
   knowledgeBase,
+  learn,
   login,
   mcps,
   models,
