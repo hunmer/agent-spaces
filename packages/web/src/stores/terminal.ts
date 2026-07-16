@@ -3,6 +3,13 @@ import type { WorkspaceWS } from '@/lib/ws';
 import { toast } from 'sonner';
 import { disposeAllTerminalSessions } from '@/lib/terminal-registry';
 
+/**
+ * 单终端（SingleTerminal）会话 id 前缀。这类会话由独立的单终端 tab 自管理，
+ * 不属于多 tab TerminalPanel。store 在恢复/接收会话时过滤掉它们，避免错误地
+ * 显示到 TerminalPanel 里。
+ */
+export const SINGLE_TERMINAL_PREFIX = 'single-terminal:';
+
 // Buffer cache for terminal session reconnection, consumed by TerminalInstance
 const sessionBufferCache = new Map<string, string>();
 const DEBUG_TERMINAL_DUP = '[DEBUG-terminal-dup]';
@@ -66,6 +73,8 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
     });
     ws.on('terminal.created', (data) => {
       const { sessionId, cwd, shell } = data as { sessionId: string; cwd: string; shell?: string };
+      // 单终端会话由 SingleTerminal 自管理，不纳入多 tab store
+      if (sessionId.startsWith(SINGLE_TERMINAL_PREFIX)) return;
       console.debug(DEBUG_TERMINAL_DUP, 'client terminal.created', {
         sessionId,
         cwd,
@@ -104,9 +113,13 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
       });
     });
     ws.on('terminal.sessions', (data) => {
-      const { sessions: remoteSessions } = data as {
+      const { sessions: allRemoteSessions } = data as {
         sessions: Array<{ sessionId: string; cwd: string; shell?: string; buffer?: string }>;
       };
+      // 单终端会话由 SingleTerminal 自管理，从多 tab 恢复列表中剔除
+      const remoteSessions = allRemoteSessions.filter(
+        (rs) => !rs.sessionId.startsWith(SINGLE_TERMINAL_PREFIX),
+      );
       console.debug(DEBUG_TERMINAL_DUP, 'client terminal.sessions', {
         remoteSessions: remoteSessions.map((session) => ({
           sessionId: session.sessionId,

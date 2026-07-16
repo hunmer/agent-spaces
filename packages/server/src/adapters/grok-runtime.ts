@@ -206,13 +206,14 @@ function prepareGrokHome(config: AgentRuntimeConfig, configDir: string | undefin
 
 export function buildGrokCustomModelConfig(config: AgentRuntimeConfig): string | undefined {
   if (!config.model || !config.baseURL) return undefined;
-  const backend = normalizeGrokApiBackend(config.provider);
+  const endpoint = normalizeGrokEndpoint(config.provider, config.baseURL);
+  const backend = endpoint?.backend;
   if (!backend) throw new Error(`Grok custom models do not support provider: ${config.provider ?? 'unknown'}`);
 
   const lines = [
     `[model.${tomlString(config.model)}]`,
     `model = ${tomlString(config.model)}`,
-    `base_url = ${tomlString(normalizeGrokBaseURL(config.baseURL, backend))}`,
+    `base_url = ${tomlString(endpoint.baseURL)}`,
     `name = ${tomlString(config.model)}`,
     `api_backend = ${tomlString(backend)}`,
     `max_completion_tokens = ${config.maxTokens ?? 16384}`,
@@ -226,19 +227,21 @@ export function buildGrokCustomModelConfig(config: AgentRuntimeConfig): string |
   return `${lines.join('\n')}\n`;
 }
 
-function normalizeGrokBaseURL(baseURL: string, backend: 'chat_completions' | 'responses' | 'messages'): string {
+function normalizeGrokEndpoint(
+  provider: AgentRuntimeConfig['provider'],
+  baseURL: string,
+): { backend: 'chat_completions' | 'responses' | 'messages'; baseURL: string } | undefined {
   const normalized = baseURL.replace(/\/+$/, '');
-  return backend === 'messages' && !normalized.endsWith('/v1') ? `${normalized}/v1` : normalized;
-}
-
-function normalizeGrokApiBackend(provider: AgentRuntimeConfig['provider']): 'chat_completions' | 'responses' | 'messages' | undefined {
+  if (/^https:\/\/api\.minimaxi\.com\/anthropic$/i.test(normalized)) {
+    return { backend: 'chat_completions', baseURL: 'https://api.minimaxi.com/v1' };
+  }
   if (
     provider === 'anthropic-messages'
     || provider === 'openai-responses-to-anthropic-messages'
     || provider === 'openai-chat-completions-to-anthropic-messages'
-  ) return 'messages';
-  if (provider === 'openai-responses') return 'responses';
-  if (provider === 'openai-chat-completions' || !provider) return 'chat_completions';
+  ) return { backend: 'messages', baseURL: normalized.endsWith('/v1') ? normalized : `${normalized}/v1` };
+  if (provider === 'openai-responses') return { backend: 'responses', baseURL: normalized };
+  if (provider === 'openai-chat-completions' || !provider) return { backend: 'chat_completions', baseURL: normalized };
   return undefined;
 }
 

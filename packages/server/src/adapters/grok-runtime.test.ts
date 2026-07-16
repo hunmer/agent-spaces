@@ -31,7 +31,7 @@ test('builds documented Grok headless arguments', () => {
   assert.equal(parseGrokJsonLine('not json'), null);
 });
 
-test('maps an Anthropic-compatible provider to a Grok custom model', () => {
+test('uses the MiniMax OpenAI endpoint to avoid unsigned Anthropic thinking blocks', () => {
   assert.equal(buildGrokCustomModelConfig({
     provider: 'anthropic-messages',
     model: 'MiniMax-M2.5',
@@ -41,12 +41,11 @@ test('maps an Anthropic-compatible provider to a Grok custom model', () => {
   }), [
     '[model."MiniMax-M2.5"]',
     'model = "MiniMax-M2.5"',
-    'base_url = "https://api.minimaxi.com/anthropic/v1"',
+    'base_url = "https://api.minimaxi.com/v1"',
     'name = "MiniMax-M2.5"',
-    'api_backend = "messages"',
+    'api_backend = "chat_completions"',
     'max_completion_tokens = 8192',
     'env_key = "AGENT_SPACES_GROK_API_KEY"',
-    'extra_headers = { "x-api-key" = "${AGENT_SPACES_GROK_API_KEY}", "anthropic-version" = "2023-06-01" }',
     '',
   ].join('\n'));
 });

@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useSearchParams, usePathname } from "next/navigation";
+import { TerminalSquare } from "lucide-react";
 import { Model, TabNode, IJsonModel, Actions, ITabRenderValues, Action } from "flexlayout-react";
 import { FlexLayoutShell, type AddableComponent } from "@/components/common/flex-layout-shell";
 import { WorkspaceSwitcher } from "@/components/layout/workspace-switcher";
@@ -49,6 +50,10 @@ const CodeEditor = dynamic(() => import("@/components/editor/code-editor").then(
   loading: panelLoader,
 });
 const TerminalPanel = dynamic(() => import("@/components/terminal/terminal-panel").then((mod) => mod.TerminalPanel), {
+  ssr: false,
+  loading: panelLoader,
+});
+const SingleTerminal = dynamic(() => import("@/components/terminal/single-terminal").then((mod) => mod.SingleTerminal), {
   ssr: false,
   loading: panelLoader,
 });
@@ -166,20 +171,9 @@ const defaultJson: IJsonModel = {
   },
 };
 
-// 工具栏「添加 Tab」可加入的面板清单（与 factory 中的 component 一致）
+// 工具栏「添加 Tab」可加入的面板清单：单终端（独立 xterm）
 const WORKSPACE_ADDABLE_COMPONENTS: AddableComponent[] = [
-  { key: "channel-list", name: "Channels" },
-  { key: "issue-list", name: "Issues" },
-  { key: "workfolder", name: "Workfolder" },
-  { key: "code-editor", name: "Code Editor" },
-  { key: "chat", name: "Chat" },
-  { key: "issue-detail", name: "Issue Detail" },
-  { key: "terminal", name: "Terminal" },
-  { key: "git-commits", name: "Commits" },
-  { key: "project-settings", name: "Settings" },
-  { key: "code-favorites", name: "Favorites" },
-  { key: "worktree-panel", name: "Worktrees" },
-  { key: "activity-log", name: "Logger" },
+  { key: "single-terminal", name: "Terminal", icon: <TerminalSquare className="size-4" /> },
 ];
 
 interface WorkspaceShellProps {
@@ -667,6 +661,8 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
           return <IssueDetail workspaceId={workspaceId} />;
         case "terminal":
           return <TerminalPanel workspaceId={workspaceId} boundDirs={boundDirs} />;
+        case "single-terminal":
+          return <SingleTerminal workspaceId={workspaceId} boundDirs={boundDirs} node={node} />;
         case "git-commits":
           return <GitCommitsPanel workspaceId={workspaceId} />;
         case "project-settings":
