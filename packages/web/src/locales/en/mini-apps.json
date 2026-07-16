@@ -57,7 +57,9 @@
     "description": "Description",
     "save": "Save",
     "defaultBackground": "Default background",
-    "nameExists": "This name already exists. Try another."
+    "nameExists": "This name already exists. Try another.",
+    "devices": "Supported Devices",
+    "devicesHint": "Adds a device-frame switcher to the preview toolbar. Leave empty to hide."
   },
   "store": {
     "title": "Template Store",

@@ -12,7 +12,15 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { AvatarUploader } from '@/components/common/avatar-uploader';
 import { ImagePickerDialog } from '@/components/ui/image-picker-dialog';
-import { Camera, X, Loader2 } from 'lucide-react';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { Camera, X, Loader2, Smartphone, Tablet, Monitor } from 'lucide-react';
+
+/** 编辑器里可选的设备清单（值与 manifest.devices 一致；ipad 运行时再拆方向）。 */
+const DEVICE_OPTIONS: Array<{ value: string; label: string; icon: typeof Smartphone }> = [
+  { value: 'mobile', label: 'Mobile', icon: Smartphone },
+  { value: 'ipad', label: 'iPad', icon: Tablet },
+  { value: 'pc', label: 'PC', icon: Monitor },
+];
 
 interface MiniAppEditDialogProps {
   project: MiniAppProject | null;
@@ -28,6 +36,7 @@ export function MiniAppEditDialog({ project, open, onOpenChange, onUpdated }: Mi
   const [icon, setIcon] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
   const [backgroundUrl, setBackgroundUrl] = useState('');
+  const [devices, setDevices] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -45,6 +54,7 @@ export function MiniAppEditDialog({ project, open, onOpenChange, onUpdated }: Mi
       setIcon(project.icon ?? '');
       setAvatarUrl(project.avatarUrl ? `${sdk.miniApp.getAvatarUrl(project.id)}?t=${Date.now()}` : '');
       setBackgroundUrl(project.backgroundUrl ? `${sdk.miniApp.getBackgroundUrl(project.id)}?t=${Date.now()}` : '');
+      setDevices(Array.isArray(project.devices) ? project.devices : []);
     }
   }, [project]);
 
@@ -88,6 +98,7 @@ export function MiniAppEditDialog({ project, open, onOpenChange, onUpdated }: Mi
         name: name.trim(),
         description: description.trim() || undefined,
         icon: icon || undefined,
+        devices,
         ...(avatarCleared ? { avatarUrl: '' } : {}),
       });
       setError('');
@@ -189,6 +200,33 @@ export function MiniAppEditDialog({ project, open, onOpenChange, onUpdated }: Mi
               rows={3}
               disabled={saving}
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label className="text-xs text-muted-foreground">{t('edit.devices')}</Label>
+            <ToggleGroup
+              value={devices}
+              onValueChange={(value) => setDevices(value)}
+              variant="outline"
+              size="sm"
+            >
+              {DEVICE_OPTIONS.map((opt) => {
+                const Icon = opt.icon;
+                return (
+                  <ToggleGroupItem
+                    key={opt.value}
+                    value={opt.value}
+                    aria-label={opt.label}
+                    title={opt.label}
+                    className="px-2.5"
+                  >
+                    <Icon className="size-3.5" />
+                    <span className="ml-1 text-xs">{opt.label}</span>
+                  </ToggleGroupItem>
+                );
+              })}
+            </ToggleGroup>
+            <p className="text-[11px] text-muted-foreground">{t('edit.devicesHint')}</p>
           </div>
         </div>
         <DialogFooter>

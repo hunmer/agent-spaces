@@ -67,7 +67,7 @@ export function createMiniAppApi(http: HttpClient) {
     create: (data: { name: string; type: 'react' | 'html'; description?: string; tags?: string[] }): Promise<MiniAppProject> =>
       http.post('/api/mini-apps', data),
 
-    update: (id: string, data: Partial<Pick<MiniAppProject, 'name' | 'description' | 'tags' | 'enabledPlugins' | 'agentConfigId' | 'mainFile' | 'icon' | 'avatarUrl' | 'backgroundUrl'>>): Promise<MiniAppProject> =>
+    update: (id: string, data: Partial<Pick<MiniAppProject, 'name' | 'description' | 'tags' | 'enabledPlugins' | 'agentConfigId' | 'mainFile' | 'icon' | 'avatarUrl' | 'backgroundUrl' | 'devices'>>): Promise<MiniAppProject> =>
       http.put(`/api/mini-apps/${encodeURIComponent(id)}`, data),
 
     delete_: (id: string): Promise<void> =>

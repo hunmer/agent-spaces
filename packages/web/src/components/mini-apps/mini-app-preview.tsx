@@ -68,34 +68,38 @@ const DEVICE_FRAMES: Record<string, {
     label: 'Mobile',
     icon: Smartphone,
     frame: '/devices/iphone-17-pro-max.svg',
-    screen: { top: '3%', right: '8%', bottom: '3%', left: '8%' },
+    // 屏幕区由 mockup SVG 实测得出（暗像素外接矩形）：top/bottom≈2.2%，left/right≈4.5%
+    screen: { top: '2.1%', right: '4.5%', bottom: '2.2%', left: '4.5%' },
     maxWidth: '380px',
-    aspectRatio: '9 / 19.5',
+    aspectRatio: '1520 / 3068',
     isSvg: true,
   },
   ipad_portrait: {
     label: 'iPad Portrait',
     icon: Tablet,
     frame: '/devices/ipad-pro-13-portrait.png',
-    screen: { top: '6%', right: '7%', bottom: '6%', left: '7%' },
+    // 实测：屏幕 inset 上下 3.25%、左右 4.15%
+    screen: { top: '3.3%', right: '4.2%', bottom: '3.3%', left: '4.2%' },
     maxWidth: '780px',
-    aspectRatio: '820 / 1180',
+    aspectRatio: '2448 / 3132',
   },
   ipad_landscape: {
     label: 'iPad Landscape',
     icon: Tablet,
     frame: '/devices/ipad-pro-13-landscape.png',
-    screen: { top: '7%', right: '6%', bottom: '7%', left: '6%' },
+    // 实测：屏幕 inset 上下 4.15%、左右 3.25%
+    screen: { top: '4.2%', right: '3.3%', bottom: '4.2%', left: '3.3%' },
     maxWidth: '1180px',
-    aspectRatio: '1180 / 820',
+    aspectRatio: '3132 / 2448',
   },
   pc: {
     label: 'PC',
     icon: Monitor,
     frame: '/devices/macbook-pro-16.png',
-    screen: { top: '8%', right: '11%', bottom: '16%', left: '11%' },
+    // 实测：屏幕上边/左右≈8.6%/8.5%；下边含铰链，留 9% 给键盘区
+    screen: { top: '8.7%', right: '8.5%', bottom: '9%', left: '8.5%' },
     maxWidth: '1400px',
-    aspectRatio: '16 / 10',
+    aspectRatio: '4340 / 2860',
   },
 };
 
@@ -417,9 +421,30 @@ export function MiniAppPreview({ type, sourceCode, error, onError, projectId, pr
 
   // 设备外框：可选设备清单 + 当前选中（'none' 表示不套外框）
   const availableDevices = useMemo(() => expandDevices(devices), [devices]);
-  const [device, setDevice] = useState<string>('none');
-  // 项目切换时重置设备选择
-  useEffect(() => { setDevice('none'); }, [projectId]);
+  const deviceStorageKey = projectId ? `mini-app-device:${projectId}` : '';
+  const [device, setDeviceState] = useState<string>(() => {
+    if (!deviceStorageKey) return 'none';
+    if (typeof window === 'undefined') return 'none';
+    const saved = window.sessionStorage.getItem(deviceStorageKey);
+    return saved ?? 'none';
+  });
+  // 包一层：同步写 sessionStorage
+  const setDevice = useCallback((next: string) => {
+    setDeviceState(next);
+    if (deviceStorageKey && typeof window !== 'undefined') {
+      window.sessionStorage.setItem(deviceStorageKey, next);
+    }
+  }, [deviceStorageKey]);
+  // 项目切换时从存储恢复（而非直接清空）
+  useEffect(() => {
+    if (!deviceStorageKey || typeof window === 'undefined') { setDeviceState('none'); return; }
+    const saved = window.sessionStorage.getItem(deviceStorageKey);
+    setDeviceState(saved ?? 'none');
+  }, [deviceStorageKey]);
+  // 若当前选中不在可用清单里（manifest 改了），回退到 none
+  useEffect(() => {
+    if (device !== 'none' && !availableDevices.includes(device)) setDevice('none');
+  }, [availableDevices, device, setDevice]);
 
   // Load plugin metadata for avatar display
   useEffect(() => {

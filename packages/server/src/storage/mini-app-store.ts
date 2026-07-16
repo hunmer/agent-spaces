@@ -209,7 +209,7 @@ export function createProject(input: {
   return project;
 }
 
-export function updateProject(projectId: string, updates: Partial<Pick<MiniAppProject, 'name' | 'description' | 'tags' | 'enabledPlugins' | 'agentConfigId' | 'enableAgents' | 'mainFile' | 'icon' | 'avatarUrl' | 'backgroundUrl'>>): MiniAppProject {
+export function updateProject(projectId: string, updates: Partial<Pick<MiniAppProject, 'name' | 'description' | 'tags' | 'enabledPlugins' | 'agentConfigId' | 'enableAgents' | 'mainFile' | 'icon' | 'avatarUrl' | 'backgroundUrl' | 'devices'>>): MiniAppProject {
   if (updates.name !== undefined) assertNameUnique(updates.name, projectId);
   const projects = listProjects();
   const index = projects.findIndex(p => p.id === projectId);

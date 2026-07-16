@@ -57,7 +57,9 @@
     "description": "描述",
     "save": "保存",
     "defaultBackground": "默认背景",
-    "nameExists": "该名称已存在，请换一个"
+    "nameExists": "该名称已存在，请换一个",
+    "devices": "支持的设备",
+    "devicesHint": "在预览工具栏添加设备外框切换器；不选则隐藏。"
   },
   "store": {
     "title": "模板商店",
