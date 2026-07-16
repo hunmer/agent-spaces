@@ -21,7 +21,7 @@ interface DiscoverRuntimeCliResponse {
 
 interface InstallRuntimeCliResponse extends DiscoverRuntimeCliResponse {
   ok: boolean;
-  runtimeId: "claude-code" | "codex" | "gemini-cli" | "hermes" | "oh-my-pi" | "claude-code-sdk" | "codex-sdk" | "open-agent-sdk";
+  runtimeId: "claude-code" | "codex" | "gemini-cli" | "hermes" | "pi" | "claude-code-sdk" | "codex-sdk" | "open-agent-sdk";
   packageManager: string;
   packages: string[];
   stdout: string;
@@ -30,7 +30,7 @@ interface InstallRuntimeCliResponse extends DiscoverRuntimeCliResponse {
 
 interface CheckSdkUpdatesResponse {
   updates: Array<{
-    runtimeId: "claude-code" | "codex" | "gemini-cli" | "hermes" | "oh-my-pi" | "claude-code-sdk" | "codex-sdk" | "open-agent-sdk";
+    runtimeId: "claude-code" | "codex" | "gemini-cli" | "hermes" | "pi" | "claude-code-sdk" | "codex-sdk" | "open-agent-sdk";
     latestVersion: string | null;
     debug: {
       packageName: string | null;
@@ -43,8 +43,8 @@ interface CheckSdkUpdatesResponse {
   }>;
 }
 
-type InstallableRuntimeId = "claude-code" | "codex" | "gemini-cli" | "hermes" | "oh-my-pi" | "claude-code-sdk" | "codex-sdk" | "open-agent-sdk";
-const INSTALLABLE_CLI_IDS = new Set<InstallableRuntimeId>(["claude-code", "codex", "gemini-cli", "hermes", "oh-my-pi"]);
+type InstallableRuntimeId = "claude-code" | "codex" | "gemini-cli" | "hermes" | "claude-code-sdk" | "codex-sdk" | "open-agent-sdk";
+const INSTALLABLE_CLI_IDS = new Set<InstallableRuntimeId>(["claude-code", "codex", "gemini-cli", "hermes"]);
 
 export function RuntimeTab() {
   const t = useTranslations("settings");
@@ -313,7 +313,7 @@ export function RuntimeTab() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  {(() => {
+                  {item.id !== "pi" ? (() => {
                     const action = getInstallableAction(item);
                     const Icon = action.icon;
                     const spinning = installingId === item.id || checkingUpdateId === item.id;
@@ -329,7 +329,7 @@ export function RuntimeTab() {
                         {installingId === item.id || checkingUpdateId === item.id ? t("runtimeProcessing") : action.label}
                       </Button>
                     );
-                  })()}
+                  })() : null}
                 </div>
               </div>
             ))

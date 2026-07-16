@@ -5,7 +5,7 @@
 import type { AgentRuntime, AgentRuntimeConfig } from './agent-runtime-types.js';
 import { HermesRuntime } from './hermes-runtime.js';
 import { LangChainRuntime } from './langchain-runtime.js';
-import { OhMyPiRuntime } from './oh-my-pi-runtime.js';
+import { PiRuntime } from './pi-runtime.js';
 
 export type {
   AgentRunOptions,
@@ -16,7 +16,7 @@ export type {
 } from './agent-runtime-types.js';
 export { HermesRuntime } from './hermes-runtime.js';
 export { LangChainRuntime } from './langchain-runtime.js';
-export { OhMyPiRuntime } from './oh-my-pi-runtime.js';
+export { PiRuntime } from './pi-runtime.js';
 
 class LazyAgentRuntime implements AgentRuntime {
   private runtimePromise: Promise<AgentRuntime> | null = null;
@@ -80,7 +80,7 @@ export function createAgentRuntime(
       return new LangChainRuntime(config);
     case 'hermes':
       return new HermesRuntime(config);
-    case 'oh-my-pi':
-      return new OhMyPiRuntime(config);
+    case 'pi':
+      return new PiRuntime(config);
   }
 }

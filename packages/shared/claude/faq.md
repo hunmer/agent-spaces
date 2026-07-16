@@ -17,7 +17,7 @@ A: 有少量。除了纯类型定义外，还导出了常量（如 `BUILT_IN_AGE
 ## AgentConfig
 
 **Q: runtimeKind 有哪些选项？**
-A: `open-agent-sdk`（默认）、`claude-code`、`codex`、`langchain`、`hermes`、`oh-my-pi` 六种运行时。
+A: `open-agent-sdk`（默认）、`claude-code`、`codex`、`langchain`、`hermes`、`pi` 六种运行时。
 
 **Q: modelProvider 带 `to-anthropic-messages` 是什么？**
 A: 表示通过 Anthropic Bridge 中转，将 OpenAI Chat/Responses 请求转为 Anthropic Messages 协议，供 ClaudeCodeRuntime 使用。有 `openai-responses-to-anthropic-messages` 和 `openai-chat-completions-to-anthropic-messages` 两种。

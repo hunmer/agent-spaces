@@ -21,7 +21,7 @@
 
 ## 2026-07-06 — 增量更新（Runtime 管理 + Issue 系统 + Notification Hub）
 
-- **server**: 新增 `routes/runtime.ts`（CLI 发现 / SDK 安装 / 版本检测，挂载于 `/api/runtime`，定义 8 个 `RuntimeDescriptor`：claude-code/codex/gemini-cli/hermes/oh-my-pi/claude-code-sdk/codex-sdk/open-agent-sdk）
+- **server**: 新增 `routes/runtime.ts`（CLI 发现 / SDK 安装 / 版本检测，挂载于 `/api/runtime`，定义 8 个 `RuntimeDescriptor`：claude-code/codex/gemini-cli/hermes/pi/claude-code-sdk/codex-sdk/open-agent-sdk）
 - **server**: `adapters/claude-code-runtime/` 成熟为独立子模块（adapter-pool / anthropic-bridge / protocol-converter / message-format / sdk-config）
 - **server**: `services/notification-hub/` 多通道推送成型（wechat-adapter / lark-adapter / bot-agent / bot-commands）
 - **server**: Issue 系统闭环（`services/issue.ts` + `issue-comment.ts` + `issue-retry.ts` + `agents/issue-agent-runner.ts` + `storage/issue-store.ts`）

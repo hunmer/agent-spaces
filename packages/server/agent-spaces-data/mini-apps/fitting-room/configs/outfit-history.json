@@ -1,21 +1,22 @@
 [
   {
-    "id": "1784002173054-0",
+    "id": "1784168357334-0",
     "type": "image",
-    "url": "http://127.0.0.1:3100/api/mini-apps/fitting-room/data/file?path=output%2Ffitting-outfit-1784002089780-5wap-0.jpg&token=",
+    "url": "http://127.0.0.1:3100/api/mini-apps/fitting-room/data/file?path=output%2Ffitting-outfit-1784168303448-fl4n-0.jpg&token=",
+    "thumbUrl": "http://127.0.0.1:3100/api/mini-apps/fitting-room/data/file?path=thumbs%2Ffitting-outfit-1784168303448-fl4n-0.jpg&token=",
     "prompt": "保留人物面部与发型特征，换上参考图中的服装款式",
     "model": "gpt-image-2",
     "aspect": "1:1",
     "size": "1k",
     "workflowName": "edit_image",
-    "sourceImage": "http://127.0.0.1:3100/static/uploads/微信图片_20260713093538_17_1072 (2)-dcc1bbc3-ac34-4725-bac9-82c14c9142da.jpg",
+    "sourceImage": "http://127.0.0.1:3100/static/uploads/611ebe48aa15a85f2bd914d7cad32e64-53d882f4-9b3c-4e20-b88e-7135775abe36.jpeg",
     "references": [
       {
-        "url": "http://127.0.0.1:3100/static/uploads/a0fef68c1b96dd1bf61804c7aa9074f8-9214076e-6624-4001-868d-1b631293f31a.jpg",
-        "path": "G:\\agent_spaces\\packages\\server\\public\\uploads\\a0fef68c1b96dd1bf61804c7aa9074f8-9214076e-6624-4001-868d-1b631293f31a.jpg",
-        "name": "a0fef68c1b96dd1bf61804c7aa9074f8.jpg"
+        "url": "http://127.0.0.1:3100/static/uploads/61fe928117d311dfca864dab96f4bfbb-d52c6d1f-34ed-40e3-bb9a-5960b4c8eafc.jpeg",
+        "path": "G:\\agent_spaces\\packages\\server\\public\\uploads\\61fe928117d311dfca864dab96f4bfbb-d52c6d1f-34ed-40e3-bb9a-5960b4c8eafc.jpeg",
+        "name": "61fe928117d311dfca864dab96f4bfbb.jpeg"
       }
     ],
-    "createdAt": "2026/7/14 12:09:33"
+    "createdAt": "2026/7/16 10:19:17"
   }
 ]

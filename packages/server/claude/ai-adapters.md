@@ -14,7 +14,7 @@ Server 采用**策略模式**适配多种 AI Agent SDK。`agent-runtime.ts` 定�
 | `/api/runtime/install-cli` | POST | 触发 npm/github 安装指定运行时包 |
 | `/api/runtime/check-sdk-updates` | POST | 查询 SDK 包是否有新版本 |
 
-支持的 `RuntimeDescriptor`（共 8 个）：`claude-code`、`codex`、`gemini-cli`、`hermes`、`oh-my-pi`（CLI 类）；`claude-code-sdk`、`codex-sdk`、`open-agent-sdk`（SDK 类）。版本来源支持 npm 包名或 GitHub repo。前端管理入口在 `web/src/components/sidebar/settings/runtime-tab.tsx`。
+支持的 `RuntimeDescriptor`（共 8 个）：`claude-code`、`codex`、`gemini-cli`、`hermes`（CLI 类）；`pi`、`claude-code-sdk`、`codex-sdk`、`open-agent-sdk`（SDK 类）。版本来源支持 npm 包名或 GitHub repo。前端管理入口在 `web/src/components/sidebar/settings/runtime-tab.tsx`。
 
 ## 适配器列表
 
@@ -53,9 +53,9 @@ Server 采用**策略模式**适配多种 AI Agent SDK。`agent-runtime.ts` 定�
 
 - 自研运行时
 
-### Oh-My-Pi Runtime (`adapters/oh-my-pi-runtime.ts`)
+### Pi Runtime (`adapters/pi-runtime.ts`)
 
-- 自研运行时
+- 使用 `@earendil-works/pi-coding-agent` 原生 SDK
 
 ## 新增适配器指南
 

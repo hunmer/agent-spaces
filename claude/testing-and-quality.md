@@ -15,7 +15,7 @@
 | `message-parts.test.ts` | 消息解析 |
 | `mini-app-agent.test.ts` | Mini App Agent |
 | `mini-app-db.test.ts` | Mini App 数据库 |
-| `oh-my-pi-runtime.test.ts` | Oh-My-Pi 运行时 |
+| `pi-runtime.test.ts` | Pi 原生 SDK 运行时 |
 | `open-agent-sdk-runtime.test.ts` | Open Agent SDK 运行时 |
 | `sql-safety.test.ts` | SQL 安全 |
 | `sqlite-store.test.ts` | SQLite 存储 |

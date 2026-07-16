@@ -1,5 +1,5 @@
 {
-  "gender": "male",
+  "gender": "female",
   "height": "170",
   "weight": "55",
   "bust": "",
@@ -7,22 +7,11 @@
   "hip": "",
   "photos": [
     {
-      "url": "http://127.0.0.1:3100/static/uploads/微信图片_20260713093538_17_1072 (2)-dcc1bbc3-ac34-4725-bac9-82c14c9142da.jpg",
-      "path": "G:\\agent_spaces\\packages\\server\\public\\uploads\\微信图片_20260713093538_17_1072 (2)-dcc1bbc3-ac34-4725-bac9-82c14c9142da.jpg",
-      "name": "微信图片_20260713093538_17_1072 (2).jpg"
+      "url": "http://127.0.0.1:3100/static/uploads/611ebe48aa15a85f2bd914d7cad32e64-53d882f4-9b3c-4e20-b88e-7135775abe36.jpeg",
+      "path": "G:\\agent_spaces\\packages\\server\\public\\uploads\\611ebe48aa15a85f2bd914d7cad32e64-53d882f4-9b3c-4e20-b88e-7135775abe36.jpeg",
+      "name": "611ebe48aa15a85f2bd914d7cad32e64.jpeg"
     }
   ],
-  "outfits": [
-    {
-      "url": "http://127.0.0.1:3100/static/uploads/fe5de0ac51f72687219c5951c3e51d03-acbb0b7b-be6a-4dd2-b4f6-952d32319a72.jpeg",
-      "path": "G:\\agent_spaces\\packages\\server\\public\\uploads\\fe5de0ac51f72687219c5951c3e51d03-acbb0b7b-be6a-4dd2-b4f6-952d32319a72.jpeg",
-      "name": "fe5de0ac51f72687219c5951c3e51d03.jpeg"
-    },
-    {
-      "url": "http://127.0.0.1:3100/static/uploads/88dab736dea3bb3e602142cb8561f6f6-824b003c-f88e-4280-9655-35a2cb96fdce.jpeg",
-      "path": "G:\\agent_spaces\\packages\\server\\public\\uploads\\88dab736dea3bb3e602142cb8561f6f6-824b003c-f88e-4280-9655-35a2cb96fdce.jpeg",
-      "name": "88dab736dea3bb3e602142cb8561f6f6.jpeg"
-    }
-  ],
-  "updatedAt": "2026/7/14 10:10:35"
+  "outfits": [],
+  "updatedAt": "2026/7/16 10:17:43"
 }

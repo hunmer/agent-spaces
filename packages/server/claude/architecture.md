@@ -11,7 +11,7 @@
 | Codex | codex | adapters/codex-runtime.ts | 602 |
 | LangChain | langchain | adapters/langchain-runtime.ts | 954 |
 | Hermes | hermes | adapters/hermes-runtime.ts | 901 |
-| OhMyPi | oh-my-pi | adapters/oh-my-pi-runtime.ts | 943 |
+| Pi | pi | adapters/pi-runtime.ts | 原生 SDK |
 
 ### ClaudeCodeRuntime 子模块
 

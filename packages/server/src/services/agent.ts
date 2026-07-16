@@ -53,7 +53,7 @@ const BUILT_IN_AGENT_IDS = [
   AGENT_COMMIT_PRESET_ID,
   AGENT_TITLE_GENERATOR_PRESET_ID,
 ];
-const VALID_RUNTIME_KINDS: NonNullable<AgentConfig['runtimeKind']>[] = ['open-agent-sdk', 'claude-code', 'codex', 'langchain', 'hermes', 'oh-my-pi'];
+const VALID_RUNTIME_KINDS: NonNullable<AgentConfig['runtimeKind']>[] = ['open-agent-sdk', 'claude-code', 'codex', 'langchain', 'hermes', 'pi'];
 const VALID_TOOL_NAMES = new Set(BUILT_IN_AGENT_TOOLS.map((tool) => tool.name));
 const CLAUDE_BUILT_IN_DIRS = ['agents', 'commands'] as const;
 const ANTHROPIC_BRIDGE_PROVIDERS: Array<NonNullable<AgentConfig['modelProvider']>> = [

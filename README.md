@@ -37,7 +37,7 @@
 
 - **六种 Agent 角色** — agent / scheduler / task_creator / bot + 自定义角色
 - **六种 Agent 运行时** — Claude Code / OpenAI Codex / LangChain / Open Agent SDK / Hermes / Oh-My-Pi，配置切换
-- **运行时管理** — 一键发现/安装/更新本地 CLI 与 SDK（claude-code/codex/gemini-cli/hermes/oh-my-pi 等），版本检测
+- **运行时管理** — 一键发现/安装/更新本地 CLI 与 SDK（claude-code/codex/gemini-cli/hermes/pi 等），版本检测
 - **频道聊天** — TipTap 富文本，@mention 直接触发 Agent 执行
 - **议题管理** — Issue 绑定工作流模板，自动编排执行，含评论时间线、失败重试、状态流转
 - **Hook 系统** — Agent 工具调用前后的钩子（shell/webhook/script），per-tool-call 粒度

@@ -14,7 +14,7 @@ pnpm --filter @agent-spaces/server test
 
 | 分类 | 测试文件 |
 |---|---|
-| AI 运行时 | hermes-runtime, langchain-runtime, oh-my-pi-runtime, open-agent-sdk-runtime, codex-function-tool-bridge |
+| AI 运行时 | hermes-runtime, langchain-runtime, pi-runtime, open-agent-sdk-runtime, codex-function-tool-bridge |
 | Agent | agent-skill-template, mini-app-agent |
 | Workflow | workflow-editor-tools, workflow-execution-snapshot, workflow-current-node-error, workflow-end-output-edge, workflow-nested-value, workflow-output-object, workflow-partial-loop, workflow-plugin-input-coercion, workflow-config-template |
 | 存储 | sqlite-store, mini-app-db, sql-safety |

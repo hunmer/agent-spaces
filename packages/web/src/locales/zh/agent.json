@@ -13,7 +13,7 @@
     "codex": "Codex",
     "langchain": "LangChain",
     "hermes": "Hermes",
-    "ohMyPi": "Oh My Pi"
+    "pi": "Pi"
   },
   "role": {
     "agent": { "name": "Agent" },

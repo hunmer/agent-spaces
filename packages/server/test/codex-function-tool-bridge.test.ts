@@ -4,7 +4,7 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { startCodexFunctionToolBridge } from '../src/adapters/codex-function-tool-bridge.js';
 
-test('function tool bridge accepts OMP MCP-prefixed Agent Spaces tool names', async () => {
+test('function tool bridge accepts MCP-prefixed Agent Spaces tool names', async () => {
   const bridge = await startCodexFunctionToolBridge([
     {
       name: 'ListDatabaseNodes',

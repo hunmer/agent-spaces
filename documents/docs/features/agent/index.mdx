@@ -43,9 +43,9 @@ Agent 是 Agent Spaces 的核心执行单元。不同的 Agent 角色各司其�
 | Open Agent SDK | @codeany/open-agent-sdk | 多模型支持 | 通用 Agent SDK |
 | LangChain | langchain + @langchain/openai/anthropic/google-genai | OpenAI/Anthropic/Google 等 | 基于 LangChain.js createAgent API，provider-neutral |
 | Hermes | Hermes CLI（外部进程） | 多模型支持 | 外部 CLI 进程适配器，支持自定义 Hermes 运行时 |
-| Oh My Pi | `omp` CLI（外部进程） | 多模型支持 | 通过 `omp --mode json` 子进程对接 OMP newline-delimited JSON 事件，隔离 OMP home、session 和模型注册表 |
+| Pi | @earendil-works/pi-coding-agent | 多模型支持 | 原生 SDK 会话、工具、技能、MCP 与流式事件 |
 
-运行时通过工厂函数 `createAgentRuntime()` 按 `runtimeKind` 切换（可选值：`claude-code` / `codex` / `open-agent-sdk` / `langchain` / `hermes` / `oh-my-pi`），无需修改代码即可更换 Agent 的底层运行时。各运行时在底层共享同一套 Function Call 工具抽象（见下文），但模型加载、session 管理、工具暴露方式由各适配器自行实现。
+运行时通过工厂函数 `createAgentRuntime()` 按 `runtimeKind` 切换（可选值：`claude-code` / `codex` / `open-agent-sdk` / `langchain` / `hermes` / `pi`），无需修改代码即可更换 Agent 的底层运行时。各运行时在底层共享同一套 Function Call 工具抽象（见下文），但模型加载、session 管理、工具暴露方式由各适配器自行实现。
 
 ### 项目级持久指令
 
@@ -174,7 +174,7 @@ Issue 工具仅在当前频道上下文中可用，并在服务端强制校验 `
 
 工具层通过 `AgentFunctionTool` 抽象（定义于 `packages/server/src/adapters/agent-runtime-types.ts`）统一管理，不同运行时的 Agent 使用相同的工具接口，内置工具声明集中在 `packages/shared/src/types/tool.ts` 的 `BUILT_IN_AGENT_TOOLS`。工具输入校验通过 `input-helpers.ts` 统一处理（assertRecord / readRequiredString 等），服务端始终是信任边界。
 
-在 Claude Code 运行时中，工具通过 SDK MCP Server 暴露，模型实际调用名为 `mcp__agent-spaces__<工具名>`（例如 `mcp__agent-spaces__WriteDatabaseNode`）。Codex 与 Oh My Pi 运行时则会启动一个仅监听 `127.0.0.1` 的短生命周期本地 Streamable HTTP MCP server 暴露同样的工具。
+在 Claude Code 运行时中，工具通过 SDK MCP Server 暴露，模型实际调用名为 `mcp__agent-spaces__<工具名>`（例如 `mcp__agent-spaces__WriteDatabaseNode`）。Codex 运行时使用仅监听 `127.0.0.1` 的短生命周期本地 Streamable HTTP MCP server；Pi 运行时则直接注册原生 custom tools。
 
 这意味着同一套内置工具在不同运行时的“对模型可见名称”可能不同，但服务端执行语义一致，真正的权限校验和作用域限制始终落在后端。
 

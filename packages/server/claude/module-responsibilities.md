@@ -36,7 +36,7 @@
 | OpenAI Codex | `codex-runtime.ts`, `codex-function-tool-bridge.ts` | @openai/codex-sdk |
 | LangChain | `langchain-runtime.ts` | @langchain/* |
 | Hermes | `hermes-runtime.ts` | 自研 |
-| Oh-My-Pi | `oh-my-pi-runtime.ts` | 自研 |
+| Pi | `pi-runtime.ts` | @earendil-works/pi-coding-agent |
 | Open Agent SDK | `open-agent-sdk-runtime.ts` | @codeany/open-agent-sdk |
 | Agent Runtime | `agent-runtime.ts`, `agent-runtime-types.ts` | 统一接口 |
 | Git | `git.ts` | simple-git |

@@ -12,7 +12,7 @@ const rootDir = join(__dirname, '../..');
 const workspaceRootDir = join(rootDir, '../..');
 const requireFromRoot = createRequire(join(rootDir, 'package.json'));
 
-type SupportedRuntimeKind = Extract<NonNullable<AgentConfig['runtimeKind']>, 'claude-code' | 'codex' | 'open-agent-sdk' | 'hermes' | 'oh-my-pi'>;
+type SupportedRuntimeKind = Extract<NonNullable<AgentConfig['runtimeKind']>, 'claude-code' | 'codex' | 'open-agent-sdk' | 'hermes' | 'pi'>;
 type InstallableRuntimePackageId = RuntimeDescriptor['id'];
 type RuntimeCategory = 'cli' | 'sdk';
 type VersionSource = { type: 'npm'; packageName: string } | { type: 'github'; repo: string };
@@ -24,7 +24,7 @@ type InstallCommandSpec = {
 };
 
 interface RuntimeDescriptor {
-  id: 'claude-code' | 'codex' | 'gemini-cli' | 'hermes' | 'oh-my-pi' | 'claude-code-sdk' | 'codex-sdk' | 'open-agent-sdk';
+  id: 'claude-code' | 'codex' | 'gemini-cli' | 'hermes' | 'pi' | 'claude-code-sdk' | 'codex-sdk' | 'open-agent-sdk';
   category: RuntimeCategory;
   label: string;
   commands?: string[];
@@ -96,14 +96,12 @@ const RUNTIME_DESCRIPTORS: RuntimeDescriptor[] = [
     installable: true,
   },
   {
-    id: 'oh-my-pi',
-    category: 'cli',
-    label: 'Oh My Pi CLI',
-    commands: ['omp'],
-    runtimeKind: 'oh-my-pi',
-    versionArgs: ['--version'],
-    versionSource: { type: 'github', repo: 'can1357/oh-my-pi' },
-    installable: true,
+    id: 'pi',
+    category: 'sdk',
+    label: 'Pi SDK',
+    runtimeKind: 'pi',
+    packageName: '@earendil-works/pi-coding-agent',
+    installable: false,
   },
   {
     id: 'claude-code-sdk',
@@ -279,17 +277,10 @@ async function locateRuntimeCommand(descriptor: RuntimeDescriptor): Promise<stri
     ]);
   }
 
-  if (descriptor.id === 'oh-my-pi') {
-    return resolveWindowsInstalledCliPath('OMP_CLI_PATH', [
-      ['omp', 'omp.exe'],
-      ['AppData', 'Local', 'omp', 'omp.exe'],
-    ]);
-  }
-
   return null;
 }
 
-function resolveWindowsInstalledCliPath(configEnvName: 'HERMES_CLI_PATH' | 'OMP_CLI_PATH', relativeCandidates: string[][]): string | null {
+function resolveWindowsInstalledCliPath(configEnvName: 'HERMES_CLI_PATH', relativeCandidates: string[][]): string | null {
   const configured = process.env[configEnvName]?.trim();
   if (configured && existsSync(configured)) return configured;
   if (process.platform !== 'win32') return null;
@@ -477,22 +468,6 @@ function resolveRuntimeInstallCommand(descriptor: RuntimeDescriptor, alreadyInst
       : {
           command: 'sh',
           args: ['-c', 'curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash'],
-          cwd: rootDir,
-          packageManagerLabel: 'shell',
-        };
-  }
-
-  if (descriptor.id === 'oh-my-pi') {
-    return process.platform === 'win32'
-      ? {
-          command: 'powershell.exe',
-          args: ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', 'irm https://omp.sh/install.ps1 | iex'],
-          cwd: rootDir,
-          packageManagerLabel: 'powershell',
-        }
-      : {
-          command: 'sh',
-          args: ['-c', 'curl -fsSL https://omp.sh/install | sh'],
           cwd: rootDir,
           packageManagerLabel: 'shell',
         };

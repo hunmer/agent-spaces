@@ -143,11 +143,11 @@ Agent Spaces 共有 6 种运行时（Claude Code / Codex / LangChain / Hermes / 
 | `codex` | ✅ | 实时推送事件 |
 | `langchain` | ✅ | 通过节流的事件 sink 实时推送（节流间隔 100ms） |
 | `hermes` | ✅ | 按行解析 Hermes CLI 的 stdout/stderr，逐行推送 `output` |
-| `oh-my-pi` | ✅ | 解析 OMP CLI 的 JSON 事件流，实时推送 `output`/`tool_use`/`tool_result`/`reasoning` |
+| `pi` | ✅ | 订阅原生 SDK 事件，实时推送 `output`/`tool_use`/`tool_result`/`reasoning` |
 | `open-agent-sdk`（默认） | ❌ | SDK `prompt()` 为阻塞调用，所有事件在执行结束后一次性推送 |
 
 :::caution
-`open-agent-sdk` 运行时执行期间不会发送 `output`/`tool_use`/`tool_result` 事件，仅在执行结束后发送单条 `output` 事件和 `done` 事件。如需实时流式输出，请使用 `claude-code`、`codex`、`langchain`、`hermes` 或 `oh-my-pi` 运行时。
+`open-agent-sdk` 运行时执行期间不会发送 `output`/`tool_use`/`tool_result` 事件，仅在执行结束后发送单条 `output` 事件和 `done` 事件。如需实时流式输出，请使用 `claude-code`、`codex`、`langchain`、`hermes` 或 `pi` 运行时。
 :::
 
 ## 注意事项

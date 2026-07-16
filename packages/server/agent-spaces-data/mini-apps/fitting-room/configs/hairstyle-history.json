@@ -1,21 +1,22 @@
 [
   {
-    "id": "1784001734019-0",
+    "id": "1784168393419-0",
     "type": "image",
-    "url": "http://127.0.0.1:3100/api/mini-apps/fitting-room/data/file?path=output%2Fundefined-0.jpg&token=",
+    "url": "http://127.0.0.1:3100/api/mini-apps/fitting-room/data/file?path=output%2Ffitting-hairstyle-1784168354308-nsmi-0.jpg&token=",
+    "thumbUrl": "http://127.0.0.1:3100/api/mini-apps/fitting-room/data/file?path=thumbs%2Ffitting-hairstyle-1784168354308-nsmi-0.jpg&token=",
     "prompt": "只迁移发型，不修改脸部特征与服饰",
     "model": "gpt-image-2",
     "aspect": "1:1",
     "size": "1k",
     "workflowName": "edit_image",
-    "sourceImage": "http://127.0.0.1:3100/static/uploads/微信图片_20260713093538_17_1072 (2)-dcc1bbc3-ac34-4725-bac9-82c14c9142da.jpg",
+    "sourceImage": "http://127.0.0.1:3100/static/uploads/611ebe48aa15a85f2bd914d7cad32e64-53d882f4-9b3c-4e20-b88e-7135775abe36.jpeg",
     "references": [
       {
-        "url": "http://127.0.0.1:3100/static/uploads/fe26f80b33ebdef71d041334968d6982-7f935e07-aa9e-4db2-a3d6-a0716fe1f181.jpeg",
-        "path": "G:\\agent_spaces\\packages\\server\\public\\uploads\\fe26f80b33ebdef71d041334968d6982-7f935e07-aa9e-4db2-a3d6-a0716fe1f181.jpeg",
-        "name": "fe26f80b33ebdef71d041334968d6982.jpeg"
+        "url": "http://127.0.0.1:3100/static/uploads/6e55ba5a617790398ae3a4b82b3fbc40-4ea90ee3-1274-42bd-9159-313f035a2d3b.jpeg",
+        "path": "G:\\agent_spaces\\packages\\server\\public\\uploads\\6e55ba5a617790398ae3a4b82b3fbc40-4ea90ee3-1274-42bd-9159-313f035a2d3b.jpeg",
+        "name": "6e55ba5a617790398ae3a4b82b3fbc40.jpeg"
       }
     ],
-    "createdAt": "2026/7/14 12:02:14"
+    "createdAt": "2026/7/16 10:19:53"
   }
 ]

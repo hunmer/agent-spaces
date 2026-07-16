@@ -7,12 +7,12 @@ export type RuntimeCliId =
   | "codex"
   | "gemini-cli"
   | "hermes"
-  | "oh-my-pi"
+  | "pi"
   | "claude-code-sdk"
   | "codex-sdk"
   | "open-agent-sdk";
 export type RuntimeCategory = "cli" | "sdk";
-export type SupportedRuntimeKind = "claude-code" | "codex" | "open-agent-sdk" | "hermes" | "oh-my-pi";
+export type SupportedRuntimeKind = "claude-code" | "codex" | "open-agent-sdk" | "hermes" | "pi";
 
 export interface RuntimeCliDiscoveryItem {
   id: RuntimeCliId;
@@ -133,7 +133,7 @@ function normalizeStoredItem(item: unknown): RuntimeCliDiscoveryItem | null {
     && value.id !== "codex"
     && value.id !== "gemini-cli"
     && value.id !== "hermes"
-    && value.id !== "oh-my-pi"
+    && value.id !== "pi"
     && value.id !== "claude-code-sdk"
     && value.id !== "codex-sdk"
     && value.id !== "open-agent-sdk"
@@ -153,7 +153,7 @@ function normalizeStoredItem(item: unknown): RuntimeCliDiscoveryItem | null {
       || value.runtimeKind === "codex"
       || value.runtimeKind === "open-agent-sdk"
       || value.runtimeKind === "hermes"
-      || value.runtimeKind === "oh-my-pi"
+      || value.runtimeKind === "pi"
       ? value.runtimeKind
       : null,
   };

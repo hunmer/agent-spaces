@@ -10,3 +10,24 @@
 - 根据用户澄清，将回归夹具改为由嵌入输入驱动子 start，再由 loop 读取 start 输出。
 - handoff 回归 3/3 通过，确认输入传递正常，执行图作用域修复有效。
 - server build 通过；组合回归发现一个 scoped-join 用例需单独核查。
+- 新任务：开始将业务侧 OhMyPi CLI 桥接迁移至原生 pi SDK；已保留原计划内容并追加独立迁移阶段。
+- 已完成第一轮调用链盘点：旧标识横跨 shared/server/web/docs；旧适配器核心职责是 CLI 参数/环境、技能、MCP bridge、流式事件与停止。
+- 已确认原生 SessionManager 的恢复模型和 customTools 能力；可删除 CLI 解析、可执行文件探测、OMP 配置生成与 function-tool HTTP bridge。
+- 已确认模型/密钥可由 ModelRegistry/AuthStorage 原生注入；SDK 0.74.2 不提供任意 MCP server 配置入口，迁移实现将保留 functionTools，外部 MCP 需明确报不支持而非静默忽略。
+- 事件结构已从 coding-agent 的扩展类型确认：tool start/end 带 callId/name/args/result，message_update 带 assistant delta，turn_end 带最终消息。
+- 调用面确认 MCP 配置会真实传入，已放弃“不支持即报错”方案；改为复用仓库已有 LangChain MCP adapter，将 MCP tools 转成 pi custom tools。
+- 已定位可复用的 `normalizeLangChainMcpServers` 与 MultiServerMCPClient 生命周期，准备实现 PiRuntime。
+- 已确认 PiRuntime 所需 SDK 类型均由主包导出，避免新增直接依赖。
+- 已用原生 `PiRuntime` 替换旧 CLI 适配器文件：接入原生模型、会话、事件、停止、function tools，并复用现有 MCP client。
+- shared build 通过；server 首次 build 定位到 runtime route 仍保留旧 kind，进入标识清理阶段。
+- 已完成 server runtime route、Web runtime 设置、prompt 与相关测试的具体迁移点定位。
+- 已确认 SDK runtime 的 UI 发现路径；Pi 将作为 bundled SDK 展示，不提供页面在线安装/升级。
+- 已将 server route、shared 类型、Web runtime 设置/选项/文案及相关测试统一改为 `pi`，并删除 OMP CLI 发现和安装逻辑。
+- 已同步 README、Docusaurus 与项目架构文档，将旧 CLI 描述改为 Pi 原生 SDK。
+- server build 通过；新增本地 OpenAI-compatible SSE 回归，PiRuntime 原生执行、输出、usage 和 session 事件 2/2 通过。
+- PiRuntime 回归已扩展到原生 function tool schema、调用和 tool_use/tool_result 事件，仍为 2/2 通过。
+- 旧标识全仓残留扫描为 0；frozen lockfile 与 diff check 通过。
+- 定向测试 7/7、shared/server build、Web TypeScript 均通过；最后补外部 MCP 实执行覆盖。
+- PiRuntime 本地集成回归已同时执行原生 function tool 与 MCP tool，2/2 通过；空白 systemPrompt 也按原逻辑回退默认提示词。
+- 最终状态检查发现 7 个运行数据文件并行变化；diff 证实与本任务测试无关，已保留用户运行数据。
+- Pi 原生 SDK 迁移完成：目标测试 2/2、相关测试 7/7、shared/server build、Web TypeScript、frozen lock、diff check 和旧标识扫描全部通过。
