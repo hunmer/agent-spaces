@@ -207,7 +207,12 @@ export function DashboardSidebar() {
       </SidebarHeader>
       <SidebarContent className="min-h-0 overflow-y-auto group-data-[collapsible=icon]:overflow-y-auto gap-2 mx-2 my-2 rounded-xl border border-sidebar-border bg-sidebar p-2 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
         <DashboardNavigation routes={dashboardRoutes} pathname={pathname} />
-        <div className="mt-auto pt-2">
+        <div
+          className={cn(
+            "mt-auto pt-2 flex gap-1",
+            isCollapsed ? "flex-col items-center" : "flex-row items-center justify-around"
+          )}
+        >
           <button
             type="button"
             onClick={() => tauriNavigate(router, "/learn")}
