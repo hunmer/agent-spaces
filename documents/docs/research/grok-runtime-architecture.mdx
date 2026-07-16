@@ -1,0 +1,319 @@
+---
+title: Grok Runtime Architecture And Findings
+---
+
+# Grok Runtime Architecture And Findings
+
+## Scope
+
+本文记录 `packages/server/src/adapters/grok-runtime.ts` 的实现结构，以及接入 Grok CLI Headless Mode 过程中已经验证的行为、兼容性问题和排障结论。目标是让后续开发者或 Agent 不必重新探索 CLI 参数、自定义模型、认证和流式事件语义。
+
+## Main Responsibilities
+
+- 通过 Grok CLI Headless Mode 执行 Agent prompt。
+- 把通用 `AgentRuntimeConfig` 映射为 Grok CLI 参数和自定义模型 TOML。
+- 将 Grok `streaming-json` 事件归一化为 `AgentRuntimeEvent`。
+- 返回标准 `AgentRunResult`，包括 output、session、usage 和 cost。
+- 支持恢复会话、停止子进程、CLI 发现、安装和更新。
+- 输出不包含 API Key 和完整 prompt 的诊断日志。
+
+## Main Files
+
+- `packages/server/src/adapters/grok-runtime.ts`
+  - `GrokRuntime.execute()`：子进程生命周期、JSONL 解析、事件聚合和结果转换。
+  - `buildGrokArgs()`：Headless CLI 参数映射。
+  - `buildGrokCustomModelConfig()`：生成隔离的自定义模型配置。
+  - `normalizeGrokEndpoint()`：provider/backend/base URL 映射及兼容特例。
+- `packages/server/src/adapters/grok-runtime.test.ts`
+  - CLI 参数、自定义模型和 chunk 拼接的最小回归测试。
+- `packages/server/src/adapters/agent-runtime.ts`
+  - `createAgentRuntime()` 中的 `grok` 动态加载分支。
+- `packages/server/src/adapters/agent-runtime-types.ts`
+  - `AgentRuntimeKind`、`AgentRuntimeConfig`、`AgentRuntimeEvent` 公共契约。
+- `packages/server/src/ws/agent-runner.ts`
+  - interactive Agent 调用、事件落入消息 output items、Grok 原生会话恢复判定。
+- `packages/server/src/routes/runtime.ts`
+  - Grok CLI 发现、官方安装和更新命令。
+- `packages/web/src/components/sidebar/settings/runtime-tab.tsx`
+  - Grok 安装/更新按钮入口。
+
+## Registration And Execution Flow
+
+```text
+Agent preset
+  -> packages/server/src/ws/agent-runner.ts
+     resolve runtimeKind/provider/model/apiBase/apiKey
+  -> packages/server/src/adapters/agent-runtime.ts
+     createAgentRuntime({ kind: 'grok', ... })
+  -> LazyAgentRuntime imports grok-runtime.ts
+  -> GrokRuntime.execute(prompt, workingDir, options)
+  -> prepareGrokHome()
+     optional isolated GROK_HOME/config.toml
+  -> buildGrokArgs()
+  -> spawn(grok, args, { cwd, env })
+  -> stdout JSONL events
+  -> text/thought aggregation + session/usage normalization
+  -> AgentRunResult
+  -> ws/agent-runner.ts persists message parts and runtimeSessionId
+```
+
+## Headless CLI Contract
+
+基础命令采用：
+
+```text
+grok -p <prompt>
+  --cwd <workingDir>
+  --output-format streaming-json
+  --no-auto-update
+```
+
+已映射的可选参数：
+
+- `config.model` -> `--model`
+- `options.resumeSessionId` -> `--resume`
+- `options.maxTurns` -> `--max-turns`
+- `options.tools` -> `--tools`，用逗号连接
+- `options.systemPrompt` -> `--rules`
+- `permissionMode=bypassPermissions` -> `--yolo`
+- 其他 permission mode -> `--permission-mode`
+- `thinkingEnabled=false` -> `--effort none`
+- `thinkingEffort` -> `--effort`
+
+注意：Grok 会忽略不支持 reasoning effort 的自定义模型上的 `--effort`，不能依赖该参数关闭 provider 自身的 reasoning 输出。
+
+## CLI Discovery, Installation And Update
+
+Windows 命令定位顺序：
+
+1. `GROK_CLI_PATH`
+2. `PATH` 中的 `grok`
+3. `%USERPROFILE%/.grok/bin/grok.exe`
+
+当前已验证的 Windows 默认位置：
+
+```text
+C:/Users/Administrator/.grok/bin/grok.exe
+```
+
+官方安装命令：
+
+```powershell
+irm https://x.ai/cli/install.ps1 | iex
+```
+
+macOS/Linux 安装命令：
+
+```bash
+curl -fsSL https://x.ai/cli/install.sh | bash
+```
+
+更新命令：
+
+```text
+grok update
+```
+
+这些命令由 `packages/server/src/routes/runtime.ts` 的 Grok runtime descriptor 和 `resolveRuntimeInstallCommand()` 驱动。前端只复用通用安装/更新 UI。
+
+## Native And Custom Model Modes
+
+### Native Grok Model
+
+当没有 `baseURL` 时，不生成自定义配置：
+
+- 使用用户默认 `~/.grok`。
+- 使用 `grok login` 登录态，或将 `config.apiKey` 映射到 `XAI_API_KEY`。
+- 默认模型通常是 `grok-build`，实际列表以 `grok models` 为准。
+
+### Custom Model
+
+当同时存在 `model + baseURL` 时：
+
+- 在 `options.configDir/.grok/config.toml` 写入 `[model.<id>]`。
+- 设置子进程 `GROK_HOME` 指向该隔离目录。
+- API Key 不写入 TOML，放入 `AGENT_SPACES_GROK_API_KEY`。
+- TOML 使用 `env_key = "AGENT_SPACES_GROK_API_KEY"`。
+- 配置文件以 UTF-8 写入，并请求 `0600` 权限。
+
+隔离 `GROK_HOME` 的目的：
+
+- 不污染用户全局 Grok 配置。
+- 每个 Agent 可以有自己的 provider/model/base URL。
+- 会话存储也跟随该 Agent 的 Grok home。
+
+## API Backend Mapping
+
+Grok 支持三种自定义模型 backend：
+
+| Agent Spaces provider | Grok `api_backend` |
+| --- | --- |
+| `openai-chat-completions` | `chat_completions` |
+| `openai-responses` | `responses` |
+| `anthropic-messages` | `messages` |
+| `openai-*-to-anthropic-messages` | `messages` |
+
+`messages` backend 的规则：
+
+- `base_url` 必须以 `/v1` 结束，Grok 会继续追加 `/messages`。
+- 使用 `x-api-key` 和 `anthropic-version: 2023-06-01`。
+- 同时保留 `env_key`，否则 Grok 的认证前置检查会报 `Not signed in`。
+
+## MiniMax Compatibility Finding
+
+MiniMax 是已验证的 provider 特例。
+
+原始配置：
+
+```text
+provider = anthropic-messages
+baseURL = https://api.minimaxi.com/anthropic
+model = MiniMax-M2.5
+```
+
+直接使用 Grok `messages` backend 时，MiniMax thinking block 会触发：
+
+```text
+serialization error: missing field `signature`
+```
+
+原因是 Grok 按 Anthropic 扩展思考结构严格反序列化 `signature`，而 MiniMax 兼容响应没有该字段。`--effort none` 对该自定义模型会被忽略，不能解决协议不兼容。
+
+当前兼容映射：
+
+```text
+https://api.minimaxi.com/anthropic
+  -> backend: chat_completions
+  -> baseURL: https://api.minimaxi.com/v1
+```
+
+这个特例位于 `normalizeGrokEndpoint()`，只匹配官方 MiniMax Anthropic URL，不改变其他 Anthropic provider。
+
+## Authentication Findings
+
+已经验证的失败顺序与修复：
+
+1. 仅设置 `extra_headers`：Grok 在请求前报 `Not signed in`。
+2. 增加 `env_key`：Grok 将该模型识别为 BYOK 自定义模型，可以跳过 grok.com 登录。
+3. `messages` backend 仍需 `extra_headers.x-api-key`，因为 Anthropic 协议不使用 Bearer token。
+4. OpenAI backend 通过 `env_key` 发送 `Authorization: Bearer`。
+
+不要把 API Key、完整 TOML 或带 query 的 URL写入日志。
+
+## Streaming JSON And UI Output
+
+Grok `streaming-json` 的主要事件：
+
+- `text`：回复增量片段。
+- `thought`：推理增量片段。
+- `end`：终止原因、session ID、usage、turn 数和可选费用。
+- `error`：错误消息和可能存在的 usage/cost。
+- 其他事件按未知事件记录字段名，不假设事件列表封闭。
+
+关键结论：`text.data` 和 `thought.data` 是 token/chunk 增量，不是独立段落。
+
+曾经的错误实现对每个 `text` chunk 执行：
+
+```text
+output.push(chunk)
+onEvent({ type: 'output', line: chunk })
+```
+
+`ws/agent-runner.ts` 会把每个 output event 创建为单独的 output item，UI 因此把每个字词渲染为一行。一次 250 字回复曾产生 131 个 output item。
+
+当前实现：
+
+- `textChunks` 和 `thoughtChunks` 分别收集增量。
+- 使用 `chunks.join('')` 拼接，不注入任何换行。
+- 模型产生的 `\n` 原样保留。
+- 在 `end` 或进程 `close` 时只发送一次完整 reasoning/output event。
+- `flushBuffers()` 幂等，避免 `end` 和 `close` 重复输出。
+
+代价：UI 在当前事件协议下无法更新同一个 output item，因此 Grok 文本改为响应结束后一次显示，不再逐 token 展示。
+
+## Session, Usage And Result Mapping
+
+- `end.sessionId` -> `AgentRuntimeEvent.session` 和 `AgentRunResult.sessionId`。
+- resume 使用 `grok --resume <id>`。
+- `ws/agent-runner.ts` 将 Grok 视为原生 session runtime，恢复时不会重复拼接完整聊天历史。
+- usage 字段映射：
+  - `input_tokens` -> `inputTokens`
+  - `output_tokens` -> `outputTokens`
+  - `cache_read_input_tokens` -> `cachedInputTokens`
+  - `total_tokens` -> `totalTokens`
+- `total_cost_usd` -> `costUsd`，不存在时保持 `undefined`，不能视为免费。
+- `stop()` 调用子进程 `kill()`。
+
+## Debug Logging
+
+日志前缀为 `[grok:<runId>]`，run ID 用于区分并发执行。
+
+当前记录：
+
+- 启动配置：cwd、CLI 路径、model、provider、backend、脱敏 base URL、GROK_HOME。
+- 认证是否已设置，但不记录值。
+- prompt 字符数，不记录完整 prompt。
+- PID、stderr 分行、未知 JSONL 事件字段名。
+- text/thought chunk 数和字符数。
+- flush 后完整文本/推理字符数。
+- session、usage、cost、turn、退出码、signal、耗时和事件计数。
+- stop 请求。
+
+敏感或高噪声内容：
+
+- API Key 不记录。
+- 完整 prompt 和完整回复不记录。
+- stderr 和错误消息最多保留 500 个规范化字符。
+- URL 移除 username、password、query 和 hash。
+
+## Failure And Recovery Paths
+
+| 症状 | 原因 | 处理 |
+| --- | --- | --- |
+| `unknown model id` | 通用模型 ID 未注册进 Grok | 生成隔离 custom model TOML |
+| `Not signed in` | custom model 只有 header，没有 `env_key` | 同时配置 `env_key` 和进程环境变量 |
+| `/anthropic/messages` 404 | `messages` base URL 缺少 `/v1` | 自动规范化为 `/v1` |
+| `missing field signature` | MiniMax Anthropic thinking block 与 Grok schema 不兼容 | MiniMax 改走 OpenAI `/v1` backend |
+| 每个字词独占一行 | 每个 JSONL text chunk 被当成 output item | 空字符串拼接，完成时只发一个 output event |
+| CLI not found | PATH 未包含 Grok | 回退 `%USERPROFILE%/.grok/bin/grok.exe` 或设置 `GROK_CLI_PATH` |
+
+## Verification Commands
+
+```powershell
+# CLI 与模型
+& "C:/Users/Administrator/.grok/bin/grok.exe" --version
+& "C:/Users/Administrator/.grok/bin/grok.exe" models
+
+# Adapter tests
+pnpm --filter "@agent-spaces/server" exec tsx --test "src/adapters/grok-runtime.test.ts"
+
+# Server type build
+pnpm --filter "@agent-spaces/server" build
+
+# Docs build
+pnpm --filter "documents" build
+```
+
+## Known Limitations
+
+- 当前没有把 Agent Spaces `functionTools` 动态注入 Grok；Grok 只使用自身 built-in tools、兼容目录和配置发现机制。
+- `mcpServers` 尚未写入隔离 Grok TOML。
+- output 事件协议没有 delta/update ID，故无法同时做到逐 token 展示和单 output item。
+- 自定义 `GROK_HOME` 不继承用户全局登录文件；BYOK custom model 依赖自身 `env_key`，这是预期行为。
+- provider 兼容性不能只看协议名称。第三方 Anthropic/OpenAI 兼容层仍可能在 thinking、tool call 或流式结构上与 Grok 的严格 schema 不一致。
+
+## Files To Read Next
+
+- `packages/server/src/adapters/grok-runtime.ts`：所有 Grok 特有行为。
+- `packages/server/src/adapters/grok-runtime.test.ts`：已锁定的兼容性回归。
+- `packages/server/src/ws/agent-runner.ts`：runtime event 如何变成消息 parts/output items。
+- `packages/server/src/routes/runtime.ts`：CLI 发现、安装和更新。
+- `packages/server/src/adapters/agent-runtime-types.ts`：若要增加 delta output 事件，先修改这里的公共契约。
+- `C:/Users/Administrator/.grok/docs/user-guide/14-headless-mode.md`：Headless CLI 与 JSONL 事件。
+- `C:/Users/Administrator/.grok/docs/user-guide/11-custom-models.md`：custom model TOML 与认证。
+
+## Open Questions
+
+- 是否要扩展 `AgentRuntimeEvent`，支持带稳定 ID 的 output delta/update，从而恢复实时流式显示？
+- 是否需要把 Agent Spaces MCP servers 和 function tools 自动写入每个 Agent 的 Grok 配置？
+- 是否应把 provider 特例从代码硬编码提升为可配置的 backend/base URL override？只有出现第二个已验证特例时再做抽象。

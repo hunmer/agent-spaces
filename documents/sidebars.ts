@@ -60,6 +60,7 @@ const sidebars: SidebarsConfig = {
       label: 'Research',
       items: [
         'research/index',
+        'research/grok-runtime-architecture',
         'research/workflow-execution-system',
         'research/workflow-editor-execution-sync',
         'research/workflow-node-system',

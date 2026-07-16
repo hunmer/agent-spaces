@@ -123,9 +123,9 @@ export function MessageItem({ message, workspaceId, agent: fallbackAgent, teamId
           <span className="text-xs font-medium text-foreground">
             {senderName}
           </span>
-          {message.senderRole && (
+          {agent?.runtimeKind && (
             <span className="text-[10px] bg-muted px-1.5 py-0.5 rounded text-muted-foreground">
-              {message.senderRole}
+              {agent.runtimeKind}
             </span>
           )}
           {message.metadata?.model && (
