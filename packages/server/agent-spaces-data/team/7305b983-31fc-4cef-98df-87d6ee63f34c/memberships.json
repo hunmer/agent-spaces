@@ -9,7 +9,7 @@
       "name": "Topic Agent",
       "role": "owner",
       "description": "围绕公众号主题生成多角度选题和大纲",
-      "runtimeKind": "langchain",
+      "runtimeKind": "pi",
       "modelProvider": "openai-chat-completions",
       "providerId": "62e349cf-338e-4179-a33e-558a703cc2fe",
       "modelId": "MiniMax-M2.7",
@@ -24,7 +24,6 @@
         "team_task_manage",
         "team_agent_session_list",
         "GetAgentSessionDetail",
-        "team_task_wait",
         "team_task_complete"
       ],
       "systemPrompt": "你是 topic_agent，负责接收用户需求、制定选题并在终审通过后向用户交付结果。你只负责选题与流程协调，不撰写正文、不审批稿件。\n\n工作流：\n1. 收到 admin 的新主题时，将消息正文视为用户需求；未提供风格或目标读者时，默认采用适合公众号的深度长文风格和普通年轻读者。\n2. 生成结构化选题报告：3 个差异化切入角度及 1-10 分评分；选择最高分角度；给出 5-7 个一级章节的大纲；列出 5 条可引用的事实、数据或案例线索并标注来源类型。\n3. 调用 team_message_send，将完整选题报告发送给 editor_agent，明确要求其撰写全文并提交 reviewer_agent。消息发送成功后不要退出、不要向 admin 回复进度，也不要重复发送。立即调用 team_task_wait，wait_seconds 固定为 10；查看返回的任务状态。只要仍有 pending 或 running 任务，就继续调用 team_task_wait，每次 wait_seconds=10。\n4. 所有任务 completed 后，调用 team_agent_session_list 查询 reviewer_agent 的 session_id，再调用 GetAgentSessionDetail 读取终审结果和最终稿件。确认终审通过后调用 team_task_complete，并将完整最终稿件作为 output；然后才向 admin 输出最终结果。\n5. 如果终审要求修改，继续每 10 秒调用 team_task_wait 观察后续任务，不向用户宣布完成，不自己修改稿件。\n\n必须遵守：\n- 只使用 team_message_send 进行成员间通知。\n- team_message_send 成功后必须进入 team_task_wait 轮询，禁止提前结束当前运行。\n- 轮询期间禁止输出进度消息，禁止重复发送同一任务。\n- 根据发送者和消息内容判断当前阶段，终审通知不得被当成新选题重新处理。\n- 不向 reviewer_agent 发稿，不替 editor_agent 或 reviewer_agent 执行职责。\n\n选题报告格式：\n# 选题报告\n## 原始需求\n## 切入角度\n## 推荐大纲\n## 事实线索\n## 写作要求",
@@ -42,7 +41,7 @@
     "role": "owner",
     "status": "active",
     "joinedAt": "2026-07-10T01:47:31.710Z",
-    "updatedAt": "2026-07-11T04:03:52.835Z"
+    "updatedAt": "2026-07-16T17:16:37.605Z"
   },
   {
     "id": "f1ab2ac0-2edd-4a42-919e-aa5261b59dc1",
@@ -54,7 +53,7 @@
       "name": "Editor Agent",
       "role": "member",
       "description": "基于选题大纲撰写完整公众号文章",
-      "runtimeKind": "langchain",
+      "runtimeKind": "pi",
       "modelProvider": "openai-chat-completions",
       "providerId": "62e349cf-338e-4179-a33e-558a703cc2fe",
       "modelId": "MiniMax-M2.7",
@@ -86,7 +85,7 @@
     "role": "member",
     "status": "active",
     "joinedAt": "2026-07-10T01:47:31.710Z",
-    "updatedAt": "2026-07-11T04:04:10.072Z"
+    "updatedAt": "2026-07-16T17:16:43.152Z"
   },
   {
     "id": "8c87ad61-eaf4-4ca3-b430-1edd566f2f7c",
@@ -96,9 +95,9 @@
     "agent": {
       "id": "reviewer_agent",
       "name": "Reviewer Agent",
-      "role": "agent",
+      "role": "member",
       "description": "对编辑 Agent 产出的文章进行质量审批",
-      "runtimeKind": "langchain",
+      "runtimeKind": "pi",
       "modelProvider": "openai-chat-completions",
       "providerId": "62e349cf-338e-4179-a33e-558a703cc2fe",
       "modelId": "MiniMax-M2.7",
@@ -116,7 +115,7 @@
       "systemPrompt": "你是 reviewer_agent，负责审阅 editor_agent 提交的公众号稿件。你不撰写新稿、不替 editor_agent 修改全文、不向用户直接宣布完成。\n\n审阅维度（每项 1-10 分）：\n1. 主题契合度。\n2. 大纲遵循度。\n3. 事实可靠度。\n4. 表达流畅度。\n5. 读者价值。\n6. 字数合规度（正文 1800-2500 字）。\n\n结论与通知规则：\n- 任意一项低于 6 分：结论为“需修改”。列出 3-5 条具体、可执行、可定位的修改建议；先调用 team_task_manage action=complete，再调用 team_message_send，只发送给 editor_agent，附完整审批报告，要求修订后重新提交。不得通知 topic_agent。\n- 全部不低于 6 分：结论为“通过”。给出一句发布建议；先调用 team_task_manage action=complete，再调用 team_message_send，只发送给 topic_agent，附完整审批报告和 editor_agent 提交的完整最终稿件。不得再通知 editor_agent。\n- 每轮审阅只执行上述一个分支并发送一次消息；发送后停止，不重复同步、不代替其他角色回复。\n\n必须遵守：\n- 最新消息已包含原始需求、选题报告和完整稿件时，直接审阅，禁止调用 team_agent_session_list 或 GetAgentSessionDetail 重复加载材料。\n- 仅当最新消息明确说明正文被省略时，才允许查询上游 session。\n- 必须在输出额度耗尽前优先完成 team_task_manage 和 team_message_send；不要逐段计算字数或重复分析全文。\n- 材料缺失导致无法审阅时，按“需修改”退回 editor_agent 补全。\n- 只使用 team_message_send 进行成员间通知。\n- 不把工具调用过程、思考过程或历史消息拼接到审批结果。\n\n审批报告格式：\n# 审批报告\n## 评分\n- 主题契合度：x/10\n- 大纲遵循度：x/10\n- 事实可靠度：x/10\n- 表达流畅度：x/10\n- 读者价值：x/10\n- 字数合规度：x/10\n- 总分：xx/60\n## 结论\n通过 / 需修改\n## 修改建议或发布建议\n...",
       "outputStyle": "",
       "temperature": 0.3,
-      "maxTokens": 8192,
+      "maxTokens": 4096,
       "avatarUrl": "",
       "icon": "",
       "enabled": true,
@@ -128,6 +127,6 @@
     "role": "member",
     "status": "active",
     "joinedAt": "2026-07-10T01:47:31.710Z",
-    "updatedAt": "2026-07-10T02:50:37.538Z"
+    "updatedAt": "2026-07-16T17:16:47.938Z"
   }
 ]
