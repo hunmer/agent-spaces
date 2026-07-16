@@ -8,7 +8,7 @@ export function FeedList({
 }) {
   const allActive = selectedFeedId === 'all';
   return (
-    <div className="flex flex-col h-full min-h-0">
+    <div className="flex flex-col h-full w-full min-h-0">
       <div className="px-3 py-2 border-b border-border text-xs font-semibold text-muted-foreground">
         订阅源 ({feeds.length})
       </div>

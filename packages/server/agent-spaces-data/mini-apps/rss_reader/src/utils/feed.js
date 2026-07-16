@@ -83,25 +83,27 @@ export function articleKey(item) {
   return item.guid || item.link || item.title;
 }
 
-// 合并新老文章：按 articleKey 去重，新的在前
+// 合并新老文章：按 articleKey 去重，本次 fresh 的新/更新条目在前，其余老文章保留在后
 export function mergeArticles(oldList, fresh, feedId) {
-  const map = new Map();
-  for (const a of oldList) map.set(articleKey(a), a);
+  const oldMap = new Map();
+  for (const a of oldList) oldMap.set(articleKey(a), a);
+
+  const seen = new Set(); // 已写入 out 的 key（用于跳过老文章里同 key 的重复项）
   const out = [];
+  // 1) 本次 fresh：新条目直接写入；已存在的老条目则合并（保留用户态 favorite/summary/readAt）
   for (const f of fresh) {
     const key = articleKey(f);
-    if (map.has(key)) {
-      // 已存在：保留 favorite/summary/readAt 等用户态，刷新基础字段
-      const prev = map.get(key);
-      out.push({ ...prev, ...f, feedId });
-    } else {
-      out.push({ ...f, feedId });
-      map.set(key, true);
-    }
+    const prev = oldMap.get(key);
+    out.push(prev ? { ...prev, ...f, feedId } : { ...f, feedId });
+    seen.add(key);
   }
-  // 追加老文章中未出现在本次 fresh 的（按时间排序在前文之后）
+  // 2) 老文章中未被本次 fresh 覆盖的（含其他订阅源的文章）一律保留
   for (const a of oldList) {
-    if (!map.has(articleKey(a))) out.push(a);
+    const key = articleKey(a);
+    if (!seen.has(key)) {
+      out.push(a);
+      seen.add(key);
+    }
   }
   return out;
 }

@@ -6,11 +6,13 @@
 
 订阅 RSS/Atom/RDF/JSON Feed 源 → 拉取更新 → 浏览/收藏文章 → AI 一键总结单篇正文。
 
-界面四栏（响应式隐藏）：
+界面四栏，使用 `ResizablePanelGroup` 可拖拽分栏，布局持久化到 localStorage：
 - 左栏：订阅源列表（含「全部」、单源拉取、删除）
 - 中栏：当前过滤后的文章列表（收藏过滤、已读/未读）
 - 右栏：文章详情（元信息 + 收藏 + AI总结触发按钮 + 正文）
 - 最右栏：独立的 AI 总结面板（生成/重新总结/复制 + 总结内容）
+
+布局记忆：`ResizablePanelGroup` 的 `defaultLayout`/`onLayoutChange` 配 `getUserSetting/saveUserSettings`（key=`panelLayout`），值是 `{ [panelId]: 数字百分比 }`。各面板 `defaultSize`/`minSize`/`maxSize` 用字符串百分比（见 `docs/ui/react-resizable-panels-size-units.md`，数字会被当 px）。
 
 ## 文件结构
 
@@ -53,7 +55,8 @@ feed_fetch 响应结构：`callPluginTool` 返回 `{ result: { success, data: { 
 - **AI 总结**：正文截断到 `MAX_SUMMARY_CHARS`(12000)，prompt 强制输出「一句话观点 + 3~5 条要点 + 阅读建议」，`permissionMode: bypassPermissions` 避免卡权限确认。总结写入文章并持久化，UI 同时展示。
 - **任务跟踪**：`agent_run` 带 `{ taskId, meta }` 第 4 参，登记为 WS 任务频道，多端可见；发起方 `await` 拿结果直接落库（仅单端写，因为结果存的是文章级单字段，无并发覆盖问题）。
 - **拉取全部**：顺序 `await` 避免并发把服务打满；任一失败记入该源 `error` 字段并在左栏标红，不中断后续源。
-- **响应式**：左栏 `<sm` 隐藏、中栏 `<md` 隐藏，确保窄屏下详情可用；全高用 `h-full min-h-0`，滚动放 `ScrollArea` 子节点。
+- **文章合并**（`mergeArticles`）：用独立 `seen` 集合跟踪已写入结果的文章 key，本次 fresh 条目前置（重合的保留老用户态），其余老文章（含其他订阅源）一律保留。**不要**复用承载 `oldList` 查询用的 map 作为去重集合——否则老文章的 key 永远命中 `map.has`，导致它们全被丢弃（曾导致「刷新一个源后其他源文章被清空」）。
+- **可拖拽布局**：`ResizablePanelGroup` + 三个 `ResizableHandle`（`withHandle`），布局经 `onLayoutChange` 存 localStorage，刷新恢复。面板根 div 用 `h-full w-full min-h-0`，滚动内容用 `ScrollArea`。
 
 ## 持久化项（utils/constants.js 的 SETTING_KEYS）
 

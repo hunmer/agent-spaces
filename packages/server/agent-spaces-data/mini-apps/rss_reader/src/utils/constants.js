@@ -21,6 +21,24 @@ export const AGENT_INIT_NAME = 'RSS 总结助手';
 export const AGENT_INIT_PROMPT =
   '你是一位资深编辑，擅长把网络文章压缩成精炼的中文摘要：先一句话总结核心观点，再列 3~5 条要点，最后给出阅读建议。不要使用任何工具，只输出总结正文。';
 
+// —— Resizable 布局持久化 ——
+// 布局 key（与 SETTING_KEYS 同一 localStorage 命名空间，per-project）
+export const LAYOUT_KEY = 'panelLayout';
+// 各面板 id（react-resizable-panels 用 id 索引 defaultLayout）
+export const PANEL_IDS = {
+  feeds: 'rss-feeds',
+  list: 'rss-list',
+  detail: 'rss-detail',
+  summary: 'rss-summary',
+};
+// 默认布局：四栏百分比，总和 100
+export const DEFAULT_LAYOUT = {
+  [PANEL_IDS.feeds]: 16,
+  [PANEL_IDS.list]: 24,
+  [PANEL_IDS.detail]: 38,
+  [PANEL_IDS.summary]: 22,
+};
+
 // 生成 id
 export function uid(prefix = 'id') {
   return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;

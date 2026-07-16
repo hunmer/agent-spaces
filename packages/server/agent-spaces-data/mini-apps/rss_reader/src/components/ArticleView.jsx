@@ -24,7 +24,7 @@ export function ArticleView({
   const hasText = !!text;
 
   return (
-    <div className="flex flex-col h-full min-h-0">
+    <div className="flex flex-col h-full w-full min-h-0">
       {/* 顶部元信息 + 操作 */}
       <div className="border-b border-border px-4 py-3">
         <div className="flex items-start gap-2">

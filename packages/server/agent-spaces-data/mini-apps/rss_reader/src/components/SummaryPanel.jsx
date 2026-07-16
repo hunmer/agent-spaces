@@ -13,7 +13,7 @@ export function SummaryPanel({
   const hasSummary = hasArticle && !!article.summary;
 
   return (
-    <div className="flex flex-col h-full min-h-0">
+    <div className="flex flex-col h-full w-full min-h-0">
       <div className="px-3 py-2 border-b border-border flex items-center gap-1.5">
         <Sparkles className="h-3.5 w-3.5 text-primary" />
         <span className="text-xs font-semibold">AI 总结</span>
