@@ -1,6 +1,6 @@
-const { useState, useMemo, useCallback } = React;
+const { useState, useEffect, useCallback } = React;
 const {
-  ResizablePanelGroup, ResizablePanel, ResizableHandle,
+  ResizablePanelGroup, ResizablePanel, ResizableHandle, Loader2,
 } = window.AgentSpacesUI;
 import { useRss } from './hooks/useRss.js';
 import { Toolbar } from './components/Toolbar.jsx';
@@ -8,25 +8,51 @@ import { FeedList } from './components/FeedList.jsx';
 import { ArticleList } from './components/ArticleList.jsx';
 import { ArticleView } from './components/ArticleView.jsx';
 import { SummaryPanel } from './components/SummaryPanel.jsx';
-import { LAYOUT_KEY, DEFAULT_LAYOUT, PANEL_IDS } from './utils/constants.js';
+import { DEFAULT_LAYOUT, PANEL_IDS, LAYOUT_FILE } from './utils/constants.js';
 
-// 布局持久化：getUserSetting/saveUserSettings（per-project localStorage）
-const loadLayout = () => {
-  const raw = window.AgentSpaces.getUserSetting(LAYOUT_KEY, null);
-  if (raw && typeof raw === 'object') {
-    // 合并默认值，避免新增面板时缺字段
-    return { ...DEFAULT_LAYOUT, ...raw };
-  }
-  return DEFAULT_LAYOUT;
-};
+// 布局持久化：用 configs/layout.json（server-side，非 localStorage）
+function usePanelLayout() {
+  const [layout, setLayout] = useState(DEFAULT_LAYOUT);
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const saved = await window.AgentSpaces.readConfigJson(LAYOUT_FILE);
+        if (!cancelled && saved && typeof saved === 'object') {
+          setLayout({ ...DEFAULT_LAYOUT, ...saved });
+        }
+      } catch {
+        // 首次无文件，用默认
+      } finally {
+        if (!cancelled) setReady(true);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  const onLayoutChange = useCallback((next) => {
+    setLayout(next);
+    // 写盘（fire-and-forget，串行由浏览器保证即可）
+    window.AgentSpaces.writeConfigJson(LAYOUT_FILE, next).catch(() => {});
+  }, []);
+
+  return { layout, onLayoutChange, ready };
+}
 
 function App() {
   const s = useRss();
+  const panel = usePanelLayout();
 
-  const defaultLayout = useMemo(() => loadLayout(), []);
-  const onLayoutChange = useCallback((layout) => {
-    window.AgentSpaces.saveUserSettings({ [LAYOUT_KEY]: layout });
-  }, []);
+  if (!s.ready) {
+    return (
+      <div className="flex h-full w-full items-center justify-center text-muted-foreground gap-2">
+        <Loader2 className="h-5 w-5 animate-spin" />
+        <span className="text-sm">加载本地数据…</span>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-full min-h-0 bg-background text-foreground">
@@ -46,8 +72,8 @@ function App() {
         <ResizablePanelGroup
           direction="horizontal"
           className="h-full w-full"
-          defaultLayout={defaultLayout}
-          onLayoutChange={onLayoutChange}
+          defaultLayout={panel.ready ? panel.layout : DEFAULT_LAYOUT}
+          onLayoutChange={panel.onLayoutChange}
         >
           {/* 左：订阅源 */}
           <ResizablePanel

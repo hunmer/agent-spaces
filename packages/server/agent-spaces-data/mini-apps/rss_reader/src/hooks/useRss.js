@@ -1,81 +1,115 @@
-const { useState, useCallback, useEffect, useMemo } = React;
+const { useState, useCallback, useEffect, useMemo, useRef } = React;
 const {
-  getUserSetting, saveUserSettings, callPluginTool, openAgentEditor, copyText,
+  callPluginTool, openAgentEditor, copyText,
+  readConfigJson, writeConfigJson,
 } = window.AgentSpaces;
 import {
   BUILTIN_PLUGIN, FEED_PLUGIN, FEED_ITEM_LIMIT, MAX_SUMMARY_CHARS,
-  SETTING_KEYS, AGENT_INIT_NAME, AGENT_INIT_PROMPT, uid,
+  CONFIG_FILES, AGENT_INIT_NAME, AGENT_INIT_PROMPT, uid, feedArticlesFile,
 } from '../utils/constants.js';
 import {
-  normalizeItem, mergeArticles, articleKey, htmlToText,
+  normalizeItem, articleKey, htmlToText,
 } from '../utils/feed.js';
 
-const get = (k, def) => getUserSetting(k, def);
+// 单源内合并：保留老文章的用户态（favorite/readAt/summary），新文章追加。
+// 跨源已物理隔离（各源独立文件），此处只在单源内去重。
+function mergeFeedItems(oldItems, fresh) {
+  const map = new Map();
+  for (const a of oldItems) map.set(articleKey(a), a);
+  const seen = new Set();
+  const out = [];
+  for (const f of fresh) {
+    const key = articleKey(f);
+    const prev = map.get(key);
+    out.push(prev ? { ...prev, ...f } : { ...f });
+    seen.add(key);
+  }
+  for (const a of oldItems) {
+    const key = articleKey(a);
+    if (!seen.has(key)) { out.push(a); seen.add(key); }
+  }
+  return out;
+}
 
 export function useRss() {
-  // 订阅源 + 文章 + Agent 配置（localStorage 持久化）
-  const [feeds, setFeeds] = useState(() => get(SETTING_KEYS.feeds, []));
-  const [articles, setArticles] = useState(() => get(SETTING_KEYS.articles, []));
-  const [agentConfigId, setAgentConfigId] = useState(() => get(SETTING_KEYS.agentConfigId, ''));
-  const [agentMeta, setAgentMeta] = useState(() => get(SETTING_KEYS.agentMeta, null));
+  const [feeds, setFeeds] = useState([]);
+  const [articlesByFeed, setArticlesByFeed] = useState({}); // { [feedId]: Article[] }
+  const [agentConfigId, setAgentConfigId] = useState('');
+  const [agentMeta, setAgentMeta] = useState(null);
+  const [ready, setReady] = useState(false);
 
-  // 视图状态（不持久化）
-  const [selectedFeedId, setSelectedFeedId] = useState('all'); // 'all' | feed.id
+  const [selectedFeedId, setSelectedFeedId] = useState('all');
   const [selectedArticleId, setSelectedArticleId] = useState(null);
-  const [filter, setFilter] = useState('all'); // 'all' | 'favorite'
-  const [fetchingFeedIds, setFetchingFeedIds] = useState(new Set()); // 单源拉取中
+  const [filter, setFilter] = useState('all');
+  const [fetchingFeedIds, setFetchingFeedIds] = useState(new Set());
   const [fetchingAll, setFetchingAll] = useState(false);
-  const [summarizingId, setSummarizingId] = useState(null); // 正在总结的文章 id
+  const [summarizingId, setSummarizingId] = useState(null);
   const [error, setError] = useState('');
   const [toast, setToast] = useState('');
 
-  // —— 新增订阅源（不立即拉取，等用户点拉取）——
-  const addFeed = useCallback(async (rawUrl) => {
-    const url = String(rawUrl || '').trim();
-    if (!url) { setError('请输入订阅源 URL'); return false; }
-    if (feeds.some((f) => f.url === url)) { setError('该订阅源已存在'); return false; }
-    setError('');
-    // 先拉一次拿到标题/格式，失败也加入列表（用户可重试）
-    const feed = {
-      id: uid('feed'),
-      title: url,
-      url,
-      format: '',
-      link: '',
-      description: '',
-      lastFetchAt: '',
-      itemCount: 0,
-      error: '',
-    };
-    const next = [...feeds, feed];
-    setFeeds(next);
-    saveUserSettings({ [SETTING_KEYS.feeds]: next });
-    // 立即拉取一次填充标题
-    await fetchOne(feed.id, next);
-    return true;
-  }, [feeds]);
-
-  // —— 删除订阅源（同时删除其文章）——
-  const removeFeed = useCallback((feedId) => {
-    const nextFeeds = feeds.filter((f) => f.id !== feedId);
-    const nextArticles = articles.filter((a) => a.feedId !== feedId);
-    setFeeds(nextFeeds);
-    setArticles(nextArticles);
-    saveUserSettings({
-      [SETTING_KEYS.feeds]: nextFeeds,
-      [SETTING_KEYS.articles]: nextArticles,
+  // —— 文件级写入器（每文件串行，互不影响）——
+  const writeQueues = useRef({}); // { [file]: Promise }
+  const writeConfig = useCallback((file, value) => {
+    if (!writeQueues.current[file]) writeQueues.current[file] = Promise.resolve();
+    writeQueues.current[file] = writeQueues.current[file].then(async () => {
+      try {
+        await writeConfigJson(file, value);
+      } catch (e) {
+        setError('保存失败：' + (e?.message || e));
+      }
     });
-    if (selectedFeedId === feedId) setSelectedFeedId('all');
-    if (selectedArticleId && !nextArticles.some((a) => a.id === selectedArticleId)) {
-      setSelectedArticleId(null);
-    }
-    setToast('已删除订阅源');
-  }, [feeds, articles, selectedFeedId, selectedArticleId]);
+    return writeQueues.current[file];
+  }, []);
 
-  // —— 调用 feed_fetch 解析单源；接收 feeds 形参避免闭包陈旧 ——
-  const fetchOne = useCallback(async (feedId, feedsArg) => {
-    const list = feedsArg || feeds;
-    const feed = list.find((f) => f.id === feedId);
+  // 读单个源的文章文件
+  const readFeedArticles = useCallback(async (feedId) => {
+    try {
+      return (await readConfigJson(feedArticlesFile(feedId))) || [];
+    } catch {
+      return [];
+    }
+  }, []);
+
+  // 写单个源的文章文件
+  const writeFeedArticles = useCallback((feedId, items) => {
+    return writeConfig(feedArticlesFile(feedId), items);
+  }, [writeConfig]);
+
+  // —— 启动：并行读 feeds.json + agent.json + 所有源文章文件 ——
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const [savedFeeds, savedAgent] = await Promise.all([
+          readConfigJson(CONFIG_FILES.feeds).catch(() => null),
+          readConfigJson(CONFIG_FILES.agent).catch(() => null),
+        ]);
+        if (cancelled) return;
+        const feedList = Array.isArray(savedFeeds) ? savedFeeds : [];
+        const agent = (savedAgent && typeof savedAgent === 'object') ? savedAgent : {};
+        // 并行读各源文章
+        const entries = await Promise.all(
+          feedList.map(async (f) => [f.id, await readFeedArticles(f.id)]),
+        );
+        if (cancelled) return;
+        const byFeed = {};
+        for (const [id, items] of entries) byFeed[id] = items;
+        setFeeds(feedList);
+        setArticlesByFeed(byFeed);
+        setAgentConfigId(agent.agentConfigId || '');
+        setAgentMeta(agent.agentMeta || null);
+      } catch (e) {
+        setError('读取本地数据失败：' + (e?.message || e));
+      } finally {
+        if (!cancelled) setReady(true);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [readFeedArticles]);
+
+  // —— 拉取单源：只读写该源的 feed_<id>.json，绝不碰其他源 ——
+  const fetchOne = useCallback(async (feedId) => {
+    const feed = feeds.find((f) => f.id === feedId);
     if (!feed) return;
     setFetchingFeedIds((prev) => new Set(prev).add(feedId));
     setError('');
@@ -85,61 +119,59 @@ export function useRss() {
         limit: FEED_ITEM_LIMIT,
       });
       const data = resp && typeof resp === 'object' && 'result' in resp ? resp.result : resp;
-      // callPluginTool 走 plugin execute 包装，data 通常为 { success, data: {...} }
       const payload = data?.data ?? data;
       if (data?.success === false || !payload) {
         throw new Error(data?.message || '解析失败');
       }
       const rawItems = Array.isArray(payload.feed?.items) ? payload.feed.items : [];
+      const feedTitle = payload.title || feed.title;
       const fresh = rawItems
-        .map((it) => normalizeItem(it, payload.title || feed.title))
+        .map((it) => normalizeItem(it, feedTitle))
         .filter(Boolean)
         .map((it) => ({
           id: uid('art'),
           ...it,
-          feedId: feed.id,
-          feedTitle: payload.title || feed.title,
+          feedId,
+          feedTitle,
           favorite: false,
           readAt: '',
           summary: '',
           summaryAt: '',
         }));
 
-      // 合并进总文章池
-      setArticles((prevArticles) => {
-        const merged = mergeArticles(prevArticles, fresh, feed.id);
-        saveUserSettings({ [SETTING_KEYS.articles]: merged });
-        return merged;
-      });
+      // 只读该源已有文章 → 合并 → 只写该源文件（物理隔离，杜绝覆盖其他源）
+      const oldItems = await readFeedArticles(feedId);
+      const merged = mergeFeedItems(oldItems, fresh);
+
       // 更新源元信息
-      setFeeds((prevFeeds) => {
-        const next = prevFeeds.map((f) =>
-          f.id === feed.id
-            ? {
-                ...f,
-                title: payload.title || f.title,
-                format: payload.format || f.format,
-                link: payload.link || f.link,
-                description: payload.description || f.description,
-                itemCount: payload.itemCount ?? fresh.length,
-                lastFetchAt: new Date().toISOString(),
-                error: '',
-              }
-            : f,
-        );
-        saveUserSettings({ [SETTING_KEYS.feeds]: next });
-        return next;
-      });
-      setToast(`已更新「${payload.title || feed.title}」，共 ${fresh.length} 篇`);
+      const nextFeeds = feeds.map((f) =>
+        f.id === feedId
+          ? {
+              ...f,
+              title: feedTitle,
+              format: payload.format || f.format,
+              link: payload.link || f.link,
+              description: payload.description || f.description,
+              itemCount: payload.itemCount ?? fresh.length,
+              lastFetchAt: new Date().toISOString(),
+              error: '',
+            }
+          : f,
+      );
+
+      setFeeds(nextFeeds);
+      setArticlesByFeed((prev) => ({ ...prev, [feedId]: merged }));
+      // feeds.json 与 feed_<id>.json 是两个不同文件，各自串行写，互不干扰
+      writeConfig(CONFIG_FILES.feeds, nextFeeds);
+      writeFeedArticles(feedId, merged);
+      setToast(`已更新「${feedTitle}」，${fresh.length} 篇`);
     } catch (e) {
       const msg = e?.message || String(e);
-      setFeeds((prevFeeds) => {
-        const next = prevFeeds.map((f) =>
-          f.id === feed.id ? { ...f, error: msg, lastFetchAt: new Date().toISOString() } : f,
-        );
-        saveUserSettings({ [SETTING_KEYS.feeds]: next });
-        return next;
-      });
+      const nextFeeds = feeds.map((f) =>
+        f.id === feedId ? { ...f, error: msg, lastFetchAt: new Date().toISOString() } : f,
+      );
+      setFeeds(nextFeeds);
+      writeConfig(CONFIG_FILES.feeds, nextFeeds);
       setError(`拉取「${feed.title}」失败：${msg}`);
     } finally {
       setFetchingFeedIds((prev) => {
@@ -148,57 +180,101 @@ export function useRss() {
         return n;
       });
     }
-  }, [feeds]);
+  }, [feeds, readFeedArticles, writeConfig, writeFeedArticles]);
 
-  // —— 拉取全部订阅源（顺序执行，避免并发把服务打满）——
+  // —— 新增订阅源 ——
+  const addFeed = useCallback(async (rawUrl) => {
+    const url = String(rawUrl || '').trim();
+    if (!url) { setError('请输入订阅源 URL'); return false; }
+    if (feeds.some((f) => f.url === url)) { setError('该订阅源已存在'); return false; }
+    setError('');
+    const feed = { id: uid('feed'), title: url, url, format: '', link: '', description: '', lastFetchAt: '', itemCount: 0, error: '' };
+    const nextFeeds = [...feeds, feed];
+    setFeeds(nextFeeds);
+    setArticlesByFeed((prev) => ({ ...prev, [feed.id]: [] }));
+    await writeConfig(CONFIG_FILES.feeds, nextFeeds);
+    await fetchOne(feed.id);
+    return true;
+  }, [feeds, writeConfig, fetchOne]);
+
+  // —— 删除订阅源（连同其文章文件）——
+  const removeFeed = useCallback((feedId) => {
+    const nextFeeds = feeds.filter((f) => f.id !== feedId);
+    setFeeds(nextFeeds);
+    setArticlesByFeed((prev) => {
+      const next = { ...prev };
+      delete next[feedId];
+      return next;
+    });
+    writeConfig(CONFIG_FILES.feeds, nextFeeds);
+    writeFeedArticles(feedId, []); // 清空该源文章文件
+    if (selectedFeedId === feedId) setSelectedFeedId('all');
+    if (selectedArticleId) {
+      const belonged = (articlesByFeed[feedId] || []).some((a) => a.id === selectedArticleId);
+      if (belonged) setSelectedArticleId(null);
+    }
+    setToast('已删除订阅源');
+  }, [feeds, articlesByFeed, selectedFeedId, selectedArticleId, writeConfig, writeFeedArticles]);
+
+  // —— 拉取全部 ——
   const fetchAll = useCallback(async () => {
     if (!feeds.length) { setError('请先添加订阅源'); return; }
     setFetchingAll(true);
     setError('');
     try {
-      for (const f of feeds) {
+      const list = feeds.slice();
+      for (const f of list) {
         // eslint-disable-next-line no-await-in-loop
-        await fetchOne(f.id, feeds);
+        await fetchOne(f.id);
       }
-      setToast(`已拉取全部 ${feeds.length} 个订阅源`);
+      setToast(`已拉取全部 ${list.length} 个订阅源`);
     } finally {
       setFetchingAll(false);
     }
   }, [feeds, fetchOne]);
 
-  // —— 收藏 / 取消收藏 ——
-  const toggleFavorite = useCallback((articleId) => {
-    setArticles((prev) => {
-      const next = prev.map((a) =>
-        a.id === articleId ? { ...a, favorite: !a.favorite } : a,
-      );
-      saveUserSettings({ [SETTING_KEYS.articles]: next });
-      return next;
-    });
-  }, []);
+  // 在所有源文章中查找（用于总结/复制）
+  const findArticle = useCallback((articleId) => {
+    for (const items of Object.values(articlesByFeed)) {
+      const a = items.find((x) => x.id === articleId);
+      if (a) return a;
+    }
+    return null;
+  }, [articlesByFeed]);
 
-  // —— 标记已读（选中时调用）——
+  // 更新单篇文章（收藏/已读/总结），只写该源文件
+  const updateArticle = useCallback((articleId, patch) => {
+    for (const feedId of Object.keys(articlesByFeed)) {
+      const items = articlesByFeed[feedId];
+      const idx = items.findIndex((a) => a.id === articleId);
+      if (idx >= 0) {
+        const next = items.slice();
+        next[idx] = { ...next[idx], ...patch };
+        setArticlesByFeed((prev) => ({ ...prev, [feedId]: next }));
+        writeFeedArticles(feedId, next);
+        return true;
+      }
+    }
+    return false;
+  }, [articlesByFeed, writeFeedArticles]);
+
+  const toggleFavorite = useCallback((articleId) => {
+    const a = findArticle(articleId);
+    if (!a) return;
+    updateArticle(articleId, { favorite: !a.favorite });
+  }, [findArticle, updateArticle]);
+
   const markRead = useCallback((articleId) => {
-    setArticles((prev) => {
-      let changed = false;
-      const next = prev.map((a) => {
-        if (a.id === articleId && !a.readAt) {
-          changed = true;
-          return { ...a, readAt: new Date().toISOString() };
-        }
-        return a;
-      });
-      if (changed) saveUserSettings({ [SETTING_KEYS.articles]: next });
-      return changed ? next : prev;
-    });
-  }, []);
+    const a = findArticle(articleId);
+    if (!a || a.readAt) return;
+    updateArticle(articleId, { readAt: new Date().toISOString() });
+  }, [findArticle, updateArticle]);
 
   const selectArticle = useCallback((articleId) => {
     setSelectedArticleId(articleId);
     if (articleId) markRead(articleId);
   }, [markRead]);
 
-  // —— 配置 Agent（弹窗返回 preset）——
   const configureAgent = useCallback(async () => {
     try {
       const saved = await openAgentEditor({
@@ -208,21 +284,17 @@ export function useRss() {
       });
       if (!saved) return;
       const meta = { name: saved.name || AGENT_INIT_NAME, modelProvider: saved.modelProvider };
-      setAgentMeta(meta);
       setAgentConfigId(saved.id);
-      saveUserSettings({
-        [SETTING_KEYS.agentConfigId]: saved.id,
-        [SETTING_KEYS.agentMeta]: meta,
-      });
+      setAgentMeta(meta);
+      await writeConfig(CONFIG_FILES.agent, { agentConfigId: saved.id, agentMeta: meta });
       setError('');
     } catch (e) {
       setError('打开模型配置失败：' + (e?.message || e));
     }
-  }, [agentConfigId]);
+  }, [agentConfigId, writeConfig]);
 
-  // —— AI 总结文章 ——
   const summarizeArticle = useCallback(async (articleId) => {
-    const article = articles.find((a) => a.id === articleId);
+    const article = findArticle(articleId);
     if (!article) return;
     if (!agentConfigId) { setError('请先点击「配置 AI 模型」'); return; }
     setSummarizingId(articleId);
@@ -255,56 +327,55 @@ export function useRss() {
       const text = (ret && (ret.result ?? ret)) || '';
       if (!String(text).trim()) throw new Error('AI 未返回有效总结');
       const summary = String(text).trim();
-      const summaryAt = new Date().toISOString();
-      setArticles((prev) => {
-        const next = prev.map((a) =>
-          a.id === articleId ? { ...a, summary, summaryAt } : a,
-        );
-        saveUserSettings({ [SETTING_KEYS.articles]: next });
-        return next;
-      });
+      updateArticle(articleId, { summary, summaryAt: new Date().toISOString() });
       setToast('总结完成');
     } catch (e) {
       setError('总结失败：' + (e?.message || e));
     } finally {
       setSummarizingId(null);
     }
-  }, [articles, agentConfigId]);
+  }, [findArticle, agentConfigId, updateArticle]);
 
   const copySummary = useCallback((articleId) => {
-    const a = articles.find((x) => x.id === articleId);
+    const a = findArticle(articleId);
     if (!a?.summary) return;
     Promise.resolve(copyText?.(a.summary)).then(
       () => setToast('已复制总结'),
       () => setError('复制失败'),
     );
-  }, [articles]);
+  }, [findArticle]);
 
-  // —— 派生：当前过滤后的文章列表 ——
+  // —— 派生：把所有源文章拍平，供列表展示 ——
+  const allArticles = useMemo(() => {
+    const list = [];
+    for (const items of Object.values(articlesByFeed)) {
+      for (const a of items) list.push(a);
+    }
+    return list;
+  }, [articlesByFeed]);
+
   const filteredArticles = useMemo(() => {
-    let list = articles;
+    let list = allArticles;
     if (selectedFeedId !== 'all') list = list.filter((a) => a.feedId === selectedFeedId);
     if (filter === 'favorite') list = list.filter((a) => a.favorite);
-    // 按发布时间倒序
     return [...list].sort((a, b) => (b.pubDate || '').localeCompare(a.pubDate || ''));
-  }, [articles, selectedFeedId, filter]);
+  }, [allArticles, selectedFeedId, filter]);
 
   const currentArticle = useMemo(
-    () => articles.find((a) => a.id === selectedArticleId) || null,
-    [articles, selectedArticleId],
+    () => allArticles.find((a) => a.id === selectedArticleId) || null,
+    [allArticles, selectedArticleId],
   );
 
   const counts = useMemo(() => {
     const byFeed = new Map();
     let fav = 0;
-    for (const a of articles) {
+    for (const a of allArticles) {
       byFeed.set(a.feedId, (byFeed.get(a.feedId) || 0) + 1);
       if (a.favorite) fav += 1;
     }
-    return { byFeed, favorite: fav, total: articles.length };
-  }, [articles]);
+    return { byFeed, favorite: fav, total: allArticles.length };
+  }, [allArticles]);
 
-  // toast 自动消失
   useEffect(() => {
     if (!toast) return;
     const t = setTimeout(() => setToast(''), 2500);
@@ -312,14 +383,12 @@ export function useRss() {
   }, [toast]);
 
   return {
-    // state
-    feeds, articles, agentConfigId, agentMeta,
+    ready,
+    feeds, agentConfigId, agentMeta,
     selectedFeedId, selectedArticleId, filter,
     fetchingFeedIds, fetchingAll, summarizingId,
     error, toast, counts,
-    // derived
     filteredArticles, currentArticle,
-    // actions
     setSelectedFeedId, setFilter,
     addFeed, removeFeed, fetchOne, fetchAll,
     selectArticle, toggleFavorite, markRead,

@@ -1,0 +1,24 @@
+[
+  {
+    "id": "feed-mrnigftq-lq595z",
+    "title": "http://127.0.0.1:1200/yande/post/popular_recent/1d",
+    "url": "http://127.0.0.1:1200/yande/post/popular_recent/1d",
+    "format": "",
+    "link": "",
+    "description": "",
+    "lastFetchAt": "",
+    "itemCount": 0,
+    "error": ""
+  },
+  {
+    "id": "feed-mrnigjv8-gml84k",
+    "title": "少数派",
+    "url": "http://127.0.0.1:1200/sspai/index",
+    "format": "rss",
+    "link": "https://sspai.com",
+    "description": "少数派首页 - Powered by RSSHub",
+    "lastFetchAt": "2026-07-16T12:54:23.836Z",
+    "itemCount": 10,
+    "error": ""
+  }
+]

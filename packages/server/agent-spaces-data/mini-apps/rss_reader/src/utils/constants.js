@@ -8,13 +8,19 @@ export const FEED_ITEM_LIMIT = 50;
 // AI 总结时喂给 Agent 的正文最长字符数（避免 token 溢出）
 export const MAX_SUMMARY_CHARS = 12000;
 
-// User Settings 持久化键（localStorage，per-project，与 podcast_generator 一致）
-export const SETTING_KEYS = {
-  feeds: 'feeds', // 订阅源列表 [{ id, title, url, format, link, description, lastFetchAt, itemCount, error }]
-  articles: 'articles', // 全部文章 [{ id, feedId, feedTitle, guid, title, link, author, pubDate, content, summary, summaryAt, favorite, readAt }]
-  agentConfigId: 'agentConfigId',
-  agentMeta: 'agentMeta', // { name, modelProvider }
+// configs/ 下的 JSON 持久化文件名（readConfigJson / writeConfigJson）
+// 关键：每个订阅源的文章单独存一个文件，拉取某源只读写该源文件，物理隔离杜绝互相覆盖。
+export const CONFIG_FILES = {
+  feeds: 'feeds.json', // 订阅源列表 [{ id, title, url, ... }]
+  agent: 'agent.json', // { agentConfigId, agentMeta }
 };
+
+// 某个订阅源的文章文件名（扁平命名，避免子目录）
+export function feedArticlesFile(feedId) {
+  // feedId 形如 "feed-xxx-xxx"，做一次 sanitize 防 ../ 之类
+  const safe = String(feedId).replace(/[^a-zA-Z0-9_-]/g, '');
+  return `feed_${safe}.json`;
+}
 
 // openAgentEditor 的初始 name / systemPrompt
 export const AGENT_INIT_NAME = 'RSS 总结助手';
@@ -22,8 +28,8 @@ export const AGENT_INIT_PROMPT =
   '你是一位资深编辑，擅长把网络文章压缩成精炼的中文摘要：先一句话总结核心观点，再列 3~5 条要点，最后给出阅读建议。不要使用任何工具，只输出总结正文。';
 
 // —— Resizable 布局持久化 ——
-// 布局 key（与 SETTING_KEYS 同一 localStorage 命名空间，per-project）
-export const LAYOUT_KEY = 'panelLayout';
+// configs/ 下的布局文件名（readConfigJson / writeConfigJson，server-side）
+export const LAYOUT_FILE = 'layout.json';
 // 各面板 id（react-resizable-panels 用 id 索引 defaultLayout）
 export const PANEL_IDS = {
   feeds: 'rss-feeds',
