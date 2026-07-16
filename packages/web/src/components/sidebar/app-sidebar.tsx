@@ -20,7 +20,7 @@ import { NotificationsPopover } from "@/components/sidebar/nav-notifications";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { ServerSwitcher } from "@/components/sidebar/server-switcher";
 import { AnimatedThemeToggler } from "@/components/decorations/animated-theme-toggler";
-import { CommandIcon, GraduationCap } from "lucide-react";
+import { CommandIcon, FlaskConical, GraduationCap } from "lucide-react";
 import { useWorkspaceStore } from "@/stores/workspace";
 import { useNotificationStore } from "@/stores/notification";
 import { useKeyboardShortcuts } from "@/stores/keyboard-shortcuts";
@@ -215,6 +215,14 @@ export function DashboardSidebar() {
             className="inline-flex size-8 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
           >
             <GraduationCap className="size-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => tauriNavigate(router, "/playground")}
+            title={ts("nav.playground")}
+            className="inline-flex size-8 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
+          >
+            <FlaskConical className="size-4" />
           </button>
           <AnimatedThemeToggler />
         </div>

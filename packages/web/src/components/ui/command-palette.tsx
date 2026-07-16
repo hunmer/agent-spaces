@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Search, Command as CommandIcon } from 'lucide-react';
+import { Search, Command as CommandIcon, List, LayoutGrid } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const { useState, useEffect, useRef, useMemo } = React;
@@ -132,6 +132,18 @@ export function CommandPalette({
   const itemsRef = useRef<(HTMLDivElement | null)[]>([]);
   const [internalQuery, setInternalQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [viewMode, setViewMode] = useState<'list' | 'grid'>(() => {
+    if (typeof window === 'undefined') return 'list';
+    return (localStorage.getItem('command-palette:view-mode') as 'list' | 'grid') ?? 'list';
+  });
+
+  const toggleViewMode = () => {
+    setViewMode((prev) => {
+      const next = prev === 'list' ? 'grid' : 'list';
+      localStorage.setItem('command-palette:view-mode', next);
+      return next;
+    });
+  };
 
   // Support controlled and uncontrolled query
   const query = controlledQuery ?? internalQuery;
@@ -252,6 +264,18 @@ export function CommandPalette({
                   placeholder={placeholder}
                   autoFocus
                 />
+                <button
+                  type="button"
+                  onClick={toggleViewMode}
+                  title={viewMode === 'list' ? 'Switch to grid' : 'Switch to list'}
+                  className="ml-2 flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                >
+                  {viewMode === 'list' ? (
+                    <LayoutGrid className="h-4 w-4" />
+                  ) : (
+                    <List className="h-4 w-4" />
+                  )}
+                </button>
               </div>
             </div>
 
@@ -270,18 +294,20 @@ export function CommandPalette({
                       {noResultsText}
                     </div>
                   ) : (
-                    searchResults.slice(0, 10).map((item, idx) => (
-                      <ItemRow
-                        key={item.id}
-                        item={item}
-                        selected={selectedIndex === idx}
-                        onSelect={() => {
-                          item.action();
-                          onOpenChange(false);
-                        }}
-                        itemRef={(el) => { itemsRef.current[idx] = el; }}
-                      />
-                    ))
+                    <div className={cn('grid gap-1', viewMode === 'grid' ? 'grid-cols-2' : 'grid-cols-1')}>
+                      {searchResults.slice(0, 10).map((item, idx) => (
+                        <ItemRow
+                          key={item.id}
+                          item={item}
+                          selected={selectedIndex === idx}
+                          onSelect={() => {
+                            item.action();
+                            onOpenChange(false);
+                          }}
+                          itemRef={(el) => { itemsRef.current[idx] = el; }}
+                        />
+                      ))}
+                    </div>
                   )}
                 </div>
               ) : (
@@ -337,22 +363,24 @@ export function CommandPalette({
                             {group.items.length} items
                           </span>
                         </div>
-                        {group.items.map((item) => {
-                          const flatIdx = allItems.findIndex((i) => i.id === item.id);
-                          return (
-                            <ItemRow
-                              key={item.id}
-                              item={item}
-                              selected={selectedIndex === flatIdx}
-                              onSelect={() => {
-                                item.action();
-                                onOpenChange(false);
-                              }}
-                              itemRef={(el) => { itemsRef.current[flatIdx] = el; }}
-                              showDescription
-                            />
-                          );
-                        })}
+                        <div className={cn('grid gap-1', viewMode === 'grid' ? 'grid-cols-2' : 'grid-cols-1')}>
+                          {group.items.map((item) => {
+                            const flatIdx = allItems.findIndex((i) => i.id === item.id);
+                            return (
+                              <ItemRow
+                                key={item.id}
+                                item={item}
+                                selected={selectedIndex === flatIdx}
+                                onSelect={() => {
+                                  item.action();
+                                  onOpenChange(false);
+                                }}
+                                itemRef={(el) => { itemsRef.current[flatIdx] = el; }}
+                                showDescription
+                              />
+                            );
+                          })}
+                        </div>
                       </div>
                     );
                   })}

@@ -23,7 +23,6 @@ import {
   Database,
   Users,
   Package,
-  FlaskConical,
 } from "lucide-react";
 import type { Workspace } from "@agent-spaces/shared";
 import { sdk } from "@/lib/sdk";
@@ -112,12 +111,6 @@ export function buildDashboardRoutes(config: DashboardRoutesConfig): Route[] {
       title: ts("nav.miniApp"),
       icon: <Workflow className="size-4" />,
       link: "/mini-apps",
-    },
-    {
-      id: "playground",
-      title: ts("nav.playground"),
-      icon: <FlaskConical className="size-4" />,
-      link: "/playground",
     },
     {
       id: "chat",

@@ -2,11 +2,13 @@
 
 import { ImageAccordionRow, type AccordionItem } from "@/components/ui/interactive-image-accordion";
 import { useTranslations } from "next-intl";
+import { Rocket, Zap, Code, type LucideIcon } from "lucide-react";
 
-const sections: { id: string; title: string; items: AccordionItem[] }[] = [
+const sections: { id: string; title: string; icon: LucideIcon; items: AccordionItem[] }[] = [
   {
     id: "quick-start",
     title: "快速上手",
+    icon: Rocket,
     items: [
       { id: "qs-1", title: "认识 Agent Spaces", imageUrl: "https://placehold.co/600x800/1f2937/ffffff?text=Agent+Spaces", url: "https://www.example.com/intro" },
       { id: "qs-2", title: "添加 LLM 供应商", imageUrl: "https://placehold.co/600x800/1f2937/ffffff?text=LLM+Provider", url: "https://www.example.com/add-provider" },
@@ -18,6 +20,7 @@ const sections: { id: string; title: string; items: AccordionItem[] }[] = [
   {
     id: "advanced",
     title: "进阶使用",
+    icon: Zap,
     items: [
       { id: "ad-1", title: "工作流", imageUrl: "https://placehold.co/600x800/312e81/ffffff?text=Workflow", url: "https://www.example.com/workflow" },
       { id: "ad-2", title: "团队模式", imageUrl: "https://placehold.co/600x800/312e81/ffffff?text=Team", url: "https://www.example.com/team" },
@@ -28,6 +31,7 @@ const sections: { id: string; title: string; items: AccordionItem[] }[] = [
   {
     id: "for-developers",
     title: "面向开发者",
+    icon: Code,
     items: [
       { id: "fd-1", title: "编写 MiniApp", imageUrl: "https://placehold.co/600x800/065f46/ffffff?text=Build+MiniApp", url: "https://www.example.com/build-miniapp" },
       { id: "fd-2", title: "参与开发", imageUrl: "https://placehold.co/600x800/065f46/ffffff?text=Contribute", url: "https://www.example.com/contribute" },
@@ -50,14 +54,18 @@ export default function LearnPage() {
       </div>
 
       <div className="flex flex-col gap-12">
-        {sections.map((section) => (
+        {sections.map((section) => {
+          const Icon = section.icon;
+          return (
           <section key={section.id}>
-            <h2 className="mb-4 text-2xl font-semibold text-foreground">
+            <h2 className="mb-4 flex items-center gap-2 text-2xl font-semibold text-foreground">
+              <Icon className="size-6" />
               {section.title}
             </h2>
             <ImageAccordionRow items={section.items} />
           </section>
-        ))}
+          );
+        })}
       </div>
     </div>
     </div>
