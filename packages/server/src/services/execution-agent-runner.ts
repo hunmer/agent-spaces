@@ -32,6 +32,49 @@ export async function executeAgentRun(
   return executeAgentWithRuntime(session, node, resolvedData, appendLog);
 }
 
+export async function executeAgentIntent(
+  session: ExecutionSession,
+  node: WorkflowNode,
+  resolvedData: Record<string, any>,
+  appendLog: AppendLog,
+): Promise<{ result: Record<string, unknown> }> {
+  const prompt = typeof resolvedData.prompt === 'string' ? resolvedData.prompt : '';
+  if (!prompt.trim()) throw new Error('agent_intent node missing prompt');
+
+  appendLog('info', 'Executing agent_intent node');
+  const output = await executeAgentWithRuntime(session, node, {
+    ...resolvedData,
+    prompt: [
+      prompt,
+      '请只返回一个合法的 JSON 对象，不要返回 Markdown 代码块、解释、过程或任何其他信息。',
+    ].join('\n\n'),
+  }, appendLog);
+
+  return { result: parseAgentIntentMessage(output.result) };
+}
+
+export function parseAgentIntentMessage(message: unknown): Record<string, unknown> {
+  if (typeof message !== 'string' || !message.trim()) {
+    throw new Error('Agent intent response is empty');
+  }
+
+  const trimmed = message.trim();
+  const fenced = trimmed.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
+  const json = fenced?.[1] ?? trimmed;
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(json);
+  } catch {
+    throw new Error('Agent intent response must be a valid JSON object');
+  }
+
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    throw new Error('Agent intent response must be a JSON object');
+  }
+  return parsed as Record<string, unknown>;
+}
+
 async function executeAgentWithRuntime(
   session: ExecutionSession,
   _node: WorkflowNode,

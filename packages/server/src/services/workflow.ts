@@ -218,7 +218,7 @@ function normalizeStringArray(value: unknown): string[] {
 
 function sanitizeAgentRunNodes(nodes: WorkflowNode[]): WorkflowNode[] {
   return nodes.map((node) => {
-    if (node.type !== 'agent_run') return node;
+    if (node.type !== 'agent_run' && node.type !== 'agent_intent') return node;
     return {
       ...node,
       data: {

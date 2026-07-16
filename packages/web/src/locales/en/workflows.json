@@ -790,6 +790,10 @@
         }
       }
     },
+    "agent_intent": {
+      "label": "Agent Intent",
+      "description": "Provide information to an Agent and parse only its message as a JSON object"
+    },
     "alert": {
       "label": "Alert Dialog",
       "description": "Display an alert dialog",

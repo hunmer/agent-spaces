@@ -3,7 +3,22 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { __resolveAgentPresetForTest } from '../src/services/execution-agent-runner.js';
+import { __resolveAgentPresetForTest, parseAgentIntentMessage } from '../src/services/execution-agent-runner.js';
+
+test('parseAgentIntentMessage parses only JSON object messages', () => {
+  assert.deepEqual(parseAgentIntentMessage('{"intent":"search","limit":3}'), {
+    intent: 'search',
+    limit: 3,
+  });
+  assert.deepEqual(parseAgentIntentMessage('```json\n{"intent":"create"}\n```'), {
+    intent: 'create',
+  });
+});
+
+test('parseAgentIntentMessage rejects non-object responses', () => {
+  assert.throws(() => parseAgentIntentMessage('["search"]'), /JSON object/);
+  assert.throws(() => parseAgentIntentMessage('result: {"intent":"search"}'), /valid JSON object/);
+});
 
 test('resolveAgentPreset uses node-level model fields to find matching preset and keeps local overrides', () => {
   const resolved = __resolveAgentPresetForTest({

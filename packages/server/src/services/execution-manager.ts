@@ -76,7 +76,7 @@ import {
 } from './execution-sqlite-nodes.js';
 import { executeKbAdd, executeKbQuery, executeKbDelete } from './execution-kb-nodes.js';
 import { executeCode, executePython } from './execution-code-runners.js';
-import { executeAgentRun } from './execution-agent-runner.js';
+import { executeAgentIntent, executeAgentRun } from './execution-agent-runner.js';
 import {
   shouldInterrupt,
   getNodesForExecutionScope,
@@ -1122,6 +1122,8 @@ export class ExecutionManager {
         return this.executeLoopNode(session, node, resolvedData, appendLog);
       case 'agent_run':
         return executeAgentRun(session, node, resolvedData, appendLog);
+      case 'agent_intent':
+        return executeAgentIntent(session, node, resolvedData, appendLog);
       case 'alert':
         return this.executeAlertDialog(session, node, resolvedData, appendLog);
       case 'prompt':

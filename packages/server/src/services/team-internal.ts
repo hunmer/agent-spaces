@@ -304,7 +304,7 @@ export function findPresetById(agentId: string): AgentConfig | undefined {
 export function findWorkflowAgentConfig(agentId: string): Record<string, unknown> | undefined {
   for (const workflow of listWorkflows()) {
     for (const node of workflow.nodes ?? []) {
-      if (node.type !== 'agent_run') continue;
+      if (node.type !== 'agent_run' && node.type !== 'agent_intent') continue;
       const data = isObject(node.data) ? node.data : null;
       if (!data) continue;
       const agent = asAgentRecord(data.agent);

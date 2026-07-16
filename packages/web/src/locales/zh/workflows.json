@@ -790,6 +790,10 @@
         }
       }
     },
+    "agent_intent": {
+      "label": "Agent 意图理解",
+      "description": "向 Agent 提供信息并将其消息解析为 JSON 对象，不返回其他运行信息"
+    },
     "alert": {
       "label": "消息弹窗",
       "description": "显示消息弹窗",

@@ -9,25 +9,37 @@
       "type": "start",
       "label": "开始",
       "position": {
-        "x": 250,
-        "y": 50
+        "x": 270,
+        "y": 75
       },
-      "data": {}
+      "data": {
+        "nodeWidth": 270,
+        "nodeHeight": 78
+      }
     },
     {
       "id": "node_1784218983819_end",
       "type": "end",
       "label": "结束",
       "position": {
-        "x": 255,
+        "x": 270,
         "y": 555
       },
       "data": {}
     }
   ],
-  "edges": [],
+  "edges": [
+    {
+      "id": "e-node_1784218983819_start-source-node_1784218983819_end-target",
+      "source": "node_1784218983819_start",
+      "target": "node_1784218983819_end",
+      "edgeKind": "runtime",
+      "sourceHandle": "source",
+      "targetHandle": "target"
+    }
+  ],
   "createdAt": 1784218983829,
-  "updatedAt": 1784220486700,
+  "updatedAt": 1784220960797,
   "published": false,
   "lastOpenedAt": 1784218983842,
   "groups": []
