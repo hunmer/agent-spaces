@@ -32,6 +32,23 @@ type GetSourceHandleStyle = (
 type OpenHandleColorMenu = (event: React.MouseEvent, handleId: string) => void;
 type RenderHandleColorPopover = (handleId: string, trigger: React.ReactElement) => React.ReactElement;
 
+const EXTERNAL_HANDLE_OFFSET = -8;
+
+function getExternalHandleStyle(position: Position): React.CSSProperties {
+  switch (position) {
+    case 'left':
+      return { left: EXTERNAL_HANDLE_OFFSET };
+    case 'right':
+      return { right: EXTERNAL_HANDLE_OFFSET };
+    case 'top':
+      return { top: EXTERNAL_HANDLE_OFFSET };
+    case 'bottom':
+      return { bottom: EXTERNAL_HANDLE_OFFSET };
+    default:
+      return {};
+  }
+}
+
 /* ----------------------------------------------------------------------------
  * 状态徽章 + 断点徽章 + 断点暂停操作条
  * ------------------------------------------------------------------------- */
@@ -303,8 +320,11 @@ export function NodeBodySourceHandles(props: NodeBodySourceHandlesProps) {
             SOURCE_HANDLE_KEY,
             <Handle
               id="source" type="source" position={handlePositions.source}
-              className={cn('!z-10 !w-3 !h-3 max-md:!w-5 max-md:!h-5 !border-2 handle-dot', floatingHandleClassName)}
-              style={getSourceHandleStyle(SOURCE_HANDLE_KEY, DEFAULT_SOURCE_HANDLE_COLOR, handlePositions.source, 0, 1)}
+              className={cn('!z-10 !h-2.5 !w-2.5 max-md:!h-4 max-md:!w-4 !border-2 handle-dot', floatingHandleClassName)}
+              style={{
+                ...getSourceHandleStyle(SOURCE_HANDLE_KEY, DEFAULT_SOURCE_HANDLE_COLOR, handlePositions.source, 0, 1),
+                ...getExternalHandleStyle(handlePositions.source),
+              }}
               onContextMenu={(event) => openHandleColorMenu(event, SOURCE_HANDLE_KEY)}
             />,
           )
@@ -324,14 +344,17 @@ export function NodeBodySourceHandles(props: NodeBodySourceHandlesProps) {
                   h.id,
                   <Handle
                     id={h.id} type="source" position={handlePositions.source}
-                    className={cn('!z-10 !w-2.5 !h-2.5 max-md:!w-5 max-md:!h-5 !border-2 handle-dot', floatingHandleClassName)}
-                    style={getSourceHandleStyle(
-                      h.id,
-                      h.id === LOOP_BODY_SOURCE_HANDLE ? LOOP_BODY_SOURCE_HANDLE_COLOR : DEFAULT_SOURCE_HANDLE_COLOR,
-                      handlePositions.source,
-                      index,
-                      staticSourceHandles.length,
-                    )}
+                    className={cn('!z-10 !h-2 !w-2 max-md:!h-4 max-md:!w-4 !border-2 handle-dot', floatingHandleClassName)}
+                    style={{
+                      ...getSourceHandleStyle(
+                        h.id,
+                        h.id === LOOP_BODY_SOURCE_HANDLE ? LOOP_BODY_SOURCE_HANDLE_COLOR : DEFAULT_SOURCE_HANDLE_COLOR,
+                        handlePositions.source,
+                        index,
+                        staticSourceHandles.length,
+                      ),
+                      ...getExternalHandleStyle(handlePositions.source),
+                    }}
                     onContextMenu={(event) => openHandleColorMenu(event, h.id)}
                   />,
                 )}
@@ -358,14 +381,17 @@ export function NodeBodySourceHandles(props: NodeBodySourceHandlesProps) {
                 h.id,
                 <Handle
                   id={h.id} type="source" position={handlePositions.source}
-                  className={cn('!z-10 !w-2.5 !h-2.5 max-md:!w-5 max-md:!h-5 !border-2 handle-dot', floatingHandleClassName)}
-                  style={getSourceHandleStyle(
-                    h.id,
-                    h.id === 'default' ? DEFAULT_DYNAMIC_FALLBACK_HANDLE_COLOR : DEFAULT_DYNAMIC_HANDLE_COLOR,
-                    handlePositions.source,
-                    h.index,
-                    h.total,
-                  )}
+                  className={cn('!z-10 !h-2 !w-2 max-md:!h-4 max-md:!w-4 !border-2 handle-dot', floatingHandleClassName)}
+                  style={{
+                    ...getSourceHandleStyle(
+                      h.id,
+                      h.id === 'default' ? DEFAULT_DYNAMIC_FALLBACK_HANDLE_COLOR : DEFAULT_DYNAMIC_HANDLE_COLOR,
+                      handlePositions.source,
+                      h.index,
+                      h.total,
+                    ),
+                    ...getExternalHandleStyle(handlePositions.source),
+                  }}
                   onContextMenu={(event) => openHandleColorMenu(event, h.id)}
                 />,
               )}
@@ -416,8 +442,11 @@ export function NodeBodyTargetHandles(props: NodeBodyTargetHandlesProps) {
         <Handle
           id="target" type="target" position={handlePositions.target}
           isConnectable={isTargetConnectable}
-          className={cn('!z-10 !w-3 !h-3 max-md:!w-5 max-md:!h-5 !bg-blue-500 !border-2 !border-blue-300 handle-dot', floatingHandleClassName)}
-          style={getTargetHandleStyle(handlePositions.target, handleCtx)}
+          className={cn('!z-10 !h-2.5 !w-2.5 max-md:!h-4 max-md:!w-4 !bg-blue-500 !border-2 !border-blue-300 handle-dot', floatingHandleClassName)}
+          style={{
+            ...getTargetHandleStyle(handlePositions.target, handleCtx),
+            ...getExternalHandleStyle(handlePositions.target),
+          }}
         />
       )}
       {!canShowPropertyNodeView && inputFields.map((field, index) => (
