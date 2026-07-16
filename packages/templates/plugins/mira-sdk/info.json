@@ -1,6 +1,7 @@
 {
   "id": "workflow.mira-sdk",
   "name": "Mira SDK",
+  "icon": "icon.png",
   "name_zh": "Mira SDK",
   "name_en": "Mira SDK",
   "version": "1.0.0",

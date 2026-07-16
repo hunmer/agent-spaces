@@ -221,14 +221,7 @@ export function WorkflowExecutionBar({
             <Play className="h-3 w-3" /> {t('execution.execute')}
           </Button>
         )}
-
-        {validationError && !isRunning && !isPaused && (
-          <div className="flex items-center gap-1 text-[10px] text-amber-600 dark:text-amber-400">
-            <AlertTriangle className="h-3 w-3 shrink-0" />
-            <span>{validationError}</span>
-          </div>
-        )}
-
+        
         <Button variant="ghost" size="sm" className="h-6 text-xs gap-1 px-2" disabled={!canPause} onClick={onPause}>
           <Pause className="h-3 w-3" /> {t('execution.pause')}
         </Button>

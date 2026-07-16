@@ -3,7 +3,7 @@
   "name": "Nano Banana",
   "name_zh": "Nano Banana",
   "name_en": "Nano Banana",
-  "icon": "icon.svg",
+  "icon": "icon.png",
   "version": "1.0.0",
   "description": "Google Gemini 原生图像生成（Nano Banana），支持文生图、图片编辑、多参考图融合、多轮编辑、Google 搜索 Grounding、Thinking 模式与最高 4K 分辨率",
   "description_zh": "Google Gemini 原生图像生成（Nano Banana），支持文生图、图片编辑、多参考图融合、多轮编辑、Google 搜索 Grounding、Thinking 模式与最高 4K 分辨率",

@@ -1,0 +1,33 @@
+{
+  "id": "838e8ee2-1375-4bc5-8f18-e20f0f10f490",
+  "name": "test",
+  "type": "normal",
+  "folderId": null,
+  "nodes": [
+    {
+      "id": "node_1784218983819_start",
+      "type": "start",
+      "label": "开始",
+      "position": {
+        "x": 250,
+        "y": 50
+      },
+      "data": {}
+    },
+    {
+      "id": "node_1784218983819_end",
+      "type": "end",
+      "label": "结束",
+      "position": {
+        "x": 250,
+        "y": 400
+      },
+      "data": {}
+    }
+  ],
+  "edges": [],
+  "createdAt": 1784218983829,
+  "updatedAt": 1784218983829,
+  "published": false,
+  "lastOpenedAt": 1784218983842
+}
