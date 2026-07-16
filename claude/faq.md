@@ -27,7 +27,7 @@ Server 在 `src/adapters/` 中适配多种 AI Agent SDK：
 - **OpenAI Codex SDK**
 - **LangChain** — 支持 Anthropic/OpenAI/Google
 - **Hermes** — 自研运行时
-- **Oh-My-Pi**
+- **Pi SDK** — `@earendil-works/pi-coding-agent`（原 oh-my-pi 已迁移为 pi）
 - **Open Agent SDK** (@codeany)
 
 ## Q: 如何添加新的 API 端点？

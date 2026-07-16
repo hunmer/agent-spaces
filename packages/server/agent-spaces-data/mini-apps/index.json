@@ -26,6 +26,11 @@
     "type": "react",
     "tags": [],
     "mainFile": "index.jsx",
+    "devices": [
+      "mobile",
+      "ipad",
+      "pc"
+    ],
     "createdAt": "2026-06-11T06:56:26.095Z",
     "updatedAt": "2026-06-16T03:15:10.813Z",
     "agentConfigId": "f98bd9a7-ddda-4766-a6d1-59a94ed4f7e4",

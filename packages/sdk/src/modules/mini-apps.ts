@@ -13,6 +13,8 @@ export interface MiniAppProject {
   agentConfigId?: string;
   enableAgents?: boolean;
   mainFile: string;
+  /** 支持的设备类型，如 ['mobile', 'ipad', 'pc'] */
+  devices?: string[];
   icon?: string;
   avatarUrl?: string;
   backgroundUrl?: string;

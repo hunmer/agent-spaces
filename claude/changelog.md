@@ -2,6 +2,16 @@
 
 > 本文件只记录"AI 上下文索引"的生成/更新历史，最近 5 条倒序排列。
 
+## 2026-07-16 — oh-my-pi → pi 迁移核对
+
+- **背景**: 用户提示 oh-my-pi 已迁移到 pi，本次为迁移后文档同步核对
+- **源码事实**: `adapters/oh-my-pi-runtime.ts` → `adapters/pi-runtime.ts`；`AgentRuntimeKind = 'pi'`；`routes/runtime.ts` 中 descriptor `id:'pi'`/`label:'Pi SDK'`/`runtimeKind:'pi'`/`packageName:'@earendil-works/pi-coding-agent'`；`services/agent.ts` 与 `ws/agent-prompt.ts` 均使用 `'pi'`
+- **文档修正**: 将旧名 `Oh-My-Pi` 更新为 `Pi`/`Pi SDK`（根 `claude/overview.md`、`claude/module-responsibilities.md`、`claude/faq.md`；`packages/server/CLAUDE.md` 核心能力描述）
+- **残留确认**: `oh-my-pi` 字样仅存在于 `server/dist/`、`.next/`、`electron/renderer/_next/`、`flutter/assets/web/_next/`、`tauri/web/_next/` 等构建产物，属正常跳过项，源码无残留
+- **跳过范围扩充**: `packages/tauri`（无 package.json/Cargo.toml，仅 target 缓存 + 旧 web，疑似废弃）、`packages/logs`（运行时日志）
+- **未改源码**: 本次仅同步文档，无源码变更
+- 更新文件：根 `CLAUDE.md`（扫描状态）+ `claude/changelog.md` + `claude/overview.md` + `claude/module-responsibilities.md` + `claude/faq.md` + `packages/server/CLAUDE.md`
+
 ## 2026-07-13 — 增量核对 + MCP 拆分
 
 - **mcp**: 原 `CLAUDE.md` 长文档拆分为 `claude/*.md`（8 个详情文件），`CLAUDE.md` 改为轻量索引；SDK 覆盖由反射自动同步（当前 39 模块）
@@ -37,11 +47,3 @@
 - **shared**: 新增类型 `AgentUsageSessionMessage` / `AgentUsageSessionDetail`；`WorkflowExecuteRequest` 与 `workflow:execute` 事件新增 `source` 字段
 - **sdk**: `agent` 模块新增 `sessionDetail()` 方法（10→11 方法）
 - **web**: 变量选择器新增"工作流信息"分组（`__WORKFLOW__` 字段树）；`usage-dashboard-session-dialog.tsx` 会话详情对话框
-
-## 2026-06-27 — 初始化项目 AI 上下文
-
-- 首次生成根级 `CLAUDE.md` + `claude/*.md`（11 个详情文件）
-- 识别并生成 9 个模块的 `CLAUDE.md` + `claude/*.md`
-- 覆盖模块：web, server, electron, sdk, shared, templates, dom-inspector-hook, flutter, documents
-- 扫描范围：根目录结构、所有 package.json、主要入口文件、路由/服务/存储/API
-- 跳过：`node_modules/`、`.next/`、`dist/`、`out/`、`release/`、运行时数据目录

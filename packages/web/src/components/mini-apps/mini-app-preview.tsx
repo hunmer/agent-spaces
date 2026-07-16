@@ -19,7 +19,7 @@ import { AvatarGroup } from '@/components/ui/avatar-group';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ChatPanel, type ChatMessage } from '@/components/ui/chat-panel';
-import { PanelRightOpen, Loader2, Search, Sparkles, Settings2, Settings, Eraser } from 'lucide-react';
+import { PanelRightOpen, Loader2, Search, Sparkles, Settings2, Settings, Eraser, Smartphone, Monitor, Tablet } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { AgentEditor } from '@/components/sidebar/agent-editor';
@@ -45,7 +45,72 @@ interface MiniAppPreviewProps {
   files?: Record<string, string>;
   /** entry point filename */
   mainFile?: string;
+  /** 支持的设备类型（manifest.devices），如 ['mobile', 'ipad', 'pc'] */
+  devices?: string[];
   allowScroll?: boolean;
+}
+
+/** 设备外框资源映射。key = manifest.devices 里的设备标识。 */
+const DEVICE_FRAMES: Record<string, {
+  label: string;
+  icon: typeof Smartphone;
+  /** 外框图（背景）相对 public 路径 */
+  frame: string;
+  /** 屏幕区域相对外框的 padding（百分比），用于定位实际内容。 */
+  screen: { top: string; right: string; bottom: string; left: string };
+  /** 外框在容器里的最大宽度，用于限制大设备。 */
+  maxWidth?: string;
+  /** 外框纵横比宽/高，用于自适应高度。 */
+  aspectRatio?: string;
+  isSvg?: boolean;
+}> = {
+  mobile: {
+    label: 'Mobile',
+    icon: Smartphone,
+    frame: '/devices/iphone-17-pro-max.svg',
+    screen: { top: '3%', right: '8%', bottom: '3%', left: '8%' },
+    maxWidth: '380px',
+    aspectRatio: '9 / 19.5',
+    isSvg: true,
+  },
+  ipad_portrait: {
+    label: 'iPad Portrait',
+    icon: Tablet,
+    frame: '/devices/ipad-pro-13-portrait.png',
+    screen: { top: '6%', right: '7%', bottom: '6%', left: '7%' },
+    maxWidth: '780px',
+    aspectRatio: '820 / 1180',
+  },
+  ipad_landscape: {
+    label: 'iPad Landscape',
+    icon: Tablet,
+    frame: '/devices/ipad-pro-13-landscape.png',
+    screen: { top: '7%', right: '6%', bottom: '7%', left: '6%' },
+    maxWidth: '1180px',
+    aspectRatio: '1180 / 820',
+  },
+  pc: {
+    label: 'PC',
+    icon: Monitor,
+    frame: '/devices/macbook-pro-16.png',
+    screen: { top: '8%', right: '11%', bottom: '16%', left: '11%' },
+    maxWidth: '1400px',
+    aspectRatio: '16 / 10',
+  },
+};
+
+/** 把 manifest.devices 展开成可选设备列表（ipad 拆 portrait/landscape）。 */
+function expandDevices(devices?: string[]): string[] {
+  if (!devices?.length) return [];
+  const out: string[] = [];
+  for (const d of devices) {
+    if (d === 'ipad') {
+      out.push('ipad_portrait', 'ipad_landscape');
+    } else {
+      out.push(d);
+    }
+  }
+  return out;
 }
 
 /** 从 fetch SSE Response 解析 event:/data: 帧，逐帧回调。 */
@@ -340,7 +405,7 @@ function MiniAppAgentPopover({ projectId }: { projectId: string }) {
   );
 }
 
-export function MiniAppPreview({ type, sourceCode, error, onError, projectId, projectName, hideHeader, enabledPlugins, files, mainFile, enableAgents, allowScroll = false }: MiniAppPreviewProps) {
+export function MiniAppPreview({ type, sourceCode, error, onError, projectId, projectName, hideHeader, enabledPlugins, files, mainFile, enableAgents, devices, allowScroll = false }: MiniAppPreviewProps) {
   const t = useTranslations('mini-apps');
   const router = useRouter();
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -349,6 +414,12 @@ export function MiniAppPreview({ type, sourceCode, error, onError, projectId, pr
   const [search, setSearch] = useState('');
   const [allPlugins, setAllPlugins] = useState<WorkflowPlugin[]>([]);
   const [taskEvents, setTaskEvents] = useState<MiniAppTaskEvent[]>([]);
+
+  // 设备外框：可选设备清单 + 当前选中（'none' 表示不套外框）
+  const availableDevices = useMemo(() => expandDevices(devices), [devices]);
+  const [device, setDevice] = useState<string>('none');
+  // 项目切换时重置设备选择
+  useEffect(() => { setDevice('none'); }, [projectId]);
 
   // Load plugin metadata for avatar display
   useEffect(() => {
@@ -479,7 +550,35 @@ export function MiniAppPreview({ type, sourceCode, error, onError, projectId, pr
           <span className="text-sm font-medium truncate max-w-[60%] text-center">
             {projectName}
           </span>
-          <div className="flex-1 flex justify-end">
+          <div className="flex-1 flex justify-end items-center gap-1">
+            {availableDevices.length > 0 && (
+              <Select value={device} onValueChange={(v) => setDevice(v ?? 'none')}>
+                <SelectTrigger className="h-7 w-auto gap-1 text-xs px-2" aria-label={t('preview.device')}>
+                  {(() => {
+                    const Current = device !== 'none' ? DEVICE_FRAMES[device]?.icon : Monitor;
+                    const Icon = Current ?? Monitor;
+                    return <Icon className="h-3.5 w-3.5" />;
+                  })()}
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">{t('preview.deviceNone')}</SelectItem>
+                  {availableDevices.map((d) => {
+                    const meta = DEVICE_FRAMES[d];
+                    if (!meta) return null;
+                    const Icon = meta.icon;
+                    return (
+                      <SelectItem key={d} value={d}>
+                        <span className="inline-flex items-center gap-1.5">
+                          <Icon className="h-3.5 w-3.5" />
+                          {meta.label}
+                        </span>
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+            )}
             {enableAgents && projectId && <MiniAppAgentPopover projectId={projectId} />}
             <Sheet open={drawerOpen} onOpenChange={handleDrawerOpen}>
               <SheetTrigger render={<Button variant="ghost" size="icon" className="h-7 w-7" />}>
@@ -540,15 +639,63 @@ export function MiniAppPreview({ type, sourceCode, error, onError, projectId, pr
         </div>
       )}
       <div className={cn('min-h-0 flex-1', allowScroll ? 'overflow-auto' : 'overflow-hidden')}>
-        <MiniAppRenderer
-          type={type}
-          sourceCode={sourceCode}
-          onError={handleRendererError}
-          taskEvents={taskEvents}
-          files={files}
-          mainFile={mainFile}
-          allowScroll={allowScroll}
-        />
+        {(() => {
+          const rendererEl = (
+            <MiniAppRenderer
+              type={type}
+              sourceCode={sourceCode}
+              onError={handleRendererError}
+              taskEvents={taskEvents}
+              files={files}
+              mainFile={mainFile}
+              allowScroll={allowScroll}
+            />
+          );
+
+          // 不套外框：原样渲染
+          if (device === 'none' || !DEVICE_FRAMES[device]) return rendererEl;
+
+          const meta = DEVICE_FRAMES[device];
+          const screen = meta.screen;
+          return (
+            <div
+              className={cn(
+                'h-full w-full overflow-auto flex items-center justify-center p-4',
+                allowScroll ? '' : '',
+              )}
+            >
+              <div
+                className="relative"
+                style={{
+                  width: '100%',
+                  maxWidth: meta.maxWidth,
+                  aspectRatio: meta.aspectRatio,
+                }}
+              >
+                {/* 外框图作为背景层，按宽高比铺满；保留外框线条锐利 */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={meta.frame}
+                  alt={meta.label}
+                  className="pointer-events-none absolute inset-0 h-full w-full object-contain select-none"
+                  draggable={false}
+                />
+                {/* 屏幕区域：通过百分比 inset 对齐到外框的屏幕开口 */}
+                <div
+                  className="absolute overflow-hidden bg-white dark:bg-black"
+                  style={{
+                    top: screen.top,
+                    right: screen.right,
+                    bottom: screen.bottom,
+                    left: screen.left,
+                  }}
+                >
+                  {rendererEl}
+                </div>
+              </div>
+            </div>
+          );
+        })()}
       </div>
       <WorkflowPluginConfigDialog
         open={Boolean(configPlugin)}

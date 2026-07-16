@@ -162,6 +162,7 @@ export default function MiniAppPreviewPageClient() {
           hideHeader={embedded}
           enabledPlugins={project.enabledPlugins}
           enableAgents={project.enableAgents}
+          devices={project.devices}
           files={allFiles}
           mainFile={project.mainFile}
           allowScroll={embedded}

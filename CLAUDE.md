@@ -59,8 +59,9 @@ graph TD
 
 ## 扫描状态
 
-- **更新时间**: 2026-07-13
-- **已扫描**: 根目录结构、所有 package.json、主要入口文件、路由/服务/存储/API 层、最近 7 个迭代（runtime 管理 / issue 系统 / notification-hub / usage dashboard / mini-apps / team 协作 / **mcp 拆分 + 增量核对**）
+- **更新时间**: 2026-07-16
+- **已扫描**: 根目录结构、所有 package.json、主要入口文件、路由/服务/存储/API 层、最近 8 个迭代（runtime 管理 / issue 系统 / notification-hub / usage dashboard / mini-apps / team 协作 / mcp 拆分 / **oh-my-pi → pi 迁移核对**）
 - **已覆盖模块**: 10/10（web, server, electron, sdk, mcp, shared, templates, dom-inspector-hook, flutter, documents）
-- **跳过**: node_modules, .next, dist, out, release, agent-spaces-data 运行时数据, build 缓存
-- **下一步建议**: 深挖 `packages/server/src/services/team-runtime.ts`（Team 运行时编排细节）、`packages/web/src/components/chat/`（聊天面板重构）、`packages/templates/plugins/obsidian`（新插件）
+- **跳过**: node_modules, .next, dist, out, release, agent-spaces-data 运行时数据, build 缓存, `packages/tauri`（无 package.json/Cargo.toml，仅 src-tauri/target 构建缓存 + 旧 web 副本，疑似废弃）, `packages/logs`（运行时日志）
+- **迁移核对**: `oh-my-pi` 已全面迁移为 `pi`（`adapters/pi-runtime.ts`、`AgentRuntimeKind='pi'`、runtime id `pi`/label `Pi SDK`、npm 包 `@earendil-works/pi-coding-agent`）；残留 `oh-my-pi` 字样仅存在于 dist/.next/electron/flutter/tauri 的旧构建产物
+- **下一步建议**: 深挖 `packages/server/src/services/team-runtime.ts`（Team 运行时编排细节）、`packages/web/src/components/chat/`（聊天面板重构）、`packages/templates/plugins/obsidian`（新插件）；确认 `packages/tauri` 是否应清理或重新启用

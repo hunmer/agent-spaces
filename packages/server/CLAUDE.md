@@ -1,6 +1,6 @@
 # packages/server (`@agent-spaces/server`)
 
-Express 5 后端服务，REST API + WebSocket，SQLite 存储。核心能力：多 AI Agent 运行时适配（Claude Code/Codex/LangChain/Hermes/Oh-My-Pi/Open Agent SDK）、Runtime 安装与版本管理、Workflow 可视化执行引擎、Issue 任务系统、Team 多 Agent 协作（成员/角色/消息/收件箱/运行时编排）、实时通信（聊天/终端/LSP）、知识库 + 向量嵌入、Git 操作、MCP 工具集成、Notification Hub 通知推送（微信/飞书 Bot）。
+Express 5 后端服务，REST API + WebSocket，SQLite 存储。核心能力：多 AI Agent 运行时适配（Claude Code/Codex/LangChain/Hermes/Pi/Open Agent SDK）、Runtime 安装与版本管理、Workflow 可视化执行引擎、Issue 任务系统、Team 多 Agent 协作（成员/角色/消息/收件箱/运行时编排）、实时通信（聊天/终端/LSP）、知识库 + 向量嵌入、Git 操作、MCP 工具集成、Notification Hub 通知推送（微信/飞书 Bot）。
 
 ## 约定
 

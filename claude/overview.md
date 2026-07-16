@@ -23,6 +23,6 @@ Agent Spaces 是一个**多智能体协作编程平台**，支持 AI Agent 的�
 
 - Web 支持 `NEXT_STATIC_EXPORT=1` 纯静态导出，为 Electron/Flutter 嵌入服务。
 - Server 同时作为 API 服务器和 Web 静态文件服务器（生产模式）。
-- AI Agent 执行采用**多运行时适配器**模式：支持 Claude Code SDK、OpenAI Codex、LangChain、Hermes、Oh-My-Pi、Open Agent SDK。
+- AI Agent 执行采用**多运行时适配器**模式：支持 Claude Code SDK、OpenAI Codex、LangChain、Hermes、Pi、Open Agent SDK。
 - Workflow 执行引擎支持 HTTP 回调、Webhook 触发、定时调度。
 - SQLite 作为主存储，JSON 文件辅助，无外部数据库依赖。

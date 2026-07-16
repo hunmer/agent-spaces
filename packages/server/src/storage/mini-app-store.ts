@@ -16,6 +16,8 @@ export interface MiniAppProject {
   /** agents.json 的种子配置：服务器启动时若 agents.json 不存在，则用它落地初始化。 */
   agents?: unknown[];
   mainFile: string;
+  /** 支持的设备类型，如 ['mobile', 'ipad', 'pc'] */
+  devices?: string[];
   icon?: string;
   avatarUrl?: string;
   backgroundUrl?: string;

@@ -114,7 +114,9 @@
     "refresh": "刷新",
     "plugins": "插件",
     "entryExportError": "入口文件必须 export default 一个 React 组件",
-    "switchProject": "切换页面"
+    "switchProject": "切换页面",
+    "device": "设备外框",
+    "deviceNone": "无外框"
   },
   "chat": {
     "assistantPrompt": "请作为 Workflow UI 项目 \"{name}\" 的开发助手。",
