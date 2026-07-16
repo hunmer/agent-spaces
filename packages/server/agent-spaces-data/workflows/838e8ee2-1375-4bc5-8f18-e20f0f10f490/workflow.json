@@ -41,7 +41,12 @@
           {
             "key": "result",
             "type": "object",
-            "children": []
+            "children": [
+              {
+                "key": "ret",
+                "type": "boolean"
+              }
+            ]
           }
         ],
         "sourceNodeId": "node_1784218983819_start",
@@ -52,7 +57,7 @@
           "name": "Agent",
           "role": "agent",
           "description": "通用 Agent，可在 workflow 中承担任意执行节点",
-          "runtimeKind": "claude-code",
+          "runtimeKind": "langchain",
           "modelProvider": "openai-chat-completions",
           "providerId": "3e8b4ab0-6693-4913-9d7b-23c4b2300447",
           "modelId": "GLM-4.7",
@@ -61,11 +66,6 @@
           "mcps": {
             "mcpServers": {}
           },
-          "skills": [
-            "coding.md",
-            "debugging.md",
-            "testing.md"
-          ],
           "systemPrompt": "",
           "outputStyle": "",
           "temperature": 0.3,
@@ -91,9 +91,10 @@
     }
   ],
   "createdAt": 1784218983829,
-  "updatedAt": 1784221834289,
+  "updatedAt": 1784222061349,
   "published": false,
   "lastOpenedAt": 1784218983842,
   "groups": [],
-  "enabledPlugins": []
+  "enabledPlugins": [],
+  "lastRunAt": 1784222065764
 }
