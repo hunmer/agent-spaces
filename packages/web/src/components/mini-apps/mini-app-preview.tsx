@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useTranslations } from 'next-intl';
 import { useRouter, useSearchParams } from 'next/navigation';
 import type { MiniAppProject, MiniAppAgentConfig } from '@agent-spaces/sdk';
@@ -68,8 +68,8 @@ const DEVICE_FRAMES: Record<string, {
     label: 'Mobile',
     icon: Smartphone,
     frame: '/devices/iphone-17-pro-max.svg',
-    // 屏幕区由 mockup SVG 实测得出（暗像素外接矩形）：top/bottom≈2.2%，left/right≈4.5%
-    screen: { top: '2.1%', right: '4.5%', bottom: '2.2%', left: '4.5%' },
+    // 屏幕开口中心止于 y=2967/3068；底部需避开透明的机身外侧。
+    screen: { top: '1.25%', right: '2.02%', bottom: '3.3%', left: '2.02%' },
     maxWidth: '380px',
     aspectRatio: '1520 / 3068',
     isSvg: true,
@@ -78,8 +78,8 @@ const DEVICE_FRAMES: Record<string, {
     label: 'iPad Portrait',
     icon: Tablet,
     frame: '/devices/ipad-pro-13-portrait.png',
-    // 实测：屏幕 inset 上下 3.25%、左右 4.15%
-    screen: { top: '3.3%', right: '4.2%', bottom: '3.3%', left: '4.2%' },
+    // 实测 alpha 镂空：屏幕 inset 上下 5.75%、左右 7.67%
+    screen: { top: '5.75%', right: '7.67%', bottom: '5.75%', left: '7.67%' },
     maxWidth: '780px',
     aspectRatio: '2448 / 3132',
   },
@@ -87,8 +87,8 @@ const DEVICE_FRAMES: Record<string, {
     label: 'iPad Landscape',
     icon: Tablet,
     frame: '/devices/ipad-pro-13-landscape.png',
-    // 实测：屏幕 inset 上下 4.15%、左右 3.25%
-    screen: { top: '4.2%', right: '3.3%', bottom: '4.2%', left: '3.3%' },
+    // 实测 alpha 镂空：屏幕 inset 上下 7.67%、左右 5.75%
+    screen: { top: '7.67%', right: '5.75%', bottom: '7.67%', left: '5.75%' },
     maxWidth: '1180px',
     aspectRatio: '3132 / 2448',
   },
@@ -96,8 +96,8 @@ const DEVICE_FRAMES: Record<string, {
     label: 'PC',
     icon: Monitor,
     frame: '/devices/macbook-pro-16.png',
-    // 实测：屏幕上边/左右≈8.6%/8.5%；下边含铰链，留 9% 给键盘区
-    screen: { top: '8.7%', right: '8.5%', bottom: '9%', left: '8.5%' },
+    // 实测 alpha 镂空：屏幕 inset 上下 10.33%、左右 9.80%
+    screen: { top: '10.33%', right: '9.8%', bottom: '10.33%', left: '9.8%' },
     maxWidth: '1400px',
     aspectRatio: '4340 / 2860',
   },
@@ -115,6 +115,83 @@ function expandDevices(devices?: string[]): string[] {
     }
   }
   return out;
+}
+
+/** 解析 "1520 / 3068" 形式的 aspectRatio 为数值宽高比。 */
+function parseAspectRatio(s?: string): number {
+  if (!s) return 1;
+  const parts = s.split('/').map((x) => parseFloat(x.trim()));
+  if (parts.length === 2 && parts[1]) return parts[0] / parts[1];
+  return parseFloat(s) || 1;
+}
+
+/**
+ * 设备外框容器：测量父容器尺寸，按设备宽高比算出"既不超宽也不超高"的
+ * 实际宽高（取宽/高两个约束的较小值），保证设备等比完整显示且不滚动。
+ */
+function DeviceFrame({ meta, children }: { meta: typeof DEVICE_FRAMES[string]; children: ReactNode }) {
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const [size, setSize] = useState<{ w: number; h: number } | null>(null);
+  const ratio = useMemo(() => parseAspectRatio(meta.aspectRatio), [meta.aspectRatio]);
+  const maxW = useMemo(() => parseFloat(meta.maxWidth ?? '9999') || 9999, [meta.maxWidth]);
+
+  useEffect(() => {
+    const el = wrapRef.current?.parentElement;
+    if (!el) return;
+    const measure = () => {
+      const pad = 32; // p-4 上下/左右各 16px
+      const availW = Math.max(0, el.clientWidth - pad);
+      const availH = Math.max(0, el.clientHeight - pad);
+      if (availW <= 0 || availH <= 0) return;
+      // 按宽算高、按高算宽，取能放下的那个
+      let w = availW;
+      let h = w / ratio;
+      if (h > availH) {
+        h = availH;
+        w = h * ratio;
+      }
+      // 不超过声明 maxWidth
+      if (w > maxW) {
+        w = maxW;
+        h = w / ratio;
+      }
+      setSize({ w: Math.round(w), h: Math.round(h) });
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [ratio, maxW]);
+
+  const screen = meta.screen;
+  return (
+    <div
+      ref={wrapRef}
+      className="relative"
+      style={size ? { width: size.w, height: size.h } : { width: 0, height: 0 }}
+    >
+      {/* 屏幕内容层（下层）：overflow-hidden 裁剪；transform 建立包含块让 fixed/sticky 相对本屏定位 */}
+      <div
+        className="absolute isolate overflow-hidden bg-white dark:bg-black"
+        style={{
+          top: screen.top,
+          right: screen.right,
+          bottom: screen.bottom,
+          left: screen.left,
+          transform: 'translateZ(0)',
+        }}
+      >
+        {children}
+      </div>
+      {/* 设备外框层（上层）：屏幕区镂空透明，透出内容；不透明边框盖住溢出 */}
+      <img
+        src={meta.frame}
+        alt={meta.label}
+        className="pointer-events-none absolute inset-0 z-10 h-full w-full object-fill select-none"
+        draggable={false}
+      />
+    </div>
+  );
 }
 
 /** 从 fetch SSE Response 解析 event:/data: 帧，逐帧回调。 */
@@ -681,43 +758,9 @@ export function MiniAppPreview({ type, sourceCode, error, onError, projectId, pr
           if (device === 'none' || !DEVICE_FRAMES[device]) return rendererEl;
 
           const meta = DEVICE_FRAMES[device];
-          const screen = meta.screen;
           return (
-            <div
-              className={cn(
-                'h-full w-full overflow-auto flex items-center justify-center p-4',
-                allowScroll ? '' : '',
-              )}
-            >
-              <div
-                className="relative"
-                style={{
-                  width: '100%',
-                  maxWidth: meta.maxWidth,
-                  aspectRatio: meta.aspectRatio,
-                }}
-              >
-                {/* 外框图作为背景层，按宽高比铺满；保留外框线条锐利 */}
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={meta.frame}
-                  alt={meta.label}
-                  className="pointer-events-none absolute inset-0 h-full w-full object-contain select-none"
-                  draggable={false}
-                />
-                {/* 屏幕区域：通过百分比 inset 对齐到外框的屏幕开口 */}
-                <div
-                  className="absolute overflow-hidden bg-white dark:bg-black"
-                  style={{
-                    top: screen.top,
-                    right: screen.right,
-                    bottom: screen.bottom,
-                    left: screen.left,
-                  }}
-                >
-                  {rendererEl}
-                </div>
-              </div>
+            <div className="h-full w-full overflow-hidden flex items-center justify-center p-4">
+              <DeviceFrame meta={meta}>{rendererEl}</DeviceFrame>
             </div>
           );
         })()}

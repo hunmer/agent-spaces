@@ -16,6 +16,7 @@
     "providers": "Providers",
     "workflows": "Workflows",
     "miniApp": "Workflows UI",
+    "playground": "Playground",
     "chat": "Chat",
     "teams": "Teams",
     "hooks": "Hooks",

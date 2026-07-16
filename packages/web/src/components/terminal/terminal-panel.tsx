@@ -23,54 +23,10 @@ import type { QuickCommand } from '@agent-spaces/shared';
 import { useTranslations } from 'next-intl';
 import { ChannelDialog } from '@/components/chat/channel-dialog';
 import { normalizeChannelMembersToAgentIds } from '@/lib/agent-members';
-import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
-import type { Layout } from 'react-resizable-panels';
 
 interface TerminalPanelProps {
   workspaceId: string;
   boundDirs: string[];
-}
-
-const TERMINAL_LAYOUT_KEY = 'agent-spaces:terminal-layout';
-const COMMAND_SIDEBAR_PANEL_ID = 'sidebar';
-const TERMINAL_PANEL_ID = 'terminal';
-
-const TERMINAL_LAYOUT_LIMITS = {
-  sidebarMin: 12,
-  sidebarMax: 40,
-  terminalMin: 30,
-} as const;
-
-function loadTerminalLayout(): Layout | undefined {
-  try {
-    const raw = localStorage.getItem(TERMINAL_LAYOUT_KEY);
-    if (!raw) return undefined;
-
-    const layout = JSON.parse(raw) as Partial<Layout>;
-    const sidebar = layout[COMMAND_SIDEBAR_PANEL_ID];
-    const terminal = layout[TERMINAL_PANEL_ID];
-
-    return typeof sidebar === 'number'
-      && typeof terminal === 'number'
-      && sidebar >= TERMINAL_LAYOUT_LIMITS.sidebarMin
-      && sidebar <= TERMINAL_LAYOUT_LIMITS.sidebarMax
-      && terminal >= TERMINAL_LAYOUT_LIMITS.terminalMin
-      ? { [COMMAND_SIDEBAR_PANEL_ID]: sidebar, [TERMINAL_PANEL_ID]: terminal }
-      : undefined;
-  } catch {
-    return undefined;
-  }
-}
-
-function isValidTerminalLayout(layout: Layout): boolean {
-  const sidebar = layout[COMMAND_SIDEBAR_PANEL_ID];
-  const terminal = layout[TERMINAL_PANEL_ID];
-
-  return typeof sidebar === 'number'
-    && typeof terminal === 'number'
-    && sidebar >= TERMINAL_LAYOUT_LIMITS.sidebarMin
-    && sidebar <= TERMINAL_LAYOUT_LIMITS.sidebarMax
-    && terminal >= TERMINAL_LAYOUT_LIMITS.terminalMin;
 }
 
 export function TerminalPanel({ workspaceId, boundDirs }: TerminalPanelProps) {
@@ -84,14 +40,6 @@ export function TerminalPanel({ workspaceId, boundDirs }: TerminalPanelProps) {
 
   const [aiFixDialogOpen, setAiFixDialogOpen] = useState(false);
   const [aiFixSessionId, setAiFixSessionId] = useState('');
-
-  const terminalLayout = useMemo<Layout | undefined>(() => {
-    return loadTerminalLayout();
-  }, []);
-  const onTerminalLayoutChange = useCallback((layout: Layout) => {
-    if (!isValidTerminalLayout(layout)) return;
-    try { localStorage.setItem(TERMINAL_LAYOUT_KEY, JSON.stringify(layout)); } catch {}
-  }, []);
 
   const [dirPickerOpen, setDirPickerOpen] = useState(false);
   const [pendingShell, setPendingShell] = useState<string | undefined>(undefined);
@@ -309,8 +257,8 @@ export function TerminalPanel({ workspaceId, boundDirs }: TerminalPanelProps) {
           </DropdownMenuContent>
         </DropdownMenu>
 
-        {/* Commands button - visible only on small screens */}
-        <div className="md:hidden ml-auto">
+        {/* Commands button - popover entry in header (rightmost) */}
+        <div className="ml-auto">
           <Popover open={commandPopoverOpen} onOpenChange={setCommandPopoverOpen}>
             <PopoverTrigger
               render={
@@ -354,66 +302,31 @@ export function TerminalPanel({ workspaceId, boundDirs }: TerminalPanelProps) {
         </div>
       </div>
 
-      {/* Content: command sidebar + terminal */}
-      <ResizablePanelGroup orientation="horizontal" defaultLayout={terminalLayout} onLayoutChange={onTerminalLayoutChange} className="flex-1 overflow-hidden">
-        {/* Command sidebar - hidden on small screens */}
-        <ResizablePanel id={COMMAND_SIDEBAR_PANEL_ID} defaultSize="18%" minSize="12%" maxSize="40%" className="hidden md:flex flex-col overflow-hidden">
-          <CommandSidebar
-            search={search}
-            onSearchChange={setSearch}
-            commands={commands}
-            customCommands={customCommands}
-            folderGroups={folderGroups}
-            customOpen={customOpen}
-            onCustomOpenChange={setCustomOpen}
-            collapsedFolders={collapsedFolders}
-            onToggleFolder={toggleFolder}
-            onImport={() => setImportOpen(true)}
-            onUpdatePackage={handleUpdatePackage}
-            onAddCommand={() => { setEditingCommand(undefined); setDialogOpen(true); }}
-            onRemoveFolder={removeFolder}
-            workspaceId={workspaceId}
-            isRunning={isRunning}
-            runningMap={runningMap}
-            removeSession={removeSession}
-            run={run}
-            restart={restart}
-            remove={remove}
-            setEditingCommand={setEditingCommand}
-            setDialogOpen={setDialogOpen}
-            onSelectSession={setActive}
-            tc={tc}
-          />
-        </ResizablePanel>
-
-        <ResizableHandle withHandle />
-
-        {/* Terminal content */}
-        <ResizablePanel id={TERMINAL_PANEL_ID} defaultSize="82%" minSize="30%" className="overflow-hidden relative">
-          {sessions.length === 0 ? (
-            <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
-              {t('noSession')}
+      {/* Content: terminal (command sidebar moved to popover) */}
+      <div className="flex-1 overflow-hidden relative">
+        {sessions.length === 0 ? (
+          <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
+            {t('noSession')}
+          </div>
+        ) : (
+          sessions.map((session) => (
+            <div
+              key={session.id}
+              className={`absolute inset-0 h-full w-full ${
+                activeId === session.id
+                  ? 'visible z-10'
+                  : 'invisible pointer-events-none z-0'
+              }`}
+            >
+              <TerminalInstance
+                sessionId={session.id}
+                workspaceId={workspaceId}
+                active={activeId === session.id}
+              />
             </div>
-          ) : (
-            sessions.map((session) => (
-              <div
-                key={session.id}
-                className={`absolute inset-0 h-full w-full ${
-                  activeId === session.id
-                    ? 'visible z-10'
-                    : 'invisible pointer-events-none z-0'
-                }`}
-              >
-                <TerminalInstance
-                  sessionId={session.id}
-                  workspaceId={workspaceId}
-                  active={activeId === session.id}
-                />
-              </div>
-            ))
-          )}
-        </ResizablePanel>
-      </ResizablePanelGroup>
+          ))
+        )}
+      </div>
 
       {/* Bottom toolbar */}
       <TerminalToolbar activeId={activeId} sendInput={sendInput} onPaste={handlePaste} />
