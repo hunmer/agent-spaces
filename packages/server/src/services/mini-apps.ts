@@ -172,6 +172,11 @@ export function resolveDataPath(projectId: string, filePath: string): string {
   return store.resolveDataPath(projectId, filePath);
 }
 
+/** 解析并校验项目 src 目录下的文件绝对路径（防穿越）。 */
+export function resolveSrcPath(projectId: string, filePath: string): string {
+  return store.resolveSrcPath(projectId, filePath);
+}
+
 // ---- DB (SQLite via better-sqlite3) ----
 export function executeDb(
   projectId: string,

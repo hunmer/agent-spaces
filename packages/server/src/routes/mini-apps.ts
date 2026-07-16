@@ -248,6 +248,77 @@ router.get('/:id/data/file', (req: Request<{ id: string }>, res: Response) => {
   } catch (error: any) { res.status(500).json({ error: error.message }); }
 });
 
+// 读取 src 目录下的静态资源并以正确 MIME 流式返回。
+// 供 mini-app 预览代码通过 <script src>/<link>/<img> 直接引用项目 src 下的 js/css/字体等产物。
+// 与 data/file 不同：data/ 仅限媒体白名单，src/file 扩展到 js/css/字体等前端资源。
+// Query: path（相对 src 目录）、download?
+const SRC_FILE_MIME: Record<string, string> = {
+  '.js': 'text/javascript; charset=utf-8',
+  '.mjs': 'text/javascript; charset=utf-8',
+  '.cjs': 'text/javascript; charset=utf-8',
+  '.css': 'text/css; charset=utf-8',
+  '.html': 'text/html; charset=utf-8',
+  '.htm': 'text/html; charset=utf-8',
+  '.json': 'application/json; charset=utf-8',
+  '.svg': 'image/svg+xml',
+  '.woff2': 'font/woff2',
+  '.woff': 'font/woff',
+  '.ttf': 'font/ttf',
+  '.otf': 'font/otf',
+  '.eot': 'application/vnd.ms-fontobject',
+  '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
+  '.gif': 'image/gif', '.webp': 'image/webp', '.bmp': 'image/bmp', '.ico': 'image/x-icon',
+  '.map': 'application/json; charset=utf-8',
+};
+
+router.get('/:id/src/file', (req: Request<{ id: string }>, res: Response) => {
+  try {
+    const rawPath = req.query.path as string;
+    if (!rawPath) { res.status(400).json({ error: 'path is required' }); return; }
+    const abs = svc.resolveSrcPath(req.params.id, rawPath); // safeSrcPath 已防穿越
+    if (!existsSync(abs)) { res.status(404).json({ error: 'File not found' }); return; }
+    const stat = statSync(abs);
+    if (stat.isDirectory()) { res.status(400).json({ error: 'Cannot serve a directory' }); return; }
+    const ext = extname(abs).toLowerCase();
+    const mime = SRC_FILE_MIME[ext];
+    if (!mime) { res.status(415).json({ error: `Unsupported file type: ${ext || '(none)'}` }); return; }
+
+    if (req.query.download === 'true') {
+      res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(basename(abs))}"`);
+    }
+    res.setHeader('Content-Type', mime);
+    res.setHeader('Content-Length', stat.size);
+    createReadStream(abs).pipe(res);
+  } catch (error: any) { res.status(500).json({ error: error.message }); }
+});
+
+// src 目录静态资源（path 段形式）：GET /:id/src/file/<relPath...>
+// 与 query 形式等价，但用 path 段以便与 new URL(rel, base) 拼接兼容——
+// Excalidraw 用 window.EXCALIDRAW_ASSET_PATH + new URL("./fonts/x.woff2", base) 加载资源，
+// query 形式 base 会在拼接时丢失 query string，path 段形式则正确。
+router.get('/:id/src/file/*path', (req: Request<{ id: string; path: string | string[] }>, res: Response) => {
+  try {
+    // Express 5 的 *path 对多段通配返回数组，单段返回字符串，统一归一化。
+    const raw = req.params.path;
+    const relPath = Array.isArray(raw) ? raw.join('/') : (raw || '');
+    if (!relPath) { res.status(400).json({ error: 'path is required' }); return; }
+    const abs = svc.resolveSrcPath(req.params.id, relPath);
+    if (!existsSync(abs)) { res.status(404).json({ error: 'File not found' }); return; }
+    const stat = statSync(abs);
+    if (stat.isDirectory()) { res.status(400).json({ error: 'Cannot serve a directory' }); return; }
+    const ext = extname(abs).toLowerCase();
+    const mime = SRC_FILE_MIME[ext];
+    if (!mime) { res.status(415).json({ error: `Unsupported file type: ${ext || '(none)'}` }); return; }
+
+    if (req.query.download === 'true') {
+      res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(basename(abs))}"`);
+    }
+    res.setHeader('Content-Type', mime);
+    res.setHeader('Content-Length', stat.size);
+    createReadStream(abs).pipe(res);
+  } catch (error: any) { res.status(500).json({ error: error.message }); }
+});
+
 // DB (SQLite): execute a single statement. Body: { sql, params?, mode: 'all'|'get'|'run'|'exec' }
 router.post('/:id/db/:dbName', (req: Request<{ id: string; dbName: string }>, res: Response) => {
   try {

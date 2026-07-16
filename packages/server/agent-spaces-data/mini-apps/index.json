@@ -276,6 +276,20 @@
     "updatedAt": "2026-06-27T07:18:55.665Z"
   },
   {
+    "id": "excalidraw",
+    "name": "Excalidraw",
+    "description": "手绘风格白板（本地化 Browser 版本，沙箱 iframe 加载）",
+    "version": "1.0.0",
+    "type": "html",
+    "tags": [
+      "draw",
+      "whiteboard"
+    ],
+    "mainFile": "index.html",
+    "createdAt": "2026-07-16T00:00:00.000Z",
+    "updatedAt": "2026-07-16T00:00:00.000Z"
+  },
+  {
     "id": "fitting-room",
     "name": "试衣间",
     "description": "管理个人形象，并通过图生图工作流生成发型与服装效果图",

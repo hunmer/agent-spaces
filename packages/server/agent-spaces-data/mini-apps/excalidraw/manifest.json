@@ -1,0 +1,11 @@
+{
+  "id": "excalidraw",
+  "name": "Excalidraw",
+  "description": "手绘风格白板（本地化 Browser 版本，沙箱 iframe 加载）",
+  "version": "1.0.0",
+  "type": "html",
+  "tags": ["draw", "whiteboard"],
+  "mainFile": "index.html",
+  "createdAt": "2026-07-16T00:00:00.000Z",
+  "updatedAt": "2026-07-16T00:00:00.000Z"
+}

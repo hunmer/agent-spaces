@@ -62,6 +62,14 @@ function safeSrcPath(projectId: string, filePath: string): string {
   return target;
 }
 
+/**
+ * 解析并校验项目 src 目录下的文件绝对路径（防穿越）。
+ * 供路由层以正确 MIME 流式返回 src 下的静态资源（js/css/字体等）。
+ */
+export function resolveSrcPath(projectId: string, filePath: string): string {
+  return safeSrcPath(projectId, filePath);
+}
+
 function safeProjectSubdirPath(projectId: string, dirName: 'configs' | 'data', filePath: string): string {
   if (!filePath || filePath.includes('\0')) throw new Error('Invalid file path');
   if (filePath.startsWith('/') || /^[a-zA-Z]:[\\/]/.test(filePath)) {

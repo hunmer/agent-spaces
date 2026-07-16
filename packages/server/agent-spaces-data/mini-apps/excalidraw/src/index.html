@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Excalidraw</title>
+  <script>
+    // Excalidraw 资源前缀：指向本地 src/file path 段路由，运行时由宿主渲染器替换占位符。
+    // Excalidraw 用 new URL("./fonts/xxx.woff2", EXCALIDRAW_ASSET_PATH) 加载字体，
+    // path 段形式能与 new URL 正确拼接（query 形式会丢失 query string）。
+    window.EXCALIDRAW_ASSET_PATH = "__MINIAPP_SRC_FILE_BASE__";
+  </script>
+  <link rel="stylesheet" href="./excalidraw/index.css" />
+  <script type="importmap">
+  {
+  "imports": {
+    "react": "https://esm.sh/react@19.0.0",
+    "react/jsx-runtime": "https://esm.sh/react@19.0.0/jsx-runtime",
+    "react-dom": "https://esm.sh/react-dom@19.0.0",
+    "react-dom/client": "https://esm.sh/react-dom@19.0.0/client",
+    "@braintree/sanitize-url": "https://esm.sh/@braintree/sanitize-url@6.0.2?external=react,react-dom",
+    "@excalidraw/laser-pointer": "https://esm.sh/@excalidraw/laser-pointer@1.3.1?external=react,react-dom",
+    "@radix-ui/react-popover": "https://esm.sh/@radix-ui/react-popover@1.1.6?external=react,react-dom",
+    "@radix-ui/react-tabs": "https://esm.sh/@radix-ui/react-tabs@1.0.2?external=react,react-dom",
+    "browser-fs-access": "https://esm.sh/browser-fs-access@0.29.1?external=react,react-dom",
+    "clsx": "https://esm.sh/clsx@1.1.1?external=react,react-dom",
+    "es6-promise-pool": "https://esm.sh/es6-promise-pool@2.5.0?external=react,react-dom",
+    "fractional-indexing": "https://esm.sh/fractional-indexing@3.2.0?external=react,react-dom",
+    "fuzzy": "https://esm.sh/fuzzy@0.1.3?external=react,react-dom",
+    "jotai": "https://esm.sh/jotai@2.11.0?external=react,react-dom",
+    "jotai-scope": "https://esm.sh/jotai-scope@0.7.2?external=react,react-dom",
+    "lodash.debounce": "https://esm.sh/lodash.debounce@4.0.8?external=react,react-dom",
+    "lodash.throttle": "https://esm.sh/lodash.throttle@4.1.1?external=react,react-dom",
+    "nanoid": "https://esm.sh/nanoid@3.3.3?external=react,react-dom",
+    "open-color": "https://esm.sh/open-color@1.9.1?external=react,react-dom",
+    "pako": "https://esm.sh/pako@2.0.3?external=react,react-dom",
+    "perfect-freehand": "https://esm.sh/perfect-freehand@1.2.0?external=react,react-dom",
+    "png-chunk-text": "https://esm.sh/png-chunk-text@1.0.0?external=react,react-dom",
+    "png-chunks-encode": "https://esm.sh/png-chunks-encode@1.0.0?external=react,react-dom",
+    "png-chunks-extract": "https://esm.sh/png-chunks-extract@1.0.0?external=react,react-dom",
+    "points-on-curve": "https://esm.sh/points-on-curve@1.0.1?external=react,react-dom",
+    "roughjs": "https://esm.sh/roughjs@4.6.4?external=react,react-dom",
+    "tunnel-rat": "https://esm.sh/tunnel-rat@0.1.2?external=react,react-dom",
+    "roughjs/bin/rough": "https://esm.sh/roughjs@4.6.4/bin/rough?external=react,react-dom",
+    "roughjs/bin/generator": "https://esm.sh/roughjs@4.6.4/bin/generator?external=react,react-dom",
+    "roughjs/bin/math": "https://esm.sh/roughjs@4.6.4/bin/math?external=react,react-dom"
+  }
+}
+  </script>
+  <style>
+    html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; }
+    #app { height: 100%; width: 100%; }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+  <script type="module">
+    import { Excalidraw } from "./excalidraw/index.js";
+    import React from "react";
+    import ReactDOM from "react-dom/client";
+    const root = ReactDOM.createRoot(document.getElementById("app"));
+    root.render(React.createElement(Excalidraw));
+  </script>
+</body>
+</html>

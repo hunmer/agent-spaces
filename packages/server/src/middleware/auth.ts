@@ -23,6 +23,17 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction) 
     if (typeof queryToken === 'string' && queryToken === secret) return next();
   }
 
+  // mini-app src 目录静态资源（js/css/字体等，供沙箱 iframe 加载 ESM 项目如 Excalidraw）：
+  // path 段形式（src/file/<rel>）直接放行：与 Excalidraw 的 new URL(rel, base) 拼接兼容，
+  // base 不能带 token query（会被 new URL 丢弃），且 src 为只读前端资源、路径已防穿越，风险可控。
+  if (/^\/api\/mini-apps\/[^/]+\/src\/file\//.test(req.path)) return next();
+
+  // query 形式（src/file?path=）支持 query token，用于 <script src>/<link> 直接引用。
+  if (/^\/api\/mini-apps\/[^/]+\/src\/file$/.test(req.path)) {
+    const queryToken = req.query.token;
+    if (typeof queryToken === 'string' && queryToken === secret) return next();
+  }
+
   const auth = req.headers.authorization;
   const token = auth?.startsWith('Bearer ') ? auth.slice(7) : '';
   if (token !== secret) {

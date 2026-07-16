@@ -654,9 +654,21 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
   const onRenderTab = useCallback((node: TabNode, renderValues: ITabRenderValues) => {
     const comp = node.getComponent();
     if (!comp) return;
+    // mini-app tab：显示 manifest 的 icon（emoji），而非 name 文本
+    if (comp.startsWith('mini-app:')) {
+      const miniAppId = comp.slice('mini-app:'.length);
+      const project = workspaceMiniApps.find((p) => p.id === miniAppId);
+      const icon = project?.icon?.trim();
+      renderValues.content = (
+        <span title={node.getName()} className="flex items-center justify-center" data-tour-tab={comp}>
+          {icon ? <span className="text-base leading-none">{icon}</span> : node.getName()}
+        </span>
+      );
+      return;
+    }
     const content = renderTabIcon(comp, node.getName(), gitStatus, terminalSessions, channelMessages, issues);
     if (content) renderValues.content = content;
-  }, [gitStatus, terminalSessions, channelMessages, issues]);
+  }, [gitStatus, terminalSessions, channelMessages, issues, workspaceMiniApps]);
 
   const onModelChange = useCallback(
     (_model: Model, action: Action) => {

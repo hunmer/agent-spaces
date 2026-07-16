@@ -1,4 +1,4 @@
-import { mkdirSync } from 'node:fs';
+import { existsSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { MultiServerMCPClient } from '@langchain/mcp-adapters';
 import {
@@ -24,7 +24,9 @@ import { appendOutputStyleToPrompt, summarizeResult } from './agent-runtime-type
 import { normalizeLangChainMcpServers, stringifyToolResult } from './langchain-runtime.js';
 
 export class PiRuntime implements AgentRuntime {
+  private static nextRunId = 1;
   private session: AgentSession | null = null;
+  private activeRunId: number | null = null;
   private stopped = false;
 
   constructor(private readonly config: AgentRuntimeConfig = {}) {}
@@ -35,16 +37,25 @@ export class PiRuntime implements AgentRuntime {
     const agentDir = options?.configDir || join(cwd, '.pi');
     const sessionDir = join(agentDir, 'sessions');
     const systemPrompt = options?.systemPrompt?.trim();
-    const log = (message: string) => console.log(`[pi] ${message}`);
+    const runId = PiRuntime.nextRunId++;
+    const startedAt = Date.now();
+    const log = (message: string) => console.log(`[pi:${runId}] ${message}`);
     let mcpClient: MultiServerMCPClient | undefined;
+    let stage = 'initialize';
+    this.activeRunId = runId;
     this.stopped = false;
+    log(`starting | cwd=${cwd} provider=${this.config.provider ?? 'auto'} model=${this.config.model ?? 'auto'} baseURL=${sanitizeUrlForLog(this.config.baseURL)} apiKey=${this.config.apiKey ? 'set' : 'unset'} thinking=${normalizeThinkingLevel(this.config)} promptChars=${prompt.length} systemPrompt=${systemPrompt ? 'custom' : 'default'} resume=${options?.resumeSessionId ?? '-'} tools=${options?.tools?.join(',') || 'default'} functionTools=${options?.functionTools?.map((tool) => tool.name).join(',') || '-'} mcpServers=${Object.keys(options?.mcpServers ?? {}).join(',') || '-'} skills=${options?.skills?.join(',') || '-'}`);
 
     try {
+      stage = 'configure';
       mkdirSync(agentDir, { recursive: true });
       const authStorage = AuthStorage.create(join(agentDir, 'auth.json'));
       const modelRegistry = ModelRegistry.create(authStorage, join(agentDir, 'models.json'));
       const model = resolveModel(this.config, authStorage, modelRegistry);
-      const settingsManager = SettingsManager.inMemory({ compaction: { enabled: false } });
+      log(`model resolved | provider=${model?.provider ?? 'auto'} model=${model?.id ?? 'auto'} api=${model?.api ?? 'auto'}`);
+      const shellPath = resolveShellPath();
+      const settingsManager = SettingsManager.inMemory({ compaction: { enabled: false }, shellPath });
+      log(`shell resolved | path=${shellPath ?? 'default'}`);
       const resourceLoader = new DefaultResourceLoader({
         cwd,
         agentDir,
@@ -52,11 +63,15 @@ export class PiRuntime implements AgentRuntime {
         systemPromptOverride: systemPrompt ? () => systemPrompt : undefined,
         appendSystemPromptOverride: systemPrompt ? () => [] : undefined,
       });
+      stage = 'load resources';
       await resourceLoader.reload();
+      log(`resources loaded | agentDir=${agentDir}`);
 
+      stage = 'load tools';
       const nativeTools = toPiTools(options?.functionTools);
       const normalizedMcpServers = normalizeLangChainMcpServers(options?.mcpServers);
       if (normalizedMcpServers) {
+        log(`MCP connecting | servers=${Object.keys(normalizedMcpServers).join(',')}`);
         mcpClient = new MultiServerMCPClient({
           throwOnLoadError: true,
           prefixToolNameWithServerName: true,
@@ -65,9 +80,14 @@ export class PiRuntime implements AgentRuntime {
           outputHandling: 'content',
           mcpServers: normalizedMcpServers,
         });
-        nativeTools.push(...toPiMcpTools(await mcpClient.getTools()));
+        const mcpTools = toPiMcpTools(await mcpClient.getTools());
+        nativeTools.push(...mcpTools);
+        log(`MCP connected | tools=${mcpTools.map((tool) => tool.name).join(',') || '-'}`);
       }
+      const allowedTools = resolveAllowedTools(options?.tools, nativeTools);
+      log(`tools resolved | custom=${nativeTools.map((tool) => tool.name).join(',') || '-'} allowed=${allowedTools?.join(',') || 'default'}`);
 
+      stage = 'create session';
       const sessionManager = await resolveSessionManager(cwd, sessionDir, options?.resumeSessionId);
       const { session } = await createAgentSession({
         cwd,
@@ -76,20 +96,24 @@ export class PiRuntime implements AgentRuntime {
         modelRegistry,
         model,
         thinkingLevel: normalizeThinkingLevel(this.config),
-        tools: resolveAllowedTools(options?.tools, nativeTools),
+        tools: allowedTools,
         customTools: nativeTools,
         resourceLoader,
         sessionManager,
         settingsManager,
       });
       this.session = session;
+      log(`session ready | id=${session.sessionId} mode=${options?.resumeSessionId ? 'resume' : 'new'} activeTools=${session.getActiveToolNames().join(',') || '-'}`);
       options?.onEvent?.({ type: 'session', sessionId: session.sessionId });
-      const unsubscribe = session.subscribe((event) => handleSessionEvent(event, output, options));
+      const unsubscribe = session.subscribe((event) => handleSessionEvent(event, output, options, log));
 
       try {
+        stage = 'prompt';
+        log('prompt started');
         await session.prompt(appendOutputStyleToPrompt(prompt, options?.outputStyle));
         const stats = session.getSessionStats();
         const text = output.at(-1) ?? '';
+        log(`completed | elapsedMs=${Date.now() - startedAt} outputLines=${output.length} outputChars=${output.reduce((sum, line) => sum + line.length, 0)} inputTokens=${stats.tokens.input} outputTokens=${stats.tokens.output} totalTokens=${stats.tokens.total} cachedTokens=${stats.tokens.cacheRead} costUsd=${stats.cost}`);
         return {
           success: true,
           summary: summarizeResult(text),
@@ -108,12 +132,13 @@ export class PiRuntime implements AgentRuntime {
         unsubscribe();
         session.dispose();
         this.session = null;
+        log('session disposed');
       }
     } catch (error) {
       const message = this.stopped
         ? 'Pi execution stopped'
         : error instanceof Error ? error.message : String(error);
-      log(`failed | ${message}`);
+      log(`failed | stage=${stage} elapsedMs=${Date.now() - startedAt} error=${message}`);
       return {
         success: false,
         summary: 'Pi execution failed',
@@ -124,11 +149,14 @@ export class PiRuntime implements AgentRuntime {
       };
     } finally {
       await mcpClient?.close().catch((error) => log(`MCP close failed | ${String(error)}`));
+      if (mcpClient) log('MCP closed');
+      this.activeRunId = null;
     }
   }
 
   stop(): void {
     this.stopped = true;
+    console.log(`[pi:${this.activeRunId ?? '-'}] stop requested | session=${this.session?.sessionId ?? '-'}`);
     void this.session?.abort();
   }
 }
@@ -220,8 +248,22 @@ function resolveAllowedTools(requested: string[] | undefined, customTools: ToolD
   ])];
 }
 
-function handleSessionEvent(event: AgentSessionEvent, output: string[], options?: AgentRunOptions): void {
+function handleSessionEvent(
+  event: AgentSessionEvent,
+  output: string[],
+  options: AgentRunOptions | undefined,
+  log: (message: string) => void,
+): void {
   switch (event.type) {
+    case 'agent_start':
+      log('agent started');
+      break;
+    case 'agent_end':
+      log(`agent ended | messages=${event.messages.length}`);
+      break;
+    case 'turn_start':
+      log('turn started');
+      break;
     case 'message_update':
       if (event.assistantMessageEvent.type === 'thinking_delta') {
         options?.onEvent?.({
@@ -233,6 +275,7 @@ function handleSessionEvent(event: AgentSessionEvent, output: string[], options?
       break;
     case 'tool_execution_start': {
       const line = `Tool: ${event.toolName} ${stringifyToolResult(event.args)}`;
+      log(`tool started | id=${event.toolCallId} name=${event.toolName}`);
       options?.onEvent?.({
         type: 'tool_use',
         id: event.toolCallId,
@@ -243,10 +286,12 @@ function handleSessionEvent(event: AgentSessionEvent, output: string[], options?
       break;
     }
     case 'tool_execution_end':
+      log(`tool ended | id=${event.toolCallId} name=${event.toolName} error=${event.isError}`);
       options?.onEvent?.({ type: 'tool_result', toolUseId: event.toolCallId, result: event.result });
       break;
     case 'turn_end': {
       const reasoning = extractMessageText(event.message, new Set(['thinking', 'reasoning']));
+      log(`turn ended | toolResults=${event.toolResults.length} reasoningChars=${reasoning.length}`);
       if (reasoning) options?.onEvent?.({ type: 'reasoning', text: reasoning, status: 'completed' });
       if (hasToolCall(event.message)) break;
       const text = extractMessageText(event.message, new Set(['text', 'output_text']));
@@ -298,6 +343,26 @@ function defaultBaseURL(api: ReturnType<typeof normalizePiApi>): string {
   if (api === 'anthropic-messages') return 'https://api.anthropic.com';
   if (api === 'google-generative-ai') return 'https://generativelanguage.googleapis.com/v1beta';
   return 'https://api.openai.com/v1';
+}
+
+function resolveShellPath(): string | undefined {
+  if (process.platform !== 'win32') return undefined;
+  const powershell = join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe');
+  return existsSync(powershell) ? powershell : undefined;
+}
+
+function sanitizeUrlForLog(value?: string): string {
+  if (!value) return 'default';
+  try {
+    const url = new URL(value);
+    url.username = '';
+    url.password = '';
+    url.search = '';
+    url.hash = '';
+    return url.toString().replace(/\/$/, '');
+  } catch {
+    return 'custom';
+  }
 }
 
 function normalizeThinkingLevel(config: AgentRuntimeConfig): 'off' | 'low' | 'medium' | 'high' {
