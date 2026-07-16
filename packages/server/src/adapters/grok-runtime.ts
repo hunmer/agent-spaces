@@ -12,7 +12,9 @@ import { appendOutputStyleToPrompt, summarizeResult } from './agent-runtime-type
 type GrokJsonEvent = Record<string, unknown> & { type?: unknown };
 
 export class GrokRuntime implements AgentRuntime {
+  private static nextRunId = 1;
   private child: ChildProcessWithoutNullStreams | null = null;
+  private activeRunId: number | null = null;
 
   constructor(private readonly config: AgentRuntimeConfig = {}) {}
 
@@ -22,24 +24,46 @@ export class GrokRuntime implements AgentRuntime {
     const grokHome = prepareGrokHome(this.config, options?.configDir, cwd);
     const args = buildGrokArgs(appendOutputStyleToPrompt(prompt, options?.outputStyle), cwd, this.config, options);
     const startedAt = Date.now();
-    const log = (message: string) => console.log(`[grok] ${message}`);
+    const runId = GrokRuntime.nextRunId++;
+    const command = resolveGrokCommand();
+    const endpoint = this.config.baseURL ? normalizeGrokEndpoint(this.config.provider, this.config.baseURL) : undefined;
+    const log = (message: string) => console.log(`[grok:${runId}] ${message}`);
+    this.activeRunId = runId;
 
-    log(`starting | cwd=${cwd} model=${this.config.model ?? 'default'} resume=${options?.resumeSessionId ?? '-'} maxTurns=${options?.maxTurns ?? '-'} tools=${options?.tools?.join(',') || 'default'}`);
+    log(`starting | cwd=${cwd} command=${command} model=${this.config.model ?? 'default'} provider=${this.config.provider ?? 'default'} backend=${endpoint?.backend ?? 'native'} baseURL=${sanitizeUrlForLog(endpoint?.baseURL)} auth=${this.config.apiKey ? 'set' : 'default'} grokHome=${grokHome ?? 'default'} promptChars=${prompt.length} resume=${options?.resumeSessionId ?? '-'} maxTurns=${options?.maxTurns ?? '-'} tools=${options?.tools?.join(',') || 'default'} permission=${this.config.permissionMode ?? 'default'} effort=${this.config.thinkingEnabled === false ? 'none' : this.config.thinkingEffort ?? 'default'}`);
 
     return new Promise<AgentRunResult>((resolve) => {
       let settled = false;
       let stdoutBuffer = '';
+      let stderrBuffer = '';
       let stderr = '';
-      let resultText = '';
+      const textChunks: string[] = [];
+      const thoughtChunks: string[] = [];
+      let buffersFlushed = false;
       let sessionId = options?.resumeSessionId;
       let usage: AgentRunResult['usage'];
       let costUsd: number | undefined;
       let eventError: string | undefined;
+      const eventCounts = new Map<string, number>();
+
+      const flushBuffers = () => {
+        if (buffersFlushed) return;
+        buffersFlushed = true;
+        const thought = mergeGrokTextChunks(thoughtChunks);
+        const text = mergeGrokTextChunks(textChunks);
+        if (thought) options?.onEvent?.({ type: 'reasoning', text: thought, status: 'completed' });
+        if (text) {
+          output.push(text);
+          options?.onEvent?.({ type: 'output', line: text });
+        }
+        log(`buffers flushed | textChunks=${textChunks.length} textChars=${text.length} thoughtChunks=${thoughtChunks.length} thoughtChars=${thought.length}`);
+      };
 
       const finish = (result: AgentRunResult) => {
         if (settled) return;
         settled = true;
         this.child = null;
+        this.activeRunId = null;
         resolve(result);
       };
 
@@ -47,26 +71,31 @@ export class GrokRuntime implements AgentRuntime {
         if (!line.trim()) return;
         const event = parseGrokJsonLine(line);
         if (!event) {
+          log(`stdout unparsed | chars=${line.length} preview=${truncateLog(line)}`);
           output.push(line);
           options?.onEvent?.({ type: 'output', line });
           return;
         }
 
+        const eventType = typeof event.type === 'string' ? event.type : 'unknown';
+        eventCounts.set(eventType, (eventCounts.get(eventType) ?? 0) + 1);
+
         switch (event.type) {
           case 'text': {
             const text = typeof event.data === 'string' ? event.data : '';
             if (!text) return;
-            resultText += text;
-            output.push(text);
-            options?.onEvent?.({ type: 'output', line: text });
+            textChunks.push(text);
+            log(`event text | chars=${text.length} chunks=${textChunks.length}`);
             break;
           }
           case 'thought': {
             const text = typeof event.data === 'string' ? event.data : '';
-            if (text) options?.onEvent?.({ type: 'reasoning', text, status: 'streaming' });
+            log(`event thought | chars=${text.length}`);
+            if (text) thoughtChunks.push(text);
             break;
           }
           case 'end': {
+            flushBuffers();
             const nextSessionId = typeof event.sessionId === 'string' ? event.sessionId : undefined;
             if (nextSessionId && nextSessionId !== sessionId) {
               sessionId = nextSessionId;
@@ -74,24 +103,31 @@ export class GrokRuntime implements AgentRuntime {
             }
             usage = normalizeGrokUsage(event.usage);
             costUsd = typeof event.total_cost_usd === 'number' ? event.total_cost_usd : undefined;
+            log(`event end | stopReason=${String(event.stopReason ?? '-')} session=${sessionId ?? '-'} usage=${formatUsage(usage)} costUsd=${costUsd ?? '-'} turns=${numberValue(event.num_turns) || '-'}`);
             break;
           }
           case 'error':
             eventError = typeof event.message === 'string' ? event.message : 'Grok execution failed';
             usage = normalizeGrokUsage(event.usage);
             costUsd = typeof event.total_cost_usd === 'number' ? event.total_cost_usd : undefined;
+            log(`event error | message=${truncateLog(eventError)} usage=${formatUsage(usage)} costUsd=${costUsd ?? '-'}`);
             break;
+          default:
+            log(`event ${eventType} | keys=${Object.keys(event).join(',') || '-'}`);
         }
       };
 
       try {
-        this.child = spawn(resolveGrokCommand(), args, {
+        this.child = spawn(command, args, {
           cwd,
           env: buildGrokEnv(this.config, grokHome),
           windowsHide: true,
         });
+        log(`spawned | pid=${this.child.pid ?? '-'}`);
       } catch (error) {
-        finish(failedResult(error instanceof Error ? error.message : String(error), output, sessionId));
+        const message = error instanceof Error ? error.message : String(error);
+        log(`spawn failed | message=${truncateLog(message)}`);
+        finish(failedResult(message, output, sessionId));
         return;
       }
 
@@ -105,6 +141,12 @@ export class GrokRuntime implements AgentRuntime {
       });
       this.child.stderr.on('data', (chunk: string) => {
         stderr += chunk;
+        stderrBuffer += chunk;
+        const lines = stderrBuffer.split(/\r?\n/);
+        stderrBuffer = lines.pop() ?? '';
+        for (const line of lines) {
+          if (line.trim()) log(`stderr | ${truncateLog(line)}`);
+        }
       });
       this.child.on('error', (error) => {
         const message = error.message.includes('ENOENT')
@@ -115,16 +157,20 @@ export class GrokRuntime implements AgentRuntime {
       });
       this.child.on('close', (code, signal) => {
         handleLine(stdoutBuffer);
+        flushBuffers();
+        if (stderrBuffer.trim()) log(`stderr | ${truncateLog(stderrBuffer)}`);
+        log(`closed | code=${code ?? '-'} signal=${signal ?? '-'} elapsedMs=${Date.now() - startedAt} events=${formatEventCounts(eventCounts)} stdoutItems=${output.length} stderrChars=${stderr.length}`);
         const error = eventError
           || (signal ? `Grok execution stopped by signal ${signal}` : undefined)
           || (code === 0 ? undefined : stderr.trim() || `Grok execution failed with exit code ${code ?? 'unknown'}`);
         if (error) {
-          log(`failed ${Date.now() - startedAt}ms | ${error}`);
+          log(`failed | elapsedMs=${Date.now() - startedAt} message=${truncateLog(error)}`);
           finish({ ...failedResult(error, output, sessionId), usage, costUsd });
           return;
         }
 
-        log(`done ${Date.now() - startedAt}ms`);
+        const resultText = mergeGrokTextChunks(textChunks);
+        log(`done | elapsedMs=${Date.now() - startedAt} session=${sessionId ?? '-'} resultChars=${resultText.length} usage=${formatUsage(usage)} costUsd=${costUsd ?? '-'}`);
         finish({
           success: true,
           summary: summarizeResult(resultText),
@@ -139,6 +185,7 @@ export class GrokRuntime implements AgentRuntime {
   }
 
   stop(): void {
+    console.log(`[grok:${this.activeRunId ?? '-'}] stop requested | pid=${this.child?.pid ?? '-'}`);
     this.child?.kill();
   }
 }
@@ -171,6 +218,10 @@ export function parseGrokJsonLine(line: string): GrokJsonEvent | null {
   }
 }
 
+export function mergeGrokTextChunks(chunks: string[]): string {
+  return chunks.join('');
+}
+
 function normalizeGrokUsage(value: unknown): AgentRunResult['usage'] {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
   const usage = value as Record<string, unknown>;
@@ -183,6 +234,35 @@ function normalizeGrokUsage(value: unknown): AgentRunResult['usage'] {
 
 function numberValue(value: unknown): number {
   return typeof value === 'number' && Number.isFinite(value) ? value : 0;
+}
+
+function formatUsage(usage: AgentRunResult['usage']): string {
+  return usage
+    ? `in=${usage.inputTokens},out=${usage.outputTokens},cached=${usage.cachedInputTokens ?? 0},total=${usage.totalTokens}`
+    : '-';
+}
+
+function formatEventCounts(counts: Map<string, number>): string {
+  return [...counts.entries()].map(([type, count]) => `${type}:${count}`).join(',') || '-';
+}
+
+function truncateLog(value: string, maxLength = 500): string {
+  const normalized = value.replace(/\s+/g, ' ').trim();
+  return normalized.length > maxLength ? `${normalized.slice(0, maxLength - 3)}...` : normalized;
+}
+
+function sanitizeUrlForLog(value?: string): string {
+  if (!value) return 'default';
+  try {
+    const url = new URL(value);
+    url.username = '';
+    url.password = '';
+    url.search = '';
+    url.hash = '';
+    return url.toString().replace(/\/$/, '');
+  } catch {
+    return 'custom';
+  }
 }
 
 function buildGrokEnv(config: AgentRuntimeConfig, grokHome?: string): NodeJS.ProcessEnv {

@@ -145,12 +145,20 @@ export function SingleTerminal({ workspaceId, node, boundDirs = [], shell }: Sin
       ws.send('terminal.resize', { sessionId, cols: xterm.cols, rows: xterm.rows });
     };
 
-    // 重启恢复：先查会话是否仍存活，存活则重连（发 resize 触发刷新），否则新建。
-    // terminal.sessions 由多 tab store 也监听，但这里用一次性 handler 取最新快照。
+    // 重启恢复：先查会话是否仍存活，存活则重连（写回 buffer + resize），否则新建。
+    // 注意：terminal.sessions 会被服务端主动 push + 多处 list 请求多次触发，
+    // 必须只处理首次（once），否则重复 write/create 会导致内容叠加或被新建会话清空。
+    let restoreHandled = false;
     const sessionsHandler = (data: unknown) => {
+      if (restoreHandled) return;
       const { sessions } = data as { sessions: Array<{ sessionId: string; buffer?: string }> };
-      const alive = sessions.some((s) => s.sessionId === sessionId);
+      // 仅当本次响应确实包含本会话信息、或明确不含（可判定存活与否）时才处理。
+      // 服务端在 ws 刚连上时可能先 push 一个不完整的快照，等 list 的完整响应再处理。
       const target = sessions.find((s) => s.sessionId === sessionId);
+      const alive = Boolean(target);
+      restoreHandled = true;
+      // 后续不再处理，避免重复 write/create
+      ws.off('terminal.sessions', sessionsHandler);
       if (alive) {
         // 会话仍存活：写回 buffer 并 resize 重连
         if (target?.buffer) xterm.write(target.buffer);
@@ -161,7 +169,7 @@ export function SingleTerminal({ workspaceId, node, boundDirs = [], shell }: Sin
       }
     };
     ws.on('terminal.sessions', sessionsHandler);
-    // 请求会话列表（服务端也会主动 push，这里兜底）
+    // 请求会话列表（服务端也会主动 push，这里兜底确保拿到）
     ws.send('terminal.list', {});
 
     // 初始 fit

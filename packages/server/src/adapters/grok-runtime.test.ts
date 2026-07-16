@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { buildGrokArgs, buildGrokCustomModelConfig, parseGrokJsonLine } from './grok-runtime.js';
+import { buildGrokArgs, buildGrokCustomModelConfig, mergeGrokTextChunks, parseGrokJsonLine } from './grok-runtime.js';
 
 test('builds documented Grok headless arguments', () => {
   const args = buildGrokArgs('hello', 'C:/work', {
@@ -29,6 +29,10 @@ test('builds documented Grok headless arguments', () => {
   ]);
   assert.equal(parseGrokJsonLine('{"type":"text","data":"ok"}')?.type, 'text');
   assert.equal(parseGrokJsonLine('not json'), null);
+});
+
+test('joins streaming chunks without adding line breaks', () => {
+  assert.equal(mergeGrokTextChunks(['你', '是', '\n', '谁', '？']), '你是\n谁？');
 });
 
 test('uses the MiniMax OpenAI endpoint to avoid unsigned Anthropic thinking blocks', () => {
