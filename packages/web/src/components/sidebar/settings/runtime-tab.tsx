@@ -43,8 +43,8 @@ interface CheckSdkUpdatesResponse {
   }>;
 }
 
-type InstallableRuntimeId = "claude-code" | "codex" | "gemini-cli" | "hermes" | "claude-code-sdk" | "codex-sdk" | "open-agent-sdk";
-const INSTALLABLE_CLI_IDS = new Set<InstallableRuntimeId>(["claude-code", "codex", "gemini-cli", "hermes"]);
+type InstallableRuntimeId = "claude-code" | "codex" | "grok" | "gemini-cli" | "hermes" | "claude-code-sdk" | "codex-sdk" | "open-agent-sdk";
+const INSTALLABLE_CLI_IDS = new Set<InstallableRuntimeId>(["claude-code", "codex", "grok", "gemini-cli", "hermes"]);
 
 export function RuntimeTab() {
   const t = useTranslations("settings");
@@ -154,6 +154,14 @@ export function RuntimeTab() {
         icon: Download,
         label: t("runtimeInstall"),
         onClick: () => handleInstall(item.id as InstallableRuntimeId),
+        disabled: installingId !== null || checkingUpdateId !== null,
+      };
+    }
+    if (item.id === "grok") {
+      return {
+        icon: Download,
+        label: t("runtimeUpdate"),
+        onClick: () => handleInstall("grok"),
         disabled: installingId !== null || checkingUpdateId !== null,
       };
     }

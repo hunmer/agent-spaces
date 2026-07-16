@@ -18,11 +18,6 @@ export function StartupTab() {
     return value >= 50 && value <= 200 ? value : 100;
   });
   const [showZoomSetting, setShowZoomSetting] = useState(false);
-  const [showTabs, setShowTabs] = useState(() => {
-    if (typeof window === "undefined") return false;
-    const saved = localStorage.getItem("showWorkspaceTabs");
-    return saved === null ? false : saved !== "false";
-  });
   const [autoActivate, setAutoActivate] = useState(() => {
     if (typeof window === "undefined") return false;
     return localStorage.getItem("autoActivateWorkspace") === "true";
@@ -48,21 +43,6 @@ export function StartupTab() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between">
-        <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-          {t("showWorkspaceTabs")}
-        </label>
-        <Switch
-          size="sm"
-          checked={showTabs}
-          onCheckedChange={(checked) => {
-            setShowTabs(checked);
-            localStorage.setItem("showWorkspaceTabs", String(checked));
-            window.dispatchEvent(new CustomEvent("workspace-tabs-visibility", { detail: checked }));
-          }}
-        />
-      </div>
-
       <div className="flex items-center justify-between">
         <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
           {t("autoActivateWorkspace")}

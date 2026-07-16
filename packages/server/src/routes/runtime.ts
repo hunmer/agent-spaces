@@ -78,7 +78,15 @@ const RUNTIME_DESCRIPTORS: RuntimeDescriptor[] = [
     commands: ['grok'],
     runtimeKind: 'grok',
     versionArgs: ['--version'],
-    installable: false,
+    installable: true,
+    updateCommand: {
+      command: process.env.GROK_CLI_PATH?.trim()
+        || (process.platform === 'win32' && process.env.USERPROFILE
+          ? join(process.env.USERPROFILE, '.grok', 'bin', 'grok.exe')
+          : 'grok'),
+      args: ['update'],
+      cwd: rootDir,
+    },
   },
   {
     id: 'gemini-cli',
@@ -458,6 +466,22 @@ function resolveRuntimeInstallCommand(descriptor: RuntimeDescriptor, alreadyInst
       : {
           command: 'sh',
           args: ['-c', 'curl -fsSL https://chatgpt.com/codex/install.sh | sh'],
+          cwd: rootDir,
+          packageManagerLabel: 'shell',
+        };
+  }
+
+  if (descriptor.id === 'grok') {
+    return process.platform === 'win32'
+      ? {
+          command: 'powershell.exe',
+          args: ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', 'irm https://x.ai/cli/install.ps1 | iex'],
+          cwd: rootDir,
+          packageManagerLabel: 'powershell',
+        }
+      : {
+          command: 'sh',
+          args: ['-c', 'curl -fsSL https://x.ai/cli/install.sh | bash'],
           cwd: rootDir,
           packageManagerLabel: 'shell',
         };

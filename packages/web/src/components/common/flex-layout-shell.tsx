@@ -9,7 +9,9 @@ import {
   ITabRenderValues,
   Layout,
   Model,
+  Node,
   TabNode,
+  TabSetNode,
 } from "flexlayout-react";
 
 // combined.css 包含 flexlayout-react 全部样式 + 8 个主题（light/dark/gray/rounded/
@@ -34,6 +36,9 @@ import {
   PictureInPicture2,
   RotateCcw,
   Palette,
+  Maximize2,
+  Minimize2,
+  X,
 } from "lucide-react";
 
 export interface FlexLayoutTheme {
@@ -70,8 +75,14 @@ export interface FlexLayoutShellProps {
   defaultTheme?: string;
   /** 是否显示工具栏，默认 true */
   showToolbar?: boolean;
-  /** 工具栏标题 */
+  /** 工具栏标题（字符串） */
   title?: string;
+  /** 工具栏标题区自定义 UI 插槽；传入时覆盖 title 字符串（如 workspace 切换器） */
+  headerTitle?: React.ReactNode;
+  /** 工具栏左侧（标题之后、操作按钮之前）自定义 UI 插槽 */
+  headerStart?: React.ReactNode;
+  /** 工具栏右侧（主题切换之前）自定义 UI 插槽 */
+  headerEnd?: React.ReactNode;
   /** 附加到根容器的 className */
   className?: string;
   /** popout 浮动窗口顶层 className，用于让浮窗跟随主题，默认按当前 theme 派生 */
@@ -81,6 +92,9 @@ export interface FlexLayoutShellProps {
    * 受控场景可显式传入以复用外部既有的预设数据源（如 workspace 侧边栏）。
    */
   templatesStorageKey?: string;
+
+  /** 启用右键菜单（全屏/悬浮查看/关闭），默认 true */
+  enableContextMenu?: boolean;
 
   // ---- 工具栏细粒度开关（默认全开，受控场景可按需关闭避免与外部入口重复）----
   /** 显示「添加 Tab」下拉，默认 true */
@@ -142,6 +156,9 @@ export function FlexLayoutShell({
   defaultTheme = "light",
   showToolbar = true,
   title,
+  headerTitle,
+  headerStart,
+  headerEnd,
   className,
   popoutClassName,
   templatesStorageKey: templatesStorageKeyProp,
@@ -150,6 +167,7 @@ export function FlexLayoutShell({
   showPresets = true,
   showReset = true,
   showThemeSwitch = true,
+  enableContextMenu = true,
   model: controlledModel,
   factory: controlledFactory,
   onRenderTab: controlledOnRenderTab,
@@ -263,10 +281,14 @@ export function FlexLayoutShell({
   );
 
   // 添加 tab 到当前激活的 tabset
+  // 手动添加的 tab 强制可关闭/可悬浮（覆盖 global 的 tabEnableClose:false 等限制），
+  // 确保右键菜单的「关闭」「悬浮查看」始终可用
   const handleAddTab = useCallback((comp: AddableComponent) => {
     layoutRef.current?.addTabToActiveTabSet({
       component: comp.key,
       name: comp.defaultName ?? comp.name,
+      enableClose: true,
+      enablePopout: true,
     });
   }, []);
 
@@ -288,7 +310,12 @@ export function FlexLayoutShell({
           children: [
             {
               type: "tabset",
-              children: [{ component: first.key, name: first.name }],
+              children: [{
+                component: first.key,
+                name: first.name,
+                enableClose: true,
+                enablePopout: true,
+              }],
             },
           ],
         },
@@ -297,6 +324,67 @@ export function FlexLayoutShell({
       ),
     );
   }, [addableComponents]);
+
+  // ---- 右键菜单操作（通过 flexlayout onContextMenu 触发，不干扰 tab 内容）----
+  // 全屏/还原：作用于 tab 所属的 tabset
+  const handleToggleMaximize = useCallback((node: TabNode) => {
+    const parent = node.getParent();
+    if (parent && parent instanceof TabSetNode) {
+      latestModel.current?.doAction(Actions.maximizeToggle(parent.getId()));
+    }
+  }, []);
+  // 悬浮查看：把 tab 弹出为浮动面板
+  const handlePopoutTab = useCallback((node: TabNode) => {
+    if (node.isEnablePopout()) {
+      latestModel.current?.doAction(Actions.popoutTab(node.getId(), "float"));
+    }
+  }, []);
+  // 关闭 tab
+  const handleCloseTab = useCallback((node: TabNode) => {
+    if (node.isCloseable()) {
+      latestModel.current?.doAction(Actions.deleteTab(node.getId()));
+    }
+  }, []);
+
+  // 右键菜单状态（轻量自绘 popup，避免包裹 tab 内容影响编辑器/iframe）
+  const [ctxMenu, setCtxMenu] = useState<{
+    x: number;
+    y: number;
+    node: TabNode;
+  } | null>(null);
+
+  const onContextMenu = useCallback(
+    (node: Node, event: React.MouseEvent<HTMLElement>) => {
+      if (!enableContextMenu) return;
+      if (!(node instanceof TabNode)) return;
+      const canPopout = node.isEnablePopout();
+      const canClose = node.isCloseable();
+      const parent = node.getParent();
+      const inTabSet = parent instanceof TabSetNode;
+      if (!inTabSet && !canPopout && !canClose) return;
+      event.preventDefault();
+      event.stopPropagation();
+      setCtxMenu({ x: event.clientX, y: event.clientY, node });
+    },
+    [enableContextMenu],
+  );
+
+  // 点击外部/ESC 关闭菜单
+  useEffect(() => {
+    if (!ctxMenu) return;
+    const close = () => setCtxMenu(null);
+    window.addEventListener("click", close);
+    window.addEventListener("resize", close);
+    window.addEventListener("blur", close);
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && close();
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("click", close);
+      window.removeEventListener("resize", close);
+      window.removeEventListener("blur", close);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [ctxMenu]);
 
   // factory：受控模式优先用外部传入，否则用 components 注册表
   const factory = useCallback(
@@ -359,9 +447,13 @@ export function FlexLayoutShell({
     >
       {showToolbar && (
         <div className="flex items-center gap-1 border-b bg-background px-2 py-1.5">
-          {title && (
-            <span className="mr-2 text-sm font-medium">{title}</span>
+          {headerTitle ? (
+            <div className="mr-2">{headerTitle}</div>
+          ) : (
+            title && <span className="mr-2 text-sm font-medium">{title}</span>
           )}
+
+          {headerStart}
 
           {showAddTab && addableComponents.length > 0 && (
             <DropdownMenu>
@@ -428,6 +520,8 @@ export function FlexLayoutShell({
 
           <div className="flex-1" />
 
+          {headerEnd}
+
           {showThemeSwitch && (
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <Palette className="size-3.5" />
@@ -456,9 +550,74 @@ export function FlexLayoutShell({
           onAction={onAction}
           onModelChange={onModelChange}
           onRenderTab={onRenderTab}
+          onContextMenu={onContextMenu}
           popoutClassName={resolvedPopoutClassName}
         />
       </div>
+
+      {/* 右键菜单（自绘 popup，定位到鼠标位置） */}
+      {ctxMenu && (
+        <div
+          className="fixed z-50 min-w-40 rounded-md border bg-popover p-1 text-popover-foreground shadow-md"
+          style={{ left: ctxMenu.x, top: ctxMenu.y }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {(() => {
+            const node = ctxMenu.node;
+            const parent = node.getParent();
+            const inTabSet = parent instanceof TabSetNode;
+            const maximized = inTabSet && (parent as TabSetNode).isMaximized();
+            const canPopout = node.isEnablePopout();
+            const canClose = node.isCloseable();
+            return (
+              <>
+                {inTabSet && (
+                  <button
+                    type="button"
+                    className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent"
+                    onClick={() => {
+                      handleToggleMaximize(node);
+                      setCtxMenu(null);
+                    }}
+                  >
+                    {maximized ? <Minimize2 className="size-4" /> : <Maximize2 className="size-4" />}
+                    {maximized ? "还原" : "全屏"}
+                  </button>
+                )}
+                {canPopout && (
+                  <button
+                    type="button"
+                    className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent"
+                    onClick={() => {
+                      handlePopoutTab(node);
+                      setCtxMenu(null);
+                    }}
+                  >
+                    <PictureInPicture2 className="size-4" />
+                    悬浮查看
+                  </button>
+                )}
+                {canClose && (
+                  <>
+                    <div className="my-1 h-px bg-border" />
+                    <button
+                      type="button"
+                      className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm text-destructive hover:bg-destructive/10"
+                      onClick={() => {
+                        handleCloseTab(node);
+                        setCtxMenu(null);
+                      }}
+                    >
+                      <X className="size-4" />
+                      关闭
+                    </button>
+                  </>
+                )}
+              </>
+            );
+          })()}
+        </div>
+      )}
 
       <LayoutManagerDialog
         open={layoutDialogOpen}

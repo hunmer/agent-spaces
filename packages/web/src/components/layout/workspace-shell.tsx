@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { useSearchParams, usePathname } from "next/navigation";
 import { Model, TabNode, IJsonModel, Actions, ITabRenderValues, Action } from "flexlayout-react";
 import { FlexLayoutShell, type AddableComponent } from "@/components/common/flex-layout-shell";
+import { WorkspaceSwitcher } from "@/components/layout/workspace-switcher";
 import {
   LAYOUT_STORAGE_KEY,
   LAYOUT_TEMPLATES_KEY,
@@ -397,14 +398,25 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
       visit(json.layout as unknown as LayoutJsonNode);
       const target = tabsets.find((tabset) => tabset.children?.some((tab) => tab.component === 'chat')) ?? tabsets[0];
       if (!target?.children) return current;
-      const existing = target.children.filter((tab) => !String(tab.component ?? '').startsWith('mini-app:'));
-      const miniAppTabs = workspaceMiniApps.map((project) => ({
-        type: 'tab',
-        name: project.name,
-        component: `mini-app:${project.id}`,
-        id: `mini-app:${project.id}`,
-      }));
-      target.children = [...existing, ...miniAppTabs];
+      // 收集整个 model 中已存在的 mini-app tab id（用户可能已手动添加或拖拽到其他 tabset）
+      const existingMiniAppIds = new Set<string>();
+      tabsets.forEach((ts) => {
+        ts.children?.forEach((tab) => {
+          const comp = String(tab.component ?? '');
+          if (comp.startsWith('mini-app:') && tab.id) existingMiniAppIds.add(tab.id);
+        });
+      });
+      // 仅追加尚未存在于任何位置的 mini-app，避免重复 id 报错
+      const miniAppTabs = workspaceMiniApps
+        .filter((project) => !existingMiniAppIds.has(`mini-app:${project.id}`))
+        .map((project) => ({
+          type: 'tab',
+          name: project.name,
+          component: `mini-app:${project.id}`,
+          id: `mini-app:${project.id}`,
+        }));
+      if (miniAppTabs.length === 0) return current;
+      target.children = [...target.children, ...miniAppTabs];
       return Model.fromJson(json);
     });
   }, [workspaceMiniApps]);
@@ -768,7 +780,7 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
       <FlexLayoutShell
         storageKey="agent-spaces:workspace"
         templatesStorageKey={LAYOUT_TEMPLATES_KEY}
-        title="Workspace"
+        headerTitle={<WorkspaceSwitcher workspaceId={workspaceId} />}
         // 受控模式：model / factory / onRenderTab / onModelChange 全部由 workspace-shell 管理
         model={model}
         factory={factory}

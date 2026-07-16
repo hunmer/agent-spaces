@@ -1,5 +1,5 @@
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type {
   AgentRunOptions,
@@ -19,6 +19,7 @@ export class GrokRuntime implements AgentRuntime {
   async execute(prompt: string, workingDir: string, options?: AgentRunOptions): Promise<AgentRunResult> {
     const output: string[] = [];
     const cwd = workingDir || process.cwd();
+    const grokHome = prepareGrokHome(this.config, options?.configDir, cwd);
     const args = buildGrokArgs(appendOutputStyleToPrompt(prompt, options?.outputStyle), cwd, this.config, options);
     const startedAt = Date.now();
     const log = (message: string) => console.log(`[grok] ${message}`);
@@ -86,7 +87,7 @@ export class GrokRuntime implements AgentRuntime {
       try {
         this.child = spawn(resolveGrokCommand(), args, {
           cwd,
-          env: buildGrokEnv(this.config),
+          env: buildGrokEnv(this.config, grokHome),
           windowsHide: true,
         });
       } catch (error) {
@@ -184,8 +185,61 @@ function numberValue(value: unknown): number {
   return typeof value === 'number' && Number.isFinite(value) ? value : 0;
 }
 
-function buildGrokEnv(config: AgentRuntimeConfig): NodeJS.ProcessEnv {
-  return config.apiKey ? { ...process.env, XAI_API_KEY: config.apiKey } : process.env;
+function buildGrokEnv(config: AgentRuntimeConfig, grokHome?: string): NodeJS.ProcessEnv {
+  return {
+    ...process.env,
+    ...(config.apiKey ? {
+      [grokHome ? 'AGENT_SPACES_GROK_API_KEY' : 'XAI_API_KEY']: config.apiKey,
+    } : {}),
+    ...(grokHome ? { GROK_HOME: grokHome } : {}),
+  };
+}
+
+function prepareGrokHome(config: AgentRuntimeConfig, configDir: string | undefined, cwd: string): string | undefined {
+  const content = buildGrokCustomModelConfig(config);
+  if (!content) return undefined;
+  const grokHome = join(configDir || cwd, '.grok');
+  mkdirSync(grokHome, { recursive: true });
+  writeFileSync(join(grokHome, 'config.toml'), content, { encoding: 'utf8', mode: 0o600 });
+  return grokHome;
+}
+
+export function buildGrokCustomModelConfig(config: AgentRuntimeConfig): string | undefined {
+  if (!config.model || !config.baseURL) return undefined;
+  const backend = normalizeGrokApiBackend(config.provider);
+  if (!backend) throw new Error(`Grok custom models do not support provider: ${config.provider ?? 'unknown'}`);
+
+  const lines = [
+    `[model.${tomlString(config.model)}]`,
+    `model = ${tomlString(config.model)}`,
+    `base_url = ${tomlString(config.baseURL)}`,
+    `name = ${tomlString(config.model)}`,
+    `api_backend = ${tomlString(backend)}`,
+    `max_completion_tokens = ${config.maxTokens ?? 16384}`,
+  ];
+  if (config.apiKey) {
+    if (backend === 'messages') {
+      lines.push('extra_headers = { "x-api-key" = "${AGENT_SPACES_GROK_API_KEY}", "anthropic-version" = "2023-06-01" }');
+    } else {
+      lines.push('env_key = "AGENT_SPACES_GROK_API_KEY"');
+    }
+  }
+  return `${lines.join('\n')}\n`;
+}
+
+function normalizeGrokApiBackend(provider: AgentRuntimeConfig['provider']): 'chat_completions' | 'responses' | 'messages' | undefined {
+  if (
+    provider === 'anthropic-messages'
+    || provider === 'openai-responses-to-anthropic-messages'
+    || provider === 'openai-chat-completions-to-anthropic-messages'
+  ) return 'messages';
+  if (provider === 'openai-responses') return 'responses';
+  if (provider === 'openai-chat-completions' || !provider) return 'chat_completions';
+  return undefined;
+}
+
+function tomlString(value: string): string {
+  return JSON.stringify(value);
 }
 
 function resolveGrokCommand(): string {
