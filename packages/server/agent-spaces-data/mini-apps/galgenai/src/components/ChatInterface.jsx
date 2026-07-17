@@ -4,7 +4,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { buildAgentPrompt, runAgent } from '../utils/agent';
 import { synthesizeSpeech, playAudioUrl } from '../utils/tts';
-import { splitThink } from '../utils/message';
+import { splitThink, extractMotions } from '../utils/message';
 
 const { Popover, PopoverContent, PopoverTrigger } = window.AgentSpacesUI;
 
@@ -176,22 +176,13 @@ export default function ChatInterface({ store }) {
         permissionMode: 'dontAsk',
       });
 
-      // 解析 [MotionName] 前缀。availableMotions 是 [{group,index,label}]，
-      // AI 输出的标签可能不精确，用 label 做包含匹配。
-      let contentToDisplay = responseText;
-      const motionMatch = String(responseText).match(/^\[([^\]]+)\]\s*([\s\S]*)/);
-      if (motionMatch) {
-        const motionName = motionMatch[1];
-        contentToDisplay = motionMatch[2];
-        const matched =
-          availableMotions.find((m) => m.label === motionName) ||
-          availableMotions.find((m) => m.label.toLowerCase().includes(motionName.toLowerCase())) ||
-          availableMotions.find((m) => motionName.toLowerCase().includes(m.label.toLowerCase()));
-        if (matched) {
-          triggerMotion(matched.label);
-        } else {
-          console.warn('[chat] AI 请求了不存在的动作：', motionName);
-        }
+      // 提取所有 [动作名] 标签：触发动作（取最后一个作为主动作），并从显示/朗读内容中剔除
+      const { motions: matchedMotions, content: motionStripped } =
+        extractMotions(responseText, availableMotions);
+      let contentToDisplay = motionStripped;
+      if (matchedMotions.length > 0) {
+        // 取最后一个动作作为主动作（最终姿态）
+        triggerMotion(matchedMotions[matchedMotions.length - 1]);
       }
 
       const aiMsg = {
@@ -244,8 +235,12 @@ export default function ChatInterface({ store }) {
 
   return (
     <div className="relative w-full h-full flex flex-col justify-end pb-4 pointer-events-none">
-      {/* 顶部菜单 */}
-      <div className="absolute top-4 right-4 flex gap-2 pointer-events-auto z-50 items-start">
+      {/* 顶部菜单（顶部居中）。用 fixed 全屏层 + flex 居中，规避 translate 类失效。 */}
+      <div
+        className="fixed top-0 left-0 right-0 z-50 flex justify-center pt-4 pointer-events-none"
+        style={{ position: 'fixed' }}
+      >
+        <div className="flex gap-2 pointer-events-auto items-start">
         {/* Motions Popover */}
         {availableMotions.length > 0 && (
           <Popover>
@@ -258,7 +253,7 @@ export default function ChatInterface({ store }) {
               </button>
             </PopoverTrigger>
             <PopoverContent
-              align="end"
+              align="center"
               side="bottom"
               className="!w-48 !max-h-72 overflow-y-auto p-1 bg-popover/95 text-popover-foreground backdrop-blur border-border custom-scrollbar"
             >
@@ -291,12 +286,16 @@ export default function ChatInterface({ store }) {
         <button onClick={() => setView('settings')} className="p-3 bg-white/20 backdrop-blur rounded-full hover:bg-white/40 transition" title="设置">
           ⚙️
         </button>
+        </div>
       </div>
 
-      {/* 状态条 */}
+      {/* 状态条（工具栏下方，避免重叠） */}
       {(error || ttsPlaying) && (
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 pointer-events-auto">
-          <div className={`px-3 py-1 rounded-full text-sm ${error ? 'bg-red-500/80' : 'bg-cyan-600/80'} text-white shadow`}>
+        <div
+          className="fixed top-0 left-0 right-0 z-40 flex justify-center pt-20 pointer-events-none"
+          style={{ position: 'fixed' }}
+        >
+          <div className={`pointer-events-auto px-3 py-1 rounded-full text-sm ${error ? 'bg-red-500/80' : 'bg-cyan-600/80'} text-white shadow`}>
             {error || '正在合成语音…'}
           </div>
         </div>

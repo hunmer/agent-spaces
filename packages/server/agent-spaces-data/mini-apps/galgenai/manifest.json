@@ -9,9 +9,14 @@
     "对话",
     "AI"
   ],
+  "devices": [
+    "mobile",
+    "ipad",
+    "pc"
+  ],
   "mainFile": "index.jsx",
   "createdAt": "2026-07-17T00:00:00.000Z",
-  "updatedAt": "2026-07-17T10:12:49.221Z",
+  "updatedAt": "2026-07-17T10:42:32.947Z",
   "enabledPlugins": [
     "@agent-spaces/builtin"
   ],

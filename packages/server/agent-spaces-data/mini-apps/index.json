@@ -198,6 +198,66 @@
     "updatedAt": "2026-06-17T17:34:27.007Z"
   },
   {
+    "id": "masonry",
+    "name": "masonry",
+    "description": "瀑布流组件 Demo：列数/跨列跨行/宽高比/间距/滚动加载/懒加载/出入场动画/排序",
+    "version": "1.0.0",
+    "type": "react",
+    "tags": [],
+    "mainFile": "index.jsx",
+    "createdAt": "2026-06-18T10:35:12.816Z",
+    "updatedAt": "2026-06-18T10:35:12.816Z",
+    "icon": "🧱"
+  },
+  {
+    "id": "eagle",
+    "name": "eagle",
+    "description": "eagle资源库",
+    "version": "1.0.0",
+    "type": "react",
+    "tags": [],
+    "mainFile": "index.jsx",
+    "enabledPlugins": [
+      "workflow.eagle"
+    ],
+    "createdAt": "2026-06-27T07:18:55.665Z",
+    "updatedAt": "2026-06-27T07:18:55.665Z"
+  },
+  {
+    "id": "excalidraw",
+    "name": "Excalidraw",
+    "description": "手绘风格白板（本地化 Browser 版本，沙箱 iframe 加载）",
+    "version": "1.0.0",
+    "type": "html",
+    "tags": [
+      "draw",
+      "whiteboard"
+    ],
+    "mainFile": "index.html",
+    "createdAt": "2026-07-16T00:00:00.000Z",
+    "updatedAt": "2026-07-16T00:00:00.000Z"
+  },
+  {
+    "id": "fitting-room",
+    "name": "试衣间",
+    "description": "管理个人形象，并通过图生图工作流生成发型与服装效果图",
+    "version": "1.0.0",
+    "type": "react",
+    "tags": [
+      "试衣",
+      "发型",
+      "服装",
+      "图生图",
+      "工作流"
+    ],
+    "mainFile": "index.jsx",
+    "enabledPlugins": [
+      "@agent-spaces/builtin"
+    ],
+    "icon": "👗",
+    "updatedAt": "2026-07-16T02:19:53.420Z"
+  },
+  {
     "id": "kanban",
     "name": "kanban",
     "version": "1.0.0",
@@ -214,18 +274,6 @@
     "description": "看板",
     "icon": "📋",
     "avatarUrl": ""
-  },
-  {
-    "id": "masonry",
-    "name": "masonry",
-    "description": "瀑布流组件 Demo：列数/跨列跨行/宽高比/间距/滚动加载/懒加载/出入场动画/排序",
-    "version": "1.0.0",
-    "type": "react",
-    "tags": [],
-    "mainFile": "index.jsx",
-    "createdAt": "2026-06-18T10:35:12.816Z",
-    "updatedAt": "2026-06-18T10:35:12.816Z",
-    "icon": "🧱"
   },
   {
     "id": "国之脊梁音乐生成",
@@ -267,20 +315,6 @@
     "updatedAt": "2026-06-27T06:05:05.539Z"
   },
   {
-    "id": "eagle",
-    "name": "eagle",
-    "description": "eagle资源库",
-    "version": "1.0.0",
-    "type": "react",
-    "tags": [],
-    "mainFile": "index.jsx",
-    "enabledPlugins": [
-      "workflow.eagle"
-    ],
-    "createdAt": "2026-06-27T07:18:55.665Z",
-    "updatedAt": "2026-06-27T07:18:55.665Z"
-  },
-  {
     "id": "stickerGenerator",
     "name": "贴图工坊",
     "description": "AI 贴图生成器：文生图 / 图生图工作流 + agent_run 提示词助手，支持风格、文字、背景、布局",
@@ -300,40 +334,6 @@
     ],
     "enableAgents": true,
     "icon": "🎨"
-  },
-  {
-    "id": "excalidraw",
-    "name": "Excalidraw",
-    "description": "手绘风格白板（本地化 Browser 版本，沙箱 iframe 加载）",
-    "version": "1.0.0",
-    "type": "html",
-    "tags": [
-      "draw",
-      "whiteboard"
-    ],
-    "mainFile": "index.html",
-    "createdAt": "2026-07-16T00:00:00.000Z",
-    "updatedAt": "2026-07-16T00:00:00.000Z"
-  },
-  {
-    "id": "fitting-room",
-    "name": "试衣间",
-    "description": "管理个人形象，并通过图生图工作流生成发型与服装效果图",
-    "version": "1.0.0",
-    "type": "react",
-    "tags": [
-      "试衣",
-      "发型",
-      "服装",
-      "图生图",
-      "工作流"
-    ],
-    "mainFile": "index.jsx",
-    "enabledPlugins": [
-      "@agent-spaces/builtin"
-    ],
-    "icon": "👗",
-    "updatedAt": "2026-07-16T02:19:53.420Z"
   },
   {
     "id": "workflow-miniapp",
@@ -381,9 +381,14 @@
       "对话",
       "AI"
     ],
+    "devices": [
+      "mobile",
+      "ipad",
+      "pc"
+    ],
     "mainFile": "index.jsx",
     "createdAt": "2026-07-17T00:00:00.000Z",
-    "updatedAt": "2026-07-17T10:12:49.221Z",
+    "updatedAt": "2026-07-17T10:42:32.947Z",
     "enabledPlugins": [
       "@agent-spaces/builtin"
     ],

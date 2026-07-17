@@ -183,6 +183,7 @@ function DeviceFrame({ meta, children }: { meta: typeof DEVICE_FRAMES[string]; c
           bottom: screen.bottom,
           left: screen.left,
           borderRadius: meta.screenRadius,
+          clipPath: meta.screenRadius ? `inset(0 round ${meta.screenRadius})` : undefined,
           padding: meta.screenPadding,
           transform: 'translateZ(0)',
         }}

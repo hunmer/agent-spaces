@@ -73,9 +73,25 @@
       "scale": 1,
       "xOffset": 0,
       "yOffset": 0
+    },
+    {
+      "id": "m-1784283641047",
+      "name": "mori_mikoc (Fox Hime Zero)",
+      "url": "https://cdn.jsdelivr.net/gh/Eikanya/Live2d-model@master/galgame%20live2d/Fox%20Hime%20Zero/mori_mikoc/mori_mikoc.model3.json",
+      "scale": 1,
+      "xOffset": 0,
+      "yOffset": 0
+    },
+    {
+      "id": "m-1784283665517",
+      "name": "c_8009 (少女次元)",
+      "url": "https://cdn.jsdelivr.net/gh/Eikanya/Live2d-model@master/%E5%B0%91%E5%A5%B3%E6%AC%A1%E5%85%83/095/c_8009.model3.json",
+      "scale": 1,
+      "xOffset": 0,
+      "yOffset": 0
     }
   ],
-  "currentModelId": "m-1784283031740",
+  "currentModelId": "m-1784283665517",
   "repositories": [
     {
       "id": "default-repo",
@@ -6673,6 +6689,18 @@
   "libraryLastUpdated": 1784279006407,
   "favoriteModels": [],
   "recentModels": [
+    {
+      "id": "m-1784283665517",
+      "name": "c_8009 (少女次元)",
+      "url": "https://cdn.jsdelivr.net/gh/Eikanya/Live2d-model@master/%E5%B0%91%E5%A5%B3%E6%AC%A1%E5%85%83/095/c_8009.model3.json",
+      "timestamp": 1784283665517
+    },
+    {
+      "id": "m-1784283641047",
+      "name": "mori_mikoc (Fox Hime Zero)",
+      "url": "https://cdn.jsdelivr.net/gh/Eikanya/Live2d-model@master/galgame%20live2d/Fox%20Hime%20Zero/mori_mikoc/mori_mikoc.model3.json",
+      "timestamp": 1784283641047
+    },
     {
       "id": "m-1784283031740",
       "name": "destroy (qbu88_3801)",
