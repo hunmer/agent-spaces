@@ -2,6 +2,9 @@
 import { config as loadDotenv } from 'dotenv';
 loadDotenv();
 
+// reflect-metadata 必须在 Colyseus schema 装饰器模块加载前导入（attachSkyOffice 会动态 import skyoffice）
+import 'reflect-metadata';
+
 import { createWriteStream, WriteStream } from 'node:fs';
 
 // ---- 日志输出到文件 ----
