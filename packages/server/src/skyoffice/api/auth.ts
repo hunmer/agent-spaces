@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express'
-import { roomRegistry } from '../rooms/RoomRegistry'
+import { roomRegistry } from '../rooms/RoomRegistry.js'
 
 /**
  * 解析 token：优先 Authorization: Bearer xxx，其次 query ?token=xxx

@@ -4,11 +4,11 @@ import { Server } from 'colyseus'
 import { monitor } from '@colyseus/monitor'
 import { WebSocketTransport } from '@colyseus/ws-transport'
 
-import { RoomType } from './types/Rooms'
-import { SkyOffice } from './rooms/SkyOffice'
-import { roomRoutes } from './api/roomRoutes'
-import { mapRoutes } from './api/mapRoutes'
-import { broadcastServer } from './broadcast/BroadcastServer'
+import { RoomType } from './types/Rooms.js'
+import { SkyOffice } from './rooms/SkyOffice.js'
+import { roomRoutes } from './api/roomRoutes.js'
+import { mapRoutes } from './api/mapRoutes.js'
+import { broadcastServer } from './broadcast/BroadcastServer.js'
 
 export { broadcastServer }
 
@@ -20,7 +20,7 @@ export { broadcastServer }
  * 让主后端 app.ts 的统一 dispatcher 在第五路（非 /ws /ws/speech /ws/lsp/typescript /agent-ws）
  * 主动调用它，从而避免三个 upgrade listener 争抢同一个事件。
  */
-let colyseusUpgradeHandler: ((req: http.IncomingMessage, socket: import('net').Socket, head: Buffer) => void) | null = null
+let colyseusUpgradeHandler: ((req: http.IncomingMessage, socket: any, head: Buffer) => void) | null = null
 
 export function getColyseusUpgradeHandler() {
   return colyseusUpgradeHandler
@@ -32,23 +32,32 @@ export interface AttachOptions {
 }
 
 /**
- * 把 SkyOffice（Colyseus 房间服务 + Agent 广播 WS + HTTP API）接入主后端单进程。
+ * 挂载 SkyOffice 的 HTTP 路由（Colyseus 监控 + 房间/地图 API）。
+ * 必须在主后端 app.use('/api', authMiddleware) 之前调用，
+ * 这样 /api/skyoffice/* 由 SkyOffice 自管 per-room token 鉴权，绕开主全局 Bearer。
+ */
+export function mountSkyOfficeRoutes(app: Application): void {
+  // 类型断言：Express 5 的 @types/express v5 对 Application.use(path, Router) 重载推断不全
+  app.use('/api/skyoffice', roomRoutes as any)
+  app.use('/api/skyoffice', mapRoutes as any)
+  app.use('/skyoffice/colyseus', monitor() as any)
+}
+
+/**
+ * 把 SkyOffice 实时部分（Colyseus 房间服务 + Agent 广播 WS）接入主后端单进程。
  *
  * - 不自建 http server，复用主后端的 server
- * - 不重复 cors / express.json（由主 app 全局提供）
  * - Colyseus 不自己 listen，而是 attach 到主 server，并让出 upgrade 事件给统一 dispatcher
- * - HTTP API 挂到 /api/skyoffice/*（在主 authMiddleware 之前注册，由 SkyOffice 自管 per-room token 鉴权）
- * - Agent WS 挂到 /agent-ws（由主 dispatcher 第四路分流到 broadcastServer.handleUpgrade）
- * - Colyseus viewer 挂到 /skyoffice/colyseus 监控面板
+ * - Agent WS 由主 dispatcher 在 /agent-ws 路径上分流到 broadcastServer.handleUpgrade
  *
- * 必须在主后端 server.listen 之前调用。
+ * 必须在主后端 server.listen 之前、且在主后端注册自己的 server.on('upgrade') 之前调用。
  */
-export function attachSkyOffice({ app, server }: AttachOptions): void {
+export function attachSkyOffice({ server }: AttachOptions): void {
   // 1) 创建 Colyseus transport 并 attach 到主 server
   //    WebSocketTransport 构造时会 server.on('upgrade', ...)，我们立即摘出该 listener，
   //    避免它和主后端的统一 dispatcher 冲突。
   const transport = new WebSocketTransport({ server })
-  const handlers = server.listeners('upgrade') as Array<(req: http.IncomingMessage, socket: import('net').Socket, head: Buffer) => void>
+  const handlers = server.listeners('upgrade') as Array<(req: http.IncomingMessage, socket: any, head: Buffer) => void>
   // transport 刚注册的 handler 是最后一个
   colyseusUpgradeHandler = handlers[handlers.length - 1] || null
   server.removeListener('upgrade', colyseusUpgradeHandler as any)
@@ -66,22 +75,11 @@ export function attachSkyOffice({ app, server }: AttachOptions): void {
 
   gameServer.define(RoomType.CUSTOM, SkyOffice)
 
-  // 4) HTTP API：挂在 /api/skyoffice 下，由 SkyOffice 自管 per-room token 鉴权
-  //    （注意：调用方需确保此挂载在主后端 app.use('/api', authMiddleware) 之前）
-  //    类型断言：Express 5 的 @types/express v5 对 Application.use(path, Router) 重载推断不全
-  app.use('/api/skyoffice', roomRoutes as any)
-  app.use('/api/skyoffice', mapRoutes as any)
-
-  // 5) Agent 广播 WS：只创建 wss + 注册 connection handler，不碰 server.on('upgrade')
+  // 4) Agent 广播 WS：只创建 wss + 注册 connection handler，不碰 server.on('upgrade')
   //    实际的 upgrade 由主后端统一 dispatcher 在 /agent-ws 路径上调用 broadcastServer.handleUpgrade
   broadcastServer.attach(server)
 
-  // 6) Colyseus 监控面板（加前缀避免和主后端可能的 /colyseus 冲突）
-  app.use('/skyoffice/colyseus', monitor() as any)
-
-  console.log('[skyoffice] attached to main server')
-  console.log('  HTTP API:   /api/skyoffice/rooms')
+  console.log('[skyoffice] realtime attached to main server')
   console.log('  Agent WS:   /agent-ws?roomId=xxx&token=yyy')
   console.log('  Colyseus:   ws://<host>/<roomId> (viewer)')
-  console.log('  Monitor:    /skyoffice/colyseus')
 }

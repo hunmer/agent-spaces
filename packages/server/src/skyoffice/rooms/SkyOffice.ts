@@ -1,12 +1,12 @@
 import { Room, Client } from 'colyseus'
 import { Dispatcher } from '@colyseus/command'
-import { Player, OfficeState } from './schema/OfficeState'
-import { Message } from '../types/Messages'
-import { IRoomData } from '../types/Rooms'
-import { bridge } from '../broadcast/Bridge'
-import PlayerUpdateCommand from './commands/PlayerUpdateCommand'
-import PlayerUpdateNameCommand from './commands/PlayerUpdateNameCommand'
-import ChatMessageUpdateCommand from './commands/ChatMessageUpdateCommand'
+import { Player, OfficeState } from './schema/OfficeState.js'
+import { Message } from '../types/Messages.js'
+import { IRoomData } from '../types/Rooms.js'
+import { bridge } from '../broadcast/Bridge.js'
+import PlayerUpdateCommand from './commands/PlayerUpdateCommand.js'
+import PlayerUpdateNameCommand from './commands/PlayerUpdateNameCommand.js'
+import ChatMessageUpdateCommand from './commands/ChatMessageUpdateCommand.js'
 
 /**
  * SkyOffice 房间 —— 同时承载人类玩家（浏览器键盘控制）和外部 Agent（广播 WS 推送）。

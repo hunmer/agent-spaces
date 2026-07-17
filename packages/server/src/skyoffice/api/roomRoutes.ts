@@ -1,11 +1,11 @@
 import { Router, Response } from 'express'
 import { randomBytes } from 'crypto'
 import { matchMaker } from 'colyseus'
-import { RoomType, IRoomData } from '../types/Rooms'
-import { roomRegistry } from '../rooms/RoomRegistry'
-import { bridge } from '../broadcast/Bridge'
-import { broadcastServer } from '../broadcast/BroadcastServer'
-import { AuthedRequest, requireRoomToken } from './auth'
+import { RoomType, IRoomData } from '../types/Rooms.js'
+import { roomRegistry } from '../rooms/RoomRegistry.js'
+import { bridge } from '../broadcast/Bridge.js'
+import { broadcastServer } from '../broadcast/BroadcastServer.js'
+import { AuthedRequest, requireRoomToken } from './auth.js'
 
 export const roomRoutes: import('express').Router = Router()
 

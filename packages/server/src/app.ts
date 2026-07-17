@@ -114,6 +114,16 @@ import { ensureBuiltInAgentTemplates } from './services/agent.js';
 import { rebuildIndex as rebuildMiniAppIndex } from './storage/mini-app-store.js';
 import { ensureAgentsConfigs } from './services/mini-app-services.js';
 import { registerAllMiniAppTools } from './services/mini-app-agent.js';
+// SkyOffice 以 CommonJS 子项目编译（Colyseus 0.15 为 CJS 包），主后端(ESM)通过 createRequire 桥接加载
+import { createRequire } from 'node:module';
+const require = createRequire(import.meta.url);
+const skyofficeModule = require('./skyoffice/index.js') as {
+  attachSkyOffice: (opts: { app: import('express').Application; server: import('http').Server }) => void;
+  mountSkyOfficeRoutes: (app: import('express').Application) => void;
+  getColyseusUpgradeHandler: () => ((req: any, socket: any, head: Buffer) => void) | null;
+  broadcastServer: { handleUpgrade: (req: any, socket: any, head: Buffer) => void };
+};
+const { attachSkyOffice, mountSkyOfficeRoutes, getColyseusUpgradeHandler, broadcastServer: skyofficeBroadcast } = skyofficeModule;
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORT = parseInt(process.env.PORT || '3100', 10);
@@ -147,6 +157,11 @@ app.post('/api/inspector/track', (req, res) => {
   broadcastToAll('inspector.jump', { path, name, line, column: column ?? 1, timestamp });
   res.json({ ok: true });
 });
+
+// SkyOffice HTTP 路由：在主 authMiddleware 之前挂载，由 SkyOffice 自管 per-room token 鉴权
+if (process.env.SKYOFFICE_ENABLED !== 'false') {
+  mountSkyOfficeRoutes(app);
+}
 
 app.use('/api', authMiddleware);
 
@@ -422,6 +437,12 @@ if (existsSync(webDir)) {
 
 const server = createServer(app);
 
+// SkyOffice 实时接入：必须在主后端注册 server.on('upgrade') 之前调用，
+// 以便 attachSkyOffice 摘走 Colyseus transport 的 upgrade handler，交给下方统一 dispatcher 分流。
+if (process.env.SKYOFFICE_ENABLED !== 'false') {
+  attachSkyOffice({ app, server });
+}
+
 const wss = new WebSocketServer({ noServer: true });
 const typescriptLspWss = new WebSocketServer({ noServer: true });
 
@@ -494,6 +515,20 @@ server.on('upgrade', (req, socket, head) => {
     typescriptLspWss.handleUpgrade(req, socket, head, (ws) => {
       typescriptLspWss.emit('connection', ws, req);
     });
+    return;
+  }
+
+  // SkyOffice Agent 广播 WS（由 broadcastServer 处理连接 + per-room token 鉴权）
+  if (pathname === '/agent-ws') {
+    skyofficeBroadcast.handleUpgrade(req, socket, head);
+    return;
+  }
+
+  // Colyseus 房间 viewer 连接：委托给 attachSkyOffice 摘出的 transport upgrade handler
+  // （未启用 SkyOffice 时该 handler 为 null，落到 socket.destroy）
+  const colyseusHandler = getColyseusUpgradeHandler();
+  if (colyseusHandler) {
+    colyseusHandler.call(server, req, socket, head);
     return;
   }
 

@@ -134,16 +134,16 @@ importers:
         version: link:../shared
       '@colyseus/command':
         specifier: ^0.1.7
-        version: 0.1.7(colyseus@0.15.57(@colyseus/schema@1.0.46)(express@5.2.1))
+        version: 0.1.7(colyseus@0.15.57(@colyseus/schema@2.0.37)(express@5.2.1))
       '@colyseus/monitor':
         specifier: ^0.14.0
         version: 0.14.22
       '@colyseus/schema':
-        specifier: ^1.0.28
-        version: 1.0.46
+        specifier: ^2.0.4
+        version: 2.0.37
       '@colyseus/ws-transport':
         specifier: ^0.15.0
-        version: 0.15.3(@colyseus/core@0.15.57(@colyseus/schema@1.0.46))(@colyseus/schema@1.0.46)
+        version: 0.15.3(@colyseus/core@0.15.57(@colyseus/schema@2.0.37))(@colyseus/schema@2.0.37)
       '@dagrejs/dagre':
         specifier: ^3.0.0
         version: 3.0.0
@@ -182,7 +182,7 @@ importers:
         version: 12.10.0
       colyseus:
         specifier: ^0.15.0
-        version: 0.15.57(@colyseus/schema@1.0.46)(express@5.2.1)
+        version: 0.15.57(@colyseus/schema@2.0.37)(express@5.2.1)
       cors:
         specifier: ^2.8.5
         version: 2.8.6
@@ -1607,6 +1607,10 @@ packages:
 
   '@colyseus/schema@1.0.46':
     resolution: {integrity: sha512-0cgirRomXDuDlppgJPXDLzsWw8/ZHwJEnndgzyX9hOCoFHJyFIyOYoKIV4eVPtKNQm6l6rGax1rE2LId4ujr4g==}
+    hasBin: true
+
+  '@colyseus/schema@2.0.37':
+    resolution: {integrity: sha512-+WXEux9DMSaTz9hZKabl6LBuzsxzt9EvOwhXJ/G4rPCaaVkJ+iLxRsq8VbL2ZCx18E/uQH6nLaNIQVqH9wEt8w==}
     hasBin: true
 
   '@colyseus/ws-transport@0.15.3':
@@ -14667,9 +14671,9 @@ snapshots:
   '@colors/colors@1.5.0':
     optional: true
 
-  '@colyseus/auth@0.15.12(@colyseus/core@0.15.57(@colyseus/schema@1.0.46))(express@5.2.1)':
+  '@colyseus/auth@0.15.12(@colyseus/core@0.15.57(@colyseus/schema@2.0.37))(express@5.2.1)':
     dependencies:
-      '@colyseus/core': 0.15.57(@colyseus/schema@1.0.46)
+      '@colyseus/core': 0.15.57(@colyseus/schema@2.0.37)
       '@types/jsonwebtoken': 9.0.10
       connect-redis: 7.1.1(express-session@1.19.0)
       express: 5.2.1
@@ -14680,17 +14684,17 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@colyseus/command@0.1.7(colyseus@0.15.57(@colyseus/schema@1.0.46)(express@5.2.1))':
+  '@colyseus/command@0.1.7(colyseus@0.15.57(@colyseus/schema@2.0.37)(express@5.2.1))':
     dependencies:
-      colyseus: 0.15.57(@colyseus/schema@1.0.46)(express@5.2.1)
+      colyseus: 0.15.57(@colyseus/schema@2.0.37)(express@5.2.1)
       debug: 4.4.3(supports-color@5.5.0)
     transitivePeerDependencies:
       - supports-color
 
-  '@colyseus/core@0.15.57(@colyseus/schema@1.0.46)':
+  '@colyseus/core@0.15.57(@colyseus/schema@2.0.37)':
     dependencies:
       '@colyseus/greeting-banner': 2.0.6
-      '@colyseus/schema': 1.0.46
+      '@colyseus/schema': 2.0.37
       '@gamestdio/timer': 1.4.2
       debug: 4.4.3(supports-color@5.5.0)
       msgpackr: 1.12.1
@@ -14711,9 +14715,9 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@colyseus/redis-driver@0.15.6(@colyseus/schema@1.0.46)':
+  '@colyseus/redis-driver@0.15.6(@colyseus/schema@2.0.37)':
     dependencies:
-      '@colyseus/core': 0.15.57(@colyseus/schema@1.0.46)
+      '@colyseus/core': 0.15.57(@colyseus/schema@2.0.37)
       ioredis: 5.11.1
     transitivePeerDependencies:
       - '@colyseus/schema'
@@ -14721,9 +14725,9 @@ snapshots:
       - supports-color
       - utf-8-validate
 
-  '@colyseus/redis-presence@0.15.6(@colyseus/schema@1.0.46)':
+  '@colyseus/redis-presence@0.15.6(@colyseus/schema@2.0.37)':
     dependencies:
-      '@colyseus/core': 0.15.57(@colyseus/schema@1.0.46)
+      '@colyseus/core': 0.15.57(@colyseus/schema@2.0.37)
       ioredis: 5.11.1
     transitivePeerDependencies:
       - '@colyseus/schema'
@@ -14733,10 +14737,12 @@ snapshots:
 
   '@colyseus/schema@1.0.46': {}
 
-  '@colyseus/ws-transport@0.15.3(@colyseus/core@0.15.57(@colyseus/schema@1.0.46))(@colyseus/schema@1.0.46)':
+  '@colyseus/schema@2.0.37': {}
+
+  '@colyseus/ws-transport@0.15.3(@colyseus/core@0.15.57(@colyseus/schema@2.0.37))(@colyseus/schema@2.0.37)':
     dependencies:
-      '@colyseus/core': 0.15.57(@colyseus/schema@1.0.46)
-      '@colyseus/schema': 1.0.46
+      '@colyseus/core': 0.15.57(@colyseus/schema@2.0.37)
+      '@colyseus/schema': 2.0.37
       '@types/ws': 7.4.7
       ws: 8.20.0
     transitivePeerDependencies:
@@ -20840,14 +20846,14 @@ snapshots:
       notepack.io: 2.3.0
       tslib: 2.8.1
 
-  colyseus@0.15.57(@colyseus/schema@1.0.46)(express@5.2.1):
+  colyseus@0.15.57(@colyseus/schema@2.0.37)(express@5.2.1):
     dependencies:
-      '@colyseus/auth': 0.15.12(@colyseus/core@0.15.57(@colyseus/schema@1.0.46))(express@5.2.1)
-      '@colyseus/core': 0.15.57(@colyseus/schema@1.0.46)
-      '@colyseus/redis-driver': 0.15.6(@colyseus/schema@1.0.46)
-      '@colyseus/redis-presence': 0.15.6(@colyseus/schema@1.0.46)
-      '@colyseus/schema': 1.0.46
-      '@colyseus/ws-transport': 0.15.3(@colyseus/core@0.15.57(@colyseus/schema@1.0.46))(@colyseus/schema@1.0.46)
+      '@colyseus/auth': 0.15.12(@colyseus/core@0.15.57(@colyseus/schema@2.0.37))(express@5.2.1)
+      '@colyseus/core': 0.15.57(@colyseus/schema@2.0.37)
+      '@colyseus/redis-driver': 0.15.6(@colyseus/schema@2.0.37)
+      '@colyseus/redis-presence': 0.15.6(@colyseus/schema@2.0.37)
+      '@colyseus/schema': 2.0.37
+      '@colyseus/ws-transport': 0.15.3(@colyseus/core@0.15.57(@colyseus/schema@2.0.37))(@colyseus/schema@2.0.37)
     transitivePeerDependencies:
       - bufferutil
       - express

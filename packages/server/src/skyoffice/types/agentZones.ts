@@ -1,4 +1,4 @@
-import { AgentActivity } from './IAgent'
+import { AgentActivity } from './IAgent.js'
 
 /**
  * 椅子定义 —— 与 Phaser Chair sprite 的 x/y 对齐（中心坐标）。

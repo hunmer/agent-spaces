@@ -19,8 +19,8 @@
   "scripts": {
     "dev": "tsx watch src/app.ts",
     "dev:plugin": "tsx src/dev/plugin-test-runner.ts",
-    "build": "tsc && tsc -p src/skyoffice/tsconfig.json",
-    "build:skyoffice": "tsc -p src/skyoffice/tsconfig.json",
+    "build": "tsc -p src/skyoffice/tsconfig.json && node -e \"require('fs').copyFileSync('src/skyoffice/package.json','dist/skyoffice/package.json')\" && tsc",
+    "build:skyoffice": "tsc -p src/skyoffice/tsconfig.json && node -e \"require('fs').copyFileSync('src/skyoffice/package.json','dist/skyoffice/package.json')\"",
     "start": "node dist/app.js",
     "prepublishOnly": "pnpm build",
     "postinstall": "node -e \"try{require('node-pty')}catch(e){if(!require('fs').existsSync('node_modules/node-pty/prebuilds')){process.exit(1)}}\""
@@ -29,7 +29,7 @@
     "@agent-spaces/shared": "workspace:*",
     "@colyseus/command": "^0.1.7",
     "@colyseus/monitor": "^0.14.0",
-    "@colyseus/schema": "^1.0.28",
+    "@colyseus/schema": "^2.0.4",
     "@colyseus/ws-transport": "^0.15.0",
     "@dagrejs/dagre": "^3.0.0",
     "@earendil-works/pi-coding-agent": "0.74.2",

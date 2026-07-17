@@ -1,5 +1,12 @@
 # Agent Teams Integration Guide
 
+> **迁移说明（合并进 @agent-spaces/server 后）**：
+> - SkyOffice 已合并进主后端单进程，**不再监听独立端口 2567**。
+> - 默认地址：`http://localhost:3100`（主后端端口）
+> - HTTP API 前缀由 `/api/rooms` 改为 **`/api/skyoffice/rooms`**（`/api/skyoffice/map`）
+> - Agent WS 路径不变：`ws://localhost:3100/agent-ws?roomId=...&token=...`
+> - 可通过环境变量 `SKYOFFICE_ENABLED=false` 关闭 SkyOffice。
+
 This guide explains how to drive Agent Teams from any external system (Python, Node.js, Go, etc.) via HTTP API and WebSocket broadcast.
 
 ## Architecture Overview

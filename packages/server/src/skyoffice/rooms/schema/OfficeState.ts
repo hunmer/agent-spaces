@@ -3,15 +3,15 @@ import type {
   IPlayer,
   IOfficeState,
   IChatMessage,
-} from '../../types/IOfficeState'
-import type { IAgent, AgentActivity } from '../../types/IAgent'
+} from '../../types/IOfficeState.js'
+import type { IAgent, AgentActivity } from '../../types/IAgent.js'
 import {
   DEFAULT_AGENT_ACTIVITY,
   DEFAULT_AGENT_ANIM,
   DEFAULT_AGENT_TEXTURE,
   DEFAULT_AGENT_X,
   DEFAULT_AGENT_Y,
-} from '../../types/IAgent'
+} from '../../types/IAgent.js'
 
 /**
  * 人类玩家 schema（浏览器键盘控制），key 是 Colyseus sessionId。

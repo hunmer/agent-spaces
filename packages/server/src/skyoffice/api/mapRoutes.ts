@@ -1,10 +1,6 @@
 import { Router, Response } from 'express'
 import * as fs from 'fs'
 import * as path from 'path'
-import { fileURLToPath } from 'url'
-
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = path.dirname(__filename)
 
 /**
  * map.json 的内存缓存 + 懒加载。
@@ -12,20 +8,19 @@ const __dirname = path.dirname(__filename)
  *
  * 路径定位：优先用环境变量 SKYOFFICE_MAP_JSON 覆盖；
  * 否则从当前文件向上查找 skyoffice-web 包的 map.json。
- *   - 源码模式（tsx dev）：packages/server/src/skyoffice/api/ → 上溯到 packages/ → skyoffice-web/...
- *   - 产物模式（dist）：packages/server/dist/skyoffice/api/ → 同样上溯到 packages/
+ *   - CJS 产物：packages/server/dist/skyoffice/api/ → 上溯到 packages/ → skyoffice-web/...
+ *   - dev（tsx）：packages/server/src/skyoffice/api/ → 同样上溯
  */
 function resolveMapJsonPath(): string {
   if (process.env.SKYOFFICE_MAP_JSON) return process.env.SKYOFFICE_MAP_JSON
-  // 从 api 目录上溯 3 层到 packages/，再进入 skyoffice-web
+  const base = typeof __dirname !== 'undefined' ? __dirname : process.cwd()
   const candidates = [
-    path.resolve(__dirname, '../../../../skyoffice-web/public/assets/map/map.json'),
-    path.resolve(__dirname, '../../../skyoffice-web/public/assets/map/map.json'),
+    path.resolve(base, '../../../../skyoffice-web/public/assets/map/map.json'),
+    path.resolve(base, '../../../skyoffice-web/public/assets/map/map.json'),
   ]
   for (const c of candidates) {
     if (fs.existsSync(c)) return c
   }
-  // 兜底：返回第一个候选（让后续 readFile 抛出可读错误）
   return candidates[0]
 }
 

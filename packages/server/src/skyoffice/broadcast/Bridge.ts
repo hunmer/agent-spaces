@@ -1,16 +1,16 @@
 import { matchMaker, Room } from 'colyseus'
-import { Agent, ChatMessage, OfficeState } from '../rooms/schema/OfficeState'
-import { roomRegistry } from '../rooms/RoomRegistry'
-import { Message, AGENT_TALK_DEFAULT_MS } from '../types/Messages'
+import { Agent, ChatMessage, OfficeState } from '../rooms/schema/OfficeState.js'
+import { roomRegistry } from '../rooms/RoomRegistry.js'
+import { Message, AGENT_TALK_DEFAULT_MS } from '../types/Messages.js'
 import {
   AgentActivity,
   DEFAULT_AGENT_ANIM,
   DEFAULT_AGENT_TEXTURE,
   DEFAULT_AGENT_X,
   DEFAULT_AGENT_Y,
-} from '../types/IAgent'
-import { AgentBroadcastType } from '../types/Messages'
-import { loadZoneChairs } from '../api/mapRoutes'
+} from '../types/IAgent.js'
+import { AgentBroadcastType } from '../types/Messages.js'
+import { loadZoneChairs } from '../api/mapRoutes.js'
 
 /**
  * Bridge：把 Agent 广播 WS 的消息桥接到对应 Colyseus 房间的 state。

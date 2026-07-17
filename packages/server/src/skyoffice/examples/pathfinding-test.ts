@@ -1,4 +1,7 @@
-import { findGridPath, tilesCoveredByRect } from '../client/src/utils/pathfinding'
+// 注意：client 已迁移为独立包 @agent-spaces/skyoffice-web（packages/skyoffice-web）。
+// 本测试脚本需手动运行（不在 tsc 编译范围），import 路径指向 monorepo 内的前端源码。
+// 运行：cd packages/server && npx tsx src/skyoffice/examples/pathfinding-test.ts
+import { findGridPath, tilesCoveredByRect } from '../../../../skyoffice-web/src/utils/pathfinding'
 
 const walls = new Set(['2,0', '2,1', '2,2', '2,3'])
 const path = findGridPath(5, 5, { x: 0, y: 1 }, { x: 4, y: 1 }, (x, y) => walls.has(`${x},${y}`))

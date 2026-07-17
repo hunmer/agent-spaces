@@ -1,7 +1,7 @@
 import { WebSocketServer, WebSocket } from 'ws'
 import http from 'http'
-import { roomRegistry } from '../rooms/RoomRegistry'
-import { bridge } from './Bridge'
+import { roomRegistry } from '../rooms/RoomRegistry.js'
+import { bridge } from './Bridge.js'
 
 /**
  * Agent 广播 WS 网关。
@@ -58,7 +58,7 @@ class BroadcastServerImpl {
    * 供主后端统一 upgrade dispatcher 在 /agent-ws 路径上调用。
    * 完成 ws 握手并触发 connection 事件。
    */
-  handleUpgrade(request: http.IncomingMessage, socket: import('net').Socket, head: Buffer): void {
+  handleUpgrade(request: http.IncomingMessage, socket: any, head: Buffer): void {
     if (!this.wss) {
       socket.destroy()
       return
