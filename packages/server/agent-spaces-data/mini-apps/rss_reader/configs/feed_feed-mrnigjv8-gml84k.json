@@ -11,7 +11,7 @@
     "feedId": "feed-mrnigjv8-gml84k",
     "feedTitle": "少数派",
     "favorite": false,
-    "readAt": "",
+    "readAt": "2026-07-17T01:44:30.565Z",
     "summary": "",
     "summaryAt": ""
   },
@@ -27,7 +27,7 @@
     "feedId": "feed-mrnigjv8-gml84k",
     "feedTitle": "少数派",
     "favorite": false,
-    "readAt": "",
+    "readAt": "2026-07-17T01:44:28.991Z",
     "summary": "",
     "summaryAt": ""
   },
@@ -42,8 +42,8 @@
     "contentText": "在经过一个多月、三个开发者预览版本的测试，Apple 于 7 月 14 日凌晨正式发布 iOS 27、iPadOS 27、macOS 27 Golden Gate 和 watchOS 27 等系统的公开测试版，正式版预计将于秋季发布。\n在这篇文章中，我们将带大家快速浏览 macOS 27 Golden Gate 中值得尝鲜的新功能。如果你想尝鲜 macOS 27 Golden Gate 公开测试版，可以在 Apple 官网申请 Apple Beta 版软件计划。\n测试版系统可能出现影响正常使用的 bug 或第三方软件兼容性问题，我们不建议你升级工作电脑；升级前请及时备份重要数据。如你想要体验，请使用双系统或者通过移动外置驱动器安装的方式体验。\n关联阅读：《一日一技 | 生产环境 Mac 如何无痛体验测试版 macOS》\n抛弃 x86 架构\n在正式聊新特性之前，我想先说一下硬件支持。\n其实 Apple 去年在 WWDC25 上就已经提前说明，macOS 26 会是最后一个支持 Intel Mac 的大版本。到了今年的 macOS 27 Golden Gate，这个过渡终于正式完成：新系统已经完全放弃 Intel 处理器架构，硬件支持范围也收缩到了 Apple Silicon Mac。\n也就是说，从 macOS 27 开始，能够升级到新系统的 Mac 都必须搭载 Apple 自研芯片。具体支持机型包括：\n配备 Apple 芯片的 MacBook Air（2020 年及后续机型）\n配备 Apple 芯片的 MacBook Pro（2020 年及后续机型）\n配备 Apple 芯片的 iMac（2021 年及后续机型）\n配备 Apple 芯片的 Mac mini（2020 年及后续机型）\n配备 Apple 芯片的 Mac Studio（2022 年及后续机型）\n配备 Apple 芯片的 Mac Pro（2023 年及后续机型）\nMacBook Neo（2026年）\n与此对应，Rosetta 2 的完整支持也进入了倒计时。按照 Apple 去年在 WWDC25 公布的时间表，macOS 27 将是最后一个完整支持 Rosetta 2 全部功能的大版本；到了 macOS 28，Rosetta 2 只会保留用于兼容 Intel 架构游戏的功能。所以，对于那些到现在还没有提供 Apple Silicon 原生版本的厂商来说，macOS 27 就是最后的缓冲期。\n如果你的 Mac 上还有通过 Rosetta 2 运行的软件，那么在 macOS 27 上你可以通过点击相关通知或「设置」-「通用」-「关于本机」，找到这些还没有 Apple Silicon 的软件。\n在实际上手后，macOS 27 确实如发布会上所言，对底层做了相当多的优化。不管是动画，还是软件的响应速度都比 macOS 26 灵敏不少，像极了当年的 Snow Leopard。有外媒在一台五年前发布、搭载 M1 Pro 的 MacBook Pro 上测试 macOS 27 时，也有类似的观点。\n重新打磨设计系统\nApple 在 macOS 26 中引入了新的视觉语言 Liquid Glass。它带来的透明玻璃质感确实很抓眼，但在 macOS 上也暴露出清晰度、对比度和可读性的问题，有点像当年 Mac OS X 10.10 Yosemite 那样。\n到了 macOS 27，Apple 也和其他系统一样，重新梳理了 Liquid Glass 在 macOS 上的呈现方式，让整体观感更统一，也解决了不少之前暴露出来的问题。具体而言：\nApple 把 Liquid Glass 的控制权交给了用户，在「设置」-「外观」里多了一个专门调节玻璃透明效果的滑块，从左边透明度更高的玻璃模式到右边更不透明的毛玻璃效果，Apple 相信总有一种符合用户喜好的效果。\n类似的调整也能在窗口和界面元素中看到。macOS 27 的窗口圆角弧度收敛了一些，没有 macOS 26 那么夸张。侧边栏也从 macOS 26 采用的是浮动式侧边栏，变为了 macOS Sequoia 和之前版本那样的重新紧贴窗口边缘的设计。虽然我个人还是比较喜欢 macOS 26 中的浮动式侧边栏的设计，但重新紧贴窗口边缘也确实让界面干净了不少。\n# 显示 macOS 浮动式侧边栏。输入完以后回车，并重启 Mac 电脑\ndefaults write -g NSSplitViewItemSidebarDefaultsToFloatingAppearance -bool Yes\n# 还原 macOS 侧边栏的默认值，即显示。输入完以后回车，并重启 Mac 电脑\ndefaults delete -g NSSplitViewItemSidebarDefaultsToFloatingAppearance另一个界面上的变化就是侧边栏图标着色。macOS 26 中由于缺少侧边栏图标着色，我们很难第一眼就分辨是否激活了某个窗口；而 macOS 27 中侧边栏图标着色也回来了，一个窗口没有用激活一眼就能看出来。\nmacOS 26 的菜单栏还有一个问题：过度使用图标，且效果并不理想。一方面，这些图标并没有覆盖所有菜单项，放在一起看显得不太统一；另一方面，部分图标本身的含义也不够清晰，我们也未必能通过图标更快地找到想要的功能。\nmacOS 27 对菜单栏中的图标重新做了调整，移除了大量有歧义、或者表述不清的图标，只保留了少数和系统既有功能强相关的图标，整体观感清晰很多。\n关联阅读：《译文｜Tahoe 的图标令人难评》\n# 显示 macOS 菜单中的图标。输入完以后回车，并重启 Mac 电脑\ndefaults write -g NSMenuEnableActionImages -bool Yes\n# 还原 macOS 菜单中图标的默认值，即显示。输入完以后回车，并重启 Mac 电脑\ndefaults delete -g NSMenuEnableActionImagesApple 第一方 app 的图标在 macOS 27 中也做了细节调整。主要集中在质感和层次上，不少图标像是叠加了多层 Liquid Glass 那样，有丰富的透光感和立体感。特别是 macOS 上的「访达」，脸部轮廓再一次发生了变化，鼻子（或者说分割线？）变得更清晰，左右两侧的区分也更明显，给我一种经典 macOS 时代的味道。\n在 macOS 上后台运行的应用现在也会在 Dock 上留下浅灰色的运行指示器，方便我们快速查看后台程序的运行情况。\n更好用的跨设备协同\n自从 iOS 18 和 macOS Sequoia 中发布了「iPhone 镜像」以后，我就非常喜欢这个功能。这样在 Mac 上工作时需要使用 iPhone 应用，不必停下来拿起手机，可以直接在 Mac 上的「iPhone 镜像」完成操作。接着到了 macOS Tahoe 26 里，「iPhone 镜像」支持了实时活动功能。\n而到了 macOS 27，「iPhone 镜像」又带来了一项新的变化「支持调整宽高比」，macOS 会根据窗口大小自动切换到受支持的比例，且 iPhone 镜像会自动适配合适的显示布局，应用也会根据当前比例，在 iPhone 布局和 iPad 布局之间切换。\n这项功能主要面向 iOS 27 中原生应用，第三方应用仍需开发者适配。不过，这种变化很容易让人联想到传闻中的折叠屏 iPhone——可变比例窗口、应用布局自动切换、iPhone 与 iPad 界面形态之间的过渡，都像是在提前为更多屏幕形态做准备。\n图源：9to5mac另一项跨设备协同的变化来自「随航」。过去，随航可以把 iPad 变成 Mac 的外接显示器，虽然提供了一些触控交互，但更像是把 iPad 当成一块大号触控板，通过双指滚动、捏合缩放，或者使用三指手势完成编辑操作。\n到了 macOS 27，随航终于补上了这部分体验。连接后的 iPad 可以直接通过轻点、滑动来操作 macOS 应用，交互方式更接近真正的触控屏，这个体验很容易让人想到此前我们介绍过的第三方 app Luna Display。当然，这项功能需要 iPad 升级到 iPadOS 27，Mac 和 iPad 也需要处在同一个 Wi-Fi 网络下。\n图源：appleinsiderAI\n由于 Apple 智能至今还没有在中国大陆地区落地，所以在这里我们只能简单介绍一下今年 WWDC26 上提及的 AI 功能。\n图源：Apple在 macOS 26 中，Apple 已经让「聚焦搜索」承担了应用启动、系统操作和信息检索等更多任务，从最早的搜索入口变成了 macOS 上的启动台。\n到了 macOS 27，Apple 还把 Siri AI 也集成进了这个启动台。用户可以直接在「聚焦搜索」的输入框中打开新的 Siri AI 对话框，通过文字或语音和它交流。这个对话框会根据内容自动调整大小，也可以被拖到屏幕上的其他位置，使用方式比过去的 Siri 更接近一个常驻的智能助手。\n得益于新的 Apple 基础模型，加上 macOS 上的新 API，Siri AI 现在可以从邮件、备忘录、照片、文件等 app 中获得并理解我们的个人信息。此外，Siri AI 也可以思考，或是结合网络上的最新信息回答。\n比如，在访达中选中几个文件后，用户可以通过相关菜单让 Siri AI 总结文件要点、转换格式、对比差异。又比如，Siri AI 也能按照用户的写作风格起草邮件或信息、检查语法问题，并对已有内容提出修改建议。还比如，Siri AI 还可以在重命名文件夹时，针对文件夹内的内容提供重命名建议。\n图源：Apple新版 Siri 在 macOS 上也同样有独立应用。在这个应用里，用户可以查看之前和 Siri 的对话，也可以接着此前的话题继续聊下去。对话记录会通过 iCloud 在不同 Apple 设备之间同步，所以在 Mac 上开始的一段对话，之后也可以在 iPhone 或 iPad 上继续。\n去年 iOS 上加入的视觉智能，今年也来到了 Mac。用户可以先截取屏幕内容，再框选想要了解的区域，然后直接向 Siri 提问。它能识别的内容包括文字、图像、二维码、链接等，遇到食物照片时，Siri 还可以进一步给出营养信息。\n图源：Apple至于 Apple 智能方面，密码管理器现在可以根据需求自动创建捷径、自动修改弱密码、照片应用新增了基于 AI 的编辑功能，可以辅助修改照片的构图还有视角，图乐园甚至可以直接输出逼真的图像内容等等。\n图源：AppleSafari 这次也基于 Apple 智能加入了一项很有意思的新功能：「通知我」。它可以理解为网页变化提醒。我们可以针对某个网页设置一个具体条件，让 Safari 定期检查页面内容，并在条件满足时发出通知。比如我们正在关注某件商品的价格，就可以让 Safari 每天早上查看一次商品页面，在价格下降时提醒你。\n这个功能对于普通用户来说，就是把过去需要手动刷新网页、或是依赖一定编程能力的事情，变成了一个纯粹的自动化流程。Safari 还支持了主题分组功能，可以根据网页内容自动整合网页标签页。\n图源：Apple其他值得注意的细节改进\nmacOS 27 支持了菜单栏折叠功能；\nmacOS 27 的屏幕录制支持录制由系统和 app 发出的声音了；\n邮件应用采用了新的排序方式，搜索速度也有所变快；\nmacOS 27 在超宽屏显示器上支持更高分辨率，例如 5K 120Hz，并且重新连接后显示器排列会保持原样；\nmacOS 27 上系统 app 支持下拉刷新的手势，其他第三方 app 需要开发者适配；\nmacOS 27 移除了对 AFP 协议的支持，此外在 macOS 28 中 Apple 还计划移除 Mac OS 扩展（日志式）文件系统的支持；\nmacOS 27 上的视频播客可以观看和收听之间无缝切换。\n最后\n今年 Apple 平台的新系统除了 Siri AI 和 Apple 智能以外，很明显将重心放到了系统大扫除上。所以，macOS 27 应该也是这些年少有的主打稳定的和性能优化的系统。\n如果你也安装了 macOS 27 测试版，那么欢迎你在升级后在评论区分享一下你的使用感受以及发现的新系统特性。\n> 了解更多 WWDC26 最新资讯及动态，欢迎关注《少数派带你看 WWDC26》系列专题。\n> 实用、好用的 正版软件，少数派为你呈现 🚀",
     "feedId": "feed-mrnigjv8-gml84k",
     "feedTitle": "少数派",
-    "favorite": false,
-    "readAt": "",
+    "favorite": true,
+    "readAt": "2026-07-17T01:38:36.950Z",
     "summary": "",
     "summaryAt": ""
   },
@@ -75,9 +75,9 @@
     "feedId": "feed-mrnigjv8-gml84k",
     "feedTitle": "少数派",
     "favorite": false,
-    "readAt": "",
-    "summary": "",
-    "summaryAt": ""
+    "readAt": "2026-07-17T02:09:30.677Z",
+    "summary": "[object Object]",
+    "summaryAt": "2026-07-17T02:09:44.164Z"
   },
   {
     "id": "art-mrnigmdu-sspzhs",

@@ -1,23 +1,12 @@
 const {
-  Button, Input, Badge, Loader2,
-  Plus, RefreshCw, Settings, Star, Rss,
+  Badge, Star, Settings, Rss,
 } = window.AgentSpacesUI;
-const { useState } = React;
 
 export function Toolbar({
-  counts, fetchingAll, agentMeta,
-  onAdd, onFetchAll, onConfigureAgent,
+  counts,
+  onOpenSettings,
   filter, onFilterChange, error, toast,
 }) {
-  const [url, setUrl] = useState('');
-  const submitting = fetchingAll;
-
-  const submit = (e) => {
-    e.preventDefault();
-    if (!url.trim()) return;
-    onAdd(url.trim()).then((ok) => { if (ok) setUrl(''); });
-  };
-
   return (
     <div className="flex items-center gap-2 border-b border-border bg-card px-3 py-2 flex-wrap">
       <div className="flex items-center gap-1.5 mr-1">
@@ -26,55 +15,33 @@ export function Toolbar({
         <Badge variant="secondary" className="ml-1">{counts.total}</Badge>
       </div>
 
-      <form onSubmit={submit} className="flex items-center gap-1.5 flex-1 min-w-[200px]">
-        <Input
-          value={url}
-          onChange={(e) => setUrl(e.target.value)}
-          placeholder="粘贴订阅源 URL，回车添加"
-          className="h-8 text-sm"
-        />
-        <Button type="submit" size="sm" className="h-8" disabled={submitting}>
-          <Plus className="h-4 w-4" /> 添加
-        </Button>
-      </form>
-
-      <Button
-        variant={filter === 'favorite' ? 'default' : 'outline'}
-        size="sm"
-        className="h-8"
+      <button
+        type="button"
+        className={
+          'inline-flex items-center gap-1 text-xs px-2 py-1 rounded h-8 '
+          + (filter === 'favorite'
+            ? 'bg-primary text-primary-foreground'
+            : 'text-muted-foreground hover:bg-muted')
+        }
         onClick={() => onFilterChange(filter === 'favorite' ? 'all' : 'favorite')}
         title="只看收藏"
       >
-        <Star className="h-4 w-4" />
-        <span className="hidden sm:inline ml-1">收藏</span>
+        <Star className={'h-4 w-4 ' + (filter === 'favorite' ? 'fill-current' : '')} />
+        <span>收藏</span>
         {counts.favorite > 0 && (
           <Badge variant="secondary" className="ml-1 h-4 px-1 text-[10px]">{counts.favorite}</Badge>
         )}
-      </Button>
+      </button>
 
-      <Button
-        variant="outline"
-        size="sm"
-        className="h-8"
-        onClick={onFetchAll}
-        disabled={submitting}
-      >
-        {fetchingAll ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-        <span className="hidden sm:inline ml-1">拉取全部</span>
-      </Button>
-
-      <Button
-        variant="outline"
-        size="sm"
-        className="h-8"
-        onClick={onConfigureAgent}
-        title="配置 AI 模型"
+      <button
+        type="button"
+        className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded h-8 ml-auto text-muted-foreground hover:bg-muted"
+        onClick={onOpenSettings}
+        title="设置"
       >
         <Settings className="h-4 w-4" />
-        <span className="hidden sm:inline ml-1 max-w-[120px] truncate">
-          {agentMeta?.name || '配置 AI'}
-        </span>
-      </Button>
+        <span className="hidden sm:inline">设置</span>
+      </button>
 
       {(error || toast) && (
         <div className="basis-full text-xs px-1">

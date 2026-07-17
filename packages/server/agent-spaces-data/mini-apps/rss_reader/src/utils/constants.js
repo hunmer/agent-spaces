@@ -13,7 +13,21 @@ export const MAX_SUMMARY_CHARS = 12000;
 export const CONFIG_FILES = {
   feeds: 'feeds.json', // 订阅源列表 [{ id, title, url, ... }]
   agent: 'agent.json', // { agentConfigId, agentMeta }
+  prefs: 'prefs.json', // 阅读偏好 { fontSize, density, viewMode }
 };
+
+// 阅读偏好默认值
+export const DEFAULT_PREFS = {
+  fontSize: 15,        // 正文字号 px
+  density: 'standard', // compact | standard | comfortable
+  viewMode: 'list',    // list | masonry
+};
+
+export const DENSITY_OPTIONS = [
+  { value: 'compact', label: '紧凑' },
+  { value: 'standard', label: '标准' },
+  { value: 'comfortable', label: '宽松' },
+];
 
 // 某个订阅源的文章文件名（扁平命名，避免子目录）
 export function feedArticlesFile(feedId) {
@@ -35,14 +49,12 @@ export const PANEL_IDS = {
   feeds: 'rss-feeds',
   list: 'rss-list',
   detail: 'rss-detail',
-  summary: 'rss-summary',
 };
-// 默认布局：四栏百分比，总和 100
+// 默认布局：三栏百分比，总和 100（总结已内联到详情页）
 export const DEFAULT_LAYOUT = {
-  [PANEL_IDS.feeds]: 16,
-  [PANEL_IDS.list]: 24,
-  [PANEL_IDS.detail]: 38,
-  [PANEL_IDS.summary]: 22,
+  [PANEL_IDS.feeds]: 18,
+  [PANEL_IDS.list]: 30,
+  [PANEL_IDS.detail]: 52,
 };
 
 // 生成 id

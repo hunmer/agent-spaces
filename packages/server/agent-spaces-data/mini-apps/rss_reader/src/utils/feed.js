@@ -54,6 +54,18 @@ function pickDate(raw) {
   return Number.isNaN(d.getTime()) ? String(v) : d.toISOString();
 }
 
+// 文章指纹去重 key：优先 guid，回退 link，再回退 title
+export function articleKey(item) {
+  return item.guid || item.link || item.title;
+}
+
+// 从 HTML 提取第一张图片 URL（用于瀑布流封面）
+export function extractFirstImage(html) {
+  if (!html) return '';
+  const m = String(html).match(/<img[^>]+src=["']([^"']+)["']/i);
+  return m ? m[1] : '';
+}
+
 // 与 podcast_generator 同款轻量 HTML→文本
 export function htmlToText(html) {
   if (!html) return '';
@@ -76,11 +88,6 @@ export function htmlToText(html) {
       .replace(/&quot;/g, '"');
   }
   return s.replace(/\s+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
-}
-
-// 文章指纹去重 key：优先 guid，回退 link，再回退 title
-export function articleKey(item) {
-  return item.guid || item.link || item.title;
 }
 
 // 合并新老文章：按 articleKey 去重，本次 fresh 的新/更新条目在前，其余老文章保留在后

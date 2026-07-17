@@ -10,9 +10,14 @@
     "阅读器",
     "AI 总结"
   ],
+  "devices": [
+    "mobile",
+    "ipad",
+    "pc"
+  ],
   "mainFile": "index.jsx",
   "createdAt": "2026-07-16T00:00:00.000Z",
-  "updatedAt": "2026-07-16T12:54:23.849Z",
+  "updatedAt": "2026-07-17T02:12:38.595Z",
   "enabledPlugins": [
     "workflow.feed-parser"
   ],

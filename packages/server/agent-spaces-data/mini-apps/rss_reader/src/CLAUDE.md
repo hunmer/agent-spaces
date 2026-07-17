@@ -7,7 +7,7 @@
 订阅 RSS/Atom/RDF/JSON Feed 源 → 拉取更新 → 浏览/收藏文章 → AI 一键总结单篇正文。
 
 界面四栏，使用 `ResizablePanelGroup` 可拖拽分栏，布局持久化到 `configs/layout.json`（server-side 文件 API）：
-- 左栏：订阅源列表（含「全部」、单源拉取、删除）
+- 左栏：订阅源列表（按分类折叠分组；顶部「添加」按钮、底部「拉取全部」按钮、单源刷新/删除）
 - 中栏：当前过滤后的文章列表（收藏过滤、已读/未读）
 - 右栏：文章详情（元信息 + 收藏 + AI总结触发按钮 + 正文）
 - 最右栏：独立的 AI 总结面板（生成/重新总结/复制 + 总结内容）
@@ -20,11 +20,12 @@
 src/
   index.jsx              # 入口：useRss() + 三栏布局
   components/
-    Toolbar.jsx          # 顶部：输入 URL 添加、拉取全部、收藏过滤、配置 AI、错误/提示
+    Toolbar.jsx          # 顶部：收藏过滤、设置入口、错误/提示（添加/拉取全部已移至左栏）
+    AddFeedDialog.jsx    # 添加订阅源弹窗（URL 必填 + 自定义标题选填 + 分类选填）
+    SettingsDialog.jsx   # 设置弹窗：主题切换（浅/深/跟随系统）+ AI 模型配置 + 阅读偏好（字号/密度）
     FeedList.jsx         # 左栏：订阅源目录（全部/单源、刷新、删除）
-    ArticleList.jsx      # 中栏：文章卡片（标题/预览/源/时间/收藏）
-    ArticleView.jsx      # 右栏：详情元信息 + 收藏 + AI总结触发按钮 + 正文(HTML优先)
-    SummaryPanel.jsx     # 最右栏：独立 AI 总结面板（生成/重新总结/复制 + 内容）
+    ArticleList.jsx      # 中栏：文章卡片（列表/瀑布流切换，标题/预览/源/时间/收藏）
+    ArticleView.jsx      # 右栏：详情元信息 + 收藏 + AI总结(触发按钮+内容卡片内联) + 正文(HTML优先，图片可放大)
   hooks/
     useRss.js            # 集中状态：增删源、单/全拉取、收藏、已读、总结、Agent 配置
   utils/
@@ -76,6 +77,7 @@ feed_fetch 响应结构：`callPluginTool` 返回 `{ result: { success, data: { 
 - `feeds.json`：订阅源列表（含 lastFetchAt/error）
 - `feed_<feedId>.json`：该源文章（含 favorite/readAt/summary/summaryAt）
 - `agent.json`：`{ agentConfigId, agentMeta }`
+- `prefs.json`：阅读偏好 `{ fontSize, density, viewMode }`
 - `layout.json`：面板布局
 
 mount 时并行读取，`ready=false` 期间显示 loading。

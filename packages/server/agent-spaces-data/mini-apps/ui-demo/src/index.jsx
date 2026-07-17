@@ -9,6 +9,7 @@ import MenuDemo from "./components/MenuDemo";
 import LayoutDemo from "./components/LayoutDemo";
 import AlertDemo from "./components/AlertDemo";
 import MediaDemo from "./components/MediaDemo";
+import SelectoDemo from "./components/SelectoDemo";
 
 const {
   Tabs,
@@ -30,6 +31,7 @@ const tabItems = [
   { value: "layout", label: "📐 布局", icon: " LAYOUT", component: LayoutDemo },
   { value: "alerts", label: "🔔 反馈", icon: " ALERT", component: AlertDemo },
   { value: "media", label: "🎬 媒体", icon: " MEDIA", component: MediaDemo },
+  { value: "selecto", label: "🔲 框选", icon: " SELECTO", component: SelectoDemo },
 ];
 
 const validValues = new Set(tabItems.map((t) => t.value));

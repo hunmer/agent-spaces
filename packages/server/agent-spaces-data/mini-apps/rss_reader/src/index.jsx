@@ -7,7 +7,8 @@ import { Toolbar } from './components/Toolbar.jsx';
 import { FeedList } from './components/FeedList.jsx';
 import { ArticleList } from './components/ArticleList.jsx';
 import { ArticleView } from './components/ArticleView.jsx';
-import { SummaryPanel } from './components/SummaryPanel.jsx';
+import { AddFeedDialog } from './components/AddFeedDialog.jsx';
+import { SettingsDialog } from './components/SettingsDialog.jsx';
 import { DEFAULT_LAYOUT, PANEL_IDS, LAYOUT_FILE } from './utils/constants.js';
 
 // 布局持久化：用 configs/layout.json（server-side，非 localStorage）
@@ -44,6 +45,8 @@ function usePanelLayout() {
 function App() {
   const s = useRss();
   const panel = usePanelLayout();
+  const [addOpen, setAddOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   if (!s.ready) {
     return (
@@ -58,15 +61,25 @@ function App() {
     <div className="flex flex-col h-full min-h-0 bg-background text-foreground">
       <Toolbar
         counts={s.counts}
-        fetchingAll={s.fetchingAll}
-        agentMeta={s.agentMeta}
-        onAdd={s.addFeed}
-        onFetchAll={s.fetchAll}
-        onConfigureAgent={s.configureAgent}
+        onOpenSettings={() => setSettingsOpen(true)}
         filter={s.filter}
         onFilterChange={(f) => s.setFilter(f === s.filter ? 'all' : f)}
         error={s.error}
         toast={s.toast}
+      />
+      <AddFeedDialog
+        open={addOpen}
+        onOpenChange={setAddOpen}
+        onSubmit={(url, opts) => s.addFeed(url, opts)}
+        categories={s.categories}
+      />
+      <SettingsDialog
+        open={settingsOpen}
+        onOpenChange={setSettingsOpen}
+        agentMeta={s.agentMeta}
+        onConfigureAgent={s.configureAgent}
+        prefs={s.prefs}
+        onUpdatePrefs={s.updatePrefs}
       />
       <div className="flex-1 min-h-0">
         <ResizablePanelGroup
@@ -87,9 +100,12 @@ function App() {
               selectedFeedId={s.selectedFeedId}
               counts={s.counts}
               fetchingFeedIds={s.fetchingFeedIds}
+              fetchingAll={s.fetchingAll}
               onSelect={s.setSelectedFeedId}
               onRemove={s.removeFeed}
               onFetchOne={s.fetchOne}
+              onFetchAll={s.fetchAll}
+              onAddClick={() => setAddOpen(true)}
             />
           </ResizablePanel>
           <ResizableHandle withHandle />
@@ -108,15 +124,17 @@ function App() {
               onToggleFilter={() => s.setFilter(s.filter === 'favorite' ? 'all' : 'favorite')}
               onSelect={s.selectArticle}
               onToggleFavorite={s.toggleFavorite}
+              prefs={s.prefs}
+              onUpdatePrefs={s.updatePrefs}
             />
           </ResizablePanel>
           <ResizableHandle withHandle />
 
-          {/* 右：详情 */}
+          {/* 右：详情（含内联 AI 总结） */}
           <ResizablePanel
             id={PANEL_IDS.detail}
             defaultSize={`${DEFAULT_LAYOUT.detail}%`}
-            minSize="20%"
+            minSize="30%"
             className="min-w-0 overflow-hidden"
           >
             <ArticleView
@@ -125,23 +143,8 @@ function App() {
               agentConfigId={s.agentConfigId}
               onSummarize={s.summarizeArticle}
               onToggleFavorite={s.toggleFavorite}
-            />
-          </ResizablePanel>
-          <ResizableHandle withHandle />
-
-          {/* 最右：AI 总结 */}
-          <ResizablePanel
-            id={PANEL_IDS.summary}
-            defaultSize={`${DEFAULT_LAYOUT.summary}%`}
-            minSize="15%"
-            maxSize="45%"
-          >
-            <SummaryPanel
-              article={s.currentArticle}
-              summarizing={s.summarizingId === s.selectedArticleId}
-              agentConfigId={s.agentConfigId}
-              onSummarize={s.summarizeArticle}
               onCopySummary={s.copySummary}
+              fontSize={s.prefs?.fontSize}
             />
           </ResizablePanel>
         </ResizablePanelGroup>
