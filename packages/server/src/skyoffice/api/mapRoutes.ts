@@ -8,8 +8,8 @@ import { fileURLToPath } from 'node:url'
  * 服务端启动时不读，首次请求时才加载，写回时更新缓存。
  *
  * 路径定位：优先用环境变量 SKYOFFICE_MAP_JSON 覆盖；
- * 否则从当前文件向上查找 skyoffice-web 包的 map.json。
- *   - ESM 产物：packages/server/dist/skyoffice/api/ → 上溯到 packages/ → skyoffice-web/...
+ * 否则从当前文件向上查找 web 包的 map.json（skyoffice-web 已并入 web）。
+ *   - ESM 产物：packages/server/dist/skyoffice/api/ → 上溯到 packages/ → web/public/...
  *   - dev（tsx）：packages/server/src/skyoffice/api/ → 同样上溯
  */
 function resolveMapJsonPath(): string {
@@ -17,8 +17,8 @@ function resolveMapJsonPath(): string {
   // ESM 下无 __dirname，用 import.meta.url 推导当前文件所在目录
   const base = path.dirname(fileURLToPath(import.meta.url))
   const candidates = [
-    path.resolve(base, '../../../../skyoffice-web/public/assets/map/map.json'),
-    path.resolve(base, '../../../skyoffice-web/public/assets/map/map.json'),
+    path.resolve(base, '../../../../web/public/assets/skyoffice/map/map.json'),
+    path.resolve(base, '../../../web/public/assets/skyoffice/map/map.json'),
   ]
   for (const c of candidates) {
     if (fs.existsSync(c)) return c

@@ -106,10 +106,11 @@ export default class Network {
         changes.forEach(({ field, value }) => {
           phaserEvents.emit(Event.PLAYER_UPDATED, field, value, key)
           if (field === 'name' && value !== '') {
+            const name = value as string
             phaserEvents.emit(Event.PLAYER_JOINED, player, key)
-            useUserStore.getState().setPlayerNameMap({ id: key, name: value })
-            useChatStore.getState().pushPlayerJoinedMessage(value)
-            useAgentDebugStore.getState().upsertHuman({ id: key, name: value })
+            useUserStore.getState().setPlayerNameMap({ id: key, name })
+            useChatStore.getState().pushPlayerJoinedMessage(name)
+            useAgentDebugStore.getState().upsertHuman({ id: key, name })
           }
         })
       }

@@ -1,0 +1,13 @@
+{
+  "extends": "../../../tsconfig.json",
+  "compilerOptions": {
+    // skyoffice 从原项目（strictNullChecks:false）迁入的 Phaser 游戏代码。
+    // Phaser 的 body/keyboard/input 等类型固有可空，逐个加守卫会侵入游戏逻辑且无运行时收益。
+    // 关闭 strictNullChecks 与原项目一致。此文件仅供 IDE 参考；
+    // Next.js 用 SWC 编译（不跑 tsc），主 tsconfig 仍检查这些文件但报的 strict 噪音不影响运行。
+    "strictNullChecks": false,
+    "noEmit": true,
+    "composite": false
+  },
+  "include": ["**/*.ts", "**/*.tsx"]
+}
