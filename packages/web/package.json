@@ -43,7 +43,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
-    "colyseus.js": "^0.14.13",
+    "colyseus.js": "^0.15.28",
     "copy-code": "^1.0.0",
     "date-fns": "^4.1.0",
     "dexie": "^4.4.3",
