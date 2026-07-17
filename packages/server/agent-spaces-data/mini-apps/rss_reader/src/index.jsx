@@ -1,4 +1,4 @@
-const { useState, useEffect, useCallback } = React;
+const { useState, useEffect, useCallback, useRef } = React;
 const {
   ResizablePanelGroup, ResizablePanel, ResizableHandle, Loader2,
   Sheet, SheetContent,
@@ -13,18 +13,30 @@ import { EditFeedDialog } from './components/EditFeedDialog.jsx';
 import { SettingsDialog } from './components/SettingsDialog.jsx';
 import { DEFAULT_LAYOUT, PANEL_IDS, LAYOUT_FILE } from './utils/constants.js';
 
-// 响应式断点 hook：md = 768px
+// 响应式断点 hook：基于容器实际宽度（非 window.innerWidth）。
+// 这样预览器的「设备框架」限宽也能正确触发响应式，而不只是浏览器窗口缩放。
+// 返回 [isMobile, setRef]：setRef 作为 ref callback 挂到根容器。
 function useIsMobile(bp = 768) {
-  const [isMobile, setIsMobile] = useState(() =>
-    typeof window !== 'undefined' ? window.matchMedia(`(max-width: ${bp - 1}px)`).matches : false,
-  );
-  useEffect(() => {
-    const mq = window.matchMedia(`(max-width: ${bp - 1}px)`);
-    const handler = (e) => setIsMobile(e.matches);
-    mq.addEventListener('change', handler);
-    return () => mq.removeEventListener('change', handler);
+  const [isMobile, setIsMobile] = useState(false);
+  const elRef = useRef(null);
+
+  const setRef = useCallback((el) => {
+    elRef.current = el;
+    if (!el) return;
+    const check = () => setIsMobile(el.clientWidth < bp);
+    check();
+    // 每次 ref 绑定都重建 observer，确保 loading→ready 切换后也能正确测量
+    if (el.__roMobile) el.__roMobile.disconnect();
+    const ro = new ResizeObserver(check);
+    ro.observe(el);
+    el.__roMobile = ro;
   }, [bp]);
-  return isMobile;
+
+  useEffect(() => () => {
+    if (elRef.current?.__roMobile) elRef.current.__roMobile.disconnect();
+  }, []);
+
+  return [isMobile, setRef];
 }
 
 // 布局持久化：用 configs/layout.json（server-side，非 localStorage）
@@ -76,7 +88,7 @@ function feedsPanelProps(s, { setAddOpen, setEditingFeed }) {
 function App() {
   const s = useRss();
   const panel = usePanelLayout();
-  const isMobile = useIsMobile();
+  const [isMobile, rootRef] = useIsMobile(768);
   const [addOpen, setAddOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [editingFeed, setEditingFeed] = useState(null);
@@ -85,7 +97,7 @@ function App() {
 
   if (!s.ready) {
     return (
-      <div className="flex h-full w-full items-center justify-center text-muted-foreground gap-2">
+      <div ref={rootRef} className="flex h-full w-full items-center justify-center text-muted-foreground gap-2">
         <Loader2 className="h-5 w-5 animate-spin" />
         <span className="text-sm">加载本地数据…</span>
       </div>
@@ -97,7 +109,7 @@ function App() {
   const showDetailMobile = isMobile && !!s.currentArticle;
 
   return (
-    <div className="flex flex-col h-full min-h-0 bg-background text-foreground">
+    <div ref={rootRef} className="flex flex-col h-full min-h-0 bg-background text-foreground">
       <Toolbar
         counts={s.counts}
         onOpenSettings={() => setSettingsOpen(true)}

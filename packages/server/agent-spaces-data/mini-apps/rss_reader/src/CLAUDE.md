@@ -6,7 +6,8 @@
 
 订阅 RSS/Atom/RDF/JSON Feed 源 → 拉取更新 → 浏览/收藏文章 → AI 一键总结单篇正文。
 
-界面响应式（`md`=768px 断点）：
+界面响应式（`md`=768px 断点，基于容器宽度而非 window）：
+- 响应式用 `useIsMobile` + `ResizeObserver` 监听**根容器 clientWidth**，而非 `window.matchMedia`——因为预览器「设备框架」是限宽容器，mini-app 直接渲染在主应用 document 里，`window.innerWidth` 不会随设备框架变化，只有监听容器宽度才能正确触发。
 - **桌面端（≥md）**：三栏 `ResizablePanelGroup` 可拖拽分栏（订阅源 / 文章列表 / 详情），布局持久化到 `configs/layout.json`
 - **移动端（<md）**：header 左侧菜单按钮 → `Sheet`(drawer) 展示订阅源；文章列表占满，点文章进入详情独立全屏视图（左上角「返回列表」按钮）
 
