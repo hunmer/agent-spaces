@@ -17,24 +17,6 @@ export function Toolbar({
 
       <button
         type="button"
-        className={
-          'inline-flex items-center gap-1 text-xs px-2 py-1 rounded h-8 '
-          + (filter === 'favorite'
-            ? 'bg-primary text-primary-foreground'
-            : 'text-muted-foreground hover:bg-muted')
-        }
-        onClick={() => onFilterChange(filter === 'favorite' ? 'all' : 'favorite')}
-        title="只看收藏"
-      >
-        <Star className={'h-4 w-4 ' + (filter === 'favorite' ? 'fill-current' : '')} />
-        <span>收藏</span>
-        {counts.favorite > 0 && (
-          <Badge variant="secondary" className="ml-1 h-4 px-1 text-[10px]">{counts.favorite}</Badge>
-        )}
-      </button>
-
-      <button
-        type="button"
         className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded h-8 ml-auto text-muted-foreground hover:bg-muted"
         onClick={onOpenSettings}
         title="设置"

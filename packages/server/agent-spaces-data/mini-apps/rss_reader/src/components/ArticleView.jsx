@@ -88,37 +88,37 @@ export function ArticleView({
             <span className="text-[11px] text-muted-foreground">未配置 AI 模型（右上角「设置」）</span>
           )}
         </div>
-
-        {/* AI 总结内容卡片（按钮下方） */}
-        {(article.summary || summarizing) && (
-          <div className="mt-3 rounded-md border border-primary/40 bg-primary/5 p-3">
-            <div className="flex items-center gap-1.5 mb-2">
-              <Sparkles className="h-3.5 w-3.5 text-primary" />
-              <span className="text-xs font-semibold">AI 总结</span>
-              {article.summaryAt && !summarizing && (
-                <span className="text-[10px] text-muted-foreground ml-auto">{timeAgo(article.summaryAt)}</span>
-              )}
-            </div>
-            {summarizing ? (
-              <div className="text-sm text-muted-foreground flex items-center gap-1.5">
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                正在生成总结…
-              </div>
-            ) : (
-              <div
-                className="text-sm leading-relaxed whitespace-pre-wrap text-foreground"
-                style={{ fontSize: `${fontSize}px` }}
-              >
-                {article.summary}
-              </div>
-            )}
-          </div>
-        )}
       </div>
 
-      {/* 正文 */}
+      {/* 正文（含内联 AI 总结卡片） */}
       <ScrollArea className="flex-1 min-h-0">
         <div className="p-4">
+          {/* AI 总结内容卡片（正文上方，随正文一起滚动，不挤压正文） */}
+          {(article.summary || summarizing) && (
+            <div className="mb-4 rounded-md border border-primary/40 bg-primary/5 p-3">
+              <div className="flex items-center gap-1.5 mb-2">
+                <Sparkles className="h-3.5 w-3.5 text-primary" />
+                <span className="text-xs font-semibold">AI 总结</span>
+                {article.summaryAt && !summarizing && (
+                  <span className="text-[10px] text-muted-foreground ml-auto">{timeAgo(article.summaryAt)}</span>
+                )}
+              </div>
+              {summarizing ? (
+                <div className="text-sm text-muted-foreground flex items-center gap-1.5">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  正在生成总结…
+                </div>
+              ) : (
+                <div
+                  className="text-sm leading-relaxed whitespace-pre-wrap text-foreground"
+                  style={{ fontSize: `${fontSize}px` }}
+                >
+                  {article.summary}
+                </div>
+              )}
+            </div>
+          )}
+
           {hasBody ? (
             <ArticleHtml html={body} fallback={text} fontSize={fontSize} />
           ) : hasText ? (

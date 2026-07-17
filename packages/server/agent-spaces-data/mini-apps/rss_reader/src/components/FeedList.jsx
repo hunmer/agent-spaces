@@ -1,6 +1,6 @@
 const { useState, useMemo } = React;
 const {
-  ScrollArea, Loader2, Trash2, AlertCircle, Inbox, RefreshCw, Plus,
+  ScrollArea, Loader2, AlertCircle, Inbox, RefreshCw, Plus,
   ChevronRight, ChevronDown, Folder, Rss,
 } = window.AgentSpacesUI;
 import { timeAgo } from '../utils/format.js';
@@ -10,7 +10,7 @@ const NO_CATEGORY = '未分类';
 export function FeedList({
   feeds, selectedFeedId, counts,
   fetchingFeedIds, fetchingAll,
-  onSelect, onRemove, onFetchOne, onFetchAll, onAddClick,
+  onSelect, onFetchOne, onFetchAll, onAddClick,
 }) {
   const allActive = selectedFeedId === 'all';
 
@@ -43,14 +43,15 @@ export function FeedList({
 
   return (
     <div className="flex flex-col h-full w-full min-h-0">
-      {/* 头部：标题 + 添加按钮 */}
+      {/* 头部：标题 + 计数 badge + 添加按钮 */}
       <div className="flex items-center gap-1 px-2 py-2 border-b border-border">
-        <span className="text-xs font-semibold text-muted-foreground flex-1 px-1">
-          订阅源 ({feeds.length})
+        <span className="text-xs font-semibold text-foreground px-1">订阅源</span>
+        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-primary/15 text-primary">
+          {feeds.length}
         </span>
         <button
           type="button"
-          className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded hover:bg-muted text-foreground"
+          className="ml-auto inline-flex items-center gap-1 text-xs px-2 py-1 rounded hover:bg-muted text-foreground"
           onClick={onAddClick}
           title="添加订阅源"
         >
@@ -106,7 +107,6 @@ export function FeedList({
                     fetching={fetchingFeedIds.has(f.id)}
                     indented
                     onClick={() => onSelect(f.id)}
-                    onRemove={() => onRemove(f.id)}
                     onRefresh={() => onFetchOne(f.id)}
                   />
                 ))}
@@ -151,7 +151,7 @@ function CategoryHeader({ label, count, collapsed, onToggle }) {
 function FeedItem({
   active, title, subtitle, count = 0,
   error = false, fetching = false, indented = false, icon,
-  onClick, onRemove, onRefresh,
+  onClick, onRefresh,
 }) {
   return (
     <div
@@ -167,7 +167,19 @@ function FeedItem({
         <div className="flex items-center gap-1">
           {error && <AlertCircle className="h-3.5 w-3.5 text-destructive flex-shrink-0" />}
           {fetching && <Loader2 className="h-3.5 w-3.5 animate-spin flex-shrink-0" />}
-          <span className="truncate font-medium">{title}</span>
+          <span className="truncate font-medium flex-1 min-w-0">{title}</span>
+          {/* 刷新图标：标题右侧 */}
+          {onRefresh && (
+            <button
+              type="button"
+              className="flex-shrink-0 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-primary p-0.5 transition-opacity"
+              title="拉取更新"
+              onClick={(e) => { e.stopPropagation(); onRefresh(); }}
+              disabled={fetching}
+            >
+              <RefreshCw className={'h-3.5 w-3.5 ' + (fetching ? 'animate-spin' : '')} />
+            </button>
+          )}
         </div>
         {subtitle && (
           <div className={'text-[11px] truncate ' + (error ? 'text-destructive' : 'text-muted-foreground')}>
@@ -177,27 +189,6 @@ function FeedItem({
       </div>
       {count > 0 && (
         <span className="text-[11px] text-muted-foreground flex-shrink-0">{count}</span>
-      )}
-      {onRefresh && (
-        <button
-          type="button"
-          className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-foreground p-0.5"
-          title="拉取更新"
-          onClick={(e) => { e.stopPropagation(); onRefresh(); }}
-          disabled={fetching}
-        >
-          <RefreshCw className={'h-3.5 w-3.5 ' + (fetching ? 'animate-spin' : '')} />
-        </button>
-      )}
-      {onRemove && (
-        <button
-          type="button"
-          className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive p-0.5"
-          title="删除订阅"
-          onClick={(e) => { e.stopPropagation(); onRemove(); }}
-        >
-          <Trash2 className="h-3.5 w-3.5" />
-        </button>
       )}
     </div>
   );

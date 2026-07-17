@@ -6,11 +6,10 @@
 
 订阅 RSS/Atom/RDF/JSON Feed 源 → 拉取更新 → 浏览/收藏文章 → AI 一键总结单篇正文。
 
-界面四栏，使用 `ResizablePanelGroup` 可拖拽分栏，布局持久化到 `configs/layout.json`（server-side 文件 API）：
+界面三栏，使用 `ResizablePanelGroup` 可拖拽分栏，布局持久化到 `configs/layout.json`（server-side 文件 API）：
 - 左栏：订阅源列表（按分类折叠分组；顶部「添加」按钮、底部「拉取全部」按钮、单源刷新/删除）
-- 中栏：当前过滤后的文章列表（收藏过滤、已读/未读）
-- 右栏：文章详情（元信息 + 收藏 + AI总结触发按钮 + 正文）
-- 最右栏：独立的 AI 总结面板（生成/重新总结/复制 + 总结内容）
+- 中栏：当前过滤后的文章列表（列表/瀑布流切换、收藏过滤、已读/未读）
+- 右栏：文章详情（元信息 + 收藏 + AI总结按钮 + 内联总结内容卡片 + 正文）
 
 布局记忆：`ResizablePanelGroup` 的 `defaultLayout`/`onLayoutChange` 配 `readConfigJson`/`writeConfigJson`（`configs/layout.json`），值是 `{ [panelId]: 数字百分比 }`。各面板 `defaultSize`/`minSize`/`maxSize` 用字符串百分比（见 `docs/ui/react-resizable-panels-size-units.md`，数字会被当 px）。
 

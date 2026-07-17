@@ -102,7 +102,6 @@ function App() {
               fetchingFeedIds={s.fetchingFeedIds}
               fetchingAll={s.fetchingAll}
               onSelect={s.setSelectedFeedId}
-              onRemove={s.removeFeed}
               onFetchOne={s.fetchOne}
               onFetchAll={s.fetchAll}
               onAddClick={() => setAddOpen(true)}

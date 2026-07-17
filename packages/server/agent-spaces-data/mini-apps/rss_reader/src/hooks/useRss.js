@@ -11,6 +11,21 @@ import {
   normalizeItem, articleKey, htmlToText,
 } from '../utils/feed.js';
 
+// 清洗 Agent 输出：去除 <think>/<reasoning> 等推理过程块、markdown 代码围栏包裹，
+// 只保留最终正文。兼容模型把总结放进或放在 think 外的各种情况。
+function cleanAgentOutput(raw) {
+  if (!raw) return '';
+  let s = String(raw);
+  // 去除各类推理/思考标签块（含未闭合的兜底）
+  s = s.replace(/<(think|thinking|reasoning|reflection|analysis)\b[^>]*>[\s\S]*?<\/\1\s*>/gi, '');
+  s = s.replace(/<(think|thinking|reasoning|reflection|analysis)\b[^>]*>[\s\S]*$/gi, ''); // 未闭合
+  // 去除孤立的闭合标签
+  s = s.replace(/<\/(think|thinking|reasoning|reflection|analysis)\s*>/gi, '');
+  // 去除首尾 ```markdown / ``` 代码围栏
+  s = s.replace(/^\s*```[a-zA-Z]*\s*\n?/, '').replace(/\n?```\s*$/, '');
+  return s.trim();
+}
+
 // 单源内合并：保留老文章的用户态（favorite/readAt/summary），新文章追加。
 // 跨源已物理隔离（各源独立文件），此处只在单源内去重。
 function mergeFeedItems(oldItems, fresh) {
@@ -344,9 +359,10 @@ export function useRss() {
         { taskId, meta: { mode: 'summary', title: article.title } },
       );
       const text = (ret && (ret.result ?? ret)) || '';
-      if (!String(text).trim()) throw new Error('AI 未返回有效总结');
-      const summary = String(text).trim();
-      updateArticle(articleId, { summary, summaryAt: new Date().toISOString() });
+      // 清洗推理模型的 <think>...</think> 等过程标签，只保留最终总结正文
+      const cleaned = cleanAgentOutput(text);
+      if (!cleaned) throw new Error('AI 未返回有效总结');
+      updateArticle(articleId, { summary: cleaned, summaryAt: new Date().toISOString() });
       setToast('总结完成');
     } catch (e) {
       setError('总结失败：' + (e?.message || e));
