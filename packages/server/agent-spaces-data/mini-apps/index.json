@@ -369,5 +369,24 @@
       "workflow.feed-parser"
     ],
     "icon": "📰"
+  },
+  {
+    "id": "galgenai",
+    "name": "GalGenAI Live2D 伙伴",
+    "version": "1.0.0",
+    "type": "react",
+    "tags": [
+      "Live2D",
+      "对话",
+      "AI"
+    ],
+    "mainFile": "index.jsx",
+    "createdAt": "2026-07-17T00:00:00.000Z",
+    "updatedAt": "2026-07-17T00:00:00.000Z",
+    "enabledPlugins": [
+      "@agent-spaces/builtin"
+    ],
+    "description": "Live2D 虚拟角色对话，对话走 agent_run，语音走 text_to_voice 工作流",
+    "icon": "🎭"
   }
 ]
