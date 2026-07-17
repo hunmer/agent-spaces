@@ -6,7 +6,7 @@ const {
 } = window.AgentSpacesUI;
 const { proxyImageUrl } = window.AgentSpaces;
 import { formatDate, timeAgo } from '../utils/format.js';
-import { htmlToText, proxyImagesInHtml } from '../utils/feed.js';
+import { htmlToText, makeImageFallback } from '../utils/feed.js';
 
 export function ArticleView({
   article, summarizing, agentConfigId,
@@ -162,14 +162,12 @@ export function ArticleView({
   );
 }
 
-// 渲染 feed 自带 HTML：样式继承宿主，图片点击可放大查看；所有外链图片走后端代理
+// 渲染 feed 自带 HTML：样式继承宿主，图片前端直连优先、失败回退后端代理，点击可放大
 function ArticleHtml({ html, fallback, fontSize = 15 }) {
   const ref = useRef(null);
-  // 渲染前把 HTML 中所有外链 img src 转成后端代理 URL，解决跨域/防盗链
-  const proxiedHtml = useMemo(
-    () => proxyImagesInHtml(html, proxyImageUrl),
-    [html],
-  );
+
+  // 图片加载失败 → 回退到后端代理（前端直连优先，失败再代理）
+  const onImgError = useMemo(() => makeImageFallback(proxyImageUrl), []);
 
   // 点击图片 → 收集正文所有图片 → 打开 media-gallery 大图查看
   const onImageClick = useCallback((e) => {
@@ -192,12 +190,17 @@ function ArticleHtml({ html, fallback, fontSize = 15 }) {
     openMediaGallery(items, startIndex);
   }, []);
 
+  // 事件委托：click 放大 + error 回退代理（dangerouslySetInnerHTML 的 img 无法直接绑 onError）
   useEffect(() => {
     const root = ref.current;
     if (!root) return;
     root.addEventListener('click', onImageClick);
-    return () => root.removeEventListener('click', onImageClick);
-  }, [onImageClick, proxiedHtml]);
+    root.addEventListener('error', onImgError, true); // 捕获阶段：img error 不冒泡
+    return () => {
+      root.removeEventListener('click', onImageClick);
+      root.removeEventListener('error', onImgError, true);
+    };
+  }, [onImageClick, onImgError, html]);
 
   if (!html) {
     return (
@@ -214,7 +217,7 @@ function ArticleHtml({ html, fallback, fontSize = 15 }) {
       ref={ref}
       className="prose-article leading-relaxed text-foreground [&_a]:text-primary [&_a:hover]:underline [&_img]:max-w-full [&_img]:h-auto [&_img]:rounded [&_img]:cursor-zoom-in [&_pre]:overflow-x-auto [&_code]:bg-muted [&_code]:px-1 [&_code]:rounded [&_blockquote]:border-l-2 [&_blockquote]:border-border [&_blockquote]:pl-3 [&_blockquote]:text-muted-foreground"
       style={{ fontSize: `${fontSize}px` }}
-      dangerouslySetInnerHTML={{ __html: proxiedHtml }}
+      dangerouslySetInnerHTML={{ __html: html }}
     />
   );
 }

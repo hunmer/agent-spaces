@@ -66,15 +66,33 @@ export function extractFirstImage(html) {
   return m ? m[1] : '';
 }
 
-// 把 HTML 里所有 <img src="..."> 的外链 URL 用 proxyFn 转成代理 URL。
-// 用于渲染正文时统一走后端代理，解决跨域/防盗链。只改 http(s) 外链，
-// data:/blob:/已是代理的跳过。proxyFn 为空时原样返回。
-export function proxyImagesInHtml(html, proxyFn) {
-  if (!html || typeof proxyFn !== 'function') return html;
-  return String(html).replace(
-    /(<img\b[^>]*\bsrc=)(["'])([^"']+)\2/gi,
-    (full, pre, quote, url) => `${pre}${quote}${proxyFn(url)}${quote}`,
-  );
+// 判断 URL 是否已是后端代理 URL（避免回退时死循环）
+function isProxyUrl(url) {
+  return /\/api\/mini-apps\/[^/]+\/(proxy-image|local-file|data\/file)/.test(String(url || ''));
+}
+
+// 图片加载失败时的回退处理器（前端直连优先，失败再走后端代理）。
+// 用于 <img onError={makeImageFallback(proxyImageUrl)}>：
+//   - 当前 src 不是代理 URL → 换成 proxyFn(src)，让后端代理重试一次
+//   - 当前 src 已是代理 URL（说明代理也失败）→ 隐藏图片，停止重试防死循环
+// event deleg­ation 场景（dangerouslySetInnerHTML 的 img）同样适用，因为它读 e.target。
+export function makeImageFallback(proxyFn) {
+  return (e) => {
+    const el = e.currentTarget || e.target;
+    if (!el || el.tagName !== 'IMG') return;
+    const cur = el.currentSrc || el.src || '';
+    if (isProxyUrl(cur)) {
+      // 代理也失败：放弃，隐藏占位
+      el.style.visibility = 'hidden';
+      return;
+    }
+    const next = typeof proxyFn === 'function' ? proxyFn(cur) : '';
+    if (next && next !== cur) {
+      el.src = next;
+    } else {
+      el.style.visibility = 'hidden';
+    }
+  };
 }
 
 // 与 podcast_generator 同款轻量 HTML→文本

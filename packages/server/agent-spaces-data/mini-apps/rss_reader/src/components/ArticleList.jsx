@@ -5,7 +5,7 @@ const {
 } = window.AgentSpacesUI;
 const { proxyImageUrl } = window.AgentSpaces;
 import { timeAgo } from '../utils/format.js';
-import { htmlToText, extractFirstImage } from '../utils/feed.js';
+import { htmlToText, extractFirstImage, makeImageFallback } from '../utils/feed.js';
 
 // 密度 → 列表卡片样式
 const DENSITY_STYLES = {
@@ -189,6 +189,8 @@ function MasonryView({ articles, selectedArticleId, onSelect, onToggleFavorite, 
 function MasonryCard({ article, active, onSelect, onToggleFavorite }) {
   const img = extractFirstImage(article.contentHtml);
   const preview = (article.contentText || htmlToText(article.contentHtml) || '').slice(0, 140);
+  // 图片加载失败回退到后端代理（直连优先，失败再代理）
+  const onImgError = useMemo(() => makeImageFallback(proxyImageUrl), []);
   return (
     <div
       className={
@@ -200,10 +202,11 @@ function MasonryCard({ article, active, onSelect, onToggleFavorite }) {
       {img ? (
         <div className="w-full h-28 overflow-hidden bg-muted flex-shrink-0">
           <img
-            src={proxyImageUrl(img)}
+            src={img}
             alt={article.title}
             className="w-full h-full object-cover"
             loading="lazy"
+            onError={onImgError}
           />
         </div>
       ) : null}

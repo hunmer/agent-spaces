@@ -70,7 +70,11 @@ feed_fetch 响应结构：`callPluginTool` 返回 `{ result: { success, data: { 
 - **初始化异步**：mount 时 `Promise.all` 并行读 `feeds.json` + `agent.json` + 所有 `feed_*.json`，`ready=false` 期间显示 loading。
 - **单源内合并**：`mergeFeedItems` 按 `articleKey`（guid→link→title）去重，本次 fresh 条目前置（重合的保留 favorite/readAt/summary 用户态），其余老文章保留。
 - **正文渲染**：优先用源站 HTML（`dangerouslySetInnerHTML`），通过 Tailwind 任意值选择器给 a/img/code/blockquote 套主题安全样式；HTML 为空回退纯文本；都没有则提示打开原文。
-- **图片走后端代理**：所有外链图片（正文 `<img>`、瀑布流封面、media-gallery 大图）统一用 `window.AgentSpaces.proxyImageUrl(url)` 转成 `/api/mini-apps/<id>/proxy-image?url=...&token=...` 由后端 fetch 透传字节流，解决跨域/防盗链/Referer 校验导致的浏览器加载失败。正文 HTML 渲染前用 `proxyImagesInHtml(html, proxyImageUrl)` 批量替换 img src（只代理 http(s) 外链，data:/blob:/已代理的跳过）。**不污染存储**——转换只在渲染时做，落盘的 contentHtml 保持原始外链。
+- **图片前端直连优先、失败回退后端代理**：`<img>` 直接用原始外链 src 加载（快、省一次后端转发）；加载失败时 `onError` 回退到 `window.AgentSpaces.proxyImageUrl(src)`（`/api/mini-apps/<id>/proxy-image?url=...&token=...`，后端 fetch 透传字节流，解决跨域/防盗链）。回退逻辑在 `utils/feed.js` 的 `makeImageFallback(proxyFn)`：当前 src 不是代理 URL 则换代理重试一次，已是代理 URL（代理也失败）则隐藏图片防死循环。
+  - MasonryCard 封面：`<img src={原图} onError={onImgError}>`
+  - 正文 HTML（dangerouslySetInnerHTML）：img 无法直接绑 onError，用容器事件委托（`addEventListener('error', fn, true)` 捕获阶段，因 img error 不冒泡）
+  - media-gallery 大图：收集 DOM img 的 currentSrc（回退后已是代理 URL）
+  - **不污染存储**：落盘 contentHtml 保持原始外链，代理仅运行时按需触发
 - **AI 总结**：正文截断到 `MAX_SUMMARY_CHARS`(12000)，prompt 强制输出「一句话观点 + 3~5 条要点 + 阅读建议」，`permissionMode: bypassPermissions` 避免卡权限确认。总结写入文章并持久化，UI 同时展示。
 - **任务跟踪**：`agent_run` 带 `{ taskId, meta }` 第 4 参，登记为 WS 任务频道，多端可见；发起方 `await` 拿结果直接落库（仅单端写，因为结果存的是文章级单字段，无并发覆盖问题）。
 - **拉取全部**：顺序 `await` 避免并发把服务打满；任一失败记入该源 `error` 字段并在左栏标红，不中断后续源。
