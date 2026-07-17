@@ -9,8 +9,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   DEFAULT_BACKGROUND,
-  DEFAULT_PROMPT,
   DEFAULT_REPO,
+  DEFAULT_TTS_WORKFLOW_ID,
+  DEFAULT_TTS_WORKFLOW_NAME,
   TTS_PROVIDERS,
 } from '../utils/constants';
 
@@ -20,9 +21,6 @@ const STATE_PATH = 'state.json';
 const DEFAULT_SETTINGS = {
   userName: 'Master',
   backgroundUrl: DEFAULT_BACKGROUND,
-  // 人设
-  prompts: [{ id: 'default-galgame', name: 'Default Galgame', content: DEFAULT_PROMPT }],
-  currentPromptId: 'default-galgame',
   // 模型
   models: [],
   currentModelId: '',
@@ -32,11 +30,14 @@ const DEFAULT_SETTINGS = {
   libraryLastUpdated: 0,
   favoriteModels: [],
   recentModels: [],
-  // TTS（简化版：provider + voiceId）
+  // TTS（简化版：provider + voiceId + 工作流）
   ttsProvider: 'minimax',
   ttsVoiceId: '',
-  // agent preset（list_agent_presets 拉到的，UI 选择后存 id）
-  agentConfigId: '',
+  ttsWorkflowId: DEFAULT_TTS_WORKFLOW_ID,
+  ttsWorkflowName: DEFAULT_TTS_WORKFLOW_NAME,
+  // 多个 agent 配置：[{ id, name, modelProvider }]
+  agents: [],
+  currentAgentId: '',
 };
 
 function shallowMerge(base, override) {

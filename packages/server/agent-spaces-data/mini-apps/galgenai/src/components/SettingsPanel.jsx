@@ -1,68 +1,105 @@
-// 移植自原 SettingsPanel.tsx，移除：
-// - Browser/MiniMax/CustomGET 三种 TTS 配置 UI（API key/voice 列表/speed 滑块）
-// - ttsConfigs 多条目管理
-// 新增：
-// - TTS provider 单选 + voiceId 输入（对齐 text_to_voice 工作流入参）
-// - AI 预设（agent preset）选择，来自 list_agent_presets
-import React, { useEffect, useState } from 'react';
-import { listAgentPresets } from '../utils/agent';
+// 设置面板：
+// - 用户资料（称呼、背景）
+// - AI 角色：多个 agent 配置，通过宿主 openAgentEditor 创建/编辑，radio 切换当前角色
+// - 语音合成：provider + voiceId + 工作流（经 WorkflowListDialog 选择）
+//
+// 参考 stickerGenerator/src/components/SettingsDialog.jsx 的 openAgentEditor +
+// WorkflowListDialog 模式。人设（prompts）区块已按需求移除。
+import React, { useState } from 'react';
+import { AGENT_INIT_NAME, AGENT_INIT_PROMPT, BUILTIN_PLUGIN } from '../utils/constants';
+
+const {
+  Label, Button, Input,
+  Workflow, Bot, Check, Plus, Pencil, Trash2, Loader2, RotateCcw,
+  WorkflowListDialog,
+} = window.AgentSpacesUI;
+const AS = window.AgentSpaces;
+
+// 工作流列表项归一化（list_workflows 返回的字段名差异）
+function normalizeWorkflow(workflow) {
+  return {
+    ...workflow,
+    id: workflow.id || workflow.workflow_id,
+    name: workflow.name || workflow.title || '未命名工作流',
+    updatedAt: workflow.updatedAt || 0,
+    nodes: workflow.nodes || [],
+  };
+}
 
 export default function SettingsPanel({ store }) {
   const { settings, updateSettings, setView, ttsProviders } = store;
+  const [error, setError] = useState('');
+  const [agentBusy, setAgentBusy] = useState(false); // openAgentEditor 进行中
+  const [workflowOpen, setWorkflowOpen] = useState(false);
+  const [workflowLoading, setWorkflowLoading] = useState(false);
+  const [workflows, setWorkflows] = useState([]);
 
-  const [presets, setPresets] = useState([]);
-  const [presetsLoading, setPresetsLoading] = useState(false);
+  const agents = settings.agents || [];
 
-  // 新增 persona 表单
-  const [newPromptName, setNewPromptName] = useState('');
-  const [newPromptContent, setNewPromptContent] = useState('');
-
-  useEffect(() => {
-    let cancelled = false;
-    setPresetsLoading(true);
-    listAgentPresets()
-      .then((list) => {
-        if (!cancelled) {
-          setPresets(Array.isArray(list) ? list : []);
-          // 如果当前未选，默认选第一个
-          if (!settings.agentConfigId && list.length > 0) {
-            updateSettings({ agentConfigId: list[0].id });
-          }
-        }
-      })
-      .catch((e) => console.warn('[settings] 拉取 agent presets 失败：', e))
-      .finally(() => {
-        if (!cancelled) setPresetsLoading(false);
+  // ===== Agent：新建或编辑，统一走宿主 openAgentEditor =====
+  const configureAgent = async (existing) => {
+    setAgentBusy(true);
+    setError('');
+    try {
+      const saved = await AS.openAgentEditor({
+        initialName: AGENT_INIT_NAME,
+        initialPrompt: AGENT_INIT_PROMPT,
+        agentId: existing?.id || undefined,
       });
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const handleAddPrompt = () => {
-    if (!newPromptName.trim() || !newPromptContent.trim()) return;
-    const newPrompt = {
-      id: `p-${Date.now()}`,
-      name: newPromptName.trim(),
-      content: newPromptContent.trim(),
-    };
-    updateSettings({ prompts: [...settings.prompts, newPrompt] });
-    setNewPromptName('');
-    setNewPromptContent('');
+      if (!saved) return; // 用户取消
+      const item = {
+        id: saved.id,
+        name: saved.name || AGENT_INIT_NAME,
+        modelProvider: saved.modelProvider || '',
+      };
+      // upsert：同 id 覆盖，否则追加
+      const next = agents.some((a) => a.id === item.id)
+        ? agents.map((a) => (a.id === item.id ? item : a))
+        : [...agents, item];
+      updateSettings({ agents: next, currentAgentId: item.id });
+    } catch (e) {
+      setError('打开 AI 角色配置失败：' + (e?.message || e));
+    } finally {
+      setAgentBusy(false);
+    }
   };
 
-  const updateExistingPrompt = (id, content) => {
+  const selectAgent = (id) => updateSettings({ currentAgentId: id });
+
+  const removeAgent = (id) => {
+    const next = agents.filter((a) => a.id !== id);
     updateSettings({
-      prompts: settings.prompts.map((p) => (p.id === id ? { ...p, content } : p)),
+      agents: next,
+      currentAgentId: settings.currentAgentId === id ? (next[0]?.id || '') : settings.currentAgentId,
     });
   };
 
-  const deletePrompt = (id) => {
-    if (settings.prompts.length <= 1) return;
-    const next = settings.prompts.filter((p) => p.id !== id);
-    const nextCurrent = settings.currentPromptId === id ? next[0]?.id || '' : settings.currentPromptId;
-    updateSettings({ prompts: next, currentPromptId: nextCurrent });
+  // ===== TTS 工作流选择 =====
+  const openWorkflowPicker = async () => {
+    setWorkflowOpen(true);
+    setWorkflowLoading(true);
+    try {
+      const resp = await AS.callPluginTool(BUILTIN_PLUGIN, 'list_workflows', { page_size: 50 });
+      const list =
+        resp?.data?.workflows ||
+        resp?.result?.data?.workflows ||
+        resp?.result?.workflows ||
+        resp?.workflows ||
+        [];
+      setWorkflows(Array.isArray(list) ? list : []);
+    } catch (e) {
+      setError('加载工作流列表失败：' + (e?.message || e));
+    } finally {
+      setWorkflowLoading(false);
+    }
+  };
+
+  const onPickWorkflow = (wf) => {
+    updateSettings({
+      ttsWorkflowId: wf.id || wf.workflow_id,
+      ttsWorkflowName: wf.name || wf.title || '未命名工作流',
+    });
+    setWorkflowOpen(false);
   };
 
   return (
@@ -75,63 +112,101 @@ export default function SettingsPanel({ store }) {
           </button>
         </div>
 
-        {/* AI 预设 */}
-        <section className="mb-8">
-          <h3 className="text-lg font-bold mb-4">🤖 AI 预设（agent_run）</h3>
-          <label className="block">
-            <span className="text-sm text-gray-300">选择模型预设</span>
-            <select
-              value={settings.agentConfigId}
-              onChange={(e) => updateSettings({ agentConfigId: e.target.value })}
-              className="mt-1 w-full bg-white/10 border border-white/20 rounded px-3 py-2 outline-none focus:border-cyan-400"
-              disabled={presetsLoading}
-            >
-              {presetsLoading && <option value="">加载中…</option>}
-              {!presetsLoading && presets.length === 0 && <option value="">（无可用预设）</option>}
-              {presets.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name} ({p.runtimeKind || p.modelProvider || 'preset'})
-                </option>
-              ))}
-            </select>
-          </label>
-          <p className="mt-2 text-xs text-gray-400">
-            对话通过 <code>agent_run</code> 节点执行，预设来自 <code>list_agent_presets</code>。
-          </p>
-        </section>
-
         {/* 用户资料 */}
         <section className="mb-8">
           <h3 className="text-lg font-bold mb-4">👤 用户资料</h3>
           <div className="grid gap-4">
-            <label className="block">
+            <Label>
               <span className="text-sm text-gray-300">你的称呼</span>
-              <input
-                type="text"
+              <Input
                 value={settings.userName}
                 onChange={(e) => updateSettings({ userName: e.target.value })}
-                className="mt-1 w-full bg-white/10 border border-white/20 rounded px-3 py-2 outline-none focus:border-cyan-400"
+                className="mt-1 bg-white/10 border-white/20 text-white"
               />
-            </label>
-            <label className="block">
+            </Label>
+            <Label>
               <span className="text-sm text-gray-300">背景 URL</span>
-              <input
-                type="text"
+              <Input
                 value={settings.backgroundUrl}
                 onChange={(e) => updateSettings({ backgroundUrl: e.target.value })}
-                className="mt-1 w-full bg-white/10 border border-white/20 rounded px-3 py-2 outline-none focus:border-cyan-400"
+                className="mt-1 bg-white/10 border-white/20 text-white"
               />
-            </label>
+            </Label>
           </div>
         </section>
 
-        {/* TTS（简化版） */}
+        {/* AI 角色（多 agent，openAgentEditor 管理） */}
         <section className="mb-8">
-          <h3 className="text-lg font-bold mb-4">🎙️ 语音合成（text_to_voice 工作流）</h3>
-          <div className="grid gap-3">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-bold">🤖 AI 角色</h3>
+            <Button variant="outline" size="sm" onClick={() => configureAgent(null)} disabled={agentBusy}>
+              {agentBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+              新建角色
+            </Button>
+          </div>
+
+          {agents.length === 0 && (
+            <div className="text-sm text-gray-400 bg-white/5 border border-white/10 rounded p-4">
+              还没有 AI 角色。点击右上「新建角色」配置一个（模型、API Key、系统提示词），对话将通过{' '}
+              <code>agent_run</code> 调用该角色。
+            </div>
+          )}
+
+          <div className="space-y-2">
+            {agents.map((a) => {
+              const active = settings.currentAgentId === a.id;
+              return (
+                <div
+                  key={a.id}
+                  className={`flex items-center gap-3 p-3 rounded border ${
+                    active ? 'border-cyan-500 bg-cyan-500/10' : 'border-white/10 bg-white/5'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    checked={active}
+                    onChange={() => selectAgent(a.id)}
+                    className="accent-cyan-400"
+                  />
+                  <Bot className="w-4 h-4 text-cyan-300 flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <div className="font-bold truncate">{a.name}</div>
+                    {a.modelProvider && (
+                      <div className="text-xs text-gray-400 truncate">{a.modelProvider}</div>
+                    )}
+                  </div>
+                  {active && <Check className="w-4 h-4 text-cyan-300" />}
+                  <button
+                    onClick={() => configureAgent(a)}
+                    disabled={agentBusy}
+                    className="text-gray-400 hover:text-cyan-300 px-1"
+                    title="编辑"
+                  >
+                    <Pencil className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => removeAgent(a.id)}
+                    className="text-gray-400 hover:text-red-400 px-1"
+                    title="移除（仅从本应用解绑，不删除 agent）"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+          <p className="mt-2 text-xs text-gray-400">
+            「新建/编辑」会唤起宿主 Agent 配置弹窗；「移除」只解绑，不删除已保存的 agent。
+          </p>
+        </section>
+
+        {/* 语音合成（provider + voiceId + 工作流） */}
+        <section className="mb-8">
+          <h3 className="text-lg font-bold mb-4">🎙️ 语音合成</h3>
+          <div className="grid gap-4">
             <div>
-              <span className="text-sm text-gray-300 block mb-1">服务商</span>
-              <div className="flex flex-wrap gap-2">
+              <Label className="text-sm text-gray-300">服务商</Label>
+              <div className="flex flex-wrap gap-2 mt-1">
                 {ttsProviders.map((p) => (
                   <button
                     key={p.id}
@@ -148,86 +223,71 @@ export default function SettingsPanel({ store }) {
                 ))}
               </div>
             </div>
-            <label className="block">
+
+            <Label>
               <span className="text-sm text-gray-300">
                 发音人 ID（fish-audio=referenceId / minimax=voiceId / qianyin=speakerId）
               </span>
-              <input
-                type="text"
+              <Input
                 value={settings.ttsVoiceId}
                 onChange={(e) => updateSettings({ ttsVoiceId: e.target.value })}
                 placeholder="留空则使用服务商默认音色"
-                className="mt-1 w-full bg-white/10 border border-white/20 rounded px-3 py-2 outline-none focus:border-cyan-400"
+                className="mt-1 bg-white/10 border-white/20 text-white"
               />
-            </label>
-            <p className="text-xs text-gray-400">
-              语音由 <code>text_to_voice</code> 工作流生成（id: 820bf3b7-9d50-4f6d-966d-8e442960a233）。
-            </p>
-          </div>
-        </section>
+            </Label>
 
-        {/* 人设 / Prompts */}
-        <section className="mb-8">
-          <h3 className="text-lg font-bold mb-4">📜 人设 / Prompts</h3>
-          <div className="space-y-4">
-            {settings.prompts.map((prompt) => (
-              <div
-                key={prompt.id}
-                className={`flex flex-col p-4 rounded border ${
-                  settings.currentPromptId === prompt.id ? 'border-cyan-500 bg-cyan-500/10' : 'border-white/10 bg-white/5'
-                }`}
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-3">
-                    <input
-                      type="radio"
-                      checked={settings.currentPromptId === prompt.id}
-                      onChange={() => updateSettings({ currentPromptId: prompt.id })}
-                      className="accent-cyan-400"
-                    />
-                    <span className="font-bold">{prompt.name}</span>
-                  </div>
-                  {settings.prompts.length > 1 && (
-                    <button onClick={() => deletePrompt(prompt.id)} className="text-red-400 hover:text-red-300 px-2">
-                      🗑️
-                    </button>
-                  )}
-                </div>
-                <textarea
-                  value={prompt.content}
-                  onChange={(e) => updateExistingPrompt(prompt.id, e.target.value)}
-                  className="w-full h-24 bg-black/30 border border-white/20 rounded px-3 py-2 text-sm outline-none resize-y"
-                />
-              </div>
-            ))}
-
-            <div className="border-t border-white/10 pt-4 mt-2">
-              <h4 className="text-sm font-bold text-gray-400 mb-2">创建新人设</h4>
-              <div className="grid gap-2">
-                <input
-                  type="text"
-                  placeholder="人设名称"
-                  value={newPromptName}
-                  onChange={(e) => setNewPromptName(e.target.value)}
-                  className="bg-white/10 border border-white/20 rounded px-3 py-2 text-sm outline-none"
-                />
-                <textarea
-                  placeholder="系统指令…"
-                  value={newPromptContent}
-                  onChange={(e) => setNewPromptContent(e.target.value)}
-                  className="w-full h-20 bg-white/10 border border-white/20 rounded px-3 py-2 text-sm outline-none"
-                />
+            {/* TTS 工作流入口 */}
+            <div>
+              <Label className="text-sm text-gray-300">语音工作流</Label>
+              <div className="flex gap-2 mt-1">
                 <button
-                  onClick={handleAddPrompt}
-                  className="bg-green-600 hover:bg-green-500 px-4 py-2 rounded text-sm font-bold w-fit"
+                  type="button"
+                  onClick={openWorkflowPicker}
+                  className="flex-1 flex items-center gap-2 px-3 py-2 rounded-md border border-white/20 bg-white/5 hover:border-cyan-400/50 transition text-left"
+                  title={settings.ttsWorkflowId || '未设置'}
                 >
-                  添加人设
+                  <Workflow className="w-4 h-4 text-cyan-300 flex-shrink-0" />
+                  <span className="flex-1 truncate">
+                    {settings.ttsWorkflowName || settings.ttsWorkflowId || '点击选择工作流'}
+                  </span>
                 </button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() =>
+                    updateSettings({
+                      ttsWorkflowId: '',
+                      ttsWorkflowName: '',
+                    })
+                  }
+                  title="清空"
+                >
+                  <RotateCcw className="w-4 h-4" />
+                </Button>
+              </div>
+              <div className="mt-1 text-xs text-gray-400">
+                语音由此工作流（<code>execute_workflow_sync</code>）生成，入参 prompt/model/voiceId。
               </div>
             </div>
           </div>
         </section>
+
+        {error && <div className="text-sm text-red-400">{error}</div>}
       </div>
+
+      {/* 工作流选择对话框（宿主组件） */}
+      <WorkflowListDialog
+        open={workflowOpen}
+        workflows={workflows.map(normalizeWorkflow)}
+        onSelect={onPickWorkflow}
+        onCreate={() => window.open('/workflows', '_blank')}
+        onClose={() => setWorkflowOpen(false)}
+      />
+      {workflowOpen && workflowLoading && (
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[60] text-sm bg-black/70 text-white px-3 py-1 rounded">
+          工作流加载中…
+        </div>
+      )}
     </div>
   );
 }

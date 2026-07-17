@@ -1,14 +1,6 @@
 {
   "userName": "Master",
   "backgroundUrl": "https://images.unsplash.com/photo-1518066000714-58c45f1a2c0a?q=80&w=2070&auto=format&fit=crop",
-  "prompts": [
-    {
-      "id": "default-galgame",
-      "name": "Default Galgame",
-      "content": "You are a character in a visual novel (Galgame).\nAct as a loyal, cute, and slightly witty assistant.\nKeep your responses relatively short (under 100 words) to fit in a dialogue box, unless asked for a long explanation.\nRefer to the user as \"Master\" or by their name if known.\nDo not output markdown formatted text like **bold** or # headers often. Plain text is preferred."
-    }
-  ],
-  "currentPromptId": "default-galgame",
   "models": [
     {
       "id": "m-1784279013966",
@@ -17,9 +9,33 @@
       "scale": 1,
       "xOffset": 0,
       "yOffset": 0
+    },
+    {
+      "id": "m-1784279957740",
+      "name": "sardyamodel (Sacred Sword princesses)",
+      "url": "https://cdn.jsdelivr.net/gh/Eikanya/Live2d-model@master/Sacred%20Sword%20princesses/char2d_live2d_001/res/sardyamodel.model.json",
+      "scale": 1,
+      "xOffset": 0,
+      "yOffset": 0
+    },
+    {
+      "id": "m-1784279962492",
+      "name": "EV01s (三色绘恋S)",
+      "url": "https://cdn.jsdelivr.net/gh/Eikanya/Live2d-model@master/galgame%20live2d/%E4%B8%89%E8%89%B2%E7%BB%98%E6%81%8BS/EV01s/EV01s.model3.json",
+      "scale": 1,
+      "xOffset": 0,
+      "yOffset": 0
+    },
+    {
+      "id": "m-1784279970949",
+      "name": "xco057_01 (sin 七大罪～魔王崇拜～)",
+      "url": "https://cdn.jsdelivr.net/gh/Eikanya/Live2d-model@master/sin%20%E4%B8%83%E5%A4%A7%E7%BD%AA%EF%BD%9E%E9%AD%94%E7%8E%8B%E5%B4%87%E6%8B%9C%EF%BD%9E/xco057_01/xco057_01.model3.json",
+      "scale": 1,
+      "xOffset": 0,
+      "yOffset": 0
     }
   ],
-  "currentModelId": "m-1784279013966",
+  "currentModelId": "m-1784279970949",
   "repositories": [
     {
       "id": "default-repo",
@@ -6618,13 +6634,49 @@
   "favoriteModels": [],
   "recentModels": [
     {
+      "id": "m-1784279970949",
+      "name": "xco057_01 (sin 七大罪～魔王崇拜～)",
+      "url": "https://cdn.jsdelivr.net/gh/Eikanya/Live2d-model@master/sin%20%E4%B8%83%E5%A4%A7%E7%BD%AA%EF%BD%9E%E9%AD%94%E7%8E%8B%E5%B4%87%E6%8B%9C%EF%BD%9E/xco057_01/xco057_01.model3.json",
+      "timestamp": 1784279970949
+    },
+    {
+      "id": "m-1784279962492",
+      "name": "EV01s (三色绘恋S)",
+      "url": "https://cdn.jsdelivr.net/gh/Eikanya/Live2d-model@master/galgame%20live2d/%E4%B8%89%E8%89%B2%E7%BB%98%E6%81%8BS/EV01s/EV01s.model3.json",
+      "timestamp": 1784279962492
+    },
+    {
+      "id": "m-1784279957740",
+      "name": "sardyamodel (Sacred Sword princesses)",
+      "url": "https://cdn.jsdelivr.net/gh/Eikanya/Live2d-model@master/Sacred%20Sword%20princesses/char2d_live2d_001/res/sardyamodel.model.json",
+      "timestamp": 1784279957740
+    },
+    {
       "id": "m-1784279013966",
       "name": "chiguo_B (三色绘恋S)",
       "url": "https://cdn.jsdelivr.net/gh/Eikanya/Live2d-model@master/galgame%20live2d/%E4%B8%89%E8%89%B2%E7%BB%98%E6%81%8BS/chiguo_B/chiguo_B.model3.json",
       "timestamp": 1784279013966
     }
   ],
-  "ttsProvider": "minimax",
+  "ttsProvider": "fish-audio",
   "ttsVoiceId": "",
+  "ttsWorkflowId": "820bf3b7-9d50-4f6d-966d-8e442960a233",
+  "ttsWorkflowName": "text_to_voice",
+  "agents": [
+    {
+      "id": "galgame-dcf63cf1-f76d-4b24-b398-9497461ed2a3",
+      "name": "Galgame 伙伴",
+      "modelProvider": "anthropic-messages"
+    }
+  ],
+  "currentAgentId": "galgame-dcf63cf1-f76d-4b24-b398-9497461ed2a3",
+  "prompts": [
+    {
+      "id": "default-galgame",
+      "name": "Default Galgame",
+      "content": "You are a character in a visual novel (Galgame).\nAct as a loyal, cute, and slightly witty assistant.\nKeep your responses relatively short (under 100 words) to fit in a dialogue box, unless asked for a long explanation.\nRefer to the user as \"Master\" or by their name if known.\nDo not output markdown formatted text like **bold** or # headers often. Plain text is preferred."
+    }
+  ],
+  "currentPromptId": "default-galgame",
   "agentConfigId": "agent-generator"
 }

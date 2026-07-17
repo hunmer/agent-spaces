@@ -9,6 +9,7 @@
     "build": "tsc -p tsconfig.json && tsc -p tsconfig.preload.json && node -e \"require('fs').writeFileSync('out/preload/package.json','{\\\"type\\\":\\\"commonjs\\\"}\\n')\"",
     "dev": "pnpm build && cross-env ELECTRON_RENDERER_URL=http://127.0.0.1:3000 electron .",
     "start": "electron .",
+    "setup-server": "electron .",
     "dist": "pnpm build && electron-builder",
     "dist:mac": "pnpm build && electron-builder --mac",
     "dist:win": "pnpm build && electron-builder --win",

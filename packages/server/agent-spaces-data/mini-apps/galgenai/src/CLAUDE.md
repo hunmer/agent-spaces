@@ -10,8 +10,9 @@ Live2D 虚拟角色对话应用。底部对话框 + Live2D 角色 + 模型库 + 
 
 | 能力 | 原实现 | 迁移后 |
 |------|--------|--------|
-| LLM 对话 | `@google/genai` 直连 Gemini 2.5 Flash | `@agent-spaces/builtin/agent_run`（preset 由用户在设置里选） |
-| 语音合成 | `services/ttsService.ts`（浏览器原生 + MiniMax + Custom GET） | `text_to_voice` 工作流（id `820bf3b7-9d50-4f6d-966d-8e442960a233`），经 `@agent-spaces/builtin/execute_workflow_sync` 调用 |
+| LLM 对话 | `@google/genai` 直连 Gemini 2.5 Flash | `@agent-spaces/builtin/agent_run`，agent 由设置里的「AI 角色」管理（多 agent，`openAgentEditor` 创建/编辑，radio 切换） |
+| 人设 / Prompts | 设置里的多条 systemInstruction | **已移除**。角色风格由 agent 自身的 systemPrompt 决定（`openAgentEditor` 初始值 `AGENT_INIT_PROMPT`） |
+| 语音合成 | `services/ttsService.ts`（浏览器原生 + MiniMax + Custom GET） | TTS 工作流（默认 `text_to_voice`，可在设置里换），经 `@agent-spaces/builtin/execute_workflow_sync` 调用 |
 | 状态持久化 | `zustand persist`（localStorage） | `configs/*.json` + `src/services/state.js`（服务端单写者） |
 | Live2D 依赖 | `import * as PIXI` + `import { Live2DModel }` | CDN 运行时注入，`window.PIXI` / `PIXI.live2d.Live2DModel` |
 | 视图路由 | `currentView` 局部状态 | `currentView` 局部状态（不持久化，永远从 chat 开始） |
@@ -26,14 +27,14 @@ src/
   components/
     Live2DViewer.jsx        # PIXI Live2D 渲染（CDN 加载 + 模型加载/动作）
     ChatInterface.jsx       # 对话框：buildAgentPrompt + runAgent + synthesizeSpeech
-    SettingsPanel.jsx       # AI 预设选择 + TTS(provider+voiceId) + 人设管理
+    SettingsPanel.jsx       # 用户资料 + 多 agent 管理(openAgentEditor) + TTS(provider+voiceId+工作流)
     HistoryPanel.jsx        # 当前会话 + 归档历史
     ModelLibrary.jsx        # Eikanya 模型库浏览/收藏/历史
   utils/
-    constants.js            # 工作流 ID、内置插件 id、TTS provider、默认背景/人设/仓库
+    constants.js            # BUILTIN_PLUGIN、DEFAULT_TTS_WORKFLOW_*、TTS_PROVIDERS、AGENT_INIT_*、默认背景/仓库
     cdn-loader.js           # 动态加载 live2d core + pixi + pixi-live2d-display
-    agent.js                # listAgentPresets / buildAgentPrompt / runAgent
-    tts.js                  # cleanTextForTTS / synthesizeSpeech / playAudioUrl
+    agent.js                # buildAgentPrompt / runAgent（agent preset 由设置面板管理，不再用 list_agent_presets）
+    tts.js                  # cleanTextForTTS / synthesizeSpeech(workflowId) / playAudioUrl
     repo.js                 # parseRepoData（Eikanya 仓库 JSON 解析）
   services/
     state.js                # 服务端单写者：add_message/clear_messages/archive_session/delete_history
@@ -44,19 +45,22 @@ manifest.json              # enabledPlugins: ["@agent-spaces/builtin"]
 
 | 能力 | 调用方式 |
 |------|----------|
-| 列出 AI 预设 | `callPluginTool('@agent-spaces/builtin', 'list_agent_presets', {})` → `{presets:[{id,name,runtimeKind,...}]}` |
-| 对话生成 | `callPluginTool('@agent-spaces/builtin', 'agent_run', { agentConfigId, prompt, permissionMode })` → `{result: string}` |
-| 语音合成 | `callPluginTool('@agent-spaces/builtin', 'execute_workflow_sync', { workflow_id, input:{prompt,model,voiceId}, max_wait_ms })` → `{steps:[...], status}` |
+| 创建/编辑 agent | `AS.openAgentEditor({ initialName, initialPrompt, agentId? })` → `AgentPreset \| null`（含 id/name/modelProvider） |
+| 对话生成 | `callPluginTool('@agent-spaces/builtin', 'agent_run', { agentConfigId: settings.currentAgentId, prompt, permissionMode })` → `{result: string}` |
+| 语音合成 | `callPluginTool('@agent-spaces/builtin', 'execute_workflow_sync', { workflow_id: settings.ttsWorkflowId, input:{prompt,model,voiceId}, max_wait_ms })` → `{steps:[...], status}` |
+| 选择 TTS 工作流 | `callPluginTool('@agent-spaces/builtin', 'list_workflows', {page_size:50})` + 宿主 `<WorkflowListDialog>` |
 | 设置读写 | `readConfigJson/writeConfigJson('settings.json')` |
 | 当前会话/历史 | `invokeService('add_message'/'clear_messages'/'archive_session'/'delete_history')` + `getConfig/onConfigChanged('state.json')` |
 | Live2D 运行时 | CDN：`dylanNew/live2d`、`cubism.live2d.com`、`pixi.js@6.5.10`、`pixi-live2d-display@0.4.0` |
 
-`@agent-spaces/builtin` 是宿主内置虚拟插件，经 `packages/server/src/routes/plugin.ts` 识别后走 `executeMiniAppBuiltinTool`（见 `packages/server/src/services/builtin-tools/mini-app-tools.ts`）。
+`@agent-spaces/builtin` 是宿主内置虚拟插件，经 `packages/server/src/routes/plugin.ts` 识别后走 `executeMiniAppBuiltinTool`（见 `packages/server/src/services/builtin-tools/mini-app-tools.ts`）。`openAgentEditor` 由 `packages/web/src/components/mini-apps/use-mini-app-host-api.tsx` 注入到 `window.AgentSpaces`。
 
 ## 关键设计决策
 
-- **agent_run 替代 Gemini**：agent_run 没有原生 history/systemInstruction 参数，全部通过 `buildAgentPrompt` 拼进 prompt（人设 + 用户名 + 动作标签规则 + 最近 10 条历史 + 本次输入）。动作标签 `[MotionName]` 仍由 AI 在回复开头输出，`ChatInterface` 解析后调 `triggerMotion`。
-- **TTS 走工作流而非内置**：移除浏览器原生 / MiniMax / Custom GET 三种 TTS UI，统一用 `text_to_voice` 工作流。设置里只暴露 `ttsProvider`(fish-audio/minimax/qianyin) + `ttsVoiceId`。`extractAudioUrlFromWorkflow` 兼容三种 provider 的返回字段（minimax=audioUrl / fish-audio=httpPath / qianyin=fileUrl）。
+- **多 agent 管理**：`settings.agents = [{id,name,modelProvider}]` 是轻量引用列表，真正的模型/apiKey/systemPrompt 存在宿主 agent preset 里。设置面板用 `openAgentEditor({ agentId })` 新建/编辑（参考 stickerGenerator），radio 切换 `currentAgentId`。「移除」只从本应用解绑，不删 preset。
+- **人设区块已移除**：原 galgenai 在设置里管理多条 systemInstruction，迁移后删掉。角色风格由 agent 自身的 systemPrompt 决定（`openAgentEditor` 的 `AGENT_INIT_PROMPT` 作初始值）。`buildAgentPrompt` 不再拼 systemInstruction，只拼用户称呼 + 动作规则 + 历史 + 本次输入。
+- **agent_run 替代 Gemini**：agent_run 没有原生 history/systemInstruction 参数，上下文通过 `buildAgentPrompt` 拼进 prompt（最近 10 条历史 + 动作标签规则）。动作标签 `[MotionName]` 仍由 AI 在回复开头输出，`ChatInterface` 解析后调 `triggerMotion`。
+- **TTS 工作流可换**：不再硬编码 `820bf3b7-...`，`settings.ttsWorkflowId/ttsWorkflowName` 默认填 `text_to_voice`，但设置里通过 `WorkflowListDialog` 可换任意工作流。`synthesizeSpeech({workflowId})` 接受运行时传入。`extractAudioUrlFromWorkflow` 兼容三种 provider 返回字段（minimax=audioUrl / fish-audio=httpPath / qianyin=fileUrl）。
 - **Live2D CDN 注入**：renderer 未 allowlist pixi，必须运行时 `loadLive2DDeps()` 动态插入 `<script>`。依赖顺序固定：cubism2 core → cubism4 core → pixi.js → pixi-live2d-display。`pixi-live2d-display@0.4.0` 只兼容 pixi v6，CDN 锁定 `pixi.js@6.5.10`。
 - **状态分层**：`settings.json`（用户偏好，UI 端直接读写，单用户场景不并发）vs `state.json`（messages+history，服务端单写者，多预览实例一致）。Live2D 瞬态（availableMotions/motionToPlay）只在内存。
 - **WebGL 探测保留**：miniapp 预览在沙箱 iframe，WebGL 可能被禁用；沿用原 galgenai 的 context attributes 探测逻辑，失败时显示明确错误而非白屏。
@@ -69,8 +73,6 @@ manifest.json              # enabledPlugins: ["@agent-spaces/builtin"]
 {
   "userName": "Master",
   "backgroundUrl": "...",
-  "prompts": [{"id","name","content"}],
-  "currentPromptId": "...",
   "models": [{"id","name","url","scale","xOffset","yOffset"}],
   "currentModelId": "...",
   "repositories": [{"id","name","url"}],
@@ -80,7 +82,10 @@ manifest.json              # enabledPlugins: ["@agent-spaces/builtin"]
   "recentModels": [...],
   "ttsProvider": "minimax",
   "ttsVoiceId": "",
-  "agentConfigId": "..."
+  "ttsWorkflowId": "820bf3b7-9d50-4f6d-966d-8e442960a233",
+  "ttsWorkflowName": "text_to_voice",
+  "agents": [{"id","name","modelProvider"}],
+  "currentAgentId": "..."
 }
 ```
 

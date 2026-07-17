@@ -1,0 +1,16 @@
+{
+  "messages": [
+    {
+      "id": "u-1784280008795",
+      "role": "user",
+      "content": "你好",
+      "timestamp": 1784280008795
+    },
+    {
+      "id": "a-1784280009737",
+      "role": "model",
+      "content": "...",
+      "timestamp": 1784280009736
+    }
+  ]
+}

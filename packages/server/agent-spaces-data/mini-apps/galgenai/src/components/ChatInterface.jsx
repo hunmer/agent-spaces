@@ -16,7 +16,6 @@ export default function ChatInterface({ store }) {
   } = store;
 
   const currentModel = settings.models.find((m) => m.id === settings.currentModelId);
-  const currentPrompt = settings.prompts.find((p) => p.id === settings.currentPromptId) || settings.prompts[0];
 
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -35,8 +34,8 @@ export default function ChatInterface({ store }) {
     const text = inputText.trim();
     if (!text || isTyping) return;
 
-    if (!settings.agentConfigId) {
-      setError('请先在设置里选择 AI 预设（agent preset）');
+    if (!settings.currentAgentId) {
+      setError('请先在设置里配置并选择一个 AI 角色');
       setView('settings');
       return;
     }
@@ -54,7 +53,9 @@ export default function ChatInterface({ store }) {
 
     try {
       const prompt = buildAgentPrompt({
-        systemInstruction: currentPrompt?.content || '',
+        // 人设区块已移除：角色风格由 agent 自身的 systemPrompt 决定，
+        // 这里只拼装用户称呼、动作规则、历史和本次输入。
+        systemInstruction: '',
         userName: settings.userName,
         history: messages,
         userInput: text,
@@ -62,7 +63,7 @@ export default function ChatInterface({ store }) {
       });
 
       const responseText = await runAgent({
-        agentConfigId: settings.agentConfigId,
+        agentConfigId: settings.currentAgentId,
         prompt,
         permissionMode: 'dontAsk',
       });
@@ -95,6 +96,7 @@ export default function ChatInterface({ store }) {
           text: contentToDisplay,
           provider: settings.ttsProvider,
           voiceId: settings.ttsVoiceId,
+          workflowId: settings.ttsWorkflowId,
         });
         if (url) {
           try { audioRef.current?.pause?.(); } catch { /* noop */ }

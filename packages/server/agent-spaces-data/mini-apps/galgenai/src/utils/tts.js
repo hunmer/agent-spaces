@@ -2,7 +2,7 @@
 // 不再直连 MiniMax / 浏览器语音，改走 text_to_voice 工作流
 // （id: 820bf3b7-9d50-4f6d-966d-8e442960a233，输入 prompt/model/voiceId，结束节点返回 result.audio）。
 
-import { BUILTIN_PLUGIN, TEXT_TO_VOICE_WORKFLOW_ID } from './constants';
+import { BUILTIN_PLUGIN, DEFAULT_TTS_WORKFLOW_ID } from './constants';
 
 // 移植自原 cleanTextForTTS：去除 emoji 和符号，避免 TTS 朗读乱码
 export function cleanTextForTTS(text) {
@@ -55,13 +55,15 @@ function extractAudioUrlFromWorkflow(result) {
   return url;
 }
 
-// 调用 text_to_voice 工作流合成语音，返回可直接播放的 URL；失败返回空字符串。
-export async function synthesizeSpeech({ text, provider, voiceId }) {
+// 调用 TTS 工作流合成语音，返回可直接播放的 URL；失败返回空字符串。
+// workflowId 由调用方传入（来自 settings.ttsWorkflowId，默认 text_to_voice）。
+export async function synthesizeSpeech({ text, provider, voiceId, workflowId }) {
   const clean = cleanTextForTTS(text);
   if (!clean) return '';
 
+  const wfId = workflowId || DEFAULT_TTS_WORKFLOW_ID;
   const result = await window.AgentSpaces.callPluginTool(BUILTIN_PLUGIN, 'execute_workflow_sync', {
-    workflow_id: TEXT_TO_VOICE_WORKFLOW_ID,
+    workflow_id: wfId,
     input: {
       prompt: clean,
       model: provider,
