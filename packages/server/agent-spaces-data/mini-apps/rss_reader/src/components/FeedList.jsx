@@ -1,7 +1,7 @@
 const { useState, useMemo } = React;
 const {
   ScrollArea, Loader2, AlertCircle, Inbox, RefreshCw, Plus,
-  ChevronRight, ChevronDown, Folder, Rss,
+  ChevronRight, ChevronDown, Folder, Rss, Pencil,
 } = window.AgentSpacesUI;
 import { timeAgo } from '../utils/format.js';
 
@@ -10,7 +10,7 @@ const NO_CATEGORY = '未分类';
 export function FeedList({
   feeds, selectedFeedId, counts,
   fetchingFeedIds, fetchingAll,
-  onSelect, onFetchOne, onFetchAll, onAddClick,
+  onSelect, onFetchOne, onFetchAll, onAddClick, onEditClick,
 }) {
   const allActive = selectedFeedId === 'all';
 
@@ -90,26 +90,32 @@ export function FeedList({
                   collapsed={isCollapsed}
                   onToggle={() => toggleCategory(category)}
                 />
-                {!isCollapsed && list.map((f) => (
-                  <FeedItem
-                    key={f.id}
-                    active={selectedFeedId === f.id}
-                    title={f.title || f.url}
-                    subtitle={
-                      f.error
-                        ? `失败：${f.error}`
-                        : f.lastFetchAt
-                          ? `更新于 ${timeAgo(f.lastFetchAt)}`
-                          : '尚未拉取'
-                    }
-                    count={counts.byFeed.get(f.id) || 0}
-                    error={!!f.error}
-                    fetching={fetchingFeedIds.has(f.id)}
-                    indented
-                    onClick={() => onSelect(f.id)}
-                    onRefresh={() => onFetchOne(f.id)}
-                  />
-                ))}
+                {!isCollapsed && (
+                  // 文件夹下的订阅项：左缩进 + 左侧引导线，与文件夹产生视差层次
+                  <div className={'ml-3 border-l border-border/60 pl-1 ' + (isCollapsed ? 'hidden' : '')}>
+                    {list.map((f) => (
+                      <FeedItem
+                        key={f.id}
+                        active={selectedFeedId === f.id}
+                        title={f.title || f.url}
+                        subtitle={
+                          f.error
+                            ? `失败：${f.error}`
+                            : f.lastFetchAt
+                              ? `更新于 ${timeAgo(f.lastFetchAt)}`
+                              : '尚未拉取'
+                        }
+                        count={counts.byFeed.get(f.id) || 0}
+                        error={!!f.error}
+                        fetching={fetchingFeedIds.has(f.id)}
+                        nested
+                        onClick={() => onSelect(f.id)}
+                        onRefresh={() => onFetchOne(f.id)}
+                        onEdit={() => onEditClick(f)}
+                      />
+                    ))}
+                  </div>
+                )}
               </div>
             );
           })}
@@ -150,15 +156,14 @@ function CategoryHeader({ label, count, collapsed, onToggle }) {
 
 function FeedItem({
   active, title, subtitle, count = 0,
-  error = false, fetching = false, indented = false, icon,
-  onClick, onRefresh,
+  error = false, fetching = false, nested = false, icon,
+  onClick, onRefresh, onEdit,
 }) {
   return (
     <div
       className={
         'group flex items-center gap-2 rounded-md px-2 py-1.5 cursor-pointer text-sm transition-colors '
         + (active ? 'bg-primary/15 text-foreground' : 'hover:bg-muted/60 text-foreground')
-        + (indented ? ' ml-3' : '')
       }
       onClick={onClick}
     >
@@ -168,7 +173,17 @@ function FeedItem({
           {error && <AlertCircle className="h-3.5 w-3.5 text-destructive flex-shrink-0" />}
           {fetching && <Loader2 className="h-3.5 w-3.5 animate-spin flex-shrink-0" />}
           <span className="truncate font-medium flex-1 min-w-0">{title}</span>
-          {/* 刷新图标：标题右侧 */}
+          {/* 操作图标：标题右侧，hover 显示 */}
+          {onEdit && (
+            <button
+              type="button"
+              className="flex-shrink-0 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-primary p-0.5 transition-opacity"
+              title="编辑订阅"
+              onClick={(e) => { e.stopPropagation(); onEdit(); }}
+            >
+              <Pencil className="h-3.5 w-3.5" />
+            </button>
+          )}
           {onRefresh && (
             <button
               type="button"

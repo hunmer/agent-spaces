@@ -1,14 +1,15 @@
 [
   {
     "id": "feed-mrnigftq-lq595z",
-    "title": "http://127.0.0.1:1200/yande/post/popular_recent/1d",
+    "title": "yande",
     "url": "http://127.0.0.1:1200/yande/post/popular_recent/1d",
     "format": "",
     "link": "",
     "description": "",
     "lastFetchAt": "",
     "itemCount": 0,
-    "error": ""
+    "error": "",
+    "category": "图片"
   },
   {
     "id": "feed-mrnigjv8-gml84k",
@@ -19,6 +20,18 @@
     "description": "少数派首页 - Powered by RSSHub",
     "lastFetchAt": "2026-07-16T12:54:23.836Z",
     "itemCount": 10,
+    "error": ""
+  },
+  {
+    "id": "feed-mrobvf7s-nngxak",
+    "title": "bilibili 综合热门",
+    "url": "http://127.0.0.1:1200/bilibili/popular/all",
+    "category": "视频",
+    "format": "rss",
+    "link": "https://www.bilibili.com",
+    "description": "bilibili 综合热门 - Powered by RSSHub",
+    "lastFetchAt": "2026-07-17T02:38:01.088Z",
+    "itemCount": 20,
     "error": ""
   }
 ]

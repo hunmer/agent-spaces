@@ -22,10 +22,10 @@ const CELL_STYLE_CSS = `
   transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease, transform 0.12s ease;
 }
 .selecto-cell.selected {
-  border: 2px solid hsl(var(--primary));
-  background: hsl(var(--primary) / 0.18) !important;
-  color: hsl(var(--primary)) !important;
-  box-shadow: 0 0 0 3px hsl(var(--primary) / 0.2);
+  border: 2px solid #6366f1;
+  background: rgb(99 102 241 / 0.18) !important;
+  color: #6366f1 !important;
+  box-shadow: 0 0 0 3px rgb(99 102 241 / 0.2);
   transform: scale(1.04);
 }
 `;

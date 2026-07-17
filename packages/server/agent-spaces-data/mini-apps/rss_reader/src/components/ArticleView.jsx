@@ -1,7 +1,7 @@
 const { useState, useEffect, useRef, useCallback } = React;
 const {
   Button, Badge, Loader2, ScrollArea,
-  Star, ExternalLink, Sparkles, Copy, FileText, AlertCircle,
+  Star, ExternalLink, Sparkles, Copy, FileText, AlertCircle, ArrowLeft,
   openMediaGallery,
 } = window.AgentSpacesUI;
 import { formatDate, timeAgo } from '../utils/format.js';
@@ -10,7 +10,7 @@ import { htmlToText } from '../utils/feed.js';
 export function ArticleView({
   article, summarizing, agentConfigId,
   onSummarize, onToggleFavorite, onCopySummary,
-  fontSize,
+  fontSize, onBack, isMobile,
 }) {
   if (!article) {
     return (
@@ -30,6 +30,17 @@ export function ArticleView({
     <div className="flex flex-col h-full w-full min-h-0">
       {/* 顶部元信息 + 操作 */}
       <div className="border-b border-border px-4 py-3">
+        {/* 小屏：左上角返回按钮 */}
+        {isMobile && onBack && (
+          <button
+            type="button"
+            className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground mb-2 -ml-1"
+            onClick={onBack}
+          >
+            <ArrowLeft className="h-4 w-4" />
+            返回列表
+          </button>
+        )}
         <div className="flex items-start gap-2">
           <h1 className="text-base font-bold leading-snug flex-1 min-w-0 break-words">
             {article.title}

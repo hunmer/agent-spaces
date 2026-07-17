@@ -250,6 +250,25 @@ export function useRss() {
     setToast('已删除订阅源');
   }, [feeds, articlesByFeed, selectedFeedId, selectedArticleId, writeConfig, writeFeedArticles]);
 
+  // —— 编辑订阅源（更新 title / category）——
+  const updateFeed = useCallback((feedId, patch) => {
+    const nextFeeds = feeds.map((f) => (f.id === feedId ? { ...f, ...patch } : f));
+    setFeeds(nextFeeds);
+    writeConfig(CONFIG_FILES.feeds, nextFeeds);
+    // 若改了 title，同步刷新该源文章的 feedTitle（仅显示用，不重拉）
+    if (patch.title) {
+      setArticlesByFeed((prev) => {
+        const items = prev[feedId];
+        if (!items || !items.length) return prev;
+        const nextItems = items.map((a) => ({ ...a, feedTitle: patch.title }));
+        const next = { ...prev, [feedId]: nextItems };
+        writeFeedArticles(feedId, nextItems);
+        return next;
+      });
+    }
+    setToast('已更新订阅源');
+  }, [feeds, writeConfig, writeFeedArticles]);
+
   // —— 拉取全部 ——
   const fetchAll = useCallback(async () => {
     if (!feeds.length) { setError('请先添加订阅源'); return; }
@@ -444,7 +463,7 @@ export function useRss() {
     error, toast, counts,
     filteredArticles, currentArticle,
     setSelectedFeedId, setFilter,
-    addFeed, removeFeed, fetchOne, fetchAll,
+    addFeed, removeFeed, updateFeed, fetchOne, fetchAll,
     selectArticle, toggleFavorite, markRead,
     configureAgent, summarizeArticle, copySummary, updatePrefs,
   };

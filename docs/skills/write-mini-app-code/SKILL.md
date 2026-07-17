@@ -162,6 +162,21 @@ Prefer theme-aware tokens:
 
 The Workflow UI host already provides the current light/dark theme through the renderer container.
 
+### CSS color syntax
+
+Do not wrap a hex color in `hsl()`. `hsl(#6366f1)` and `hsl(#6366f1 / 0.18)` are invalid, so the browser silently drops those declarations. Use the hex value directly for opaque colors and an RGB value for alpha:
+
+```css
+.selecto-cell.selected {
+  border: 2px solid #6366f1;
+  background: rgb(99 102 241 / 0.18);
+  color: #6366f1;
+  box-shadow: 0 0 0 3px rgb(99 102 241 / 0.2);
+}
+```
+
+Inspect a theme variable's actual value before wrapping it in a color function. `hsl(var(--primary))` only works when `--primary` contains HSL channels such as `239 84% 67%`; when it contains `#6366f1`, use `var(--primary)` directly for an opaque color. Prefer the Tailwind theme utilities above when possible.
+
 Do not:
 
 - Add an internal theme switcher.
