@@ -39,6 +39,31 @@ import {
  *   - state.agents 监听（外部 Agent 推送的角色，渲染为 AgentSprite）
  *   - AGENT_TALK / AGENT_EVENT 消息处理（说话气泡、事件流）
  */
+/**
+ * 后端连接配置。
+ * SkyOffice 已合并进主后端单进程，统一跑在 3100 端口，HTTP API 前缀为 /api/skyoffice。
+ * - dev：直连主后端 3100
+ * - prod：用 VITE_SERVER_URL（部署时由环境注入）
+ */
+const API_PORT = '3100'
+const API_PREFIX = '/api/skyoffice'
+
+/** 拼接主后端 HTTP host（用于 fetch API），dev 用 3100，prod 用 VITE_SERVER_URL */
+function getHttpHost(): string {
+  return process.env.NODE_ENV === 'production'
+    ? import.meta.env.VITE_SERVER_URL?.replace(/^https?/, '') || window.location.host
+    : `${window.location.hostname}:${API_PORT}`
+}
+
+/** 拼接主后端 WS endpoint（用于 colyseus.js Client），dev 用 3100，prod 用 VITE_SERVER_URL */
+function getWsEndpoint(): string {
+  if (process.env.NODE_ENV === 'production') {
+    return import.meta.env.VITE_SERVER_URL as string
+  }
+  const protocol = window.location.protocol.replace('http', 'ws')
+  return `${protocol}//${window.location.hostname}:${API_PORT}`
+}
+
 export default class Network {
   private client: Client
   /** Colyseus 房间实例（Game 场景需要读 state 做兜底补 spawn） */
@@ -47,12 +72,7 @@ export default class Network {
   mySessionId!: string
 
   constructor() {
-    const protocol = window.location.protocol.replace('http', 'ws')
-    const endpoint =
-      process.env.NODE_ENV === 'production'
-        ? import.meta.env.VITE_SERVER_URL
-        : `${protocol}//${window.location.hostname}:2567`
-    this.client = new Client(endpoint)
+    this.client = new Client(getWsEndpoint())
 
     phaserEvents.on(Event.MY_PLAYER_NAME_CHANGE, this.updatePlayerName, this)
     phaserEvents.on(Event.MY_PLAYER_TEXTURE_CHANGE, this.updatePlayer, this)
@@ -71,7 +91,7 @@ export default class Network {
    * 人类玩家按业务 roomId 加入自定义房间（房间由 HTTP API 创建）。
    *
    * 流程：
-   *   1. 调用公开端点 GET /api/rooms/:roomId/join 解析出 Colyseus 内部 roomId
+   *   1. 调用公开端点 GET /api/skyoffice/rooms/:roomId/join 解析出 Colyseus 内部 roomId
    *   2. 用 client.joinById(colyseusRoomId) 加入
    *
    * 注意：viewer 不需要 token（token 是给 Agent 用的）。
@@ -79,12 +99,8 @@ export default class Network {
   async joinCustomById(roomId: string) {
     // 先解析业务 roomId → Colyseus 内部 roomId
     const protocol = window.location.protocol
-    const host =
-      process.env.NODE_ENV === 'production'
-        ? import.meta.env.VITE_SERVER_URL?.replace(/^https?/, '') ||
-          window.location.host
-        : `${window.location.hostname}:2567`
-    const res = await fetch(`${protocol}//${host}/api/rooms/${roomId}/join`)
+    const host = getHttpHost()
+    const res = await fetch(`${protocol}//${host}${API_PREFIX}/rooms/${roomId}/join`)
     if (!res.ok) {
       const text = await res.text().catch(() => res.statusText)
       throw new Error(`room "${roomId}" not found${text ? `: ${text}` : ''}`)
@@ -326,34 +342,26 @@ export default class Network {
   }
 
   /**
-   * 从服务端拉取所有椅子的 zone 标记（GET /api/map/chairs）。
+   * 从服务端拉取所有椅子的 zone 标记（GET /api/skyoffice/map/chairs）。
    * 返回 [{ index, zone }] 列表，供 Game 场景初始化椅子颜色提示。
    */
   async loadChairZones(): Promise<Array<{ index: number; zone: string }>> {
     const protocol = window.location.protocol
-    const host =
-      process.env.NODE_ENV === 'production'
-        ? import.meta.env.VITE_SERVER_URL?.replace(/^https?/, '') ||
-          window.location.host
-        : `${window.location.hostname}:2567`
-    const res = await fetch(`${protocol}//${host}/api/map/chairs`)
+    const host = getHttpHost()
+    const res = await fetch(`${protocol}//${host}${API_PREFIX}/map/chairs`)
     if (!res.ok) throw new Error(`loadChairZones failed: ${res.status}`)
     const data = (await res.json()) as { chairs: Array<{ index: number; zone: string }> }
     return data.chairs.filter((c) => c.zone).map((c) => ({ index: c.index, zone: c.zone }))
   }
 
   /**
-   * 设置某把椅子的 zone 标记，写回 map.json（POST /api/map/chairs/:index/zone）。
+   * 设置某把椅子的 zone 标记，写回 map.json（POST /api/skyoffice/map/chairs/:index/zone）。
    */
   async setChairZone(chairIndex: number, zone: string): Promise<boolean> {
     const protocol = window.location.protocol
-    const host =
-      process.env.NODE_ENV === 'production'
-        ? import.meta.env.VITE_SERVER_URL?.replace(/^https?/, '') ||
-          window.location.host
-        : `${window.location.hostname}:2567`
+    const host = getHttpHost()
     const res = await fetch(
-      `${protocol}//${host}/api/map/chairs/${chairIndex}/zone`,
+      `${protocol}//${host}${API_PREFIX}/map/chairs/${chairIndex}/zone`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

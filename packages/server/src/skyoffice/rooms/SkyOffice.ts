@@ -1,5 +1,8 @@
-import { Room, Client } from 'colyseus'
-import { Dispatcher } from '@colyseus/command'
+import type { Client } from 'colyseus'
+import colyseus from 'colyseus'
+import commandPkg from '@colyseus/command'
+const { Room } = colyseus
+const { Dispatcher } = commandPkg
 import { Player, OfficeState } from './schema/OfficeState.js'
 import { Message } from '../types/Messages.js'
 import { IRoomData } from '../types/Rooms.js'
@@ -22,10 +25,10 @@ import ChatMessageUpdateCommand from './commands/ChatMessageUpdateCommand.js'
  */
 export class SkyOffice extends Room<OfficeState> {
   private dispatcher = new Dispatcher(this)
-  private name: string
-  private description: string
+  private name!: string
+  private description!: string
   /** 业务层 roomId（由 HTTP API 传入，用于 RoomRegistry 反查） */
-  bizRoomId: string
+  bizRoomId!: string
 
   onCreate(options: IRoomData & { bizRoomId?: string }) {
     const { name, description, autoDispose, bizRoomId } = options

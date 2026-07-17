@@ -1,4 +1,6 @@
-import { matchMaker, Room } from 'colyseus'
+import type { Room } from 'colyseus'
+import colyseus from 'colyseus'
+const { matchMaker } = colyseus
 import { Agent, ChatMessage, OfficeState } from '../rooms/schema/OfficeState.js'
 import { roomRegistry } from '../rooms/RoomRegistry.js'
 import { Message, AGENT_TALK_DEFAULT_MS } from '../types/Messages.js'
@@ -9,6 +11,7 @@ import {
   DEFAULT_AGENT_X,
   DEFAULT_AGENT_Y,
 } from '../types/IAgent.js'
+import type { IAgent } from '../types/IAgent.js'
 import { AgentBroadcastType } from '../types/Messages.js'
 import { loadZoneChairs } from '../api/mapRoutes.js'
 
@@ -307,7 +310,7 @@ class BridgeImpl {
     const room = this.getRoom(roomId)
     if (!room) return []
     const result: any[] = []
-    room.state.agents.forEach((agent, id) => {
+    room.state.agents.forEach((agent: IAgent, id: string) => {
       result.push({
         id,
         name: agent.name,

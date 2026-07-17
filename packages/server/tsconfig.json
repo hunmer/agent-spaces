@@ -5,9 +5,10 @@
     "rootDir": "./src",
     "types": ["node"],
     "declaration": false,
-    "declarationMap": false
+    "declarationMap": false,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true
   },
   "include": ["src"],
-  "exclude": ["src/skyoffice/**/*"],
-  "references": [{ "path": "./src/skyoffice" }]
+  "exclude": ["src/skyoffice/examples/**/*"]
 }

@@ -1,5 +1,6 @@
-import { Command } from '@colyseus/command'
-import { Client } from 'colyseus'
+import type { Client } from 'colyseus'
+import commandPkg from '@colyseus/command'
+const { Command } = commandPkg
 import { IOfficeState } from '../../types/IOfficeState.js'
 import { ChatMessage } from '../schema/OfficeState.js'
 
@@ -15,6 +16,7 @@ export default class ChatMessageUpdateCommand extends Command<IOfficeState, Payl
     const chatMessages = this.room.state.chatMessages
 
     if (!chatMessages) return
+    if (!player) return
 
     /**
      * Only allow server to store a maximum of 100 chat messages:

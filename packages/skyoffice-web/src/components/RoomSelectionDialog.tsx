@@ -177,7 +177,7 @@ export default function RoomSelectionDialog() {
                   }}
                 />
                 <FormHelperText style={{ color: '#888' }}>
-                  Create a room first: POST /api/rooms
+                  Create a room first: POST /api/skyoffice/rooms
                 </FormHelperText>
                 <Button
                   variant="contained"

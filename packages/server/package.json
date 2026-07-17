@@ -19,8 +19,7 @@
   "scripts": {
     "dev": "tsx watch src/app.ts",
     "dev:plugin": "tsx src/dev/plugin-test-runner.ts",
-    "build": "tsc -p src/skyoffice/tsconfig.json && node -e \"require('fs').copyFileSync('src/skyoffice/package.json','dist/skyoffice/package.json')\" && tsc",
-    "build:skyoffice": "tsc -p src/skyoffice/tsconfig.json && node -e \"require('fs').copyFileSync('src/skyoffice/package.json','dist/skyoffice/package.json')\"",
+    "build": "tsc",
     "start": "node dist/app.js",
     "prepublishOnly": "pnpm build",
     "postinstall": "node -e \"try{require('node-pty')}catch(e){if(!require('fs').existsSync('node_modules/node-pty/prebuilds')){process.exit(1)}}\""

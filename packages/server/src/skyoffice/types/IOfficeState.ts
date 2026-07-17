@@ -1,5 +1,5 @@
-import { Schema, ArraySchema, MapSchema } from '@colyseus/schema'
-import { IAgent } from './IAgent.js'
+import type { Schema, ArraySchema, MapSchema } from '@colyseus/schema'
+import type { IAgent } from './IAgent.js'
 
 export interface IPlayer extends Schema {
   name: string

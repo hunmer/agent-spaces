@@ -1,8 +1,14 @@
 import type http from 'http'
 import type { Application } from 'express'
-import { Server } from 'colyseus'
-import { monitor } from '@colyseus/monitor'
-import { WebSocketTransport } from '@colyseus/ws-transport'
+// colyseus / @colyseus/{monitor,ws-transport} 无 exports 字段（CJS），
+// Node ESM 下具名 import 不可用，用 default import + 解构。
+// @colyseus/schema 有完整 exports，在 OfficeState 等文件中直接具名 import。
+import colyseus from 'colyseus'
+import monitorPkg from '@colyseus/monitor'
+import wsTransportPkg from '@colyseus/ws-transport'
+const { Server } = colyseus
+const { monitor } = monitorPkg
+const { WebSocketTransport } = wsTransportPkg
 
 import { RoomType } from './types/Rooms.js'
 import { SkyOffice } from './rooms/SkyOffice.js'

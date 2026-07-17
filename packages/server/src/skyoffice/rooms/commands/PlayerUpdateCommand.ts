@@ -1,5 +1,6 @@
-import { Command } from '@colyseus/command'
-import { Client } from 'colyseus'
+import type { Client } from 'colyseus'
+import commandPkg from '@colyseus/command'
+const { Command } = commandPkg
 import { IOfficeState } from '../../types/IOfficeState.js'
 
 type Payload = {

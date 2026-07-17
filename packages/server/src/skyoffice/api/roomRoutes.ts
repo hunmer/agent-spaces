@@ -1,6 +1,7 @@
 import { Router, Response } from 'express'
 import { randomBytes } from 'crypto'
-import { matchMaker } from 'colyseus'
+import colyseus from 'colyseus'
+const { matchMaker } = colyseus
 import { RoomType, IRoomData } from '../types/Rooms.js'
 import { roomRegistry } from '../rooms/RoomRegistry.js'
 import { bridge } from '../broadcast/Bridge.js'

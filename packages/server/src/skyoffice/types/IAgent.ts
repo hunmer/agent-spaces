@@ -1,4 +1,4 @@
-import { Schema } from '@colyseus/schema'
+import type { Schema } from '@colyseus/schema'
 
 /**
  * Agent 的活动状态。

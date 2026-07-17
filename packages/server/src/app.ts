@@ -114,16 +114,16 @@ import { ensureBuiltInAgentTemplates } from './services/agent.js';
 import { rebuildIndex as rebuildMiniAppIndex } from './storage/mini-app-store.js';
 import { ensureAgentsConfigs } from './services/mini-app-services.js';
 import { registerAllMiniAppTools } from './services/mini-app-agent.js';
-// SkyOffice 以 CommonJS 子项目编译（Colyseus 0.15 为 CJS 包），主后端(ESM)通过 createRequire 桥接加载
-import { createRequire } from 'node:module';
-const require = createRequire(import.meta.url);
-const skyofficeModule = require('./skyoffice/index.js') as {
-  attachSkyOffice: (opts: { app: import('express').Application; server: import('http').Server }) => void;
-  mountSkyOfficeRoutes: (app: import('express').Application) => void;
-  getColyseusUpgradeHandler: () => ((req: any, socket: any, head: Buffer) => void) | null;
-  broadcastServer: { handleUpgrade: (req: any, socket: any, head: Buffer) => void };
-};
-const { attachSkyOffice, mountSkyOfficeRoutes, getColyseusUpgradeHandler, broadcastServer: skyofficeBroadcast } = skyofficeModule;
+// SkyOffice（Colyseus 房间服务）已合并进主后端，与主后端同为 ESM 源码统一编译。
+// colyseus 系包无 exports 字段（CJS），故 skyoffice 内部对它们用 default import + 解构；
+// @colyseus/schema 有完整 exports，具名 import 直接可用。
+// 顶部已 import 'reflect-metadata'（装饰器元数据全局 polyfill，必须在 schema 装饰器模块加载前）。
+import {
+  attachSkyOffice,
+  mountSkyOfficeRoutes,
+  getColyseusUpgradeHandler,
+  broadcastServer as skyofficeBroadcast,
+} from './skyoffice/index.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORT = parseInt(process.env.PORT || '3100', 10);

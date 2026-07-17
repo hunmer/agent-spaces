@@ -1,6 +1,7 @@
 import { Router, Response } from 'express'
 import * as fs from 'fs'
 import * as path from 'path'
+import { fileURLToPath } from 'node:url'
 
 /**
  * map.json 的内存缓存 + 懒加载。
@@ -8,12 +9,13 @@ import * as path from 'path'
  *
  * 路径定位：优先用环境变量 SKYOFFICE_MAP_JSON 覆盖；
  * 否则从当前文件向上查找 skyoffice-web 包的 map.json。
- *   - CJS 产物：packages/server/dist/skyoffice/api/ → 上溯到 packages/ → skyoffice-web/...
+ *   - ESM 产物：packages/server/dist/skyoffice/api/ → 上溯到 packages/ → skyoffice-web/...
  *   - dev（tsx）：packages/server/src/skyoffice/api/ → 同样上溯
  */
 function resolveMapJsonPath(): string {
   if (process.env.SKYOFFICE_MAP_JSON) return process.env.SKYOFFICE_MAP_JSON
-  const base = typeof __dirname !== 'undefined' ? __dirname : process.cwd()
+  // ESM 下无 __dirname，用 import.meta.url 推导当前文件所在目录
+  const base = path.dirname(fileURLToPath(import.meta.url))
   const candidates = [
     path.resolve(base, '../../../../skyoffice-web/public/assets/map/map.json'),
     path.resolve(base, '../../../skyoffice-web/public/assets/map/map.json'),
