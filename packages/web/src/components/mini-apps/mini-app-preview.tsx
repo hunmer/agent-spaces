@@ -58,6 +58,8 @@ const DEVICE_FRAMES: Record<string, {
   frame: string;
   /** 屏幕区域相对外框的 padding（百分比），用于定位实际内容。 */
   screen: { top: string; right: string; bottom: string; left: string };
+  screenRadius?: string;
+  screenPadding?: string;
   /** 外框在容器里的最大宽度，用于限制大设备。 */
   maxWidth?: string;
   /** 外框纵横比宽/高，用于自适应高度。 */
@@ -70,6 +72,8 @@ const DEVICE_FRAMES: Record<string, {
     frame: '/devices/iphone-17-pro-max.svg',
     // 屏幕开口中心止于 y=2967/3068；底部需避开透明的机身外侧。
     screen: { top: '1.25%', right: '2.02%', bottom: '3.3%', left: '2.02%' },
+    screenRadius: '12% / 6%',
+    screenPadding: '12px 8px',
     maxWidth: '380px',
     aspectRatio: '1520 / 3068',
     isSvg: true,
@@ -178,6 +182,8 @@ function DeviceFrame({ meta, children }: { meta: typeof DEVICE_FRAMES[string]; c
           right: screen.right,
           bottom: screen.bottom,
           left: screen.left,
+          borderRadius: meta.screenRadius,
+          padding: meta.screenPadding,
           transform: 'translateZ(0)',
         }}
       >

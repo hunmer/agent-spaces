@@ -23,6 +23,13 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction) 
     if (typeof queryToken === 'string' && queryToken === secret) return next();
   }
 
+  // mini-app 外链图片代理（解决跨域防盗链/CORS）：<img src> 无法带 Authorization header，
+  // 由后端 fetch 外链图片字节流透传，这里支持 query token 鉴权。URL 校验在路由层完成。
+  if (/^\/api\/mini-apps\/[^/]+\/proxy-image$/.test(req.path)) {
+    const queryToken = req.query.token;
+    if (typeof queryToken === 'string' && queryToken === secret) return next();
+  }
+
   // mini-app src 目录静态资源（js/css/字体等，供沙箱 iframe 加载 ESM 项目如 Excalidraw）：
   // path 段形式（src/file/<rel>）直接放行：与 Excalidraw 的 new URL(rel, base) 拼接兼容，
   // base 不能带 token query（会被 new URL 丢弃），且 src 为只读前端资源、路径已防穿越，风险可控。

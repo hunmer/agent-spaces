@@ -66,6 +66,17 @@ export function extractFirstImage(html) {
   return m ? m[1] : '';
 }
 
+// 把 HTML 里所有 <img src="..."> 的外链 URL 用 proxyFn 转成代理 URL。
+// 用于渲染正文时统一走后端代理，解决跨域/防盗链。只改 http(s) 外链，
+// data:/blob:/已是代理的跳过。proxyFn 为空时原样返回。
+export function proxyImagesInHtml(html, proxyFn) {
+  if (!html || typeof proxyFn !== 'function') return html;
+  return String(html).replace(
+    /(<img\b[^>]*\bsrc=)(["'])([^"']+)\2/gi,
+    (full, pre, quote, url) => `${pre}${quote}${proxyFn(url)}${quote}`,
+  );
+}
+
 // 与 podcast_generator 同款轻量 HTML→文本
 export function htmlToText(html) {
   if (!html) return '';

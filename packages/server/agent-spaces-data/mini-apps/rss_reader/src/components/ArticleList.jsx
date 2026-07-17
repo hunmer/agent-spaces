@@ -3,6 +3,7 @@ const {
   ScrollArea, Badge, Star, FileText, Inbox, List, LayoutGrid,
   Masonry,
 } = window.AgentSpacesUI;
+const { proxyImageUrl } = window.AgentSpaces;
 import { timeAgo } from '../utils/format.js';
 import { htmlToText, extractFirstImage } from '../utils/feed.js';
 
@@ -199,7 +200,7 @@ function MasonryCard({ article, active, onSelect, onToggleFavorite }) {
       {img ? (
         <div className="w-full h-28 overflow-hidden bg-muted flex-shrink-0">
           <img
-            src={img}
+            src={proxyImageUrl(img)}
             alt={article.title}
             className="w-full h-full object-cover"
             loading="lazy"

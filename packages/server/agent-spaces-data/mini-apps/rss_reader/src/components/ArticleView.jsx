@@ -1,11 +1,12 @@
-const { useState, useEffect, useRef, useCallback } = React;
+const { useState, useEffect, useRef, useCallback, useMemo } = React;
 const {
   Button, Badge, Loader2, ScrollArea,
   Star, ExternalLink, Sparkles, Copy, FileText, AlertCircle, ArrowLeft,
   openMediaGallery,
 } = window.AgentSpacesUI;
+const { proxyImageUrl } = window.AgentSpaces;
 import { formatDate, timeAgo } from '../utils/format.js';
-import { htmlToText } from '../utils/feed.js';
+import { htmlToText, proxyImagesInHtml } from '../utils/feed.js';
 
 export function ArticleView({
   article, summarizing, agentConfigId,
@@ -161,9 +162,14 @@ export function ArticleView({
   );
 }
 
-// 渲染 feed 自带 HTML：样式继承宿主，图片点击可放大查看
+// 渲染 feed 自带 HTML：样式继承宿主，图片点击可放大查看；所有外链图片走后端代理
 function ArticleHtml({ html, fallback, fontSize = 15 }) {
   const ref = useRef(null);
+  // 渲染前把 HTML 中所有外链 img src 转成后端代理 URL，解决跨域/防盗链
+  const proxiedHtml = useMemo(
+    () => proxyImagesInHtml(html, proxyImageUrl),
+    [html],
+  );
 
   // 点击图片 → 收集正文所有图片 → 打开 media-gallery 大图查看
   const onImageClick = useCallback((e) => {
@@ -174,7 +180,10 @@ function ArticleHtml({ html, fallback, fontSize = 15 }) {
     const imgs = Array.from(root.querySelectorAll('img'));
     if (!imgs.length) return;
     const items = imgs
-      .map((im) => ({ src: im.currentSrc || im.src, alt: im.alt || '' }))
+      .map((im) => {
+        const src = im.currentSrc || im.src;
+        return { src, alt: im.alt || '' };
+      })
       .filter((it) => it.src);
     if (!items.length) return;
     const clickedSrc = target.currentSrc || target.src;
@@ -188,7 +197,7 @@ function ArticleHtml({ html, fallback, fontSize = 15 }) {
     if (!root) return;
     root.addEventListener('click', onImageClick);
     return () => root.removeEventListener('click', onImageClick);
-  }, [onImageClick, html]);
+  }, [onImageClick, proxiedHtml]);
 
   if (!html) {
     return (
@@ -205,7 +214,7 @@ function ArticleHtml({ html, fallback, fontSize = 15 }) {
       ref={ref}
       className="prose-article leading-relaxed text-foreground [&_a]:text-primary [&_a:hover]:underline [&_img]:max-w-full [&_img]:h-auto [&_img]:rounded [&_img]:cursor-zoom-in [&_pre]:overflow-x-auto [&_code]:bg-muted [&_code]:px-1 [&_code]:rounded [&_blockquote]:border-l-2 [&_blockquote]:border-border [&_blockquote]:pl-3 [&_blockquote]:text-muted-foreground"
       style={{ fontSize: `${fontSize}px` }}
-      dangerouslySetInnerHTML={{ __html: html }}
+      dangerouslySetInnerHTML={{ __html: proxiedHtml }}
     />
   );
 }

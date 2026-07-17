@@ -695,4 +695,36 @@ router.get('/:id/local-file', (req: Request<{ id: string }>, res: Response) => {
   } catch (error: any) { res.status(500).json({ error: error.message }); }
 });
 
+// 外链图片代理：解决 <img> 跨域/防盗链/CORS 无法直接加载的问题。
+// 后端用 fetch 拉取外链，把字节流 + Content-Type 透传给前端。仅允许 http(s)。
+// 鉴权走 query token（见 middleware/auth.ts），因为 <img src> 不能带 Authorization header。
+const PROXY_IMAGE_MIME_FALLBACK = 'image/png';
+router.get('/:id/proxy-image', async (req: Request<{ id: string }>, res: Response) => {
+  try {
+    const rawUrl = req.query.url as string;
+    if (!rawUrl) { res.status(400).json({ error: 'url is required' }); return; }
+    let target: URL;
+    try { target = new URL(rawUrl); } catch { res.status(400).json({ error: 'invalid url' }); return; }
+    if (target.protocol !== 'http:' && target.protocol !== 'https:') {
+      res.status(400).json({ error: 'only http(s) allowed' }); return;
+    }
+
+    const resp = await fetch(target.href, {
+      headers: { 'User-Agent': 'AgentSpaces-Proxy/1.0', 'Accept': 'image/*,*/*' },
+      redirect: 'follow',
+      // 不让外站通过 Set-Cookie 污染本站；代理也不携带本站凭据
+    });
+    if (!resp.ok) { res.status(resp.status).json({ error: `upstream ${resp.status}` }); return; }
+
+    const ct = resp.headers.get('content-type') || PROXY_IMAGE_MIME_FALLBACK;
+    const len = resp.headers.get('content-length');
+    res.setHeader('Content-Type', ct);
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    if (len) res.setHeader('Content-Length', len);
+    // 流式透传
+    const buf = Buffer.from(await resp.arrayBuffer());
+    res.send(buf);
+  } catch (error: any) { res.status(500).json({ error: error.message }); }
+});
+
 export default router;

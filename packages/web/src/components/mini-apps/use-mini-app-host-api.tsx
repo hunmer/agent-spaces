@@ -784,6 +784,24 @@ export function useMiniAppHostApi(projectId: string, runtimeContext?: MiniAppRun
       return `${baseUrl || ''}/api/mini-apps/${encodedProjectId}/local-file?${params.toString()}`;
     };
 
+    // 把外链图片 URL 转成「由后端代理」的 HTTP URL，用于 <img src>。
+    // 解决跨域防盗链 / CORS / 部分图片站点 Referer 校验导致浏览器直接加载失败的问题。
+    // 后端路由 proxy-image 用 query token 鉴权（<img src> 不能带 Authorization header），
+    // fetch 外链后透传字节流。传入空或非 http(s) 时原样返回（如已是 data: URL / 本地代理 URL）。
+    const proxyImageUrl = (url: string): string => {
+      if (!url) return url;
+      // 已经是 data: / blob: / 本站代理 URL，直接返回，避免重复代理
+      if (/^(data:|blob:)/.test(url)) return url;
+      if (/\/api\/mini-apps\/[^/]+\/(proxy-image|local-file|data\/file)/.test(url)) return url;
+      if (!/^https?:\/\//i.test(url)) return url;
+      const baseUrl = getActiveServerUrl();
+      const token = getToken() || '';
+      const params = new URLSearchParams();
+      params.set('url', url);
+      params.set('token', token);
+      return `${baseUrl || ''}/api/mini-apps/${encodedProjectId}/proxy-image?${params.toString()}`;
+    };
+
     const pluginApi = {
       callPluginTool: executePluginTool,
       executePluginTool,
@@ -801,6 +819,7 @@ export function useMiniAppHostApi(projectId: string, runtimeContext?: MiniAppRun
       invokeService,
       openAgentEditor,
       localFileUrl,
+      proxyImageUrl,
       getRuntimeContext: () => runtimeContextRef.current,
     };
 
