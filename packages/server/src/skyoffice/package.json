@@ -1,7 +1,0 @@
-{
-  "name": "@agent-spaces/skyoffice-server",
-  "private": true,
-  "version": "0.1.0",
-  "description": "SkyOffice Colyseus room service (CommonJS, compiled as sub-project of @agent-spaces/server)",
-  "type": "commonjs"
-}
