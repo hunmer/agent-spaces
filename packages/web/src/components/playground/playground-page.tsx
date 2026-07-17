@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { TabNode, type IJsonModel } from "flexlayout-react";
 import { FlexLayoutShell, type AddableComponent } from "@/components/common/flex-layout-shell";
-import { Sparkles, Hash, StickyNote, Palette } from "lucide-react";
+import { Sparkles, Hash, StickyNote, Palette, Building2 } from "lucide-react";
 
 // ---------- 示例组件：演示 components 注入 ----------
 
@@ -88,6 +88,30 @@ function ColorComponent({ node }: { node: TabNode }) {
   );
 }
 
+/**
+ * SkyOffice 入口卡片 —— skyoffice-web 已迁移为 web 内部页面 /skyoffice（shadcn UI）。
+ * 这里提供一个居中的打开按钮，点击跳转到整页游戏体验（Phaser 需要全屏，不适合嵌在 FlexLayout tab 内）。
+ */
+function SkyOfficeComponent() {
+  return (
+    <div className="flex h-full flex-col items-center justify-center gap-4 bg-[#93cbee] p-6 text-center">
+      <Building2 className="size-12 text-primary" />
+      <h2 className="text-xl font-semibold text-gray-800">SkyOffice — Agent Teams</h2>
+      <p className="max-w-md text-sm text-gray-600">
+        实时办公可视化（Phaser + Colyseus）。观看外部 Agent 在虚拟办公室中协作：
+        移动、交谈、参加会议、在工位工作。
+      </p>
+      <a
+        href="/skyoffice"
+        className="inline-flex items-center gap-2 rounded-md bg-primary px-6 py-2 text-sm font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90"
+      >
+        <Building2 className="size-4" />
+        打开 SkyOffice
+      </a>
+    </div>
+  );
+}
+
 // ---------- 默认布局 ----------
 
 const defaultLayout: IJsonModel = {
@@ -125,6 +149,7 @@ const addableComponents: AddableComponent[] = [
   { key: "counter", name: "计数器", icon: <Hash className="size-4" /> },
   { key: "notes", name: "记事本", icon: <StickyNote className="size-4" /> },
   { key: "color", name: "调色板", icon: <Palette className="size-4" /> },
+  { key: "skyoffice", name: "SkyOffice", icon: <Building2 className="size-4" /> },
 ];
 
 // ---------- 页面 ----------
@@ -142,6 +167,7 @@ export function PlaygroundPage() {
           counter: () => <CounterComponent />,
           notes: () => <NotesComponent />,
           color: (node: TabNode) => <ColorComponent node={node} />,
+          skyoffice: () => <SkyOfficeComponent />,
         }}
       />
     </div>

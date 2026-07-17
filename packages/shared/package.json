@@ -8,6 +8,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./skyoffice": {
+      "types": "./dist/types/skyoffice/index.d.ts",
+      "import": "./dist/types/skyoffice/index.js"
     }
   },
   "files": [

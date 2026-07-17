@@ -1,80 +1,138 @@
-# SkyOffice 后端迁移为纯 TS/ESM 计划
+# SkyOffice-Web 完整迁移到主前端（shadcn UI）计划
 
-## 背景与可行性（已验证）
-handoff 的核心约束「colyseus 0.15 是纯 CJS，ESM 具名 import 不可行，必须 CJS 隔离编译」**已被证伪**：
-- `@colyseus/schema@2.0.37` 有完整 `exports`（`import → .mjs`），具名 import 直接可用 ✅
-- `colyseus@0.15.57` / `@colyseus/{monitor,ws-transport,command}` 无 `exports`，但 **default import + 解构** 在 Node ESM 下全部可用 ✅
-- `@colyseus/schema` 的 `@type` 装饰器在 `experimentalDecorators` + `emitDecoratorMetadata` + ESM + bundler resolution 下**编译运行完全正常**（产物含 `__metadata("design:type",...)`，node 原生执行通过）✅
+## 目标
+把 skyoffice-web（Vite+React18+Phaser3+Redux+MUI+styled-components）完整迁移进 packages/web（Next.js+React19+Zustand+shadcn/Tailwind），作为 `/skyoffice` 独立路由页面。无 iframe，UI 全用 shadcn。
 
-CJS 隔离方案是 dev 死锁（tsx 的 ESM/CJS 互操作死锁 + ERR_REQUIRE_CYCLE_MODULE）的根本原因。迁移为纯 ESM 后，dev 和 prod 走完全相同的静态 import 路径，死锁消失。
+## 用户决策（已确认）
+- 状态：Redux → **Zustand** 重写
+- 范围：**完整迁移**全部功能（3 场景 + 9 组件 + Network + 资源）
+- 路由：**独立 `/skyoffice`**
+- 类型：抽到 **shared 包**前后端共用
+- 摇杆：**保留 react-joystick-component**
+- Toast：**加 sonner**
 
-## 改动一览
+## 目录结构（目标）
 
-### 1. 主后端 tsconfig（开启装饰器，纳入 skyoffice）
-`packages/server/tsconfig.json`：
-- `compilerOptions` 增加：`"experimentalDecorators": true`、`"emitDecoratorMetadata": true`
-- 删除 `"exclude": ["src/skyoffice/**/*"]`
-- 删除 `"references": [{ "path": "./src/skyoffice" }]`
+```
+packages/shared/src/types/skyoffice/        ← 新建，前后端共用类型（8 文件从 server 迁入）
+  IAgent.ts IOfficeState.ts Messages.ts Rooms.ts Items.ts
+  BackgroundMode.ts PlayerBehavior.ts KeyboardState.ts
+  pathfinding.ts（前端寻路用）
+packages/web/src/
+  app/skyoffice/page.tsx                     ← 新路由入口（"use client" + dynamic ssr:false）
+  features/skyoffice/                        ← 新功能目录
+    types.ts                                 ← pathfinding 等前端专用
+    PhaserGame.ts                            ← 改为 export 工厂函数（不再模块顶层 new）
+    EventCenter.ts                           ← phaserEvents 单例（保留 Phaser EventEmitter）
+    SkyOfficeApp.tsx                         ← 顶层容器（替代 App.tsx，动态加载 Phaser）
+    scenes/{Bootstrap,Background,Game}.ts    ← 原样迁移，修 import 路径
+    characters/{Player,MyPlayer,OtherPlayer,AgentSprite,PlayerSelector}.ts
+    items/{Item,Chair,VendingMachine}.ts
+    anims/CharacterAnims.ts
+    services/Network.ts                       ← 改环境变量 + Zustand 调用
+    stores/                                   ← 4 个 Zustand store（user/chat/room/agentDebug）
+    components/                               ← 9 个组件，MUI/styled → shadcn/Tailwind
+    index.scss 内容 → globals 局部样式或 Tailwind
+    util.ts
+  public/assets/skyoffice/                   ← 静态资源（Bootstrap.ts load 路径前缀调整）
+```
 
-> 影响评估：experimentalDecorators/emitDecoratorMetadata 是允许性开关，开启后只让装饰器语法合法，不影响现有非装饰器代码。主后端目前无装饰器使用，零副作用。
+## 实施步骤（按依赖顺序）
 
-### 2. 删除 skyoffice 独立构建配置
-- 删除 `packages/server/src/skyoffice/tsconfig.json`（不再需要独立编译）
-- 删除 `packages/server/src/skyoffice/package.json`（不再需要 `"type":"commonjs"` 覆盖）
-- 删除 `packages/server/dist/skyoffice/`（旧 CJS 产物）
+### 阶段 1：类型抽到 shared 包（地基）
+1. 新建 `packages/shared/src/types/skyoffice/`，把 server 的 8 个类型文件迁入
+2. `IAgent.ts`/`IOfficeState.ts` 的 `extends Schema` 改为普通 interface（前端无需 Schema 基类；后端 OfficeState.ts 仍 extends Schema，与 interface 结构兼容）
+3. server 的 `import './types/IAgent.js'` 改为 `import '@agent-spaces/shared/types/skyoffice/IAgent.js'`（或配 paths）
+4. web package.json 加 `"@agent-spaces/shared": "workspace:*"` 依赖
+5. shared build 验证
 
-### 3. package.json build 脚本简化
-`packages/server/package.json`：
-- `"build"`：从 `tsc -p src/skyoffice/tsconfig.json && cp package.json && tsc` → 单步 `tsc`
-- 删除 `"build:skyoffice"` 脚本
-- `"dev"`：从 `pnpm build:skyoffice && tsx watch src/app.ts` → `tsx watch src/app.ts`（回归简单，无需预编译）
+### 阶段 2：依赖安装
+web package.json 新增：
+- `phaser` ^3.55.2
+- `colyseus.js` ^0.14.13
+- `react-joystick-component` ^6.0.0
+- `sonner` ^1.5.0
+- `@agent-spaces/shared` workspace:*
+（不加 @mui/redux/styled-components/emotion/swiper/sass）
 
-### 4. app.ts 改回静态 import（核心简化）
-`packages/server/src/app.ts`：
-- 删除当前的 `await import('./skyoffice/index.js')` + createRequire + 动态加载类型块（约 20 行）
-- 改为最简单的静态 import：
-  ```ts
-  import { attachSkyOffice, mountSkyOfficeRoutes, getColyseusUpgradeHandler, broadcastServer as skyofficeBroadcast } from './skyoffice/index.js';
-  ```
-- 顶部 `import 'reflect-metadata'` **保留**（装饰器元数据仍需全局 polyfill，放最顶部）
-- 之前调试加的 `console.log('[skyoffice] module loaded...')` 删除
+### 阶段 3：状态层 Redux → Zustand（4 store）
+按探索报告平移，副作用外移：
+- `stores/user-store.ts`：backgroundMode/sessionId/loggedIn/playerNameMap(用 Map→可改 Record)/showJoystick。toggleBackgroundMode 先 set 再调 phaser scene（在组件或 action 里取 `window.game.scene.keys.bootstrap`）
+- `stores/chat-store.ts`：chatMessages/focused/showChat。setFocused 先 set 再调 `window.game.scene.keys.game.disableKeys/enableKeys`
+- `stores/room-store.ts`：纯 state，直接平移
+- `stores/agent-debug-store.ts`：agents/humans Record，纯 state 平移
+- 删除 hooks.ts（TypedUseSelectorHook 废弃），组件改用 `useXxxStore((s)=>...)`
 
-### 5. colyseus import 转换（7 个文件）
-**`@colyseus/schema`（有 exports）—— 不改**：
-- `IOfficeState.ts`、`IAgent.ts`、`OfficeState.ts` 保持 `import { Schema, ... } from '@colyseus/schema'`
+### 阶段 4：网络层 Network.ts 迁移
+- 环境变量：`getHttpHost`/`getWsEndpoint` 改用 `NEXT_PUBLIC_SERVER_URL`（复用主 web 约定，默认 localhost:3100）
+- 所有 `dispatch(...)` → 对应 Zustand store 的 set 调用
+- 其余 Colyseus 逻辑（joinOrCreate/joinById/onAdd/onMessage/send）原样保留
+- 加 SSR 守卫：构造函数访问 window 的部分保持（Network 只在 client useEffect 里 new）
 
-**`colyseus`（无 exports）—— 改 default import + 解构**：
-| 文件 | 原 | 改为 |
-|---|---|---|
-| `index.ts` | `import { Server } from 'colyseus'` | `import colyseus from 'colyseus'; const { Server } = colyseus` |
-| `rooms/SkyOffice.ts` | `import { Room, Client } from 'colyseus'` | `import colyseus from 'colyseus'; const { Room, Client } = colyseus` |
-| `api/roomRoutes.ts` | `import { matchMaker } from 'colyseus'` | `import colyseus from 'colyseus'; const { matchMaker } = colyseus` |
-| `broadcast/Bridge.ts` | `import { matchMaker, Room } from 'colyseus'` | `import colyseus from 'colyseus'; const { matchMaker, Room } = colyseus` |
-| `rooms/commands/{PlayerUpdate,PlayerUpdateName,ChatMessageUpdate}Command.ts` | `import { Client } from 'colyseus'` | `import colyseus from 'colyseus'; const { Client } = colyseus` |
+### 阶段 5：Phaser 层迁移（场景/角色/物品/动画）
+- `PhaserGame.ts`：改为 `export function createPhaserGame(parent: HTMLElement): Phaser.Game`，config 的 parent 改为传入的 DOM 元素，scale 用容器尺寸而非 window。`window.game` 保留（组件调试用）
+- `scenes/Bootstrap.ts`：preload 里所有 `assets/xxx` 路径改为 `/assets/skyoffice/xxx`（Next.js public 目录）。`init` 里 new Network 保留。launchGame 里 `setRoomJoined` 改 Zustand
+- `scenes/Game.ts`、`Background.ts`、characters/*、items/*、anims/*：原样迁移，仅修 import 路径（类型从 @agent-spaces/shared，内部相对路径调整）。Game.ts 的寻路 findGridPath 从 shared 引入
+- `EventCenter.ts`：保留 `Phaser.Events.EventEmitter` 单例（phaser 已是依赖）
 
-**`@colyseus/{monitor,ws-transport,command}`（无 exports）—— 改 default import + 解构**：
-| 文件 | 原 | 改为 |
-|---|---|---|
-| `index.ts` | `import { monitor } from '@colyseus/monitor'` | `import monitorPkg from '@colyseus/monitor'; const { monitor } = monitorPkg` |
-| `index.ts` | `import { WebSocketTransport } from '@colyseus/ws-transport'` | `import wsTransportPkg from '@colyseus/ws-transport'; const { WebSocketTransport } = wsTransportPkg` |
-| `rooms/SkyOffice.ts` | `import { Dispatcher } from '@colyseus/command'` | `import commandPkg from '@colyseus/command'; const { Dispatcher } = commandPkg` |
-| `rooms/commands/*Command.ts` (3个) | `import { Command } from '@colyseus/command'` | `import commandPkg from '@colyseus/command'; const { Command } = commandPkg` |
+### 阶段 6：UI 组件 MUI/styled → shadcn/Tailwind（9 个）
+通用映射：
+- MUI Button/Fab/IconButton → shadcn Button（variant/size）+ rounded-full 模拟 Fab
+- MUI TextField → Input + Label
+- MUI Tooltip → shadcn Tooltip（Provider/Trigger/Content）
+- MUI Avatar → shadcn Avatar
+- MUI LinearProgress → shadcn Progress
+- MUI Snackbar/Alert → sonner toast
+- MUI icons → lucide-react
+- styled-components → Tailwind className
+- 深色卡片 `#222639` → 抽 `bg-[#222639]` 或 CSS 变量
 
-> 同文件多个 colyseus 系 import 合并（如 SkyOffice.ts 的 Room/Client + Dispatcher 可共用，但为最小改动保持各自的 default import 别名不冲突即可，或合并为一个 colyseus default + command default）。
+逐组件：
+1. **App.tsx → SkyOfficeApp.tsx**：Backdrop 的 pointer-events 模式用 Tailwind `[pointer-events:none] [&>*]:pointer-events-auto`。三态切换读 Zustand
+2. **RoomSelectionDialog.tsx**：Card+Button+Input+Alert→shadcn，Snackbar→sonner toast.error，LinearProgress→Progress
+3. **LoginDialog.tsx**：Swiper→shadcn Carousel(embla)，TextField→Input+Label，Avatar→shadcn Avatar，ArrowRightIcon→lucide ArrowRight
+4. **AgentFeed.tsx**：Tooltip→shadcn Tooltip，IconButton→Button ghost，Fab→Button icon rounded-full，FeedBox→ScrollArea，GroupsIcon/CloseIcon→Users/X
+5. **HelperButtonGroup.tsx**：Fab/IconButton/Avatar/Tooltip→shadcn，icons→lucide（Sun/Moon/Gamepad2/CircleHelp/Share/X/ArrowRight）
+6. **MobileVirtualJoystick.tsx**：styled div→Tailwind，isSmallScreen hook 保留，调 window.game
+7. **Joystick.tsx**：保留 react-joystick-component，angleToDirections 原样
+8. **DebugPanel.tsx**：Fab/Tooltip/IconButton→shadcn，ListWrap→ScrollArea，ActButton/TalkButton 动态色保留 style 注入，copy-button 现成可用，icons→lucide（Bug/Bot/User/Copy/X）
+9. **ChairZoneMenu.tsx**：保留自定义 MenuWrap（坐标定位），styled→Tailwind。**必须保留** `game.input.enabled` 切换 + mousedown swallowEvent 防穿透逻辑
 
-### 6. 不改的部分
-- `.js` 扩展名 import 全部保留（主后端 prod 走 Node 原生 ESM，要求扩展名；skyoffice 现有 `.js` 扩展名正好符合）
-- 前端 Network.ts 端口/API 前缀改动（原计划步骤 3）保持，纳入本次
-- reflect-metadata 依赖保留
+### 阶段 7：路由入口
+`packages/web/src/app/skyoffice/page.tsx`：
+```tsx
+"use client";
+import dynamic from "next/dynamic";
+const SkyOfficeApp = dynamic(() => import("@/features/skyoffice/SkyOfficeApp").then(m=>m.SkyOfficeApp), { ssr: false });
+export default function Page() { return <SkyOfficeApp />; }
+```
+SkyOfficeApp 内部：useEffect 里动态 import Phaser 创建 game，挂 `<Toaster/>`，渲染 Backdrop + 各组件按 Zustand 三态切换。
 
-## 验证
-1. `cd packages/server && npx tsc --noEmit` —— 主后端类型检查（含 skyoffice）零新增错误（oh-my-pi 遗留错误属无关问题，不处理）
-2. `pnpm build` —— 单步 tsc，产物 `dist/skyoffice/*.js` 为 ESM
-3. `node dist/app.js` —— prod 启动，日志含 `[skyoffice] realtime attached`，curl rooms/health 正常
-4. `pnpm dev` —— dev 启动（tsx watch 直接跑源码，静态 import），不再死锁，curl 正常
-5. 前端 `cd packages/skyoffice-web && pnpm dev` 联调
+### 阶段 8：playground 集成调整
+`playground-page.tsx` 的 skyoffice tab：从 iframe 改为链接跳转（`<a href="/skyoffice">` 或 router.push），或保留一个按钮"在新页面打开 SkyOffice"。
+
+### 阶段 9：静态资源
+`packages/skyoffice-web/public/assets/` → `packages/web/public/assets/skyoffice/`（background/character/items/map/tileset 全部）。Bootstrap.ts 的 load 路径同步改前缀。
+
+### 阶段 10：验证
+1. `pnpm --filter @agent-spaces/shared build` 零错误
+2. `pnpm --filter @agent-spaces/web build` 零错误（或仅 oh-my-pi 无关错误）
+3. 启动后端 `node dist/app.js`（3100）
+4. 启动 web `pnpm dev`，访问 `/skyoffice`
+5. 验证流程：选房间（Join Public Lobby）→ 选头像登录 → 看到 Phaser 场景 → 用 agent-client 推送 agent → AgentFeed 显示事件、Agent sprite 走动 → DebugPanel 控制活动/说话 → 椅子右键 zone 菜单
+6. `pnpm tsc --noEmit` skyoffice 相关零错误
+
+## 关键约束（必须遵守）
+1. **Phaser SSR 安全**：所有 Phaser 代码在 dynamic ssr:false 包裹，不在模块顶层访问 window/document
+2. **pointer-events 模式**：App Backdrop 必须 `pointer-events:none` + 子元素 `auto`，否则 UI 挡住 Phaser 点击
+3. **ChairZoneMenu 防穿透**：`game.input.enabled` 切换 + mousedown swallowEvent 不能丢（已修复的 bug）
+4. **colyseus.js 固定 0.14**：Network 用了 0.14 API（state.players.onAdd），不能升级
+5. **handleAgentUpdated 跳过逻辑**：activity 切换时跳过 x/y/anim 的 apply（防瞬移），走路交给 handleAgentActivity
+6. **兜底 spawn**：Game.create 注册监听器后扫一遍 state.agents/players 补 spawn（Colyseus 时序）
+7. **类型 IAgent/IOfficeState extends Schema → 普通 interface**：前端不用 Schema 基类，结构兼容后端
 
 ## 风险与回滚
-- 改动集中在 ~12 个文件，git 可整体回滚
-- 主 tsconfig 开装饰器是唯一全局影响点，若引发问题可单独回退该文件
-- 迁移后 dev/prod 路径统一，反而比 CJS 桥接更简单可靠
+- 大型迁移，改动 30+ 文件，集中在 `features/skyoffice/` 新目录，git 可整体回滚
+- React 19 + Phaser 3 + react-joystick-component + colyseus.js 0.14 兼容性需验证（阶段 10）
+- 若 Phaser/React 19 有问题，可退回 iframe 方案（playground-page.tsx 的 SkyOfficeComponent 保留备份）
+- 分阶段提交，每阶段可独立验证

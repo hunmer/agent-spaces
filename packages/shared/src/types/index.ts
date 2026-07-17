@@ -26,3 +26,9 @@ export * from './database.js';
 export * from './sqlite.js';
 export * from './worktree.js';
 export * from './knowledge-base.js';
+/**
+ * SkyOffice 类型作为命名空间导出，避免与已有类型（如 channel.Message）冲突。
+ * 用法：import { SkyOffice } from '@agent-spaces/shared'; const x: SkyOffice.IAgent
+ * 或：import type { IAgent } from '@agent-spaces/shared/types/skyoffice/IAgent.js'
+ */
+export * as SkyOffice from './skyoffice/index.js';
