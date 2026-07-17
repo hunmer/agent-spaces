@@ -70,10 +70,9 @@ const DEVICE_FRAMES: Record<string, {
     label: 'Mobile',
     icon: Smartphone,
     frame: '/devices/iphone-17-pro-max.svg',
-    // 屏幕开口中心止于 y=2967/3068；底部需避开透明的机身外侧。
-    screen: { top: '1.25%', right: '2.02%', bottom: '3.3%', left: '2.02%' },
+    // SVG 实际内屏安全边界：x=100..1419，y≈100..2967。
+    screen: { top: '3.3%', right: '6.6%', bottom: '3.3%', left: '6.6%' },
     screenRadius: '12% / 6%',
-    screenPadding: '12px 8px',
     maxWidth: '380px',
     aspectRatio: '1520 / 3068',
     isSvg: true,

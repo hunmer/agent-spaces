@@ -316,6 +316,8 @@ export default function Live2DViewer({ modelConfig, onAvailableMotions, motionTo
   }, [modelConfig, appReady]);
 
   // ===== 窗口/父容器尺寸变化 =====
+  // miniapp 预览在 iframe 内，切换设备时容器尺寸变化不会触发 window resize，
+  // 用 ResizeObserver 监听 canvas 父容器，兼容两种场景。
   useEffect(() => {
     const handleResize = () => {
       const PIXI = window.PIXI;
@@ -325,9 +327,21 @@ export default function Live2DViewer({ modelConfig, onAvailableMotions, motionTo
       }
     };
     window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+
+    // ResizeObserver：监听 canvas 父容器尺寸变化（设备切换、窗口缩放等）
+    let ro = null;
+    const target = canvasRef.current?.parentElement;
+    if (target && typeof ResizeObserver !== 'undefined') {
+      ro = new ResizeObserver(() => handleResize());
+      ro.observe(target);
+    }
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      ro?.disconnect();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [modelConfig]);
+  }, [modelConfig, appReady]);
 
   // ===== idle 结束后立即播第一个待机动画 =====
   // 策略：事件驱动为主——监听 motionManager 的 motionFinish，动作一结束就播第一个待机动作；

@@ -89,9 +89,17 @@
       "scale": 1,
       "xOffset": 0,
       "yOffset": 0
+    },
+    {
+      "id": "m-1784285568774",
+      "name": "normal (rfb_1601)",
+      "url": "https://cdn.jsdelivr.net/gh/Eikanya/Live2d-model@master/%E5%B0%91%E5%A5%B3%E5%89%8D%E7%BA%BF%20girls%20Frontline/live2dnew/rfb_1601/normal/normal.model3.json",
+      "scale": 1,
+      "xOffset": 0,
+      "yOffset": 0
     }
   ],
-  "currentModelId": "m-1784283665517",
+  "currentModelId": "m-1784285568774",
   "repositories": [
     {
       "id": "default-repo",
@@ -6689,6 +6697,12 @@
   "libraryLastUpdated": 1784279006407,
   "favoriteModels": [],
   "recentModels": [
+    {
+      "id": "m-1784285568774",
+      "name": "normal (rfb_1601)",
+      "url": "https://cdn.jsdelivr.net/gh/Eikanya/Live2d-model@master/%E5%B0%91%E5%A5%B3%E5%89%8D%E7%BA%BF%20girls%20Frontline/live2dnew/rfb_1601/normal/normal.model3.json",
+      "timestamp": 1784285568774
+    },
     {
       "id": "m-1784283665517",
       "name": "c_8009 (少女次元)",
