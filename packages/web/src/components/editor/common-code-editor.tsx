@@ -62,8 +62,6 @@ interface CommonCodeEditorProps {
     monaco: typeof Monaco,
     disposables: Monaco.IDisposable[],
   ) => void;
-  onStartLanguageClient?: () => void;
-  onStopLanguageClient?: () => void;
   onRunBuiltinAction?: (actionId: string, editor: Monaco.editor.IStandaloneCodeEditor) => void;
   onApplyRegisteredActions?: (
     editor: Monaco.editor.IStandaloneCodeEditor,
@@ -135,8 +133,6 @@ export function CommonCodeEditor({
   onGetModel,
   onEnsureModel,
   onRegisterNavigation,
-  onStartLanguageClient,
-  onStopLanguageClient,
   onRunBuiltinAction,
   onApplyRegisteredActions,
 }: CommonCodeEditorProps) {
@@ -236,7 +232,6 @@ export function CommonCodeEditor({
   const handleMount = useCallback((editor: Monaco.editor.IStandaloneCodeEditor, monaco: typeof Monaco) => {
     editorRef.current = editor;
     monacoRef.current = monaco;
-    onStartLanguageClient?.();
     syncReadOnly(editor, isReadOnly);
     editor.updateOptions({ fontSize, quickSuggestions: false, renderValidationDecorations: "off" });
     registerNavigation(editor, monaco);
@@ -267,19 +262,12 @@ export function CommonCodeEditor({
         })
         .catch(() => {});
     }
-  }, [attachWheelZoom, fontSize, isReadOnly, onApplyRegisteredActions, onStartLanguageClient, registerNavigation, syncReadOnly]);
-
-  useEffect(() => {
-    if (!editorRef.current) return;
-    onStartLanguageClient?.();
-  }, [onStartLanguageClient]);
+  }, [attachWheelZoom, fontSize, isReadOnly, onApplyRegisteredActions, registerNavigation, syncReadOnly]);
 
   useEffect(() => {
     if (!editorRef.current || !monacoRef.current) return;
     registerNavigation(editorRef.current, monacoRef.current);
   }, [registerNavigation]);
-
-  useEffect(() => onStopLanguageClient, [onStopLanguageClient]);
 
   useEffect(() => {
     return () => {

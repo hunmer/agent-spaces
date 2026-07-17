@@ -8,7 +8,6 @@ import {
   getModelUri,
   getOrCreateModel,
 } from "@/lib/monaco-models";
-import { startTypeScriptLanguageClient, stopTypeScriptLanguageClient } from "@/lib/monaco-language-client";
 import {
   useEditorStore,
   isCommitDiffPath,
@@ -89,16 +88,6 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
     });
   }, [activeFilePath, jumpToPosition, workspaceId, workspaceRoot]);
 
-  const handleStartLanguageClient = useCallback(() => {
-    if (workspaceRoot) {
-      startTypeScriptLanguageClient(workspaceId, workspaceRoot);
-    }
-  }, [workspaceId, workspaceRoot]);
-
-  const handleStopLanguageClient = useCallback(() => {
-    stopTypeScriptLanguageClient(workspaceId);
-  }, [workspaceId]);
-
   return (
     <CommonCodeEditor
       activeFile={activeFile}
@@ -120,8 +109,6 @@ export function CodeEditor({ workspaceId }: CodeEditorProps) {
       onGetModel={(path) => getModel(workspaceId, path, workspaceRoot)}
       onEnsureModel={(path, content) => getOrCreateModel(workspaceId, path, content, workspaceRoot)}
       onRegisterNavigation={handleRegisterNavigation}
-      onStartLanguageClient={handleStartLanguageClient}
-      onStopLanguageClient={handleStopLanguageClient}
       onRunBuiltinAction={(actionId, editor) => {
         const action = monacoBuiltinActions.find((item) => item.id === actionId);
         action?.run(editor, { workspaceId, workspaceRoot });
