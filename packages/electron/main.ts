@@ -11,6 +11,7 @@ import { registerGlobalShortcuts, unregisterGlobalShortcuts } from './ipc/shortc
 import { registerFsIpcHandlers } from './ipc/fs.js'
 import { getWindowMaximized, setWindowMaximized } from './services/store.js'
 import { executeClientPluginNode, getClientWorkflowNodes, installClientPluginFromStore, listClientWorkflowPlugins, uninstallClientPlugin } from './services/client-plugin-runner.js'
+import { registerServerLauncherIpc, stopServer } from './services/server-launcher.js'
 
 const RENDERER_DIR = join(__dirname, '../renderer')
 
@@ -228,6 +229,7 @@ app.whenReady().then(async () => {
   })
 
   registerFsIpcHandlers()
+  registerServerLauncherIpc()
 
   ipcMain.on('window:minimize', () => mainWindow?.minimize())
   ipcMain.on('window:maximize', () => {
@@ -285,4 +287,5 @@ app.on('window-all-closed', () => {
 app.on('before-quit', () => {
   rendererServer?.close()
   rendererServer = null
+  stopServer()
 })

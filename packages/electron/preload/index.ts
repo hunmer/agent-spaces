@@ -45,6 +45,32 @@ const electronAPI = {
       ipcRenderer.invoke('fs:openInExplorer', targetPath),
   },
 
+  setup: {
+    checkStatus: (): Promise<{ installed: boolean; running: boolean }> =>
+      ipcRenderer.invoke('setup:checkStatus'),
+    install: (registry?: string): Promise<{ started: boolean }> =>
+      ipcRenderer.invoke('setup:install', registry),
+    start: (): Promise<{ ok: boolean; error?: string }> =>
+      ipcRenderer.invoke('setup:start'),
+    getRegistries: (): Promise<Array<{ value: string; label: string }>> =>
+      ipcRenderer.invoke('setup:getRegistries'),
+    onInstallProgress: (cb: (e: { stream: 'stdout' | 'stderr'; line: string }) => void): (() => void) => {
+      const handler = (_e: Electron.IpcRendererEvent, payload: { stream: 'stdout' | 'stderr'; line: string }): void => cb(payload)
+      ipcRenderer.on('setup:install-progress', handler)
+      return () => ipcRenderer.removeListener('setup:install-progress', handler)
+    },
+    onInstallDone: (cb: (e: { success: boolean; error?: string }) => void): (() => void) => {
+      const handler = (_e: Electron.IpcRendererEvent, payload: { success: boolean; error?: string }): void => cb(payload)
+      ipcRenderer.on('setup:install-done', handler)
+      return () => ipcRenderer.removeListener('setup:install-done', handler)
+    },
+    onServerLog: (cb: (e: { stream: 'stdout' | 'stderr'; line: string }) => void): (() => void) => {
+      const handler = (_e: Electron.IpcRendererEvent, payload: { stream: 'stdout' | 'stderr'; line: string }): void => cb(payload)
+      ipcRenderer.on('setup:server-log', handler)
+      return () => ipcRenderer.removeListener('setup:server-log', handler)
+    },
+  },
+
   onShortcut: (cb: (id: string) => void): (() => void) => {
     const handler = (_e: Electron.IpcRendererEvent, id: string): void => cb(id)
     ipcRenderer.on('shortcut', handler)
