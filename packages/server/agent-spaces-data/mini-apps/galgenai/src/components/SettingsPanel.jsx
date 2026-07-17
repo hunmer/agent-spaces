@@ -9,7 +9,7 @@ import React, { useState } from 'react';
 import { AGENT_INIT_NAME, AGENT_INIT_PROMPT, BUILTIN_PLUGIN } from '../utils/constants';
 
 const {
-  Label, Button, Input,
+  Label, Button, Input, Switch,
   Workflow, Bot, Check, Plus, Pencil, Trash2, Loader2, RotateCcw,
   WorkflowListDialog,
 } = window.AgentSpacesUI;
@@ -139,10 +139,15 @@ export default function SettingsPanel({ store }) {
         <section className="mb-8">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-bold">🤖 AI 角色</h3>
-            <Button variant="outline" size="sm" onClick={() => configureAgent(null)} disabled={agentBusy}>
+            <button
+              type="button"
+              onClick={() => configureAgent(null)}
+              disabled={agentBusy}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-bold bg-cyan-500 hover:bg-cyan-400 disabled:opacity-50 disabled:cursor-not-allowed text-white shadow"
+            >
               {agentBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
               新建角色
-            </Button>
+            </button>
           </div>
 
           {agents.length === 0 && (
@@ -202,7 +207,18 @@ export default function SettingsPanel({ store }) {
 
         {/* 语音合成（provider + voiceId + 工作流） */}
         <section className="mb-8">
-          <h3 className="text-lg font-bold mb-4">🎙️ 语音合成</h3>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-bold">🎙️ 语音合成</h3>
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <span className="text-sm text-gray-300">
+                {settings.ttsEnabled === false ? '已关闭' : '已开启'}
+              </span>
+              <Switch
+                checked={settings.ttsEnabled !== false}
+                onCheckedChange={(v) => updateSettings({ ttsEnabled: v })}
+              />
+            </label>
+          </div>
           <div className="grid gap-4">
             <div>
               <Label className="text-sm text-gray-300">服务商</Label>

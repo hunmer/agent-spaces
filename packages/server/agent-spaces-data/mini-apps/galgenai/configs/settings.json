@@ -33,9 +33,49 @@
       "scale": 1,
       "xOffset": 0,
       "yOffset": 0
+    },
+    {
+      "id": "m-1784281823916",
+      "name": "yexin_A (三色绘恋S)",
+      "url": "https://cdn.jsdelivr.net/gh/Eikanya/Live2d-model@master/galgame%20live2d/%E4%B8%89%E8%89%B2%E7%BB%98%E6%81%8BS/yexin_A/yexin_A.model3.json",
+      "scale": 1,
+      "xOffset": 0,
+      "yOffset": 0
+    },
+    {
+      "id": "m-1784281831908",
+      "name": "l2d02.u (girl02)",
+      "url": "https://cdn.jsdelivr.net/gh/Eikanya/Live2d-model@master/%E5%B0%91%E5%A5%B3%E5%92%96%E5%95%A1%E6%9E%AA%20girls%20cafe%20gun/girl02/l2d02.u/l2d02.u.model3.json",
+      "scale": 1,
+      "xOffset": 0,
+      "yOffset": 0
+    },
+    {
+      "id": "m-1784282571077",
+      "name": " (Sacred Sword princesses)",
+      "url": "https://cdn.jsdelivr.net/gh/Eikanya/Live2d-model@master/Sacred%20Sword%20princesses/char_cg_live2d_h015/res/.model.json",
+      "scale": 1,
+      "xOffset": 0,
+      "yOffset": 0
+    },
+    {
+      "id": "m-1784282579397",
+      "name": "xch002_01 (sin 七大罪～魔王崇拜～)",
+      "url": "https://cdn.jsdelivr.net/gh/Eikanya/Live2d-model@master/sin%20%E4%B8%83%E5%A4%A7%E7%BD%AA%EF%BD%9E%E9%AD%94%E7%8E%8B%E5%B4%87%E6%8B%9C%EF%BD%9E/xch002_01/xch002_01.model3.json",
+      "scale": 1,
+      "xOffset": 0,
+      "yOffset": 0
+    },
+    {
+      "id": "m-1784283031740",
+      "name": "destroy (qbu88_3801)",
+      "url": "https://cdn.jsdelivr.net/gh/Eikanya/Live2d-model@master/%E5%B0%91%E5%A5%B3%E5%89%8D%E7%BA%BF%20girls%20Frontline/live2dnew/qbu88_3801/destroy/destroy.model3.json",
+      "scale": 1,
+      "xOffset": 0,
+      "yOffset": 0
     }
   ],
-  "currentModelId": "m-1784279970949",
+  "currentModelId": "m-1784283031740",
   "repositories": [
     {
       "id": "default-repo",
@@ -6634,6 +6674,36 @@
   "favoriteModels": [],
   "recentModels": [
     {
+      "id": "m-1784283031740",
+      "name": "destroy (qbu88_3801)",
+      "url": "https://cdn.jsdelivr.net/gh/Eikanya/Live2d-model@master/%E5%B0%91%E5%A5%B3%E5%89%8D%E7%BA%BF%20girls%20Frontline/live2dnew/qbu88_3801/destroy/destroy.model3.json",
+      "timestamp": 1784283031740
+    },
+    {
+      "id": "m-1784282579397",
+      "name": "xch002_01 (sin 七大罪～魔王崇拜～)",
+      "url": "https://cdn.jsdelivr.net/gh/Eikanya/Live2d-model@master/sin%20%E4%B8%83%E5%A4%A7%E7%BD%AA%EF%BD%9E%E9%AD%94%E7%8E%8B%E5%B4%87%E6%8B%9C%EF%BD%9E/xch002_01/xch002_01.model3.json",
+      "timestamp": 1784282579397
+    },
+    {
+      "id": "m-1784282571077",
+      "name": " (Sacred Sword princesses)",
+      "url": "https://cdn.jsdelivr.net/gh/Eikanya/Live2d-model@master/Sacred%20Sword%20princesses/char_cg_live2d_h015/res/.model.json",
+      "timestamp": 1784282571077
+    },
+    {
+      "id": "m-1784281831908",
+      "name": "l2d02.u (girl02)",
+      "url": "https://cdn.jsdelivr.net/gh/Eikanya/Live2d-model@master/%E5%B0%91%E5%A5%B3%E5%92%96%E5%95%A1%E6%9E%AA%20girls%20cafe%20gun/girl02/l2d02.u/l2d02.u.model3.json",
+      "timestamp": 1784281831908
+    },
+    {
+      "id": "m-1784281823916",
+      "name": "yexin_A (三色绘恋S)",
+      "url": "https://cdn.jsdelivr.net/gh/Eikanya/Live2d-model@master/galgame%20live2d/%E4%B8%89%E8%89%B2%E7%BB%98%E6%81%8BS/yexin_A/yexin_A.model3.json",
+      "timestamp": 1784281823916
+    },
+    {
       "id": "m-1784279970949",
       "name": "xco057_01 (sin 七大罪～魔王崇拜～)",
       "url": "https://cdn.jsdelivr.net/gh/Eikanya/Live2d-model@master/sin%20%E4%B8%83%E5%A4%A7%E7%BD%AA%EF%BD%9E%E9%AD%94%E7%8E%8B%E5%B4%87%E6%8B%9C%EF%BD%9E/xco057_01/xco057_01.model3.json",
@@ -6658,15 +6728,16 @@
       "timestamp": 1784279013966
     }
   ],
-  "ttsProvider": "fish-audio",
-  "ttsVoiceId": "",
+  "ttsEnabled": true,
+  "ttsProvider": "minimax",
+  "ttsVoiceId": "Chinese (Mandarin)_Sweet_Lady",
   "ttsWorkflowId": "820bf3b7-9d50-4f6d-966d-8e442960a233",
   "ttsWorkflowName": "text_to_voice",
   "agents": [
     {
       "id": "galgame-dcf63cf1-f76d-4b24-b398-9497461ed2a3",
       "name": "Galgame 伙伴",
-      "modelProvider": "anthropic-messages"
+      "modelProvider": "openai-chat-completions"
     }
   ],
   "currentAgentId": "galgame-dcf63cf1-f76d-4b24-b398-9497461ed2a3",

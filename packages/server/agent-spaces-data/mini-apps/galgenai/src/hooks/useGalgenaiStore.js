@@ -30,7 +30,8 @@ const DEFAULT_SETTINGS = {
   libraryLastUpdated: 0,
   favoriteModels: [],
   recentModels: [],
-  // TTS（简化版：provider + voiceId + 工作流）
+  // TTS（简化版：总开关 + provider + voiceId + 工作流）
+  ttsEnabled: true,
   ttsProvider: 'minimax',
   ttsVoiceId: '',
   ttsWorkflowId: DEFAULT_TTS_WORKFLOW_ID,

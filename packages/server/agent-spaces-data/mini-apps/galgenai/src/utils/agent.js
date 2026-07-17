@@ -20,6 +20,7 @@ export function buildAgentPrompt({
   history, // [{role:'user'|'model', content}]
   userInput,
   availableMotions,
+  images, // [{path, httpPath, name}] 上传后的图片引用，可选
 }) {
   const parts = [];
 
@@ -31,15 +32,19 @@ export function buildAgentPrompt({
   parts.push('');
 
   if (Array.isArray(availableMotions) && availableMotions.length > 0) {
-    parts.push('【动作控制 / Motion Control】');
-    parts.push(
-      `角色可使用的动作组：${availableMotions.join(', ')}。\n` +
-        '若想让角色配合回复表演动作，请在回复最前面用方括号包裹动作组名。\n' +
-        '示例：[TapBody] That tickles!\n' +
-        '示例：[Idle] I am waiting...\n' +
-        '如果没有合适的动作，就直接正常回复。',
-    );
-    parts.push('');
+    // availableMotions 是 [{group,index,label}]，给 AI 看的是 label 列表
+    const labels = availableMotions.map((m) => m.label).filter(Boolean);
+    if (labels.length > 0) {
+      parts.push('【动作控制 / Motion Control】');
+      parts.push(
+        `角色可使用的动作：${labels.join(', ')}。\n` +
+          '若想让角色配合回复表演动作，请在回复最前面用方括号包裹动作名。\n' +
+        '示例：[idle] 我在等你哦~\n' +
+          '示例：[touch1] 呀！别戳我啦！\n' +
+          '如果没有合适的动作，就直接正常回复。',
+      );
+      parts.push('');
+    }
   }
 
   parts.push('【输出要求】使用纯文本，不要使用 markdown 语法（如 **加粗**、# 标题）。回复尽量简短。');
@@ -58,6 +63,20 @@ export function buildAgentPrompt({
 
   parts.push('【本次用户输入】');
   parts.push(userInput || '');
+
+  // 图片附件：agent_run 无独立图片入参，runtime（Claude Code 类）有文件读取工具。
+  // 把本地 path（首选，runtime 可直接 Read）和 httpPath（兜底，可 fetch）都写进 prompt。
+  if (Array.isArray(images) && images.length > 0) {
+    parts.push('');
+    parts.push('【用户附带的图片】');
+    parts.push('用户随消息发送了以下图片，请结合图片内容回复：');
+    images.forEach((img, i) => {
+      const lines = [`[图片${i + 1}] ${img.name || ''}`];
+      if (img.path) lines.push(`本地路径（优先用此路径读取）：${img.path}`);
+      if (img.httpPath) lines.push(`HTTP 地址（兜底）：${img.httpPath}`);
+      parts.push(lines.join('\n'));
+    });
+  }
 
   return parts.join('\n');
 }
