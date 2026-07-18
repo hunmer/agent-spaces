@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import { useTranslations } from "next-intl";
 import { ChevronDown, TerminalSquare } from "lucide-react";
 import {
   DropdownMenu,
@@ -33,6 +34,7 @@ interface CliLauncherProps {
  */
 export function CliLauncher({ onPick }: CliLauncherProps) {
   const { items } = useRuntimeCliSettings();
+  const t = useTranslations("cli.launcher");
 
   // 仅展示「已发现 + 已启用」的 CLI 类工具（SDK 不直接当命令跑）
   const cliItems = useMemo(
@@ -48,23 +50,23 @@ export function CliLauncher({ onPick }: CliLauncherProps) {
             variant="ghost"
             size="sm"
             className="h-7 gap-1 px-2 text-xs"
-            title="Launch CLI"
-            aria-label="Launch CLI"
+            title={t("launch")}
+            aria-label={t("launch")}
           >
             <TerminalSquare className="size-3.5" />
-            <span>CLI</span>
+            <span>{t("button")}</span>
             <ChevronDown className="size-3 opacity-70" />
           </Button>
         }
       />
       <DropdownMenuContent align="end" className="w-56">
         <DropdownMenuGroup>
-          <DropdownMenuLabel>Detected CLIs</DropdownMenuLabel>
+          <DropdownMenuLabel>{t("detectedTitle")}</DropdownMenuLabel>
           {cliItems.length === 0 ? (
             <div className="px-2 py-3 text-xs text-muted-foreground">
-              No CLI detected.
+              {t("empty")}
               <br />
-              Go to <span className="font-medium">Settings → Runtime</span> to discover.
+              {t("emptyHint")}
             </div>
           ) : (
             cliItems.map((item) => (

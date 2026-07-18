@@ -18,6 +18,17 @@ const ICON_BY_ID: Partial<Record<RuntimeCliId, string>> = {
   "gemini-cli": "geminicli-color.svg",
   "hermes": "hermesagent.svg",
   "pi": "pi.svg",
+  "openclaw": "openclaw-color.svg",
+  "omp": "omp.svg",
+  "opencode": "opencode.svg",
+  "qwen": "qwen-color.svg",
+  "cursor": "cursor.svg",
+  "kimi": "kimi-color.svg",
+  "kiro": "kiro-color.svg",
+  "kilocode": "kilocode.svg",
+  "antigravity": "antigravity-color.svg",
+  "xiaomimimo": "xiaomimimo.svg",
+  "githubcopilot": "githubcopilot.svg",
 };
 
 const ICON_BASE = "/public/cli-icons";

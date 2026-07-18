@@ -1,8 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import dynamic from "next/dynamic";
-import { TerminalSquare, Plus } from "lucide-react";
+import { TerminalSquare } from "lucide-react";
 import { Actions, DockLocation, Model, type Action as FlexAction, type IJsonModel, type ILayoutApi, type ITabRenderValues, type TabNode } from "flexlayout-react";
 import { FlexLayoutShell, type AddableComponent } from "@/components/common/flex-layout-shell";
 import { CliLauncher } from "@/components/cli/cli-launcher";
@@ -11,9 +12,13 @@ import { notifyCliTabsChanged } from "@/lib/cli-panel-layout";
 import { getCliIconUrl } from "@/lib/cli-icons";
 
 // 终端组件异步加载（xterm 仅浏览器端）
+function TerminalLoading() {
+  const t = useTranslations("cli.panel");
+  return <div className="p-4 text-sm text-muted-foreground">{t("loadingTerminal")}</div>;
+}
 const SingleTerminal = dynamic(
   () => import("@/components/terminal/single-terminal").then((m) => m.SingleTerminal),
-  { ssr: false, loading: () => <div className="p-4 text-sm text-muted-foreground">Loading terminal…</div> },
+  { ssr: false, loading: () => <TerminalLoading /> },
 );
 
 interface CliPanelProps {
@@ -100,6 +105,7 @@ export function CliPanel({ workspaceId, boundDirs }: CliPanelProps) {
     s.activeId ? s.sessions.find((x) => x.id === s.activeId) ?? null : null,
   );
   const touchTabs = useCliSessionsStore((s) => s.touchTabs);
+  const t = useTranslations("cli.panel");
   // 每次 layout 变更 touchTabs 会自增，订阅它即可随布局变化重算空状态
   const tabVersion = useCliSessionsStore((s) => s.tabVersion);
 
@@ -291,8 +297,8 @@ export function CliPanel({ workspaceId, boundDirs }: CliPanelProps) {
       >
         <div className="flex flex-col gap-1">
           <TerminalSquare className="mx-auto size-8 opacity-40" />
-          <p>No active CLI session.</p>
-          <p>Create or select one from the &quot;CLI Sessions&quot; tab on the left.</p>
+          <p>{t("noActiveTitle")}</p>
+          <p>{t("noActiveHint")}</p>
         </div>
       </div>
     );
@@ -306,7 +312,7 @@ export function CliPanel({ workspaceId, boundDirs }: CliPanelProps) {
         defaultLayout={defaultLayout}
         addableComponents={addableComponents}
         components={components}
-        title={`CLI · ${activeSession.name}`}
+        title={t("title", { name: activeSession.name })}
         layoutApiRef={layoutApiRef}
         headerEnd={<CliLauncher onPick={handlePickCli} />}
         model={model}
@@ -317,8 +323,8 @@ export function CliPanel({ workspaceId, boundDirs }: CliPanelProps) {
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center p-6">
           <div className="pointer-events-auto flex flex-col items-center gap-2 rounded-lg border border-dashed bg-card/60 px-6 py-8 text-center text-sm text-muted-foreground shadow-sm backdrop-blur-sm">
             <TerminalSquare className="size-8 opacity-40" />
-            <p className="font-medium text-foreground">No terminals</p>
-            <p>Click the toolbar <Plus className="inline size-3 align-text-bottom" /> button or the <span className="font-medium">CLI</span> menu to launch one.</p>
+            <p className="font-medium text-foreground">{t("emptyTitle")}</p>
+            <p>{t("emptyHint")}</p>
           </div>
         </div>
       )}

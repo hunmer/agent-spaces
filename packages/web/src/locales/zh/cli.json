@@ -1,0 +1,31 @@
+{
+  "sessions": {
+    "title": "CLI 会话",
+    "new": "新建",
+    "empty": "暂无会话",
+    "emptyHint": "点击 \"新建\" 创建一个 CLI 会话。",
+    "dragHandle": "拖拽排序",
+    "expand": "展开",
+    "collapse": "折叠",
+    "renameSave": "保存",
+    "renameCancel": "取消",
+    "delete": "删除",
+    "deleteConfirm": "确定删除会话 \"{name}\"？其终端和布局将丢失。",
+    "noTerminals": "无终端"
+  },
+  "launcher": {
+    "button": "CLI",
+    "launch": "启动 CLI",
+    "detectedTitle": "已检测到的 CLI",
+    "empty": "未检测到 CLI。",
+    "emptyHint": "前往 设置 → Runtime 进行检测。"
+  },
+  "panel": {
+    "loadingTerminal": "终端加载中…",
+    "noActiveTitle": "未激活 CLI 会话。",
+    "noActiveHint": "请在左侧 \"CLI 会话\" 标签中创建或选择一个会话。",
+    "title": "CLI · {name}",
+    "emptyTitle": "暂无终端",
+    "emptyHint": "点击工具栏的 + 按钮，或 CLI 菜单启动一个终端。"
+  }
+}

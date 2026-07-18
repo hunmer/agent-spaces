@@ -1,6 +1,7 @@
 import agent from './agent.json';
 import agentCommands from './agentCommands.json';
 import chat from './chat.json';
+import cli from './cli.json';
 import commandPalette from './commandPalette.json';
 import commands from './commands.json';
 import common from './common.json';
@@ -43,6 +44,7 @@ const messages = {
   agent,
   agentCommands,
   chat,
+  cli,
   commandPalette,
   commands,
   common,

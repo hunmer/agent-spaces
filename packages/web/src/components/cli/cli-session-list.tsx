@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Plus, Trash2, Check, X, ChevronRight, Terminal } from "lucide-react";
 import {
   DndContext,
@@ -57,6 +58,7 @@ export function CliSessionList() {
   const renameSession = useCliSessionsStore((s) => s.renameSession);
   const setActive = useCliSessionsStore((s) => s.setActive);
   const reorderSessions = useCliSessionsStore((s) => s.reorderSessions);
+  const t = useTranslations("cli.sessions");
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draftName, setDraftName] = useState("");
@@ -95,7 +97,7 @@ export function CliSessionList() {
   };
 
   const handleRemove = (id: string, name: string) => {
-    if (window.confirm(`Delete session "${name}"? Its terminals and layout will be lost.`)) {
+    if (window.confirm(t("deleteConfirm", { name }))) {
       removeSession(id);
     }
   };
@@ -130,10 +132,10 @@ export function CliSessionList() {
   return (
     <div className="flex h-full flex-col" data-tour-tab="cli-list">
       <div className="flex items-center justify-between gap-2 border-b px-3 py-2">
-        <span className="text-sm font-medium">CLI Sessions</span>
+        <span className="text-sm font-medium">{t("title")}</span>
         <Button size="sm" variant="outline" className="h-7 gap-1 px-2 text-xs" onClick={handleCreate}>
           <Plus className="size-3.5" />
-          New
+          {t("new")}
         </Button>
       </div>
 
@@ -141,8 +143,8 @@ export function CliSessionList() {
         {sessions.length === 0 ? (
           <div className="mt-8 flex flex-col items-center justify-center gap-2 px-4 text-center text-xs text-muted-foreground">
             <Plus className="size-6 opacity-50" />
-            <p>No sessions yet.</p>
-            <p>Click &quot;New&quot; to create a CLI session.</p>
+            <p>{t("empty")}</p>
+            <p>{t("emptyHint")}</p>
           </div>
         ) : (
           <DndContext
@@ -208,6 +210,7 @@ function SortableSessionItem({
   onActivate, onToggleExpand, onStartRename, onCommitRename, onCancelRename, onRemove,
   onSelectTab, onCloseTab,
 }: SortableSessionItemProps) {
+  const t = useTranslations("cli.sessions");
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: session.id });
   const style = { transform: CSS.Transform.toString(transform), transition };
 
@@ -243,8 +246,8 @@ function SortableSessionItem({
           className="cursor-grab active:cursor-grabbing text-muted-foreground/60 hover:text-foreground"
           {...attributes}
           {...listeners}
-          title="Drag to reorder"
-          aria-label="Drag handle"
+          title={t("dragHandle")}
+          aria-label={t("dragHandle")}
         >
           <span className="inline-block size-3 select-none">⋮⋮</span>
         </button>
@@ -254,7 +257,7 @@ function SortableSessionItem({
           type="button"
           onClick={onToggleExpand}
           className="text-muted-foreground hover:text-foreground"
-          title={isExpanded ? "Collapse" : "Expand"}
+          title={isExpanded ? t("collapse") : t("expand")}
         >
           <ChevronRight className={`size-3.5 transition-transform ${isExpanded ? "rotate-90" : ""}`} />
         </button>
@@ -272,10 +275,10 @@ function SortableSessionItem({
               className="h-6 flex-1 px-1 text-xs"
               onClick={(e) => e.stopPropagation()}
             />
-            <Button size="icon" variant="ghost" className="size-6" onClick={onCommitRename} title="Save">
+            <Button size="icon" variant="ghost" className="size-6" onClick={onCommitRename} title={t("renameSave")}>
               <Check className="size-3.5" />
             </Button>
-            <Button size="icon" variant="ghost" className="size-6" onClick={onCancelRename} title="Cancel">
+            <Button size="icon" variant="ghost" className="size-6" onClick={onCancelRename} title={t("renameCancel")}>
               <X className="size-3.5" />
             </Button>
           </>
@@ -298,7 +301,7 @@ function SortableSessionItem({
               variant="ghost"
               className="size-6 opacity-0 group-hover:opacity-100"
               onClick={(e) => { e.stopPropagation(); onRemove(); }}
-              title="Delete"
+              title={t("delete")}
             >
               <Trash2 className="size-3.5" />
             </Button>
@@ -310,7 +313,7 @@ function SortableSessionItem({
       {isExpanded && (
         <ul className="ml-7 mr-1 mb-1 flex flex-col gap-0.5 border-l pl-2">
           {tabs.length === 0 ? (
-            <li className="py-1 text-[11px] text-muted-foreground">No terminals</li>
+            <li className="py-1 text-[11px] text-muted-foreground">{t("noTerminals")}</li>
           ) : (
             tabs.map((tab) => {
               const isTabActive = tab.id === activeTabId;

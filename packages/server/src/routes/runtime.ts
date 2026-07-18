@@ -24,7 +24,7 @@ type InstallCommandSpec = {
 };
 
 interface RuntimeDescriptor {
-  id: 'claude-code' | 'codex' | 'grok' | 'gemini-cli' | 'hermes' | 'pi' | 'claude-code-sdk' | 'codex-sdk' | 'open-agent-sdk';
+  id: 'claude-code' | 'codex' | 'grok' | 'gemini-cli' | 'hermes' | 'pi' | 'claude-code-sdk' | 'codex-sdk' | 'open-agent-sdk' | 'openclaw' | 'omp' | 'opencode' | 'qwen' | 'cursor' | 'kimi' | 'kiro' | 'kilocode' | 'antigravity' | 'xiaomimimo' | 'githubcopilot';
   category: RuntimeCategory;
   label: string;
   commands?: string[];
@@ -111,6 +111,83 @@ const RUNTIME_DESCRIPTORS: RuntimeDescriptor[] = [
     versionArgs: ['--version'],
     versionSource: { type: 'github', repo: 'NousResearch/hermes-agent' },
     installable: true,
+  },
+  {
+    id: 'openclaw',
+    category: 'cli',
+    label: 'OpenClaw',
+    commands: ['openclaw'],
+    versionArgs: ['--version'],
+  },
+  {
+    id: 'omp',
+    category: 'cli',
+    label: 'OpenMultiMind (OMP)',
+    commands: ['omp'],
+    versionArgs: ['--version'],
+  },
+  {
+    id: 'opencode',
+    category: 'cli',
+    label: 'OpenCode',
+    commands: ['opencode'],
+    versionArgs: ['--version'],
+  },
+  {
+    id: 'qwen',
+    category: 'cli',
+    label: 'Qwen Code',
+    commands: ['qwen'],
+    versionArgs: ['--version'],
+  },
+  {
+    id: 'cursor',
+    category: 'cli',
+    label: 'Cursor',
+    commands: ['cursor', 'cursor-agent'],
+    versionArgs: ['--version'],
+  },
+  {
+    id: 'kimi',
+    category: 'cli',
+    label: 'Kimi',
+    commands: ['kimi'],
+    versionArgs: ['--version'],
+  },
+  {
+    id: 'kiro',
+    category: 'cli',
+    label: 'Kiro',
+    commands: ['kiro'],
+    versionArgs: ['--version'],
+  },
+  {
+    id: 'kilocode',
+    category: 'cli',
+    label: 'Kilo Code',
+    commands: ['kilocode'],
+    versionArgs: ['--version'],
+  },
+  {
+    id: 'antigravity',
+    category: 'cli',
+    label: 'Antigravity',
+    commands: ['antigravity'],
+    versionArgs: ['--version'],
+  },
+  {
+    id: 'xiaomimimo',
+    category: 'cli',
+    label: 'Xiaomi MiMo',
+    commands: ['xiaomimimo'],
+    versionArgs: ['--version'],
+  },
+  {
+    id: 'githubcopilot',
+    category: 'cli',
+    label: 'GitHub Copilot',
+    commands: ['githubcopilot', 'gh', 'copilot'],
+    versionArgs: ['--version'],
   },
   {
     id: 'pi',
