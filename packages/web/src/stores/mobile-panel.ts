@@ -11,7 +11,9 @@ export type MobilePanel =
   | "git-commits"
   | "project-settings"
   | "database"
-  | "database-list";
+  | "database-list"
+  | "cli-list"
+  | "cli-panel";
 
 interface MobileOverlay {
   id: string;
@@ -64,6 +66,11 @@ export const useMobilePanelStore = create<MobilePanelState>((set) => ({
 
     if (activePanel === "chat") {
       set({ activePanel: "channel-list" });
+      return true;
+    }
+
+    if (activePanel === "cli-panel") {
+      set({ activePanel: "cli-list" });
       return true;
     }
 

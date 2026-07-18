@@ -167,6 +167,21 @@ export function SingleTerminal({ workspaceId, node, boundDirs = [], shell }: Sin
         // 会话已不存在：重新创建
         ws.send('terminal.create', { sessionId, shell, cwd: boundDirs[0] });
       }
+
+      // CLI 启动器等外部入口可在 node config.pendingCommand 中预置命令；
+      // 会话就绪（创建/重连）后输入并回车执行，随后清除避免重连重复执行。
+      const latestConfig = (node.getConfig() ?? {}) as { pendingCommand?: string };
+      const pendingCommand = latestConfig.pendingCommand;
+      if (pendingCommand) {
+        node.getModel().doAction(
+          Actions.updateNodeAttributes(node.getId(), {
+            config: { ...latestConfig, pendingCommand: undefined },
+          }),
+        );
+        setTimeout(() => {
+          ws.send('terminal.input', { sessionId, data: pendingCommand + '\r' });
+        }, 200);
+      }
     };
     ws.on('terminal.sessions', sessionsHandler);
     // 请求会话列表（服务端也会主动 push，这里兜底确保拿到）

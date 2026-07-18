@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Hash, ListChecks, FolderOpen, Code2, MessageSquare, FileText, TerminalSquare, FileDiff, GitCommitHorizontal, Settings2, Database, GitBranch, Activity, LucideIcon } from "lucide-react";
+import { Hash, ListChecks, FolderOpen, Code2, MessageSquare, FileText, TerminalSquare, FileDiff, GitCommitHorizontal, Settings2, Database, GitBranch, Activity, ListTree, SquareTerminal, LucideIcon } from "lucide-react";
 
 export interface TabItem {
   id: string;
@@ -23,6 +23,8 @@ const builtinTabs: TabItem[] = [
   { id: "database-list", icon: Database, group: "database" },
   { id: "worktree-panel", icon: GitBranch, group: "git" },
   { id: "activity-log", icon: Activity, group: "tools" },
+  { id: "cli-list", icon: ListTree, group: "cli" },
+  { id: "cli-panel", icon: SquareTerminal, group: "cli" },
 ];
 
 const dynamicTabs: TabItem[] = [];
@@ -56,6 +58,8 @@ export const TAB_ICONS: Record<string, React.ReactNode> = {
   "database-list": <Database size={16} />,
   "worktree-panel": <GitBranch size={16} />,
   "activity-log": <Activity size={16} />,
+  "cli-list": <ListTree size={16} />,
+  "cli-panel": <SquareTerminal size={16} />,
   ...dynamicIcons,
 };
 
@@ -64,6 +68,7 @@ export const RIGHT_TO_LEFT_TAB_MAP: Record<string, string> = {
   "chat": "channel-list",
   "issue-detail": "issue-list",
   "database": "database-list",
+  "cli-panel": "cli-list",
 };
 
 interface BadgeResult {

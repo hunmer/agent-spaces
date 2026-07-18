@@ -109,6 +109,14 @@ const CreateIssueDialog = dynamic(() => import("@/components/issue/create-issue-
   ssr: false,
   loading: () => null,
 });
+const CliSessionList = dynamic(() => import("@/components/cli/cli-session-list").then((mod) => mod.CliSessionList), {
+  ssr: false,
+  loading: panelLoader,
+});
+const CliPanel = dynamic(() => import("@/components/cli/cli-panel").then((mod) => mod.CliPanel), {
+  ssr: false,
+  loading: panelLoader,
+});
 
 function PanelLoading() {
   return <div className="flex h-full items-center justify-center text-sm text-muted-foreground">Loading...</div>;
@@ -147,6 +155,7 @@ const defaultJson: IJsonModel = {
           { type: "tab", name: "Channels", component: "channel-list", id: "channel-list" },
           { type: "tab", name: "Issues", component: "issue-list", id: "issue-list" },
           { type: "tab", name: "Workfolder", component: "workfolder", id: "workfolder" },
+          { type: "tab", name: "CLI Sessions", component: "cli-list", id: "cli-list" },
         ],
       },
       {
@@ -156,6 +165,7 @@ const defaultJson: IJsonModel = {
           { type: "tab", name: "Code Editor", component: "code-editor", id: "code-editor" },
           { type: "tab", name: "Chat", component: "chat", id: "chat" },
           { type: "tab", name: "Issue Detail", component: "issue-detail", id: "issue-detail" },
+          { type: "tab", name: "CLI", component: "cli-panel", id: "cli-panel" },
         ],
       },
     ],
@@ -355,6 +365,16 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
         }
         if (bottom && !bottom.children.some((c) => { const t = c as Record<string, unknown>; return t.id === 'activity-log' || t.component === 'activity-log'; })) {
           bottom.children.push({ type: 'tab', name: 'Logger', component: 'activity-log', id: 'activity-log' });
+        }
+        // 迁移：把 cli-list / cli-panel 注入到对应 tabset（仅当未存在时）
+        const tabsets = (json.layout?.children ?? []) as { children?: unknown[] }[];
+        const has = (arr: unknown[] | undefined, id: string) =>
+          !!arr?.some((c) => { const t = c as Record<string, unknown>; return t.id === id || t.component === id; });
+        if (tabsets[0] && !has(tabsets[0].children, 'cli-list')) {
+          tabsets[0].children = [...(tabsets[0].children ?? []), { type: 'tab', name: 'CLI Sessions', component: 'cli-list', id: 'cli-list' }];
+        }
+        if (tabsets[1] && !has(tabsets[1].children, 'cli-panel')) {
+          tabsets[1].children = [...(tabsets[1].children ?? []), { type: 'tab', name: 'CLI', component: 'cli-panel', id: 'cli-panel' }];
         }
         m = Model.fromJson(json);
       } else {
@@ -660,6 +680,10 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
           return <WorktreePanel workspaceId={workspaceId} />;
         case "activity-log":
           return <ActivityLogPanel workspaceId={workspaceId} />;
+        case "cli-list":
+          return <CliSessionList />;
+        case "cli-panel":
+          return <CliPanel workspaceId={workspaceId} boundDirs={boundDirs} />;
         default:
           return <Placeholder name={node.getName()} />;
       }
@@ -815,6 +839,10 @@ function MobilePanelRenderer({ panel, workspaceId, boundDirs }: { panel: string;
       return <GitCommitsPanel workspaceId={workspaceId} />;
     case "project-settings":
       return <ProjectSettingsPanel workspaceId={workspaceId} />;
+    case "cli-list":
+      return <CliSessionList />;
+    case "cli-panel":
+      return <CliPanel workspaceId={workspaceId} boundDirs={boundDirs} />;
     default:
       return <ChannelList workspaceId={workspaceId} />;
   }

@@ -122,6 +122,14 @@ export interface FlexLayoutShellProps {
   onApplyLayout?: (json: IJsonModel) => void;
   /** 受控模式下重置布局时回调（外部 setModel(defaultLayout)） */
   onResetLayout?: () => void;
+
+  /**
+   * 把内部 flexlayout ILayoutApi 暴露给父组件（非受控/受控均适用）。
+   * 父组件拿到 api 后可调用 addTabToActiveTabSet 等命令式 API，
+   * 在工具栏之外（如自定义 headerEnd 按钮）添加 tab。
+   * 调用约定：mount 时调用一次传回 api，unmount 时传回 null。
+   */
+  layoutApiRef?: React.MutableRefObject<ILayoutApi | null>;
 }
 
 const DEFAULT_THEMES: FlexLayoutTheme[] = [
@@ -175,6 +183,7 @@ export function FlexLayoutShell({
   onModelChangeExternal,
   onApplyLayout,
   onResetLayout,
+  layoutApiRef,
 }: FlexLayoutShellProps) {
   // 是否受控：外部传入 model 即进入受控模式
   const isControlled = controlledModel !== undefined;
@@ -218,6 +227,20 @@ export function FlexLayoutShell({
   useEffect(() => {
     latestModel.current = model;
   }, [model]);
+
+  // 把内部 layoutRef 同步给外部传入的 layoutApiRef（如未传则跳过）
+  useEffect(() => {
+    if (!layoutApiRef) return;
+    layoutApiRef.current = layoutRef.current;
+    // ref 由 <Layout ref={layoutRef}> 在挂载时填充，需要等下一拍再同步一次
+    const id = requestAnimationFrame(() => {
+      layoutApiRef.current = layoutRef.current;
+    });
+    return () => {
+      cancelAnimationFrame(id);
+      layoutApiRef.current = null;
+    };
+  }, [layoutApiRef]);
 
   // 持久化布局：受控模式委派给外部回调，非受控模式默认持久化到 localStorage
   const onModelChange = useCallback(
