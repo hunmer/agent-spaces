@@ -171,13 +171,13 @@ export function GitChangesPanel({
               <button
                 onClick={(e) => { e.stopPropagation(); onStageToggle(e, f.path, f.staged); }}
                 disabled={f.conflicted}
-                className="p-0.5 rounded hover:bg-accent/80 active:scale-90 transition-all duration-100 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                className="p-0.5 rounded hover:bg-accent/80 active:scale-90 transition-all duration-100 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed dark:!text-gray-200"
                 title={f.staged ? "Unstage" : "Stage"}
               >
                 {f.staged ? <Minus size={13} /> : <Plus size={13} />}
               </button>
-              <button onClick={(e) => { e.stopPropagation(); onOpenFile(e, f.path); }} className="p-0.5 rounded hover:bg-accent/80 active:scale-90 transition-all duration-100 cursor-pointer" title={tc('open')}><FileCode size={13} /></button>
-              <button onClick={(e) => { e.stopPropagation(); onDiscard(e, f.path); }} className="p-0.5 rounded hover:bg-accent/80 active:scale-90 transition-all duration-100 cursor-pointer" title={tChanges('discardAll')}><RotateCcw size={13} /></button>
+              <button onClick={(e) => { e.stopPropagation(); onOpenFile(e, f.path); }} className="p-0.5 rounded hover:bg-accent/80 active:scale-90 transition-all duration-100 cursor-pointer dark:!text-gray-200" title={tc('open')}><FileCode size={13} /></button>
+              <button onClick={(e) => { e.stopPropagation(); onDiscard(e, f.path); }} className="p-0.5 rounded hover:bg-accent/80 active:scale-90 transition-all duration-100 cursor-pointer dark:!text-gray-200" title={tChanges('discardAll')}><RotateCcw size={13} /></button>
             </span>
           </FileDiffHoverCard>
         ))}

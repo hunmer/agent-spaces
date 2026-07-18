@@ -350,6 +350,7 @@ export function ChatPanel({ workspaceId, channelId, miniAppContext, onAgentActiv
             <Button
               variant="ghost"
               size="icon"
+              className="dark:!text-gray-200"
               onClick={() => setClearConfirmOpen(true)}
             >
               <Trash2 className="size-4" />
@@ -358,6 +359,7 @@ export function ChatPanel({ workspaceId, channelId, miniAppContext, onAgentActiv
           <Button
             variant="ghost"
             size="icon"
+            className="dark:!text-gray-200"
             onClick={() => setInfoOpen(true)}
           >
             <Info className="size-4" />

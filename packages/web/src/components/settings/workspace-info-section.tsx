@@ -76,14 +76,14 @@ export function WorkspaceInfoSection({ workspace, channelCount, issueCount }: Wo
             <Hash size={14} className="text-muted-foreground shrink-0" />
             <div className="min-w-0">
               <div className="text-xs text-muted-foreground">{t('info.channels')}</div>
-              <div className="text-sm font-medium">{channelCount}</div>
+              <div className="text-sm font-medium dark:!text-gray-200">{channelCount}</div>
             </div>
           </div>
           <div className="flex items-center gap-2 rounded-md border px-3 py-2">
             <ListChecks size={14} className="text-muted-foreground shrink-0" />
             <div className="min-w-0">
               <div className="text-xs text-muted-foreground">{t('info.issues')}</div>
-              <div className="text-sm font-medium">{issueCount}</div>
+              <div className="text-sm font-medium dark:!text-gray-200">{issueCount}</div>
             </div>
           </div>
         </div>
@@ -116,7 +116,7 @@ export function WorkspaceInfoSection({ workspace, channelCount, issueCount }: Wo
         <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{t('hooks.title')}</h4>
         <div className="flex items-center justify-between rounded-md border px-3 py-2.5">
           <div className="space-y-0.5 pr-4">
-            <Label htmlFor="hooks-enabled" className="text-sm font-medium">
+            <Label htmlFor="hooks-enabled" className="text-sm font-medium dark:!text-gray-200">
               {t('hooks.enableHooks')}
             </Label>
             <p className="text-xs text-muted-foreground">
