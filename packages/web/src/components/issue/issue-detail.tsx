@@ -328,7 +328,7 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
                     </Button>
                   )}
                   {canRerun && (
-                    <Button size="sm" variant="outline" className="h-6 px-2 text-xs" onClick={() => setStartInputOpen(true)}>
+                    <Button size="sm" variant="outline" className="h-6 px-2 text-xs dark:!text-gray-200" onClick={() => setStartInputOpen(true)}>
                       <RotateCcw className="h-3 w-3 mr-1" />
                       {t('detail.rerun')}
                     </Button>

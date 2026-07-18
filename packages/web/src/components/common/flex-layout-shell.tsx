@@ -478,12 +478,12 @@ export function FlexLayoutShell({
             <DropdownMenu>
               <DropdownMenuTrigger
                 render={
-                  <Button variant="ghost" size="sm" title={t("addTab")}>
+                  <Button variant="ghost" size="sm" title={t("addTab")} className="dark:!text-gray-200">
                     <Plus className="size-4" />
                   </Button>
                 }
               />
-              <DropdownMenuContent align="start">
+              <DropdownMenuContent align="start" className="dark:!text-gray-200">
                 {addableComponents.map((c) => (
                   <DropdownMenuItem
                     key={c.key}
@@ -503,6 +503,7 @@ export function FlexLayoutShell({
               <Button
                 variant="ghost"
                 size="sm"
+                className="dark:!text-gray-200"
                 onClick={() => handleAddFloat(addableComponents[0])}
                 title={t("addFloat")}
               >
@@ -512,12 +513,12 @@ export function FlexLayoutShell({
               <DropdownMenu>
                 <DropdownMenuTrigger
                   render={
-                    <Button variant="ghost" size="sm" title={t("addFloat")}>
+                    <Button variant="ghost" size="sm" title={t("addFloat")} className="dark:!text-gray-200">
                       <PictureInPicture2 className="size-4" />
                     </Button>
                   }
                 />
-                <DropdownMenuContent align="start">
+                <DropdownMenuContent align="start" className="dark:!text-gray-200">
                   {addableComponents.map((c) => (
                     <DropdownMenuItem
                       key={c.key}
@@ -543,7 +544,7 @@ export function FlexLayoutShell({
               size="sm"
               onClick={() => setLayoutDialogOpen(true)}
               title={t("managePresets")}
-              className="gap-1.5"
+              className="gap-1.5 dark:!text-gray-200"
             >
               <LayoutTemplateIcon className="size-4" />
               <span className="text-xs">{t("presets")}</span>
@@ -554,6 +555,7 @@ export function FlexLayoutShell({
             <Button
               variant="ghost"
               size="sm"
+              className="dark:!text-gray-200"
               onClick={handleResetLayout}
               title={t("resetLayout")}
             >
@@ -601,7 +603,7 @@ export function FlexLayoutShell({
       {/* 右键菜单（自绘 popup，定位到鼠标位置） */}
       {ctxMenu && (
         <div
-          className="fixed z-50 min-w-40 rounded-md border bg-popover p-1 text-popover-foreground shadow-md"
+          className="fixed z-50 min-w-40 rounded-md border bg-popover p-1 text-popover-foreground shadow-md dark:!text-gray-200"
           style={{ left: ctxMenu.x, top: ctxMenu.y }}
           onClick={(e) => e.stopPropagation()}
         >

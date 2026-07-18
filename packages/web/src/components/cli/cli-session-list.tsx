@@ -130,7 +130,7 @@ export function CliSessionList() {
   };
 
   return (
-    <div className="flex h-full flex-col" data-tour-tab="cli-list">
+    <div className="flex h-full flex-col dark:[&_button]:!text-gray-200" data-tour-tab="cli-list">
       <div className="flex items-center justify-between gap-2 border-b px-3 py-2">
         <span className="text-sm font-medium">{t("title")}</span>
         <Button size="sm" variant="outline" className="h-7 gap-1 px-2 text-xs" onClick={handleCreate}>

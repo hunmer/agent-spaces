@@ -99,7 +99,7 @@ export function IssueDetailComments({
           <Button
             variant="ghost"
             size="icon"
-            className="size-7"
+            className="size-7 dark:!text-gray-200"
             disabled={!channelId || refreshing}
             onClick={async () => {
               if (!channelId) return;
