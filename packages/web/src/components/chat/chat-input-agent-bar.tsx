@@ -48,7 +48,7 @@ export function ChatInputAgentBar({
   return (
     <>
       <div className="flex items-center gap-1 mb-1.5">
-        <div className="flex items-center gap-1 overflow-x-auto scrollbar-none flex-1 min-w-0">
+        <div className="flex items-center gap-1 overflow-x-auto scrollbar-none flex-1 min-w-0 ms-2">
           <button
             type="button"
             onClick={onOpenAddMember}

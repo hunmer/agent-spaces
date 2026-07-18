@@ -9,6 +9,12 @@
   "agents": "智能体",
   "addAgent": "添加智能体",
   "noAgents": "此工作空间暂无智能体",
+  "success": {
+    "title": "创建成功",
+    "description": "工作空间「{name}」已创建成功。",
+    "switchNow": "切换到该工作空间",
+    "stayHere": "留在此处"
+  },
   "clone": {
     "createFromGit": "从 Git 创建",
     "fromGitTooltip": "从 Git 仓库克隆",

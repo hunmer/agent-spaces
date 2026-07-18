@@ -9,6 +9,12 @@
   "agents": "Agents",
   "addAgent": "Add Agent",
   "noAgents": "No agents in this workspace",
+  "success": {
+    "title": "Created successfully",
+    "description": "Workspace \"{name}\" has been created successfully.",
+    "switchNow": "Switch to this workspace",
+    "stayHere": "Stay here"
+  },
   "clone": {
     "createFromGit": "Create from Git",
     "fromGitTooltip": "Clone from a Git repository",
