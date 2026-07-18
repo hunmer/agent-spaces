@@ -5,8 +5,8 @@ Embed SkyOffice below the team detail panel, create a room per team, add its age
 
 ## Phases
 - [complete] Trace existing team, agent-start, and SkyOffice flows.
-- [in_progress] Implement the smallest shared integration.
-- [pending] Run focused checks and record results.
+- [complete] Implement the smallest shared integration.
+- [complete] Run focused checks and record results.
 
 ## Errors Encountered
 | Error | Attempt | Resolution |

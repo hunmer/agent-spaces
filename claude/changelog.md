@@ -12,6 +12,7 @@
 - **Grok 运行时** (`packages/server/src/adapters/grok-runtime.ts`): `AgentRuntimeKind` 新增 `'grok'`，已在 `routes/runtime.ts` 的 `RUNTIME_DESCRIPTORS` 登记（descriptor 8 → 9，label `'Grok CLI'`，含 Windows `.grok/bin/grok.exe` 路径探测）；测试位于 `src/adapters/grok-runtime.test.ts`（非 `test/`）
 - **其他**: `packages/electron`（main.ts/preload/server-launcher 更新）、`packages/sdk`（code-favorites/mini-apps 模块更新）、新增 `packages/logs/`（运行时日志，无 package.json，纳入跳过）
 - 更新文件：根 `CLAUDE.md`（模块索引 + 扫描状态）+ `claude/changelog.md` + `claude/module-responsibilities.md` + `claude/overview.md` + `claude/public-interfaces.md` + `claude/faq.md` + `claude/testing-and-quality.md`；server `CLAUDE.md` + `claude/module-responsibilities.md` + `claude/public-interfaces.md` + `claude/changelog.md`
+- **深挖补充（同日）**: 精读 SkyOffice 房间全链路（SkyOffice.ts/OfficeState.ts/Bridge.ts）+ Grok runtime 全量（345 行）；server 新建 `claude/skyoffice.md`（双源实体模型/Bridge dispatch 路由/椅子占用/广播协议）+ `claude/grok-runtime.md`（CLI 参数/JSON 事件 schema/config.toml/backend 归一化）；server `CLAUDE.md` 文件索引 +2 行
 
 ## 2026-07-16 — oh-my-pi → pi 迁移核对
 

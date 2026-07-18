@@ -8,3 +8,5 @@
 - Existing SkyOffice `Bridge` already supports spawn, talk, and async activity transitions; no new protocol is needed.
 - Frontend `Network.joinCustomById` already joins a business room ID; `SkyOfficeApp` only needs an automatic-join prop and embedded sizing.
 - Room registry is in-memory. The minimal idempotent mapping can derive a stable room ID from `teamId` and recreate it after server restart.
+- Verification: server `tsc` passed; `test/team-room.test.ts` passed; changed web files have no ESLint errors.
+- Repository-wide web `tsc --noEmit` has unrelated existing failures, so it is not a clean project baseline.

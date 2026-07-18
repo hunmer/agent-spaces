@@ -24,6 +24,8 @@ Express 5 后端服务，REST API + WebSocket，SQLite 存储。核心能力：�
 | [对外接口](claude/public-interfaces.md) | REST API、WebSocket 端点 | 需要调用/新增接口 |
 | [模块职责](claude/module-responsibilities.md) | 路由/服务/存储/适配器分类 | 需要定位功能 |
 | [AI 运行时适配器](claude/ai-adapters.md) | 各 Agent SDK 适配详情 + Runtime 管理 | 需要新增/修改运行时 |
+| [Grok 运行时协议](claude/grok-runtime.md) | Grok CLI 子进程协议、JSON 事件 schema、自定义模型 config.toml | 改 Grok 适配器/对接新 endpoint |
+| [SkyOffice 房间架构](claude/skyoffice.md) | 双源实体模型、Bridge、命令模式、椅子占用、Agent 广播协议 | 改 SkyOffice 房间/Bridge/广播协议 |
 | [Team 运行时编排](claude/team-runtime.md) | Team 多 Agent 调度/消息路由/handoff/任务/会话生命周期 | 改 Team 协作逻辑 |
 | [数据模型](claude/data-model.md) | Storage 层、领域模型 | 需要改数据结构 |
 | [测试与质量](claude/testing-and-quality.md) | 测试覆盖 | 需要运行/补充测试 |

@@ -2,6 +2,14 @@
 
 > 本文件只记录 Server 模块 AI 上下文的更新历史，最近 5 条倒序排列。
 
+## 2026-07-18 — 深挖 SkyOffice 房间 + Grok 协议（新增 2 个详情文件）
+
+- 精读 `skyoffice/rooms/SkyOffice.ts`（135 行，房间生命周期 + 5 类 message handler + Dispatcher 命令模式）、`rooms/schema/OfficeState.ts`（Player/Agent/ChatMessage schema）、`broadcast/Bridge.ts`（Agent 广播 → 房间状态的核心枢纽：dispatch 路由 7 种 AgentBroadcastType + 椅子占用机制 + bizRoomId↔colyseusRoomId 映射）
+- 精读 `adapters/grok-runtime.ts`（345 行）：spawn 子进程 + streaming-json 按行解析、text/thought/end/error 事件 schema、缓冲 flush 策略、自定义模型 config.toml 生成、normalizeGrokEndpoint 按 provider 归一化 backend、env_key 区分（XAI_API_KEY 原生 / AGENT_SPACES_GROK_API_KEY 自定义）
+- 新建 `claude/skyoffice.md`：双源实体模型（Player=sessionId vs Agent=业务agentId）、Bridge dispatch 路由表、椅子占用算法、Agent 广播协议 JSON 示例、相对原版的裁剪清单、前端集成指引
+- 新建 `claude/grok-runtime.md`：CLI 参数表、JSON 事件 schema、usage/cost 归一化、结果判定逻辑、config.toml 模板、backend 归一化表、环境变量、日志规范
+- 更新 `CLAUDE.md` 文件索引：+grok-runtime.md +skyoffice.md 两行
+
 ## 2026-07-18 — SkyOffice 合并 + Grok 运行时
 
 - **SkyOffice**（`src/skyoffice/`）：Colyseus 0.15 房间服务合并进主后端单进程。因 colyseus 纯 CJS，采用独立 `tsconfig.json` + CJS 隔离编译（输出 `dist/skyoffice/`，靠 `dist/skyoffice/package.json` 覆盖上层 ESM）。主后端 `app.ts` 顶部 `import 'reflect-metadata'` + `createRequire(import.meta.url)` 桥接加载 `attachSkyOffice` / `mountSkyOfficeRoutes` / `getColyseusUpgradeHandler`。三路 upgrade 冲突由 `app.ts` 统一 dispatcher 五路分流（`/ws`、`/ws/speech`、`/ws/lsp/typescript`、`/agent-ws` + Colyseus 委托）
@@ -33,12 +41,4 @@
 - 路由总数 40+ → 42；services 总数 90+ → 99
 - 更新 `CLAUDE.md`（功能描述/约定补 Team/扫描状态）、`claude/public-interfaces.md`（team/chat-run 路由）、`claude/module-responsibilities.md`（Team 子域 + chat-run）
 
-## 2026-07-06 — Runtime 管理 + Notification Hub + Issue 系统成型
-
-- 新增 `routes/runtime.ts`（discover-cli / install-cli / check-sdk-updates，8 个 RuntimeDescriptor），挂载 `/api/runtime`
-- `adapters/claude-code-runtime/` 成熟为独立子模块（adapter-pool / anthropic-bridge / protocol-converter / message-format / sdk-config / types）
-- `services/notification-hub/` 多通道推送成型（wechat / lark / bot-agent / bot-commands）
-- Issue 系统闭环：`services/issue.ts` + `issue-comment.ts` + `issue-retry.ts` + `agents/issue-agent-runner.ts` + `storage/issue-store.ts`
-- 路由总数 30+ → 40+（新增 runtime / chat-run / model-catalog / notifications-global / external-import / workflow-hook / workflow-settings）
-- 更新 `CLAUDE.md`（约定/扫描状态）、`claude/ai-adapters.md`（新增 Runtime 管理 + notification-hub 章节）、`claude/public-interfaces.md`（runtime 路由）
 
