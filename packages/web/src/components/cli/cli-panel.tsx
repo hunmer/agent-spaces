@@ -3,11 +3,12 @@
 import { useCallback, useMemo, useRef } from "react";
 import dynamic from "next/dynamic";
 import { TerminalSquare } from "lucide-react";
-import { Actions, type Action as FlexAction, type IJsonModel, type ILayoutApi, type Model, type TabNode } from "flexlayout-react";
+import { Actions, type Action as FlexAction, type IJsonModel, type ILayoutApi, type ITabRenderValues, type Model, type TabNode } from "flexlayout-react";
 import { FlexLayoutShell, type AddableComponent } from "@/components/common/flex-layout-shell";
 import { CliLauncher } from "@/components/cli/cli-launcher";
 import { CLI_PANEL_STORAGE_PREFIX, useCliSessionsStore } from "@/stores/cli-sessions";
 import { notifyCliTabsChanged } from "@/lib/cli-panel-layout";
+import { getCliIconUrl } from "@/lib/cli-icons";
 
 // 终端组件异步加载（xterm 仅浏览器端）
 const SingleTerminal = dynamic(
@@ -124,13 +125,22 @@ export function CliPanel({ workspaceId, boundDirs }: CliPanelProps) {
     });
   }, []);
 
-  // layout 变更（增删 tab / 选中 / 移动）→ 通知 cli-list 刷新 tab 列表
+  // layout 变更（增删 tab / 选中 / 移动）→ 持久化到 localStorage + 通知 cli-list 刷新。
+  // 注意：FlexLayoutShell 在传入 onModelChangeExternal 时会跳过自身的 localStorage 写入，
+  // 由本回调负责持久化，否则 cli-list 从 localStorage 读出的 tabs 永远为空。
   const handleModelChange = useCallback(
-    (_model: Model, _action: FlexAction) => {
-      if (activeId) {
-        notifyCliTabsChanged(activeId);
-        touchTabs();
+    (model: Model, _action: FlexAction) => {
+      if (!activeId) return;
+      try {
+        localStorage.setItem(
+          CLI_PANEL_STORAGE_PREFIX + activeId + ":layout",
+          JSON.stringify(model.toJson()),
+        );
+      } catch {
+        /* ignore */
       }
+      notifyCliTabsChanged(activeId);
+      touchTabs();
     },
     [activeId, touchTabs],
   );
@@ -147,6 +157,21 @@ export function CliPanel({ workspaceId, boundDirs }: CliPanelProps) {
     },
     [activeId],
   );
+
+  // 自定义 tab header：用对应 CLI 图标替换默认 leading 图标
+  const handleRenderTab = useCallback((node: TabNode, renderValues: ITabRenderValues) => {
+    if (node.getComponent() !== "single-terminal") return;
+    const config = (node.getConfig() ?? {}) as { cliId?: string };
+    const url = config.cliId ? getCliIconUrl(config.cliId) : null;
+    if (url) {
+      renderValues.leading = (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={url} alt="" className="mr-1 size-3.5 shrink-0 rounded-sm" />
+      );
+    } else {
+      renderValues.leading = <TerminalSquare className="mr-1 size-3.5 shrink-0 opacity-70" />;
+    }
+  }, []);
 
   if (!activeId || !activeSession) {
     return (
@@ -175,6 +200,7 @@ export function CliPanel({ workspaceId, boundDirs }: CliPanelProps) {
         layoutApiRef={layoutApiRef}
         headerEnd={<CliLauncher onPick={handlePickCli} />}
         onModelChangeExternal={handleModelChange}
+        onRenderTab={handleRenderTab}
       />
     </div>
   );

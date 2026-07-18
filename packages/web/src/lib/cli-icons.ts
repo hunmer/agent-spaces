@@ -17,6 +17,7 @@ const ICON_BY_ID: Partial<Record<RuntimeCliId, string>> = {
   "grok": "grok.svg",
   "gemini-cli": "geminicli-color.svg",
   "hermes": "hermesagent.svg",
+  "pi": "pi.svg",
 };
 
 const ICON_BASE = "/public/cli-icons";
