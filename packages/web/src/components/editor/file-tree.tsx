@@ -194,7 +194,7 @@ export const FileTree = ({
   return (
     <FileTreeContext.Provider value={{ expandedPaths, togglePath, selectedPath, onFileSelect, workspaceId, variant, onDelete, onImport, onCopyPath, onCreateFile, onCreateFolder, onRename, onMove, onCopyItem, onLoadDirectory, loadingDirs, boundDir, fileSizeMap, ignoredPaths, draggedOverPath, onItemDragStart, onItemDragOver, onItemDragLeave, onItemDrop, onItemDragEnd, rootDropTargetId, onRootDropLineDragOver, onRootDropLineDragEnter, onRootDropLineDragLeave, onRootDropLineDrop, allowDragUpload, dragUploadAccept, dragUploadMaxSize, onDragUpload, onDragUploadReject }}>
       <div
-        className={cn("flex flex-col bg-background font-mono text-sm h-full", className)}
+        className={cn("flex flex-col bg-background font-mono text-sm h-full dark:!text-gray-200", className)}
         role="tree"
         onDragOver={handleRootDragOver}
         onDrop={handleRootDrop}

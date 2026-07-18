@@ -329,7 +329,7 @@ export function ChatPanel({ workspaceId, channelId, miniAppContext, onAgentActiv
           >
             <ArrowLeft className="size-4" />
           </Button>
-          <span className="text-sm font-semibold truncate shrink min-w-0"># {channel.name}</span>
+          <span className="text-sm font-semibold truncate shrink min-w-0 dark:!text-gray-200"># {channel.name}</span>
           <Status status={typeConf.status}>
             <StatusIndicator />
             <StatusLabel>{typeConf.label}</StatusLabel>

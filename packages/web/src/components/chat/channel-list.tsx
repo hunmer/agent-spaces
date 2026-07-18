@@ -175,7 +175,7 @@ export function ChannelList({ workspaceId }: ChannelListProps) {
         {(() => { const Icon = badge.icon; return <Icon className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-1" />; })()}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5">
-            <span className="truncate font-medium text-[13px]">{ch.name}</span>
+            <span className="truncate font-medium text-[13px] dark:!text-gray-200">{ch.name}</span>
             <Badge variant="secondary" className={cn('text-[10px] px-1 py-0 h-4 rounded', badge.className)}>
               {t(`channel.${ch.type}`)}
             </Badge>

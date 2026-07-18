@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Agent Spaces — Runtime Architecture",
+    "subtitle": "Visual workflow orchestration platform · primary request path & trust zones",
+    "output": "agent-spaces.architecture.html"
+  },
+  "components": [
+    { "id": "users", "type": "external", "label": "Users", "sublabel": "Browser sessions", "pos": [40, 320], "size": [120, 60] },
+    { "id": "client", "type": "frontend", "label": "Client UI", "sublabel": "Next.js · Electron · Flutter", "pos": [200, 320], "size": [150, 60], "tag": "Frontend SDK proxy" },
+    { "id": "auth", "type": "security", "label": "Auth Middleware", "sublabel": "Bearer Token · Secret Key", "pos": [400, 200], "size": [150, 60] },
+    { "id": "api", "type": "backend", "label": "Express API", "sublabel": "40+ routers · :3100", "pos": [400, 320], "size": [150, 60] },
+    { "id": "ws", "type": "backend", "label": "WebSocket Gateway", "sublabel": "/ws · /ws/lsp · /agent-ws", "pos": [400, 440], "size": [150, 60] },
+    { "id": "workflow", "type": "backend", "label": "Workflow Engine", "sublabel": "DAG · ExecutionManager", "pos": [600, 200], "size": [150, 60], "tag": "40+ node types" },
+    { "id": "agents", "type": "backend", "label": "Agent Runtime Layer", "sublabel": "6 SDKs · 6 roles", "pos": [600, 320], "size": [150, 60] },
+    { "id": "notif", "type": "backend", "label": "Notification Hub", "sublabel": "events · format · fan-out", "pos": [600, 440], "size": [150, 60] },
+    { "id": "miniapp", "type": "messagebus", "label": "Mini App + SkyOffice", "sublabel": "Colyseus rooms · RPC", "pos": [800, 200], "size": [150, 60] },
+    { "id": "sqlite", "type": "database", "label": "SQLite Store", "sublabel": "node:sqlite · JSON · vectors", "pos": [800, 320], "size": [150, 60] },
+    { "id": "llm", "type": "external", "label": "LLM Providers", "sublabel": "Anthropic · OpenAI · Google", "pos": [1000, 200], "size": [150, 60] },
+    { "id": "bots", "type": "external", "label": "IM Bots", "sublabel": "Lark · WeCom", "pos": [1000, 440], "size": [150, 60] }
+  ],
+  "boundaries": [
+    { "kind": "region", "label": "Server Trust Zone — Node.js single process :3100", "wraps": ["auth", "api", "ws", "workflow", "agents", "notif", "miniapp", "sqlite"] },
+    { "kind": "security-group", "label": "Auth Perimeter — token-gated ingress (HTTP + WS upgrade)", "wraps": ["auth", "api", "ws"] }
+  ],
+  "connections": [
+    { "from": "users", "to": "client", "variant": "emphasis" },
+    { "from": "client", "to": "auth", "label": "HTTPS + Bearer Token", "variant": "security", "fromSide": "right", "toSide": "left" },
+    { "from": "auth", "to": "api", "fromSide": "bottom", "toSide": "top" },
+    { "from": "client", "to": "ws", "label": "WSS events", "variant": "dashed", "fromSide": "bottom", "toSide": "left", "route": "orthogonal-v" },
+    { "from": "api", "to": "workflow", "variant": "emphasis" },
+    { "from": "workflow", "to": "agents", "variant": "emphasis", "fromSide": "bottom", "toSide": "top" },
+    { "from": "workflow", "to": "miniapp", "label": "show_miniapp", "variant": "dashed", "fromSide": "right", "toSide": "left", "labelDy": 54 },
+    { "from": "agents", "to": "sqlite", "variant": "emphasis", "fromSide": "right", "toSide": "left" },
+    { "from": "agents", "to": "notif", "label": "lifecycle events", "variant": "dashed", "fromSide": "bottom", "toSide": "top", "labelDy": 24 },
+    { "from": "notif", "to": "bots", "label": "outbound webhook", "variant": "dashed", "fromSide": "right", "toSide": "left" },
+    { "from": "agents", "to": "llm", "label": "tool / model calls", "variant": "security", "fromSide": "top", "toSide": "left", "labelDy": -69 }
+  ],
+  "cards": [
+    { "dot": "cyan", "title": "Clients", "items": ["Next.js web, Electron desktop, Flutter mobile all share one Frontend SDK", "SDK is a Proxy that lazy-loads module implementations and multiplexes WS event handlers"] },
+    { "dot": "emerald", "title": "Server core (one Node process)", "items": ["Express 5 + ws on :3100; 40+ routers mounted under /api", "ExecutionManager runs the DAG; WorkflowTriggerService fires cron / webhook / issue / Agent-tool entries", "Agent Runtime Layer swaps between 6 SDKs: Claude Code, Codex, LangChain, Open Agent SDK, Hermes, Oh-My-Pi"] },
+    { "dot": "violet", "title": "Storage & realtime", "items": ["node:sqlite + JSON files — no external DB required", "Vector index backs knowledge-base retrieval", "Mini App subsystem rides on Colyseus rooms (/agent-ws) for live UI RPC"] },
+    { "dot": "rose", "title": "Trust boundaries", "items": ["Single Secret Key → Bearer Token gates every HTTP route AND every WS upgrade (incl. /agent-ws)", "Inside the zone all services share one trusted process", "Calls to LLM providers and IM bots leave the zone over HTTPS / outbound webhooks"] }
+  ]
+}

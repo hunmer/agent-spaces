@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Agent Spaces — Workflow Trigger Entry Points",
+    "subtitle": "6 trigger sources fan into TriggerService → ExecutionManager → DAG",
+    "output": "agent-spaces-triggers.architecture.html"
+  },
+  "components": [
+    { "id": "cron", "type": "cloud", "label": "Cron", "sublabel": "node-cron · tz-aware", "pos": [40, 120], "size": [150, 50], "tag": "trigger.type='cron'" },
+    { "id": "hook", "type": "cloud", "label": "Webhook", "sublabel": "POST /api/workflows/:id/hook", "pos": [40, 190], "size": [150, 50], "tag": "trigger.type='hook'" },
+    { "id": "http", "type": "frontend", "label": "HTTP API", "sublabel": "POST /execute (SSE)", "pos": [40, 260], "size": [150, 50] },
+    { "id": "ws", "type": "frontend", "label": "WebSocket Live", "sublabel": "channel mention / UI run", "pos": [40, 330], "size": [150, 50] },
+    { "id": "issue", "type": "frontend", "label": "Issue Auto", "sublabel": "template-bound orchestration", "pos": [40, 400], "size": [150, 50] },
+    { "id": "tool", "type": "frontend", "label": "Agent Tool Call", "sublabel": "sub_workflow node", "pos": [40, 470], "size": [150, 50] },
+    { "id": "svc", "type": "backend", "label": "TriggerService", "sublabel": "registerTriggers · cronJobs · hookIndex", "pos": [300, 295], "size": [160, 60] },
+    { "id": "exec", "type": "backend", "label": "ExecutionManager", "sublabel": "DAG scheduler · breakpoints · resume", "pos": [550, 295], "size": [160, 60] },
+    { "id": "dag", "type": "messagebus", "label": "Workflow DAG", "sublabel": "40+ node types · 9 categories", "pos": [800, 200], "size": [160, 60], "tag": "start → … → end" },
+    { "id": "sink", "type": "database", "label": "Result Sink", "sublabel": "SSE / WS events · execution logs", "pos": [800, 390], "size": [160, 60] }
+  ],
+  "boundaries": [
+    { "kind": "security-group", "label": "Ingress — token-gated", "wraps": ["cron", "hook", "http", "ws", "issue", "tool"] },
+    { "kind": "region", "label": "Server Trust Zone — single Node process", "wraps": ["svc", "exec", "dag", "sink"] }
+  ],
+  "connections": [
+    { "from": "cron", "to": "svc", "variant": "emphasis", "fromSide": "right", "toSide": "left" },
+    { "from": "hook", "to": "svc", "variant": "emphasis", "fromSide": "right", "toSide": "left" },
+    { "from": "http", "to": "svc", "fromSide": "right", "toSide": "left" },
+    { "from": "ws", "to": "svc", "fromSide": "right", "toSide": "left" },
+    { "from": "issue", "to": "svc", "fromSide": "right", "toSide": "left" },
+    { "from": "tool", "to": "svc", "fromSide": "right", "toSide": "left" },
+    { "from": "svc", "to": "exec", "variant": "emphasis", "label": "start(workflowId, input)", "labelDy": 54 },
+    { "from": "exec", "to": "dag", "variant": "emphasis", "label": "schedule nodes", "fromSide": "top", "toSide": "bottom", "labelDy": -50 },
+    { "from": "dag", "to": "sink", "variant": "dashed", "label": "events + logs", "fromSide": "bottom", "toSide": "top", "labelDy": 50 }
+  ],
+  "cards": [
+    { "dot": "cyan", "title": "Two typed triggers (WorkflowTrigger)", "items": ["type='cron' → node-cron job, timezone-aware", "type='hook' → webhook binding with conflict detection"] },
+    { "dot": "emerald", "title": "Four ad-hoc entry points", "items": ["HTTP API POST /execute streams back SSE", "WebSocket live run from chat / UI mention", "Issue auto-orchestration binds a workflow template to issue lifecycle", "Agent tool call via sub_workflow node (nested execution)"] },
+    { "dot": "rose", "title": "Fan-in contract", "items": ["All 6 sources converge on one TriggerService.setExecutionManager", "ExecutionManager owns the DAG, breakpoints, pause/resume, snapshot recovery", "DAG emits execution logs and WS/SSE events to the result sink"] }
+  ]
+}

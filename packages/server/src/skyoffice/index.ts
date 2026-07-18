@@ -23,7 +23,7 @@ export { broadcastServer }
  *
  * 背景：@colyseus/ws-transport 在构造时会向 http server 注册一个 'upgrade' listener。
  * 我们在 attachSkyOffice 中创建 transport 后立即把这个 listener "摘"出来，
- * 让主后端 app.ts 的统一 dispatcher 在第五路（非 /ws /ws/speech /ws/lsp/typescript /agent-ws）
+ * 让主后端 app.ts 的统一 dispatcher 在第五路（非 /ws /ws/speech /agent-ws）
  * 主动调用它，从而避免三个 upgrade listener 争抢同一个事件。
  */
 let colyseusUpgradeHandler: ((req: http.IncomingMessage, socket: any, head: Buffer) => void) | null = null

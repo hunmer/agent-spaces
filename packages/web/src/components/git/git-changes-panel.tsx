@@ -166,7 +166,7 @@ export function GitChangesPanel({
           <FileDiffHoverCard key={f.path} workspaceId={workspaceId} path={f.path} selectedFile={selectedFile} onContextMenu={onContextMenu} onFileClick={isVertical ? undefined : onFileClick}>
             <span className={`w-4 text-center font-bold shrink-0 ${statusColors[f.status]}`}>{statusLabels[f.status]}</span>
             {f.conflicted && <AlertTriangle size={12} className="shrink-0 text-red-500" />}
-            <span className="truncate flex-1">{f.path}</span>
+            <span className="truncate flex-1 dark:!text-gray-200">{f.path}</span>
             <span className="hidden group-hover:flex md:flex items-center gap-0.5 shrink-0">
               <button
                 onClick={(e) => { e.stopPropagation(); onStageToggle(e, f.path, f.staged); }}

@@ -93,7 +93,7 @@ export function WorkspaceInfoSection({ workspace, channelCount, issueCount }: Wo
         <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{t('automation.title')}</h4>
         <div className="flex items-center justify-between rounded-md border px-3 py-2.5">
           <div className="space-y-0.5 pr-4">
-            <Label htmlFor="auto-process" className="text-sm font-medium">
+            <Label htmlFor="auto-process" className="text-sm font-medium dark:!text-gray-200">
               {t('automation.autoProcess')}
             </Label>
             <p className="text-xs text-muted-foreground">

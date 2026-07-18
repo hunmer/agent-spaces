@@ -81,6 +81,7 @@ export function ChatInputAgentBar({
                   onClick={() => { onActivateAgent(agent); onAgentActivated?.(agent); }}
                   className={cn(
                     "shrink-0 inline-flex items-center gap-1 h-6 pl-0.5 pr-1.5 rounded-full text-xs transition-all cursor-pointer",
+                    !isActive && "dark:!text-gray-200",
                     isActive && "bg-primary/10 text-primary border border-primary/30"
                   )}
                 >
@@ -118,6 +119,7 @@ export function ChatInputAgentBar({
                   onClick={() => onActivateAgent(mention)}
                   className={cn(
                     "shrink-0 inline-flex items-center gap-1 h-6 pl-0.5 pr-1.5 rounded-full text-xs transition-all cursor-pointer",
+                    !isActive && "dark:!text-gray-200",
                     isActive && "bg-primary/10 text-primary border border-primary/30"
                   )}
                 >
