@@ -551,38 +551,39 @@ function writeZip(files, outPath) {
 }
 
 function scanSkillsPackageStore() {
+  // 以 {slug}.zip 作为唯一真相源：扫描器只遍历 zip，从 zip 内读 manifest 生成索引。
+  // 不再扫描源目录、不再自动重打包——zip 由外部维护。
   const dir = join(agentsDir, 'skillspackage');
   if (!existsSync(dir)) return;
   const indexPath = join(dir, 'index.json');
   const existing = loadExistingIndex(indexPath);
   const index = [];
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
-    if (!entry.isDirectory()) continue;
-    const pkgDir = join(dir, entry.name);
-    const manifestPath = join(pkgDir, 'manifest.json');
-    if (!existsSync(manifestPath)) continue;
+    if (!entry.isFile() || !entry.name.toLowerCase().endsWith('.zip')) continue;
+    const zipPath = join(dir, entry.name);
+    const slugFromFile = entry.name.slice(0, -4);
 
+    // 从 zip 内读 manifest.json：兼容 {slug}/manifest.json 与根 manifest.json 两种布局
     let manifest = {};
-    try { manifest = JSON.parse(readFileSync(manifestPath, 'utf-8')); } catch { /* skip bad manifest */ }
-    const slug = manifest.slug || entry.name;
+    try {
+      const zip = readZip(zipPath);
+      const raw =
+        zip.read(`${slugFromFile}/manifest.json`) ||
+        zip.read('manifest.json') ||
+        null;
+      if (raw) manifest = JSON.parse(raw.toString('utf-8'));
+    } catch (e) {
+      console.warn(`[skillspackage] skip ${entry.name}: ${e.message}`);
+      continue;
+    }
+    const slug = manifest.slug || slugFromFile;
     const name = manifest.displayName || slug;
     const summary = manifest.summary || '';
     const skillSlugs = Array.isArray(manifest.skillSlugs) ? manifest.skillSlugs : [];
 
-    // 整包打包成 {slug}.zip（内容含目录前缀 {slug}/...，便于服务端定位 manifest/PROMPT/skills）
-    const md5 = folderMD5(pkgDir);
-    const zipPath = join(dir, `${slug}.zip`);
+    const md5 = fileMD5(zipPath);
     const prev = existing.get(slug);
-    const updatedAt = (!prev || prev.md5 !== md5) ? getLatestMtime(pkgDir) : prev.updatedAt;
-
-    // 仅当 md5 变化或 zip 缺失时重打包
-    if (!existsSync(zipPath) || !prev || prev.md5 !== md5) {
-      const files = collectDirFiles(pkgDir, slug).map((f) => ({
-        rel: f.rel,
-        data: readFileSync(f.fullPath),
-      }));
-      writeZip(files, zipPath);
-    }
+    const updatedAt = (!prev || prev.md5 !== md5) ? fileMtime(zipPath) : prev.updatedAt;
 
     index.push({
       id: slug,
