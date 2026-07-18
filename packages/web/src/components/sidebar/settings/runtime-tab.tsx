@@ -14,6 +14,14 @@ import {
   useRuntimeCliSettings,
   type RuntimeCliDiscoveryItem,
 } from "@/lib/runtime-cli-settings";
+import { getCliIconUrl } from "@/lib/cli-icons";
+
+function CliIcon({ id, className }: { id: string; className?: string }) {
+  const url = getCliIconUrl(id);
+  if (!url) return null;
+  // eslint-disable-next-line @next/next/no-img-element
+  return <img src={url} alt="" className={className} />;
+}
 
 interface DiscoverRuntimeCliResponse {
   items: Array<Omit<RuntimeCliDiscoveryItem, "enabled">>;
@@ -232,7 +240,9 @@ export function RuntimeTab() {
             ) : (
               cliItems.map((item) => (
                 <div key={item.id} className="flex items-center justify-between rounded-lg border px-3 py-2.5">
-                  <div className="min-w-0 pr-4">
+                  <div className="flex min-w-0 items-start gap-3 pr-4">
+                    <CliIcon id={item.id} className="mt-0.5 size-6 shrink-0 rounded-sm" />
+                    <div className="min-w-0">
                     <div className="flex items-center gap-2 text-sm font-medium">
                       {renderStatusBadge(item)}
                       <span>{item.label}</span>
@@ -250,6 +260,7 @@ export function RuntimeTab() {
                     </div>
                     <div className="mt-0.5 text-xs text-muted-foreground">
                       {item.latestVersion ? `${t("runtimeLatestVersion")}: ${item.latestVersion}` : null}
+                    </div>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
@@ -308,7 +319,9 @@ export function RuntimeTab() {
           ) : (
             sdkItems.map((item) => (
               <div key={item.id} className="flex items-center justify-between rounded-lg border px-3 py-2.5">
-                <div className="min-w-0 pr-4">
+                <div className="flex min-w-0 items-start gap-3 pr-4">
+                  <CliIcon id={item.id} className="mt-0.5 size-6 shrink-0 rounded-sm" />
+                  <div className="min-w-0">
                   <div className="flex items-center gap-2 text-sm font-medium">
                     {renderStatusBadge(item)}
                     <span>{item.label}</span>
@@ -318,6 +331,7 @@ export function RuntimeTab() {
                   </div>
                   <div className="mt-0.5 text-xs text-muted-foreground">
                     {item.latestVersion ? `${t("runtimeLatestVersion")}: ${item.latestVersion}` : null}
+                  </div>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">

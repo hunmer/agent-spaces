@@ -29,6 +29,16 @@ import {
   type CliTabInfo,
 } from "@/lib/cli-panel-layout";
 import { selectActiveSessionTab, closeActiveSessionTab } from "@/components/cli/cli-panel";
+import { getCliIconUrl } from "@/lib/cli-icons";
+
+function TabIcon({ cliId, className }: { cliId?: string; className?: string }) {
+  const url = cliId ? getCliIconUrl(cliId) : null;
+  if (url) {
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img src={url} alt="" className={className} />;
+  }
+  return <Terminal className={className} />;
+}
 
 /**
  * CLI 会话列表（cli-list tab 内容）。
@@ -316,7 +326,7 @@ function SortableSessionItem({
                     ].join(" ")}
                     title={tab.name}
                   >
-                    <Terminal className="size-3 shrink-0 opacity-70" />
+                    <TabIcon cliId={tab.cliId} className="size-3.5 shrink-0 rounded-sm" />
                     <span className="flex-1 truncate">{tab.name}</span>
                     <span
                       role="button"

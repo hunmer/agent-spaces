@@ -13,10 +13,18 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { useRuntimeCliSettings } from "@/lib/runtime-cli-settings";
+import { getCliIconUrl } from "@/lib/cli-icons";
+
+function CliIcon({ id, className }: { id: string; className?: string }) {
+  const url = getCliIconUrl(id);
+  if (!url) return null;
+  // eslint-disable-next-line @next/next/no-img-element
+  return <img src={url} alt="" className={className} />;
+}
 
 interface CliLauncherProps {
-  /** 选中某个 CLI 时回调其执行命令（如 `claude`、`codex`） */
-  onPick: (command: string, label: string) => void;
+  /** 选中某个 CLI 时回调：command（执行命令）、label（显示名）、id（CLI id，用于匹配图标） */
+  onPick: (command: string, label: string, id: string) => void;
 }
 
 /**
@@ -63,11 +71,14 @@ export function CliLauncher({ onPick }: CliLauncherProps) {
               <DropdownMenuItem
                 key={item.id}
                 className="flex items-center justify-between gap-2"
-                onClick={() => onPick(item.command, item.label)}
+                onClick={() => onPick(item.command, item.label, item.id)}
               >
-                <span className="flex flex-col">
-                  <span className="text-sm">{item.label}</span>
-                  <span className="text-[10px] text-muted-foreground font-mono">{item.command}</span>
+                <span className="flex items-center gap-2">
+                  <CliIcon id={item.id} className="size-5 shrink-0 rounded-sm" />
+                  <span className="flex flex-col">
+                    <span className="text-sm">{item.label}</span>
+                    <span className="text-[10px] text-muted-foreground font-mono">{item.command}</span>
+                  </span>
                 </span>
                 {item.version && (
                   <span className="text-[10px] text-muted-foreground">v{item.version}</span>

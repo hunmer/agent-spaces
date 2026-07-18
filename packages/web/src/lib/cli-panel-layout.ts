@@ -14,6 +14,8 @@ export interface CliTabInfo {
   name: string;
   /** 组件 key，目前固定 "single-terminal" */
   component: string;
+  /** 若由 CLI 启动器创建，记录对应 CLI id，用于匹配图标 */
+  cliId?: string;
 }
 
 interface JsonTabNode {
@@ -21,6 +23,7 @@ interface JsonTabNode {
   id?: string;
   name?: string;
   component?: string;
+  config?: { cliId?: string; pendingCommand?: string } & Record<string, unknown>;
 }
 
 /** 递归遍历所有 tab 节点（含 layout 树 + borders） */
@@ -30,7 +33,12 @@ function collectTabs(json: IJsonModel): CliTabInfo[] {
     if (!node || typeof node !== "object") return;
     const n = node as JsonTabNode;
     if (n.type === "tab" && typeof n.id === "string" && typeof n.component === "string") {
-      out.push({ id: n.id, name: n.name ?? "Tab", component: n.component });
+      out.push({
+        id: n.id,
+        name: n.name ?? "Tab",
+        component: n.component,
+        cliId: n.config?.cliId,
+      });
     }
     const children = (node as { children?: unknown[] }).children;
     if (Array.isArray(children)) children.forEach(visit);

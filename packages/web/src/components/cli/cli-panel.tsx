@@ -90,15 +90,7 @@ export function CliPanel({ workspaceId, boundDirs }: CliPanelProps) {
     },
     layout: {
       type: "row",
-      children: [
-        {
-          type: "tabset",
-          weight: 1,
-          children: [
-            { type: "tab", name: "Terminal", component: "single-terminal", enableClose: false },
-          ],
-        },
-      ],
+      children: [],
     },
   }), []);
 
@@ -119,13 +111,14 @@ export function CliPanel({ workspaceId, boundDirs }: CliPanelProps) {
   /**
    * 选中某个 CLI → 在当前激活 tabset 中追加一个 single-terminal，
    * 通过 node config.pendingCommand 把命令传给 SingleTerminal，
-   * 由终端会话创建完毕后 sendInput 执行。
+   * 由终端会话创建完毕后 sendInput 执行；
+   * config.cliId 用于 cli-list 显示对应图标。
    */
-  const handlePickCli = useCallback((command: string, label: string) => {
+  const handlePickCli = useCallback((command: string, label: string, cliId: string) => {
     layoutApiRef.current?.addTabToActiveTabSet({
       component: "single-terminal",
       name: label,
-      config: { pendingCommand: command },
+      config: { pendingCommand: command, cliId },
       enableClose: true,
       enablePopout: true,
     });
