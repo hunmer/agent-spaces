@@ -25,6 +25,7 @@ import { sdk } from '@/lib/sdk';
 
 import { useIssueStore } from '@/stores/issue';
 import { useMobilePanelStore } from '@/stores/mobile-panel';
+import { useIsDesktop } from '@/hooks/use-mobile';
 import type { AgentConfig, Channel, Message } from '@agent-spaces/shared';
 import type { TeamView } from '@agent-spaces/sdk';
 import type { MentionedAgent } from './chat-input-utils';
@@ -126,6 +127,7 @@ export function ChatPanel({ workspaceId, channelId, miniAppContext, onAgentActiv
 
   const agents = useAgentStore((s) => s.agents);
   const ensureAgents = useAgentStore((s) => s.ensure);
+  const isDesktop = useIsDesktop();
 
   const currentChannelId = channelId ?? activeChannelId;
   const isExternalChannelId = channelId && !channels.some((c) => c.id === channelId);
@@ -360,7 +362,8 @@ export function ChatPanel({ workspaceId, channelId, miniAppContext, onAgentActiv
             variant="ghost"
             size="icon"
             className="dark:!text-gray-200"
-            onClick={() => setInfoOpen(true)}
+            onClick={() => setInfoOpen((v) => !v)}
+            aria-pressed={infoOpen}
           >
             <Info className="size-4" />
           </Button>
@@ -435,13 +438,9 @@ export function ChatPanel({ workspaceId, channelId, miniAppContext, onAgentActiv
         );
       })()}
 
-      {/* 右侧：信息面板 - Drawer */}
-      <Sheet open={infoOpen} onOpenChange={setInfoOpen}>
-        <SheetContent side="right" className="w-80 p-0 gap-0">
-          <SheetHeader className="sr-only">
-            <SheetTitle>{channel.name}</SheetTitle>
-            <SheetDescription>Channel info panel</SheetDescription>
-          </SheetHeader>
+      {/* 右侧：信息面板 - 大屏 inline aside，小屏 drawer */}
+      {isDesktop && infoOpen ? (
+        <aside className="hidden lg:flex w-80 shrink-0 border-l flex-col">
           <ChannelInfoPanel
             workspaceId={workspaceId}
             channel={channel}
@@ -449,8 +448,24 @@ export function ChatPanel({ workspaceId, channelId, miniAppContext, onAgentActiv
             allChannels={channels}
             onDeleted={() => setInfoOpen(false)}
           />
-        </SheetContent>
-      </Sheet>
+        </aside>
+      ) : (
+        <Sheet open={infoOpen} onOpenChange={setInfoOpen}>
+          <SheetContent side="right" className="w-80 p-0 gap-0">
+            <SheetHeader className="sr-only">
+              <SheetTitle>{channel.name}</SheetTitle>
+              <SheetDescription>Channel info panel</SheetDescription>
+            </SheetHeader>
+            <ChannelInfoPanel
+              workspaceId={workspaceId}
+              channel={channel}
+              agents={agents}
+              allChannels={channels}
+              onDeleted={() => setInfoOpen(false)}
+            />
+          </SheetContent>
+        </Sheet>
+      )}
 
       {/* 删除确认 Dialog */}
       <Dialog open={!!deletingMsg} onOpenChange={(open) => { if (!open) setDeletingMsg(null); }}>

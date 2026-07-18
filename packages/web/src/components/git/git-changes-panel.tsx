@@ -11,6 +11,7 @@ import { DiffViewer } from "@/components/viewers/diff-viewer";
 import { useTranslations } from "next-intl";
 
 import { Empty, EmptyDescription, EmptyMedia } from "@/components/ui/empty";
+import { FileIconImg } from "@/components/editor/file-icon";
 import { statusColors, statusLabels } from "./git-commit-utils";
 import { sdk } from '@/lib/sdk';
 import type { GitFileStatus, GitDiffResult } from "@agent-spaces/shared";
@@ -164,9 +165,10 @@ export function GitChangesPanel({
       <div className="flex-1 overflow-auto">
         {files.map((f) => (
           <FileDiffHoverCard key={f.path} workspaceId={workspaceId} path={f.path} selectedFile={selectedFile} onContextMenu={onContextMenu} onFileClick={isVertical ? undefined : onFileClick}>
-            <span className={`w-4 text-center font-bold shrink-0 ${statusColors[f.status]}`}>{statusLabels[f.status]}</span>
+            <FileIconImg name={f.path.split("/").pop() ?? f.path} />
             {f.conflicted && <AlertTriangle size={12} className="shrink-0 text-red-500" />}
             <span className="truncate flex-1 dark:!text-gray-200">{f.path}</span>
+            <span className={`w-4 text-center font-bold shrink-0 ${statusColors[f.status]}`}>{statusLabels[f.status]}</span>
             <span className="hidden group-hover:flex md:flex items-center gap-0.5 shrink-0">
               <button
                 onClick={(e) => { e.stopPropagation(); onStageToggle(e, f.path, f.staged); }}
