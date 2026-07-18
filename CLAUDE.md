@@ -2,7 +2,7 @@
 
 多智能体协作编程平台。支持 AI Agent 创建/编排/执行/可视化，Workflow 可视化编辑，Team 多 Agent 协作，代码编辑器 + Git + 知识库管理。pnpm monorepo，Web (Next.js 16) + Server (Express 5) + Electron + Flutter。
 
-核心能力：多 AI 运行时适配（Claude Code/Codex/LangChain 等）、可视化 Workflow 执行引擎、Team 多 Agent 团队协作（成员/角色/消息/收件箱/运行时编排）、WebSocket 实时通信、SQLite 存储。
+核心能力：多 AI 运行时适配（Claude Code/Codex/Grok/LangChain 等）、可视化 Workflow 执行引擎、Team 多 Agent 团队协作（成员/角色/消息/收件箱/运行时编排）、SkyOffice 多 Agent 可视化办公空间（Colyseus 房间服务）、WebSocket 实时通信、SQLite 存储。
 
 ## 约定
 
@@ -46,8 +46,8 @@ graph TD
 
 | 模块 | 路径 | 职责 |
 |---|---|---|
-| Web | [packages/web](packages/web/CLAUDE.md) | Next.js 16 前端 SPA |
-| Server | [packages/server](packages/server/CLAUDE.md) | Express 5 后端 + AI Agent 运行时 |
+| Web | [packages/web](packages/web/CLAUDE.md) | Next.js 16 前端 SPA（含 SkyOffice Phaser 集成 `src/features/skyoffice/`） |
+| Server | [packages/server](packages/server/CLAUDE.md) | Express 5 后端 + AI Agent 运行时 + SkyOffice（Colyseus 房间服务 `src/skyoffice/`） |
 | Electron | [packages/electron](packages/electron/CLAUDE.md) | 桌面壳（窗口/协议/快捷键） |
 | SDK | [packages/sdk](packages/sdk/CLAUDE.md) | 前端统一 API 层 |
 | MCP | [packages/mcp](packages/mcp/CLAUDE.md) | SDK → MCP 服务（stdio/http） |
@@ -56,12 +56,14 @@ graph TD
 | DOM Inspector | [packages/dom-inspector-hook](packages/dom-inspector-hook/CLAUDE.md) | 开发工具 Hook |
 | Flutter | [packages/flutter](packages/flutter/CLAUDE.md) | 移动端 WebView 壳 |
 | Documents | [documents](documents/CLAUDE.md) | Docusaurus 文档站 |
+| SkyOffice-Web | `packages/skyoffice-web/` | ⚠️ **空壳占位**（仅 `.gitignore` + 空 `src/`，无 package.json），原 Vite 前端未迁入；真正集成在 `packages/web/src/features/skyoffice/` |
 
 ## 扫描状态
 
-- **更新时间**: 2026-07-16
-- **已扫描**: 根目录结构、所有 package.json、主要入口文件、路由/服务/存储/API 层、最近 8 个迭代（runtime 管理 / issue 系统 / notification-hub / usage dashboard / mini-apps / team 协作 / mcp 拆分 / **oh-my-pi → pi 迁移核对**）
+- **更新时间**: 2026-07-18
+- **已扫描**: 根目录结构、所有 package.json、主要入口文件、路由/服务/存储/API 层、最近 9 个迭代（runtime 管理 / issue 系统 / notification-hub / usage dashboard / mini-apps / team 协作 / mcp 拆分 / oh-my-pi → pi 迁移核对 / **SkyOffice 合并 + Grok 运行时**）
 - **已覆盖模块**: 10/10（web, server, electron, sdk, mcp, shared, templates, dom-inspector-hook, flutter, documents）
-- **跳过**: node_modules, .next, dist, out, release, agent-spaces-data 运行时数据, build 缓存, `packages/tauri`（无 package.json/Cargo.toml，仅 src-tauri/target 构建缓存 + 旧 web 副本，疑似废弃）, `packages/logs`（运行时日志）
-- **迁移核对**: `oh-my-pi` 已全面迁移为 `pi`（`adapters/pi-runtime.ts`、`AgentRuntimeKind='pi'`、runtime id `pi`/label `Pi SDK`、npm 包 `@earendil-works/pi-coding-agent`）；残留 `oh-my-pi` 字样仅存在于 dist/.next/electron/flutter/tauri 的旧构建产物
-- **下一步建议**: 深挖 `packages/server/src/services/team-runtime.ts`（Team 运行时编排细节）、`packages/web/src/components/chat/`（聊天面板重构）、`packages/templates/plugins/obsidian`（新插件）；确认 `packages/tauri` 是否应清理或重新启用
+- **跳过**: node_modules, .next, dist, out, release, agent-spaces-data 运行时数据, build 缓存, `packages/tauri`（无 package.json/Cargo.toml，仅 src-tauri/target 构建缓存 + 旧 web 副本，疑似废弃）, `packages/logs`（运行时日志，无 package.json）, `packages/skyoffice-web`（空壳占位，仅 `.gitignore` + 空 `src/`）
+- **SkyOffice 合并要点**: 后端 `packages/server/src/skyoffice/`（Colyseus 0.15，CJS 隔离编译，主后端 `createRequire` 桥接 + 五路 upgrade dispatcher）；前端集成在 `packages/web/src/features/skyoffice/`（Phaser+React）；`packages/skyoffice-web/` 为空壳；API `/api/skyoffice/*`（自管 per-room token）+ `/agent-ws`；`SKYOFFICE_ENABLED=false` 可关闭
+- **Grok 运行时**: `adapters/grok-runtime.ts`，`AgentRuntimeKind` 新增 `'grok'`；测试 `src/adapters/grok-runtime.test.ts`
+- **下一步建议**: 深挖 `packages/server/src/skyoffice/rooms/SkyOffice.ts`（房间状态机 + 命令模式）、`packages/web/src/features/skyoffice/`（Phaser 场景与 React 状态桥接）、`packages/server/src/adapters/grok-runtime.ts`（Grok 子进程协议细节）；确认 `packages/tauri` 是否应清理或重新启用；确认 `packages/skyoffice-web` 空壳是否应删除或补全

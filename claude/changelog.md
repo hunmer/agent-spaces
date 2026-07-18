@@ -2,6 +2,17 @@
 
 > 本文件只记录"AI 上下文索引"的生成/更新历史，最近 5 条倒序排列。
 
+## 2026-07-18 — SkyOffice 模块合并 + Grok 运行时
+
+- **背景**: 自 2026-07-16 以来，SkyOffice（多 Agent 可视化办公空间，Colyseus 房间服务）从独立仓库迁移并深度合并进主后端单进程；新增 Grok 运行时适配器
+- **SkyOffice 后端** (`packages/server/src/skyoffice/`): Colyseus 0.15 房间服务，因 colyseus 纯 CJS 采用**独立 tsconfig + CJS 隔离编译**（编译到 `dist/skyoffice/`，靠 `dist/skyoffice/package.json` 覆盖上层 ESM）；主后端 `app.ts` 顶部 `import 'reflect-metadata'` + `createRequire` 桥接加载；三路 upgrade 冲突由统一 dispatcher 五路分流（`/ws` `/ws/speech` `/ws/lsp/typescript` `/agent-ws` + Colyseus 委托）
+- **SkyOffice 前端** (`packages/web/src/features/skyoffice/`): Phaser + React 集成进主 Web SPA（scenes/components/stores/services），非独立 Vite 项目
+- **skyoffice-web 空壳** (`packages/skyoffice-web/`): 仅有 `.gitignore` + 空 `src/`，原 Vite 前端未迁入，标记为**未启用/占位**
+- **SkyOffice API**: `/api/skyoffice/rooms`（房间 CRUD，自管 per-room token 鉴权，绕开主全局 Bearer）、`/api/skyoffice/map`（地图数据）、`/skyoffice/colyseus`（Colyseus monitor，**无鉴权**）、Agent WS 路径 `/agent-ws?roomId=...&token=...`；`SKYOFFICE_ENABLED=false` 可关闭
+- **Grok 运行时** (`packages/server/src/adapters/grok-runtime.ts`): `AgentRuntimeKind` 新增 `'grok'`，已在 `routes/runtime.ts` 的 `RUNTIME_DESCRIPTORS` 登记（descriptor 8 → 9，label `'Grok CLI'`，含 Windows `.grok/bin/grok.exe` 路径探测）；测试位于 `src/adapters/grok-runtime.test.ts`（非 `test/`）
+- **其他**: `packages/electron`（main.ts/preload/server-launcher 更新）、`packages/sdk`（code-favorites/mini-apps 模块更新）、新增 `packages/logs/`（运行时日志，无 package.json，纳入跳过）
+- 更新文件：根 `CLAUDE.md`（模块索引 + 扫描状态）+ `claude/changelog.md` + `claude/module-responsibilities.md` + `claude/overview.md` + `claude/public-interfaces.md` + `claude/faq.md` + `claude/testing-and-quality.md`；server `CLAUDE.md` + `claude/module-responsibilities.md` + `claude/public-interfaces.md` + `claude/changelog.md`
+
 ## 2026-07-16 — oh-my-pi → pi 迁移核对
 
 - **背景**: 用户提示 oh-my-pi 已迁移到 pi，本次为迁移后文档同步核对
@@ -40,10 +51,3 @@
 - **sdk**: `issue` 模块扩至 11 方法（CRUD + start/resume/continue/interrupt + 评论管理）
 - 更新文件：根 `CLAUDE.md` 扫描状态、`claude/changelog.md`、`claude/module-responsibilities.md`、`claude/public-interfaces.md`；server `CLAUDE.md`、`claude/ai-adapters.md`、`claude/changelog.md`、`claude/public-interfaces.md`；web `CLAUDE.md`、`claude/public-interfaces.md`、`claude/changelog.md`；shared/sdk/templates 各 `claude/changelog.md`
 
-## 2026-07-01 — 增量更新（Agent 用量会话详情 + Workflow context）
-
-- **server**: 新增 `GET /api/agents/sessions/:agentSessionId/detail`（`getSessionDetail` 聚合 session + usage + 消息时间线）；`agent-store` 新增 `getAgentSessionById` / `getLatestAgentUsageBySessionId`
-- **server**: `execution-manager` 注入 `__WORKFLOW__` 上下文对象 + `inferWorkflowSource`（cron/hook/api/agent-tools/web），变量模板新增 `{{__WORKFLOW__.key}}`
-- **shared**: 新增类型 `AgentUsageSessionMessage` / `AgentUsageSessionDetail`；`WorkflowExecuteRequest` 与 `workflow:execute` 事件新增 `source` 字段
-- **sdk**: `agent` 模块新增 `sessionDetail()` 方法（10→11 方法）
-- **web**: 变量选择器新增"工作流信息"分组（`__WORKFLOW__` 字段树）；`usage-dashboard-session-dialog.tsx` 会话详情对话框

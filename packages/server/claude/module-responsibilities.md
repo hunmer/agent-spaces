@@ -34,12 +34,32 @@
 |---|---|---|
 | Claude Code | `claude-code-runtime/` (6 文件) | @anthropic-ai/claude-agent-sdk |
 | OpenAI Codex | `codex-runtime.ts`, `codex-function-tool-bridge.ts` | @openai/codex-sdk |
+| Grok | `grok-runtime.ts` | Grok CLI（spawn 子进程） |
 | LangChain | `langchain-runtime.ts` | @langchain/* |
 | Hermes | `hermes-runtime.ts` | 自研 |
 | Pi | `pi-runtime.ts` | @earendil-works/pi-coding-agent |
 | Open Agent SDK | `open-agent-sdk-runtime.ts` | @codeany/open-agent-sdk |
 | Agent Runtime | `agent-runtime.ts`, `agent-runtime-types.ts` | 统一接口 |
 | Git | `git.ts` | simple-git |
+
+## SkyOffice (skyoffice/)
+
+Colyseus 0.15 房间服务，多 Agent 可视化办公空间。独立 tsconfig + CJS 隔离编译（输出 `dist/skyoffice/`）。
+
+| 子目录/文件 | 职责 |
+|---|---|
+| `index.ts` | 入口：`mountSkyOfficeRoutes(app)` 挂 HTTP 路由、`attachSkyOffice({app,server})` 接入实时、`getColyseusUpgradeHandler()` 摘出 transport upgrade handler 供主 dispatcher 委托 |
+| `api/roomRoutes.ts` | 房间 CRUD（`/api/skyoffice/rooms`），自管 per-room token 鉴权 |
+| `api/mapRoutes.ts` | 地图数据（`/api/skyoffice/map`），跨包定位 `packages/skyoffice-web/public/assets/map/map.json` |
+| `api/auth.ts` | per-room token 签发/校验 |
+| `broadcast/BroadcastServer.ts` | Agent 广播 WS（`/agent-ws`），被动 `handleUpgrade`，不劫持 removeAllListeners |
+| `broadcast/Bridge.ts` | 广播消息桥接到 Colyseus 房间 |
+| `rooms/SkyOffice.ts` | Colyseus 房间定义（状态机 + 命令分发） |
+| `rooms/RoomRegistry.ts` | 房间注册表 |
+| `rooms/commands/*.ts` | 命令模式：`PlayerUpdateCommand` / `PlayerUpdateNameCommand` / `ChatMessageUpdateCommand` |
+| `rooms/schema/OfficeState.ts` | `@colyseus/schema` 状态定义（`import type` 适配 isolatedModules + emitDecoratorMetadata） |
+| `types/*.ts` | 领域类型：`IAgent` / `IOfficeState` / `Messages` / `PlayerBehavior` / `Rooms` / `Items` / `KeyboardState` / `BackgroundMode` / `agentZones` |
+| `examples/` | 集成示例：`agent-client.ts` / `agent-client.py` / `README.md`（端口 3100，API 前缀 `/skyoffice`） |
 
 ## Agent 运行时 (agents/)
 

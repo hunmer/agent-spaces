@@ -18,6 +18,7 @@ import { prependPersistentAgentContext } from './persistent-agent-context.js';
 import { broadcastToWorkspace } from '../ws/connection-manager.js';
 import { createAgentMessagePartsTracker } from '../agents/agent-message-parts.js';
 import { activeTeamRuns, asSessionId } from './team-internal.js';
+import { setTeamAgentActivity } from '../skyoffice/team-room.js';
 import {
   createAgentFunctionTools,
   createCommandFunctionTools,
@@ -905,13 +906,18 @@ async function executeTeamReply(
     ? { agentStore: membership.agentStore, agent: membership.agent }
     : resolveTeamAgentSource(targetAgentId);
 
-  if (source?.agentStore === 'agent') {
-    return executePresetTeamReply(teamId, sessionId, targetAgentId, content, history, onRuntime, onEvent, handoffs, onInput, resumeSessionId, resumeAgentSessionId);
+  await setTeamAgentActivity(teamId, targetAgentId, 'working');
+  try {
+    if (source?.agentStore === 'agent') {
+      return await executePresetTeamReply(teamId, sessionId, targetAgentId, content, history, onRuntime, onEvent, handoffs, onInput, resumeSessionId, resumeAgentSessionId);
+    }
+    if (source?.agentStore === 'custom' && source.agent && typeof source.agent === 'object') {
+      return await executeCustomTeamReply(teamId, sessionId, targetAgentId, source.agent, content, history, onRuntime, onEvent, handoffs, onInput, resumeSessionId, resumeAgentSessionId);
+    }
+    return await executeChatTeamReply(teamId, sessionId, targetAgentId, content, history, onRuntime, onEvent, handoffs, onInput, resumeSessionId, resumeAgentSessionId);
+  } finally {
+    await setTeamAgentActivity(teamId, targetAgentId, 'idle');
   }
-  if (source?.agentStore === 'custom' && source.agent && typeof source.agent === 'object') {
-    return executeCustomTeamReply(teamId, sessionId, targetAgentId, source.agent, content, history, onRuntime, onEvent, handoffs, onInput, resumeSessionId, resumeAgentSessionId);
-  }
-  return executeChatTeamReply(teamId, sessionId, targetAgentId, content, history, onRuntime, onEvent, handoffs, onInput, resumeSessionId, resumeAgentSessionId);
 }
 
 async function dispatchQueuedHandoff(

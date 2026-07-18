@@ -12,6 +12,7 @@ const ASSETS = '/assets/skyoffice'
 
 export default class Bootstrap extends Phaser.Scene {
   private preloadComplete = false
+  private launchPending = false
   network!: Network
 
   constructor() {
@@ -41,6 +42,7 @@ export default class Bootstrap extends Phaser.Scene {
     this.load.on('complete', () => {
       this.preloadComplete = true
       this.launchBackground(useUserStore.getState().backgroundMode)
+      if (this.launchPending) this.launchGame()
     })
   }
 
@@ -53,7 +55,11 @@ export default class Bootstrap extends Phaser.Scene {
   }
 
   launchGame() {
-    if (!this.preloadComplete) return
+    if (!this.preloadComplete) {
+      this.launchPending = true
+      return
+    }
+    this.launchPending = false
     this.scene.launch('game', { network: this.network })
     useRoomStore.getState().setRoomJoined(true)
   }

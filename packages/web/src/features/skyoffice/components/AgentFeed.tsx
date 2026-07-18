@@ -53,7 +53,7 @@ export default function AgentFeed() {
   }, [chatMessages, showChat])
 
   return (
-    <div className="fixed bottom-[60px] left-0 h-[400px] w-[500px] max-h-1/2 max-w-full">
+    <div className="absolute bottom-[60px] left-0 h-[400px] w-[500px] max-h-1/2 max-w-full">
       <div className="relative flex h-full flex-col p-4">
         {showChat ? (
           <>

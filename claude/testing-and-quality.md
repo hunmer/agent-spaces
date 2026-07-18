@@ -10,6 +10,7 @@
 |---|---|
 | `agent-skill-template.test.ts` | Agent 技能模板 |
 | `codex-function-tool-bridge.test.ts` | Codex 工具桥接 |
+| `grok-runtime.test.ts` | Grok 运行时（注：位于 `src/adapters/`，非 `test/`） |
 | `hermes-runtime.test.ts` | Hermes 运行时 |
 | `langchain-runtime.test.ts` | LangChain 运行时 |
 | `message-parts.test.ts` | 消息解析 |

@@ -1,26 +1,13 @@
 import { Router, Response } from 'express'
-import { randomBytes } from 'crypto'
 import colyseus from 'colyseus'
 const { matchMaker } = colyseus
-import { RoomType, IRoomData } from '../types/Rooms.js'
 import { roomRegistry } from '../rooms/RoomRegistry.js'
 import { bridge } from '../broadcast/Bridge.js'
 import { broadcastServer } from '../broadcast/BroadcastServer.js'
 import { AuthedRequest, requireRoomToken } from './auth.js'
+import { createSkyOfficeRoom, ensureTeamRoom } from '../team-room.js'
 
 export const roomRoutes: import('express').Router = Router()
-
-/**
- * 生成一个不可猜测的房间 ID 和 token。
- * - roomId 用 8 字节 hex（16 字符）
- * - token 用 24 字节 hex（48 字符）
- */
-function generateRoomId(): string {
-  return randomBytes(8).toString('hex')
-}
-function generateToken(): string {
-  return randomBytes(24).toString('hex')
-}
 
 /**
  * POST /api/rooms
@@ -32,48 +19,33 @@ roomRoutes.post('/rooms', async (req: AuthedRequest, res: Response) => {
   const description = (req.body?.description as string) || ''
   const autoDispose = req.body?.autoDispose !== false
 
-  const roomId = generateRoomId()
-  const roomToken = generateToken()
-
-  // 通过 matchMaker 在 Colyseus 内部创建房间实例
-  const roomData: IRoomData = {
-    name,
-    description,
-    roomToken,
-    autoDispose,
-  }
-
   try {
-    const listing = await matchMaker.createRoom(RoomType.CUSTOM, {
-      ...roomData,
-      // 业务 roomId 通过 metadata 暴露给房间实例
-      bizRoomId: roomId,
-    })
-
-    roomRegistry.register({
-      roomId,
-      roomToken,
-      colyseusRoomId: listing.roomId,
-      name,
-      description,
-      createdAt: Date.now(),
-    })
+    const room = await createSkyOfficeRoom({ name, description, autoDispose })
 
     const host = req.get('host') || `localhost:${process.env.PORT || 2567}`
     const proto = req.protocol === 'https' || req.headers['x-forwarded-proto'] === 'https' ? 'wss' : 'ws'
 
     res.json({
-      roomId,
-      token: roomToken,
-      wsUrl: `${proto}://${host}/agent-ws?roomId=${roomId}&token=${roomToken}`,
-      colyseusRoomId: listing.roomId,
-      name,
-      description,
-      createdAt: Date.now(),
+      roomId: room.roomId,
+      token: room.roomToken,
+      wsUrl: `${proto}://${host}/agent-ws?roomId=${room.roomId}&token=${room.roomToken}`,
+      colyseusRoomId: room.colyseusRoomId,
+      name: room.name,
+      description: room.description,
+      createdAt: room.createdAt,
     })
   } catch (err) {
     console.error('[api] create room failed:', err)
     res.status(500).json({ error: 'failed to create room', detail: String(err) })
+  }
+})
+
+roomRoutes.post('/team-rooms/:teamId', async (req, res) => {
+  try {
+    const room = await ensureTeamRoom(String(req.params.teamId ?? ''))
+    res.json({ roomId: room.roomId })
+  } catch (error) {
+    res.status(404).json({ error: error instanceof Error ? error.message : String(error) })
   }
 })
 

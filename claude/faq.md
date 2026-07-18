@@ -25,10 +25,23 @@ Web 通过 `next.config.ts` 的 rewrites 将 `/api/*` 和 `/ws` 代理到 Server
 Server 在 `src/adapters/` 中适配多种 AI Agent SDK：
 - **Claude Code SDK** — Anthropic 官方
 - **OpenAI Codex SDK**
+- **Grok** — `grok-runtime.ts`，spawn 子进程，JSON 事件流
 - **LangChain** — 支持 Anthropic/OpenAI/Google
 - **Hermes** — 自研运行时
 - **Pi SDK** — `@earendil-works/pi-coding-agent`（原 oh-my-pi 已迁移为 pi）
 - **Open Agent SDK** (@codeany)
+
+## Q: SkyOffice 是什么？怎么启动 / 关闭？
+
+SkyOffice 是多 Agent 可视化办公空间（Colyseus 0.15 房间服务），合并进主后端单进程，与主后端共用端口 3100。
+
+- **默认启用**：随 `node dist/app.js` 一起启动，日志见 `[skyoffice] realtime attached to main server`
+- **关闭**：`SKYOFFICE_ENABLED=false`
+- **HTTP**：`/api/skyoffice/rooms`（房间 CRUD）、`/api/skyoffice/map`（地图）、`/skyoffice/colyseus`（monitor，**无鉴权**）
+- **Agent 推送**：`ws://localhost:3100/agent-ws?roomId=...&token=...`，消息格式见 `packages/server/src/skyoffice/examples/README.md`
+- **Viewer**：浏览器用 Phaser 客户端连 `ws://localhost:3100/<colyseusRoomId>`
+- **关键约束**：colyseus 纯 CJS，skyoffice 用独立 tsconfig 隔离编译，不要并入主 tsc；房间状态纯内存，进程重启即丢
+- **skyoffice-web 空壳**：`packages/skyoffice-web/` 仅有 `.gitignore` + 空 `src/`，原 Vite 前端实际未迁入；真正的前端集成在 `packages/web/src/features/skyoffice/`
 
 ## Q: 如何添加新的 API 端点？
 
