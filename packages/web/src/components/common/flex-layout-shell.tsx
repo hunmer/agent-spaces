@@ -467,9 +467,9 @@ export function FlexLayoutShell({
       {showToolbar && (
         <div className="flex items-center gap-1 border-b bg-background px-2 py-1.5">
           {headerTitle ? (
-            <div className="mr-2">{headerTitle}</div>
+            <div className="mr-2 dark:!text-gray-200">{headerTitle}</div>
           ) : (
-            title && <span className="mr-2 text-sm font-medium">{title}</span>
+            title && <span className="mr-2 text-sm font-medium dark:!text-gray-200">{title}</span>
           )}
 
           {headerStart}
@@ -547,7 +547,6 @@ export function FlexLayoutShell({
               className="gap-1.5 dark:!text-gray-200"
             >
               <LayoutTemplateIcon className="size-4" />
-              <span className="text-xs">{t("presets")}</span>
             </Button>
           )}
 
