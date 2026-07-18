@@ -175,7 +175,7 @@ export function FlexLayoutShell({
   showAddFloat = true,
   showPresets = true,
   showReset = true,
-  showThemeSwitch = true,
+  showThemeSwitch = false,
   enableContextMenu = true,
   model: controlledModel,
   factory: controlledFactory,

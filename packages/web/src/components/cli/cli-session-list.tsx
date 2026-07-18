@@ -28,7 +28,7 @@ import {
   subscribeCliTabs,
   type CliTabInfo,
 } from "@/lib/cli-panel-layout";
-import { selectActiveSessionTab, closeActiveSessionTab } from "@/components/cli/cli-panel";
+import { selectActiveSessionTabWhenReady, closeActiveSessionTab } from "@/components/cli/cli-panel";
 import { getCliIconUrl } from "@/lib/cli-icons";
 
 function TabIcon({ cliId, className }: { cliId?: string; className?: string }) {
@@ -117,10 +117,9 @@ export function CliSessionList() {
 
   const handleSelectTab = (sessionId: string, tabId: string) => {
     setActive(sessionId);
-    // 等 cli-panel 重新挂载并写入全局 api 桥后再尝试选中
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => selectActiveSessionTab(tabId));
-    });
+    // 切换 session 时 panel 会以 key 重挂，api ref 短暂为 null；
+    // selectActiveSessionTabWhenReady 内部 rAF 轮询，直到 panel 就绪再 selectTab。
+    selectActiveSessionTabWhenReady(tabId);
   };
 
   const handleCloseTab = (e: React.MouseEvent, tabId: string) => {
