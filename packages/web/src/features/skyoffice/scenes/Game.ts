@@ -85,7 +85,7 @@ export default class Game extends Phaser.Scene {
     this.input.keyboard.enabled = true
   }
 
-  create(data: { network: Network }) {
+  create(data: { network: Network; autoRegisterKeys?: boolean }) {
     if (!data.network) {
       throw new Error('server instance missing')
     } else {
@@ -216,6 +216,39 @@ export default class Game extends Phaser.Scene {
       // 仅当该玩家已有名字时才 spawn（避免渲染未初始化的占位）
       if (player.name) {
         this.handlePlayerJoined(player, id)
+      }
+    })
+
+    this.time.addEvent({ delay: 4000, loop: true, callback: this.wanderIdleAgents, callbackScope: this })
+    if (data.autoRegisterKeys) this.registerKeys()
+  }
+
+  private wanderIdleAgents() {
+    this.network.room?.state.agents.forEach((agent, id) => {
+      const sprite = this.agentMap.get(id)
+      if (agent.activity !== 'idle' || !sprite || sprite.isMoving() || Math.random() > 0.35) return
+
+      const start = this.map.worldToTileXY(sprite.x, sprite.y)
+      for (let attempt = 0; attempt < 4; attempt++) {
+        const targetX = Phaser.Math.Clamp(start.x + Phaser.Math.Between(-3, 3), 0, this.map.width - 1)
+        const targetY = Phaser.Math.Clamp(start.y + Phaser.Math.Between(-3, 3), 0, this.map.height - 1)
+        if (this.groundLayer.getTileAt(targetX, targetY)?.collides || this.furnitureBlockedTiles.has(`${targetX},${targetY}`)) continue
+        const path = findGridPath(
+          this.map.width,
+          this.map.height,
+          start,
+          new Phaser.Math.Vector2(targetX, targetY),
+          (x, y) => this.groundLayer.getTileAt(x, y)?.collides === true || this.furnitureBlockedTiles.has(`${x},${y}`)
+        )
+        if (path.length < 2) continue
+        sprite.startWalkingPath(
+          this.map.tileToWorldX(targetX) + this.map.tileWidth / 2,
+          this.map.tileToWorldY(targetY) + this.map.tileHeight / 2,
+          'down',
+          path,
+          false
+        )
+        break
       }
     })
   }

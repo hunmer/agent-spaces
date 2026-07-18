@@ -83,7 +83,7 @@ export default function AgentFeed() {
             </ScrollArea>
           </>
         ) : (
-          <div className="mt-auto self-end">
+          <div className="absolute top-4 right-[154px]">
             <Tooltip>
               <TooltipTrigger
                 render={

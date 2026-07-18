@@ -7,6 +7,7 @@ const teamId = process.env.TEAM_ID || '7305b983-31fc-4cef-98df-87d6ee63f34c'
 const created = await fetch(`${server}/api/skyoffice/team-rooms/${teamId}`, { method: 'POST' }).then((res) => res.json())
 const joined = await fetch(`${server}/api/skyoffice/rooms/${created.roomId}/join`).then((res) => res.json())
 const room = await new Client(server).joinById(joined.colyseusRoomId)
+room.onMessage(3, () => {})
 room.onMessage(5, () => {})
 await new Promise((resolve) => setTimeout(resolve, 500))
 const agents = Array.from(room.state.agents.values())

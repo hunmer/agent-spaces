@@ -7,8 +7,9 @@ Embed SkyOffice below the team detail panel, create a room per team, add its age
 - [complete] Trace existing team, agent-start, and SkyOffice flows.
 - [complete] Implement the smallest shared integration.
 - [complete] Run focused checks and record results.
-- [in_progress] Reproduce missing members/activity and identify the failed boundary.
-- [pending] Apply root-cause fix and run regression checks.
+- [complete] Reproduce missing members/activity and identify the failed boundary.
+- [complete] Apply root-cause fix and run regression checks.
+- [complete] Add idle agent wandering and restore automatic player keyboard controls.
 
 ## Errors Encountered
 | Error | Attempt | Resolution |

@@ -12,3 +12,5 @@
 - Repository-wide web `tsc --noEmit` has unrelated existing failures, so it is not a clean project baseline.
 - Reproduction showed the server registry had 3 agents while a real Colyseus client decoded `{ players: {}, agents: {} }`.
 - Root cause: server TS emitted native class fields (`useDefineForClassFields=true` via ES2022), shadowing `@colyseus/schema` decorator accessors, so state changes were not serialized.
+- Real Colyseus integration now verifies members are decoded, spawn positions differ, and activity switches to `working`.
+- Automatic team-room login skipped `Game.registerKeys`; passing `autoRegisterKeys` through Bootstrap restores arrows/WASD.

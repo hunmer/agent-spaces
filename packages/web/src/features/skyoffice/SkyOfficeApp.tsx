@@ -47,7 +47,7 @@ export function SkyOfficeApp({ teamId }: { teamId?: string } = {}) {
           const bootstrap = readyGame.scene.keys.bootstrap as Bootstrap
           await bootstrap.network.joinCustomById(roomId)
           if (cancelled) return
-          bootstrap.launchGame()
+          bootstrap.launchGame(true)
           useUserStore.getState().setLoggedIn(true)
         } catch (error) {
           console.error('[skyoffice] failed to join team room:', error)
