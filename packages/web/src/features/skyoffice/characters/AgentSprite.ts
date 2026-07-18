@@ -223,7 +223,9 @@ export default class AgentSprite extends Player {
     }
 
     this.isWalking = true
-    const waypoints = [...path.slice(1), { x: targetX, y: targetY }]
+    const waypoints = path.slice(1)
+    const last = waypoints.at(-1)
+    if (!last || last.x !== targetX || last.y !== targetY) waypoints.push({ x: targetX, y: targetY })
     const walkNext = () => {
       const next = waypoints.shift()
       if (!next) {

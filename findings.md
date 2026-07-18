@@ -14,3 +14,12 @@
 - Root cause: server TS emitted native class fields (`useDefineForClassFields=true` via ES2022), shadowing `@colyseus/schema` decorator accessors, so state changes were not serialized.
 - Real Colyseus integration now verifies members are decoded, spawn positions differ, and activity switches to `working`.
 - Automatic team-room login skipped `Game.registerKeys`; passing `autoRegisterKeys` through Bootstrap restores arrows/WASD.
+- `disableGlobalCapture()` allowed browser arrow-key scrolling; explicit Phaser capture fixes it.
+- Idle wandering now keeps an independent `nextWanderAt` per agent instead of moving agents from one synchronized batch timer.
+- Team spawn assigned different textures but left `anim=adam_idle_down`; setting both from one texture fixes skin changes.
+- BFS was correct, but the `Wall` object layer was absent from `furnitureBlockedTiles`; adding it to the same obstacle grid prevents wall-crossing.
+- Camera dragging stopped follow permanently; restarting follow on pointer release keeps the player in frame.
+- Idle BFS returned tile coordinates but AgentSprite tweens require world pixels; converting every path node fixes erratic/out-of-map movement.
+- Camera follow should not resume on pointer release; manual camera position persists until the player exits `camera.worldView`.
+- `Schema.onChange` is a registration method in Colyseus schema v2 and its callback has no changes argument; assigning it or expecting changes silently breaks live updates.
+- Snapshot diffing inside registered callbacks preserves the existing field-change event API and makes activity changes immediate.

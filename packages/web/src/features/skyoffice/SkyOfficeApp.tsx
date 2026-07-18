@@ -2,8 +2,12 @@
 
 import { useEffect, useRef } from 'react'
 import { Toaster } from 'sonner'
+import { Button } from '@/components/ui/button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { Users } from 'lucide-react'
 import { useUserStore } from './stores/user-store'
 import { useRoomStore } from './stores/room-store'
+import { useChatStore } from './stores/chat-store'
 import { createPhaserGame } from './PhaserGame'
 import RoomSelectionDialog from './components/RoomSelectionDialog'
 import LoginDialog from './components/LoginDialog'
@@ -25,6 +29,37 @@ import type Bootstrap from './scenes/Bootstrap'
  *
  * 必须由 dynamic(..., { ssr: false }) 包裹（Phaser 访问 window）。
  */
+/** AgentFeed 折叠态入口（与 HelperButtonGroup / DebugPanel 同属右上角入口区） */
+function AgentFeedToggle() {
+  const showChat = useChatStore((s) => s.showChat)
+  const setShowChat = useChatStore((s) => s.setShowChat)
+  const setFocused = useChatStore((s) => s.setFocused)
+  if (showChat) return null
+  return (
+    <div className="absolute top-4 right-[154px]">
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <Button
+              variant="secondary"
+              size="icon"
+              className="rounded-full"
+              aria-label="show feed"
+              onClick={() => {
+                setShowChat(true)
+                setFocused(true)
+              }}
+            >
+              <Users className="size-5" />
+            </Button>
+          }
+        />
+        <TooltipContent>Show Agent Activity</TooltipContent>
+      </Tooltip>
+    </div>
+  )
+}
+
 export function SkyOfficeApp({ teamId }: { teamId?: string } = {}) {
   const containerRef = useRef<HTMLDivElement>(null)
   const loggedIn = useUserStore((s) => s.loggedIn)
@@ -85,6 +120,7 @@ export function SkyOfficeApp({ teamId }: { teamId?: string } = {}) {
         <HelperButtonGroup />
         {loggedIn && <DebugPanel />}
         {loggedIn && <ChairZoneMenu />}
+        {loggedIn && <AgentFeedToggle />}
       </div>
       <Toaster position="top-center" richColors />
     </div>

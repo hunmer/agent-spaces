@@ -45,6 +45,7 @@ export default class Game extends Phaser.Scene {
   private cameraDragStart?: Phaser.Math.Vector2
   private cameraDragLast?: Phaser.Math.Vector2
   private cameraPointerId?: number
+  private cameraManuallyPositioned = false
   myPlayer!: MyPlayer
   private playerSelector!: Phaser.GameObjects.Zone
   private otherPlayers!: Phaser.Physics.Arcade.Group
@@ -53,6 +54,7 @@ export default class Game extends Phaser.Scene {
   private chairByIndex = new Map<number, Chair>()
   /** agentId → AgentSprite */
   agentMap = new Map<string, AgentSprite>()
+  private nextWanderAt = new Map<string, number>()
 
   constructor() {
     super('game')
@@ -66,7 +68,7 @@ export default class Game extends Phaser.Scene {
 
     this.keyE = this.input.keyboard.addKey('E')
     this.keyR = this.input.keyboard.addKey('R')
-    this.input.keyboard.disableGlobalCapture()
+    this.input.keyboard.addCapture(['UP', 'DOWN', 'LEFT', 'RIGHT', 'W', 'A', 'S', 'D'])
     this.input.keyboard.on('keydown-ENTER', () => {
       // 保留 Enter 触发"事件流面板"的快捷入口（替代原聊天）
       useChatStore.getState().setShowChat(true)
@@ -130,7 +132,7 @@ export default class Game extends Phaser.Scene {
     })
 
     // import other objects from Tiled map to Phaser
-    this.addGroupFromTiled('Wall', 'tiles_wall', 'FloorAndGround', false)
+    this.addGroupFromTiled('Wall', 'tiles_wall', 'FloorAndGround', false, true)
     this.addGroupFromTiled('Objects', 'office', 'Modern_Office_Black_Shadow', false)
     this.addGroupFromTiled('ObjectsOnCollide', 'office', 'Modern_Office_Black_Shadow', true)
     this.addGroupFromTiled('GenericObjects', 'generic', 'Generic', false)
@@ -154,6 +156,7 @@ export default class Game extends Phaser.Scene {
       if (event.pointerId !== this.cameraPointerId || !this.cameraDragStart || !this.cameraDragLast) return
       if (Phaser.Math.Distance.Between(this.cameraDragStart.x, this.cameraDragStart.y, event.clientX, event.clientY) > 6) {
         this.cameras.main.stopFollow()
+        this.cameraManuallyPositioned = true
         this.cameras.main.scrollX -= (event.clientX - this.cameraDragLast.x) / this.cameras.main.zoom
         this.cameras.main.scrollY -= (event.clientY - this.cameraDragLast.y) / this.cameras.main.zoom
       }
@@ -166,15 +169,22 @@ export default class Game extends Phaser.Scene {
       this.cameraDragLast = undefined
       if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId)
     }
+    const wheel = (event: WheelEvent) => {
+      event.preventDefault()
+      const camera = this.cameras.main
+      camera.setZoom(Phaser.Math.Clamp(camera.zoom - event.deltaY * 0.001, 0.75, 2.5))
+    }
     canvas.addEventListener('pointerdown', pointerDown)
     canvas.addEventListener('pointermove', pointerMove)
     canvas.addEventListener('pointerup', pointerUp)
     canvas.addEventListener('pointercancel', pointerUp)
+    canvas.addEventListener('wheel', wheel, { passive: false })
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       canvas.removeEventListener('pointerdown', pointerDown)
       canvas.removeEventListener('pointermove', pointerMove)
       canvas.removeEventListener('pointerup', pointerUp)
       canvas.removeEventListener('pointercancel', pointerUp)
+      canvas.removeEventListener('wheel', wheel)
     })
 
     this.physics.add.collider([this.myPlayer, this.myPlayer.playerContainer], this.groundLayer)
@@ -219,14 +229,18 @@ export default class Game extends Phaser.Scene {
       }
     })
 
-    this.time.addEvent({ delay: 4000, loop: true, callback: this.wanderIdleAgents, callbackScope: this })
+    this.time.addEvent({ delay: 1000, loop: true, callback: this.wanderIdleAgents, callbackScope: this })
     if (data.autoRegisterKeys) this.registerKeys()
   }
 
   private wanderIdleAgents() {
+    const now = this.time.now
     this.network.room?.state.agents.forEach((agent, id) => {
       const sprite = this.agentMap.get(id)
-      if (agent.activity !== 'idle' || !sprite || sprite.isMoving() || Math.random() > 0.35) return
+      const nextWanderAt = this.nextWanderAt.get(id) ?? now + Phaser.Math.Between(1000, 7000)
+      if (!this.nextWanderAt.has(id)) this.nextWanderAt.set(id, nextWanderAt)
+      if (now < nextWanderAt || agent.activity !== 'idle' || !sprite || sprite.isMoving()) return
+      this.nextWanderAt.set(id, now + Phaser.Math.Between(5000, 12000))
 
       const start = this.map.worldToTileXY(sprite.x, sprite.y)
       for (let attempt = 0; attempt < 4; attempt++) {
@@ -239,7 +253,10 @@ export default class Game extends Phaser.Scene {
           start,
           new Phaser.Math.Vector2(targetX, targetY),
           (x, y) => this.groundLayer.getTileAt(x, y)?.collides === true || this.furnitureBlockedTiles.has(`${x},${y}`)
-        )
+        ).map(({ x, y }) => ({
+          x: this.map.tileToWorldX(x) + this.map.tileWidth / 2,
+          y: this.map.tileToWorldY(y) + this.map.tileHeight / 2,
+        }))
         if (path.length < 2) continue
         sprite.startWalkingPath(
           this.map.tileToWorldX(targetX) + this.map.tileWidth / 2,
@@ -284,7 +301,8 @@ export default class Game extends Phaser.Scene {
     objectLayerName: string,
     key: string,
     tilesetName: string,
-    collidable: boolean
+    collidable: boolean,
+    blocksPath = collidable
   ) {
     const group = this.physics.add.staticGroup()
     const objectLayer = this.map.getObjectLayer(objectLayerName)
@@ -294,7 +312,7 @@ export default class Game extends Phaser.Scene {
       group
         .get(actualX, actualY, key, object.gid! - this.map.getTileset(tilesetName).firstgid)
         .setDepth(actualY)
-      if (collidable) this.addFurnitureCollision(object)
+      if (blocksPath) this.addFurnitureCollision(object)
     })
     if (this.myPlayer && collidable)
       this.physics.add.collider([this.myPlayer, this.myPlayer.playerContainer], group)
@@ -353,6 +371,7 @@ export default class Game extends Phaser.Scene {
       sprite.destroy()
       this.agentMap.delete(id)
     }
+    this.nextWanderAt.delete(id)
   }
 
   private handleAgentUpdated(changes: Array<{ field: string; value: any }>, id: string) {
@@ -413,6 +432,10 @@ export default class Game extends Phaser.Scene {
 
   update(t: number, dt: number) {
     if (this.myPlayer && this.network) {
+      if (this.cameraManuallyPositioned && !this.cameras.main.worldView.contains(this.myPlayer.x, this.myPlayer.y)) {
+        this.cameraManuallyPositioned = false
+        this.cameras.main.startFollow(this.myPlayer, true)
+      }
       this.playerSelector.update(this.myPlayer, this.cursors)
       this.myPlayer.update(this.playerSelector, this.cursors, this.keyE, this.keyR, this.network)
     }

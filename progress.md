@@ -9,3 +9,8 @@
 - 2026-07-18: Reproduced server reporting members while Colyseus clients decoded an empty state.
 - 2026-07-18: Fixed legacy schema field emission, spread team spawn points, and added a real Colyseus integration regression test.
 - 2026-07-18: Added idle agent random walking and registered keyboard controls for automatic team-room players.
+- 2026-07-18: Captured arrows/WASD to prevent parent scrolling and staggered idle wandering with per-agent schedules.
+- 2026-07-18: Matched each spawned agent animation to its texture and added Wall objects to the pathfinding obstacle grid.
+- 2026-07-18: Restored player camera follow after drag and added bounded mouse-wheel zoom.
+- 2026-07-18: Fixed idle path tile/world coordinate mismatch and changed camera follow to resume only when the player leaves view.
+- 2026-07-18: Fixed Colyseus v2 nested schema listeners and added a regression assertion for real-time activity delivery.

@@ -102,7 +102,13 @@ export default class Network {
       useAgentDebugStore.getState().upsertHuman({ id: key, name: player.name || '(unnamed)' })
       // 自己的玩家走 MyPlayer，不在此处理
       if (key === this.mySessionId) return
-      player.onChange = (changes) => {
+      let previous = { name: player.name, x: player.x, y: player.y, anim: player.anim }
+      player.onChange(() => {
+        const next = { name: player.name, x: player.x, y: player.y, anim: player.anim }
+        const changes = Object.entries(next)
+          .filter(([field, value]) => previous[field as keyof typeof previous] !== value)
+          .map(([field, value]) => ({ field, value }))
+        previous = next
         changes.forEach(({ field, value }) => {
           phaserEvents.emit(Event.PLAYER_UPDATED, field, value, key)
           if (field === 'name' && value !== '') {
@@ -113,7 +119,7 @@ export default class Network {
             useAgentDebugStore.getState().upsertHuman({ id: key, name })
           }
         })
-      }
+      })
     })
 
     this.room.state.players.onRemove((player: IPlayer, key: string) => {
@@ -137,7 +143,13 @@ export default class Network {
         activity: agent.activity,
         isHuman: false,
       })
-      agent.onChange = (changes) => {
+      let previous = agent.toJSON() as Record<string, unknown>
+      agent.onChange(() => {
+        const next = agent.toJSON() as Record<string, unknown>
+        const changes = Object.entries(next)
+          .filter(([field, value]) => previous[field] !== value)
+          .map(([field, value]) => ({ field, value }))
+        previous = next
         phaserEvents.emit(Event.AGENT_UPDATED, changes, key)
         const patch: Record<string, unknown> = {}
         changes.forEach(({ field, value }) => {
@@ -151,7 +163,7 @@ export default class Network {
           }
         })
         useAgentDebugStore.getState().patchAgent({ id: key, patch: patch as any })
-      }
+      })
     })
 
     this.room.state.agents.onRemove((_agent: IAgent, key: string) => {
