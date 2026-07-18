@@ -168,7 +168,6 @@ export function GitChangesPanel({
             <FileIconImg name={f.path.split("/").pop() ?? f.path} />
             {f.conflicted && <AlertTriangle size={12} className="shrink-0 text-red-500" />}
             <span className="truncate flex-1 dark:!text-gray-200">{f.path}</span>
-            <span className={`w-4 text-center font-bold shrink-0 ${statusColors[f.status]}`}>{statusLabels[f.status]}</span>
             <span className="hidden group-hover:flex md:flex items-center gap-0.5 shrink-0">
               <button
                 onClick={(e) => { e.stopPropagation(); onStageToggle(e, f.path, f.staged); }}
@@ -181,6 +180,7 @@ export function GitChangesPanel({
               <button onClick={(e) => { e.stopPropagation(); onOpenFile(e, f.path); }} className="p-0.5 rounded hover:bg-accent/80 active:scale-90 transition-all duration-100 cursor-pointer dark:!text-gray-200" title={tc('open')}><FileCode size={13} /></button>
               <button onClick={(e) => { e.stopPropagation(); onDiscard(e, f.path); }} className="p-0.5 rounded hover:bg-accent/80 active:scale-90 transition-all duration-100 cursor-pointer dark:!text-gray-200" title={tChanges('discardAll')}><RotateCcw size={13} /></button>
             </span>
+            <span className={`w-4 text-center font-bold shrink-0 ${statusColors[f.status]}`}>{statusLabels[f.status]}</span>
           </FileDiffHoverCard>
         ))}
         {clean && (
