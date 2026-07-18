@@ -435,12 +435,6 @@ export function FlexLayoutShell({
     if (!layoutDialogOpen) setTemplatesVersion((v) => v + 1);
   }, [layoutDialogOpen]);
 
-  // 预览当前预设数量（工具栏显示用）—— 只读，无副作用
-  const templateCount = useMemo(() => {
-    void templatesVersion; // 依赖刷新
-    return loadLayoutTemplates(templatesStorageKey).length;
-  }, [templatesStorageKey, templatesVersion]);
-
   const themeClass = `flexlayout__theme_${theme}`;
 
   return (
@@ -529,11 +523,7 @@ export function FlexLayoutShell({
               className="gap-1.5"
             >
               <LayoutTemplateIcon className="size-4" />
-              <span className="text-xs">
-                {templateCount > 0
-                  ? t("presetsWithCount", { count: templateCount })
-                  : t("presets")}
-              </span>
+              <span className="text-xs">{t("presets")}</span>
             </Button>
           )}
 

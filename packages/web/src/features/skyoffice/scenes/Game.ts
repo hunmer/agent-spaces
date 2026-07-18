@@ -456,7 +456,12 @@ export default class Game extends Phaser.Scene {
 
   update(t: number, dt: number) {
     if (this.myPlayer && this.network) {
-      if (this.cameraManuallyPositioned && !this.cameras.main.worldView.contains(this.myPlayer.x, this.myPlayer.y)) {
+      if (
+        this.cameraPointerId === undefined &&
+        this.cameraManuallyPositioned &&
+        this.myPlayer.body!.velocity.lengthSq() > 0 &&
+        !this.cameras.main.worldView.contains(this.myPlayer.x, this.myPlayer.y)
+      ) {
         this.cameraManuallyPositioned = false
         this.cameras.main.startFollow(this.myPlayer, true)
       }
