@@ -68,20 +68,25 @@ export async function ensureTeamRoom(teamId: string): Promise<RegisteredRoom> {
   })
   const members = listMemberships(teamId).filter((member) => member.status === 'active')
   const memberIds = new Set(members.map((member) => member.agentId))
+  const existingAgents = bridge.listAgents(room.roomId)
+  const existingAgentIds = new Set(existingAgents.map((agent) => agent.id))
 
-  for (const agent of bridge.listAgents(room.roomId)) {
+  for (const agent of existingAgents) {
     if (!memberIds.has(agent.id)) bridge.despawnAgent(room.roomId, agent.id)
   }
   members.forEach((member, index) => {
     const embeddedName = typeof member.agent?.name === 'string' ? member.agent.name : undefined
     const name = embeddedName ?? findPresetById(member.agentId)?.name ?? findChatAgent(member.agentId)?.name ?? member.agentId
     const texture = textures[index % textures.length]
+    const spawn = !existingAgentIds.has(member.agentId)
     bridge.spawnAgent(room.roomId, member.agentId, {
       name,
       texture,
-      anim: `${texture}_idle_down`,
-      x: 560 + (index % 4) * 48,
-      y: 500 + Math.floor(index / 4) * 48,
+      ...(spawn ? {
+        anim: `${texture}_idle_down`,
+        x: 560 + (index % 4) * 48,
+        y: 500 + Math.floor(index / 4) * 48,
+      } : {}),
     })
   })
   return room

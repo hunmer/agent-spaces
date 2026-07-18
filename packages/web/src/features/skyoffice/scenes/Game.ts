@@ -20,6 +20,7 @@ import { phaserEvents } from '../events/EventCenter'
 
 import { useChatStore } from '../stores/chat-store'
 import { NavKeys, Keyboard } from '../types/KeyboardState'
+import { isEditableTarget } from '../utils/dom'
 import { findGridPath, tilesCoveredByRect } from '../utils/pathfinding'
 
 /**
@@ -77,14 +78,37 @@ export default class Game extends Phaser.Scene {
     this.input.keyboard.on('keydown-ESC', () => {
       useChatStore.getState().setShowChat(false)
     })
+
+    let watchingFocus = true
+    const syncKeyboardWithFocus = () => {
+      queueMicrotask(() => {
+        if (!watchingFocus) return
+        if (isEditableTarget(document.activeElement)) this.disableKeys()
+        else if (!useChatStore.getState().focused) this.enableKeys()
+      })
+    }
+    document.addEventListener('focusin', syncKeyboardWithFocus)
+    document.addEventListener('focusout', syncKeyboardWithFocus)
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      watchingFocus = false
+      document.removeEventListener('focusin', syncKeyboardWithFocus)
+      document.removeEventListener('focusout', syncKeyboardWithFocus)
+    })
+    syncKeyboardWithFocus()
   }
 
   disableKeys() {
-    this.input.keyboard.enabled = false
+    const keyboard = this.input.keyboard
+    if (!keyboard) return
+    keyboard.enabled = false
+    keyboard.disableGlobalCapture()
   }
 
   enableKeys() {
-    this.input.keyboard.enabled = true
+    const keyboard = this.input.keyboard
+    if (!keyboard) return
+    keyboard.enabled = true
+    keyboard.enableGlobalCapture()
   }
 
   create(data: { network: Network; autoRegisterKeys?: boolean }) {

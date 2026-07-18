@@ -53,6 +53,8 @@ export function TeamDetailPanel({
         if (!cancelled) setSessionDetail(detail);
       } catch {
         if (!cancelled) setSessionDetail(null);
+      } finally {
+        if (!cancelled) onRefreshDetail(selectedTeam.team_id);
       }
     };
     void load();
@@ -61,7 +63,7 @@ export function TeamDetailPanel({
       cancelled = true;
       clearInterval(timer);
     };
-  }, [activeSessionId, selectedTeam?.team_id]);
+  }, [activeSessionId, onRefreshDetail, selectedTeam?.team_id]);
 
   return (
     <section className="h-full w-full min-w-0 overflow-hidden rounded-2xl border border-border bg-card p-4 [contain:inline-size]">

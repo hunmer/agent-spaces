@@ -9,7 +9,7 @@
       "name": "Topic Agent",
       "role": "owner",
       "description": "围绕公众号主题生成多角度选题和大纲",
-      "runtimeKind": "pi",
+      "runtimeKind": "langchain",
       "modelProvider": "openai-chat-completions",
       "providerId": "62e349cf-338e-4179-a33e-558a703cc2fe",
       "modelId": "MiniMax-M2.7",
@@ -41,7 +41,7 @@
     "role": "owner",
     "status": "active",
     "joinedAt": "2026-07-10T01:47:31.710Z",
-    "updatedAt": "2026-07-16T17:16:37.605Z"
+    "updatedAt": "2026-07-18T03:21:53.304Z"
   },
   {
     "id": "f1ab2ac0-2edd-4a42-919e-aa5261b59dc1",
@@ -53,7 +53,7 @@
       "name": "Editor Agent",
       "role": "member",
       "description": "基于选题大纲撰写完整公众号文章",
-      "runtimeKind": "pi",
+      "runtimeKind": "langchain",
       "modelProvider": "openai-chat-completions",
       "providerId": "62e349cf-338e-4179-a33e-558a703cc2fe",
       "modelId": "MiniMax-M2.7",
@@ -85,7 +85,7 @@
     "role": "member",
     "status": "active",
     "joinedAt": "2026-07-10T01:47:31.710Z",
-    "updatedAt": "2026-07-16T17:16:43.152Z"
+    "updatedAt": "2026-07-18T03:22:06.035Z"
   },
   {
     "id": "8c87ad61-eaf4-4ca3-b430-1edd566f2f7c",
@@ -97,7 +97,7 @@
       "name": "Reviewer Agent",
       "role": "member",
       "description": "对编辑 Agent 产出的文章进行质量审批",
-      "runtimeKind": "pi",
+      "runtimeKind": "langchain",
       "modelProvider": "openai-chat-completions",
       "providerId": "62e349cf-338e-4179-a33e-558a703cc2fe",
       "modelId": "MiniMax-M2.7",
@@ -127,6 +127,6 @@
     "role": "member",
     "status": "active",
     "joinedAt": "2026-07-10T01:47:31.710Z",
-    "updatedAt": "2026-07-16T17:16:47.938Z"
+    "updatedAt": "2026-07-18T03:22:13.082Z"
   }
 ]

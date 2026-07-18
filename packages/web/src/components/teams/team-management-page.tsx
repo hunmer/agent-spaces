@@ -401,7 +401,7 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
       activeSessionId={activeSession && activeSession.teamId === selectedTeam?.team_id ? activeSession.sessionId : undefined}
       onEditTeam={openEditDialog}
       onDissolveTeam={(item) => void dissolveTeam(item)}
-      onRefreshDetail={(teamId) => void loadTeamDetail(teamId)}
+      onRefreshDetail={loadTeamDetail}
     />
   ) : null;
 

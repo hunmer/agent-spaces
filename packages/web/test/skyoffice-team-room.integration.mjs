@@ -24,6 +24,15 @@ await new Promise((resolve) => setTimeout(resolve, 500))
 assert.equal(agent.activity, 'working', 'team member activity did not switch')
 assert.equal(activityChanged, true, 'team member activity change was not delivered in real time')
 assert.equal(new Set(agents.map(({ x, y }) => `${x},${y}`)).size, agents.length, 'team members overlap at one spawn point')
+const workingState = { x: agent.x, y: agent.y, anim: agent.anim }
+await fetch(`${server}/api/skyoffice/team-rooms/${teamId}`, { method: 'POST' })
+await new Promise((resolve) => setTimeout(resolve, 500))
+assert.deepEqual(
+  { x: agent.x, y: agent.y, anim: agent.anim },
+  workingState,
+  'ensuring an existing team room reset the agent to its spawn point',
+)
+assert.equal(agent.activity, 'working', 'ensuring an existing team room reset the agent activity')
 
 await room.leave()
 console.log('skyoffice team room integration passed')
