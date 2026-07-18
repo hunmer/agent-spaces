@@ -75,7 +75,12 @@ export async function ensureTeamRoom(teamId: string): Promise<RegisteredRoom> {
   members.forEach((member, index) => {
     const embeddedName = typeof member.agent?.name === 'string' ? member.agent.name : undefined
     const name = embeddedName ?? findPresetById(member.agentId)?.name ?? findChatAgent(member.agentId)?.name ?? member.agentId
-    bridge.spawnAgent(room.roomId, member.agentId, { name, texture: textures[index % textures.length] })
+    bridge.spawnAgent(room.roomId, member.agentId, {
+      name,
+      texture: textures[index % textures.length],
+      x: 560 + (index % 4) * 48,
+      y: 500 + Math.floor(index / 4) * 48,
+    })
   })
   return room
 }

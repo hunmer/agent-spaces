@@ -60,7 +60,7 @@ export default function DebugPanel() {
   return (
     <>
       {open && (
-        <div className="fixed bottom-[70px] right-4 z-[9999] flex max-h-[70vh] w-[420px] max-w-[calc(100vw-32px)] flex-col rounded-xl bg-[#222639] text-[13px] text-[#eee] shadow-[0_8px_24px_#0000008f]">
+        <div className="absolute top-16 right-4 z-[9999] flex max-h-[calc(100vh-80px)] w-[420px] max-w-[calc(100vw-32px)] flex-col rounded-xl bg-[#222639] text-[13px] text-[#eee] shadow-[0_8px_24px_#0000008f]">
           <div className="flex items-center justify-between border-b border-[#00000033] px-4 py-3">
             <h3 className="m-0 flex items-center gap-1.5 text-[15px]"><Bug className="size-4" /> Debug Panel</h3>
             <Button variant="ghost" size="icon-sm" className="text-[#eee] hover:bg-white/10" onClick={() => setOpen(false)}>
@@ -163,7 +163,7 @@ export default function DebugPanel() {
         </div>
       )}
 
-      <div className="fixed bottom-4 right-[280px] z-[9998] max-[650px]:right-4 max-[650px]:bottom-20">
+      <div className="absolute top-4 right-[110px] z-[9998]">
         <Tooltip>
           <TooltipTrigger
             render={

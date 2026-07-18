@@ -10,3 +10,5 @@
 - Room registry is in-memory. The minimal idempotent mapping can derive a stable room ID from `teamId` and recreate it after server restart.
 - Verification: server `tsc` passed; `test/team-room.test.ts` passed; changed web files have no ESLint errors.
 - Repository-wide web `tsc --noEmit` has unrelated existing failures, so it is not a clean project baseline.
+- Reproduction showed the server registry had 3 agents while a real Colyseus client decoded `{ players: {}, agents: {} }`.
+- Root cause: server TS emitted native class fields (`useDefineForClassFields=true` via ES2022), shadowing `@colyseus/schema` decorator accessors, so state changes were not serialized.
