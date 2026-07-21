@@ -177,10 +177,6 @@ export function GitCommitsPanel({ workspaceId }: Props) {
   }, [workspaceId, generating, committing, commit, refresh, selectFile, setCommitMsg, tChanges]);
 
   // ---- changes file actions ----
-  const handleFileClick = useCallback((path: string) => {
-    selectFile(path === selectedFile ? null : path);
-  }, [selectedFile, selectFile]);
-
   const handleOpenFile = useCallback((e: React.MouseEvent, path: string) => {
     e.stopPropagation(); openFile(workspaceId, path);
   }, [workspaceId, openFile]);
@@ -281,7 +277,6 @@ export function GitCommitsPanel({ workspaceId }: Props) {
         selectedFile={selectedFile}
         syncing={syncing}
         clean={!!status?.clean}
-        onFileClick={handleFileClick}
         onOpenFile={handleOpenFile}
         onDiscard={handleDiscard}
         onStageToggle={handleStageToggle}
