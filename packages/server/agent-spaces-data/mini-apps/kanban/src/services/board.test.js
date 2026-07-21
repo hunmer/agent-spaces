@@ -21,3 +21,17 @@ test('stores each workspace board in its own config path', () => {
     'board.json',
   ]);
 });
+
+test('created cards always have a renderable creation time', () => {
+  let board = { columns: [{ id: 'todo' }], tasks: [] };
+  const ctx = {
+    updateConfig(_path, update) {
+      board = update(board);
+      return board;
+    },
+  };
+
+  boardService.create_card({ title: 'Task', columnId: 'todo', workspaceId: 'workspace-a' }, ctx);
+
+  assert.doesNotThrow(() => new Date(board.tasks[0].createdAt).toISOString());
+});

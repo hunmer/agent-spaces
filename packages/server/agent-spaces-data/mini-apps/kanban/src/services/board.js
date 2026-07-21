@@ -100,6 +100,7 @@ export default {
       priority: priority && PRIORITIES.includes(priority) ? priority : 'medium',
       columnId,
       dueDate: typeof dueDate === 'string' ? dueDate : '',
+      createdAt: Date.now(),
     };
     board.tasks.push(task);
     return board;

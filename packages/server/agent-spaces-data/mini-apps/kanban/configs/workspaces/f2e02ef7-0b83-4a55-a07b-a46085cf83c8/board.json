@@ -1,0 +1,46 @@
+{
+  "title": "Kanban",
+  "layoutMode": "horizontal",
+  "columns": [
+    {
+      "id": "col_9624eb68-d0d5-40f1-86e9-1fa7f5c49472",
+      "title": "Draft",
+      "color": "slate",
+      "order": 0
+    },
+    {
+      "id": "col_3fef53f3-7404-4302-9674-7a4c604560a9",
+      "title": "Todo",
+      "color": "sky",
+      "order": 1
+    },
+    {
+      "id": "col_245a4970-07cf-4c51-8831-2b59a28b7a34",
+      "title": "In Progress",
+      "color": "amber",
+      "order": 2
+    },
+    {
+      "id": "col_47a2e98b-d02a-489a-a04e-222c5f8a0f9c",
+      "title": "Done",
+      "color": "emerald",
+      "order": 3
+    },
+    {
+      "id": "col_083aec29-282e-4138-ac32-cd0a1584cf9c",
+      "title": "Bug",
+      "color": "rose",
+      "order": 4
+    }
+  ],
+  "tasks": [
+    {
+      "id": "task_139b70cf-6254-40a7-bc83-42e49c14a985",
+      "title": "ww",
+      "description": "",
+      "priority": "medium",
+      "columnId": "col_9624eb68-d0d5-40f1-86e9-1fa7f5c49472",
+      "dueDate": ""
+    }
+  ]
+}
