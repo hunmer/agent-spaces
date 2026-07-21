@@ -91,7 +91,7 @@ import chatRouter from './routes/chat.js';
 import chatRunRouter from './routes/chat-run.js';
 import miniAppRouter from './routes/mini-apps.js';
 import sqliteRouter from './routes/sqlite.js';
-import runtimeRouter from './routes/runtime.js';
+import runtimeRouter, { ensureDiscoveryCache } from './routes/runtime.js';
 import { getUserSettings, setUserAvatarUrl, removeUserAvatarUrl } from './storage/user-settings-store.js';
 import { getDataDir } from './storage/json-store.js';
 import { authMiddleware, verifyToken } from './middleware/auth.js';
@@ -524,6 +524,10 @@ server.listen(PORT, HOST, () => {
   });
   startPersistedNotificationServices().catch((err) => {
     console.error('[notification] failed to restore persisted services:', err);
+  });
+  // 后端启动时预探测 runtime CLI/SDK，前端任意页面即可拿到完整列表
+  ensureDiscoveryCache().catch((err) => {
+    console.error('[runtime] failed to pre-populate discovery cache:', err);
   });
 });
 

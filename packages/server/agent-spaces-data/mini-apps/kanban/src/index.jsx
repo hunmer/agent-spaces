@@ -1,7 +1,8 @@
 import KanbanBoard from './components/kanban-board.jsx';
 
 function App() {
-  return <KanbanBoard />;
+  const workspaceId = new URLSearchParams(window.location.search).get('workspaceId') || '';
+  return <KanbanBoard workspaceId={workspaceId} />;
 }
 
 export default App;

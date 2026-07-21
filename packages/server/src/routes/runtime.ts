@@ -226,9 +226,27 @@ const RUNTIME_DESCRIPTORS: RuntimeDescriptor[] = [
   },
 ];
 
-router.post('/discover-cli', async (_req: Request, res: Response) => {
+// 内存缓存：后端启动时预探测填充，避免前端在访问 runtime-tab 前拿不到 runtime 列表
+let discoveryCache: { items: DiscoveredRuntimeItem[]; updatedAt: string } | null = null;
+
+type DiscoveredRuntimeItem = Awaited<ReturnType<typeof discoverRuntime>>;
+
+async function refreshDiscoveryCache(): Promise<{ items: DiscoveredRuntimeItem[]; updatedAt: string }> {
   const items = await Promise.all(RUNTIME_DESCRIPTORS.map(discoverRuntime));
-  res.json({ items });
+  discoveryCache = { items, updatedAt: new Date().toISOString() };
+  return discoveryCache;
+}
+
+export async function ensureDiscoveryCache(): Promise<{ items: DiscoveredRuntimeItem[]; updatedAt: string }> {
+  if (!discoveryCache) {
+    return refreshDiscoveryCache();
+  }
+  return discoveryCache;
+}
+
+router.post('/discover-cli', async (_req: Request, res: Response) => {
+  const cached = await ensureDiscoveryCache();
+  res.json({ items: cached.items });
 });
 
 router.post('/install-cli', async (req: Request, res: Response) => {
@@ -246,7 +264,8 @@ router.post('/install-cli', async (req: Request, res: Response) => {
     const installCommand = resolveRuntimeInstallCommand(descriptor, Boolean(installedPath));
     const packageSpec = descriptor.packageName ? `${descriptor.packageName}@latest` : descriptor.label;
     const result = await runCommand(installCommand.command, installCommand.args, installCommand.cwd);
-    const items = await Promise.all(RUNTIME_DESCRIPTORS.map(discoverRuntime));
+    const refreshed = await refreshDiscoveryCache();
+    const items = refreshed.items;
     res.json({
       ok: true,
       runtimeId,

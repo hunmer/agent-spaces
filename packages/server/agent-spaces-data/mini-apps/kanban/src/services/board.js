@@ -7,6 +7,10 @@ const COLUMN_COLORS = ['sky', 'amber', 'emerald', 'rose', 'purple', 'slate'];
 const PRIORITIES = ['low', 'medium', 'high'];
 const LAYOUT_MODES = ['horizontal', 'vertical'];
 
+function getBoardPath(workspaceId) {
+  return workspaceId ? `workspaces/${encodeURIComponent(workspaceId)}/${BOARD_PATH}` : BOARD_PATH;
+}
+
 function genId(prefix) {
   const g = globalThis.crypto;
   const uid = g && g.randomUUID
@@ -31,25 +35,25 @@ function clampStr(v, max) {
 
 export default {
   // ---- 整组覆盖（保留：用于批量场景，如拖拽重排、模板应用）----
-  update_title: ({ title }, ctx) => {
+  update_title: ({ title, workspaceId }, ctx) => {
     const t = typeof title === 'string' ? title.slice(0, 100) : 'Kanban';
-    return ctx.updateConfig(BOARD_PATH, (prev) => ({ ...normBoard(prev), title: t }));
+    return ctx.updateConfig(getBoardPath(workspaceId), (prev) => ({ ...normBoard(prev), title: t }));
   },
-  update_layout: ({ layoutMode }, ctx) => {
+  update_layout: ({ layoutMode, workspaceId }, ctx) => {
     const m = layoutMode === 'vertical' ? 'vertical' : 'horizontal';
-    return ctx.updateConfig(BOARD_PATH, (prev) => ({ ...normBoard(prev), layoutMode: m }));
+    return ctx.updateConfig(getBoardPath(workspaceId), (prev) => ({ ...normBoard(prev), layoutMode: m }));
   },
-  update_columns: ({ columns }, ctx) => {
+  update_columns: ({ columns, workspaceId }, ctx) => {
     const cols = Array.isArray(columns) ? columns : [];
-    return ctx.updateConfig(BOARD_PATH, (prev) => ({ ...normBoard(prev), columns: cols }));
+    return ctx.updateConfig(getBoardPath(workspaceId), (prev) => ({ ...normBoard(prev), columns: cols }));
   },
-  update_tasks: ({ tasks }, ctx) => {
+  update_tasks: ({ tasks, workspaceId }, ctx) => {
     const ts = Array.isArray(tasks) ? tasks : [];
-    return ctx.updateConfig(BOARD_PATH, (prev) => ({ ...normBoard(prev), tasks: ts }));
+    return ctx.updateConfig(getBoardPath(workspaceId), (prev) => ({ ...normBoard(prev), tasks: ts }));
   },
 
   // ---- 列：原子操作 ----
-  create_column: ({ title, color }, ctx) => ctx.updateConfig(BOARD_PATH, (prev) => {
+  create_column: ({ title, color, workspaceId }, ctx) => ctx.updateConfig(getBoardPath(workspaceId), (prev) => {
     const board = normBoard(prev);
     const t = typeof title === 'string' ? title.trim() : '';
     if (!t) throw new Error('缺少参数 title');
@@ -58,7 +62,7 @@ export default {
     board.columns.push(column);
     return board;
   }),
-  rename_column: ({ id, title, color }, ctx) => ctx.updateConfig(BOARD_PATH, (prev) => {
+  rename_column: ({ id, title, color, workspaceId }, ctx) => ctx.updateConfig(getBoardPath(workspaceId), (prev) => {
     const board = normBoard(prev);
     const col = board.columns.find((c) => c.id === id);
     if (!col) throw new Error(`列不存在: ${id}`);
@@ -68,7 +72,7 @@ export default {
     if (color && COLUMN_COLORS.includes(color)) col.color = color;
     return board;
   }),
-  delete_column: ({ id, force }, ctx) => ctx.updateConfig(BOARD_PATH, (prev) => {
+  delete_column: ({ id, force, workspaceId }, ctx) => ctx.updateConfig(getBoardPath(workspaceId), (prev) => {
     const board = normBoard(prev);
     const idx = board.columns.findIndex((c) => c.id === id);
     if (idx === -1) throw new Error(`列不存在: ${id}`);
@@ -82,7 +86,7 @@ export default {
   }),
 
   // ---- 卡片：原子操作 ----
-  create_card: ({ title, columnId, description, priority, dueDate }, ctx) => ctx.updateConfig(BOARD_PATH, (prev) => {
+  create_card: ({ title, columnId, description, priority, dueDate, workspaceId }, ctx) => ctx.updateConfig(getBoardPath(workspaceId), (prev) => {
     const board = normBoard(prev);
     const t = typeof title === 'string' ? title.trim() : '';
     if (!t) throw new Error('缺少参数 title');
@@ -100,7 +104,7 @@ export default {
     board.tasks.push(task);
     return board;
   }),
-  update_card: ({ id, title, description, priority, dueDate, columnId }, ctx) => ctx.updateConfig(BOARD_PATH, (prev) => {
+  update_card: ({ id, title, description, priority, dueDate, columnId, workspaceId }, ctx) => ctx.updateConfig(getBoardPath(workspaceId), (prev) => {
     const board = normBoard(prev);
     const task = board.tasks.find((tk) => tk.id === id);
     if (!task) throw new Error(`卡片不存在: ${id}`);
@@ -114,7 +118,7 @@ export default {
     }
     return board;
   }),
-  delete_card: ({ id }, ctx) => ctx.updateConfig(BOARD_PATH, (prev) => {
+  delete_card: ({ id, workspaceId }, ctx) => ctx.updateConfig(getBoardPath(workspaceId), (prev) => {
     const board = normBoard(prev);
     const idx = board.tasks.findIndex((tk) => tk.id === id);
     if (idx === -1) throw new Error(`卡片不存在: ${id}`);

@@ -11,6 +11,7 @@ import { sdk } from "@/lib/sdk";
 import { useLLMStore } from "@/stores/llm";
 import { CustomShortcutExecutor } from "@/components/layout/custom-shortcut-executor";
 import { GlobalConfirmDialog } from "@/components/layout/global-confirm-dialog";
+import { saveRuntimeCliDiscovery } from "@/lib/runtime-cli-settings";
 import {
   Dialog,
   DialogContent,
@@ -33,6 +34,24 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!isLoginPath(pathname)) loadCatalog();
   }, [pathname, loadCatalog]);
+
+  // 应用启动时拉取 runtime 探测结果写入 localStorage，确保 agent-editor 无需先访问 runtime-tab 即可显示完整 runtime 列表
+  useEffect(() => {
+    if (isLoginPath(pathname)) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const data = await sdk.http.post<{ items: Parameters<typeof saveRuntimeCliDiscovery>[0] }>(
+          "/api/runtime/discover-cli",
+          {},
+        );
+        if (!cancelled) saveRuntimeCliDiscovery(data.items);
+      } catch {
+        // 静默失败，用户进入 runtime-tab 时会再次重试
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [pathname]);
 
   if (isLoginPath(pathname)) {
     return <>{children}</>;

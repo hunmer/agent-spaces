@@ -653,7 +653,7 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
       const comp = node.getComponent();
       if (comp?.startsWith('mini-app:')) {
         const miniAppId = comp.slice('mini-app:'.length);
-        return <iframe title={node.getName()} src={`/mini-apps-preview?id=${encodeURIComponent(miniAppId)}&embedded=1`} className="size-full border-0" />;
+        return <iframe title={node.getName()} src={`/mini-apps-preview?id=${encodeURIComponent(miniAppId)}&embedded=1&workspaceId=${encodeURIComponent(workspaceId)}`} className="size-full border-0" />;
       }
       switch (comp) {
         case "channel-list":
