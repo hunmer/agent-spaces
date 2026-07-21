@@ -65,14 +65,16 @@ export function WorkflowOperationHistory({
         <div className="flex items-center gap-2">
           <TooltipProvider>
             <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="outline" size="icon" className="h-7 w-7"
-                  disabled={currentUndoCount === 0}
-                  onClick={onUndo}
-                >
-                  <Undo2 className="h-3 w-3" />
-                </Button>
+              <TooltipTrigger
+                render={
+                  <Button
+                    variant="outline" size="icon" className="h-7 w-7"
+                    disabled={currentUndoCount === 0}
+                    onClick={onUndo}
+                  />
+                }
+              >
+                <Undo2 className="h-3 w-3" />
               </TooltipTrigger>
               <TooltipContent>{t('operationHistory.undo', { count: currentUndoCount })}</TooltipContent>
             </Tooltip>
@@ -80,14 +82,16 @@ export function WorkflowOperationHistory({
 
           <TooltipProvider>
             <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="outline" size="icon" className="h-7 w-7"
-                  disabled={currentRedoCount === 0}
-                  onClick={onRedo}
-                >
-                  <Redo2 className="h-3 w-3" />
-                </Button>
+              <TooltipTrigger
+                render={
+                  <Button
+                    variant="outline" size="icon" className="h-7 w-7"
+                    disabled={currentRedoCount === 0}
+                    onClick={onRedo}
+                  />
+                }
+              >
+                <Redo2 className="h-3 w-3" />
               </TooltipTrigger>
               <TooltipContent>{t('operationHistory.redo', { count: currentRedoCount })}</TooltipContent>
             </Tooltip>

@@ -1,7 +1,7 @@
 import * as Phaser from 'phaser'
 import PlayerSelector from './PlayerSelector'
 import { PlayerBehavior } from '@agent-spaces/shared/skyoffice'
-import { sittingShiftData } from './Player'
+import { sittingShiftData, SittingDirection } from './Player'
 import Player from './Player'
 import Network from '../services/Network'
 import Chair from '../items/Chair'
@@ -52,7 +52,7 @@ export default class MyPlayer extends Player {
   setPlayerTexture(texture: string) {
     this.playerTexture = texture
     this.anims.play(`${this.playerTexture}_idle_down`, true)
-    phaserEvents.emit(Event.MY_PLAYER_TEXTURE_CHANGE, this.x, this.y, this.anims.currentAnim.key)
+    phaserEvents.emit(Event.MY_PLAYER_TEXTURE_CHANGE, this.x, this.y, this.anims.currentAnim?.key)
   }
 
   handleJoystickMovement(movement: JoystickMovement) {
@@ -96,14 +96,15 @@ export default class MyPlayer extends Player {
             callback: () => {
               this.setVelocity(0, 0)
               if (chairItem.itemDirection) {
+                const shift = sittingShiftData[chairItem.itemDirection as SittingDirection]
                 this.setPosition(
-                  chairItem.x + sittingShiftData[chairItem.itemDirection][0],
-                  chairItem.y + sittingShiftData[chairItem.itemDirection][1]
-                ).setDepth(chairItem.depth + sittingShiftData[chairItem.itemDirection][2])
+                  chairItem.x + shift[0],
+                  chairItem.y + shift[1]
+                ).setDepth(chairItem.depth + shift[2])
                 this.playContainerBody.setVelocity(0, 0)
                 this.playerContainer.setPosition(
-                  chairItem.x + sittingShiftData[chairItem.itemDirection][0],
-                  chairItem.y + sittingShiftData[chairItem.itemDirection][1] - 30
+                  chairItem.x + shift[0],
+                  chairItem.y + shift[1] - 30
                 )
               }
 
@@ -114,7 +115,7 @@ export default class MyPlayer extends Player {
               } else {
                 playerSelector.setPosition(0, 0)
               }
-              network.updatePlayer(this.x, this.y, this.anims.currentAnim.key)
+              network.updatePlayer(this.x, this.y, this.anims.currentAnim!.key)
             },
             loop: false,
           })
@@ -152,11 +153,11 @@ export default class MyPlayer extends Player {
           this.setDepth(this.y)
         }
         this.setVelocity(vx, vy)
-        this.body.velocity.setLength(speed)
+        this.body!.velocity.setLength(speed)
         this.playContainerBody.setVelocity(vx, vy)
         this.playContainerBody.velocity.setLength(speed)
 
-        if (vx !== 0 || vy !== 0) network.updatePlayer(this.x, this.y, this.anims.currentAnim.key)
+        if (vx !== 0 || vy !== 0) network.updatePlayer(this.x, this.y, this.anims.currentAnim!.key)
         if (vx > 0) {
           this.play(`${this.playerTexture}_run_right`, true)
         } else if (vx < 0) {
@@ -166,26 +167,26 @@ export default class MyPlayer extends Player {
         } else if (vy < 0) {
           this.play(`${this.playerTexture}_run_up`, true)
         } else {
-          const parts = this.anims.currentAnim.key.split('_')
+          const parts = this.anims.currentAnim!.key.split('_')
           parts[1] = 'idle'
           const newAnim = parts.join('_')
-          if (this.anims.currentAnim.key !== newAnim) {
+          if (this.anims.currentAnim!.key !== newAnim) {
             this.play(parts.join('_'), true)
-            network.updatePlayer(this.x, this.y, this.anims.currentAnim.key)
+            network.updatePlayer(this.x, this.y, this.anims.currentAnim!.key)
           }
         }
         break
 
       case PlayerBehavior.SITTING:
         if (Phaser.Input.Keyboard.JustDown(keyE)) {
-          const parts = this.anims.currentAnim.key.split('_')
+          const parts = this.anims.currentAnim!.key.split('_')
           parts[1] = 'idle'
           this.play(parts.join('_'), true)
           this.playerBehavior = PlayerBehavior.IDLE
           this.chairOnSit?.clearDialogBox()
           playerSelector.setPosition(this.x, this.y)
           playerSelector.update(this, cursors)
-          network.updatePlayer(this.x, this.y, this.anims.currentAnim.key)
+          network.updatePlayer(this.x, this.y, this.anims.currentAnim!.key)
         }
         break
     }
@@ -218,7 +219,7 @@ Phaser.GameObjects.GameObjectFactory.register(
     this.scene.physics.world.enableBody(sprite, Phaser.Physics.Arcade.DYNAMIC_BODY)
 
     const collisionScale = [0.5, 0.2]
-    sprite.body
+    ;(sprite.body as Phaser.Physics.Arcade.Body)
       .setSize(sprite.width * collisionScale[0], sprite.height * collisionScale[1])
       .setOffset(
         sprite.width * (1 - collisionScale[0]) * 0.5,

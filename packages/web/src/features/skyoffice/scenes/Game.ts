@@ -62,20 +62,21 @@ export default class Game extends Phaser.Scene {
   }
 
   registerKeys() {
+    const keyboard = this.input.keyboard!
     this.cursors = {
-      ...this.input.keyboard.createCursorKeys(),
-      ...(this.input.keyboard.addKeys('W,S,A,D') as Keyboard),
+      ...keyboard.createCursorKeys(),
+      ...(keyboard.addKeys('W,S,A,D') as Keyboard),
     }
 
-    this.keyE = this.input.keyboard.addKey('E')
-    this.keyR = this.input.keyboard.addKey('R')
-    this.input.keyboard.addCapture(['UP', 'DOWN', 'LEFT', 'RIGHT', 'W', 'A', 'S', 'D'])
-    this.input.keyboard.on('keydown-ENTER', () => {
+    this.keyE = keyboard.addKey('E')
+    this.keyR = keyboard.addKey('R')
+    keyboard.addCapture(['UP', 'DOWN', 'LEFT', 'RIGHT', 'W', 'A', 'S', 'D'])
+    keyboard.on('keydown-ENTER', () => {
       // 保留 Enter 触发"事件流面板"的快捷入口（替代原聊天）
       useChatStore.getState().setShowChat(true)
       useChatStore.getState().setFocused(true)
     })
-    this.input.keyboard.on('keydown-ESC', () => {
+    keyboard.on('keydown-ESC', () => {
       useChatStore.getState().setShowChat(false)
     })
 
@@ -121,9 +122,9 @@ export default class Game extends Phaser.Scene {
     createCharacterAnims(this.anims)
 
     this.map = this.make.tilemap({ key: 'tilemap' })
-    const FloorAndGround = this.map.addTilesetImage('FloorAndGround', 'tiles_wall')
+    const FloorAndGround = this.map.addTilesetImage('FloorAndGround', 'tiles_wall')!
 
-    this.groundLayer = this.map.createLayer('Ground', FloorAndGround)
+    this.groundLayer = this.map.createLayer('Ground', FloorAndGround)!
     this.groundLayer.setCollisionByProperty({ collides: true })
 
     this.myPlayer = this.add.myPlayer(705, 500, 'adam', this.network.mySessionId)
@@ -131,7 +132,7 @@ export default class Game extends Phaser.Scene {
 
     // import chair objects from Tiled map to Phaser
     const chairs = this.physics.add.staticGroup({ classType: Chair })
-    const chairLayer = this.map.getObjectLayer('Chair')
+    const chairLayer = this.map.getObjectLayer('Chair')!
     chairLayer.objects.forEach((chairObj, i) => {
       const item = this.addObjectFromTiled(chairs, chairObj, 'chairs', 'chair') as Chair
       // custom properties[0] is the object direction specified in Tiled
@@ -149,7 +150,7 @@ export default class Game extends Phaser.Scene {
 
     // import vending machine objects from Tiled map to Phaser
     const vendingMachines = this.physics.add.staticGroup({ classType: VendingMachine })
-    const vendingMachineLayer = this.map.getObjectLayer('VendingMachine')
+    const vendingMachineLayer = this.map.getObjectLayer('VendingMachine')!
     vendingMachineLayer.objects.forEach((obj) => {
       this.addObjectFromTiled(vendingMachines, obj, 'vendingmachines', 'vendingmachine')
       this.addFurnitureCollision(obj)
@@ -266,7 +267,7 @@ export default class Game extends Phaser.Scene {
       if (now < nextWanderAt || agent.activity !== 'idle' || !sprite || sprite.isMoving()) return
       this.nextWanderAt.set(id, now + Phaser.Math.Between(5000, 12000))
 
-      const start = this.map.worldToTileXY(sprite.x, sprite.y)
+      const start = this.map.worldToTileXY(sprite.x, sprite.y)!
       for (let attempt = 0; attempt < 4; attempt++) {
         const targetX = Phaser.Math.Clamp(start.x + Phaser.Math.Between(-3, 3), 0, this.map.width - 1)
         const targetY = Phaser.Math.Clamp(start.y + Phaser.Math.Between(-3, 3), 0, this.map.height - 1)
@@ -294,7 +295,7 @@ export default class Game extends Phaser.Scene {
     })
   }
 
-  private handleItemSelectorOverlap(playerSelector, selectionItem) {
+  private handleItemSelectorOverlap(playerSelector: any, selectionItem: any) {
     const currentItem = playerSelector.selectedItem as Item
     if (currentItem) {
       if (currentItem === selectionItem || currentItem.depth >= selectionItem.depth) {
@@ -329,7 +330,7 @@ export default class Game extends Phaser.Scene {
     blocksPath = collidable
   ) {
     const group = this.physics.add.staticGroup()
-    const objectLayer = this.map.getObjectLayer(objectLayerName)
+    const objectLayer = this.map.getObjectLayer(objectLayerName)!
     objectLayer.objects.forEach((object) => {
       const actualX = object.x! + object.width! * 0.5
       const actualY = object.y! - object.height! * 0.5
@@ -429,8 +430,8 @@ export default class Game extends Phaser.Scene {
     if (agent.activity === 'idle') {
       sprite.standIdle()
     } else if (agent.targetX && agent.targetY) {
-      const start = this.map.worldToTileXY(sprite.x, sprite.y)
-      const target = this.map.worldToTileXY(agent.targetX, agent.targetY)
+      const start = this.map.worldToTileXY(sprite.x, sprite.y)!
+      const target = this.map.worldToTileXY(agent.targetX, agent.targetY)!
       const path = findGridPath(
         this.map.width,
         this.map.height,
