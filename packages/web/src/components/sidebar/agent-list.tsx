@@ -4,8 +4,7 @@ import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { Bot, Copy, Trash2 } from "lucide-react";
-import { copyToClipboard } from "@/lib/utils";
+import { Bot, Copy as CloneIcon, Trash2 } from "lucide-react";
 import type { AgentPreset } from "./agent-shared";
 import { AgentCard } from "./agent-card";
 import type { FeatureCardColor } from "@/components/ui/feature-card";
@@ -31,11 +30,13 @@ export function AgentList({
   onSelect,
   onDelete,
   onToggleEnabled,
+  onClone,
 }: {
   agents: AgentPreset[];
   onSelect: (agent: AgentPreset) => void;
   onDelete: (id: string) => void;
   onToggleEnabled?: (id: string) => void;
+  onClone?: (agent: AgentPreset) => void;
 }) {
   const t = useTranslations('agent');
   const visibleAgents = agents.filter((agent) => !agent.hideInAgentList);
@@ -78,9 +79,10 @@ export function AgentList({
                   variant="ghost"
                   size="icon"
                   className="opacity-0 group-hover:opacity-100 transition-opacity"
-                  onClick={(e) => { e.stopPropagation(); copyToClipboard(agent.id); }}
+                  title={t('list.clone')}
+                  onClick={(e) => { e.stopPropagation(); onClone?.(agent); }}
                 >
-                  <Copy className="size-3" />
+                  <CloneIcon className="size-3" />
                 </Button>
                 {!fixed && (
                   <Button

@@ -264,17 +264,8 @@ function handleSessionEvent(
     case 'turn_start':
       log('turn started');
       break;
-    case 'message_update':
-      if (event.assistantMessageEvent.type === 'thinking_delta') {
-        options?.onEvent?.({
-          type: 'reasoning',
-          text: event.assistantMessageEvent.delta,
-          status: 'streaming',
-        });
-      }
-      break;
     case 'tool_execution_start': {
-      const line = `Tool: ${event.toolName} ${stringifyToolResult(event.args)}`;
+      const line = `Tool: ${event.toolName} ${JSON.stringify(event.args)}`;
       log(`tool started | id=${event.toolCallId} name=${event.toolName}`);
       options?.onEvent?.({
         type: 'tool_use',

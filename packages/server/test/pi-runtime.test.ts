@@ -63,14 +63,16 @@ test('PiRuntime executes through the native SDK event stream', async () => {
       response.end('data: [DONE]\n\n');
       return;
     }
-    response.write('data: {"id":"chatcmpl-1","object":"chat.completion.chunk","created":1,"model":"test-model","choices":[{"index":0,"delta":{"role":"assistant","content":"hello native pi"},"finish_reason":null}]}\n\n');
+    response.write('data: {"id":"chatcmpl-1","object":"chat.completion.chunk","created":1,"model":"test-model","choices":[{"index":0,"delta":{"role":"assistant","reasoning_content":"thinking "},"finish_reason":null}]}\n\n');
+    response.write('data: {"id":"chatcmpl-1","object":"chat.completion.chunk","created":1,"model":"test-model","choices":[{"index":0,"delta":{"reasoning_content":"clearly"},"finish_reason":null}]}\n\n');
+    response.write('data: {"id":"chatcmpl-1","object":"chat.completion.chunk","created":1,"model":"test-model","choices":[{"index":0,"delta":{"content":"hello native pi"},"finish_reason":null}]}\n\n');
     response.write('data: {"id":"chatcmpl-1","object":"chat.completion.chunk","created":1,"model":"test-model","choices":[{"index":0,"delta":{},"finish_reason":"stop"}],"usage":{"prompt_tokens":3,"completion_tokens":3,"total_tokens":6}}\n\n');
     response.end('data: [DONE]\n\n');
   });
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
   const address = server.address();
   assert.ok(address && typeof address !== 'string');
-  const events: Array<{ type: string; line?: string; sessionId?: string; toolUseId?: string; result?: unknown }> = [];
+  const events: Array<{ type: string; line?: string; text?: string; status?: string; sessionId?: string; toolUseId?: string; result?: unknown }> = [];
   const bridge = await startCodexFunctionToolBridge([{
     name: 'mcp_echo',
     description: 'Echo input through MCP.',
@@ -92,7 +94,7 @@ test('PiRuntime executes through the native SDK event stream', async () => {
       model: 'test-model',
       apiKey: 'test-key',
       baseURL: `http://127.0.0.1:${address.port}/v1`,
-      thinkingEnabled: false,
+      thinkingEnabled: true,
     });
     const result = await runtime.execute('hello', cwd, {
       configDir: join(cwd, 'agent'),
@@ -123,11 +125,15 @@ test('PiRuntime executes through the native SDK event stream', async () => {
     assert.deepEqual(toolInput, { text: 'hello' });
     assert.deepEqual(mcpToolInput, { text: 'mcp' });
     assert.equal(events.filter((event) => event.type === 'tool_use').length, 3);
+    assert.ok(events.filter((event) => event.type === 'tool_use').every((event) => !event.line?.includes('\n')));
     assert.equal(events.filter((event) => event.type === 'tool_result').length, 3);
     const bashResult = events.find((event) => event.type === 'tool_result' && event.toolUseId === 'call-3');
     assert.doesNotMatch(JSON.stringify(bashResult?.result), /execvpe|No such file or directory/);
     assert.deepEqual(events.filter((event) => event.type === 'output'), [
       { type: 'output', line: 'hello native pi' },
+    ]);
+    assert.deepEqual(events.filter((event) => event.type === 'reasoning'), [
+      { type: 'reasoning', text: 'thinking clearly', status: 'completed' },
     ]);
     assert.equal(events.filter((event) => event.type === 'session').length, 1);
   } finally {

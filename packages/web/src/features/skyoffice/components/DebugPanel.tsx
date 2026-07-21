@@ -163,7 +163,7 @@ export default function DebugPanel() {
         </div>
       )}
 
-      <div className="absolute top-4 right-[110px] z-[9998]">
+      <div className="absolute top-4 right-[110px]">
         <Tooltip>
           <TooltipTrigger
             render={

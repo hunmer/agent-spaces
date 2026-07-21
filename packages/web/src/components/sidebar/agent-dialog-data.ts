@@ -9,6 +9,7 @@ import {
   type AgentRole,
   type BuiltInRole,
   ROLE_OPTIONS,
+  cloneAgent,
   normalizeAgent,
   newAgentDraft,
   newEmptyAgent,
@@ -205,6 +206,11 @@ export function useAgentDialogData({
     setSelectedAgent(draft);
   };
 
+  const handleCloneAgent = (agent: AgentPreset) => {
+    setError(null);
+    setSelectedAgent(cloneAgent(agent));
+  };
+
   const handleToggleEnabled = async (id: string) => {
     if (FIXED_AGENT_IDS.has(id)) return;
     setAgents((prev) => prev.map((a) => (a.id === id ? { ...a, enabled: !a.enabled } : a)));
@@ -298,7 +304,7 @@ export function useAgentDialogData({
     roleFilterSet,
     editorRef,
     setSelectedAgent, setAutoGenerate, setActiveTab, setRoleFilterLocal, setLocalSearch,
-    handleSelectAgent, handleBack, handleAddAgent, handleToggleEnabled,
+    handleSelectAgent, handleBack, handleAddAgent, handleCloneAgent, handleToggleEnabled,
     handleDeleteAgent, handleEditorSaved, importFromStore,
     refreshAgents,
     importOpen, setImportOpen, textDialogOpen, setTextDialogOpen,

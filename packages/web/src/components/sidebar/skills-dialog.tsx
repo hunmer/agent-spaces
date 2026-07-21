@@ -255,9 +255,11 @@ export function SkillsDialog({ open, onOpenChange, standalone, selectable, selec
                 <div className="flex items-center gap-1.5">
                   <Store className="size-3.5 text-muted-foreground shrink-0" />
                   <span className="font-medium text-sm">{skill.name}</span>
-                  <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
-                    {skill.group}
-                  </span>
+                  {skill.group && (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
+                      {skill.group}
+                    </span>
+                  )}
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">{skill.id}</p>
               </div>

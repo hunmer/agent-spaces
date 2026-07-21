@@ -66,11 +66,13 @@
     "noDescription": "No description",
     "added": "Added",
     "addToChatTitle": "Add Agent to Chat",
-    "addToChatDesc": "Select an agent to add to your chat"
+    "addToChatDesc": "Select an agent to add to your chat",
+    "copyId": "Copy ID"
   },
   "list": {
     "noDescription": "No description",
-    "empty": "No agent presets yet"
+    "empty": "No agent presets yet",
+    "clone": "Clone"
   },
   "detail": {
     "uploadAvatar": "Upload",

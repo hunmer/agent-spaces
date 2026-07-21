@@ -121,27 +121,35 @@ function scanSkillStore() {
   const indexPath = join(dir, 'index.json');
   const existing = loadExistingIndex(indexPath);
   const index = [];
-  for (const groupEntry of readdirSync(dir, { withFileTypes: true })) {
-    if (!groupEntry.isDirectory()) continue;
-    const group = groupEntry.name;
-    const groupDir = join(dir, group);
-    for (const skillEntry of readdirSync(groupDir, { withFileTypes: true })) {
+  const addSkill = (skillDir, skillName, group) => {
+    const skillFile = join(skillDir, 'SKILL.md');
+    if (!existsSync(skillFile)) return;
+    const content = readFileSync(skillFile, 'utf-8');
+    const fm = content.match(/^---\r?\n([\s\S]*?)\r?\n---/);
+    let name = skillName;
+    if (fm) {
+      const nameLine = fm[1].split(/\r?\n/).find((l) => /^\s*name\s*:/i.test(l));
+      if (nameLine) name = nameLine.split(':', 2)[1].trim() || skillName;
+    }
+    const md5 = folderMD5(skillDir);
+    const prev = existing.get(skillName);
+    const updatedAt = (!prev || prev.md5 !== md5) ? getLatestMtime(skillDir) : prev.updatedAt;
+    // 一级目录 skill（group 为空）path 即 skillName；二级 group skill path 为 group/skillName
+    const path = group ? `${group}/${skillName}` : skillName;
+    index.push({ id: skillName, name, group, path, md5, updatedAt });
+  };
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue;
+    const entryDir = join(dir, entry.name);
+    // 一级 skill：目录本身含 SKILL.md
+    if (existsSync(join(entryDir, 'SKILL.md'))) {
+      addSkill(entryDir, entry.name, '');
+      continue;
+    }
+    // 二级 group：entry 作为 group，遍历其子目录
+    for (const skillEntry of readdirSync(entryDir, { withFileTypes: true })) {
       if (!skillEntry.isDirectory()) continue;
-      const skillName = skillEntry.name;
-      const skillDir = join(groupDir, skillName);
-      const skillFile = join(skillDir, 'SKILL.md');
-      if (!existsSync(skillFile)) continue;
-      const content = readFileSync(skillFile, 'utf-8');
-      const fm = content.match(/^---\r?\n([\s\S]*?)\r?\n---/);
-      let name = skillName;
-      if (fm) {
-        const nameLine = fm[1].split(/\r?\n/).find((l) => /^\s*name\s*:/i.test(l));
-        if (nameLine) name = nameLine.split(':', 2)[1].trim() || skillName;
-      }
-      const md5 = folderMD5(skillDir);
-      const prev = existing.get(skillName);
-      const updatedAt = (!prev || prev.md5 !== md5) ? getLatestMtime(skillDir) : prev.updatedAt;
-      index.push({ id: skillName, name, group, path: `${group}/${skillName}`, md5, updatedAt });
+      addSkill(join(entryDir, skillEntry.name), skillEntry.name, entry.name);
     }
   }
   writeFileSync(indexPath, JSON.stringify(index, null, 2), 'utf-8');
