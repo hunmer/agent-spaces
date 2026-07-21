@@ -363,6 +363,20 @@ await window.AgentSpacesUI.downloadFile(url, "remote-file.bin");
 
 The same helpers are also available on `window.AgentSpaces` and `window.AgentSpacesAPI` for compatibility.
 
+### Workspace-Scoped Data
+
+Miniapp config and data are project-scoped by default. If the same miniapp is enabled in multiple workspaces, a fixed path such as `board.json` is shared by all of them. For workspace-owned state, pass the current workspace id from the host iframe and include it in every persistence path.
+```js
+const src = `/mini-apps-preview?id=${encodeURIComponent(miniAppId)}&embedded=1&workspaceId=${encodeURIComponent(workspaceId)}`;
+const workspaceId = new URLSearchParams(window.location.search).get("workspaceId") || "";
+const workspacePath = (file) => workspaceId ? `workspaces/${encodeURIComponent(workspaceId)}/${file}` : file;
+await window.AgentSpaces.invokeService("save", { ...payload, workspaceId });
+```
+- Reading `workspaceId` is host bootstrap context, not route state; continue using `Router` / `useRouter` for navigation. Keep the unscoped fallback only for standalone preview compatibility.
+- Use `workspacePath(...)` with config APIs and `saveDataFile`; filter `onConfigChanged` by the full scoped path.
+- Project Services must derive the identical encoded path before `ctx.readConfig`/`writeConfig`/`updateConfig`. Do not replace the miniapp `projectId`, WebSocket channel, or service registry key with `workspaceId`.
+- In the workspace layout host, validate restored `mini-app:*` tabs against the workspace's configured `miniAppIds`, not an asynchronously loaded metadata list. Skip destructive tab cleanup until the workspace exists in the store, or restored tabs can disappear on refresh.
+
 ## Project Services (Server-Side Writers)
 
 When multiple preview instances of the same project can mutate config — or any project must avoid one client's write overwriting another's — do not call `writeConfigJson` from the UI. Register server-side handlers under `src/services/` and call them with `invokeService`. The server is the single writer; every write fans out as `miniApp.configChanged`.
@@ -476,6 +490,7 @@ Before finishing, inspect the changed files for these invariants:
 - Plugin tool responses are read according to their documented output shape.
 - Credentials are not collected, stored, or passed from preview UI unless explicitly required.
 - Config writes go to `configs/`; generated/downloaded data goes to `data/`.
+- Workspace-owned config/data uses the same encoded `workspaces/<workspaceId>/...` relative path in the UI and server service; change subscriptions compare the full scoped path.
 - Shared/mutable config is written through `invokeService` + server `src/services` handlers (single writer) and read via `getConfig`/`onConfigChanged`; the initiator does not also `writeConfigJson` the same value.
 - Multi-client task state uses `onTaskEvent` + the `callPluginTool` options (`taskId`, `meta`) instead of local-only queues; the initiator does not double-write results that `taskFinished` already persists.
 - Routing: when views are switched, the entry is wrapped in `<Router>` (or the route-reading component is inside one), `useRouter()` is not called outside the `<Router>` subtree, unknown `path[0]` values fall back to a default view, and only the active view is rendered. The project does not read or write `window.location` directly.

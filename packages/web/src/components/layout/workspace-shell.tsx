@@ -322,6 +322,7 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
   const agents = useAgentStore((s) => s.agents);
   const createChannel = useChannelStore((s) => s.createChannel);
   const createIssue = useIssueStore((s) => s.createIssue);
+  const workspaceExists = useWorkspaceStore((s) => s.workspaces.some((w) => w.id === workspaceId));
   const workspaceMiniAppIds = useWorkspaceStore((s) => s.workspaces.find((w) => w.id === workspaceId)?.miniAppIds ?? EMPTY_MINI_APP_IDS);
   const [workspaceMiniApps, setWorkspaceMiniApps] = useState<MiniAppProject[]>([]);
   // 工具栏「添加 Tab」下拉项：静态项 + 当前 workspace 选用的 miniApp
@@ -401,7 +402,8 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
   // 联动移除：workspace 不再选用的 miniApp，其已存在的 tab（含 popout 浮窗）自动删除。
   // 用 Actions.deleteTab 增量操作，避免重建 model 导致其他 tab 内容（iframe/编辑器）重载。
   useEffect(() => {
-    const validIds = new Set(workspaceMiniApps.map((p) => `mini-app:${p.id}`));
+    if (!workspaceExists) return;
+    const validIds = new Set(workspaceMiniAppIds.map((id) => `mini-app:${id}`));
     const json = model.toJson() as IJsonModel;
     const toDelete: string[] = [];
     const visit = (node: LayoutJsonNode | undefined) => {
@@ -422,7 +424,7 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
       const n = model.getNodeById(id);
       if (n && n instanceof TabNode) model.doAction(Actions.deleteTab(id));
     });
-  }, [workspaceMiniApps, model]);
+  }, [workspaceExists, workspaceMiniAppIds, model]);
 
   useEffect(() => {
     const saved = localStorage.getItem(LAYOUT_STORAGE_KEY);
