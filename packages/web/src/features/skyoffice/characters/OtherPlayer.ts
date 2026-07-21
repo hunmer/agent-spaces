@@ -1,6 +1,6 @@
 import * as Phaser from 'phaser'
 import Player from './Player'
-import { sittingShiftData } from './Player'
+import { sittingShiftData, SittingDirection } from './Player'
 
 /**
  * OtherPlayer —— 其他人类玩家的渲染。
@@ -84,10 +84,10 @@ export default class OtherPlayer extends Player {
 
     this.lastUpdateTimestamp = t
     this.setDepth(this.y)
-    const animParts = this.anims.currentAnim.key.split('_')
+    const animParts = this.anims.currentAnim!.key.split('_')
     const animState = animParts[1]
     if (animState === 'sit') {
-      const animDir = animParts[2]
+      const animDir = animParts[2] as SittingDirection
       const sittingShift = sittingShiftData[animDir]
       if (sittingShift) {
         this.setDepth(this.depth + sittingShiftData[animDir][2])
@@ -118,7 +118,7 @@ export default class OtherPlayer extends Player {
     else if (dy < 0) vy -= speed
 
     this.setVelocity(vx, vy)
-    this.body.velocity.setLength(speed)
+    this.body!.velocity.setLength(speed)
     this.playContainerBody.setVelocity(vx, vy)
     this.playContainerBody.velocity.setLength(speed)
   }
@@ -158,7 +158,7 @@ Phaser.GameObjects.GameObjectFactory.register(
     this.scene.physics.world.enableBody(sprite, Phaser.Physics.Arcade.DYNAMIC_BODY)
 
     const collisionScale = [6, 4]
-    sprite.body
+    ;(sprite.body as Phaser.Physics.Arcade.Body)
       .setSize(sprite.width * collisionScale[0], sprite.height * collisionScale[1])
       .setOffset(
         sprite.width * (1 - collisionScale[0]) * 0.5,

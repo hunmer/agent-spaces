@@ -671,7 +671,7 @@ export const ChatComposerInput = forwardRef<ChatComposerInputHandle, ChatCompose
         <DropdownMenu>
           <DropdownMenuTrigger
             render={
-              <Button variant="ghost" size="sm" className="h-7 w-7 p-0 rounded-full border border-border hover:bg-accent" />
+              <Button variant="ghost" size="sm" className="h-7 w-7 p-0 rounded-full border border-border hover:bg-accent dark:!text-gray-200" />
             }
           >
             <IconPlus className="size-3" />

@@ -176,7 +176,7 @@ export function IssueMessage({
         )}
         <div className="flex-1 min-w-0">
           <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-            <span className="text-sm font-medium">{senderName}</span>
+            <span className="text-sm font-medium dark:!text-gray-200">{senderName}</span>
             <span className="text-xs text-muted-foreground">
               {new Date(comment.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
             </span>

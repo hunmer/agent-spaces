@@ -1,0 +1,31 @@
+{
+  "sessions": {
+    "title": "CLI Sessions",
+    "new": "New",
+    "empty": "No sessions yet.",
+    "emptyHint": "Click \"New\" to create a CLI session.",
+    "dragHandle": "Drag to reorder",
+    "expand": "Expand",
+    "collapse": "Collapse",
+    "renameSave": "Save",
+    "renameCancel": "Cancel",
+    "delete": "Delete",
+    "deleteConfirm": "Delete session \"{name}\"? Its terminals and layout will be lost.",
+    "noTerminals": "No terminals"
+  },
+  "launcher": {
+    "button": "CLI",
+    "launch": "Launch CLI",
+    "detectedTitle": "Detected CLIs",
+    "empty": "No CLI detected.",
+    "emptyHint": "Go to Settings → Runtime to discover."
+  },
+  "panel": {
+    "loadingTerminal": "Loading terminal…",
+    "noActiveTitle": "No active CLI session.",
+    "noActiveHint": "Create or select one from the \"CLI Sessions\" tab on the left.",
+    "title": "CLI · {name}",
+    "emptyTitle": "No terminals",
+    "emptyHint": "Click the toolbar + button or the CLI menu to launch one."
+  }
+}

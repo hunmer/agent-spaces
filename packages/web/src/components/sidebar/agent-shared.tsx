@@ -293,6 +293,19 @@ export function newAgentDraft(role: BuiltInRole): AgentPreset {
   };
 }
 
+export function cloneAgent(agent: AgentPreset): AgentPreset {
+  return {
+    ...agent,
+    id: `draft-clone-${Date.now()}`,
+    name: `${agent.name} (副本)`,
+    mcps: structuredClone(agent.mcps),
+    skills: agent.skills.map((skill) => ({ ...skill })),
+    tools: [...agent.tools],
+    boundWorkflowIds: [...agent.boundWorkflowIds],
+    boundWorkflowPluginTools: agent.boundWorkflowPluginTools.map((item) => ({ ...item })),
+  };
+}
+
 export function newEmptyAgent(): AgentPreset {
   return {
     id: `draft-empty-${Date.now()}`,

@@ -436,7 +436,9 @@
     "cancel": "Cancel",
     "save": "Save",
     "publishedLabel": "Publish",
-    "publishedHint": "Once published, the workflow is accessible via its share link. When private, opening the share page shows a placeholder."
+    "publishedHint": "Once published, the workflow is accessible via its share link. When private, opening the share page shows a placeholder.",
+    "smartCreateLabel": "Smart Create",
+    "smartCreateHint": "After saving, jump to the workflow editor and let an agent auto-generate a multi-agent collaboration structure from the notes/title"
   },
   "share": {
     "missingId": "Missing workflow_id parameter",

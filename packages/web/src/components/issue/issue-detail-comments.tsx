@@ -95,11 +95,11 @@ export function IssueDetailComments({
     <div className="flex flex-col border-t xl:h-full xl:border-t-0">
       <div className="px-4 pt-2 xl:px-5 xl:pt-6">
         <div className="flex items-center justify-between gap-2 mb-3">
-          <h3 className="text-sm font-medium">{t('detail.comments', { count: comments.length })}</h3>
+          <h3 className="text-sm font-medium dark:!text-gray-200">{t('detail.comments', { count: comments.length })}</h3>
           <Button
             variant="ghost"
             size="icon"
-            className="size-7"
+            className="size-7 dark:!text-gray-200"
             disabled={!channelId || refreshing}
             onClick={async () => {
               if (!channelId) return;

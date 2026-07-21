@@ -91,12 +91,11 @@ import chatRouter from './routes/chat.js';
 import chatRunRouter from './routes/chat-run.js';
 import miniAppRouter from './routes/mini-apps.js';
 import sqliteRouter from './routes/sqlite.js';
-import runtimeRouter from './routes/runtime.js';
+import runtimeRouter, { ensureDiscoveryCache } from './routes/runtime.js';
 import { getUserSettings, setUserAvatarUrl, removeUserAvatarUrl } from './storage/user-settings-store.js';
 import { getDataDir } from './storage/json-store.js';
 import { authMiddleware, verifyToken } from './middleware/auth.js';
 import { handleConnection } from './ws/handler.js';
-import { handleTypeScriptLspConnection } from './ws/typescript-lsp.js';
 import { broadcastToAll } from './ws/connection-manager.js';
 import { startScheduler, stopScheduler } from './agents/scheduler-agent.js';
 import { recoverRunningWorkOnStartup } from './services/issue-retry.js';
@@ -444,7 +443,6 @@ if (process.env.SKYOFFICE_ENABLED !== 'false') {
 }
 
 const wss = new WebSocketServer({ noServer: true });
-const typescriptLspWss = new WebSocketServer({ noServer: true });
 
 // Speech recognition WebSocket on /ws/speech
 const speechWss = new WebSocketServer({ noServer: true });
@@ -476,24 +474,6 @@ wss.on('connection', (ws, req) => {
   handleConnection(ws, workspaceId);
 });
 
-typescriptLspWss.on('connection', (ws, req) => {
-  const url = new URL(req.url || '', `http://localhost:${PORT}`);
-  const workspaceId = url.searchParams.get('workspaceId');
-
-  if (!workspaceId) {
-    ws.close(4001, 'workspaceId required');
-    return;
-  }
-
-  const token = url.searchParams.get('token');
-  if (!verifyToken(token)) {
-    ws.close(4003, 'Unauthorized');
-    return;
-  }
-
-  handleTypeScriptLspConnection(ws, workspaceId);
-});
-
 server.on('upgrade', (req, socket, head) => {
   const { pathname } = new URL(req.url || '/', `http://localhost:${PORT}`);
 
@@ -507,13 +487,6 @@ server.on('upgrade', (req, socket, head) => {
   if (pathname === '/ws/speech') {
     speechWss.handleUpgrade(req, socket, head, (ws) => {
       speechWss.emit('connection', ws, req);
-    });
-    return;
-  }
-
-  if (pathname === '/ws/lsp/typescript') {
-    typescriptLspWss.handleUpgrade(req, socket, head, (ws) => {
-      typescriptLspWss.emit('connection', ws, req);
     });
     return;
   }
@@ -551,6 +524,10 @@ server.listen(PORT, HOST, () => {
   });
   startPersistedNotificationServices().catch((err) => {
     console.error('[notification] failed to restore persisted services:', err);
+  });
+  // 后端启动时预探测 runtime CLI/SDK，前端任意页面即可拿到完整列表
+  ensureDiscoveryCache().catch((err) => {
+    console.error('[runtime] failed to pre-populate discovery cache:', err);
   });
 });
 

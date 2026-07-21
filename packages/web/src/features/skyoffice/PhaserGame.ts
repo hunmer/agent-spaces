@@ -11,7 +11,7 @@ import Game from './scenes/Game'
  *
  * @param parent Phaser canvas 挂载的 DOM 元素
  */
-export function createPhaserGame(parent: HTMLElement): Phaser.Game {
+export function createPhaserGame(parent: HTMLElement, onReady?: (game: Phaser.Game) => void): Phaser.Game {
   const rect = parent.getBoundingClientRect()
   const config: Phaser.Types.Core.GameConfig = {
     type: Phaser.AUTO,
@@ -29,6 +29,7 @@ export function createPhaserGame(parent: HTMLElement): Phaser.Game {
     },
     autoFocus: true,
     scene: [Bootstrap, Background, Game],
+    callbacks: { postBoot: onReady },
   }
   const phaserGame = new Phaser.Game(config)
   // 全局引用，供 Zustand store 副作用和 React 组件访问场景

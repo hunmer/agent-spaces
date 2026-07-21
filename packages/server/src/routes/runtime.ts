@@ -24,7 +24,7 @@ type InstallCommandSpec = {
 };
 
 interface RuntimeDescriptor {
-  id: 'claude-code' | 'codex' | 'grok' | 'gemini-cli' | 'hermes' | 'pi' | 'claude-code-sdk' | 'codex-sdk' | 'open-agent-sdk';
+  id: 'claude-code' | 'codex' | 'grok' | 'gemini-cli' | 'hermes' | 'pi' | 'claude-code-sdk' | 'codex-sdk' | 'open-agent-sdk' | 'openclaw' | 'omp' | 'opencode' | 'qwen' | 'cursor' | 'kimi' | 'kiro' | 'kilocode' | 'antigravity' | 'xiaomimimo' | 'githubcopilot';
   category: RuntimeCategory;
   label: string;
   commands?: string[];
@@ -113,6 +113,83 @@ const RUNTIME_DESCRIPTORS: RuntimeDescriptor[] = [
     installable: true,
   },
   {
+    id: 'openclaw',
+    category: 'cli',
+    label: 'OpenClaw',
+    commands: ['openclaw'],
+    versionArgs: ['--version'],
+  },
+  {
+    id: 'omp',
+    category: 'cli',
+    label: 'OpenMultiMind (OMP)',
+    commands: ['omp'],
+    versionArgs: ['--version'],
+  },
+  {
+    id: 'opencode',
+    category: 'cli',
+    label: 'OpenCode',
+    commands: ['opencode'],
+    versionArgs: ['--version'],
+  },
+  {
+    id: 'qwen',
+    category: 'cli',
+    label: 'Qwen Code',
+    commands: ['qwen'],
+    versionArgs: ['--version'],
+  },
+  {
+    id: 'cursor',
+    category: 'cli',
+    label: 'Cursor',
+    commands: ['cursor', 'cursor-agent'],
+    versionArgs: ['--version'],
+  },
+  {
+    id: 'kimi',
+    category: 'cli',
+    label: 'Kimi',
+    commands: ['kimi'],
+    versionArgs: ['--version'],
+  },
+  {
+    id: 'kiro',
+    category: 'cli',
+    label: 'Kiro',
+    commands: ['kiro'],
+    versionArgs: ['--version'],
+  },
+  {
+    id: 'kilocode',
+    category: 'cli',
+    label: 'Kilo Code',
+    commands: ['kilocode'],
+    versionArgs: ['--version'],
+  },
+  {
+    id: 'antigravity',
+    category: 'cli',
+    label: 'Antigravity',
+    commands: ['antigravity'],
+    versionArgs: ['--version'],
+  },
+  {
+    id: 'xiaomimimo',
+    category: 'cli',
+    label: 'Xiaomi MiMo',
+    commands: ['xiaomimimo'],
+    versionArgs: ['--version'],
+  },
+  {
+    id: 'githubcopilot',
+    category: 'cli',
+    label: 'GitHub Copilot',
+    commands: ['githubcopilot', 'gh', 'copilot'],
+    versionArgs: ['--version'],
+  },
+  {
     id: 'pi',
     category: 'sdk',
     label: 'Pi SDK',
@@ -149,9 +226,27 @@ const RUNTIME_DESCRIPTORS: RuntimeDescriptor[] = [
   },
 ];
 
-router.post('/discover-cli', async (_req: Request, res: Response) => {
+// 内存缓存：后端启动时预探测填充，避免前端在访问 runtime-tab 前拿不到 runtime 列表
+let discoveryCache: { items: DiscoveredRuntimeItem[]; updatedAt: string } | null = null;
+
+type DiscoveredRuntimeItem = Awaited<ReturnType<typeof discoverRuntime>>;
+
+async function refreshDiscoveryCache(): Promise<{ items: DiscoveredRuntimeItem[]; updatedAt: string }> {
   const items = await Promise.all(RUNTIME_DESCRIPTORS.map(discoverRuntime));
-  res.json({ items });
+  discoveryCache = { items, updatedAt: new Date().toISOString() };
+  return discoveryCache;
+}
+
+export async function ensureDiscoveryCache(): Promise<{ items: DiscoveredRuntimeItem[]; updatedAt: string }> {
+  if (!discoveryCache) {
+    return refreshDiscoveryCache();
+  }
+  return discoveryCache;
+}
+
+router.post('/discover-cli', async (_req: Request, res: Response) => {
+  const cached = await ensureDiscoveryCache();
+  res.json({ items: cached.items });
 });
 
 router.post('/install-cli', async (req: Request, res: Response) => {
@@ -169,7 +264,8 @@ router.post('/install-cli', async (req: Request, res: Response) => {
     const installCommand = resolveRuntimeInstallCommand(descriptor, Boolean(installedPath));
     const packageSpec = descriptor.packageName ? `${descriptor.packageName}@latest` : descriptor.label;
     const result = await runCommand(installCommand.command, installCommand.args, installCommand.cwd);
-    const items = await Promise.all(RUNTIME_DESCRIPTORS.map(discoverRuntime));
+    const refreshed = await refreshDiscoveryCache();
+    const items = refreshed.items;
     res.json({
       ok: true,
       runtimeId,

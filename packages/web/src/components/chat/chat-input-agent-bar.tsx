@@ -48,7 +48,7 @@ export function ChatInputAgentBar({
   return (
     <>
       <div className="flex items-center gap-1 mb-1.5">
-        <div className="flex items-center gap-1 overflow-x-auto scrollbar-none flex-1 min-w-0">
+        <div className="flex items-center gap-1 overflow-x-auto scrollbar-none flex-1 min-w-0 ms-2">
           <button
             type="button"
             onClick={onOpenAddMember}
@@ -81,6 +81,7 @@ export function ChatInputAgentBar({
                   onClick={() => { onActivateAgent(agent); onAgentActivated?.(agent); }}
                   className={cn(
                     "shrink-0 inline-flex items-center gap-1 h-6 pl-0.5 pr-1.5 rounded-full text-xs transition-all cursor-pointer",
+                    !isActive && "dark:!text-gray-200",
                     isActive && "bg-primary/10 text-primary border border-primary/30"
                   )}
                 >
@@ -118,6 +119,7 @@ export function ChatInputAgentBar({
                   onClick={() => onActivateAgent(mention)}
                   className={cn(
                     "shrink-0 inline-flex items-center gap-1 h-6 pl-0.5 pr-1.5 rounded-full text-xs transition-all cursor-pointer",
+                    !isActive && "dark:!text-gray-200",
                     isActive && "bg-primary/10 text-primary border border-primary/30"
                   )}
                 >

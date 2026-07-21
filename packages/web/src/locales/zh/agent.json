@@ -66,11 +66,13 @@
     "noDescription": "暂无描述",
     "added": "已添加",
     "addToChatTitle": "添加 Agent 到聊天",
-    "addToChatDesc": "选择要添加到聊天的 Agent"
+    "addToChatDesc": "选择要添加到聊天的 Agent",
+    "copyId": "复制 ID"
   },
   "list": {
     "noDescription": "无描述",
-    "empty": "暂无 Agent 预设"
+    "empty": "暂无 Agent 预设",
+    "clone": "克隆"
   },
   "detail": {
     "uploadAvatar": "上传",

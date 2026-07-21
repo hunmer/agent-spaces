@@ -122,6 +122,14 @@ export interface FlexLayoutShellProps {
   onApplyLayout?: (json: IJsonModel) => void;
   /** 受控模式下重置布局时回调（外部 setModel(defaultLayout)） */
   onResetLayout?: () => void;
+
+  /**
+   * 把内部 flexlayout ILayoutApi 暴露给父组件（非受控/受控均适用）。
+   * 父组件拿到 api 后可调用 addTabToActiveTabSet 等命令式 API，
+   * 在工具栏之外（如自定义 headerEnd 按钮）添加 tab。
+   * 调用约定：mount 时调用一次传回 api，unmount 时传回 null。
+   */
+  layoutApiRef?: React.MutableRefObject<ILayoutApi | null>;
 }
 
 const DEFAULT_THEMES: FlexLayoutTheme[] = [
@@ -167,7 +175,7 @@ export function FlexLayoutShell({
   showAddFloat = true,
   showPresets = true,
   showReset = true,
-  showThemeSwitch = true,
+  showThemeSwitch = false,
   enableContextMenu = true,
   model: controlledModel,
   factory: controlledFactory,
@@ -175,6 +183,7 @@ export function FlexLayoutShell({
   onModelChangeExternal,
   onApplyLayout,
   onResetLayout,
+  layoutApiRef,
 }: FlexLayoutShellProps) {
   // 是否受控：外部传入 model 即进入受控模式
   const isControlled = controlledModel !== undefined;
@@ -218,6 +227,20 @@ export function FlexLayoutShell({
   useEffect(() => {
     latestModel.current = model;
   }, [model]);
+
+  // 把内部 layoutRef 同步给外部传入的 layoutApiRef（如未传则跳过）
+  useEffect(() => {
+    if (!layoutApiRef) return;
+    layoutApiRef.current = layoutRef.current;
+    // ref 由 <Layout ref={layoutRef}> 在挂载时填充，需要等下一拍再同步一次
+    const id = requestAnimationFrame(() => {
+      layoutApiRef.current = layoutRef.current;
+    });
+    return () => {
+      cancelAnimationFrame(id);
+      layoutApiRef.current = null;
+    };
+  }, [layoutApiRef]);
 
   // 持久化布局：受控模式委派给外部回调，非受控模式默认持久化到 localStorage
   const onModelChange = useCallback(
@@ -435,12 +458,6 @@ export function FlexLayoutShell({
     if (!layoutDialogOpen) setTemplatesVersion((v) => v + 1);
   }, [layoutDialogOpen]);
 
-  // 预览当前预设数量（工具栏显示用）—— 只读，无副作用
-  const templateCount = useMemo(() => {
-    void templatesVersion; // 依赖刷新
-    return loadLayoutTemplates(templatesStorageKey).length;
-  }, [templatesStorageKey, templatesVersion]);
-
   const themeClass = `flexlayout__theme_${theme}`;
 
   return (
@@ -450,9 +467,9 @@ export function FlexLayoutShell({
       {showToolbar && (
         <div className="flex items-center gap-1 border-b bg-background px-2 py-1.5">
           {headerTitle ? (
-            <div className="mr-2">{headerTitle}</div>
+            <div className="mr-2 dark:!text-gray-200">{headerTitle}</div>
           ) : (
-            title && <span className="mr-2 text-sm font-medium">{title}</span>
+            title && <span className="mr-2 text-sm font-medium dark:!text-gray-200">{title}</span>
           )}
 
           {headerStart}
@@ -461,12 +478,12 @@ export function FlexLayoutShell({
             <DropdownMenu>
               <DropdownMenuTrigger
                 render={
-                  <Button variant="ghost" size="sm" title={t("addTab")}>
+                  <Button variant="ghost" size="sm" title={t("addTab")} className="dark:!text-gray-200">
                     <Plus className="size-4" />
                   </Button>
                 }
               />
-              <DropdownMenuContent align="start">
+              <DropdownMenuContent align="start" className="dark:!text-gray-200">
                 {addableComponents.map((c) => (
                   <DropdownMenuItem
                     key={c.key}
@@ -486,6 +503,7 @@ export function FlexLayoutShell({
               <Button
                 variant="ghost"
                 size="sm"
+                className="dark:!text-gray-200"
                 onClick={() => handleAddFloat(addableComponents[0])}
                 title={t("addFloat")}
               >
@@ -495,12 +513,12 @@ export function FlexLayoutShell({
               <DropdownMenu>
                 <DropdownMenuTrigger
                   render={
-                    <Button variant="ghost" size="sm" title={t("addFloat")}>
+                    <Button variant="ghost" size="sm" title={t("addFloat")} className="dark:!text-gray-200">
                       <PictureInPicture2 className="size-4" />
                     </Button>
                   }
                 />
-                <DropdownMenuContent align="start">
+                <DropdownMenuContent align="start" className="dark:!text-gray-200">
                   {addableComponents.map((c) => (
                     <DropdownMenuItem
                       key={c.key}
@@ -526,14 +544,9 @@ export function FlexLayoutShell({
               size="sm"
               onClick={() => setLayoutDialogOpen(true)}
               title={t("managePresets")}
-              className="gap-1.5"
+              className="gap-1.5 dark:!text-gray-200"
             >
               <LayoutTemplateIcon className="size-4" />
-              <span className="text-xs">
-                {templateCount > 0
-                  ? t("presetsWithCount", { count: templateCount })
-                  : t("presets")}
-              </span>
             </Button>
           )}
 
@@ -541,6 +554,7 @@ export function FlexLayoutShell({
             <Button
               variant="ghost"
               size="sm"
+              className="dark:!text-gray-200"
               onClick={handleResetLayout}
               title={t("resetLayout")}
             >
@@ -588,7 +602,7 @@ export function FlexLayoutShell({
       {/* 右键菜单（自绘 popup，定位到鼠标位置） */}
       {ctxMenu && (
         <div
-          className="fixed z-50 min-w-40 rounded-md border bg-popover p-1 text-popover-foreground shadow-md"
+          className="fixed z-50 min-w-40 rounded-md border bg-popover p-1 text-popover-foreground shadow-md dark:!text-gray-200"
           style={{ left: ctxMenu.x, top: ctxMenu.y }}
           onClick={(e) => e.stopPropagation()}
         >

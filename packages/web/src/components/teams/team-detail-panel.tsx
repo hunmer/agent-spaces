@@ -4,11 +4,17 @@ import type { AgentConfig } from "@agent-spaces/shared";
 import { useEffect, useState } from "react";
 import type { TeamDetail, TeamRuntimeResponse, TeamView } from "@agent-spaces/sdk";
 import { useTranslations } from "next-intl";
+import dynamic from "next/dynamic";
 import { Pencil, Trash2, Clock, Loader2, Check, XCircle, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { TeamMemberList } from "@/components/teams/team-member-list";
 import { Markdown } from "@/components/ui/markdown";
 import { sdk } from "@/lib/sdk";
+
+const SkyOfficeApp = dynamic(
+  () => import("@/features/skyoffice/SkyOfficeApp").then((module) => module.SkyOfficeApp),
+  { ssr: false },
+);
 
 interface TeamDetailPanelProps {
   selectedTeam: TeamView | null;
@@ -47,6 +53,8 @@ export function TeamDetailPanel({
         if (!cancelled) setSessionDetail(detail);
       } catch {
         if (!cancelled) setSessionDetail(null);
+      } finally {
+        if (!cancelled) onRefreshDetail(selectedTeam.team_id);
       }
     };
     void load();
@@ -55,7 +63,7 @@ export function TeamDetailPanel({
       cancelled = true;
       clearInterval(timer);
     };
-  }, [activeSessionId, selectedTeam?.team_id]);
+  }, [activeSessionId, onRefreshDetail, selectedTeam?.team_id]);
 
   return (
     <section className="h-full w-full min-w-0 overflow-hidden rounded-2xl border border-border bg-card p-4 [contain:inline-size]">
@@ -152,7 +160,9 @@ export function TeamDetailPanel({
             </div>
           ) : null}
 
-   
+          <div className="w-full min-w-0 shrink-0 overflow-hidden rounded-xl border border-border bg-background">
+            <SkyOfficeApp key={selectedTeam.team_id} teamId={selectedTeam.team_id} />
+          </div>
 
         </div>
       ) : (

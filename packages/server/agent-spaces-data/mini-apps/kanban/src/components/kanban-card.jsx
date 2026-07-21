@@ -13,8 +13,8 @@ const PRIORITY_STYLES = {
 const PRIORITY_LABEL = { low: t.low, medium: t.medium, high: t.high };
 
 function formatDate(dateStr) {
-  try { return new Date(dateStr).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }); }
-  catch { return dateStr; }
+  const date = new Date(dateStr);
+  return Number.isNaN(date.getTime()) ? '' : date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
 export default function KanbanCard({ task, onClick, isOverlay = false }) {
@@ -63,7 +63,7 @@ export default function KanbanCard({ task, onClick, isOverlay = false }) {
             <CalendarDays className="h-3 w-3" />{formatDate(task.dueDate)}
           </span>
         ) : (
-          <span className="text-[10px] text-stone-300">{formatDate(new Date(task.createdAt).toISOString())}</span>
+          <span className="text-[10px] text-stone-300">{formatDate(task.createdAt)}</span>
         )}
       </div>
     </div>

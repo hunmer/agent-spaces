@@ -96,7 +96,7 @@ export function Markdown({ content, workspaceId }: MarkdownProps) {
   };
 
   return (
-    <div className="min-w-0 max-w-full break-all overflow-hidden select-text" style={{ WebkitUserSelect: 'text', userSelect: 'text' }}>
+    <div className="min-w-0 max-w-full break-all overflow-hidden select-text dark:!text-gray-200" style={{ WebkitUserSelect: 'text', userSelect: 'text' }}>
       <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
         {content}
       </ReactMarkdown>

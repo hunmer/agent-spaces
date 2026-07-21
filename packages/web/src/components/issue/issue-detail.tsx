@@ -309,12 +309,12 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="md:hidden shrink-0"
+                    className="md:hidden shrink-0 dark:!text-gray-200"
                     onClick={() => useMobilePanelStore.getState().setActivePanel('issue-list')}
                   >
                     <ArrowLeft className="size-4" />
                   </Button>
-                  <h1 className="text-xl font-bold tracking-tight truncate">{issue.title}</h1>
+                  <h1 className="text-xl font-bold tracking-tight truncate dark:!text-gray-200">{issue.title}</h1>
                   <Badge variant={ISSUE_STATUS_COLOR[issue.status]} className="font-semibold">
                     <span className={`mr-2 h-2 w-2 rounded-full animate-pulse ${statusDotColor}`} />
                     {t(`status.${issue.status}`)}
@@ -328,7 +328,7 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
                     </Button>
                   )}
                   {canRerun && (
-                    <Button size="sm" variant="outline" className="h-6 px-2 text-xs" onClick={() => setStartInputOpen(true)}>
+                    <Button size="sm" variant="outline" className="h-6 px-2 text-xs dark:!text-gray-200" onClick={() => setStartInputOpen(true)}>
                       <RotateCcw className="h-3 w-3 mr-1" />
                       {t('detail.rerun')}
                     </Button>
@@ -363,18 +363,19 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
                     </span>
                   )}
                   <span className="mx-1 h-4 w-px bg-border" />
-                  <Button variant="ghost" size="icon" onClick={() => setEditOpen(true)}>
+                  <Button variant="ghost" size="icon" onClick={() => setEditOpen(true)} className="dark:!text-gray-200">
                     <Pencil className="size-4" />
                   </Button>
                   <Button
                     variant="ghost"
                     size="icon"
+                    className="dark:!text-gray-200"
                     title={t('detail.openChatChannel') as string}
                     onClick={handleOpenChatChannel}
                   >
                     <MessagesSquare className="size-4" />
                   </Button>
-                  <Button variant="ghost" size="icon" onClick={() => setInfoOpen(true)}>
+                  <Button variant="ghost" size="icon" onClick={() => setInfoOpen(true)} className="dark:!text-gray-200">
                     <Info className="size-4" />
                   </Button>
                 </div>

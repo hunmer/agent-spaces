@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Agent Spaces — Agent Runtime Adapter Layer",
+    "subtitle": "7 SDK backends behind one AgentRuntime contract",
+    "output": "agent-spaces-runtimes.architecture.html"
+  },
+  "components": [
+    { "id": "contract", "type": "backend", "label": "AgentRuntime Contract", "sublabel": "execute() · stop() · onEvent", "pos": [430, 320], "size": [180, 70], "tag": "AgentRuntimeKind union" },
+    { "id": "claude", "type": "security", "label": "Claude Code", "sublabel": "@anthropic-ai/claude-agent-sdk", "pos": [40, 120], "size": [170, 56] },
+    { "id": "codex", "type": "security", "label": "Codex", "sublabel": "@openai/codex-sdk", "pos": [230, 120], "size": [170, 56] },
+    { "id": "oasdk", "type": "security", "label": "Open Agent SDK", "sublabel": "@codeany/open-agent-sdk", "pos": [420, 120], "size": [170, 56] },
+    { "id": "lc", "type": "security", "label": "LangChain", "sublabel": "langchain + 3 provider pkgs", "pos": [610, 120], "size": [170, 56] },
+    { "id": "grok", "type": "security", "label": "Grok", "sublabel": "xAI runtime", "pos": [800, 120], "size": [170, 56] },
+    { "id": "hermes", "type": "backend", "label": "Hermes", "sublabel": "self-built runtime", "pos": [230, 520], "size": [170, 56], "tag": "in-house" },
+    { "id": "pi", "type": "backend", "label": "Oh-My-Pi", "sublabel": "self-built runtime", "pos": [610, 520], "size": [170, 56], "tag": "in-house" },
+    { "id": "llm", "type": "external", "label": "LLM Providers", "sublabel": "Anthropic · OpenAI · Google · xAI", "pos": [800, 320], "size": [170, 70] },
+    { "id": "store", "type": "database", "label": "Agent State", "sublabel": "sessions · usage · hooks", "pos": [40, 320], "size": [170, 70] }
+  ],
+  "boundaries": [
+    { "kind": "region", "label": "Adapter Layer — one swap point for all backends", "wraps": ["contract", "claude", "codex", "oasdk", "lc", "grok", "hermes", "pi"] }
+  ],
+  "connections": [
+    { "from": "claude", "to": "contract", "variant": "dashed", "fromSide": "bottom", "toSide": "top", "labelDy": 50 },
+    { "from": "codex", "to": "contract", "variant": "dashed", "fromSide": "bottom", "toSide": "top", "labelDy": 50 },
+    { "from": "oasdk", "to": "contract", "variant": "dashed", "fromSide": "bottom", "toSide": "top", "labelDy": 50 },
+    { "from": "lc", "to": "contract", "variant": "dashed", "fromSide": "bottom", "toSide": "top", "labelDy": 50 },
+    { "from": "grok", "to": "contract", "variant": "dashed", "fromSide": "bottom", "toSide": "top", "labelDy": 50 },
+    { "from": "hermes", "to": "contract", "variant": "dashed", "fromSide": "top", "toSide": "bottom", "labelDy": -50 },
+    { "from": "pi", "to": "contract", "variant": "dashed", "fromSide": "top", "toSide": "bottom", "labelDy": -50 },
+    { "from": "contract", "to": "llm", "variant": "security", "label": "tool / model calls" },
+    { "from": "contract", "to": "store", "variant": "emphasis", "label": "session · usage · hooks" }
+  ],
+  "cards": [
+    { "dot": "cyan", "title": "Uniform contract", "items": ["AgentRuntime interface: execute(prompt, workingDir, options) + stop()", "AgentRuntimeEvent stream: output / reasoning / tool_use / tool_result / hook_event", "AgentRuntimeConfig swaps kind, provider, model, permissionMode at runtime"] },
+    { "dot": "violet", "title": "External SDK backends (5)", "items": ["Claude Code — @anthropic-ai/claude-agent-sdk, with Anthropic Bridge mode", "Codex — @openai/codex-sdk via codex-function-tool-bridge", "Open Agent SDK — @codeany/open-agent-sdk (reference impl)", "LangChain — langchain + @langchain/{openai,anthropic,google-genai}", "Grok — xAI-compatible runtime"] },
+    { "dot": "emerald", "title": "In-house backends (2)", "items": ["Hermes and Oh-My-Pi are self-built, no third-party SDK dependency", "All 7 implement the same interface, picked per agent by AgentRuntimeKind"] },
+    { "dot": "rose", "title": "Downstream", "items": ["All backends talk to external LLM providers over HTTPS (leaves trust zone)", "Agent state, session resume, usage metering and per-tool hooks persist to SQLite/JSON"] }
+  ]
+}

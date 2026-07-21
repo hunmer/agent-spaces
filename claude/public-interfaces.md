@@ -70,6 +70,9 @@
 | `/api/fonts` | 字体管理 |
 | `/api/health` | 健康检查 |
 | `/api/inspector/track` | Inspector 跳转（无认证） |
+| `/api/skyoffice/rooms` | SkyOffice 房间 CRUD（自管 per-room token，**在主 authMiddleware 之前挂载**，绕开主全局 Bearer） |
+| `/api/skyoffice/map` | SkyOffice 地图数据（chairs 等） |
+| `/skyoffice/colyseus` | Colyseus monitor（**无鉴权，生产需加防护**） |
 
 ## WebSocket 端点
 
@@ -78,6 +81,8 @@
 | `/ws` | 主 WebSocket（聊天/终端/Agent 执行流），需 workspaceId + token |
 | `/ws/speech` | 语音识别流，需 token + configId |
 | `/ws/lsp/typescript` | TypeScript LSP 代理，需 workspaceId + token |
+| `/agent-ws` | SkyOffice Agent 广播 WS（`?roomId=...&token=...`，由 `broadcastServer` 处理 + per-room token 鉴权） |
+| `/<colyseusRoomId>` | SkyOffice Colyseus 房间 Viewer 连接（无 token，仅需 roomId） |
 
 ## SDK 接口
 

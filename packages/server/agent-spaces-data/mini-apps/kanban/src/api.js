@@ -149,6 +149,7 @@ function create_card(input, ctx) {
     priority: norm.priority,
     columnId: norm.columnId,
     dueDate: norm.dueDate,
+    createdAt: Date.now(),
   };
   board.tasks.push(task);
   saveBoard(ctx, board);

@@ -105,13 +105,13 @@ export function ProjectSettingsPanel({ workspaceId }: ProjectSettingsPanelProps)
         <div className="rounded-xl border border-border p-4">
           <div className="mb-3 flex items-center justify-between gap-3">
             <div>
-              <div className="flex items-center gap-2 text-sm font-medium">
+              <div className="flex items-center gap-2 text-sm font-medium dark:!text-gray-200">
                 <Puzzle className="size-4" />
                 {t('miniApps.title')}
               </div>
               <p className="mt-1 text-xs text-muted-foreground">{t('miniApps.description')}</p>
             </div>
-            <Button variant="outline" size="sm" onClick={() => setMiniAppDialogOpen(true)}>
+            <Button variant="outline" size="sm" onClick={() => setMiniAppDialogOpen(true)} className="dark:!text-gray-200">
               {t('miniApps.select')}
             </Button>
           </div>

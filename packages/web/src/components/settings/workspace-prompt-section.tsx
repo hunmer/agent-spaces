@@ -60,10 +60,10 @@ export function WorkspacePromptSection({ workspaceId, initialPrompt }: Workspace
           id="workspace-prompt"
           value={prompt}
           onChange={(event) => setPrompt(event.target.value)}
-          className="min-h-36 resize-y text-sm"
+          className="min-h-36 resize-y text-sm dark:!text-gray-200"
         />
         <div className="flex justify-end">
-          <Button type="button" size="sm" onClick={handleSavePrompt} disabled={savingPrompt || !promptChanged}>
+          <Button type="button" size="sm" onClick={handleSavePrompt} disabled={savingPrompt || !promptChanged} className="dark:!text-gray-200">
             {savingPrompt && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
             {t('prompt.savePrompt')}
           </Button>

@@ -146,7 +146,7 @@
   --invert-foreground: var(--color-zinc-50);
 }
 
-.dark {
+:root.dark {
   --background: #0f1117;
   --foreground: #e5e7eb;
   --card: #1a1b23;

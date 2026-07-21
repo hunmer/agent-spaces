@@ -3,46 +3,37 @@
   "layoutMode": "horizontal",
   "columns": [
     {
-      "id": "col_6aa0934d-3a57-43b2-a2a0-242f955d4395",
+      "id": "col_13756ed6-2442-4c0d-97d3-b82b13c95ea9",
       "title": "Draft",
       "color": "slate",
       "order": 0
     },
     {
-      "id": "col_d311f6ff-3cb4-4106-85da-f907bbfde4c9",
+      "id": "col_50a2fd66-3d83-4710-831e-6a7c19057592",
       "title": "Todo",
       "color": "sky",
       "order": 1
     },
     {
-      "id": "col_d690f84c-2f85-443b-8fd4-9e437ca84aad",
+      "id": "col_b0936eda-9253-4e29-9fd0-a1cd96c96c69",
       "title": "In Progress",
       "color": "amber",
       "order": 2
     },
     {
-      "id": "col_617dc797-1d15-4bfb-a137-409f3be1c8e4",
+      "id": "col_f2efc015-7f46-4893-81cd-20580c17b1bc",
       "title": "Done",
       "color": "emerald",
       "order": 3
     },
     {
-      "id": "col_8d8a8c08-cbe6-4f86-9ddc-bdb2471a3253",
+      "id": "col_49c87850-501c-42f1-acc0-62ec61b37f3a",
       "title": "Bug",
       "color": "rose",
       "order": 4
     }
   ],
   "tasks": [
-    {
-      "id": "task_fc52c38f-f1c4-4350-ac38-3d6f8741a438",
-      "title": "bb",
-      "description": "",
-      "priority": "medium",
-      "columnId": "col_6aa0934d-3a57-43b2-a2a0-242f955d4395",
-      "order": 1,
-      "createdAt": 1783920785265
-    },
     {
       "id": "task_3ae43630-9a61-4f7a-9fd1-cfec076cbafa",
       "title": "a",
@@ -51,6 +42,22 @@
       "columnId": "col_6aa0934d-3a57-43b2-a2a0-242f955d4395",
       "order": 0,
       "createdAt": 1783918627643
+    },
+    {
+      "id": "task_ee1d87ea-3cf7-429a-aa48-c55efd394a99",
+      "title": "aa",
+      "description": "",
+      "priority": "medium",
+      "columnId": "col_13756ed6-2442-4c0d-97d3-b82b13c95ea9",
+      "dueDate": ""
+    },
+    {
+      "id": "task_9b65db6f-251b-4890-a228-289c39b4d854",
+      "title": "ww",
+      "description": "",
+      "priority": "medium",
+      "columnId": "col_13756ed6-2442-4c0d-97d3-b82b13c95ea9",
+      "dueDate": ""
     }
   ]
 }

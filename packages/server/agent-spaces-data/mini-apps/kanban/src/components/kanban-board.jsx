@@ -15,9 +15,9 @@ import { t } from '../utils/i18n.js';
 
 const { Plus, LayoutGrid, Search, Layers, WandSparkles } = window.AgentSpacesUI;
 
-export default function KanbanBoard() {
-  const { board, loaded, update } = useBoard();
-  const actions = useMemo(() => createBoardActions(board, update), [board, update]);
+export default function KanbanBoard({ workspaceId }) {
+  const { board, loaded, update } = useBoard(workspaceId);
+  const actions = useMemo(() => createBoardActions(board, update, workspaceId), [board, update, workspaceId]);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [priorityFilter, setPriorityFilter] = useState('all');

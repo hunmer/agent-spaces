@@ -197,7 +197,7 @@ export function NotificationSettingsTab({
       <div className="space-y-4 rounded-md border px-3 py-3">
         <div className="flex items-center justify-between">
           <div className="space-y-0.5 pr-4">
-            <Label htmlFor="message-notifications" className="text-sm font-medium">
+            <Label htmlFor="message-notifications" className="text-sm font-medium dark:!text-gray-200">
               {t('notifications.messageNotifications')}
             </Label>
             <p className="text-xs text-muted-foreground">

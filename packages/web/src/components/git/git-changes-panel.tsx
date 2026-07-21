@@ -3,7 +3,7 @@
 import { useState, useCallback, useRef } from "react";
 import {
   Upload, Loader2, RefreshCw, Trash2, ChevronDown, GitBranch,
-  FileDiff, FileCode, RotateCcw, Plus, Minus, AlertTriangle, Sparkles,
+  FileDiff, RotateCcw, Plus, Minus, AlertTriangle, Sparkles,
 } from "lucide-react";
 import { ResizablePanel } from "@/components/ui/resizable";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
@@ -11,6 +11,7 @@ import { DiffViewer } from "@/components/viewers/diff-viewer";
 import { useTranslations } from "next-intl";
 
 import { Empty, EmptyDescription, EmptyMedia } from "@/components/ui/empty";
+import { FileIconImg } from "@/components/editor/file-icon";
 import { statusColors, statusLabels } from "./git-commit-utils";
 import { sdk } from '@/lib/sdk';
 import type { GitFileStatus, GitDiffResult } from "@agent-spaces/shared";
@@ -25,7 +26,6 @@ interface Props {
   selectedFile: string | null;
   syncing: string | null;
   clean: boolean;
-  onFileClick: (path: string) => void;
   onOpenFile: (e: React.MouseEvent, path: string) => void;
   onDiscard: (e: React.MouseEvent, path: string) => void;
   onStageToggle: (e: React.MouseEvent, path: string, staged?: boolean) => void;
@@ -41,14 +41,14 @@ interface Props {
 }
 
 function FileDiffHoverCard({
-  workspaceId, path, selectedFile, children, onContextMenu, onFileClick,
+  workspaceId, path, selectedFile, children, onContextMenu, onOpenFile,
 }: {
   workspaceId: string;
   path: string;
   selectedFile: string | null;
   children: React.ReactNode;
   onContextMenu: (e: React.MouseEvent, path: string) => void;
-  onFileClick?: (path: string) => void;
+  onOpenFile?: (e: React.MouseEvent, path: string) => void;
 }) {
   const [diff, setDiff] = useState<GitDiffResult | null>(null);
   const [loading, setLoading] = useState(false);
@@ -71,7 +71,7 @@ function FileDiffHoverCard({
         delay={300}
         closeDelay={150}
         className="block"
-        onClick={() => onFileClick?.(path)}
+        onClick={(e) => onOpenFile?.(e, path)}
         onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); onContextMenu(e, path); }}
       >
         <div className={`group w-full text-left px-2 py-1 text-xs font-mono flex items-center gap-1.5 hover:bg-accent cursor-pointer ${selectedFile === path ? "bg-accent" : ""}`}>
@@ -106,7 +106,7 @@ function FileDiffHoverCard({
 
 export function GitChangesPanel({
   workspaceId, branch, branches, files, hasFiles, ahead, selectedFile,
-  syncing, clean, onFileClick, onOpenFile, onDiscard, onStageToggle,
+  syncing, clean, onOpenFile, onDiscard, onStageToggle,
   onDiscardAll, onBranchCheckout, onCommitDialogOpen, onAutoCommit,
   onSyncChanges, onViewDiff, onRefreshClick, onContextMenu, isVertical,
 }: Props) {
@@ -163,22 +163,22 @@ export function GitChangesPanel({
       {/* File list */}
       <div className="flex-1 overflow-auto">
         {files.map((f) => (
-          <FileDiffHoverCard key={f.path} workspaceId={workspaceId} path={f.path} selectedFile={selectedFile} onContextMenu={onContextMenu} onFileClick={isVertical ? undefined : onFileClick}>
-            <span className={`w-4 text-center font-bold shrink-0 ${statusColors[f.status]}`}>{statusLabels[f.status]}</span>
+          <FileDiffHoverCard key={f.path} workspaceId={workspaceId} path={f.path} selectedFile={selectedFile} onContextMenu={onContextMenu} onOpenFile={isVertical ? undefined : onOpenFile}>
+            <FileIconImg name={f.path.split("/").pop() ?? f.path} />
             {f.conflicted && <AlertTriangle size={12} className="shrink-0 text-red-500" />}
-            <span className="truncate flex-1">{f.path}</span>
+            <span className="truncate flex-1 dark:!text-gray-200">{f.path}</span>
             <span className="hidden group-hover:flex md:flex items-center gap-0.5 shrink-0">
               <button
                 onClick={(e) => { e.stopPropagation(); onStageToggle(e, f.path, f.staged); }}
                 disabled={f.conflicted}
-                className="p-0.5 rounded hover:bg-accent/80 active:scale-90 transition-all duration-100 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                className="p-0.5 rounded hover:bg-accent/80 active:scale-90 transition-all duration-100 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed dark:!text-gray-200"
                 title={f.staged ? "Unstage" : "Stage"}
               >
                 {f.staged ? <Minus size={13} /> : <Plus size={13} />}
               </button>
-              <button onClick={(e) => { e.stopPropagation(); onOpenFile(e, f.path); }} className="p-0.5 rounded hover:bg-accent/80 active:scale-90 transition-all duration-100 cursor-pointer" title={tc('open')}><FileCode size={13} /></button>
-              <button onClick={(e) => { e.stopPropagation(); onDiscard(e, f.path); }} className="p-0.5 rounded hover:bg-accent/80 active:scale-90 transition-all duration-100 cursor-pointer" title={tChanges('discardAll')}><RotateCcw size={13} /></button>
+              <button onClick={(e) => { e.stopPropagation(); onDiscard(e, f.path); }} className="p-0.5 rounded hover:bg-accent/80 active:scale-90 transition-all duration-100 cursor-pointer dark:!text-gray-200" title={tChanges('discardAll')}><RotateCcw size={13} /></button>
             </span>
+            <span className={`w-4 text-center font-bold shrink-0 ${statusColors[f.status]}`}>{statusLabels[f.status]}</span>
           </FileDiffHoverCard>
         ))}
         {clean && (

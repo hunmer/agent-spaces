@@ -19,7 +19,7 @@ interface RoomState {
 
 /** 仅保留自定义房间（过滤公共大厅）。 */
 function isCustomRoom(room: RoomAvailable): boolean {
-  return room.name === RoomType.CUSTOM
+  return (room.metadata?.name as string | undefined) === RoomType.CUSTOM
 }
 
 export const useRoomStore = create<RoomState>((set) => ({

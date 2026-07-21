@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "Agent Spaces — agent_run Node Interaction",
+    "subtitle": "reasoning → tool_use → tool_result loop inside a workflow agent node",
+    "output": "agent-spaces-agent-run.sequence.html",
+    "viewBox": [980, 760]
+  },
+  "participants": [
+    { "id": "ui", "type": "frontend", "label": "Channel UI", "sublabel": "chat surface" },
+    { "id": "ws", "type": "backend", "label": "WS Gateway", "sublabel": "/ws handler" },
+    { "id": "exec", "type": "backend", "label": "Engine", "sublabel": "ExecutionManager · agent_run" },
+    { "id": "rt", "type": "backend", "label": "AgentRuntime", "sublabel": "7 backends" },
+    { "id": "tool", "type": "cloud", "label": "Tool / MCP", "sublabel": "shell · FS · LLM" }
+  ],
+  "segments": [
+    { "from": 160, "to": 250, "label": "01 / DISPATCH" },
+    { "from": 260, "to": 460, "label": "02 / REASONING LOOP" },
+    { "from": 470, "to": 590, "label": "03 / TOOL CALL" },
+    { "from": 600, "to": 670, "label": "04 / FINALIZE" }
+  ],
+  "messages": [
+    { "from": "ui", "to": "ws", "y": 180, "label": "@mention / run" },
+    { "from": "ws", "to": "exec", "y": 215, "label": "execute(node, ctx)", "variant": "emphasis" },
+    { "from": "exec", "to": "rt", "y": 245, "label": "execute(prompt, opts)", "variant": "emphasis" },
+
+    { "from": "rt", "to": "ws", "y": 285, "label": "event: reasoning", "variant": "return" },
+    { "from": "ws", "to": "ui", "y": 315, "label": "stream thoughts", "variant": "return" },
+
+    { "from": "rt", "to": "exec", "y": 355, "label": "event: tool_use", "variant": "dashed" },
+    { "from": "exec", "to": "ws", "y": 385, "label": "node:progress", "variant": "dashed" },
+
+    { "from": "rt", "to": "tool", "y": 425, "label": "invoke(name, input)", "variant": "dashed" },
+    { "from": "tool", "to": "rt", "y": 470, "label": "structured result", "variant": "return" },
+
+    { "from": "rt", "to": "exec", "y": 510, "label": "event: tool_result", "variant": "return" },
+
+    { "from": "rt", "to": "exec", "y": 570, "label": "AgentRunResult", "variant": "return" },
+    { "from": "exec", "to": "ws", "y": 605, "label": "node:complete", "variant": "return" },
+    { "from": "ws", "to": "ui", "y": 640, "label": "final answer + usage", "variant": "return" }
+  ],
+  "activations": [
+    { "participant": "exec", "from": 210, "to": 610, "type": "backend" },
+    { "participant": "rt", "from": 250, "to": 575, "type": "backend" },
+    { "participant": "tool", "from": 430, "to": 475, "type": "cloud" }
+  ],
+  "cards": [
+    { "dot": "cyan", "title": "Event vocabulary", "items": ["AgentRuntimeEvent: output / reasoning / tool_use / tool_result / hook_event / session", "Workflow channel events: node:progress · node:complete · execution:log", "All events ride the /ws WebSocket to the subscribed Channel UI"] },
+    { "dot": "violet", "title": "Tool boundary", "items": ["Tool / MCP spans shell, filesystem, knowledge-base, mini-app UI, and external LLM calls", "Structured result returns to AgentRuntime for the next reasoning turn", "Hook system fires before/after every tool call (shell / webhook / script)"] },
+    { "dot": "emerald", "title": "Aggregation", "items": ["AgentRunResult carries success, summary, artifacts, sessionId, usage, costUsd", "ExecutionManager merges the result into the DAG output and advances the workflow"] }
+  ]
+}

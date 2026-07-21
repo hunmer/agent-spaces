@@ -15,6 +15,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { Bot, Download, FileText, Store } from "lucide-react";
 import { StoreTabPanel } from "@/components/common/store-tab-panel";
+import { copyToClipboard } from "@/lib/utils";
 import {
   ROLE_COLORS,
   newAgentDraft,
@@ -189,6 +190,7 @@ export function AgentDialog({
         onOpenChange={onOpenChange}
         onAutoGenerate={handleAutoGenerate}
         handleAddAgent={data.handleAddAgent}
+        onCopyId={(id) => copyToClipboard(id)}
         importOpen={data.importOpen}
         setImportOpen={data.setImportOpen}
         openJsonImport={() => data.jsonInputRef.current?.click()}
@@ -248,6 +250,7 @@ export function AgentDialog({
                     onSelect={data.handleSelectAgent}
                     onDelete={data.handleDeleteAgent}
                     onToggleEnabled={data.handleToggleEnabled}
+                    onClone={data.handleCloneAgent}
                   />
                 </div>
               </div>

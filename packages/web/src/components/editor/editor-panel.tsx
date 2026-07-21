@@ -666,10 +666,10 @@ export function CommonEditorPanel({
               )}
             </div>
             <DropdownMenu>
-              <DropdownMenuTrigger className="p-0.5 hover:bg-accent rounded">
+              <DropdownMenuTrigger className="p-0.5 hover:bg-accent rounded dark:!text-gray-200">
                 <Ellipsis className="size-3" />
               </DropdownMenuTrigger>
-              <DropdownMenuContent>
+              <DropdownMenuContent className="dark:!text-gray-200">
                 <DropdownMenuCheckboxItem checked={showHiddenFiles} onCheckedChange={(checked) => updateShowHiddenFiles(checked === true)}>
                   {t('showHiddenFiles')}
                 </DropdownMenuCheckboxItem>
@@ -700,7 +700,7 @@ export function CommonEditorPanel({
             </DropdownMenu>
             <button
               onClick={() => loadTree()}
-              className="p-0.5 hover:bg-accent rounded cursor-pointer"
+              className="p-0.5 hover:bg-accent rounded cursor-pointer dark:!text-gray-200"
               disabled={treeLoading}
             >
               <RefreshCw className={`size-3 ${treeLoading ? "animate-spin" : ""}`} />

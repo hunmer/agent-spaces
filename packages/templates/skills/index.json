@@ -1,5 +1,45 @@
 [
   {
+    "id": "caveman",
+    "name": "caveman",
+    "group": "",
+    "path": "caveman",
+    "md5": "00966395382ac41e2b4783e0f6da9b21",
+    "updatedAt": "2026-05-25T08:27:33.623Z"
+  },
+  {
+    "id": "find-skill-skillhub",
+    "name": "find-skill-skillhub",
+    "group": "",
+    "path": "find-skill-skillhub",
+    "md5": "df7892e2b003e50a8843ea8ea02f5d31",
+    "updatedAt": "2026-07-14T09:15:09.544Z"
+  },
+  {
+    "id": "grill-me",
+    "name": "grill-me",
+    "group": "",
+    "path": "grill-me",
+    "md5": "c090c5945d127a9b643ec9d93e07c93f",
+    "updatedAt": "2026-05-25T08:27:33.624Z"
+  },
+  {
+    "id": "handoff",
+    "name": "handoff",
+    "group": "",
+    "path": "handoff",
+    "md5": "d5554ea8714577812412853becae80fe",
+    "updatedAt": "2026-05-25T08:27:33.625Z"
+  },
+  {
+    "id": "improve-codebase-architecture",
+    "name": "improve-codebase-architecture",
+    "group": "",
+    "path": "improve-codebase-architecture",
+    "md5": "169bc260111e10cddef44881c0927b7e",
+    "updatedAt": "2026-05-25T08:27:33.628Z"
+  },
+  {
     "id": "planning-with-files-zh",
     "name": "planning-with-files-zh",
     "group": "planning-with-files",
@@ -118,5 +158,21 @@
     "path": "superpowers/writing-skills",
     "md5": "e9f10ebdefa0bad85f0c682bedc42d09",
     "updatedAt": "2026-05-25T08:27:33.710Z"
+  },
+  {
+    "id": "tdd",
+    "name": "tdd",
+    "group": "",
+    "path": "tdd",
+    "md5": "5ddcceb0fd1c85db4e3e386dcfe1196b",
+    "updatedAt": "2026-05-25T08:27:33.715Z"
+  },
+  {
+    "id": "to-prd",
+    "name": "to-prd",
+    "group": "",
+    "path": "to-prd",
+    "md5": "5703a6470f12207e3168f51d39980154",
+    "updatedAt": "2026-05-25T08:27:33.715Z"
   }
 ]

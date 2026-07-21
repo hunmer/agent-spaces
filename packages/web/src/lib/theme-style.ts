@@ -467,7 +467,7 @@ export function applyThemeStyle(css: string) {
     el.id = STYLE_EL_ID;
     document.head.appendChild(el);
   }
-  el.textContent = css;
+  el.textContent = css.replace(/(^|})\s*\.dark\s*\{/g, "$1\n:root.dark {");
 }
 
 export function removeThemeStyle() {
@@ -531,7 +531,7 @@ export function applyPrimaryColor(color: string) {
   --sidebar-ring: ${ring};
   --chart-1: ${color};
 }
-.dark {
+:root.dark {
   --primary: ${color};
   --primary-foreground: ${fg};
   --ring: ${ring};

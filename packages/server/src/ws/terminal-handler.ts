@@ -91,6 +91,9 @@ export function handleTerminalEvent(
     case 'terminal.close': {
       const payload = data as { sessionId: string };
       ptyService.kill(payload.sessionId);
+      // 主动广播关闭事件：Windows 下 pty.kill() 的 onExit 回调不可靠，
+      // 不主动广播会导致前端 runningMap / sessions 不清理（绿色 badge 残留）
+      broadcastToWorkspace(workspaceId, 'terminal.closed', { sessionId: payload.sessionId });
       break;
     }
   }

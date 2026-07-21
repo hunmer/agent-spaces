@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "diagram_type": "lifecycle",
+  "meta": {
+    "title": "Agent Spaces — Workflow Execution Lifecycle",
+    "subtitle": "ExecutionManager states · breakpoints · pause/resume · snapshot recovery",
+    "output": "agent-spaces-execution.lifecycle.html",
+    "viewBox": [1000, 660]
+  },
+  "lanes": [
+    { "id": "main", "label": "Lifecycle phases" },
+    { "id": "waiting", "label": "Paused reasons" },
+    { "id": "terminal", "label": "Terminal exits" }
+  ],
+  "states": [
+    { "id": "queued", "type": "start", "label": "Queued", "lane": "main", "col": 0, "step": "01", "tag": "workflow:started" },
+    { "id": "running", "type": "active", "label": "Running", "lane": "main", "col": 2, "step": "02", "tag": "node:progress" },
+    { "id": "manual", "type": "waiting", "label": "Paused", "lane": "waiting", "col": 0, "tag": "manual · UI" },
+    { "id": "bps", "type": "waiting", "label": "Paused", "lane": "waiting", "col": 1, "tag": "breakpoint-start" },
+    { "id": "bpe", "type": "waiting", "label": "Paused", "lane": "waiting", "col": 2, "tag": "breakpoint-end" },
+    { "id": "done", "type": "success", "label": "Completed", "lane": "terminal", "col": 2, "step": "03", "tag": "workflow:completed" },
+    { "id": "error", "type": "failure", "label": "Error", "lane": "terminal", "col": 0, "tag": "workflow:error" }
+  ],
+  "transitions": [
+    { "from": "queued", "to": "running", "variant": "emphasis" },
+
+    { "from": "running", "to": "manual", "label": "UI pause", "fromSide": "bottom", "toSide": "top", "variant": "security" },
+    { "from": "running", "to": "bps", "label": "hit breakpoint", "fromSide": "bottom", "toSide": "top", "variant": "security" },
+    { "from": "running", "to": "bpe", "label": "node done", "fromSide": "bottom", "toSide": "top", "variant": "security" },
+
+    { "from": "manual", "to": "running", "label": "resume", "fromSide": "top", "toSide": "bottom", "variant": "emphasis", "labelDy": 24 },
+    { "from": "bps", "to": "running", "label": "resume", "fromSide": "top", "toSide": "bottom", "variant": "emphasis", "labelDy": 24 },
+    { "from": "bpe", "to": "running", "label": "resume", "fromSide": "top", "toSide": "bottom", "variant": "emphasis", "labelDy": 24 },
+
+    { "from": "running", "to": "done", "label": "end node", "fromSide": "bottom", "toSide": "top", "variant": "emphasis", "labelDy": 41 },
+    { "from": "running", "to": "error", "label": "throw / fault", "fromSide": "bottom", "toSide": "top", "variant": "security", "labelDy": 41 }
+  ],
+  "cards": [
+    { "dot": "cyan", "title": "Channels (ExecutionEventChannel)", "items": ["workflow:started · workflow:paused · workflow:resumed", "node:start · node:progress · node:complete · node:error", "workflow:completed · workflow:error · execution:log · execution:context"] },
+    { "dot": "amber", "title": "Pause reasons (WorkflowPausedEvent.reason)", "items": ["manual — user clicks pause in the UI", "breakpoint-start — halt before a node with a pre-breakpoint", "breakpoint-end — halt after a node with a post-breakpoint", "workflow:resumed carries the run back to Running"] },
+    { "dot": "rose", "title": "Recovery", "items": ["ExecutionSnapshot persisted on pause / disconnect", "recoverRunningWorkOnStartup rehydrates in-flight runs after server restart", "Terminal lane isolates Completed (success) from Error (failure)"] }
+  ]
+}

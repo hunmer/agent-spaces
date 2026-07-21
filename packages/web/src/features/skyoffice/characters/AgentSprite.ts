@@ -208,12 +208,12 @@ export default class AgentSprite extends Player {
   }
 
   /** 走路完成：snap 到目标，坐下 */
-  startWalkingPath(targetX: number, targetY: number, targetDir: string, path: Point[]) {
-    this.currentActivity = 'working'
+  startWalkingPath(targetX: number, targetY: number, targetDir: string, path: Point[], sitOnArrival = true) {
+    this.currentActivity = sitOnArrival ? 'working' : 'idle'
     this.stopWalking()
 
     if (Phaser.Math.Distance.Between(this.x, this.y, targetX, targetY) < 8) {
-      this.finishWalking(targetX, targetY, targetDir)
+      if (sitOnArrival) this.finishWalking(targetX, targetY, targetDir)
       return
     }
     if (!path.length) {
@@ -223,11 +223,14 @@ export default class AgentSprite extends Player {
     }
 
     this.isWalking = true
-    const waypoints = [...path.slice(1), { x: targetX, y: targetY }]
+    const waypoints = path.slice(1)
+    const last = waypoints.at(-1)
+    if (!last || last.x !== targetX || last.y !== targetY) waypoints.push({ x: targetX, y: targetY })
     const walkNext = () => {
       const next = waypoints.shift()
       if (!next) {
-        this.finishWalking(targetX, targetY, targetDir)
+        if (sitOnArrival) this.finishWalking(targetX, targetY, targetDir)
+        else this.finishWandering(targetX, targetY)
         return
       }
 
@@ -253,6 +256,21 @@ export default class AgentSprite extends Player {
       this.walkingTweens = [tween]
     }
     walkNext()
+  }
+
+  isMoving() {
+    return this.isWalking
+  }
+
+  private finishWandering(targetX: number, targetY: number) {
+    this.isWalking = false
+    this.walkingTweens = []
+    this.x = targetX
+    this.y = targetY
+    this.playerContainer.x = targetX
+    this.playerContainer.y = targetY - 30
+    this.setDepth(targetY)
+    this.anims.play(`${this.playerTexture}_idle_down`, true)
   }
 
   private finishWalking(targetX: number, targetY: number, targetDir: string) {

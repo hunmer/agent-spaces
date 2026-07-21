@@ -21,6 +21,37 @@ interface SingleTerminalProps {
   shell?: string;
 }
 
+/**
+ * 延迟 close 注册表：sessionId -> 定时器。
+ *
+ * 卸载时不立即杀服务端 pty，而是延迟 N ms 后才发 terminal.close。
+ * 若同 sessionId 的 SingleTerminal 在延迟期内重新挂载（刷新/切回/重开 tab），
+ * 取消定时器即可接回原会话；只有真正「关闭后不再回来」才会触发 close。
+ * 刷新页面时整个 JS 环境销毁，定时器不会执行，服务端会话自然保留，
+ * 刷新后走重连分支取回 buffer。
+ */
+const CLOSE_DELAY_MS = 2000;
+const pendingCloseTimers = new Map<string, ReturnType<typeof setTimeout>>();
+
+/** 挂载时调用：若有同 sessionId 的待执行 close，取消之 */
+function cancelPendingClose(sessionId: string) {
+  const timer = pendingCloseTimers.get(sessionId);
+  if (timer !== undefined) {
+    clearTimeout(timer);
+    pendingCloseTimers.delete(sessionId);
+  }
+}
+
+/** 卸载时调用：延迟 N ms 后杀会话，期间可被 cancelPendingClose 取消 */
+function scheduleClose(sessionId: string, send: (event: string, payload: unknown) => void) {
+  cancelPendingClose(sessionId);
+  const timer = setTimeout(() => {
+    pendingCloseTimers.delete(sessionId);
+    send('terminal.close', { sessionId });
+  }, CLOSE_DELAY_MS);
+  pendingCloseTimers.set(sessionId, timer);
+}
+
 const TERM_THEMES = {
   light: {
     background: '#ffffff',
@@ -109,6 +140,9 @@ export function SingleTerminal({ workspaceId, node, boundDirs = [], shell }: Sin
         Actions.updateNodeAttributes(node.getId(), { config: { ...config, sessionId } }),
       );
     }
+    // 取消上次卸载遗留的 close 定时器：若是切换/重开/刷新导致的快速重挂，
+    // 服务端会话得以保留，本组件走重连分支接回 buffer。
+    cancelPendingClose(sessionId);
 
     // 创建 xterm
     const xterm = new Terminal({
@@ -160,12 +194,29 @@ export function SingleTerminal({ workspaceId, node, boundDirs = [], shell }: Sin
       // 后续不再处理，避免重复 write/create
       ws.off('terminal.sessions', sessionsHandler);
       if (alive) {
-        // 会话仍存活：写回 buffer 并 resize 重连
+        // 会话仍存活：写回 buffer 并 resize 重连。
+        // 重连场景下原 claude 等 REPL 仍在运行，绝不能重发 pendingCommand，
+        // 否则会变成"重新执行 claude"，丢弃之前的状态。
         if (target?.buffer) xterm.write(target.buffer);
         sendResize();
       } else {
         // 会话已不存在：重新创建
         ws.send('terminal.create', { sessionId, shell, cwd: boundDirs[0] });
+
+        // 仅在「新建」分支执行 pendingCommand：会话就绪后输入并回车执行，
+        // 随后清除避免重连重复执行。
+        const latestConfig = (node.getConfig() ?? {}) as { pendingCommand?: string };
+        const pendingCommand = latestConfig.pendingCommand;
+        if (pendingCommand) {
+          node.getModel().doAction(
+            Actions.updateNodeAttributes(node.getId(), {
+              config: { ...latestConfig, pendingCommand: undefined },
+            }),
+          );
+          setTimeout(() => {
+            ws.send('terminal.input', { sessionId, data: pendingCommand + '\r' });
+          }, 200);
+        }
       }
     };
     ws.on('terminal.sessions', sessionsHandler);
@@ -198,7 +249,10 @@ export function SingleTerminal({ workspaceId, node, boundDirs = [], shell }: Sin
       inputDisposable.dispose();
       ws.off('terminal.output', outputHandler);
       ws.off('terminal.sessions', sessionsHandler);
-      ws.send('terminal.close', { sessionId });
+      // 不立即杀会话：延迟 N ms，期间若同 sessionId 的 SingleTerminal 重新挂载
+      // （cancelPendingClose 会取消），则服务端会话保留以供重连；
+      // 刷新页面时整个 JS 销毁，定时器不会触发，会话同样保留。
+      scheduleClose(sessionId, (event, payload) => ws.send(event as 'terminal.close', payload));
       xterm.dispose();
       xtermRef.current = null;
       fitRef.current = null;

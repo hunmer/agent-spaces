@@ -14,12 +14,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { cn } from "@/lib/utils";
+import { cn, copyToClipboard } from "@/lib/utils";
 import {
   ArrowLeft,
   Bot,
   Braces,
   ChevronDown,
+  Copy,
   Download,
   FileJson,
   Plus,
@@ -48,6 +49,7 @@ interface AgentDialogHeaderProps {
   onOpenChange: (open: boolean) => void;
   onAutoGenerate: () => void;
   handleAddAgent: (role: BuiltInRole | "empty") => void;
+  onCopyId?: (id: string) => void;
   importOpen?: boolean;
   setImportOpen?: (open: boolean) => void;
   openJsonImport?: () => void;
@@ -68,6 +70,7 @@ export function AgentDialogHeader({
   onOpenChange,
   onAutoGenerate,
   handleAddAgent,
+  onCopyId,
   importOpen,
   setImportOpen,
   openJsonImport,
@@ -166,6 +169,13 @@ export function AgentDialogHeader({
     </Button>
   ) : null;
 
+  const copyIdButton = selectedAgent && onCopyId ? (
+    <Button variant="outline" size="sm" onClick={() => onCopyId(selectedAgent.id)}>
+      <Copy className="size-3.5" />
+      {t("dialog.copyId")}
+    </Button>
+  ) : null;
+
   // Non-standalone: Dialog header with DialogHeader/Title/Description
   if (!standalone) {
     return (
@@ -187,6 +197,7 @@ export function AgentDialogHeader({
         </DialogHeader>
         {resetButton}
         {generateButton}
+        {copyIdButton}
         {!selectedAgent && !singleAgent && (
           <div className="flex items-center gap-2">
             {tabs}
@@ -222,6 +233,7 @@ export function AgentDialogHeader({
         </div>
         {resetButton}
         {generateButton}
+        {copyIdButton}
       </div>
     );
   }

@@ -123,7 +123,7 @@ export function IssueList({ workspaceId }: IssueListProps) {
           </button>
         )}
         <div className="min-w-0 flex-1">
-          <div className="text-sm font-medium truncate">{issue.title}</div>
+          <div className="text-sm font-medium truncate dark:!text-gray-200">{issue.title}</div>
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <span className="truncate">{issue.workflowId ? (workflows.find(w => w.id === issue.workflowId)?.name ?? t('detail.workflow')) : t('detail.noWorkflow')}</span>
             <span className="text-muted-foreground/60 shrink-0">{formatRelativeTime(issue.updatedAt)}</span>

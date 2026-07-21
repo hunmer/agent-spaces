@@ -3,7 +3,6 @@
 import { Loader2, ArrowUp, ArrowDown, RefreshCw, Settings2, ScrollText } from "lucide-react";
 import type { GitLogEntry } from "@agent-spaces/shared";
 import { ResizablePanel } from "@/components/ui/resizable";
-import { Skeleton, SkeletonGroup } from "@/components/ui/skeleton";
 import { useTranslations } from "next-intl";
 
 import { GitCommitLogList } from "./git-commit-log-list";
@@ -51,9 +50,12 @@ export function GitCommitsSection({
     <ResizablePanel id="commits" defaultSize={isVertical ? "60%" : "75%"} minSize="30%" className="flex flex-col min-w-0 overflow-hidden">
       {/* Commits header */}
       <div className="flex items-center justify-between px-2 py-1.5 border-b shrink-0">
-        <span className="text-xs font-medium text-muted-foreground">
-          {log.length > 0 ? t('titleWithCount', { count: log.length }) : t('title')}
-        </span>
+        <div className="flex items-center gap-1.5 min-w-0">
+          {loading && <Loader2 size={12} className="animate-spin text-muted-foreground shrink-0" />}
+          <span className="text-xs font-medium text-muted-foreground truncate">
+            {log.length > 0 ? t('titleWithCount', { count: log.length }) : t('title')}
+          </span>
+        </div>
         <div className="flex items-center gap-1">
           <button onClick={onPush} disabled={syncing !== null}
             className="relative p-1 text-muted-foreground hover:text-foreground active:scale-90 transition-all duration-100 cursor-pointer disabled:opacity-50"
@@ -91,24 +93,6 @@ export function GitCommitsSection({
         </div>
       ) : (
         <div className="min-h-0 flex-1 overflow-y-auto">
-          {loading && !log.length && (
-            <div className="p-2 space-y-1">
-              <SkeletonGroup count={6}>
-                {(i) => (
-                  <div key={i} className="px-2 py-1.5 border-b space-y-1.5">
-                    <div className="flex items-center gap-2">
-                      <Skeleton className="h-3 w-10 rounded" />
-                      <Skeleton className="h-3 flex-1" />
-                    </div>
-                    <div className="flex items-center gap-2 pl-7">
-                      <Skeleton className="h-3 w-20" />
-                      <Skeleton className="h-3 w-16" />
-                    </div>
-                  </div>
-                )}
-              </SkeletonGroup>
-            </div>
-          )}
           <GitCommitLogList
             workspaceId={workspaceId}
             log={log}
@@ -118,7 +102,11 @@ export function GitCommitsSection({
             onRefreshAll={onRefreshAll}
             onOpenPrompt={onOpenPrompt}
           />
-          {!loading && !log.length && <div className="p-2 text-xs text-muted-foreground">{t('noCommits')}</div>}
+          {!loading && !log.length && (
+            <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
+              {t('noCommits')}
+            </div>
+          )}
         </div>
       )}
     </ResizablePanel>

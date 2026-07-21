@@ -11,7 +11,18 @@ export type RuntimeCliId =
   | "pi"
   | "claude-code-sdk"
   | "codex-sdk"
-  | "open-agent-sdk";
+  | "open-agent-sdk"
+  | "openclaw"
+  | "omp"
+  | "opencode"
+  | "qwen"
+  | "cursor"
+  | "kimi"
+  | "kiro"
+  | "kilocode"
+  | "antigravity"
+  | "xiaomimimo"
+  | "githubcopilot";
 export type RuntimeCategory = "cli" | "sdk";
 export type SupportedRuntimeKind = "claude-code" | "codex" | "grok" | "open-agent-sdk" | "hermes" | "pi";
 
@@ -129,22 +140,19 @@ function persistRuntimeCliSettings(state: RuntimeCliSettingsState) {
 function normalizeStoredItem(item: unknown): RuntimeCliDiscoveryItem | null {
   if (!item || typeof item !== "object") return null;
   const value = item as Partial<RuntimeCliDiscoveryItem>;
-  if (
-    value.id !== "claude-code"
-    && value.id !== "codex"
-    && value.id !== "grok"
-    && value.id !== "gemini-cli"
-    && value.id !== "hermes"
-    && value.id !== "pi"
-    && value.id !== "claude-code-sdk"
-    && value.id !== "codex-sdk"
-    && value.id !== "open-agent-sdk"
-  ) return null;
+  const VALID_IDS: RuntimeCliId[] = [
+    "claude-code", "codex", "grok", "gemini-cli", "hermes", "pi",
+    "claude-code-sdk", "codex-sdk", "open-agent-sdk",
+    "openclaw", "omp", "opencode", "qwen", "cursor", "kimi", "kiro",
+    "kilocode", "antigravity", "xiaomimimo", "githubcopilot",
+  ];
+  if (!value.id || !VALID_IDS.includes(value.id)) return null;
+  const id = value.id;
   return {
-    id: value.id,
+    id,
     category: value.category === "sdk" ? "sdk" : "cli",
-    label: typeof value.label === "string" ? value.label : value.id,
-    command: typeof value.command === "string" ? value.command : value.id,
+    label: typeof value.label === "string" ? value.label : id,
+    command: typeof value.command === "string" ? value.command : id,
     found: value.found === true,
     path: typeof value.path === "string" ? value.path : null,
     version: typeof value.version === "string" ? value.version : null,

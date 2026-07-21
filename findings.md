@@ -1,0 +1,25 @@
+# Findings
+
+- Team detail UI entry: `packages/web/src/components/teams/team-detail-panel.tsx`, component `TeamDetailPanel`.
+- Server SkyOffice room class: `packages/server/src/skyoffice/rooms/SkyOffice.ts`; it supports chat/status messages through its dispatcher.
+- Team memberships contain `teamId`, `agentId`, optional agent data and active status.
+- CodeGraph did not index `SkyOfficeApp` or `agent-client.ts`; use targeted text/file inspection next.
+- `executeTeamReply` is the shared entry for preset/chat/custom team agents, so one hook there covers all team-agent starts.
+- Existing SkyOffice `Bridge` already supports spawn, talk, and async activity transitions; no new protocol is needed.
+- Frontend `Network.joinCustomById` already joins a business room ID; `SkyOfficeApp` only needs an automatic-join prop and embedded sizing.
+- Room registry is in-memory. The minimal idempotent mapping can derive a stable room ID from `teamId` and recreate it after server restart.
+- Verification: server `tsc` passed; `test/team-room.test.ts` passed; changed web files have no ESLint errors.
+- Repository-wide web `tsc --noEmit` has unrelated existing failures, so it is not a clean project baseline.
+- Reproduction showed the server registry had 3 agents while a real Colyseus client decoded `{ players: {}, agents: {} }`.
+- Root cause: server TS emitted native class fields (`useDefineForClassFields=true` via ES2022), shadowing `@colyseus/schema` decorator accessors, so state changes were not serialized.
+- Real Colyseus integration now verifies members are decoded, spawn positions differ, and activity switches to `working`.
+- Automatic team-room login skipped `Game.registerKeys`; passing `autoRegisterKeys` through Bootstrap restores arrows/WASD.
+- `disableGlobalCapture()` allowed browser arrow-key scrolling; explicit Phaser capture fixes it.
+- Idle wandering now keeps an independent `nextWanderAt` per agent instead of moving agents from one synchronized batch timer.
+- Team spawn assigned different textures but left `anim=adam_idle_down`; setting both from one texture fixes skin changes.
+- BFS was correct, but the `Wall` object layer was absent from `furnitureBlockedTiles`; adding it to the same obstacle grid prevents wall-crossing.
+- Camera dragging stopped follow permanently; restarting follow on pointer release keeps the player in frame.
+- Idle BFS returned tile coordinates but AgentSprite tweens require world pixels; converting every path node fixes erratic/out-of-map movement.
+- Camera follow should not resume on pointer release; manual camera position persists until the player exits `camera.worldView`.
+- `Schema.onChange` is a registration method in Colyseus schema v2 and its callback has no changes argument; assigning it or expecting changes silently breaks live updates.
+- Snapshot diffing inside registered callbacks preserves the existing field-change event API and makes activity changes immediate.
