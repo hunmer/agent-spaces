@@ -78,7 +78,7 @@ export function create(workspaceId: string, input: CreateIssueInput): Issue {
     updatedAt: now,
   };
   createIssue(issue);
-  return issue;
+  return ensureIssueChannel(workspaceId, issue);
 }
 
 export function createForChannel(
