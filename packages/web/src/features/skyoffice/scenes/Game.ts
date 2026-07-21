@@ -279,13 +279,13 @@ export default class Game extends Phaser.Scene {
           new Phaser.Math.Vector2(targetX, targetY),
           (x, y) => this.groundLayer.getTileAt(x, y)?.collides === true || this.furnitureBlockedTiles.has(`${x},${y}`)
         ).map(({ x, y }) => ({
-          x: this.map.tileToWorldX(x) + this.map.tileWidth / 2,
-          y: this.map.tileToWorldY(y) + this.map.tileHeight / 2,
+          x: this.map.tileToWorldX(x)! + this.map.tileWidth / 2,
+          y: this.map.tileToWorldY(y)! + this.map.tileHeight / 2,
         }))
         if (path.length < 2) continue
         sprite.startWalkingPath(
-          this.map.tileToWorldX(targetX) + this.map.tileWidth / 2,
-          this.map.tileToWorldY(targetY) + this.map.tileHeight / 2,
+          this.map.tileToWorldX(targetX)! + this.map.tileWidth / 2,
+          this.map.tileToWorldY(targetY)! + this.map.tileHeight / 2,
           'down',
           path,
           false
@@ -317,7 +317,7 @@ export default class Game extends Phaser.Scene {
     const actualX = object.x! + object.width! * 0.5
     const actualY = object.y! - object.height! * 0.5
     const obj = group
-      .get(actualX, actualY, key, object.gid! - this.map.getTileset(tilesetName).firstgid)
+      .get(actualX, actualY, key, object.gid! - this.map.getTileset(tilesetName)!.firstgid)
       .setDepth(actualY)
     return obj
   }
@@ -335,7 +335,7 @@ export default class Game extends Phaser.Scene {
       const actualX = object.x! + object.width! * 0.5
       const actualY = object.y! - object.height! * 0.5
       group
-        .get(actualX, actualY, key, object.gid! - this.map.getTileset(tilesetName).firstgid)
+        .get(actualX, actualY, key, object.gid! - this.map.getTileset(tilesetName)!.firstgid)
         .setDepth(actualY)
       if (blocksPath) this.addFurnitureCollision(object)
     })
@@ -440,8 +440,8 @@ export default class Game extends Phaser.Scene {
         (x, y) => this.groundLayer.getTileAt(x, y)?.collides === true ||
           this.furnitureBlockedTiles.has(`${x},${y}`)
       ).map(({ x, y }) => ({
-        x: this.map.tileToWorldX(x) + this.map.tileWidth / 2,
-        y: this.map.tileToWorldY(y) + this.map.tileHeight / 2,
+        x: this.map.tileToWorldX(x)! + this.map.tileWidth / 2,
+        y: this.map.tileToWorldY(y)! + this.map.tileHeight / 2,
       }))
       sprite.startWalkingPath(agent.targetX, agent.targetY, agent.targetDir || 'down', path)
     }

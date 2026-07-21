@@ -98,7 +98,7 @@ export default class Network {
     useAgentDebugStore.getState().clearHumans()
 
     // ---------- 人类玩家 state.players ----------
-    this.room.state.players.onAdd((player: IPlayer, key: string) => {
+    this.room.state.players.onAdd!((player: any, key: string) => {
       useAgentDebugStore.getState().upsertHuman({ id: key, name: player.name || '(unnamed)' })
       // 自己的玩家走 MyPlayer，不在此处理
       if (key === this.mySessionId) return
@@ -122,7 +122,7 @@ export default class Network {
       })
     })
 
-    this.room.state.players.onRemove((player: IPlayer, key: string) => {
+    this.room.state.players.onRemove!((player: any, key: string) => {
       phaserEvents.emit(Event.PLAYER_LEFT, key)
       useChatStore.getState().pushPlayerLeftMessage(player.name)
       useUserStore.getState().removePlayerNameMap(key)
@@ -130,7 +130,7 @@ export default class Network {
     })
 
     // ---------- 外部 Agent state.agents ----------
-    this.room.state.agents.onAdd((agent: IAgent, key: string) => {
+    this.room.state.agents.onAdd!((agent: any, key: string) => {
       phaserEvents.emit(Event.AGENT_JOINED, agent, key)
       useChatStore.getState().pushAgentEvent({ author: agent.name, content: 'joined the team' })
       useAgentDebugStore.getState().upsertAgent({
@@ -143,9 +143,9 @@ export default class Network {
         activity: agent.activity,
         isHuman: false,
       })
-      let previous = agent.toJSON() as Record<string, unknown>
+      let previous = agent.toJSON()
       agent.onChange(() => {
-        const next = agent.toJSON() as Record<string, unknown>
+        const next = agent.toJSON()
         const changes = Object.entries(next)
           .filter(([field, value]) => previous[field] !== value)
           .map(([field, value]) => ({ field, value }))
@@ -166,7 +166,7 @@ export default class Network {
       })
     })
 
-    this.room.state.agents.onRemove((_agent: IAgent, key: string) => {
+    this.room.state.agents.onRemove!((_agent: any, key: string) => {
       phaserEvents.emit(Event.AGENT_LEFT, key)
       // 注意：onRemove 时 agent.name 可能已不可靠，用快照里的 name
       const name = useAgentDebugStore.getState().agents[key]?.name ?? key
@@ -175,7 +175,7 @@ export default class Network {
     })
 
     // ---------- 事件流 state.chatMessages ----------
-    this.room.state.chatMessages.onAdd((item: IChatMessage) => {
+    this.room.state.chatMessages.onAdd!((item: any) => {
       useChatStore.getState().pushChatMessage(item)
     })
 

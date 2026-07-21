@@ -1,0 +1,33 @@
+{
+  "id": "90656b8b-e7c7-4512-8992-f6f639bb87a3",
+  "type": "workspace",
+  "folderId": null,
+  "nodes": [
+    {
+      "id": "start_1784622991361",
+      "type": "start",
+      "label": "Start",
+      "position": {
+        "x": 240,
+        "y": 80
+      },
+      "data": {}
+    },
+    {
+      "id": "end_1784622991361",
+      "type": "end",
+      "label": "End",
+      "position": {
+        "x": 240,
+        "y": 360
+      },
+      "data": {}
+    }
+  ],
+  "edges": [],
+  "createdAt": 1784622991362,
+  "updatedAt": 1784623011559,
+  "published": false,
+  "name": "游戏开发",
+  "description": "游戏开发流程，从规划->执行->审核"
+}

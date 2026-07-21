@@ -81,13 +81,35 @@ flutter:
     - assets/web/_next/static/chunks/
     - assets/web/_next/static/media/
     - assets/web/_not-found/
+    - assets/web/_not-found/__next._not-found/
+    - assets/web/assets/
+    - assets/web/assets/skyoffice/
+    - assets/web/assets/skyoffice/archive/
+    - assets/web/assets/skyoffice/background/
+    - assets/web/assets/skyoffice/character/
+    - assets/web/assets/skyoffice/character/single/
+    - assets/web/assets/skyoffice/items/
+    - assets/web/assets/skyoffice/login/
+    - assets/web/assets/skyoffice/map/
+    - assets/web/assets/skyoffice/tileset/
     - assets/web/chat/
+    - assets/web/chat/__next.chat/
+    - assets/web/devices/
     - assets/web/icons/
+    - assets/web/learn/
+    - assets/web/learn/__next.learn/
     - assets/web/login/
+    - assets/web/login/__next.login/
     - assets/web/mini-apps/
     - assets/web/mini-apps/_/
+    - assets/web/mini-apps/_/__next.mini-apps/
+    - assets/web/mini-apps/_/__next.mini-apps/$d$id/
+    - assets/web/mini-apps/__next.mini-apps/
     - assets/web/mini-apps-preview/
     - assets/web/mini-apps-preview/_/
+    - assets/web/mini-apps-preview/_/__next.mini-apps-preview/
+    - assets/web/mini-apps-preview/_/__next.mini-apps-preview/$d$id/
+    - assets/web/mini-apps-preview/__next.mini-apps-preview/
     - assets/web/monaco/
     - assets/web/monaco/vs/
     - assets/web/monaco/vs/assets/
@@ -100,20 +122,56 @@ flutter:
     - assets/web/monaco/vs/language/typescript/
     - assets/web/monaco-themes/
     - assets/web/notifications/
+    - assets/web/notifications/__next.notifications/
+    - assets/web/playground/
+    - assets/web/playground/__next.playground/
     - assets/web/settings/
+    - assets/web/settings/__next.settings/
     - assets/web/settings/agents/
+    - assets/web/settings/agents/__next.settings/
+    - assets/web/settings/agents/__next.settings/agents/
     - assets/web/settings/data-files/
+    - assets/web/settings/data-files/__next.settings/
+    - assets/web/settings/data-files/__next.settings/data-files/
     - assets/web/settings/mcps/
+    - assets/web/settings/mcps/__next.settings/
+    - assets/web/settings/mcps/__next.settings/mcps/
     - assets/web/settings/models/
+    - assets/web/settings/models/__next.settings/
+    - assets/web/settings/models/__next.settings/models/
     - assets/web/settings/output-styles/
+    - assets/web/settings/output-styles/__next.settings/
+    - assets/web/settings/output-styles/__next.settings/output-styles/
     - assets/web/settings/prompts/
+    - assets/web/settings/prompts/__next.settings/
+    - assets/web/settings/prompts/__next.settings/prompts/
     - assets/web/settings/providers/
+    - assets/web/settings/providers/__next.settings/
+    - assets/web/settings/providers/__next.settings/providers/
     - assets/web/settings/skills/
+    - assets/web/settings/skills/__next.settings/
+    - assets/web/settings/skills/__next.settings/skills/
     - assets/web/settings/tools/
+    - assets/web/settings/tools/__next.settings/
+    - assets/web/settings/tools/__next.settings/tools/
+    - assets/web/setup/
+    - assets/web/setup/__next.setup/
+    - assets/web/skyoffice/
+    - assets/web/skyoffice/__next.skyoffice/
+    - assets/web/teams/
+    - assets/web/teams/__next.teams/
     - assets/web/workflows/
     - assets/web/workflows/_/
+    - assets/web/workflows/_/__next.workflows/
+    - assets/web/workflows/_/__next.workflows/$d$id/
+    - assets/web/workflows/__next.workflows/
     - assets/web/workflows/share/
+    - assets/web/workflows/share/__next.workflows/
+    - assets/web/workflows/share/__next.workflows/share/
     - assets/web/workspace/
     - assets/web/workspace/_/
+    - assets/web/workspace/_/__next.workspace/
+    - assets/web/workspace/_/__next.workspace/$d$id/
     - assets/web/workspaces/
+    - assets/web/workspaces/__next.workspaces/
     # END GENERATED WEB ASSETS
