@@ -436,7 +436,9 @@
     "cancel": "取消",
     "save": "保存",
     "publishedLabel": "发布状态",
-    "publishedHint": "发布后可通过分享链接访问，未发布时打开分享页将提示暂未开放"
+    "publishedHint": "发布后可通过分享链接访问，未发布时打开分享页将提示暂未开放",
+    "smartCreateLabel": "智能创建",
+    "smartCreateHint": "保存后自动跳转工作流编辑器，由 agent 根据注释/标题自动生成多 agent 协作结构"
   },
   "share": {
     "missingId": "缺少 workflow_id 参数",

@@ -1,0 +1,329 @@
+{
+  "id": "4f020860-2ec3-41f8-851e-8024983aabf0",
+  "type": "workspace",
+  "folderId": null,
+  "nodes": [
+    {
+      "id": "start_1784623596275",
+      "type": "start",
+      "label": "Start",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "data": {}
+    },
+    {
+      "id": "end_1784623596275",
+      "type": "end",
+      "label": "End",
+      "position": {
+        "x": 1200,
+        "y": 0
+      },
+      "data": {
+        "outputs": [
+          {
+            "key": "verdict",
+            "type": "string",
+            "value": "{{ __data__[\"node_1784623715660_47b4gk\"].result }}",
+            "description": "最终审核结论（由 Review Agent 产出）",
+            "children": []
+          },
+          {
+            "key": "plan",
+            "type": "string",
+            "value": "{{ __data__[\"node_1784623652773_9rhusx\"].result }}",
+            "description": "Plan Agent 产出的游戏开发计划",
+            "children": []
+          },
+          {
+            "key": "implementation",
+            "type": "string",
+            "value": "{{ __data__[\"node_1784623689339_5fxhml\"].result }}",
+            "description": "Dev Agent 产出的实现总结",
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "node_1784623652773_9rhusx",
+      "type": "agent_run",
+      "label": "游戏规划专家 (Plan Agent)",
+      "position": {
+        "x": 300,
+        "y": 0
+      },
+      "data": {
+        "permissionMode": "acceptEdits",
+        "outputs": [
+          {
+            "key": "result",
+            "type": "string"
+          },
+          {
+            "key": "usage",
+            "type": "object"
+          }
+        ],
+        "agent": {
+          "id": "db438106-28e4-47ce-b4ce-710937e943e2",
+          "name": "Phaser.js 游戏规划专家",
+          "role": "agent",
+          "description": "Phaser.js 游戏规划专家",
+          "runtimeKind": "pi",
+          "modelProvider": "anthropic-messages",
+          "providerId": "4f3b97d8-0b26-4964-9307-58618588eefc",
+          "modelId": "glm-5.2",
+          "apiBase": "https://open.bigmodel.cn/api/anthropic",
+          "workingDir": "",
+          "mcps": {},
+          "skills": [
+            "actions-and-utilities.md",
+            "animations.md",
+            "audio-and-sound.md",
+            "cameras.md",
+            "curves-and-paths.md",
+            "data-manager.md",
+            "events-system.md",
+            "filters-and-postfx.md",
+            "game-object-components.md",
+            "game-setup-and-config.md",
+            "geometry-and-math.md",
+            "graphics-and-shapes.md",
+            "groups-and-containers.md",
+            "input-keyboard-mouse-touch.md",
+            "loading-assets.md",
+            "particles.md",
+            "physics-arcade.md",
+            "physics-matter.md",
+            "render-textures.md",
+            "scale-and-responsive.md",
+            "scenes.md",
+            "sprites-and-images.md",
+            "text-and-bitmaptext.md",
+            "tilemaps.md",
+            "time-and-timers.md",
+            "tweens.md",
+            "v3-to-v4-migration.md",
+            "v4-new-features.md",
+            "brainstorming.md",
+            "grill-me",
+            "brainstorming",
+            "planning-with-files-zh"
+          ],
+          "systemPrompt": "# Phaser 4 游戏开发规划工作流\n\n你现在只负责游戏开发规划，不负责实际编码。使用以下流程完成规划任务。\n\n## 工作流程\n\n1. **需求验证**：使用 grill-me 技能向用户提问，评估这个需求是否真的需要，探讨是否有更简单的替代方案，直到确认需求的必要性和合理性\n2. **头脑风暴**：使用 brainstorming 技能，对确认后的需求进行深入讨论，探索多种实现方案、可能的扩展方向和创新点\n3. **制定计划**：使用 planning-with-files 技能，根据验证和头脑风暴后的结论生成完整的开发计划文件，包括任务拆解、技术方案、文件结构、里程碑节点\n\n## 职责边界\n\n- 仅输出规划文档和任务清单\n- 不编写游戏代码\n- 不执行任何编程操作\n\n## 规划输出要求\n\n- 任务列表清晰可执行\n- 技术方案符合 Phaser 4 组件化设计\n- 文件结构合理分层\n- 里程碑设置合理可达# Phaser 4 游戏开发规划工作流\n\n你现在只负责游戏开发规划，不负责实际编码。使用以下流程完成规划任务。\n\n## 工作流程\n\n1. **需求验证**：使用 grill-me 技能向用户提问，评估这个需求是否真的需要，探讨是否有更简单的替代方案，直到确认需求的必要性和合理性\n2. **头脑风暴**：使用 brainstorming 技能，对确认后的需求进行深入讨论，探索多种实现方案、可能的扩展方向和创新点\n3. **制定计划**：使用 planning-with-files 技能，根据验证和头脑风暴后的结论生成完整的开发计划文件，包括任务拆解、技术方案、文件结构、里程碑节点\n\n## 职责边界\n\n- 仅输出规划文档和任务清单\n- 不编写游戏代码\n- 不执行任何编程操作\n\n## 规划输出要求\n\n- 任务列表清晰可执行\n- 技术方案符合 Phaser 4 组件化设计\n- 文件结构合理分层\n- 里程碑设置合理可达",
+          "outputStyle": "",
+          "temperature": 0.3,
+          "maxTokens": 4096,
+          "avatarUrl": "",
+          "icon": "",
+          "enabled": true
+        },
+        "prompt": "当前工作流已由 issue 启动。请：\n1. 调用 ViewCurrentChannelIssue 工具读取当前 issue 完整内容（含已有评论）。\n2. 基于 issue 需求，使用 brainstorming 和 planning-with-files-zh 技能拆解并设计一个 Phaser.js 游戏的开发计划（玩法、技术栈、场景列表、任务拆解、验收标准）。\n3. 计划完成后，调用 AddCurrentChannelComment 把\"游戏开发计划\"写入当前 issue，便于后续开发 Agent 直接消费。\n4. 最终返回结构化 JSON：{\"plan\": \"完整游戏开发计划文本\", \"issueId\": \"当前 issue id\", \"commentPosted\": true}。\n\n注意：你不能创建新 issue，只能在当前 issue 上加评论。"
+      }
+    },
+    {
+      "id": "node_1784623689339_5fxhml",
+      "type": "agent_run",
+      "label": "游戏开发专家 (Dev Agent)",
+      "position": {
+        "x": 600,
+        "y": 0
+      },
+      "data": {
+        "permissionMode": "acceptEdits",
+        "outputs": [
+          {
+            "key": "result",
+            "type": "string"
+          },
+          {
+            "key": "usage",
+            "type": "object"
+          }
+        ],
+        "agent": {
+          "id": "ea1f9b39-0713-4cdd-865a-688b95683fc3",
+          "name": "Phaser.js 游戏开发专家",
+          "role": "agent",
+          "description": "Phaser 4 全套技能：场景/精灵/动画/物理（Arcade+Matter）/输入/相机/瓦片地图/粒子/Tween/音频/文本/几何曲线/数据管理/事件系统/渲染纹理/滤镜特效/加载与缩放等，含 v3→v4 迁移指南与 v4 新特性。",
+          "runtimeKind": "pi",
+          "modelProvider": "anthropic-messages",
+          "providerId": "4f3b97d8-0b26-4964-9307-58618588eefc",
+          "modelId": "glm-5.2",
+          "apiBase": "https://open.bigmodel.cn/api/anthropic",
+          "workingDir": "",
+          "mcps": {},
+          "skills": [
+            "actions-and-utilities.md",
+            "animations.md",
+            "audio-and-sound.md",
+            "cameras.md",
+            "curves-and-paths.md",
+            "data-manager.md",
+            "events-system.md",
+            "filters-and-postfx.md",
+            "game-object-components.md",
+            "game-setup-and-config.md",
+            "geometry-and-math.md",
+            "graphics-and-shapes.md",
+            "groups-and-containers.md",
+            "input-keyboard-mouse-touch.md",
+            "loading-assets.md",
+            "particles.md",
+            "physics-arcade.md",
+            "physics-matter.md",
+            "render-textures.md",
+            "scale-and-responsive.md",
+            "scenes.md",
+            "sprites-and-images.md",
+            "text-and-bitmaptext.md",
+            "tilemaps.md",
+            "time-and-timers.md",
+            "tweens.md",
+            "v3-to-v4-migration.md",
+            "v4-new-features.md",
+            "brainstorming.md"
+          ],
+          "systemPrompt": "# Phaser.js 游戏开发工作流\n\n你现在要完成一次 Phaser 4 游戏开发任务。按问题类型选用对应技能解决具体问题。\n\n## 使用策略\n\nPhaser 4 是组件化的现代游戏引擎，按问题类型选用对应技能：\n\n- **game-setup-and-config**：游戏配置、Phaser.Game 实例创建\n- **scenes**：场景生命周期（preload/create/update）、Scene 类、场景切换\n- **sprites-and-images**：Sprite/Image 创建、纹理\n- **animations**：AnimationManager/AnimationState、spritesheet、动画事件\n- **physics-arcade** / **physics-matter**：物理（速度/碰撞 / 复杂刚体）\n- **input-keyboard-mouse-touch**：键盘/鼠标/触摸输入\n- **cameras** / **particles** / **filters-and-postfx**：相机/粒子/PostFX 滤镜\n- **tilemaps**：瓦片地图\n- **v3-to-v4-migration** / **v4-new-features**：升级迁移\n\n## 任务执行原则\n\n1. 先定位问题域，调用对应技能\n2. 遵循 Phaser 4 惯用法（组件化、TypeScript、事件驱动）\n3. 场景结构清晰：preload 加载 → create 构建 → update 帧循环\n4. 性能优先：对象池、批量渲染、避免每帧 new\n",
+          "outputStyle": "",
+          "temperature": 0.3,
+          "maxTokens": 4096,
+          "avatarUrl": "",
+          "icon": "",
+          "enabled": true
+        },
+        "prompt": "上游 Plan Agent 已经把游戏开发计划写入当前 issue。请按以下步骤实施：\n\n1. 调用 ViewCurrentChannelIssue 读取 issue 描述与所有评论，重点关注 Plan Agent 写入的开发计划（参考上游输出：{{ __data__[\"node_1784623652773_9rhusx\"].result }}）。\n2. 基于该计划，使用 brainstorming 技能在脑内进行设计复核，然后输出 Phaser 4 实现方案：场景列表、精灵与动画、物理引擎选型、关键文件结构、核心代码片段、交互与事件流。\n3. 实施完成后，调用 AddCurrentChannelComment 把\"实现总结 + 关键代码片段 + 文件位置列表\"写入当前 issue，便于后续审核 Agent 复核。\n4. 最终返回结构化 JSON：{\"implementation\": \"实现说明\", \"files\": [\"文件路径...\"], \"summary\": \"一句话总结\", \"issueId\": \"当前 issue id\", \"commentPosted\": true}。\n\n注意：你只能基于上游 plan 进行实现，且只能在当前 issue 上加评论，不能创建新 issue。"
+      }
+    },
+    {
+      "id": "node_1784623715660_47b4gk",
+      "type": "agent_run",
+      "label": "游戏审核专家 (Review Agent)",
+      "position": {
+        "x": 900,
+        "y": 0
+      },
+      "data": {
+        "permissionMode": "acceptEdits",
+        "outputs": [
+          {
+            "key": "result",
+            "type": "string"
+          },
+          {
+            "key": "usage",
+            "type": "object"
+          }
+        ],
+        "agent": {
+          "id": "97bf6297-bebf-4473-a5f1-706de799f269",
+          "name": "Phaser.js 游戏审核专家",
+          "role": "agent",
+          "description": "Phaser.js 游戏审核专家",
+          "runtimeKind": "pi",
+          "modelProvider": "anthropic-messages",
+          "providerId": "4f3b97d8-0b26-4964-9307-58618588eefc",
+          "modelId": "glm-5.2",
+          "apiBase": "https://open.bigmodel.cn/api/anthropic",
+          "workingDir": "",
+          "mcps": {},
+          "skills": [
+            "actions-and-utilities.md",
+            "animations.md",
+            "audio-and-sound.md",
+            "cameras.md",
+            "curves-and-paths.md",
+            "data-manager.md",
+            "events-system.md",
+            "filters-and-postfx.md",
+            "game-object-components.md",
+            "game-setup-and-config.md",
+            "geometry-and-math.md",
+            "graphics-and-shapes.md",
+            "groups-and-containers.md",
+            "input-keyboard-mouse-touch.md",
+            "loading-assets.md",
+            "particles.md",
+            "physics-arcade.md",
+            "physics-matter.md",
+            "render-textures.md",
+            "scale-and-responsive.md",
+            "scenes.md",
+            "sprites-and-images.md",
+            "text-and-bitmaptext.md",
+            "tilemaps.md",
+            "time-and-timers.md",
+            "tweens.md",
+            "v3-to-v4-migration.md",
+            "v4-new-features.md",
+            "brainstorming.md"
+          ],
+          "systemPrompt": "# Phaser.js 游戏开发工作流\n\n你现在要完成一次 Phaser 4 游戏开发任务。按问题类型选用对应技能解决具体问题。\n\n## 使用策略\n\nPhaser 4 是组件化的现代游戏引擎，按问题类型选用对应技能：\n\n- **game-setup-and-config**：游戏配置、Phaser.Game 实例创建\n- **scenes**：场景生命周期（preload/create/update）、Scene 类、场景切换\n- **sprites-and-images**：Sprite/Image 创建、纹理\n- **animations**：AnimationManager/AnimationState、spritesheet、动画事件\n- **physics-arcade** / **physics-matter**：物理（速度/碰撞/复杂刚体）\n- **input-keyboard-mouse-touch**：键盘/鼠标/触摸输入\n- **cameras** / **particles** / **filters-and-postfx**：相机/粒子/PostFX 滤镜\n- **tilemaps**：瓦片地图\n- **v3-to-v4-migration** / **v4-new-features**：升级迁移\n\n## 任务执行原则\n\n1. 先定位问题域，调用对应技能\n2. 遵循 Phaser 4 惯用法（组件化、TypeScript、事件驱动）\n3. 场景结构清晰：preload 加载 → create 构建 → update 帧循环\n4. 性能优先：对象池、批量渲染、避免每帧 new\n\n## 代码完成度验证流程\n\n完成代码编写或修改后，执行以下验证流程：\n\n1. **git diff 检查**：使用 `git diff` 查看当前修改的代码变更\n2. **完成度验证**：确认所有计划的改动已正确实现\n3. **Bug 扫描**：审查代码查找潜在问题（逻辑错误、空指针风险、资源泄漏、边界条件）\n4. **问题修复**：发现 bug 后立即修复，不遗留问题\n5. **git commit 提交**：验证通过后执行 `git add` 和 `git commit` 提交变更，提交信息应简洁描述本次改动的目的和内容\n\n## 输出要求\n\n- 每次提交前必须完成 git diff 验证和 bug 检查流程\n- 如发现问题，在提交前完成修复\n- 保持代码质量，确保提交的代码可正常工作# Phaser.js 游戏开发工作流\n\n你现在要完成一次 Phaser 4 游戏开发任务。按问题类型选用对应技能解决具体问题。\n\n## 使用策略\n\nPhaser 4 是组件化的现代游戏引擎，按问题类型选用对应技能：\n\n- **game-setup-and-config**：游戏配置、Phaser.Game 实例创建\n- **scenes**：场景生命周期（preload/create/update）、Scene 类、场景切换\n- **sprites-and-images**：Sprite/Image 创建、纹理\n- **animations**：AnimationManager/AnimationState、spritesheet、动画事件\n- **physics-arcade** / **physics-matter**：物理（速度/碰撞/复杂刚体）\n- **input-keyboard-mouse-touch**：键盘/鼠标/触摸输入\n- **cameras** / **particles** / **filters-and-postfx**：相机/粒子/PostFX 滤镜\n- **tilemaps**：瓦片地图\n- **v3-to-v4-migration** / **v4-new-features**：升级迁移\n\n## 任务执行原则\n\n1. 先定位问题域，调用对应技能\n2. 遵循 Phaser 4 惯用法（组件化、TypeScript、事件驱动）\n3. 场景结构清晰：preload 加载 → create 构建 → update 帧循环\n4. 性能优先：对象池、批量渲染、避免每帧 new\n\n## 代码完成度验证流程\n\n完成代码编写或修改后，执行以下验证流程：\n\n1. **git diff 检查**：使用 `git diff` 查看当前修改的代码变更\n2. **完成度验证**：确认所有计划的改动已正确实现\n3. **Bug 扫描**：审查代码查找潜在问题（逻辑错误、空指针风险、资源泄漏、边界条件）\n4. **问题修复**：发现 bug 后立即修复，不遗留问题\n5. **git commit 提交**：验证通过后执行 `git add` 和 `git commit` 提交变更，提交信息应简洁描述本次改动的目的和内容\n\n## 输出要求\n\n- 每次提交前必须完成 git diff 验证和 bug 检查流程\n- 如发现问题，在提交前完成修复\n- 保持代码质量，确保提交的代码可正常工作",
+          "outputStyle": "",
+          "temperature": 0.3,
+          "maxTokens": 4096,
+          "avatarUrl": "",
+          "icon": "",
+          "enabled": true
+        },
+        "prompt": "Dev Agent 已经把实现写入当前 issue。请按以下步骤审核：\n\n1. 调用 ViewCurrentChannelIssue 读取 issue 描述与所有评论，重点关注：\n   - Plan Agent 写入的开发计划（参考上游上游输出：{{ __data__[\"node_1784623652773_9rhusx\"].result }}）\n   - Dev Agent 写入的实现总结与关键代码片段（参考上游输出：{{ __data__[\"node_1784623689339_5fxhml\"].result }}）\n2. 使用 brainstorming 与 planning-with-files-zh 技能在脑内进行结构化复核：玩法一致性 / 技术栈 / 场景覆盖 / 功能完整性 / 代码质量 / 性能 / 验收标准。\n3. 审核完成后，调用 AddCurrentChannelComment 把\"审核结论 + 评分（0-100）+ 问题清单 + 改进建议\"写入当前 issue。\n4. 最终返回结构化 JSON：{\"verdict\": \"pass\" | \"fail\", \"score\": 85, \"issues\": [\"问题1\", \"问题2\"], \"suggestions\": [\"建议1\", \"建议2\"], \"summary\": \"一句话总结\", \"issueId\": \"当前 issue id\", \"commentPosted\": true}。\n\n注意：你只能在当前 issue 上加评论，不能创建新 issue。"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e-start_1784623596275-node_1784623652773_9rhusx-mruew4ku",
+      "source": "start_1784623596275",
+      "target": "node_1784623652773_9rhusx"
+    },
+    {
+      "id": "e-node_1784623652773_9rhusx-node_1784623689339_5fxhml-mruew4ku",
+      "source": "node_1784623652773_9rhusx",
+      "target": "node_1784623689339_5fxhml"
+    },
+    {
+      "id": "e-node_1784623689339_5fxhml-node_1784623715660_47b4gk-mruew4kv",
+      "source": "node_1784623689339_5fxhml",
+      "target": "node_1784623715660_47b4gk"
+    },
+    {
+      "id": "e-node_1784623715660_47b4gk-end_1784623596275-mruew4kv",
+      "source": "node_1784623715660_47b4gk",
+      "target": "end_1784623596275"
+    },
+    {
+      "id": "e-node_1784623652773_9rhusx-output:result-node_1784623689339_5fxhml-property:prompt",
+      "source": "node_1784623652773_9rhusx",
+      "target": "node_1784623689339_5fxhml",
+      "edgeKind": "reference",
+      "sourceHandle": "output:result",
+      "targetHandle": "property:prompt"
+    },
+    {
+      "id": "e-node_1784623652773_9rhusx-output:result-node_1784623715660_47b4gk-property:prompt",
+      "source": "node_1784623652773_9rhusx",
+      "target": "node_1784623715660_47b4gk",
+      "edgeKind": "reference",
+      "sourceHandle": "output:result",
+      "targetHandle": "property:prompt"
+    },
+    {
+      "id": "e-node_1784623689339_5fxhml-output:result-node_1784623715660_47b4gk-property:prompt",
+      "source": "node_1784623689339_5fxhml",
+      "target": "node_1784623715660_47b4gk",
+      "edgeKind": "reference",
+      "sourceHandle": "output:result",
+      "targetHandle": "property:prompt"
+    }
+  ],
+  "createdAt": 1784623596287,
+  "updatedAt": 1784624536284,
+  "published": false,
+  "name": "游戏开发工作流",
+  "description": "游戏开发工作流，从计划->实现->审核",
+  "lastRunAt": 1784623752916,
+  "lastOpenedAt": 1784624512580
+}

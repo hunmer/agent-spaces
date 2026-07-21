@@ -16,6 +16,7 @@ import { WorkflowFilterToolbar, useWorkflowFilters } from '@/components/workflow
 import type { WorkflowTemplatePreset } from '@/components/workflows/workflow-templates';
 import { sdk } from '@/lib/sdk';
 import { workflowApi } from '@/lib/workflow-api';
+import { buildWorkflowPrompt } from '@/lib/workflow-prompt';
 import { pluginApi } from '@/lib/workflow-plugin-api';
 import { nativeNavigate } from '@/lib/navigate';
 import type { AgentConfig } from '@agent-spaces/shared';
@@ -302,6 +303,7 @@ export function WorkflowsPage() {
         onOpenChange={setInfoDialogOpen}
         workflow={null}
         showCopyInfo={false}
+        enableSmartCreate
         onSave={async (updates) => {
           const created = await workflowApi.create({
             name: updates.name || t('defaultWorkflow.name'),
@@ -317,7 +319,17 @@ export function WorkflowsPage() {
           });
           upsertWorkflow(created);
           handleRecordOpen(created);
-          nativeNavigate(router, `/workflows/${created.id}`);
+          // 智能创建：携带完整 prompt 跳转，由 workflow-editor 自动生成
+          if (updates.smartCreate) {
+            const prompt = buildWorkflowPrompt({
+              workflowDescription: created.description || '',
+              issuePrompt: created.description || created.name || '',
+            });
+            const params = new URLSearchParams({ prompt });
+            nativeNavigate(router, `/workflows/${created.id}?${params.toString()}`);
+          } else {
+            nativeNavigate(router, `/workflows/${created.id}`);
+          }
         }}
       />
 

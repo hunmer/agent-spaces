@@ -24,9 +24,11 @@ interface WorkflowInfoDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   workflow: Workflow | null;
-  onSave: (updates: Partial<Workflow>) => void | Promise<void>;
+  onSave: (updates: Partial<Workflow> & { smartCreate?: boolean }) => void | Promise<void>;
   /** 是否显示「复制工作流信息」按钮，仅在编辑已有工作流时为 true（默认 true） */
   showCopyInfo?: boolean;
+  /** 是否启用「智能创建」入口（仅创建新工作流的特定入口传入 true） */
+  enableSmartCreate?: boolean;
 }
 
 function buildWorkflowFolderPath(
@@ -90,7 +92,7 @@ function buildWorkflowInfoText(
   ].join('\n');
 }
 
-export function WorkflowInfoDialog({ open, onOpenChange, workflow, onSave, showCopyInfo = true }: WorkflowInfoDialogProps) {
+export function WorkflowInfoDialog({ open, onOpenChange, workflow, onSave, showCopyInfo = true, enableSmartCreate = false }: WorkflowInfoDialogProps) {
   const t = useTranslations('workflows.infoDialog');
   const [name, setName] = useState('');
   const [icon, setIcon] = useState('');
@@ -98,6 +100,7 @@ export function WorkflowInfoDialog({ open, onOpenChange, workflow, onSave, showC
   const [description, setDescription] = useState('');
   const [tags, setTags] = useState<string[]>([]);
   const [published, setPublished] = useState(false);
+  const [smartCreate, setSmartCreate] = useState(false);
   const [copied, setCopied] = useState(false);
   const [folders, setFolders] = useState<WorkflowFolder[]>([]);
   const [workflowPath, setWorkflowPath] = useState('');
@@ -113,6 +116,8 @@ export function WorkflowInfoDialog({ open, onOpenChange, workflow, onSave, showC
     } else {
       setPublished(false);
     }
+    // 每次打开重置智能创建选项
+    setSmartCreate(false);
   }, [workflow, open]);
 
   useEffect(() => {
@@ -152,6 +157,7 @@ export function WorkflowInfoDialog({ open, onOpenChange, workflow, onSave, showC
       description: description.trim() || undefined,
       tags: tags.length > 0 ? tags : undefined,
       published,
+      smartCreate: enableSmartCreate ? smartCreate : undefined,
     }));
     onOpenChange(false);
   };
@@ -231,6 +237,21 @@ export function WorkflowInfoDialog({ open, onOpenChange, workflow, onSave, showC
             </div>
             <Switch checked={published} onCheckedChange={setPublished} />
           </div>
+
+          {enableSmartCreate && (
+            <label className="flex items-center gap-2 rounded-md border border-primary/30 bg-primary/5 px-3 py-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={smartCreate}
+                onChange={(e) => setSmartCreate(e.target.checked)}
+                className="h-3.5 w-3.5"
+              />
+              <div className="min-w-0">
+                <div className="text-xs font-medium">{t('smartCreateLabel')}</div>
+                <div className="text-[11px] text-muted-foreground">{t('smartCreateHint')}</div>
+              </div>
+            </label>
+          )}
         </div>
 
         <div className="flex justify-end gap-2 pt-2">
