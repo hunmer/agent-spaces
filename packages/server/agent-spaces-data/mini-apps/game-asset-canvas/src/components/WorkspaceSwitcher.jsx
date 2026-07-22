@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import { Popover, PopoverContent, PopoverTrigger, ScrollArea } from '@agent-spaces/ui';
 import DeleteWorkspacesDialog from './DeleteWorkspacesDialog';
+import CreateWorkspaceDialog from './CreateWorkspaceDialog';
 
 /**
  * 顶部工作区切换 popover：展示工作区列表，支持【切换/重命名/删除】，底部【创建】【批量删除】。
- * 单个删除与批量删除都走 DeleteWorkspacesDialog（自定义确认弹窗，替代原生 confirm）。
+ * 创建/批量删除用独立 Dialog（避免 Radix Popover focus trap 与内联 input 竞争）。
  * 当前激活工作区高亮。每个工作区隔离节点和生成记录。
  *
  * @param {{
@@ -12,7 +13,7 @@ import DeleteWorkspacesDialog from './DeleteWorkspacesDialog';
  *   activeId: string,
  *   onSwitch:(id)=>void,
  *   onCreate:(name)=>void,
- *   onDelete:(id|id[])=>void,   // 支持单个 id 或 id 数组
+ *   onDelete:(id|id[])=>void,
  *   onRename:(id,name)=>void,
  * }} props
  */
@@ -20,32 +21,16 @@ export default function WorkspaceSwitcher({ workspaces, activeId, onSwitch, onCr
   const [open, setOpen] = useState(false);
   const [renamingId, setRenamingId] = useState(null);
   const [renameValue, setRenameValue] = useState('');
-  const [creating, setCreating] = useState(false);
-  const [createValue, setCreateValue] = useState('');
   const [deleteTarget, setDeleteTarget] = useState(null); // null | [ids]
-  const inputRef = useRef(null);
+  const [createOpen, setCreateOpen] = useState(false);
 
   const active = workspaces.find((ws) => ws.id === activeId) || workspaces[0];
-
-  // 重命名/创建输入框出现时自动聚焦
-  useEffect(() => {
-    if (open && (renamingId || creating)) {
-      requestAnimationFrame(() => inputRef.current?.focus());
-    }
-  }, [open, renamingId, creating]);
 
   const commitRename = (id) => {
     const name = renameValue.trim();
     if (name) onRename(id, name);
     setRenamingId(null);
     setRenameValue('');
-  };
-
-  const commitCreate = () => {
-    const name = createValue.trim();
-    if (name) onCreate(name);
-    setCreating(false);
-    setCreateValue('');
   };
 
   const startRename = (ws) => {
@@ -66,8 +51,13 @@ export default function WorkspaceSwitcher({ workspaces, activeId, onSwitch, onCr
   };
 
   const confirmDelete = (ids) => {
-    onDelete(ids); // 传数组，Canvas 负责逐个调 service
+    onDelete(ids);
     setDeleteTarget(null);
+  };
+
+  const requestCreate = () => {
+    setCreateOpen(true);
+    setOpen(false);
   };
 
   return (
@@ -104,7 +94,7 @@ export default function WorkspaceSwitcher({ workspaces, activeId, onSwitch, onCr
                   >
                     {isRenaming ? (
                       <input
-                        ref={inputRef}
+                        autoFocus
                         value={renameValue}
                         onChange={(e) => setRenameValue(e.target.value)}
                         onBlur={() => commitRename(ws.id)}
@@ -154,38 +144,14 @@ export default function WorkspaceSwitcher({ workspaces, activeId, onSwitch, onCr
           </ScrollArea>
 
           <div className="flex flex-col gap-1.5 border-t border-border p-2">
-            {creating ? (
-              <div className="flex items-center gap-1.5">
-                <input
-                  ref={inputRef}
-                  value={createValue}
-                  placeholder="工作区名称"
-                  onChange={(e) => setCreateValue(e.target.value)}
-                  onBlur={commitCreate}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') commitCreate();
-                    if (e.key === 'Escape') { setCreating(false); setCreateValue(''); }
-                  }}
-                  className="min-w-0 flex-1 rounded border border-primary bg-background px-2 py-1 text-xs outline-none"
-                />
-                <button
-                  type="button"
-                  onClick={commitCreate}
-                  className="rounded bg-primary px-2 py-1 text-xs text-primary-foreground hover:bg-primary/90"
-                >
-                  确定
-                </button>
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={() => { setCreating(true); setCreateValue(''); }}
-                className="flex w-full items-center justify-center gap-1 rounded-md border border-dashed border-border px-2 py-1.5 text-xs text-muted-foreground transition hover:border-primary hover:text-primary"
-              >
-                <span>＋</span>
-                <span>新建工作区</span>
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={requestCreate}
+              className="flex w-full items-center justify-center gap-1 rounded-md border border-dashed border-border px-2 py-1.5 text-xs text-muted-foreground transition hover:border-primary hover:text-primary"
+            >
+              <span>＋</span>
+              <span>新建工作区</span>
+            </button>
             {workspaces.length > 1 && (
               <button
                 type="button"
@@ -199,6 +165,13 @@ export default function WorkspaceSwitcher({ workspaces, activeId, onSwitch, onCr
         </PopoverContent>
       </Popover>
 
+      <CreateWorkspaceDialog
+        open={createOpen}
+        defaultName={`新建工作区 ${workspaces.length + 1}`}
+        onClose={() => setCreateOpen(false)}
+        onConfirm={onCreate}
+      />
+
       <DeleteWorkspacesDialog
         open={!!deleteTarget}
         workspaces={workspaces}
@@ -209,4 +182,5 @@ export default function WorkspaceSwitcher({ workspaces, activeId, onSwitch, onCr
     </>
   );
 }
+
 
