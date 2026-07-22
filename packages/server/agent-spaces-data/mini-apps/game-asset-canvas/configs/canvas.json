@@ -17,15 +17,12 @@
         "status": "done",
         "output": {
           "images": [
-            "https://p26-dreamina-sign.byteimg.com/tos-cn-i-tb4s082cfz/7a27b126831f465d9836c9e5e477b6ff~tplv-tb4s082cfz-aigc_resize:0:0.png?lk3s=7c3bb0db&x-expires=1784710800&x-signature=GTR2ZVuYC3EDNXHujKokUfWZGnc%3D&format=.png",
-            "https://p11-dreamina-sign.byteimg.com/tos-cn-i-tb4s082cfz/e70b6e7502c849ec8f8d9f417a329f7c~tplv-tb4s082cfz-aigc_resize:0:0.png?lk3s=7c3bb0db&x-expires=1784710800&x-signature=obPwrOjPR7yAhpNdpxdQSagZtcI%3D&format=.png",
-            "https://p11-dreamina-sign.byteimg.com/tos-cn-i-tb4s082cfz/3d7cb51f0cd042d1928a86ac8ce7083b~tplv-tb4s082cfz-aigc_resize:0:0.png?lk3s=7c3bb0db&x-expires=1784710800&x-signature=wfpB25Unol8NFx0rso55fY0wi0A%3D&format=.png",
-            "https://p26-dreamina-sign.byteimg.com/tos-cn-i-tb4s082cfz/353ff8dd75354320ae520d8b2ba1d2ce~tplv-tb4s082cfz-aigc_resize:0:0.png?lk3s=7c3bb0db&x-expires=1784710800&x-signature=q7yPlZVDJCX1p0h894X6HHHTvBo%3D&format=.png"
+            "https://files.closeai.fans/filesystem/output/20260722/7aa0c47f-6e56-44df-b9f9-9d159e4e2499.png"
           ]
         },
         "params": {
-          "prompt": "生成【法师】",
-          "model": "jimeng-5.0",
+          "prompt": "生成【法师】的多角度图片",
+          "model": "gpt-image-2",
           "aspect": "1:1",
           "size": "1k",
           "pickedPrompt": "Generate a single character only, centered in the frame on a plain white background.\nThe character should be rendered in detailed 32-bit pixel art style (like PlayStation 1 / SNES era games).\nInclude proper shading, highlights, and anti-aliased edges for a polished look.\nThe character should have well-defined features, expressive details, and rich colors.\nShow in a front-facing or 3/4 view pose, standing idle, suitable for sprite sheet animation."
@@ -41,11 +38,11 @@
       "dragging": false
     },
     {
-      "id": "imageDisplay-mrvrl4g5-1",
+      "id": "imageDisplay-mrvsp8j6-2",
       "type": "imageDisplay",
       "position": {
-        "x": 420,
-        "y": 140
+        "x": 154.8901611926609,
+        "y": 430.22778936346526
       },
       "width": 260,
       "height": 240,
@@ -55,7 +52,7 @@
       },
       "data": {
         "images": [
-          "https://p26-dreamina-sign.byteimg.com/tos-cn-i-tb4s082cfz/9305a3ff3b74474c87a3ec4134e4de50~tplv-tb4s082cfz-aigc_resize:0:0.png?lk3s=7c3bb0db&x-expires=1784707200&x-signature=q%2Bu%2Fg3VaMLNZOsxNvFpkAHfoyf4%3D&format=.png"
+          "https://files.closeai.fans/filesystem/output/20260722/7aa0c47f-6e56-44df-b9f9-9d159e4e2499.png"
         ],
         "source": "queue",
         "label": "图片展示"
@@ -64,60 +61,57 @@
         "width": 260,
         "height": 240
       },
-      "selected": false
+      "selected": false,
+      "dragging": false
     },
     {
-      "id": "imageDisplay-mrvrl4g5-2",
-      "type": "imageDisplay",
+      "id": "editImage-mrvspgtk-3",
+      "type": "editImage",
       "position": {
-        "x": 700,
-        "y": 140
+        "x": 369.94840545853964,
+        "y": 797.6915004075516
       },
-      "width": 260,
-      "height": 240,
+      "width": 319,
+      "height": 360,
       "style": {
-        "width": 260,
+        "width": 290,
         "height": 240
       },
       "data": {
-        "images": [
-          "https://p11-dreamina-sign.byteimg.com/tos-cn-i-tb4s082cfz/52450e0a689a4fbb8fdad3ce726846bf~tplv-tb4s082cfz-aigc_resize:0:0.png?lk3s=7c3bb0db&x-expires=1784707200&x-signature=aM4j4i8L%2Fkds9Ai24oyKmg6Y6aM%3D&format=.png"
-        ],
-        "source": "queue",
-        "label": "图片展示"
+        "status": "done",
+        "output": {
+          "images": [
+            "https://files.closeai.fans/filesystem/output/20260722/7aa0c47f-6e56-44df-b9f9-9d159e4e2499.png"
+          ]
+        },
+        "params": {
+          "prompt": "",
+          "model": "gpt-image-2",
+          "aspect": "1:1",
+          "size": "1k",
+          "pickedPrompt": "Remove the background completely. Keep the main subject with clean edges and full detail. Output a transparent background (PNG with alpha). Do not alter the subject's colors, proportions, or features."
+        },
+        "label": "编辑图片"
       },
       "measured": {
-        "width": 260,
-        "height": 240
+        "width": 319,
+        "height": 360
       },
-      "selected": false
-    },
-    {
-      "id": "imageDisplay-mrvrl4g5-3",
-      "type": "imageDisplay",
-      "position": {
-        "x": 980,
-        "y": 140
-      },
-      "width": 260,
-      "height": 240,
-      "style": {
-        "width": 260,
-        "height": 240
-      },
-      "data": {
-        "images": [
-          "https://p26-dreamina-sign.byteimg.com/tos-cn-i-tb4s082cfz/2f61171375ca4145b00e9b6ef1338b5d~tplv-tb4s082cfz-aigc_resize:0:0.png?lk3s=7c3bb0db&x-expires=1784707200&x-signature=atVkcivA1hFhhBbjaeG95UzxZuQ%3D&format=.png"
-        ],
-        "source": "queue",
-        "label": "图片展示"
-      },
-      "measured": {
-        "width": 260,
-        "height": 240
-      }
+      "selected": false,
+      "dragging": false,
+      "resizing": false
     }
   ],
-  "edges": [],
-  "savedAt": 1784706082771
+  "edges": [
+    {
+      "source": "imageDisplay-mrvsp8j6-2",
+      "target": "editImage-mrvspgtk-3",
+      "markerEnd": {
+        "type": "arrowclosed"
+      },
+      "animated": true,
+      "id": "xy-edge__imageDisplay-mrvsp8j6-2-editImage-mrvspgtk-3"
+    }
+  ],
+  "savedAt": 1784708443843
 }

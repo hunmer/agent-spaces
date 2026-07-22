@@ -25,6 +25,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { NodeMediaPreview, type MediaItem } from '@/components/ui/media-gallery';
 import { JsonViewer } from '@/components/viewers/json-viewer';
 import { cn } from '@/lib/utils';
+import { toStaticHref } from '@/lib/navigate';
 import { formatDuration, type WorkflowLogPanelLayout } from './workflow-node-types';
 
 const LOG_SECTION_SCROLL_CLASS = 'nodrag nopan max-h-[calc(500px/3)] overscroll-contain overflow-auto';
@@ -435,7 +436,8 @@ export function WorkflowNodeExecutionLog({
                   event.stopPropagation();
                   const workflowId = encodeURIComponent(selectedExecutionStep.subWorkflowId!);
                   const executionLogId = encodeURIComponent(selectedExecutionStep.subWorkflowExecutionId!);
-                  window.open(`/workflows/${workflowId}?executionLogId=${executionLogId}&preview=1`, '_blank', 'noopener,noreferrer');
+                  const href = toStaticHref(`/workflows/${workflowId}?executionLogId=${executionLogId}&preview=1`);
+                  window.open(href, '_blank', 'noopener,noreferrer');
                 }}
               >
                 <ExternalLink className="h-3 w-3" />

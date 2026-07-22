@@ -4,6 +4,7 @@ import ImageResult from './ImageResult';
 import PromptPickerDialog from '../PromptPickerDialog';
 import PickedPromptBadge from './PickedPromptBadge';
 import { ASPECT_OPTIONS, DEFAULT_MODEL, MODEL_OPTIONS, NODE_TYPES, SIZE_OPTIONS, WORKFLOWS } from '../../utils/constants';
+import { hasPrompt } from '../../utils/prompts';
 
 /**
  * 编辑图片节点。
@@ -102,7 +103,7 @@ export default function EditImageNode({ id, data, selected }) {
 
       <button
         type="button"
-        disabled={running || !inputImages.length || !params.prompt?.trim()}
+        disabled={running || !inputImages.length || !hasPrompt(params)}
         onClick={handleRun}
         className="w-full rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition disabled:cursor-not-allowed disabled:opacity-50"
       >

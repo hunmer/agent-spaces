@@ -4,6 +4,7 @@ import ImageResult from './ImageResult';
 import PromptPickerDialog from '../PromptPickerDialog';
 import PickedPromptBadge from './PickedPromptBadge';
 import { ASPECT_OPTIONS, DEFAULT_MODEL, MODEL_OPTIONS, NODE_TYPES, SIZE_OPTIONS, WORKFLOWS } from '../../utils/constants';
+import { hasPrompt } from '../../utils/prompts';
 
 /**
  * 文字生成图片节点。
@@ -73,7 +74,7 @@ export default function TextToImageNode({ id, data, selected }) {
 
       <button
         type="button"
-        disabled={running || !params.prompt?.trim()}
+        disabled={running || !hasPrompt(params)}
         onClick={handleRun}
         className="w-full rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition disabled:cursor-not-allowed disabled:opacity-50"
       >

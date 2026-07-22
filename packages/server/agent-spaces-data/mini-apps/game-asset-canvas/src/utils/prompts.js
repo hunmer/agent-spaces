@@ -291,3 +291,14 @@ Maintain the character's key features, colors, and identity while converting to 
 export function getPromptsByScene(scene) {
   return PROMPT_LIBRARY.filter((p) => p.scene === scene || p.scene === 'both');
 }
+
+/**
+ * 判断表单是否有有效提示词：pickedPrompt（提示词库选中）或 prompt（输入框）任一非空即可。
+ * 节点提交按钮的 disabled 条件统一用此 helper，避免两处（文生图/编辑图片）逻辑漂移。
+ * @param {{ pickedPrompt?: string, prompt?: string }} params
+ * @returns {boolean}
+ */
+export function hasPrompt(params) {
+  const { pickedPrompt, prompt } = params || {};
+  return Boolean((pickedPrompt || '').trim()) || Boolean((prompt || '').trim());
+}

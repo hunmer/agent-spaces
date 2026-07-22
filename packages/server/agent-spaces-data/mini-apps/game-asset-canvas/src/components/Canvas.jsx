@@ -31,6 +31,31 @@ const NODE_COMPONENTS = {
   [NODE_TYPES.note]: NoteNode,
 };
 
+// 基于 nodes/edges 拓扑计算每个「图片接收节点」的输入图片。
+// 参考 https://reactflow.dev/learn/advanced-use/computing-flows ：图是派生数据，nodes/edges 是真值。
+// - 有连入边：input = 所有 source 节点产出图（output.images 优先，回退 data.images），覆盖手动值
+// - 无连入边：不注入，保留节点自身 data.images（手动粘贴/上传）
+// 这样连线 / 断开 / 上游重新生成 / 上游后上传 都能自动反映，无需在 onConnect 里手工推。
+function computeInputImages(nodes, edges) {
+  const byId = new Map(nodes.map((n) => [n.id, n]));
+  const map = new Map(); // nodeId -> { images, isDisplay }
+  for (const node of nodes) {
+    if (node.type !== NODE_TYPES.editImage && node.type !== NODE_TYPES.imageDisplay) continue;
+    const incoming = edges.filter((e) => e.target === node.id);
+    if (!incoming.length) continue;
+    const upstream = [];
+    for (const e of incoming) {
+      const src = byId.get(e.source);
+      if (!src) continue;
+      const sd = src.data || {};
+      const imgs = sd.output?.images?.length ? sd.output.images : sd.images || [];
+      upstream.push(...imgs);
+    }
+    map.set(node.id, { images: upstream, isDisplay: node.type === NODE_TYPES.imageDisplay });
+  }
+  return map;
+}
+
 // 各节点默认尺寸（NodeResizer 需要节点有显式 width/height）
 const DEFAULT_SIZE = {
   [NODE_TYPES.note]: { w: 200, h: 120 },
@@ -135,27 +160,6 @@ export default function Canvas() {
     updateNodeData(nodeId, patch);
   }, [updateNodeData]);
 
-  // 节点完成后，把产出图片沿连线推给下游节点
-  const propagateDownstream = useCallback((sourceId, images) => {
-    if (!images.length) return;
-    setNodes((prevNodes) => {
-      const targets = edges.filter((e) => e.source === sourceId).map((e) => e.target);
-      if (!targets.length) return prevNodes;
-      const targetSet = new Set(targets);
-      return prevNodes.map((nd) => {
-        if (!targetSet.has(nd.id)) return nd;
-        const data = nd.data || {};
-        if (nd.type === NODE_TYPES.editImage) {
-          return { ...nd, data: { ...data, images } };
-        }
-        if (nd.type === NODE_TYPES.imageDisplay) {
-          return { ...nd, data: { ...data, images, source: 'upstream' } };
-        }
-        return nd;
-      });
-    });
-  }, [edges, setNodes]);
-
   // 节点点击"生成"：优先用设置页配置的工作流 ID，fallback 到节点传的 workflowId
   const handleGenerate = useCallback(async (nodeId, nodeType, { workflowId, input }) => {
     const settingId = nodeType === NODE_TYPES.textToImage
@@ -169,7 +173,7 @@ export default function Canvas() {
       const { urls } = await runWorkflow(finalWorkflowId, input, nodeId);
       if (!urls.length) throw new Error('未返回图片');
       updateNodeData(nodeId, { status: 'done', output: { images: urls } });
-      propagateDownstream(nodeId, urls);
+      // 下游图片由 decoratedNodes 的 computeInputImages 自动派生（连线变化/重新生成都会重算），无需手工推
       addHistory({
         id: genId('hist'),
         nodeId,
@@ -183,7 +187,7 @@ export default function Canvas() {
       console.error('generate failed:', err);
       updateNodeData(nodeId, { status: 'error', error: err?.message || String(err) });
     }
-  }, [runWorkflow, updateNodeData, propagateDownstream, addHistory, settings]);
+  }, [runWorkflow, updateNodeData, addHistory, settings]);
 
   // 添加节点：显式 width/height（NodeResizer 依赖）
   // 创建节点到指定位置（点击添加 / 拖拽放下共用）
@@ -309,17 +313,28 @@ export default function Canvas() {
   // 给每个节点的 data 注入 onUpdate / onGenerate / onExportImages（节点内部需要）。
   // 注意：不要覆盖 node.selected —— 选中状态由 ReactFlow 通过 onNodesChange 的
   // selection 变更 + applyNodeChanges 自行管理；这里强行赋值会破坏点击选中/删除机制。
+  // 对「图片接收节点」(editImage/imageDisplay)，有连入边时用 computeInputImages 派生输入图片覆盖 data.images，
+  // 无连入边时保留节点自身手动值（粘贴/上传）。ImageDisplay 同时置 source='upstream' 让 UI 区分来源。
+  const upstreamMap = useMemo(() => computeInputImages(nodes, edges), [nodes, edges]);
   const decoratedNodes = useMemo(
-    () => nodes.map((nd) => ({
-      ...nd,
-      data: {
-        ...nd.data,
-        onUpdate: makeOnUpdate(nd.id),
-        onGenerate: handleGenerate,
-        onExportImages: (imgs) => addImageNodesFromUrls(imgs),
-      },
-    })),
-    [nodes, makeOnUpdate, handleGenerate, addImageNodesFromUrls],
+    () => nodes.map((nd) => {
+      const up = upstreamMap.get(nd.id);
+      const data = { ...nd.data };
+      if (up) {
+        data.images = up.images;
+        if (up.isDisplay) data.source = 'upstream';
+      }
+      return {
+        ...nd,
+        data: {
+          ...data,
+          onUpdate: makeOnUpdate(nd.id),
+          onGenerate: handleGenerate,
+          onExportImages: (imgs) => addImageNodesFromUrls(imgs),
+        },
+      };
+    }),
+    [nodes, upstreamMap, makeOnUpdate, handleGenerate, addImageNodesFromUrls],
   );
 
   // 面板布局变化 -> 持久化
