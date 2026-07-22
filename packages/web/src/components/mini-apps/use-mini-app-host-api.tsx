@@ -331,6 +331,27 @@ export function useMiniAppHostApi(projectId: string, runtimeContext?: MiniAppRun
       return () => { try { off(); } catch { /* noop */ } };
     };
 
+    // ---- Workflow 执行事件订阅 + 控制（供 mini-app 中断/监听工作流执行）----
+    // 监听 workflow:* 事件（workflow:started 携带 executionId，workflow:completed/error 标志结束）
+    const subscribeWorkflowEvents = (cb: (event: string, data: any) => void) => {
+      const ws = getWS(projectId);
+      const off = ws.on('*', (payload: any) => {
+        const event = payload?.event;
+        if (typeof event === 'string' && event.startsWith('workflow:')) {
+          cb(event, payload.data);
+        }
+      });
+      return () => { try { off(); } catch { /* noop */ } };
+    };
+    // 发送 workflow 控制事件（workflow:stop / workflow:pause / workflow:resume）
+    const sendWorkflowControl = (event: string, data: unknown) => {
+      getWS(projectId).send(event as any, data);
+    };
+    // 中断指定 executionId 的工作流执行
+    const stopWorkflow = (executionId: string) => {
+      getWS(projectId).send('workflow:stop' as any, { executionId });
+    };
+
     // ---- Config: 服务端为唯一写入方，UI 仅维护内存缓存 + 订阅变更 ----
     const emitConfigChange = (path: string, value: unknown) => {
       configCacheRef.current.set(path, value);
@@ -821,6 +842,9 @@ export function useMiniAppHostApi(projectId: string, runtimeContext?: MiniAppRun
       localFileUrl,
       proxyImageUrl,
       getRuntimeContext: () => runtimeContextRef.current,
+      subscribeWorkflowEvents,
+      sendWorkflowControl,
+      stopWorkflow,
     };
 
     const fileApi = {

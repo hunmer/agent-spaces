@@ -11,11 +11,11 @@ const ADD_ITEMS = [
 
 /**
  * 右侧面板：新增节点 / 节点管理 / 生成记录 三个 tab。
- * @param {{ nodes: array, onSelectNode:(id)=>void, onLocateNode:(id)=>void, onDeleteNode:(id)=>void, onAdd:(type)=>void, onDragStartNode:(type)=>void, history: array, onRemoveHistory:(id)=>void, onClearHistory:()=>void, onUseImage:(url)=>void }} props
+ * @param {{ ..., onOpenForm:(type)=>void }} props
  */
 export default function RightPanel({
   nodes, onSelectNode, onLocateNode, onDeleteNode,
-  onAdd, onDragStartNode,
+  onAdd, onDragStartNode, onOpenForm,
   history, onRemoveHistory, onClearHistory, onUseImage,
 }) {
   return (
@@ -28,7 +28,7 @@ export default function RightPanel({
         </TabsList>
 
         <TabsContent value="add" className="mt-0 min-h-0 flex-1 overflow-hidden">
-          <AddNodeList onAdd={onAdd} onDragStartNode={onDragStartNode} />
+          <AddNodeList onAdd={onAdd} onDragStartNode={onDragStartNode} onOpenForm={onOpenForm} />
         </TabsContent>
 
         <TabsContent value="nodes" className="mt-0 min-h-0 flex-1 overflow-hidden">
@@ -53,26 +53,41 @@ export default function RightPanel({
   );
 }
 
-// ============ 新增节点（可点击添加，可拖拽到画布） ============
-function AddNodeList({ onAdd, onDragStartNode }) {
+// 支持表单提交的节点类型（文生图 / 编辑图片）
+const FORM_NODE_TYPES = new Set([NODE_TYPES.textToImage, NODE_TYPES.editImage]);
+
+// ============ 新增节点（可点击添加，可拖拽到画布；文生图/编辑图片可填表单提交到队列） ============
+function AddNodeList({ onAdd, onDragStartNode, onOpenForm }) {
   return (
     <ScrollArea className="h-full">
       <div className="flex flex-col gap-2 p-3">
         <p className="text-xs text-muted-foreground">点击添加，或拖拽到画布任意位置</p>
         {ADD_ITEMS.map((it) => {
           const meta = NODE_META[it.type];
+          const hasForm = FORM_NODE_TYPES.has(it.type);
           return (
-            <button
-              key={it.type}
-              type="button"
-              draggable
-              onDragStart={(e) => onDragStartNode?.(it.type, e)}
-              onClick={() => onAdd?.(it.type)}
-              className="flex cursor-grab items-center gap-2 rounded-md border border-border bg-background px-3 py-2.5 text-sm font-medium transition hover:border-primary hover:text-primary active:cursor-grabbing"
-            >
-              <span className="text-base">{meta.icon}</span>
-              <span>{it.label}</span>
-            </button>
+            <div key={it.type} className="flex items-center gap-1.5">
+              <button
+                type="button"
+                draggable
+                onDragStart={(e) => onDragStartNode?.(it.type, e)}
+                onClick={() => onAdd?.(it.type)}
+                className="flex flex-1 cursor-grab items-center gap-2 rounded-md border border-border bg-background px-3 py-2.5 text-sm font-medium transition hover:border-primary hover:text-primary active:cursor-grabbing"
+              >
+                <span className="text-base">{meta.icon}</span>
+                <span>{it.label}</span>
+              </button>
+              {hasForm && (
+                <button
+                  type="button"
+                  onClick={() => onOpenForm?.(it.type)}
+                  title="填写参数并提交到执行队列"
+                  className="flex shrink-0 items-center gap-1 rounded-md border border-primary/40 bg-primary/10 px-2.5 py-2.5 text-xs font-medium text-primary transition hover:bg-primary/20"
+                >
+                  ⚡生成
+                </button>
+              )}
+            </div>
           );
         })}
       </div>

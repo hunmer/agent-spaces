@@ -7,6 +7,8 @@ import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@agent-spa
 import Toolbar from './Toolbar';
 import RightPanel from './RightPanel';
 import SettingsDialog from './SettingsDialog';
+import ExecutionQueuePopover from './ExecutionQueuePopover';
+import NodeFormDialog from './NodeFormDialog';
 import TextToImageNode from './nodes/TextToImageNode';
 import EditImageNode from './nodes/EditImageNode';
 import ImageDisplayNode from './nodes/ImageDisplayNode';
@@ -15,7 +17,8 @@ import useCanvasState from '../hooks/useCanvasState';
 import useWorkflow from '../hooks/useWorkflow';
 import useGenerationHistory from '../hooks/useGenerationHistory';
 import useSettings from '../hooks/useSettings';
-import { NODE_META, NODE_TYPES } from '../utils/constants';
+import useExecutionQueue from '../hooks/useExecutionQueue';
+import { NODE_META, NODE_TYPES, WORKFLOWS } from '../utils/constants';
 import { autoLayout } from '../utils/layout';
 import { downloadJson, serializeCanvas } from '../utils/export';
 import { loadPanelLayout, onAnyConfigChanged, savePanelLayout } from '../utils/storage';
@@ -61,6 +64,12 @@ export default function Canvas() {
   const { settings, saveSettings } = useSettings();
   const [selectedId, setSelectedId] = useState(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  // 执行队列：任务完成后把每张图作为独立图片展示节点加到画布
+  const { jobs, submit, cancel, clearFinished, runningCount } = useExecutionQueue({
+    onComplete: (job, images) => addImageNodesFromUrls(images),
+  });
+  // 节点表单弹窗（从右侧新增节点 tab 触发）
+  const [formNodeType, setFormNodeType] = useState(null);
   const reactFlow = useReactFlow();
   // 拖拽到画布时记录拖入的节点类型（参考 reactflow.dev drag-and-drop）
   const dragTypeRef = useRef(null);
@@ -253,19 +262,37 @@ export default function Canvas() {
     downloadJson(serializeCanvas(nodes, edges));
   }, [nodes, edges]);
 
+  // 队列任务完成后：每张图生成一个独立的图片展示节点，错落排列
+  const addImageNodesFromUrls = useCallback((urls) => {
+    if (!urls?.length) return;
+    const size = DEFAULT_SIZE[NODE_TYPES.imageDisplay];
+    const meta = NODE_META[NODE_TYPES.imageDisplay];
+    setNodes((prev) => {
+      const base = prev.length;
+      const additions = urls.map((url, i) => ({
+        id: genId(NODE_TYPES.imageDisplay),
+        type: NODE_TYPES.imageDisplay,
+        position: { x: 420 + (i % 3) * (size.w + 20), y: 120 + Math.floor(i / 3) * (size.h + 20) + base * 10 },
+        width: size.w, height: size.h,
+        style: { width: size.w, height: size.h },
+        data: { ...initialData(NODE_TYPES.imageDisplay), images: [url], source: 'queue', label: meta.label },
+      }));
+      return [...prev, ...additions];
+    });
+  }, [setNodes]);
+
   // 生成记录「用作输入」
   const handleUseImage = useCallback((url) => {
-    const id = genId(NODE_TYPES.imageDisplay);
-    const meta = NODE_META[NODE_TYPES.imageDisplay];
-    const size = DEFAULT_SIZE[NODE_TYPES.imageDisplay];
-    setNodes((prev) => [...prev, {
-      id, type: NODE_TYPES.imageDisplay,
-      position: { x: 420, y: 120 + prev.length * 30 },
-      width: size.w, height: size.h,
-      style: { width: size.w, height: size.h },
-      data: { ...initialData(NODE_TYPES.imageDisplay), images: [url], source: 'history', label: meta.label },
-    }]);
-  }, [setNodes]);
+    addImageNodesFromUrls([url]);
+  }, [addImageNodesFromUrls]);
+
+  // 从右侧表单弹窗提交：根据 nodeType 用 settings 的工作流 ID
+  const handleFormSubmit = useCallback((task) => {
+    const workflowId = task.nodeType === NODE_TYPES.textToImage
+      ? (settings.textToImageWorkflowId || WORKFLOWS.text_to_image)
+      : (settings.editImageWorkflowId || WORKFLOWS.edit_image);
+    submit({ ...task, workflowId });
+  }, [settings, submit]);
 
   // 给每个节点的 data 注入 onUpdate / onGenerate（节点内部需要）。
   // 注意：不要覆盖 node.selected —— 选中状态由 ReactFlow 通过 onNodesChange 的
@@ -310,6 +337,14 @@ export default function Canvas() {
             onExport={handleExport}
             onOpenSettings={() => setSettingsOpen(true)}
             count={nodes.length}
+            queueSlot={(
+              <ExecutionQueuePopover
+                jobs={jobs}
+                runningCount={runningCount}
+                onCancel={cancel}
+                onClearFinished={clearFinished}
+              />
+            )}
           />
           {/* 外层 ref + onDrop/onDragOver 实现拖拽新增节点（参考 reactflow.dev drag-and-drop） */}
           <div className="relative min-h-0 flex-1" ref={wrappingRef} onDrop={handleDrop} onDragOver={handleDragOver}>
@@ -349,6 +384,7 @@ export default function Canvas() {
           onDeleteNode={handleDeleteNode}
           onAdd={handleAdd}
           onDragStartNode={handleDragStartNode}
+          onOpenForm={(type) => setFormNodeType(type)}
           history={history}
           onRemoveHistory={removeHistory}
           onClearHistory={clearHistory}
@@ -364,6 +400,13 @@ export default function Canvas() {
           await saveSettings(cfg);
           setSettingsOpen(false);
         }}
+      />
+
+      <NodeFormDialog
+        open={!!formNodeType}
+        nodeType={formNodeType}
+        onClose={() => setFormNodeType(null)}
+        onSubmit={handleFormSubmit}
       />
     </ResizablePanelGroup>
   );

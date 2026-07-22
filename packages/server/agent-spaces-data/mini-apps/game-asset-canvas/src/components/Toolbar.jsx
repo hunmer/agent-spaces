@@ -1,9 +1,8 @@
 /**
- * 顶部工具栏：自动布局 / 导出 / 设置 / 清空。
- * 新增节点已移到右侧【新增节点】tab（支持点击与拖拽到画布）。
- * @param {{ onClear: ()=>void, onAutoLayout: ()=>void, onExport: ()=>void, onOpenSettings: ()=>void, count: number }} props
+ * 顶部工具栏：自动布局 / 导出 / 设置 / 清空，右侧插槽放执行队列。
+ * @param {{ onClear, onAutoLayout, onExport, onOpenSettings, count, queueSlot }} props
  */
-export default function Toolbar({ onClear, onAutoLayout, onExport, onOpenSettings, count }) {
+export default function Toolbar({ onClear, onAutoLayout, onExport, onOpenSettings, count, queueSlot }) {
   return (
     <div className="flex flex-wrap items-center gap-2 border-b border-border bg-card px-3 py-2">
       <span className="mr-1 text-sm font-semibold">🎮 游戏资产生成画布</span>
@@ -35,6 +34,7 @@ export default function Toolbar({ onClear, onAutoLayout, onExport, onOpenSetting
       </button>
 
       <div className="ml-auto flex items-center gap-2">
+        {queueSlot}
         <span className="text-xs text-muted-foreground">{count} 个节点</span>
         <button
           type="button"
