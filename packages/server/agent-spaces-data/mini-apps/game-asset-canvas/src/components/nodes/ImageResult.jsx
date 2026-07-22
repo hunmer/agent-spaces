@@ -12,7 +12,7 @@ export default function ImageResult({ images, max = 9 }) {
 
   const open = (index) => {
     // 把点击的那张作为起始页，MediaGallery 内可左右翻页看全部
-    openMediaGallery(items.slice(0, max).map((src) => ({ src, type: 'image' })), index);
+    openMediaGallery(items.slice(0, max), index);
   };
 
   return (

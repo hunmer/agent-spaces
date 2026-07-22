@@ -4,8 +4,8 @@
       "id": "textToImage-mrvnfju9-2",
       "type": "textToImage",
       "position": {
-        "x": 40,
-        "y": 40
+        "x": 45.15394412550063,
+        "y": 43.092366475300395
       },
       "width": 318,
       "height": 331,
@@ -17,10 +17,10 @@
         "status": "done",
         "output": {
           "images": [
-            "https://p26-dreamina-sign.byteimg.com/tos-cn-i-tb4s082cfz/9279a1e382c64bc9b15887289c795e23~tplv-tb4s082cfz-aigc_resize:0:0.png?lk3s=7c3bb0db&x-expires=1784707200&x-signature=QBda%2Fs2Dm9%2FNOE%2F5Hr3Gd%2BmOeb8%3D&format=.png",
-            "https://p26-dreamina-sign.byteimg.com/tos-cn-i-tb4s082cfz/0e0e4f8ec5494a5496a12e75cfd4a764~tplv-tb4s082cfz-aigc_resize:0:0.png?lk3s=7c3bb0db&x-expires=1784707200&x-signature=fGbbBKSgT4tSE2KSfhxUlAZLyYw%3D&format=.png",
-            "https://p26-dreamina-sign.byteimg.com/tos-cn-i-tb4s082cfz/ac9b115b0c6a4e62a17f2202d183fc62~tplv-tb4s082cfz-aigc_resize:0:0.png?lk3s=7c3bb0db&x-expires=1784707200&x-signature=MwMGqbRitFivmLrW6iB6Q5X%2B%2BYA%3D&format=.png",
-            "https://p26-dreamina-sign.byteimg.com/tos-cn-i-tb4s082cfz/310904a2985143ed82cb012a34ff74f8~tplv-tb4s082cfz-aigc_resize:0:0.png?lk3s=7c3bb0db&x-expires=1784707200&x-signature=FUn%2Bhk7X7Ka8BEn80o1vjKtM%2FBI%3D&format=.png"
+            "https://p26-dreamina-sign.byteimg.com/tos-cn-i-tb4s082cfz/2deed94a239546b693c3955fdbe1037d~tplv-tb4s082cfz-aigc_resize:0:0.png?lk3s=7c3bb0db&x-expires=1784707200&x-signature=%2Bph68dMCqxZfuBPLpgu7f8bhNSw%3D&format=.png",
+            "https://p26-dreamina-sign.byteimg.com/tos-cn-i-tb4s082cfz/af4318b5a7f0439eadced1f30df2770d~tplv-tb4s082cfz-aigc_resize:0:0.png?lk3s=7c3bb0db&x-expires=1784707200&x-signature=5U5H7uYN4zYmPizd095r0ItUL4A%3D&format=.png",
+            "https://p26-dreamina-sign.byteimg.com/tos-cn-i-tb4s082cfz/f35382357ec142dd89e5ef9e8f517a92~tplv-tb4s082cfz-aigc_resize:0:0.png?lk3s=7c3bb0db&x-expires=1784707200&x-signature=GUIdCDa82xurPDQU%2B%2BrSjnYlwU0%3D&format=.png",
+            "https://p11-dreamina-sign.byteimg.com/tos-cn-i-tb4s082cfz/5ddbfd111ab340108b9cfae78eac33ce~tplv-tb4s082cfz-aigc_resize:0:0.png?lk3s=7c3bb0db&x-expires=1784707200&x-signature=k8tocpwjo3lID92cFfrdgdNmJv8%3D&format=.png"
           ]
         },
         "params": {
@@ -36,7 +36,8 @@
         "height": 331
       },
       "selected": false,
-      "resizing": false
+      "resizing": false,
+      "dragging": false
     },
     {
       "id": "imageDisplay-mrvo7v2p-1",
@@ -68,5 +69,5 @@
     }
   ],
   "edges": [],
-  "savedAt": 1784700807391
+  "savedAt": 1784702771404
 }

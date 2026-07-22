@@ -99,6 +99,20 @@
 - `useReactFlow()` 提供 `setCenter(x, y, {zoom, duration})`
 - 右侧节点管理 🎯 按钮调用 `handleLocateNode`，把视口居中到目标节点
 
+## 执行队列 + 表单提交
+- 顶栏右上角【执行队列】按钮（ExecutionQueuePopover）：显示运行中/已完成任务，可中断
+- 右侧【新增节点】tab：文生图/编辑图片旁有「⚡生成」按钮，打开 NodeFormDialog 填表单
+- 提交流程：NodeFormDialog → Canvas.handleFormSubmit（按 nodeType 补 settings 工作流 ID）→ useExecutionQueue.submit → 入队
+- 执行完毕：useExecutionQueue.onComplete 回调 → addImageNodesFromUrls 每张图生成一个图片展示节点入画布
+- 持久化：队列是内存态（刷新后清空，非业务数据）
+
+## 工作流中断（host 层能力）
+- `window.AgentSpaces.subscribeWorkflowEvents(cb)`：监听 workflow:* 事件（workflow:started 含 executionId）
+- `window.AgentSpaces.stopWorkflow(executionId)`：发送 workflow:stop，引擎 stop 后阻塞的 execute_workflow_sync 在 ~500ms 内 resolve
+- `window.AgentSpaces.sendWorkflowControl(event, data)`：通用 workflow 控制事件发送
+- 实现：use-mini-app-host-api.tsx 用 getWS(projectId).on/send，挂到 window.AgentSpaces
+- useExecutionQueue.submit 并行订阅 workflow:started 拿 executionId，cancel 时 stopWorkflow
+
 ## 依赖（宿主已暴露，无需项目内安装）
 - `@xyflow/react`（含 ReactFlow/NodeResizer/NodeToolbar 等，通过 bare import 或 window.AgentSpacesUI 取用）
 - `@dagrejs/dagre`（自动布局，bare import `dagre, { graphlib }`）
