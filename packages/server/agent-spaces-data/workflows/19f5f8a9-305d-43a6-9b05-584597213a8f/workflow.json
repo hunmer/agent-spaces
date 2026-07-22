@@ -379,7 +379,7 @@
         "y": 542.5
       },
       "data": {
-        "code": "async function main({ params }) {\n  let target = ''\n  const model = params.model || ''\n  if (model.includes('kling')) {\n    target = 'case-0'\n  } else if (model.includes('qwen') || model.includes('wan2.7')) {\n    target = 'case-1'\n  } else if (model.includes('jimeng')) {\n    target = 'case-2'\n  } else if (model.includes('gpt') || model.includes('flux') || model.includes('nano')) {\n    target = 'case-3'\n  }\n  let size = ''\n  switch(params.size.toLowerCase()){\n    case '1k':\n      size = '1024*1024'\n      break\n    case '2k':\n      size = '2048*2048'\n      break\n  }\n  return {target, size}\n}",
+        "code": "async function main({ params }) {\n  let target = ''\n  const model = params.model || ''\n  if (model.includes('kling')) {\n    target = 'case-0'\n  } else if (model.includes('qwen') || model.includes('wanx') || model.includes('wan2.7')) {\n    target = 'case-1'\n  } else if (model.includes('jimeng')) {\n    target = 'case-2'\n  } else if (model.includes('gpt') || model.includes('dall-e') || model.includes('flux') || model.includes('nano')) {\n    target = 'case-3'\n  }\n  let size = ''\n  switch(params.size.toLowerCase()){\n    case '1k':\n      size = '1024*1024'\n      break\n    case '2k':\n      size = '2048*2048'\n      break\n  }\n  return {target, size}\n}",
         "sourceNodeId": "node_1781681576137_start",
         "sourceHandle": "source",
         "inputFields": [

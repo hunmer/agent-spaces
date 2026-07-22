@@ -89,3 +89,25 @@ export type { RouteState, RouterApi } from '@/components/mini-apps/mini-app-rout
 export { default as NotionEditor } from '@/components/common/editors/notion-editor';
 export { default as MarkdownEditor } from '@/components/common/editors/markdown-editor';
 export { htmlToMarkdown, markdownToHtml } from '@/lib/converter';
+
+// ReactFlow（节点画布，供 mini-app 做节点编辑器）
+export {
+  ReactFlow,
+  ReactFlowProvider,
+  Background,
+  BackgroundVariant,
+  Controls,
+  MiniMap,
+  useNodesState,
+  useEdgesState,
+  addEdge,
+  Handle,
+  Position,
+  applyNodeChanges,
+  applyEdgeChanges,
+  MarkerType,
+  getConnectedEdges,
+} from '@xyflow/react';
+
+// dagre（ReactFlow 自动布局）
+export { default as dagre, graphlib } from '@dagrejs/dagre';
