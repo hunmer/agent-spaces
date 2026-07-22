@@ -19,6 +19,8 @@ export default function useExecutionQueue(opts = {}) {
   const [jobs, setJobs] = useState([]);
   const onCompleteRef = useRef(opts.onComplete);
   onCompleteRef.current = opts.onComplete;
+  const onErrorRef = useRef(opts.onError);
+  onErrorRef.current = opts.onError;
 
   const updateJob = useCallback((jobId, patch) => {
     setJobs((prev) => prev.map((j) => (j.id === jobId ? { ...j, ...patch } : j)));
@@ -26,7 +28,9 @@ export default function useExecutionQueue(opts = {}) {
 
   /**
    * 提交一个生成任务到队列。
-   * @param {{ nodeType:string, label:string, workflowId:string, input:object }} task
+   * @param {{ nodeType:string, label:string, workflowId:string, input:object, placeholderNodeId?:string, tags?:string[] }} task
+   *   placeholderNodeId: 上层预先创建的 loading 占位节点 id，完成后填充该节点而非新增
+   *   tags: 透传给 onComplete 的来源标签（存入占位节点 data.tags）
    */
   const submit = useCallback(async (task) => {
     const jobId = genId();
@@ -36,6 +40,8 @@ export default function useExecutionQueue(opts = {}) {
       nodeType: task.nodeType,
       workflowId: task.workflowId,
       input: task.input,
+      placeholderNodeId: task.placeholderNodeId || null,
+      tags: task.tags || [],
       status: 'running',
       executionId: null,
       images: [],
@@ -65,6 +71,8 @@ export default function useExecutionQueue(opts = {}) {
       // 中断导致的报错归为 stopped
       const finalStatus = /stop|中断|取消/i.test(msg) ? 'stopped' : 'error';
       updateJob(jobId, { status: finalStatus, error: msg });
+      // 通知上层（如把占位节点标记为错误）
+      onErrorRef.current?.(job, err);
     } finally {
       try { unsubStarted?.(); } catch {}
     }

@@ -6,7 +6,7 @@ import {
 import {
   ASPECT_OPTIONS, DEFAULT_MODEL, MODEL_OPTIONS, NODE_META, NODE_TYPES, SIZE_OPTIONS,
 } from '../utils/constants';
-import { normalizeImageUrls } from '../utils/workflow';
+import { normalizeImageUrls, resolveReferenceImages } from '../utils/workflow';
 import PromptPickerDialog from './PromptPickerDialog';
 import PickedPromptBadge from './nodes/PickedPromptBadge';
 import FileUpload from './FileUpload';
@@ -27,6 +27,7 @@ export default function NodeFormDialog({ open, nodeType, initialImages, onClose,
   const [aspect, setAspect] = useState('1:1');
   const [size, setSize] = useState('1k');
   const [images, setImages] = useState([]);
+  const [referenceImages, setReferenceImages] = useState([]);
   const [pickerOpen, setPickerOpen] = useState(false);
 
   // 打开时按 nodeType + initialImages 初始化（兼容「编辑」按钮预填）
@@ -38,19 +39,24 @@ export default function NodeFormDialog({ open, nodeType, initialImages, onClose,
     setAspect('1:1');
     setSize('1k');
     setImages(Array.isArray(initialImages) ? initialImages.filter(Boolean) : []);
+    setReferenceImages([]);
   }, [open, nodeType, initialImages]);
 
   const isEdit = nodeType === NODE_TYPES.editImage;
   // 提示词库选中 或 用户输入 二者有其一即可提交
   const hasPrompt = prompt.trim() || pickedPrompt.trim();
-  const canSubmit = hasPrompt && (!isEdit || images.length > 0);
+  // edit 模式：用户上传图 或 提示词库带入的参考图 至少其一非空
+  const canSubmit = hasPrompt && (!isEdit || images.length > 0 || referenceImages.length > 0);
 
   const handleSubmit = () => {
     if (!canSubmit) return;
     // 提示词库选中 + 用户输入 合并
     const merged = [pickedPrompt, prompt].map((s) => s.trim()).filter(Boolean).join('\n');
     const input = { prompt: merged, model, aspect, size };
-    if (isEdit) input.images = normalizeImageUrls(images);
+    if (isEdit) {
+      // 参考图（提示词库带入）合并到 input.images 前部
+      input.images = normalizeImageUrls([...referenceImages, ...images]);
+    }
     onSubmit?.({
       nodeType,
       label: `${meta.label}：${merged.slice(0, 16)}${merged.length > 16 ? '…' : ''}`,
@@ -78,10 +84,25 @@ export default function NodeFormDialog({ open, nodeType, initialImages, onClose,
             </Field>
           )}
 
+          {isEdit && referenceImages.length > 0 && (
+            <Field label={`参考图（来自提示词库，${referenceImages.length} 张）`}>
+              <div className="flex flex-wrap gap-2">
+                {referenceImages.map((url, i) => (
+                  <img
+                    key={i}
+                    src={url}
+                    alt={`参考图${i + 1}`}
+                    className="h-16 w-16 rounded border border-border object-contain"
+                  />
+                ))}
+              </div>
+            </Field>
+          )}
+
           <div className="flex flex-col gap-1.5">
             <PickedPromptBadge
               pickedPrompt={pickedPrompt}
-              onClear={() => setPickedPrompt('')}
+              onClear={() => { setPickedPrompt(''); setReferenceImages([]); }}
             />
             <div className="flex items-center justify-between">
               <Label className="text-xs font-medium text-muted-foreground">提示词</Label>
@@ -126,6 +147,8 @@ export default function NodeFormDialog({ open, nodeType, initialImages, onClose,
           onPick={(item) => {
             setPickedPrompt(item.prompt);
             if (item.aspect) setAspect(item.aspect);
+            // 仅 edit 模式注入参考图（文生图忽略）
+            setReferenceImages(isEdit ? resolveReferenceImages(item.references) : []);
           }}
         />
       </DialogContent>

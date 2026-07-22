@@ -5,7 +5,7 @@ import PromptPickerDialog from '../PromptPickerDialog';
 import PickedPromptBadge from './PickedPromptBadge';
 import { ASPECT_OPTIONS, DEFAULT_MODEL, MODEL_OPTIONS, NODE_TYPES, SIZE_OPTIONS, WORKFLOWS } from '../../utils/constants';
 import { hasPrompt } from '../../utils/prompts';
-import { normalizeImageUrls } from '../../utils/workflow';
+import { normalizeImageUrls, resolveReferenceImages } from '../../utils/workflow';
 
 /**
  * 编辑图片节点。
@@ -37,13 +37,17 @@ export default function EditImageNode({ id, data, selected }) {
   }, [onUpdate]);
 
   const handleRun = useCallback(() => {
-    if (!inputImages.length) return;
+    // 参考图（提示词库带入）或 连线/手动图片 至少其一非空才执行
+    const refImages = Array.isArray(params.referenceImages) ? params.referenceImages : [];
+    if (!inputImages.length && !refImages.length) return;
     // 提示词库选中 + 用户输入 合并（去空去重）
     const merged = [params.pickedPrompt, params.prompt].map((s) => (s || '').trim()).filter(Boolean).join('\n');
+    // 参考图合并到 input.images 前部，与连线/手动图片去重后提交
+    const allImages = normalizeImageUrls([...refImages, ...inputImages]);
     onGenerate?.(id, NODE_TYPES.editImage, {
       workflowId: WORKFLOWS.edit_image,
       input: {
-        images: normalizeImageUrls(inputImages),
+        images: allImages,
         prompt: merged,
         model: params.model || DEFAULT_MODEL,
         aspect: params.aspect || '1:1',
@@ -75,8 +79,25 @@ export default function EditImageNode({ id, data, selected }) {
 
       <PickedPromptBadge
         pickedPrompt={params.pickedPrompt}
-        onClear={() => set({ pickedPrompt: undefined })}
+        onClear={() => set({ pickedPrompt: undefined, referenceImages: undefined })}
       />
+      {(params.referenceImages || []).length > 0 && (
+        <div className="flex flex-col gap-1">
+          <span className="text-xs font-medium text-muted-foreground">
+            参考图（{params.referenceImages.length} 张）
+          </span>
+          <div className="flex flex-wrap gap-1">
+            {params.referenceImages.map((url, i) => (
+              <img
+                key={i}
+                src={url}
+                alt={`参考图${i + 1}`}
+                className="h-12 w-12 rounded border border-border object-contain"
+              />
+            ))}
+          </div>
+        </div>
+      )}
       <label className="flex flex-col gap-1">
         <div className="flex items-center justify-between">
           <span className="text-xs font-medium text-muted-foreground">编辑指令</span>
@@ -104,7 +125,7 @@ export default function EditImageNode({ id, data, selected }) {
 
       <button
         type="button"
-        disabled={running || !inputImages.length || !hasPrompt(params)}
+        disabled={running || (!inputImages.length && !(params.referenceImages || []).length) || !hasPrompt(params)}
         onClick={handleRun}
         className="w-full rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition disabled:cursor-not-allowed disabled:opacity-50"
       >
@@ -121,7 +142,11 @@ export default function EditImageNode({ id, data, selected }) {
         open={pickerOpen}
         scene="edit"
         onClose={() => setPickerOpen(false)}
-        onPick={(item) => set({ pickedPrompt: item.prompt, ...(item.aspect ? { aspect: item.aspect } : {}) })}
+        onPick={(item) => set({
+          pickedPrompt: item.prompt,
+          referenceImages: resolveReferenceImages(item.references),
+          ...(item.aspect ? { aspect: item.aspect } : {}),
+        })}
       />
     </NodeShell>
   );

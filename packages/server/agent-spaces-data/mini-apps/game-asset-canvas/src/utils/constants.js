@@ -64,6 +64,20 @@ export const NODE_META = {
   [NODE_TYPES.note]: { label: '便签', icon: '📝', color: '#f59e0b' },
 };
 
+// 图片展示节点的来源标签（不同来源传不同 tag 做区分）
+// 用于 data.tags 数组，节点内渲染为小标签
+export const IMAGE_TAGS = {
+  textToImage: '文生图',
+  editImage: '编辑图片',
+  upload: '上传',
+  url: 'URL',
+  segment: '抠图',
+  enhance: '放大',
+  history: '记录',
+  upstream: '连线',
+  export: '导出',
+};
+
 // 持久化配置文件名（工作区共享的顶层配置）
 export const CANVAS_CONFIG = 'canvas.json';
 export const HISTORY_CONFIG = 'generation-history.json';

@@ -20,7 +20,7 @@ import useGenerationHistory from '../hooks/useGenerationHistory';
 import useSettings from '../hooks/useSettings';
 import useExecutionQueue from '../hooks/useExecutionQueue';
 import useWorkspaces from '../hooks/useWorkspaces';
-import { NODE_META, NODE_TYPES, WORKFLOWS } from '../utils/constants';
+import { IMAGE_TAGS, NODE_META, NODE_TYPES, WORKFLOWS } from '../utils/constants';
 import { autoLayout } from '../utils/layout';
 import { downloadJson, serializeCanvas } from '../utils/export';
 import { copyNodes, hasClipboard, pasteNodes } from '../utils/clipboard';
@@ -33,6 +33,14 @@ const NODE_COMPONENTS = {
   [NODE_TYPES.imageDisplay]: ImageDisplayNode,
   [NODE_TYPES.note]: NoteNode,
 };
+
+// 右键菜单的节点类型列表（与 RightPanel 新增节点 tab 保持一致）
+const ADD_NODE_ITEMS = [
+  { type: NODE_TYPES.textToImage },
+  { type: NODE_TYPES.editImage },
+  { type: NODE_TYPES.imageDisplay },
+  { type: NODE_TYPES.note },
+];
 
 // 基于 nodes/edges 拓扑计算每个「图片接收节点」的输入图片。
 // 参考 https://reactflow.dev/learn/advanced-use/computing-flows ：图是派生数据，nodes/edges 是真值。
@@ -77,6 +85,18 @@ function genId(prefix) {
   return `${prefix}-${Date.now().toString(36)}-${seq}`;
 }
 
+// tags 去重保序（图片展示节点 data.tags 用）
+function dedupeTags(tags) {
+  const seen = new Set();
+  const out = [];
+  for (const t of tags || []) {
+    if (!t || seen.has(t)) continue;
+    seen.add(t);
+    out.push(t);
+  }
+  return out;
+}
+
 // 每种节点的初始 data
 function initialData(type) {
   if (type === NODE_TYPES.note) return { text: '' };
@@ -95,14 +115,26 @@ export default function Canvas() {
   const { settings, saveSettings } = useSettings();
   const [selectedId, setSelectedId] = useState(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  // 执行队列：任务完成后把每张图作为独立图片展示节点加到画布
+  // 执行队列：提交瞬间已创建 loading 占位节点（见 handleFormSubmit），
+  // 完成后填充该占位节点（updateNodeData）而非新增节点；失败时占位节点显示错误。
   const { jobs, submit, cancel, clearFinished, runningCount } = useExecutionQueue({
     onComplete: (job, images) => {
-      addImageNodesFromUrls(images);
+      const tag = job.nodeType === NODE_TYPES.editImage ? IMAGE_TAGS.editImage : IMAGE_TAGS.textToImage;
+      if (job.placeholderNodeId) {
+        updateNodeData(job.placeholderNodeId, {
+          images,
+          source: 'queue',
+          loading: false,
+          error: undefined,
+          tags: dedupeTags([...(job.tags || []), tag]),
+        });
+      } else {
+        addImageNodesFromUrls(images, { tags: [tag] });
+      }
       // 与节点内「生成」一致，把队列结果也写入生成记录
       addHistory({
         id: genId('hist'),
-        nodeId: null,
+        nodeId: job.placeholderNodeId || null,
         nodeType: job.nodeType,
         prompt: job.input?.prompt || '',
         model: job.input?.model || '',
@@ -110,10 +142,22 @@ export default function Canvas() {
         createdAt: Date.now(),
       }).catch((e) => console.error('queue addHistory failed:', e));
     },
+    onError: (job, err) => {
+      // 失败时把占位节点标记为错误（参考 handleProcessImage 的错误处理）
+      if (job.placeholderNodeId) {
+        updateNodeData(job.placeholderNodeId, {
+          loading: false,
+          source: 'error',
+          error: err?.message || String(err),
+        });
+      }
+    },
   });
   // 节点表单弹窗（右侧新增节点 tab 触发，或节点工具栏【编辑】按钮触发）
   // { nodeType, initialImages } | null
   const [formState, setFormState] = useState(null);
+  // 右键菜单：{ x,y } 屏幕坐标定位浮层，{ flowX,flowY } 画布坐标用于在该处建节点
+  const [contextMenu, setContextMenu] = useState(null);
   const reactFlow = useReactFlow();
   // 拖拽到画布时记录拖入的节点类型（参考 reactflow.dev drag-and-drop）
   const dragTypeRef = useRef(null);
@@ -264,7 +308,7 @@ export default function Canvas() {
           },
           width: size.w, height: size.h,
           style: { width: size.w, height: size.h },
-          data: { ...initialData(NODE_TYPES.imageDisplay), source: 'upload', loading: true, images: [], label: NODE_META[NODE_TYPES.imageDisplay].label },
+          data: { ...initialData(NODE_TYPES.imageDisplay), source: 'upload', loading: true, images: [], tags: [IMAGE_TAGS.upload], label: NODE_META[NODE_TYPES.imageDisplay].label },
         };
       });
       return [...prev, ...additions];
@@ -304,6 +348,20 @@ export default function Canvas() {
     });
     createNodeAt(type, position);
   }, [reactFlow, createNodeAt, handleDropFiles]);
+
+  // 画布右键：阻止浏览器默认菜单，记录屏幕坐标（浮层定位）+ 画布坐标（建节点位置）
+  const handleContextMenu = useCallback((event) => {
+    event.preventDefault();
+    const flow = reactFlow.screenToFlowPosition({ x: event.clientX, y: event.clientY });
+    setContextMenu({ x: event.clientX, y: event.clientY, flowX: flow.x, flowY: flow.y });
+  }, [reactFlow]);
+
+  // 右键菜单点击某节点类型：在右键位置创建节点并关闭菜单
+  const handleAddAtMenu = useCallback((type) => {
+    if (!contextMenu) return;
+    createNodeAt(type, { x: contextMenu.flowX, y: contextMenu.flowY });
+    setContextMenu(null);
+  }, [contextMenu, createNodeAt]);
 
   const handleClear = useCallback(() => {
     setNodes([]);
@@ -354,10 +412,14 @@ export default function Canvas() {
   }, [nodes, edges]);
 
   // 队列任务完成后：每张图生成一个独立的图片展示节点，错落排列
-  const addImageNodesFromUrls = useCallback((urls) => {
+  // opts.tags: 来源标签数组（存入节点 data.tags）
+  // opts.source: 来源标记（默认 'queue'）
+  const addImageNodesFromUrls = useCallback((urls, opts = {}) => {
     if (!urls?.length) return;
     const size = DEFAULT_SIZE[NODE_TYPES.imageDisplay];
     const meta = NODE_META[NODE_TYPES.imageDisplay];
+    const source = opts.source || 'queue';
+    const tags = dedupeTags(opts.tags);
     setNodes((prev) => {
       const base = prev.length;
       const additions = urls.map((url, i) => ({
@@ -366,7 +428,7 @@ export default function Canvas() {
         position: { x: 420 + (i % 3) * (size.w + 20), y: 120 + Math.floor(i / 3) * (size.h + 20) + base * 10 },
         width: size.w, height: size.h,
         style: { width: size.w, height: size.h },
-        data: { ...initialData(NODE_TYPES.imageDisplay), images: [url], source: 'queue', label: meta.label },
+        data: { ...initialData(NODE_TYPES.imageDisplay), images: [url], source, tags, label: meta.label },
       }));
       return [...prev, ...additions];
     });
@@ -374,7 +436,7 @@ export default function Canvas() {
 
   // 生成记录「用作输入」
   const handleUseImage = useCallback((url) => {
-    addImageNodesFromUrls([url]);
+    addImageNodesFromUrls([url], { tags: [IMAGE_TAGS.history] });
   }, [addImageNodesFromUrls]);
 
   // —— 复制粘贴节点（Ctrl+C / Ctrl+V）——
@@ -432,13 +494,22 @@ export default function Canvas() {
     }));
   }, [setNodes]);
 
-  // 从右侧表单弹窗提交：根据 nodeType 用 settings 的工作流 ID
+  // 从右侧表单弹窗提交：根据 nodeType 用 settings 的工作流 ID。
+  // 参考 handleProcessImage：提交瞬间即创建 loading 占位节点，工作流跑完后填充该节点，
+  // 而非等工作流跑完才插入图片。tag 按节点类型区分（文生图/编辑图片）。
   const handleFormSubmit = useCallback((task) => {
     const workflowId = task.nodeType === NODE_TYPES.textToImage
       ? (settings.textToImageWorkflowId || WORKFLOWS.text_to_image)
       : (settings.editImageWorkflowId || WORKFLOWS.edit_image);
-    submit({ ...task, workflowId });
-  }, [settings, submit]);
+    const tag = task.nodeType === NODE_TYPES.editImage ? IMAGE_TAGS.editImage : IMAGE_TAGS.textToImage;
+    // 创建 loading 占位节点（图片展示），完成后由 onComplete 填充
+    const placeholderNodeId = createNodeAt(
+      NODE_TYPES.imageDisplay,
+      null,
+      { images: [], source: 'queue', loading: true, error: undefined, tags: [tag] },
+    );
+    submit({ ...task, workflowId, placeholderNodeId, tags: [tag] });
+  }, [settings, submit, createNodeAt]);
 
   // 节点工具栏「抠图」「放大」：调用抠图和放大工作流（image_enchanter），
   // 把处理后的图片作为独立图片展示节点加到画布，并写入生成记录。
@@ -447,9 +518,10 @@ export default function Canvas() {
   const handleProcessImage = useCallback(async (sourceImages, processType) => {
     if (!sourceImages?.length) return;
     const workflowId = settings.imageEnchanterWorkflowId || WORKFLOWS.image_enchanter;
+    const tag = processType === 'segment' ? IMAGE_TAGS.segment : IMAGE_TAGS.enhance;
     // 结果节点：loading 占位，完成后刷新为结果图
     const resultId = createNodeAt(NODE_TYPES.imageDisplay, null);
-    updateNodeData(resultId, { images: [], source: 'processing', loading: true, error: undefined });
+    updateNodeData(resultId, { images: [], source: 'processing', loading: true, error: undefined, tags: [tag] });
     try {
       // 批量并发：每张图一次工作流调用（input 是单图）
       const results = await Promise.allSettled(
@@ -469,6 +541,7 @@ export default function Canvas() {
         source: processType === 'segment' ? 'segment' : 'enhance',
         loading: false,
         error: failed ? `${failed} 张失败` : undefined,
+        tags: [tag],
       });
       addHistory({
         id: genId('hist'),
@@ -497,7 +570,11 @@ export default function Canvas() {
       const data = { ...nd.data };
       if (up) {
         data.images = up.images;
-        if (up.isDisplay) data.source = 'upstream';
+        if (up.isDisplay) {
+          data.source = 'upstream';
+          // 连线派生时补「连线」标签（保留节点原有 tags，去重）
+          data.tags = dedupeTags([...(nd.data?.tags || []), IMAGE_TAGS.upstream]);
+        }
       }
       return {
         ...nd,
@@ -505,7 +582,7 @@ export default function Canvas() {
           ...data,
           onUpdate: makeOnUpdate(nd.id),
           onGenerate: handleGenerate,
-          onExportImages: (imgs) => addImageNodesFromUrls(imgs),
+          onExportImages: (imgs) => addImageNodesFromUrls(imgs, { tags: [IMAGE_TAGS.export] }),
           onProcessImage: handleProcessImage,
           // 工具栏【编辑】按钮：打开编辑图片弹窗，预填当前节点图片
           onEditImages: (imgs) => setFormState({ nodeType: NODE_TYPES.editImage, initialImages: imgs }),
@@ -586,7 +663,7 @@ export default function Canvas() {
             )}
           />
           {/* 外层 ref + onDrop/onDragOver 实现拖拽新增节点（参考 reactflow.dev drag-and-drop） */}
-          <div className="relative min-h-0 flex-1" ref={wrappingRef} onDrop={handleDrop} onDragOver={handleDragOver}>
+          <div className="relative min-h-0 flex-1" ref={wrappingRef} onDrop={handleDrop} onDragOver={handleDragOver} onContextMenu={handleContextMenu}>
             <ReactFlow
               nodes={decoratedNodes}
               edges={edges}
@@ -648,6 +725,40 @@ export default function Canvas() {
         onClose={() => setFormState(null)}
         onSubmit={handleFormSubmit}
       />
+
+      {/* 画布右键菜单：节点类型列表，点击在右键位置创建节点。
+          外层透明遮罩吃掉点击/右键，内层 fixed 浮层定位到鼠标坐标。
+          z-index 高于 ReactFlow，样式对齐 PopoverContent。 */}
+      {contextMenu && (
+        <div
+          className="fixed inset-0 z-[999]"
+          onClick={() => setContextMenu(null)}
+          onContextMenu={(e) => { e.preventDefault(); setContextMenu(null); }}
+        >
+          <div
+            className="absolute w-44 rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md"
+            style={{ left: contextMenu.x, top: contextMenu.y }}
+            onClick={(e) => e.stopPropagation()}
+            onContextMenu={(e) => e.stopPropagation()}
+          >
+            <p className="px-2 py-1 text-[10px] text-muted-foreground">添加节点</p>
+            {ADD_NODE_ITEMS.map((it) => {
+              const meta = NODE_META[it.type];
+              return (
+                <button
+                  key={it.type}
+                  type="button"
+                  onClick={() => handleAddAtMenu(it.type)}
+                  className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs transition hover:bg-accent hover:text-accent-foreground"
+                >
+                  <span>{meta.icon}</span>
+                  <span>{meta.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </ResizablePanelGroup>
   );
 }

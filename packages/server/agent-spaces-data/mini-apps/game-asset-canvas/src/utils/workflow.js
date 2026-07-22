@@ -23,6 +23,19 @@ export function normalizeImageUrls(urls) {
 }
 
 /**
+ * 把提示词条目的 references（相对 src 目录的路径数组，如 ['assets/references/<id>/ref1.png']）
+ * 解析为可直接用于 <img>/提交给工作流的 http URL 数组。
+ * 走 host 暴露的 window.AgentSpaces.srcFileUrl（对应 /api/mini-apps/<id>/src/file 路由）。
+ * references 为空/缺省时返回空数组。
+ */
+export function resolveReferenceImages(references) {
+  if (!Array.isArray(references) || references.length === 0) return [];
+  const srcFileUrl = window?.AgentSpaces?.srcFileUrl;
+  if (typeof srcFileUrl !== 'function') return [];
+  return references.map((rel) => srcFileUrl(rel)).filter(Boolean);
+}
+
+/**
  * 同步执行工作流，返回 end 节点的 output 对象。
  * @param {string} workflowId
  * @param {Record<string, unknown>} input start 节点 inputFields 的值

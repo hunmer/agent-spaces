@@ -18,9 +18,11 @@ export default function ImageDisplayNode({ id, data, selected }) {
   const onAutoSize = data?.onAutoSize;
   const fileRef = useRef(null);
   const [uploading, setUploading] = useState(false);
-  // 处理中（抠图/放大）显示加载占位，完成后刷新为结果图
+  // 处理中（抠图/放大/队列生成）显示加载占位，完成后刷新为结果图
   const loading = data?.loading;
   const source = data?.source;
+  // 来源标签数组（不同来源传不同 tag 做区分，如「文生图」「编辑图片」「抠图」等）
+  const tags = Array.isArray(data?.tags) ? data.tags.filter(Boolean) : [];
 
   // 图片加载完成：按自然尺寸回调 Canvas 自动调整节点尺寸（仅触发一次：图片 URL 变化时重新测量）
   const handleImgLoad = useCallback((e) => {
@@ -73,10 +75,13 @@ export default function ImageDisplayNode({ id, data, selected }) {
   return (
     <NodeShell nodeType={NODE_TYPES.imageDisplay} data={data} selected={selected} targetHandle sourceHandle>
       {loading ? (
-        // 抠图/放大处理中：加载占位
-        <div className="flex h-28 items-center justify-center gap-2 rounded-md border border-dashed border-primary/50 text-xs text-primary">
-          <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-          处理中…
+        // 抠图/放大/队列生成处理中：加载占位（含来源 tags）
+        <div className="flex flex-col gap-2">
+          <div className="flex h-28 items-center justify-center gap-2 rounded-md border border-dashed border-primary/50 text-xs text-primary">
+            <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+            生成中…
+          </div>
+          {tags.length > 0 && <TagsRow tags={tags} />}
         </div>
       ) : uploading ? (
         <div className="flex h-28 items-center justify-center gap-2 rounded-md border border-dashed border-primary/50 text-xs text-primary">
@@ -97,7 +102,7 @@ export default function ImageDisplayNode({ id, data, selected }) {
               onLoad={handleImgLoad}
             />
           </button>
-          <div className="flex items-center justify-between gap-2">
+          <div className="flex flex-wrap items-center gap-1.5">
             <span className="text-xs text-muted-foreground">
               {isUpstream ? '来自连线'
                 : source === 'url' ? '来自 URL'
@@ -107,10 +112,18 @@ export default function ImageDisplayNode({ id, data, selected }) {
                 : source === 'error' ? '处理失败'
                 : '已上传'}
             </span>
+            {tags.map((t) => (
+              <span
+                key={t}
+                className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary"
+              >
+                {t}
+              </span>
+            ))}
             <button
               type="button"
               onClick={() => fileRef.current?.click()}
-              className="rounded border border-border px-2 py-0.5 text-xs text-muted-foreground transition hover:border-primary hover:text-primary"
+              className="ml-auto rounded border border-border px-2 py-0.5 text-xs text-muted-foreground transition hover:border-primary hover:text-primary"
             >
               更换
             </button>
@@ -145,5 +158,22 @@ export default function ImageDisplayNode({ id, data, selected }) {
         onChange={handleFile}
       />
     </NodeShell>
+  );
+}
+
+// 来源标签行（loading 占位态复用）
+function TagsRow({ tags }) {
+  if (!tags?.length) return null;
+  return (
+    <div className="flex flex-wrap items-center gap-1.5">
+      {tags.map((t) => (
+        <span
+          key={t}
+          className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary"
+        >
+          {t}
+        </span>
+      ))}
+    </div>
   );
 }

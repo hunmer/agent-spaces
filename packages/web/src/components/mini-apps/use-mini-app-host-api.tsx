@@ -823,6 +823,18 @@ export function useMiniAppHostApi(projectId: string, runtimeContext?: MiniAppRun
       return `${baseUrl || ''}/api/mini-apps/${encodedProjectId}/proxy-image?${params.toString()}`;
     };
 
+    // 把相对 src 目录的路径转成可直接用于 <img>/<video> src 的 HTTP URL（query token 鉴权）。
+    // 用于访问随 mini-app 源码分发的静态资源（如内置参考图），对应路由 routes/mini-apps.ts 的 src/file。
+    const srcFileUrl = (relPath: string, opts?: { download?: boolean }): string => {
+      const baseUrl = getActiveServerUrl();
+      const token = getToken() || '';
+      const params = new URLSearchParams();
+      params.set('path', relPath);
+      params.set('token', token);
+      if (opts?.download) params.set('download', 'true');
+      return `${baseUrl || ''}/api/mini-apps/${encodedProjectId}/src/file?${params.toString()}`;
+    };
+
     const pluginApi = {
       callPluginTool: executePluginTool,
       executePluginTool,
@@ -901,6 +913,7 @@ export function useMiniAppHostApi(projectId: string, runtimeContext?: MiniAppRun
       downloadImage,
       generateThumbnail,
       dataFileUrl,
+      srcFileUrl,
     };
     (window as any).AgentSpacesAPI = {
       ...pluginApi,
@@ -920,6 +933,7 @@ export function useMiniAppHostApi(projectId: string, runtimeContext?: MiniAppRun
       downloadImage,
       generateThumbnail,
       dataFileUrl,
+      srcFileUrl,
     };
 
     const handleOpenFile = (e: Event) => {
