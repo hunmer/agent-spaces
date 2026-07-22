@@ -4,8 +4,8 @@
       "id": "textToImage-mrvnfju9-2",
       "type": "textToImage",
       "position": {
-        "x": 45.15394412550063,
-        "y": 43.092366475300395
+        "x": -175.6251238245171,
+        "y": 50.28052217599863
       },
       "width": 318,
       "height": 331,
@@ -17,17 +17,18 @@
         "status": "done",
         "output": {
           "images": [
-            "https://p26-dreamina-sign.byteimg.com/tos-cn-i-tb4s082cfz/9305a3ff3b74474c87a3ec4134e4de50~tplv-tb4s082cfz-aigc_resize:0:0.png?lk3s=7c3bb0db&x-expires=1784707200&x-signature=q%2Bu%2Fg3VaMLNZOsxNvFpkAHfoyf4%3D&format=.png",
-            "https://p11-dreamina-sign.byteimg.com/tos-cn-i-tb4s082cfz/52450e0a689a4fbb8fdad3ce726846bf~tplv-tb4s082cfz-aigc_resize:0:0.png?lk3s=7c3bb0db&x-expires=1784707200&x-signature=aM4j4i8L%2Fkds9Ai24oyKmg6Y6aM%3D&format=.png",
-            "https://p26-dreamina-sign.byteimg.com/tos-cn-i-tb4s082cfz/2f61171375ca4145b00e9b6ef1338b5d~tplv-tb4s082cfz-aigc_resize:0:0.png?lk3s=7c3bb0db&x-expires=1784707200&x-signature=atVkcivA1hFhhBbjaeG95UzxZuQ%3D&format=.png",
-            "https://p11-dreamina-sign.byteimg.com/tos-cn-i-tb4s082cfz/3f385f8cc22f4639a65a4f793f795792~tplv-tb4s082cfz-aigc_resize:0:0.png?lk3s=7c3bb0db&x-expires=1784707200&x-signature=Vpbc2%2BUmcfrlgzfJ11%2BNU%2FkTLUI%3D&format=.png"
+            "https://p26-dreamina-sign.byteimg.com/tos-cn-i-tb4s082cfz/7a27b126831f465d9836c9e5e477b6ff~tplv-tb4s082cfz-aigc_resize:0:0.png?lk3s=7c3bb0db&x-expires=1784710800&x-signature=GTR2ZVuYC3EDNXHujKokUfWZGnc%3D&format=.png",
+            "https://p11-dreamina-sign.byteimg.com/tos-cn-i-tb4s082cfz/e70b6e7502c849ec8f8d9f417a329f7c~tplv-tb4s082cfz-aigc_resize:0:0.png?lk3s=7c3bb0db&x-expires=1784710800&x-signature=obPwrOjPR7yAhpNdpxdQSagZtcI%3D&format=.png",
+            "https://p11-dreamina-sign.byteimg.com/tos-cn-i-tb4s082cfz/3d7cb51f0cd042d1928a86ac8ce7083b~tplv-tb4s082cfz-aigc_resize:0:0.png?lk3s=7c3bb0db&x-expires=1784710800&x-signature=wfpB25Unol8NFx0rso55fY0wi0A%3D&format=.png",
+            "https://p26-dreamina-sign.byteimg.com/tos-cn-i-tb4s082cfz/353ff8dd75354320ae520d8b2ba1d2ce~tplv-tb4s082cfz-aigc_resize:0:0.png?lk3s=7c3bb0db&x-expires=1784710800&x-signature=q7yPlZVDJCX1p0h894X6HHHTvBo%3D&format=.png"
           ]
         },
         "params": {
-          "prompt": "像素风格的剑士，重骑士 ，猎手，魔导师，狂战士，影刺客，枪骑兵，牧师，九宫图",
+          "prompt": "生成【法师】",
           "model": "jimeng-5.0",
           "aspect": "1:1",
-          "size": "1k"
+          "size": "1k",
+          "pickedPrompt": "Generate a single character only, centered in the frame on a plain white background.\nThe character should be rendered in detailed 32-bit pixel art style (like PlayStation 1 / SNES era games).\nInclude proper shading, highlights, and anti-aliased edges for a polished look.\nThe character should have well-defined features, expressive details, and rich colors.\nShow in a front-facing or 3/4 view pose, standing idle, suitable for sprite sheet animation."
         },
         "label": "文字生成图片"
       },
@@ -35,39 +36,88 @@
         "width": 318,
         "height": 331
       },
-      "selected": true,
+      "selected": false,
       "resizing": false,
       "dragging": false
     },
     {
-      "id": "imageDisplay-mrvo7v2p-1",
+      "id": "imageDisplay-mrvrl4g5-1",
       "type": "imageDisplay",
       "position": {
-        "x": -153.69141114203907,
-        "y": 485.35396065420287
+        "x": 420,
+        "y": 140
       },
-      "width": 246,
-      "height": 370,
+      "width": 260,
+      "height": 240,
       "style": {
         "width": 260,
         "height": 240
       },
       "data": {
         "images": [
-          "/static/uploads/4f295de7ffd1e96efdad5ffc6b975199 (1)-2ef37252-3f82-4ccb-811c-e82272cb5495.jpg"
+          "https://p26-dreamina-sign.byteimg.com/tos-cn-i-tb4s082cfz/9305a3ff3b74474c87a3ec4134e4de50~tplv-tb4s082cfz-aigc_resize:0:0.png?lk3s=7c3bb0db&x-expires=1784707200&x-signature=q%2Bu%2Fg3VaMLNZOsxNvFpkAHfoyf4%3D&format=.png"
         ],
-        "source": "upload",
+        "source": "queue",
         "label": "图片展示"
       },
       "measured": {
-        "width": 246,
-        "height": 370
+        "width": 260,
+        "height": 240
       },
-      "selected": false,
-      "resizing": false,
-      "dragging": false
+      "selected": false
+    },
+    {
+      "id": "imageDisplay-mrvrl4g5-2",
+      "type": "imageDisplay",
+      "position": {
+        "x": 700,
+        "y": 140
+      },
+      "width": 260,
+      "height": 240,
+      "style": {
+        "width": 260,
+        "height": 240
+      },
+      "data": {
+        "images": [
+          "https://p11-dreamina-sign.byteimg.com/tos-cn-i-tb4s082cfz/52450e0a689a4fbb8fdad3ce726846bf~tplv-tb4s082cfz-aigc_resize:0:0.png?lk3s=7c3bb0db&x-expires=1784707200&x-signature=aM4j4i8L%2Fkds9Ai24oyKmg6Y6aM%3D&format=.png"
+        ],
+        "source": "queue",
+        "label": "图片展示"
+      },
+      "measured": {
+        "width": 260,
+        "height": 240
+      },
+      "selected": false
+    },
+    {
+      "id": "imageDisplay-mrvrl4g5-3",
+      "type": "imageDisplay",
+      "position": {
+        "x": 980,
+        "y": 140
+      },
+      "width": 260,
+      "height": 240,
+      "style": {
+        "width": 260,
+        "height": 240
+      },
+      "data": {
+        "images": [
+          "https://p26-dreamina-sign.byteimg.com/tos-cn-i-tb4s082cfz/2f61171375ca4145b00e9b6ef1338b5d~tplv-tb4s082cfz-aigc_resize:0:0.png?lk3s=7c3bb0db&x-expires=1784707200&x-signature=atVkcivA1hFhhBbjaeG95UzxZuQ%3D&format=.png"
+        ],
+        "source": "queue",
+        "label": "图片展示"
+      },
+      "measured": {
+        "width": 260,
+        "height": 240
+      }
     }
   ],
   "edges": [],
-  "savedAt": 1784703466224
+  "savedAt": 1784706082771
 }

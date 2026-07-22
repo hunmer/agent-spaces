@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react';
 import NodeShell from './NodeShell';
 import ImageResult from './ImageResult';
 import PromptPickerDialog from '../PromptPickerDialog';
+import PickedPromptBadge from './PickedPromptBadge';
 import { ASPECT_OPTIONS, DEFAULT_MODEL, MODEL_OPTIONS, NODE_TYPES, SIZE_OPTIONS, WORKFLOWS } from '../../utils/constants';
 
 /**
@@ -35,11 +36,13 @@ export default function EditImageNode({ id, data, selected }) {
 
   const handleRun = useCallback(() => {
     if (!inputImages.length) return;
+    // 提示词库选中 + 用户输入 合并（去空去重）
+    const merged = [params.pickedPrompt, params.prompt].map((s) => (s || '').trim()).filter(Boolean).join('\n');
     onGenerate?.(id, NODE_TYPES.editImage, {
       workflowId: WORKFLOWS.edit_image,
       input: {
         images: inputImages,
-        prompt: params.prompt || '',
+        prompt: merged,
         model: params.model || DEFAULT_MODEL,
         aspect: params.aspect || '1:1',
         size: params.size || '1k',
@@ -68,6 +71,10 @@ export default function EditImageNode({ id, data, selected }) {
         )}
       </div>
 
+      <PickedPromptBadge
+        pickedPrompt={params.pickedPrompt}
+        onClear={() => set({ pickedPrompt: undefined })}
+      />
       <label className="flex flex-col gap-1">
         <div className="flex items-center justify-between">
           <span className="text-xs font-medium text-muted-foreground">编辑指令</span>
@@ -112,7 +119,7 @@ export default function EditImageNode({ id, data, selected }) {
         open={pickerOpen}
         scene="edit"
         onClose={() => setPickerOpen(false)}
-        onPick={(prompt) => set({ prompt })}
+        onPick={(item) => set({ pickedPrompt: item.prompt, ...(item.aspect ? { aspect: item.aspect } : {}) })}
       />
     </NodeShell>
   );

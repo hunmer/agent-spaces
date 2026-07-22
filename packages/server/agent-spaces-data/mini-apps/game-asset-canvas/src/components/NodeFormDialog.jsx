@@ -7,6 +7,7 @@ import {
   ASPECT_OPTIONS, DEFAULT_MODEL, MODEL_OPTIONS, NODE_META, NODE_TYPES, SIZE_OPTIONS,
 } from '../utils/constants';
 import PromptPickerDialog from './PromptPickerDialog';
+import PickedPromptBadge from './nodes/PickedPromptBadge';
 
 /**
  * 节点表单弹窗：从右侧【新增节点】tab 点文生图/编辑图片旁的按钮打开，
@@ -18,6 +19,7 @@ import PromptPickerDialog from './PromptPickerDialog';
 export default function NodeFormDialog({ open, nodeType, onClose, onSubmit }) {
   const meta = NODE_META[nodeType] || {};
   const [prompt, setPrompt] = useState('');
+  const [pickedPrompt, setPickedPrompt] = useState('');
   const [model, setModel] = useState(DEFAULT_MODEL);
   const [aspect, setAspect] = useState('1:1');
   const [size, setSize] = useState('1k');
@@ -28,25 +30,29 @@ export default function NodeFormDialog({ open, nodeType, onClose, onSubmit }) {
   const [lastType, setLastType] = useState(nodeType);
   if (nodeType !== lastType) {
     setLastType(nodeType);
-    setPrompt(''); setModel(DEFAULT_MODEL); setAspect('1:1'); setSize('1k'); setImagesText('');
+    setPrompt(''); setPickedPrompt(''); setModel(DEFAULT_MODEL); setAspect('1:1'); setSize('1k'); setImagesText('');
   }
 
   const isEdit = nodeType === NODE_TYPES.editImage;
-  const canSubmit = prompt.trim() && (!isEdit || imagesText.trim());
+  // 提示词库选中 或 用户输入 二者有其一即可提交
+  const hasPrompt = prompt.trim() || pickedPrompt.trim();
+  const canSubmit = hasPrompt && (!isEdit || imagesText.trim());
 
   const handleSubmit = () => {
     if (!canSubmit) return;
-    const input = { prompt: prompt.trim(), model, aspect, size };
+    // 提示词库选中 + 用户输入 合并
+    const merged = [pickedPrompt, prompt].map((s) => s.trim()).filter(Boolean).join('\n');
+    const input = { prompt: merged, model, aspect, size };
     if (isEdit) {
       input.images = imagesText.split(/[\n,]/).map((s) => s.trim()).filter(Boolean);
     }
     onSubmit?.({
       nodeType,
-      label: `${meta.label}：${prompt.trim().slice(0, 16)}${prompt.trim().length > 16 ? '…' : ''}`,
+      label: `${meta.label}：${merged.slice(0, 16)}${merged.length > 16 ? '…' : ''}`,
       input,
     });
     // 提交后关闭并重置
-    setPrompt(''); setImagesText('');
+    setPrompt(''); setPickedPrompt(''); setImagesText('');
     onClose?.();
   };
 
@@ -70,6 +76,10 @@ export default function NodeFormDialog({ open, nodeType, onClose, onSubmit }) {
           )}
 
           <div className="flex flex-col gap-1.5">
+            <PickedPromptBadge
+              pickedPrompt={pickedPrompt}
+              onClear={() => setPickedPrompt('')}
+            />
             <div className="flex items-center justify-between">
               <Label className="text-xs font-medium text-muted-foreground">提示词</Label>
               <button
@@ -110,7 +120,10 @@ export default function NodeFormDialog({ open, nodeType, onClose, onSubmit }) {
           open={pickerOpen}
           scene={isEdit ? 'edit' : 'text'}
           onClose={() => setPickerOpen(false)}
-          onPick={(p) => setPrompt((prev) => (prev.trim() ? `${prev.trim()}\n${p}` : p))}
+          onPick={(item) => {
+            setPickedPrompt(item.prompt);
+            if (item.aspect) setAspect(item.aspect);
+          }}
         />
       </DialogContent>
     </Dialog>

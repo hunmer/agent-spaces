@@ -1,10 +1,12 @@
 /**
  * 内置提示词库：从 sprite-sheet-creator 项目抽取并整理的游戏资产生成提示词。
  *
- * 数据结构：{ id, category, title, desc, prompt, scene }
+ * 数据结构：{ id, category, title, desc, prompt, scene, aspect? }
  * - category: 分组（角色/精灵图动画/背景/图像转换）
  * - scene:    适用场景 'text'(文生图) | 'edit'(编辑图片) | 'both'(两者皆可)
  *   表单打开提示词选择器时按自身类型过滤可见条目。
+ * - aspect?:  建议比例（选填）。选中该条目时联动设置表单的比例下拉。
+ *   例：横版攻击动画 21:9、竖向攻击 9:16、视差背景 21:9；缺省表示不改比例。
  *
  * 提示词正文多为英文（图生模型对英文提示词响应更好），title/desc 为中文便于检索。
  */
@@ -80,6 +82,7 @@ Use detailed 32-bit pixel art style with proper shading and highlights. Same cha
     title: '攻击动画（2x2 横版）',
     desc: '4 帧攻击：蓄力/挥击/命中/收招',
     scene: 'edit',
+    aspect: '21:9',
     prompt: `Create a 4-frame pixel art attack animation sprite sheet of this character.
 
 Arrange the 4 frames in a 2x2 grid on white background. The character is performing an attack that fits their design - could be a sword slash, magic spell, punch, kick, or energy blast depending on what suits the character best.
@@ -190,6 +193,7 @@ Use detailed 32-bit pixel art style with proper shading and highlights. Same cha
     title: '天空/远景层（视差）',
     desc: '横版视差背景最远层：天空、远山、云',
     scene: 'edit',
+    aspect: '21:9',
     prompt: `Create the SKY/BACKDROP layer for a side-scrolling pixel art game parallax background.
 
 Create an environment that fits the character's world. This is the FURTHEST layer - only sky and very distant elements (distant mountains, clouds, horizon).
@@ -203,6 +207,7 @@ This is a wide panoramic scene.`,
     title: '中景层（视差）',
     desc: '视差中景：角色标志性场景（村庄/战场/地标），透明底',
     scene: 'edit',
+    aspect: '21:9',
     prompt: `Create the MIDDLE layer of a 3-layer parallax background for a side-scrolling pixel art game.
 
 Create the character's ICONIC/CANONICAL location from their story. Use their most recognizable setting - home village, famous landmarks, signature battlegrounds.
@@ -219,6 +224,7 @@ IMPORTANT: Use a transparent background (checkerboard pattern) so this layer can
     title: '前景层（视差）',
     desc: '视差前景：地面/草丛/岩石/平台，透明底',
     scene: 'edit',
+    aspect: '21:9',
     prompt: `Create the FOREGROUND layer of a 3-layer parallax background for a side-scrolling pixel art game.
 
 Create the closest foreground elements (ground, grass, rocks, platforms - whatever fits the character's world) that complete the scene.

@@ -29,7 +29,9 @@
 - items 字段是 `src`（不是 url），`type: 'image'`，命令式调用自动管理生命周期
 
 ## 数据流（连线传图）
-- 节点 data 结构：`{ params, output: { images: string[] }, status, error, onUpdate, onGenerate, label }`
+- 节点 data 结构：`{ params, output: { images: string[] }, status, error, onUpdate, onGenerate, onExportImages, label }`
+  - 文生图/编辑节点 `params`：`{ prompt, pickedPrompt, model, aspect, size }`
+    - `prompt`：用户输入框提示词；`pickedPrompt`：从提示词库选中的提示词（可选，展示为标签，提交时与 prompt 合并）
 - 预览/编辑节点额外有 `data.images`（上游推入）
 - 生成完成 → `propagateDownstream`（Canvas.jsx）：取 `edges.filter(source===本节点)`，把产出图片推给 target：
   - editImage → `data.images`（替换）
@@ -62,10 +64,23 @@
 
 ## 内置提示词库 (utils/prompts.js)
 - 参考 sprite-sheet-creator 抽取的游戏资产提示词，分四类：角色生成 / 精灵图动画 / 背景场景 / 图像转换
-- 每条 `PROMPT_LIBRARY` 项：`{ id, category, title, desc, prompt, scene }`，`scene` 标记适用场景 `'text'`(文生图) / `'edit'`(编辑图片) / `'both'`
+- 每条 `PROMPT_LIBRARY` 项：`{ id, category, title, desc, prompt, scene, aspect? }`
+  - `scene` 标记适用场景 `'text'`(文生图) / `'edit'`(编辑图片) / `'both'`
+  - `aspect?` 选填，选中该条目时联动设置表单比例下拉（如横版攻击 21:9、视差背景 21:9）
 - `getPromptsByScene(scene)` 按场景过滤（表单据自身类型只看相关条目）
-- PromptPickerDialog 组件（components/PromptPickerDialog.jsx）：搜索 + 分类筛选 + 卡片列表，点选即填充
-- 接入点：TextToImageNode / EditImageNode（提示词 label 右侧「📋 提示词库」按钮，选中直接覆盖）；NodeFormDialog（同按钮，选中追加到已有内容后）
+- PromptPickerDialog 组件：搜索 + 分类筛选 + 卡片列表；**内置库不可删，自定义库（🆕「自」标记）可编辑/删除**
+  - 新增/编辑用内联 PromptEditor 表单（标题/描述/正文/分类/比例）
+  - **onPick 传整个 item 对象**（非纯字符串），调用方取 `item.prompt` 填提示词、`item.aspect` 联动比例
+- 接入点：TextToImageNode / EditImageNode / NodeFormDialog（提示词 label 右侧「📋 提示词库」按钮）
+  - 选中后**不覆盖输入框**，而是存到 `pickedPrompt`，用 PickedPromptBadge（📎 已选提示词条）展示，可 ✕ 清除
+  - 用户仍可在输入框自由输入；提交时 `[pickedPrompt, prompt]` 去空去重换行合并后发给工作流
+  - 选中带 aspect 的条目会联动比例下拉（详见 utils/prompts.js）
+
+## 自定义提示词库持久化
+- 用户增删的提示词存 `configs/prompt-library.json`（数组），内置库不写盘
+- service 单写者：`src/services/canvas.js` 的 `save_prompt`（upsert 同 id 覆盖）/ `delete_prompt`（按 id 过滤）
+- `hooks/usePromptLibrary.js`：getConfig + onConfigReady + onAnyConfigChanged 读取，invokeService 写入（模式同 useGenerationHistory）
+- PromptPickerDialog 内部自调 usePromptLibrary，合并「自定义在前 + 内置在后」展示，调用方无需感知持久化
 
 ## 自动布局 (utils/layout.js)
 - `autoLayout(nodes, edges, opts)` 用 dagre 计算位置（默认 LR 左→右）
@@ -79,7 +94,8 @@
 ## 持久化
 - 画布状态（nodes/edges）存 `configs/canvas.json`
 - 生成记录存 `configs/generation-history.json`（最新在前，上限 200 条）
-- 写入走服务端单写者 `src/services/canvas.js`（`save_canvas`/`add_history`/`remove_history`/`clear_history`，`invokeService`）
+- 自定义提示词存 `configs/prompt-library.json`（用户增删，内置库不写盘）
+- 写入走服务端单写者 `src/services/canvas.js`（`save_canvas`/`add_history`/`remove_history`/`clear_history`/`save_settings`/`save_prompt`/`delete_prompt`，`invokeService`）
 - 读取用 `getConfig`，订阅 `onAnyConfigChanged` 多端同步（utils/storage.js）
 - 生成图片额外下载到 `data/gen/`（`downloadFile`），上传图片存 `data/uploads/`
 

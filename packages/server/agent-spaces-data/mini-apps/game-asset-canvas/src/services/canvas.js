@@ -2,6 +2,7 @@
 const CANVAS_CONFIG = 'canvas.json';
 const HISTORY_CONFIG = 'generation-history.json';
 const SETTINGS_CONFIG = 'settings.json';
+const PROMPT_CONFIG = 'prompt-library.json';
 const HISTORY_MAX = 200;
 
 export default {
@@ -53,6 +54,26 @@ export default {
   // 保存设置（整体覆盖；前端已 merge 默认值）
   save_settings: ({ settings }, ctx) => {
     ctx.writeConfig(SETTINGS_CONFIG, settings || {});
+    return { ok: true };
+  },
+
+  // 新增/更新一条自定义提示词（upsert：同 id 覆盖，否则追加到最前）
+  save_prompt: ({ item }, ctx) => {
+    if (!item || !item.id) return { ok: false };
+    ctx.updateConfig(PROMPT_CONFIG, (prev) => {
+      const list = Array.isArray(prev) ? prev : [];
+      const next = [item, ...list.filter((it) => it.id !== item.id)];
+      return next;
+    });
+    return { ok: true };
+  },
+
+  // 删除一条自定义提示词（按 id）
+  delete_prompt: ({ id }, ctx) => {
+    ctx.updateConfig(PROMPT_CONFIG, (prev) => {
+      const list = Array.isArray(prev) ? prev : [];
+      return list.filter((it) => it.id !== id);
+    });
     return { ok: true };
   },
 };

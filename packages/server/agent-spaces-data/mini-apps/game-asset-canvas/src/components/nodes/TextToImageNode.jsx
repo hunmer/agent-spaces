@@ -2,11 +2,14 @@ import { useCallback, useState } from 'react';
 import NodeShell from './NodeShell';
 import ImageResult from './ImageResult';
 import PromptPickerDialog from '../PromptPickerDialog';
+import PickedPromptBadge from './PickedPromptBadge';
 import { ASPECT_OPTIONS, DEFAULT_MODEL, MODEL_OPTIONS, NODE_TYPES, SIZE_OPTIONS, WORKFLOWS } from '../../utils/constants';
 
 /**
  * 文字生成图片节点。
- * data.params: { prompt, model, aspect, size }
+ * data.params: { prompt, pickedPrompt, model, aspect, size }
+ *   - prompt:       用户在输入框自由输入的提示词
+ *   - pickedPrompt: 从提示词库选中的提示词（可选，展示为标签，提交时与 prompt 合并）
  * data.output: { images: string[] }
  */
 export default function TextToImageNode({ id, data, selected }) {
@@ -24,10 +27,12 @@ export default function TextToImageNode({ id, data, selected }) {
   }, [onUpdate, params]);
 
   const handleRun = useCallback(() => {
+    // 提示词库选中 + 用户输入 合并（去空去重）
+    const merged = [params.pickedPrompt, params.prompt].map((s) => (s || '').trim()).filter(Boolean).join('\n');
     onGenerate?.(id, NODE_TYPES.textToImage, {
       workflowId: WORKFLOWS.text_to_image,
       input: {
-        prompt: params.prompt || '',
+        prompt: merged,
         model: params.model || DEFAULT_MODEL,
         aspect: params.aspect || '1:1',
         size: params.size || '1k',
@@ -37,6 +42,10 @@ export default function TextToImageNode({ id, data, selected }) {
 
   return (
     <NodeShell nodeType={NODE_TYPES.textToImage} data={data} selected={selected} sourceHandle>
+      <PickedPromptBadge
+        pickedPrompt={params.pickedPrompt}
+        onClear={() => set({ pickedPrompt: undefined })}
+      />
       <label className="flex flex-col gap-1">
         <div className="flex items-center justify-between">
           <span className="text-xs font-medium text-muted-foreground">提示词</span>
@@ -81,7 +90,7 @@ export default function TextToImageNode({ id, data, selected }) {
         open={pickerOpen}
         scene="text"
         onClose={() => setPickerOpen(false)}
-        onPick={(prompt) => set({ prompt })}
+        onPick={(item) => set({ pickedPrompt: item.prompt, ...(item.aspect ? { aspect: item.aspect } : {}) })}
       />
     </NodeShell>
   );

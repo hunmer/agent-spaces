@@ -44,7 +44,7 @@ export const MODEL_OPTIONS = [
 export const DEFAULT_MODEL = 'gpt-image-1';
 
 // 比例
-export const ASPECT_OPTIONS = ['16:9', '9:16', '1:1', '4:3', '3:4'];
+export const ASPECT_OPTIONS = ['21:9', '16:9', '9:16', '1:1', '4:3', '3:4'];
 // 尺寸
 export const SIZE_OPTIONS = ['1k', '2k', '4k'];
 
