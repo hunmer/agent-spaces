@@ -171,6 +171,8 @@ test('embedded workflow executes loop against child graph instead of parent sess
     { text: 'first' },
     { text: 'second' },
   ]);
+  assert.equal(session.steps.filter(step => step.nodeId === 'embedded_start').length, 1);
+  assert.equal(session.steps.filter(step => step.nodeId === 'loop_start').length, 2);
 });
 
 test('partial reachable snapshot includes upstream data dependencies for reachable nodes', () => {

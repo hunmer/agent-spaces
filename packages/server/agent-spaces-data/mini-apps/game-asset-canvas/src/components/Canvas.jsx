@@ -312,20 +312,30 @@ export default function Canvas() {
     if (selectedId === nodeId) setSelectedId(null);
   }, [setNodes, setEdges, selectedId]);
 
-  // 选中节点（从右侧面板点击，仅同步 selectedId 用于面板高亮）
-  const handleSelectNode = useCallback((nodeId) => {
-    setSelectedId(nodeId);
-  }, []);
-
-  // 定位/跳转到节点：用 setCenter 把画布视口居中到该节点
-  const handleLocateNode = useCallback((nodeId) => {
+  // 选中并聚焦节点：设置 ReactFlow 原生 node.selected（触发选中样式 + NodeResizer 显示）
+  // + setCenter 把视口居中到节点 + 同步面板高亮。
+  // 参考 workflow-node-list-panel.tsx：点击列表项应让画布选中并居中对应节点。
+  // 注意：不在 decoratedNodes 里覆盖 selected（见 decoratedNodes 注释 / handoff 第1条），
+  // 这里改的是 useCanvasState 的真值 nodes，decoratedNodes 经 ...nd 展开会自然带过去。
+  const focusNode = useCallback((nodeId) => {
     const target = nodes.find((n) => n.id === nodeId);
     if (!target) return;
+    setNodes((prev) => prev.map((n) => ({ ...n, selected: n.id === nodeId })));
     const w = target.width || target.style?.width || 280;
     const h = target.height || target.style?.height || 220;
     reactFlow.setCenter(target.position.x + w / 2, target.position.y + h / 2, { zoom: 1, duration: 400 });
     setSelectedId(nodeId);
-  }, [nodes, reactFlow]);
+  }, [nodes, setNodes, reactFlow]);
+
+  // 点击列表项：选中 + 聚焦
+  const handleSelectNode = useCallback((nodeId) => {
+    focusNode(nodeId);
+  }, [focusNode]);
+
+  // 定位按钮：同选中 + 聚焦（行为与点击列表项一致）
+  const handleLocateNode = useCallback((nodeId) => {
+    focusNode(nodeId);
+  }, [focusNode]);
 
   // 自动布局（dagre）
   const handleAutoLayout = useCallback(() => {

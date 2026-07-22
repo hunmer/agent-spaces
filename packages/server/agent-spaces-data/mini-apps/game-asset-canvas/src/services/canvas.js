@@ -1,34 +1,60 @@
-// 服务端单写者：画布状态 + 生成记录 + 设置由服务端统一写 configs 并广播，避免多端互相覆盖
-const CANVAS_CONFIG = 'canvas.json';
-const HISTORY_CONFIG = 'generation-history.json';
+// 服务端单写者：工作区清单 + 各工作区隔离的画布/生成记录 + 共享设置/提示词库。
+// 工作区数据隔离在 configs/workspaces/<id>/ 子目录；settings/prompt-library 仍共享。
+const CANVAS_FILE = 'canvas.json';
+const HISTORY_FILE = 'generation-history.json';
 const SETTINGS_CONFIG = 'settings.json';
 const PROMPT_CONFIG = 'prompt-library.json';
+const WORKSPACES_CONFIG = 'workspaces.json';
 const HISTORY_MAX = 200;
 
+// 工作区隔离路径（canvas / history 按工作区分目录）
+function wsPath(workspaceId, file) {
+  const id = workspaceId || 'default';
+  return `workspaces/${id}/${file}`;
+}
+
+// —— 工作区清单 CRUD ——
+// workspaces.json 结构：{ activeId, workspaces: [{id,name,createdAt}] }
+
+// 读取工作区清单（兜底返回默认工作区，保证调用方总有数据）
+function readWorkspaceList(ctx) {
+  const raw = ctx.readConfig(WORKSPACES_CONFIG);
+  if (raw && Array.isArray(raw.workspaces) && raw.workspaces.length) return raw;
+  return {
+    activeId: 'default',
+    workspaces: [{ id: 'default', name: '默认工作区', createdAt: Date.now() }],
+  };
+}
+
 export default {
+  // —— 画布（按工作区隔离）——
+
   // 保存整张画布（节点 + 连线）
-  save_canvas: ({ nodes, edges }, ctx) => {
-    ctx.writeConfig(CANVAS_CONFIG, {
-      nodes: Array.isArray(nodes) ? nodes : [],
-      edges: Array.isArray(edges) ? edges : [],
+  save_canvas: ({ workspaceId, state }, ctx) => {
+    const payload = state || {};
+    ctx.writeConfig(wsPath(workspaceId, CANVAS_FILE), {
+      nodes: Array.isArray(payload.nodes) ? payload.nodes : [],
+      edges: Array.isArray(payload.edges) ? payload.edges : [],
       savedAt: Date.now(),
     });
     return { ok: true };
   },
 
   // 读取画布状态
-  load_canvas: (_payload, ctx) => ctx.readConfig(CANVAS_CONFIG) || null,
+  load_canvas: ({ workspaceId }, ctx) => ctx.readConfig(wsPath(workspaceId, CANVAS_FILE)) || null,
 
   // 清空画布
-  clear_canvas: (_payload, ctx) => {
-    ctx.writeConfig(CANVAS_CONFIG, { nodes: [], edges: [], savedAt: Date.now() });
+  clear_canvas: ({ workspaceId }, ctx) => {
+    ctx.writeConfig(wsPath(workspaceId, CANVAS_FILE), { nodes: [], edges: [], savedAt: Date.now() });
     return { ok: true };
   },
 
+  // —— 生成记录（按工作区隔离）——
+
   // 新增一条生成记录（原子追加，最新在前，限制总量）
-  add_history: ({ item }, ctx) => {
+  add_history: ({ workspaceId, item }, ctx) => {
     if (!item) return { ok: false };
-    ctx.updateConfig(HISTORY_CONFIG, (prev) => {
+    ctx.updateConfig(wsPath(workspaceId, HISTORY_FILE), (prev) => {
       const list = Array.isArray(prev) ? prev : [];
       const next = [item, ...list];
       return next.slice(0, HISTORY_MAX);
@@ -37,8 +63,8 @@ export default {
   },
 
   // 删除指定生成记录
-  remove_history: ({ id }, ctx) => {
-    ctx.updateConfig(HISTORY_CONFIG, (prev) => {
+  remove_history: ({ workspaceId, id }, ctx) => {
+    ctx.updateConfig(wsPath(workspaceId, HISTORY_FILE), (prev) => {
       const list = Array.isArray(prev) ? prev : [];
       return list.filter((it) => it.id !== id);
     });
@@ -46,10 +72,12 @@ export default {
   },
 
   // 清空生成记录
-  clear_history: (_payload, ctx) => {
-    ctx.writeConfig(HISTORY_CONFIG, []);
+  clear_history: ({ workspaceId }, ctx) => {
+    ctx.writeConfig(wsPath(workspaceId, HISTORY_FILE), []);
     return { ok: true };
   },
+
+  // —— 设置（全局共享，不按工作区隔离）——
 
   // 保存设置（整体覆盖；前端已 merge 默认值）
   save_settings: ({ settings }, ctx) => {
@@ -57,13 +85,14 @@ export default {
     return { ok: true };
   },
 
+  // —— 自定义提示词库（全局共享）——
+
   // 新增/更新一条自定义提示词（upsert：同 id 覆盖，否则追加到最前）
   save_prompt: ({ item }, ctx) => {
     if (!item || !item.id) return { ok: false };
     ctx.updateConfig(PROMPT_CONFIG, (prev) => {
       const list = Array.isArray(prev) ? prev : [];
-      const next = [item, ...list.filter((it) => it.id !== item.id)];
-      return next;
+      return [item, ...list.filter((it) => it.id !== item.id)];
     });
     return { ok: true };
   },
@@ -75,5 +104,57 @@ export default {
       return list.filter((it) => it.id !== id);
     });
     return { ok: true };
+  },
+
+  // —— 工作区管理 ——
+
+  // 列出全部工作区 + 当前激活 id
+  list_workspaces: (_payload, ctx) => readWorkspaceList(ctx),
+
+  // 创建工作区（name 可选，默认「新建工作区 N」）。返回新清单（activeId 不变）。
+  create_workspace: ({ name }, ctx) => {
+    const cur = readWorkspaceList(ctx);
+    const id = `ws-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+    const ws = { id, name: (name || '').trim() || `新建工作区 ${cur.workspaces.length + 1}`, createdAt: Date.now() };
+    const next = { ...cur, workspaces: [...cur.workspaces, ws] };
+    ctx.writeConfig(WORKSPACES_CONFIG, next);
+    return next;
+  },
+
+  // 重命名工作区
+  rename_workspace: ({ id, name }, ctx) => {
+    const cur = readWorkspaceList(ctx);
+    const trimmed = (name || '').trim() || '未命名工作区';
+    const next = {
+      ...cur,
+      workspaces: cur.workspaces.map((ws) => (ws.id === id ? { ...ws, name: trimmed } : ws)),
+    };
+    ctx.writeConfig(WORKSPACES_CONFIG, next);
+    return next;
+  },
+
+  // 切换激活工作区（仅改 activeId）
+  switch_workspace: ({ id }, ctx) => {
+    const cur = readWorkspaceList(ctx);
+    if (!cur.workspaces.some((ws) => ws.id === id)) return cur;
+    const next = { ...cur, activeId: id };
+    ctx.writeConfig(WORKSPACES_CONFIG, next);
+    return next;
+  },
+
+  // 删除工作区（不允许删最后一个）。删除当前激活则 activeId 回退到第一个。
+  // 工作区隔离的 canvas/history 文件一并清空（写空数据，保留目录结构）。
+  delete_workspace: ({ id }, ctx) => {
+    const cur = readWorkspaceList(ctx);
+    if (cur.workspaces.length <= 1) return cur; // 至少保留一个工作区
+    const remaining = cur.workspaces.filter((ws) => ws.id !== id);
+    if (remaining.length === cur.workspaces.length) return cur; // 没匹配到
+    const activeId = cur.activeId === id ? remaining[0].id : cur.activeId;
+    const next = { activeId, workspaces: remaining };
+    ctx.writeConfig(WORKSPACES_CONFIG, next);
+    // 清空被删工作区的内容数据（目录可保留，避免广播时前端读到旧值）
+    ctx.writeConfig(wsPath(id, CANVAS_FILE), { nodes: [], edges: [], savedAt: Date.now() });
+    ctx.writeConfig(wsPath(id, HISTORY_FILE), []);
+    return next;
   },
 };

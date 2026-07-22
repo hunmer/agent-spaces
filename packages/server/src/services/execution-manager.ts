@@ -1685,22 +1685,50 @@ export class ExecutionManager {
     config: Record<string, Record<string, string>> = this.getExecutionConfig(session),
   ): Promise<unknown> {
     return this.executionGraphScope.run({ nodes: workflow.nodes, edges: workflow.edges, config }, async () => {
-      const nodeMap = new Map(workflow.nodes.map(n => [n.id, n]));
+      const rootNodes = getNodesForExecutionScope(workflow.nodes, null);
+      const rootNodeIds = new Set(rootNodes.map(node => node.id));
+      const nodeMap = new Map(rootNodes.map(node => [node.id, node]));
       const adjacency = new Map<string, WorkflowEdge[]>();
-      const runtimeEdges = workflow.edges.filter(isRuntimeWorkflowEdge);
+      const runtimeEdges = workflow.edges.filter(edge => (
+        isRuntimeWorkflowEdge(edge)
+        && rootNodeIds.has(edge.source)
+        && rootNodeIds.has(edge.target)
+      ));
       for (const edge of runtimeEdges) {
         const arr = adjacency.get(edge.source) || [];
         arr.push(edge);
         adjacency.set(edge.source, arr);
       }
 
-      const startNode = workflow.nodes.find(n => n.type === 'start');
+      const startNode = rootNodes.find(n => n.type === 'start');
       if (!startNode) throw new Error('Embedded workflow missing start node');
 
-      if (input && Object.keys(input).length > 0) {
-        this.setNodeExecutionData(session, startNode.id, input);
-        this.setNodeExecutionInput(session, startNode.id, input);
-      }
+      const startInput = input ?? {};
+      const startedAt = Date.now();
+      const startStep: ExecutionStep = {
+        nodeId: startNode.id,
+        nodeLabel: startNode.label,
+        startedAt,
+        finishedAt: startedAt,
+        status: 'completed',
+        output: startInput,
+        ...(this.subWorkflowExecutionScope.getStore()?.length
+          ? { subWorkflowExecutionIds: [...this.subWorkflowExecutionScope.getStore()!] }
+          : {}),
+      };
+      session.steps.push(startStep);
+      this.setNodeExecutionData(session, startNode.id, startInput);
+      this.setNodeExecutionInput(session, startNode.id, startInput);
+      this.emitEvent(session, 'node:start', {
+        executionId: session.id, workflowId: session.workflow.id,
+        timestamp: startedAt, nodeId: startNode.id, nodeLabel: startNode.label,
+      });
+      this.emitEvent(session, 'node:complete', {
+        executionId: session.id, workflowId: session.workflow.id,
+        timestamp: startedAt, nodeId: startNode.id, step: { ...startStep },
+      });
+      this.emitContext(session);
+      this.emitLog(session);
 
       const visited = new Set<string>([startNode.id]);
       const completedNodeIds = new Set<string>([startNode.id]);

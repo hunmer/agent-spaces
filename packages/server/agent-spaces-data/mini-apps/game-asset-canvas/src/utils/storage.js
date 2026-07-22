@@ -1,22 +1,36 @@
-import { CANVAS_CONFIG } from './constants';
+import { CANVAS_CONFIG, HISTORY_CONFIG } from './constants';
 
 const AS = () => window.AgentSpaces;
 
-/** 读取画布状态（从服务端 config 缓存） */
-export function loadCanvas() {
+/**
+ * 读取画布状态（从服务端 config 缓存）。
+ * @param {string} workspaceId 当前工作区 id（决定读取哪个隔离的 canvas.json）
+ */
+export function loadCanvas(workspaceId) {
   const as = AS();
   if (!as?.getConfig) return null;
-  return as.getConfig(CANVAS_CONFIG) || null;
+  return as.getConfig(canvasConfigPath(workspaceId)) || null;
 }
 
 /**
  * 保存画布状态（走服务端单写者，多端同步）。
+ * @param {string} workspaceId
  * @param {{ nodes: any[], edges: any[] }} state
  */
-export async function saveCanvas(state) {
+export async function saveCanvas(workspaceId, state) {
   const as = AS();
   if (!as?.invokeService) return;
-  await as.invokeService('save_canvas', state);
+  await as.invokeService('save_canvas', { workspaceId, state });
+}
+
+/** 工作区隔离的 canvas.json 路径（兼容旧版：无 workspaceId 时回落顶层 canvas.json） */
+export function canvasConfigPath(workspaceId) {
+  return workspaceId ? `workspaces/${workspaceId}/${CANVAS_CONFIG}` : CANVAS_CONFIG;
+}
+
+/** 工作区隔离的 generation-history.json 路径 */
+export function historyConfigPath(workspaceId) {
+  return workspaceId ? `workspaces/${workspaceId}/${HISTORY_CONFIG}` : HISTORY_CONFIG;
 }
 
 /** 订阅任意 config 变化（多端同步），回调签名 (path, value) */
@@ -26,10 +40,11 @@ export function onAnyConfigChanged(callback) {
   return as.onConfigChanged((path, value) => callback(path, value));
 }
 
-/** 订阅画布状态变化（多端同步） */
-export function onCanvasChanged(callback) {
+/** 订阅某工作区的画布状态变化（多端同步） */
+export function onCanvasChanged(workspaceId, callback) {
+  const target = canvasConfigPath(workspaceId);
   return onAnyConfigChanged((path, value) => {
-    if (path === CANVAS_CONFIG) callback(value);
+    if (path === target) callback(value);
   });
 }
 

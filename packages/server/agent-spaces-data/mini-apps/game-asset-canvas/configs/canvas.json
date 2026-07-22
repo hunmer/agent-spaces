@@ -125,7 +125,8 @@
       "measured": {
         "width": 220,
         "height": 268
-      }
+      },
+      "selected": false
     },
     {
       "id": "imageDisplay-mrvwjsik-2",
@@ -151,7 +152,8 @@
       "measured": {
         "width": 220,
         "height": 268
-      }
+      },
+      "selected": false
     },
     {
       "id": "imageDisplay-mrvwjsik-3",
@@ -206,7 +208,7 @@
         "width": 220,
         "height": 268
       },
-      "selected": false,
+      "selected": true,
       "dragging": false,
       "resizing": false
     },
@@ -389,5 +391,5 @@
       "id": "xy-edge__imageDisplay-mrvsp8j6-2-editImage-mrvspgtk-3"
     }
   ],
-  "savedAt": 1784714516507
+  "savedAt": 1784714999973
 }

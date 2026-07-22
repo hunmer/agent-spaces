@@ -64,7 +64,30 @@ export const NODE_META = {
   [NODE_TYPES.note]: { label: '便签', icon: '📝', color: '#f59e0b' },
 };
 
-// 持久化配置文件名
+// 持久化配置文件名（工作区共享的顶层配置）
 export const CANVAS_CONFIG = 'canvas.json';
+export const HISTORY_CONFIG = 'generation-history.json';
 // 自动保存防抖(ms)
 export const SAVE_DEBOUNCE = 600;
+
+// ============ 多工作区隔离 ============
+// 工作区清单（全局共享）：{ workspaces: [{id,name,createdAt}], activeId }
+export const WORKSPACES_CONFIG = 'workspaces.json';
+// 默认工作区 id（首次无清单时用）
+export const DEFAULT_WORKSPACE_ID = 'default';
+export const DEFAULT_WORKSPACE_NAME = '默认工作区';
+
+/**
+ * 工作区隔离的 config 路径：节点和生成记录按工作区隔离存到 configs/workspaces/<id>/ 下。
+ * settings/prompt-library/panel-layout 仍共享（用户级偏好）。
+ * @param {string} workspaceId
+ * @param {string} fileName 'canvas.json' | 'generation-history.json'
+ * @returns {string} 相对 configs 的路径，如 'workspaces/default/canvas.json'
+ */
+export function workspaceConfigPath(workspaceId, fileName) {
+  const id = workspaceId || DEFAULT_WORKSPACE_ID;
+  return `workspaces/${id}/${fileName}`;
+}
+
+export const WORKSPACE_CANVAS = 'canvas.json';
+export const WORKSPACE_HISTORY = 'generation-history.json';

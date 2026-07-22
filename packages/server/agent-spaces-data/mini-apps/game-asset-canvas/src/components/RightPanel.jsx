@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { openMediaGallery, ScrollArea, Tabs, TabsList, TabsTrigger, TabsContent } from '@agent-spaces/ui';
+import { openMediaGallery, ScrollArea, Tabs, TabsList, TabsTrigger, TabsContent, Crosshair, Trash2 } from '@agent-spaces/ui';
 import { NODE_META, NODE_TYPES } from '../utils/constants';
 
 const ADD_ITEMS = [
@@ -109,7 +109,7 @@ function NodeList({ nodes, onSelectNode, onLocateNode, onDeleteNode }) {
           return (
             <div
               key={n.id}
-              className="group flex cursor-pointer items-center gap-2 rounded-md border border-transparent px-2 py-1.5 text-sm transition hover:bg-muted"
+              className="group/node flex cursor-pointer items-center gap-2 rounded-md border border-transparent px-2 py-1.5 text-sm transition hover:bg-muted"
               onClick={() => onSelectNode?.(n.id)}
             >
               <span>{meta.icon}</span>
@@ -124,20 +124,20 @@ function NodeList({ nodes, onSelectNode, onLocateNode, onDeleteNode }) {
               {/* 跳转到节点（定位画布） */}
               <button
                 type="button"
-                className="invisible rounded p-1 text-muted-foreground transition hover:text-primary group-hover:visible"
+                className="rounded p-1 text-muted-foreground transition hover:text-primary opacity-0 group-hover/node:opacity-100"
                 onClick={(e) => { e.stopPropagation(); onLocateNode?.(n.id); }}
                 title="在画布定位"
               >
-                🎯
+                <Crosshair className="h-3.5 w-3.5" />
               </button>
               {/* 删除节点 */}
               <button
                 type="button"
-                className="invisible rounded p-1 text-muted-foreground transition hover:text-red-500 group-hover:visible"
+                className="rounded p-1 text-muted-foreground transition hover:text-destructive opacity-0 group-hover/node:opacity-100"
                 onClick={(e) => { e.stopPropagation(); onDeleteNode?.(n.id); }}
                 title="删除节点"
               >
-                🗑
+                <Trash2 className="h-3.5 w-3.5" />
               </button>
             </div>
           );
