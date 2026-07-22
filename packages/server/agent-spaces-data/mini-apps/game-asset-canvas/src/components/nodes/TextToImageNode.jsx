@@ -8,7 +8,7 @@ import { ASPECT_OPTIONS, DEFAULT_MODEL, MODEL_OPTIONS, NODE_TYPES, SIZE_OPTIONS,
  * data.params: { prompt, model, aspect, size }
  * data.output: { images: string[] }
  */
-export default function TextToImageNode({ id, data }) {
+export default function TextToImageNode({ id, data, selected }) {
   const params = data?.params || {};
   const images = data?.output?.images || [];
   const status = data?.status || 'idle';
@@ -34,7 +34,7 @@ export default function TextToImageNode({ id, data }) {
   }, [onGenerate, id, params]);
 
   return (
-    <NodeShell nodeType={NODE_TYPES.textToImage} data={data} sourceHandle>
+    <NodeShell nodeType={NODE_TYPES.textToImage} data={data} selected={selected} sourceHandle>
       <label className="flex flex-col gap-1">
         <span className="text-xs font-medium text-muted-foreground">提示词</span>
         <textarea

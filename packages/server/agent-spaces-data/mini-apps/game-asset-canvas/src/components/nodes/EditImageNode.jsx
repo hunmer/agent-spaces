@@ -9,7 +9,7 @@ import { ASPECT_OPTIONS, DEFAULT_MODEL, MODEL_OPTIONS, NODE_TYPES, SIZE_OPTIONS,
  * data.images: string[]  上游通过连线推入的待编辑图片 URL（或手动粘贴）
  * data.output: { images: string[] }  编辑后的产出
  */
-export default function EditImageNode({ id, data }) {
+export default function EditImageNode({ id, data, selected }) {
   const params = data?.params || {};
   const inputImages = data?.images || [];
   const images = data?.output?.images || [];
@@ -46,7 +46,7 @@ export default function EditImageNode({ id, data }) {
   }, [onGenerate, id, inputImages, params]);
 
   return (
-    <NodeShell nodeType={NODE_TYPES.editImage} data={data} targetHandle sourceHandle>
+    <NodeShell nodeType={NODE_TYPES.editImage} data={data} selected={selected} targetHandle sourceHandle>
       <div className="flex flex-col gap-1">
         <span className="text-xs font-medium text-muted-foreground">
           输入图片 {inputImages.length > 0 && <span className="text-primary">（{inputImages.length} 张，来自连线）</span>}

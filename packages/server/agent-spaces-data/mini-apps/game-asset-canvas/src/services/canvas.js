@@ -1,5 +1,7 @@
-// 服务端单写者：画布状态由服务端统一写 configs/canvas.json 并广播，避免多端互相覆盖
+// 服务端单写者：画布状态 + 生成记录由服务端统一写 configs 并广播，避免多端互相覆盖
 const CANVAS_CONFIG = 'canvas.json';
+const HISTORY_CONFIG = 'generation-history.json';
+const HISTORY_MAX = 200;
 
 export default {
   // 保存整张画布（节点 + 连线）
@@ -12,12 +14,38 @@ export default {
     return { ok: true };
   },
 
-  // 读取画布状态（供初次加载兜底；前端通常直接用 getConfig 缓存）
+  // 读取画布状态
   load_canvas: (_payload, ctx) => ctx.readConfig(CANVAS_CONFIG) || null,
 
   // 清空画布
   clear_canvas: (_payload, ctx) => {
     ctx.writeConfig(CANVAS_CONFIG, { nodes: [], edges: [], savedAt: Date.now() });
+    return { ok: true };
+  },
+
+  // 新增一条生成记录（原子追加，最新在前，限制总量）
+  add_history: ({ item }, ctx) => {
+    if (!item) return { ok: false };
+    ctx.updateConfig(HISTORY_CONFIG, (prev) => {
+      const list = Array.isArray(prev) ? prev : [];
+      const next = [item, ...list];
+      return next.slice(0, HISTORY_MAX);
+    });
+    return { ok: true };
+  },
+
+  // 删除指定生成记录
+  remove_history: ({ id }, ctx) => {
+    ctx.updateConfig(HISTORY_CONFIG, (prev) => {
+      const list = Array.isArray(prev) ? prev : [];
+      return list.filter((it) => it.id !== id);
+    });
+    return { ok: true };
+  },
+
+  // 清空生成记录
+  clear_history: (_payload, ctx) => {
+    ctx.writeConfig(HISTORY_CONFIG, []);
     return { ok: true };
   },
 };

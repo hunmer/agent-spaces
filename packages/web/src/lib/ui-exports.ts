@@ -107,6 +107,9 @@ export {
   applyEdgeChanges,
   MarkerType,
   getConnectedEdges,
+  NodeResizer,
+  NodeToolbar,
+  useReactFlow,
 } from '@xyflow/react';
 
 // dagre（ReactFlow 自动布局）

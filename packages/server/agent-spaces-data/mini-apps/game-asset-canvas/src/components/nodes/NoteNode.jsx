@@ -23,7 +23,7 @@ export default function NoteNode({ id, data }) {
         <span className="text-xs font-semibold text-amber-700 dark:text-amber-400">便签</span>
       </div>
       <textarea
-        className="min-h-[60px] w-full resize-y bg-transparent px-2.5 py-1.5 text-sm text-foreground outline-none placeholder:text-muted-foreground/60"
+        className="nodrag nopan nowheel min-h-[60px] w-full resize-y bg-transparent px-2.5 py-1.5 text-sm text-foreground outline-none placeholder:text-muted-foreground/60"
         placeholder="写点备注…（如：这组资产用于森林关卡）"
         value={text}
         onChange={handleChange}

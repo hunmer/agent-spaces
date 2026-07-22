@@ -19,11 +19,16 @@ export async function saveCanvas(state) {
   await as.invokeService('save_canvas', state);
 }
 
-/** 订阅画布状态变化（多端同步） */
-export function onCanvasChanged(callback) {
+/** 订阅任意 config 变化（多端同步），回调签名 (path, value) */
+export function onAnyConfigChanged(callback) {
   const as = AS();
   if (!as?.onConfigChanged) return () => {};
-  return as.onConfigChanged((path, value) => {
+  return as.onConfigChanged((path, value) => callback(path, value));
+}
+
+/** 订阅画布状态变化（多端同步） */
+export function onCanvasChanged(callback) {
+  return onAnyConfigChanged((path, value) => {
     if (path === CANVAS_CONFIG) callback(value);
   });
 }
@@ -78,3 +83,29 @@ export function debounce(fn, wait) {
   };
   return wrapped;
 }
+
+// ============ 面板布局持久化 ============
+// react-resizable-panels@4: Layout = { [panelId]: number(percentage) }
+const PANEL_LAYOUT_CONFIG = 'panel-layout.json';
+
+/**
+ * 读取面板布局（{ panelId: percentage } 形式）。
+ * @returns {Record<string, number> | null}
+ */
+export function loadPanelLayout() {
+  const as = AS();
+  const v = as?.getConfig?.(PANEL_LAYOUT_CONFIG);
+  if (v && v.layout && typeof v.layout === 'object') return v.layout;
+  return null;
+}
+
+/**
+ * 保存面板布局（轻量本地偏好，用 writeConfigJson 即可）。
+ * @param {Record<string, number>} layout { panelId: percentage }
+ */
+export function savePanelLayout(layout) {
+  const as = AS();
+  if (!as?.writeConfigJson) return;
+  as.writeConfigJson(PANEL_LAYOUT_CONFIG, { layout, savedAt: Date.now() }).catch(() => {});
+}
+

@@ -10,7 +10,7 @@ export const WORKFLOWS = {
 export const NODE_TYPES = {
   textToImage: 'textToImage',
   editImage: 'editImage',
-  preview: 'preview',
+  imageDisplay: 'imageDisplay',
   note: 'note',
 };
 
@@ -52,7 +52,7 @@ export const SIZE_OPTIONS = ['1k', '2k', '4k'];
 export const NODE_META = {
   [NODE_TYPES.textToImage]: { label: '文字生成图片', icon: '✍️', color: '#6366f1' },
   [NODE_TYPES.editImage]: { label: '编辑图片', icon: '🖌️', color: '#ec4899' },
-  [NODE_TYPES.preview]: { label: '图片预览', icon: '🖼️', color: '#10b981' },
+  [NODE_TYPES.imageDisplay]: { label: '图片展示', icon: '🖼️', color: '#10b981' },
   [NODE_TYPES.note]: { label: '便签', icon: '📝', color: '#f59e0b' },
 };
 

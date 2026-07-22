@@ -4,8 +4,8 @@
       "id": "textToImage-mrvhwxx6-1",
       "type": "textToImage",
       "position": {
-        "x": -337.7624469162196,
-        "y": 80.74943692936485
+        "x": 682.5233881163083,
+        "y": 71.78761061946904
       },
       "data": {
         "status": "done",
@@ -23,69 +23,63 @@
         "label": "文字生成图片"
       },
       "measured": {
-        "width": 1920,
-        "height": 459
+        "width": 720,
+        "height": 582
       },
-      "selected": true,
-      "dragging": false
+      "dragging": false,
+      "selected": false,
+      "width": 720,
+      "height": 582,
+      "resizing": false
     },
     {
-      "id": "preview-mrvhx4to-2",
-      "type": "preview",
+      "id": "imageDisplay-mrvjyxgb-1",
+      "type": "imageDisplay",
       "position": {
-        "x": -50.63111252586964,
-        "y": 998.974258982862
+        "x": 684.5,
+        "y": 992
+      },
+      "style": {
+        "width": 260,
+        "height": 240
       },
       "data": {
-        "status": "idle",
-        "output": {
-          "images": []
-        },
         "images": [
-          "https://files.closeai.fans/filesystem/output/20260722/495c5fa9-8684-4028-821d-44a810b69d9b.png"
+          "blob:http://127.0.0.1:3000/6da39342-1dc4-430f-9de4-6808685aeece"
         ],
-        "label": "图片预览"
+        "source": "upload",
+        "label": "图片展示"
       },
       "measured": {
-        "width": 1920,
-        "height": 459
+        "width": 260,
+        "height": 240
       },
-      "selected": false,
-      "dragging": false
+      "dragging": false,
+      "selected": false
     },
     {
-      "id": "preview-mrvi09yr-3",
-      "type": "preview",
+      "id": "note-mrvjzbew-1",
+      "type": "note",
       "position": {
-        "x": -896.5426032496127,
-        "y": 199.33539220942885
+        "x": 1148.9576485461441,
+        "y": 968.8900126422249
+      },
+      "style": {
+        "width": 200,
+        "height": 120
       },
       "data": {
-        "status": "idle",
-        "output": {
-          "images": []
-        },
-        "images": [],
-        "label": "图片预览"
+        "text": "",
+        "label": "便签"
       },
       "measured": {
-        "width": 160,
-        "height": 159
+        "width": 200,
+        "height": 120
       },
-      "selected": false,
-      "dragging": false
+      "dragging": false,
+      "selected": false
     }
   ],
-  "edges": [
-    {
-      "source": "textToImage-mrvhwxx6-1",
-      "target": "preview-mrvhx4to-2",
-      "markerEnd": {
-        "type": "arrowclosed"
-      },
-      "animated": true,
-      "id": "xy-edge__textToImage-mrvhwxx6-1-preview-mrvhx4to-2"
-    }
-  ],
-  "savedAt": 1784689700629
+  "edges": [],
+  "savedAt": 1784695713870
 }
