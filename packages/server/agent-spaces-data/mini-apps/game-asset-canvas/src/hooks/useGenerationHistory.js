@@ -13,13 +13,21 @@ export default function useGenerationHistory() {
   // 初始加载 + 订阅 generation-history.json 变化
   useEffect(() => {
     const as = window.AgentSpaces;
+    const apply = (value) => setHistory(Array.isArray(value) ? value : []);
+    // config 可能尚未 ready（getConfig 返回 null），用 onConfigReady 兜底取一次快照
     const snapshot = as?.getConfig?.(HISTORY_CONFIG);
-    if (Array.isArray(snapshot)) setHistory(snapshot);
+    if (Array.isArray(snapshot)) apply(snapshot);
+    const unsubReady = as?.onConfigReady?.((configs) => {
+      apply(configs?.[HISTORY_CONFIG]);
+    });
     const unsub = onAnyConfigChanged((path, value) => {
       if (path !== HISTORY_CONFIG) return;
-      setHistory(Array.isArray(value) ? value : []);
+      apply(value);
     });
-    return () => { try { unsub(); } catch {} };
+    return () => {
+      try { unsub(); } catch {}
+      try { unsubReady?.(); } catch {}
+    };
   }, []);
 
   const addHistory = useCallback(async (item) => {

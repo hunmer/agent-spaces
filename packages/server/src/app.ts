@@ -111,7 +111,7 @@ import { createWorkflowHookRouter } from './routes/workflow-hook.js';
 import { setWorkflowExecutionManager } from './services/builtin-tools/index.js';
 import { ensureBuiltInAgentTemplates } from './services/agent.js';
 import { rebuildIndex as rebuildMiniAppIndex } from './storage/mini-app-store.js';
-import { ensureAgentsConfigs } from './services/mini-app-services.js';
+import { ensureAgentsConfigs, startServicesWatcher } from './services/mini-app-services.js';
 import { registerAllMiniAppTools } from './services/mini-app-agent.js';
 // SkyOffice（Colyseus 房间服务）已合并进主后端，与主后端同为 ESM 源码统一编译。
 // colyseus 系包无 exports 字段（CJS），故 skyoffice 内部对它们用 default import + 解构；
@@ -517,6 +517,7 @@ server.listen(PORT, HOST, () => {
   ensureBuiltInAgentTemplates();
   rebuildMiniAppIndex();
   ensureAgentsConfigs();
+  startServicesWatcher();
   registerAllMiniAppTools();
   recoverRunningWorkOnStartup();
   triggerService.start().catch((err) => {

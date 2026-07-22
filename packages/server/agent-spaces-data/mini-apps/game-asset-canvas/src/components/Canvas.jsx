@@ -66,7 +66,19 @@ export default function Canvas() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   // 执行队列：任务完成后把每张图作为独立图片展示节点加到画布
   const { jobs, submit, cancel, clearFinished, runningCount } = useExecutionQueue({
-    onComplete: (job, images) => addImageNodesFromUrls(images),
+    onComplete: (job, images) => {
+      addImageNodesFromUrls(images);
+      // 与节点内「生成」一致，把队列结果也写入生成记录
+      addHistory({
+        id: genId('hist'),
+        nodeId: null,
+        nodeType: job.nodeType,
+        prompt: job.input?.prompt || '',
+        model: job.input?.model || '',
+        images,
+        createdAt: Date.now(),
+      }).catch((e) => console.error('queue addHistory failed:', e));
+    },
   });
   // 节点表单弹窗（从右侧新增节点 tab 触发）
   const [formNodeType, setFormNodeType] = useState(null);
@@ -166,7 +178,7 @@ export default function Canvas() {
         model: input?.model || '',
         images: urls,
         createdAt: Date.now(),
-      }).catch((e) => console.warn('addHistory failed:', e));
+      }).catch((e) => console.error('addHistory failed:', e));
     } catch (err) {
       console.error('generate failed:', err);
       updateNodeData(nodeId, { status: 'error', error: err?.message || String(err) });
@@ -294,7 +306,7 @@ export default function Canvas() {
     submit({ ...task, workflowId });
   }, [settings, submit]);
 
-  // 给每个节点的 data 注入 onUpdate / onGenerate（节点内部需要）。
+  // 给每个节点的 data 注入 onUpdate / onGenerate / onExportImages（节点内部需要）。
   // 注意：不要覆盖 node.selected —— 选中状态由 ReactFlow 通过 onNodesChange 的
   // selection 变更 + applyNodeChanges 自行管理；这里强行赋值会破坏点击选中/删除机制。
   const decoratedNodes = useMemo(
@@ -304,9 +316,10 @@ export default function Canvas() {
         ...nd.data,
         onUpdate: makeOnUpdate(nd.id),
         onGenerate: handleGenerate,
+        onExportImages: (imgs) => addImageNodesFromUrls(imgs),
       },
     })),
-    [nodes, makeOnUpdate, handleGenerate],
+    [nodes, makeOnUpdate, handleGenerate, addImageNodesFromUrls],
   );
 
   // 面板布局变化 -> 持久化

@@ -103,8 +103,14 @@
 - 顶栏右上角【执行队列】按钮（ExecutionQueuePopover）：显示运行中/已完成任务，可中断
 - 右侧【新增节点】tab：文生图/编辑图片旁有「⚡生成」按钮，打开 NodeFormDialog 填表单
 - 提交流程：NodeFormDialog → Canvas.handleFormSubmit（按 nodeType 补 settings 工作流 ID）→ useExecutionQueue.submit → 入队
-- 执行完毕：useExecutionQueue.onComplete 回调 → addImageNodesFromUrls 每张图生成一个图片展示节点入画布
+- 执行完毕：useExecutionQueue.onComplete 回调 → addImageNodesFromUrls 每张图生成一个图片展示节点入画布 + 写入生成记录（与节点内「生成」一致，nodeId 为 null）
 - 持久化：队列是内存态（刷新后清空，非业务数据）
+
+## 节点工具栏（NodeToolbar）
+- 节点选中时顶部显示 NodeToolbar（NodeShell 渲染，`isVisible={selected}`，`position={Position.Top} align="end"`）
+- 有产出图片（`data.output.images.length > 0`）时显示「导出图片」按钮
+- 点击调 Canvas 注入的 `data.onExportImages(images)` → 复用 `addImageNodesFromUrls`，把每张产出图作为独立图片展示节点错落加入画布
+- onExportImages 由 Canvas.decoratedNodes 注入（与 onUpdate/onGenerate 同级）
 
 ## 工作流中断（host 层能力）
 - `window.AgentSpaces.subscribeWorkflowEvents(cb)`：监听 workflow:* 事件（workflow:started 含 executionId）

@@ -17,10 +17,10 @@
         "status": "done",
         "output": {
           "images": [
-            "https://p26-dreamina-sign.byteimg.com/tos-cn-i-tb4s082cfz/2deed94a239546b693c3955fdbe1037d~tplv-tb4s082cfz-aigc_resize:0:0.png?lk3s=7c3bb0db&x-expires=1784707200&x-signature=%2Bph68dMCqxZfuBPLpgu7f8bhNSw%3D&format=.png",
-            "https://p26-dreamina-sign.byteimg.com/tos-cn-i-tb4s082cfz/af4318b5a7f0439eadced1f30df2770d~tplv-tb4s082cfz-aigc_resize:0:0.png?lk3s=7c3bb0db&x-expires=1784707200&x-signature=5U5H7uYN4zYmPizd095r0ItUL4A%3D&format=.png",
-            "https://p26-dreamina-sign.byteimg.com/tos-cn-i-tb4s082cfz/f35382357ec142dd89e5ef9e8f517a92~tplv-tb4s082cfz-aigc_resize:0:0.png?lk3s=7c3bb0db&x-expires=1784707200&x-signature=GUIdCDa82xurPDQU%2B%2BrSjnYlwU0%3D&format=.png",
-            "https://p11-dreamina-sign.byteimg.com/tos-cn-i-tb4s082cfz/5ddbfd111ab340108b9cfae78eac33ce~tplv-tb4s082cfz-aigc_resize:0:0.png?lk3s=7c3bb0db&x-expires=1784707200&x-signature=k8tocpwjo3lID92cFfrdgdNmJv8%3D&format=.png"
+            "https://p26-dreamina-sign.byteimg.com/tos-cn-i-tb4s082cfz/9305a3ff3b74474c87a3ec4134e4de50~tplv-tb4s082cfz-aigc_resize:0:0.png?lk3s=7c3bb0db&x-expires=1784707200&x-signature=q%2Bu%2Fg3VaMLNZOsxNvFpkAHfoyf4%3D&format=.png",
+            "https://p11-dreamina-sign.byteimg.com/tos-cn-i-tb4s082cfz/52450e0a689a4fbb8fdad3ce726846bf~tplv-tb4s082cfz-aigc_resize:0:0.png?lk3s=7c3bb0db&x-expires=1784707200&x-signature=aM4j4i8L%2Fkds9Ai24oyKmg6Y6aM%3D&format=.png",
+            "https://p26-dreamina-sign.byteimg.com/tos-cn-i-tb4s082cfz/2f61171375ca4145b00e9b6ef1338b5d~tplv-tb4s082cfz-aigc_resize:0:0.png?lk3s=7c3bb0db&x-expires=1784707200&x-signature=atVkcivA1hFhhBbjaeG95UzxZuQ%3D&format=.png",
+            "https://p11-dreamina-sign.byteimg.com/tos-cn-i-tb4s082cfz/3f385f8cc22f4639a65a4f793f795792~tplv-tb4s082cfz-aigc_resize:0:0.png?lk3s=7c3bb0db&x-expires=1784707200&x-signature=Vpbc2%2BUmcfrlgzfJ11%2BNU%2FkTLUI%3D&format=.png"
           ]
         },
         "params": {
@@ -35,7 +35,7 @@
         "width": 318,
         "height": 331
       },
-      "selected": false,
+      "selected": true,
       "resizing": false,
       "dragging": false
     },
@@ -69,5 +69,5 @@
     }
   ],
   "edges": [],
-  "savedAt": 1784702771404
+  "savedAt": 1784703466224
 }

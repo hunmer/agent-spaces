@@ -1,4 +1,4 @@
-import { Handle, NodeResizer, Position } from '@xyflow/react';
+import { Handle, NodeResizer, NodeToolbar, Position } from '@xyflow/react';
 import { NODE_META } from '../../utils/constants';
 
 const STATUS_TEXT = {
@@ -35,9 +35,22 @@ export default function NodeShell({
     : status === 'error' ? '#ef4444'
     : status === 'done' ? '#10b981'
     : '#94a3b8';
+  const outputImages = data?.output?.images || [];
+  const onExportImages = data?.onExportImages;
 
   return (
     <div className="flex h-full w-full flex-col overflow-hidden rounded-lg border border-border bg-card text-card-foreground shadow-sm">
+      {outputImages.length > 0 && onExportImages && (
+        <NodeToolbar isVisible={selected} position={Position.Top} align="end" offset={8}>
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onExportImages(outputImages); }}
+            className="rounded-md border border-border bg-background px-2.5 py-1 text-xs font-medium text-foreground shadow-sm transition hover:border-primary hover:text-primary"
+          >
+            导出图片
+          </button>
+        </NodeToolbar>
+      )}
       {resizable && (
         <NodeResizer
           isVisible={!!selected}

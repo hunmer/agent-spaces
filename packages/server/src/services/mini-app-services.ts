@@ -1,7 +1,9 @@
 import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
+import chokidar from 'chokidar';
 import { getProjectDir } from '../storage/mini-app-store.js';
 import * as miniAppStore from '../storage/mini-app-store.js';
+import { getDataDir } from '../storage/json-store.js';
 import { broadcastToWorkspace } from '../ws/connection-manager.js';
 import { listTasks } from './mini-app-tasks.js';
 
@@ -108,6 +110,52 @@ export function unloadServices(projectId: string): void {
 export function reloadServices(projectId: string): void {
   registries.delete(projectId);
   loadRegistry(projectId);
+}
+
+let watcherStarted = false;
+const pendingReload = new Map<string, NodeJS.Timeout>();
+
+/**
+ * 启动 services 文件监听：任一项目的 `src/services/*.{js,mjs,cjs}` 增删改后，
+ * 自动 reload 该项目的 registry，无需重启服务。
+ *
+ * - 只启动一次（幂等），在 server.listen 回调里调用。
+ * - 从相对路径第一段反解 projectId（mini-apps/<projectId>/src/services/...）。
+ * - 同一次保存可能触发多次事件，按 projectId debounce 200ms 合并 reload。
+ */
+export function startServicesWatcher(): void {
+  if (watcherStarted) return;
+  watcherStarted = true;
+
+  const root = join(getDataDir(), 'mini-apps');
+  if (!existsSync(root)) return;
+
+  const scheduleReload = (projectId: string) => {
+    const existing = pendingReload.get(projectId);
+    if (existing) clearTimeout(existing);
+    const timer = setTimeout(() => {
+      pendingReload.delete(projectId);
+      reloadServices(projectId);
+      console.log(`[mini-app-services] reloaded services for ${projectId}`);
+    }, 200);
+    pendingReload.set(projectId, timer);
+  };
+
+  chokidar
+    .watch(['*.js', '*.mjs', '*.cjs'].map((p) => `*/src/services/${p}`), {
+      cwd: root,
+      ignoreInitial: true,
+      awaitWriteFinish: { stabilityThreshold: 150, pollInterval: 50 },
+    })
+    .on('all', (_event, changedPath) => {
+      if (!changedPath) return;
+      // chokidar 返回相对 cwd 的路径，分隔符可能为 \ 或 /，统一兼容
+      const projectId = changedPath.split(/[\\/]/)[0];
+      if (!projectId) return;
+      // 仅对已加载过 registry 的项目重载，避免为未使用的项目空跑
+      if (registries.has(projectId)) scheduleReload(projectId);
+    });
+  console.log('[mini-app-services] services file watcher started');
 }
 
 /**
