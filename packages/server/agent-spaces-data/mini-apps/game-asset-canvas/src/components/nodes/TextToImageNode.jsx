@@ -1,6 +1,7 @@
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import NodeShell from './NodeShell';
 import ImageResult from './ImageResult';
+import PromptPickerDialog from '../PromptPickerDialog';
 import { ASPECT_OPTIONS, DEFAULT_MODEL, MODEL_OPTIONS, NODE_TYPES, SIZE_OPTIONS, WORKFLOWS } from '../../utils/constants';
 
 /**
@@ -16,6 +17,7 @@ export default function TextToImageNode({ id, data, selected }) {
   const running = status === 'running';
   const onUpdate = data?.onUpdate;
   const onGenerate = data?.onGenerate;
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   const set = useCallback((patch) => {
     onUpdate?.({ params: { ...params, ...patch } });
@@ -36,7 +38,16 @@ export default function TextToImageNode({ id, data, selected }) {
   return (
     <NodeShell nodeType={NODE_TYPES.textToImage} data={data} selected={selected} sourceHandle>
       <label className="flex flex-col gap-1">
-        <span className="text-xs font-medium text-muted-foreground">提示词</span>
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-medium text-muted-foreground">提示词</span>
+          <button
+            type="button"
+            onClick={() => setPickerOpen(true)}
+            className="text-xs text-muted-foreground transition hover:text-primary"
+          >
+            📋 提示词库
+          </button>
+        </div>
         <textarea
           className="min-h-[64px] w-full resize-y rounded-md border border-border bg-background px-2 py-1.5 text-sm outline-none focus:border-primary"
           placeholder="描述要生成的游戏资产，如：像素风宝箱，俯视角，无背景"
@@ -65,6 +76,13 @@ export default function TextToImageNode({ id, data, selected }) {
       )}
 
       {images.length > 0 && <ImageResult images={images} />}
+
+      <PromptPickerDialog
+        open={pickerOpen}
+        scene="text"
+        onClose={() => setPickerOpen(false)}
+        onPick={(prompt) => set({ prompt })}
+      />
     </NodeShell>
   );
 }

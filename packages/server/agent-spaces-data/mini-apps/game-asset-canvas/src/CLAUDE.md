@@ -60,6 +60,13 @@
 - 含 `kling` -> case-0 可灵图像生成
 下拉预置：gpt-image-* / dall-e-2,3 / jimeng-* / qwen-image-* / wanx2.1 / flux-pro / kling-v2。
 
+## 内置提示词库 (utils/prompts.js)
+- 参考 sprite-sheet-creator 抽取的游戏资产提示词，分四类：角色生成 / 精灵图动画 / 背景场景 / 图像转换
+- 每条 `PROMPT_LIBRARY` 项：`{ id, category, title, desc, prompt, scene }`，`scene` 标记适用场景 `'text'`(文生图) / `'edit'`(编辑图片) / `'both'`
+- `getPromptsByScene(scene)` 按场景过滤（表单据自身类型只看相关条目）
+- PromptPickerDialog 组件（components/PromptPickerDialog.jsx）：搜索 + 分类筛选 + 卡片列表，点选即填充
+- 接入点：TextToImageNode / EditImageNode（提示词 label 右侧「📋 提示词库」按钮，选中直接覆盖）；NodeFormDialog（同按钮，选中追加到已有内容后）
+
 ## 自动布局 (utils/layout.js)
 - `autoLayout(nodes, edges, opts)` 用 dagre 计算位置（默认 LR 左→右）
 - 工具栏「自动布局」按钮触发，Canvas.handleAutoLayout

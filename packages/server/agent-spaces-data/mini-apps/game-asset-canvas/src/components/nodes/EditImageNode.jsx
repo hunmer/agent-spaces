@@ -1,6 +1,7 @@
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import NodeShell from './NodeShell';
 import ImageResult from './ImageResult';
+import PromptPickerDialog from '../PromptPickerDialog';
 import { ASPECT_OPTIONS, DEFAULT_MODEL, MODEL_OPTIONS, NODE_TYPES, SIZE_OPTIONS, WORKFLOWS } from '../../utils/constants';
 
 /**
@@ -18,6 +19,7 @@ export default function EditImageNode({ id, data, selected }) {
   const running = status === 'running';
   const onUpdate = data?.onUpdate;
   const onGenerate = data?.onGenerate;
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   const set = useCallback((patch) => {
     onUpdate?.({ params: { ...params, ...patch } });
@@ -67,7 +69,16 @@ export default function EditImageNode({ id, data, selected }) {
       </div>
 
       <label className="flex flex-col gap-1">
-        <span className="text-xs font-medium text-muted-foreground">编辑指令</span>
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-medium text-muted-foreground">编辑指令</span>
+          <button
+            type="button"
+            onClick={() => setPickerOpen(true)}
+            className="text-xs text-muted-foreground transition hover:text-primary"
+          >
+            📋 提示词库
+          </button>
+        </div>
         <textarea
           className="min-h-[56px] w-full resize-y rounded-md border border-border bg-background px-2 py-1.5 text-sm outline-none focus:border-primary"
           placeholder="如：将背景改为星空，保持宝箱主体不变"
@@ -96,6 +107,13 @@ export default function EditImageNode({ id, data, selected }) {
       )}
 
       {images.length > 0 && <ImageResult images={images} />}
+
+      <PromptPickerDialog
+        open={pickerOpen}
+        scene="edit"
+        onClose={() => setPickerOpen(false)}
+        onPick={(prompt) => set({ prompt })}
+      />
     </NodeShell>
   );
 }
