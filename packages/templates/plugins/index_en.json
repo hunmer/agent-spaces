@@ -118,6 +118,40 @@
     ]
   },
   {
+    "id": "workflow.baidu-image",
+    "name": "Baidu AI Image",
+    "version": "1.0.0",
+    "description": "Baidu AI image processing plugin: smart cutout (subject segmentation, transparent background) and lossless image upscaling (2x in both dimensions).",
+    "author": {
+      "name": "workflow"
+    },
+    "tags": [
+      "AI",
+      "Image Processing",
+      "Cutout",
+      "Upscale",
+      "Baidu"
+    ],
+    "type": "server",
+    "hasView": false,
+    "hasWorkflow": true,
+    "path": "baidu-image",
+    "iconUrl": "plugins/baidu-image/icon.svg",
+    "md5": "0144f904dc31d8d95e38daf6ae84950c",
+    "updatedAt": "2026-07-22T08:47:30.801Z",
+    "files": [
+      "actions.js",
+      "icon.svg",
+      "info.json",
+      "lang.json",
+      "main.js",
+      "README.md",
+      "shared.js",
+      "tools.js",
+      "workflow.js"
+    ]
+  },
+  {
     "id": "workflow.comfyui",
     "name": "ComfyUI",
     "version": "1.0.0",

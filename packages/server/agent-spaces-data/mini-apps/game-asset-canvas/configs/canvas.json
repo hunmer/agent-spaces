@@ -4,11 +4,11 @@
       "id": "textToImage-mrvnfju9-2",
       "type": "textToImage",
       "position": {
-        "x": -175.6251238245171,
-        "y": 50.28052217599863
+        "x": 40,
+        "y": 40
       },
-      "width": 318,
-      "height": 331,
+      "width": 300,
+      "height": 532,
       "style": {
         "width": 290,
         "height": 240
@@ -30,8 +30,8 @@
         "label": "文字生成图片"
       },
       "measured": {
-        "width": 318,
-        "height": 331
+        "width": 300,
+        "height": 532
       },
       "selected": false,
       "resizing": false,
@@ -41,14 +41,14 @@
       "id": "imageDisplay-mrvsp8j6-2",
       "type": "imageDisplay",
       "position": {
-        "x": 154.8901611926609,
-        "y": 430.22778936346526
+        "x": 60,
+        "y": 612
       },
-      "width": 260,
-      "height": 240,
+      "width": 520,
+      "height": 400,
       "style": {
-        "width": 260,
-        "height": 240
+        "width": 520,
+        "height": 400
       },
       "data": {
         "images": [
@@ -58,8 +58,8 @@
         "label": "图片展示"
       },
       "measured": {
-        "width": 260,
-        "height": 240
+        "width": 520,
+        "height": 400
       },
       "selected": false,
       "dragging": false
@@ -68,8 +68,8 @@
       "id": "editImage-mrvspgtk-3",
       "type": "editImage",
       "position": {
-        "x": 369.94840545853964,
-        "y": 797.6915004075516
+        "x": 830,
+        "y": 752
       },
       "width": 319,
       "height": 360,
@@ -100,6 +100,282 @@
       "selected": false,
       "dragging": false,
       "resizing": false
+    },
+    {
+      "id": "imageDisplay-mrvwjsik-1",
+      "type": "imageDisplay",
+      "position": {
+        "x": 60,
+        "y": 1452
+      },
+      "width": 220,
+      "height": 268,
+      "style": {
+        "width": 220,
+        "height": 268
+      },
+      "data": {
+        "images": [
+          "/static/uploads/class-archer-24c7c3c8-f67d-4453-bd0b-2071fdfbe013.png"
+        ],
+        "source": "upload",
+        "loading": false,
+        "label": "图片展示"
+      },
+      "measured": {
+        "width": 220,
+        "height": 268
+      }
+    },
+    {
+      "id": "imageDisplay-mrvwjsik-2",
+      "type": "imageDisplay",
+      "position": {
+        "x": 60,
+        "y": 1732
+      },
+      "width": 220,
+      "height": 268,
+      "style": {
+        "width": 220,
+        "height": 268
+      },
+      "data": {
+        "images": [
+          "/static/uploads/class-assassin-ea65c839-a604-4ce0-b296-201c8f2a5730.png"
+        ],
+        "source": "upload",
+        "loading": false,
+        "label": "图片展示"
+      },
+      "measured": {
+        "width": 220,
+        "height": 268
+      }
+    },
+    {
+      "id": "imageDisplay-mrvwjsik-3",
+      "type": "imageDisplay",
+      "position": {
+        "x": 60,
+        "y": 2012
+      },
+      "width": 220,
+      "height": 268,
+      "style": {
+        "width": 220,
+        "height": 268
+      },
+      "data": {
+        "images": [
+          "/static/uploads/class-berserker-f0317ec3-8d4f-4819-ab46-f5950112d794.png"
+        ],
+        "source": "upload",
+        "loading": false,
+        "label": "图片展示"
+      },
+      "measured": {
+        "width": 220,
+        "height": 268
+      },
+      "selected": false,
+      "dragging": false
+    },
+    {
+      "id": "imageDisplay-mrvwjsik-4",
+      "type": "imageDisplay",
+      "position": {
+        "x": 80,
+        "y": 2292
+      },
+      "width": 220,
+      "height": 268,
+      "style": {
+        "width": 220,
+        "height": 268
+      },
+      "data": {
+        "images": [
+          "/static/uploads/class-knight-d208a879-95be-4201-b358-0fff8128b3c0.png"
+        ],
+        "source": "upload",
+        "loading": false,
+        "label": "图片展示"
+      },
+      "measured": {
+        "width": 220,
+        "height": 268
+      },
+      "selected": false,
+      "dragging": false,
+      "resizing": false
+    },
+    {
+      "id": "imageDisplay-mrvwjsik-5",
+      "type": "imageDisplay",
+      "position": {
+        "x": 60,
+        "y": 2612
+      },
+      "width": 220,
+      "height": 268,
+      "style": {
+        "width": 220,
+        "height": 268
+      },
+      "data": {
+        "images": [
+          "/static/uploads/class-lancer-d001bec7-217c-4441-9e46-28eac78edac3.png"
+        ],
+        "source": "upload",
+        "loading": false,
+        "label": "图片展示"
+      },
+      "measured": {
+        "width": 220,
+        "height": 268
+      },
+      "selected": false,
+      "dragging": false
+    },
+    {
+      "id": "imageDisplay-mrvwjsik-6",
+      "type": "imageDisplay",
+      "position": {
+        "x": 60,
+        "y": 2892
+      },
+      "width": 220,
+      "height": 268,
+      "style": {
+        "width": 220,
+        "height": 268
+      },
+      "data": {
+        "images": [
+          "/static/uploads/class-mage-189c9bb8-915e-4a81-8bc4-1e93f69d4bb6.png"
+        ],
+        "source": "upload",
+        "loading": false,
+        "label": "图片展示"
+      },
+      "measured": {
+        "width": 220,
+        "height": 268
+      },
+      "selected": false,
+      "dragging": false
+    },
+    {
+      "id": "imageDisplay-mrvwjsik-7",
+      "type": "imageDisplay",
+      "position": {
+        "x": 60,
+        "y": 3172
+      },
+      "width": 220,
+      "height": 268,
+      "style": {
+        "width": 220,
+        "height": 268
+      },
+      "data": {
+        "images": [
+          "/static/uploads/class-priest-f3b771fe-7988-4de3-ad57-62a3f8a86636.png"
+        ],
+        "source": "upload",
+        "loading": false,
+        "label": "图片展示"
+      },
+      "measured": {
+        "width": 220,
+        "height": 268
+      },
+      "selected": false,
+      "dragging": false
+    },
+    {
+      "id": "imageDisplay-mrvwjsik-8",
+      "type": "imageDisplay",
+      "position": {
+        "x": 80,
+        "y": 3452
+      },
+      "width": 220,
+      "height": 268,
+      "style": {
+        "width": 220,
+        "height": 268
+      },
+      "data": {
+        "images": [
+          "/static/uploads/class-swordsman-b998c1d6-428d-457a-9bb6-cc277290a7cc.png"
+        ],
+        "source": "upload",
+        "loading": false,
+        "label": "图片展示"
+      },
+      "measured": {
+        "width": 220,
+        "height": 268
+      },
+      "selected": false,
+      "dragging": false,
+      "resizing": false
+    },
+    {
+      "id": "imageDisplay-mrvwoxy6-10",
+      "type": "imageDisplay",
+      "position": {
+        "x": 61.14869835499704,
+        "y": 3814.6765703899464
+      },
+      "width": 220,
+      "height": 268,
+      "style": {
+        "width": 220,
+        "height": 268
+      },
+      "data": {
+        "images": [
+          "/static/uploads/class-lancer-d001bec7-217c-4441-9e46-28eac78edac3.png"
+        ],
+        "source": "queue",
+        "label": "图片展示"
+      },
+      "measured": {
+        "width": 220,
+        "height": 268
+      },
+      "selected": false,
+      "dragging": false
+    },
+    {
+      "id": "imageDisplay-mrvwv4fp-2",
+      "type": "imageDisplay",
+      "position": {
+        "x": 728,
+        "y": 282
+      },
+      "width": 220,
+      "height": 268,
+      "style": {
+        "width": 220,
+        "height": 268
+      },
+      "data": {
+        "images": [
+          "http://127.0.0.1:3000/static/uploads/class-knight-d208a879-95be-4201-b358-0fff8128b3c0.png"
+        ],
+        "source": "queue",
+        "label": "图片展示"
+      },
+      "measured": {
+        "width": 220,
+        "height": 268
+      },
+      "selected": false,
+      "dragging": false
     }
   ],
   "edges": [
@@ -113,5 +389,5 @@
       "id": "xy-edge__imageDisplay-mrvsp8j6-2-editImage-mrvspgtk-3"
     }
   ],
-  "savedAt": 1784708443843
+  "savedAt": 1784714516507
 }

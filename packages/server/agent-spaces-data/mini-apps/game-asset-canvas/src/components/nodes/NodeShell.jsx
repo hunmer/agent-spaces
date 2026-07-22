@@ -35,22 +35,59 @@ export default function NodeShell({
     : status === 'error' ? '#ef4444'
     : status === 'done' ? '#10b981'
     : '#94a3b8';
-  const outputImages = data?.output?.images || [];
+  // 产出图片：文生图/编辑节点存在 data.output.images；图片展示节点存在 data.images
+  const outputImages = data?.output?.images?.length ? data.output.images : (data?.images || []);
   const onExportImages = data?.onExportImages;
+  const onProcessImage = data?.onProcessImage;
+  const onEditImages = data?.onEditImages;
+
+  // 是否显示抠图/放大按钮：节点有产出图且有处理回调
+  const showProcessButtons = outputImages.length > 0 && onProcessImage;
+  // 是否显示编辑按钮：节点有产出图且有编辑回调
+  const showEditButton = outputImages.length > 0 && onEditImages;
 
   return (
     <div className="flex h-full w-full flex-col overflow-hidden rounded-lg border border-border bg-card text-card-foreground shadow-sm">
-      {outputImages.length > 0 && onExportImages && (
+      {(outputImages.length > 0 && onExportImages) || showProcessButtons || showEditButton ? (
         <NodeToolbar isVisible={selected} position={Position.Top} align="end" offset={8}>
-          <button
-            type="button"
-            onClick={(e) => { e.stopPropagation(); onExportImages(outputImages); }}
-            className="rounded-md border border-border bg-background px-2.5 py-1 text-xs font-medium text-foreground shadow-sm transition hover:border-primary hover:text-primary"
-          >
-            导出图片
-          </button>
+          <div className="flex items-center gap-1">
+            {showEditButton && (
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); onEditImages(outputImages); }}
+                className="rounded-md border border-border bg-background px-2.5 py-1 text-xs font-medium text-foreground shadow-sm transition hover:border-primary hover:text-primary"
+              >
+                编辑
+              </button>
+            )}
+            {showProcessButtons && (
+              <>
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); onProcessImage(outputImages, 'segment'); }}
+                  className="rounded-md border border-border bg-background px-2.5 py-1 text-xs font-medium text-foreground shadow-sm transition hover:border-primary hover:text-primary"
+                >
+                  抠图
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); onProcessImage(outputImages, 'enhance'); }}
+                  className="rounded-md border border-border bg-background px-2.5 py-1 text-xs font-medium text-foreground shadow-sm transition hover:border-primary hover:text-primary"
+                >
+                  放大
+                </button>
+              </>
+            )}
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onExportImages(outputImages); }}
+              className="rounded-md border border-border bg-background px-2.5 py-1 text-xs font-medium text-foreground shadow-sm transition hover:border-primary hover:text-primary"
+            >
+              导出图片
+            </button>
+          </div>
         </NodeToolbar>
-      )}
+      ) : null}
       {resizable && (
         <NodeResizer
           isVisible={!!selected}

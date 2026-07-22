@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
   Button, Label,
@@ -6,53 +6,56 @@ import {
 import {
   ASPECT_OPTIONS, DEFAULT_MODEL, MODEL_OPTIONS, NODE_META, NODE_TYPES, SIZE_OPTIONS,
 } from '../utils/constants';
+import { normalizeImageUrls } from '../utils/workflow';
 import PromptPickerDialog from './PromptPickerDialog';
 import PickedPromptBadge from './nodes/PickedPromptBadge';
+import FileUpload from './FileUpload';
 
 /**
  * 节点表单弹窗：从右侧【新增节点】tab 点文生图/编辑图片旁的按钮打开，
+ * 或从节点工具栏【编辑】按钮打开（此时 nodeType=editImage 且 initialImages 预填默认图），
  * 填写表单后提交到执行队列。
  *
- * @param {{ open:boolean, nodeType:string, onClose:()=>void, onSubmit:(task)=>void }} props
+ * @param {{ open:boolean, nodeType:string, initialImages?:string[], onClose:()=>void, onSubmit:(task)=>void }} props
  *   task = { nodeType, label, workflowId, input }
  */
-export default function NodeFormDialog({ open, nodeType, onClose, onSubmit }) {
+export default function NodeFormDialog({ open, nodeType, initialImages, onClose, onSubmit }) {
   const meta = NODE_META[nodeType] || {};
   const [prompt, setPrompt] = useState('');
   const [pickedPrompt, setPickedPrompt] = useState('');
   const [model, setModel] = useState(DEFAULT_MODEL);
   const [aspect, setAspect] = useState('1:1');
   const [size, setSize] = useState('1k');
-  const [imagesText, setImagesText] = useState('');
+  const [images, setImages] = useState([]);
   const [pickerOpen, setPickerOpen] = useState(false);
 
-  // nodeType 变化时重置表单
-  const [lastType, setLastType] = useState(nodeType);
-  if (nodeType !== lastType) {
-    setLastType(nodeType);
-    setPrompt(''); setPickedPrompt(''); setModel(DEFAULT_MODEL); setAspect('1:1'); setSize('1k'); setImagesText('');
-  }
+  // 打开时按 nodeType + initialImages 初始化（兼容「编辑」按钮预填）
+  useEffect(() => {
+    if (!open) return;
+    setPrompt('');
+    setPickedPrompt('');
+    setModel(DEFAULT_MODEL);
+    setAspect('1:1');
+    setSize('1k');
+    setImages(Array.isArray(initialImages) ? initialImages.filter(Boolean) : []);
+  }, [open, nodeType, initialImages]);
 
   const isEdit = nodeType === NODE_TYPES.editImage;
   // 提示词库选中 或 用户输入 二者有其一即可提交
   const hasPrompt = prompt.trim() || pickedPrompt.trim();
-  const canSubmit = hasPrompt && (!isEdit || imagesText.trim());
+  const canSubmit = hasPrompt && (!isEdit || images.length > 0);
 
   const handleSubmit = () => {
     if (!canSubmit) return;
     // 提示词库选中 + 用户输入 合并
     const merged = [pickedPrompt, prompt].map((s) => s.trim()).filter(Boolean).join('\n');
     const input = { prompt: merged, model, aspect, size };
-    if (isEdit) {
-      input.images = imagesText.split(/[\n,]/).map((s) => s.trim()).filter(Boolean);
-    }
+    if (isEdit) input.images = normalizeImageUrls(images);
     onSubmit?.({
       nodeType,
       label: `${meta.label}：${merged.slice(0, 16)}${merged.length > 16 ? '…' : ''}`,
       input,
     });
-    // 提交后关闭并重置
-    setPrompt(''); setPickedPrompt(''); setImagesText('');
     onClose?.();
   };
 
@@ -65,12 +68,12 @@ export default function NodeFormDialog({ open, nodeType, onClose, onSubmit }) {
 
         <div className="flex flex-col gap-4 py-2">
           {isEdit && (
-            <Field label="输入图片 URL（多个用换行或逗号分隔）">
-              <textarea
-                className="nodrag nopan nowheel min-h-[60px] w-full resize-y rounded-md border border-border bg-background px-2 py-1.5 text-sm outline-none focus:border-primary"
-                placeholder="https://example.com/image1.png&#10;https://example.com/image2.png"
-                value={imagesText}
-                onChange={(e) => setImagesText(e.target.value)}
+            <Field label="输入图片">
+              <FileUpload
+                value={images}
+                onChange={setImages}
+                max={6}
+                placeholder="点击或拖拽图片上传"
               />
             </Field>
           )}
@@ -91,7 +94,7 @@ export default function NodeFormDialog({ open, nodeType, onClose, onSubmit }) {
               </button>
             </div>
             <textarea
-              className="nodrag nopan nowheel min-h-[72px] w-full resize-y rounded-md border border-border bg-background px-2 py-1.5 text-sm outline-none focus:border-primary"
+              className="min-h-[72px] w-full resize-y rounded-md border border-border bg-background px-2 py-1.5 text-sm outline-none focus:border-primary"
               placeholder={isEdit ? '描述如何编辑图片…' : '描述要生成的游戏资产…'}
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}

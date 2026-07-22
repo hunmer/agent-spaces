@@ -1,0 +1,338 @@
+{
+  "id": "8425608e-9e0c-49fa-baa3-32675566a3e6",
+  "name": "image_enchanter",
+  "type": "normal",
+  "folderId": null,
+  "description": "图片处理",
+  "nodes": [
+    {
+      "id": "node_1784710327362_start",
+      "type": "start",
+      "label": "开始",
+      "position": {
+        "x": 0,
+        "y": 80
+      },
+      "data": {
+        "inputFields": [
+          {
+            "key": "image_url",
+            "type": "string",
+            "description": "图片地址（URL / 本地路径 / data URI）",
+            "required": true,
+            "children": []
+          },
+          {
+            "key": "process_type",
+            "type": "select",
+            "value": "",
+            "required": true,
+            "inputMode": "native",
+            "options": [
+              "segment",
+              "enhance"
+            ],
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "node_1784710327362_end",
+      "type": "end",
+      "label": "结束",
+      "position": {
+        "x": 1200,
+        "y": 90
+      },
+      "data": {
+        "outputs": [
+          {
+            "key": "image_urls",
+            "type": "any",
+            "value": "{{ __data__[\"node_1784710810414_tuja0r\"].result.image_urls }}",
+            "description": "图片处理后的地址列表",
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "node_1784710688692_gpz4m9",
+      "type": "switch",
+      "label": "处理方式路由",
+      "position": {
+        "x": 300,
+        "y": 230
+      },
+      "data": {
+        "k": "v",
+        "conditions": [
+          {
+            "id": "case_enhance",
+            "joiner": "and",
+            "conditions": [
+              {
+                "id": "cond_enhance",
+                "variable": "{{ __data__[\"node_1784710327362_start\"].process_type }}",
+                "field": "{{ __data__[\"node_1784710327362_start\"].process_type }}",
+                "compareMode": "value",
+                "operator": "equals",
+                "value": "enhance"
+              }
+            ]
+          },
+          {
+            "id": "case_segment",
+            "joiner": "and",
+            "conditions": [
+              {
+                "id": "cond_segment",
+                "variable": "{{ __data__[\"node_1784710327362_start\"].process_type }}",
+                "field": "{{ __data__[\"node_1784710327362_start\"].process_type }}",
+                "compareMode": "value",
+                "operator": "equals",
+                "value": "segment"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "node_1784710810413_kuhg51",
+      "type": "baidu_image_enhance",
+      "label": "百度图像无损放大",
+      "position": {
+        "x": 600,
+        "y": 180
+      },
+      "data": {
+        "apiKey": "{{ __config__[\"workflow.baidu-image\"][\"apiKey\"] }}",
+        "secretKey": "{{ __config__[\"workflow.baidu-image\"][\"secretKey\"] }}",
+        "outputs": [
+          {
+            "key": "success",
+            "type": "boolean",
+            "dataType": "boolean"
+          },
+          {
+            "key": "message",
+            "type": "string"
+          },
+          {
+            "key": "data",
+            "type": "object",
+            "dataType": "object",
+            "children": [
+              {
+                "key": "images",
+                "type": "image[]"
+              },
+              {
+                "key": "logId",
+                "type": "string"
+              }
+            ]
+          }
+        ],
+        "image": "{{ __data__[\"node_1784710327362_start\"].image_url }}"
+      }
+    },
+    {
+      "id": "node_1784710810413_6mzpv3",
+      "type": "baidu_image_segment",
+      "label": "百度智能抠图",
+      "position": {
+        "x": 600,
+        "y": 0
+      },
+      "data": {
+        "apiKey": "{{ __config__[\"workflow.baidu-image\"][\"apiKey\"] }}",
+        "secretKey": "{{ __config__[\"workflow.baidu-image\"][\"secretKey\"] }}",
+        "method": "auto",
+        "returnForm": "rgba",
+        "refineMask": true,
+        "outputs": [
+          {
+            "key": "success",
+            "type": "boolean",
+            "dataType": "boolean"
+          },
+          {
+            "key": "message",
+            "type": "string"
+          },
+          {
+            "key": "data",
+            "type": "object",
+            "dataType": "object",
+            "children": [
+              {
+                "key": "images",
+                "type": "image[]"
+              },
+              {
+                "key": "logId",
+                "type": "string"
+              }
+            ]
+          }
+        ],
+        "image": "{{ __data__[\"node_1784710327362_start\"].image_url }}"
+      }
+    },
+    {
+      "id": "node_1784710810414_tuja0r",
+      "type": "variable_aggregate",
+      "label": "聚合处理结果",
+      "position": {
+        "x": 900,
+        "y": 90
+      },
+      "data": {
+        "strategy": "first_non_empty",
+        "groups": [
+          {
+            "key": "image_urls",
+            "variables": [
+              {
+                "key": "enhance_image_urls",
+                "type": "any",
+                "value": "{{ __data__[\"node_1784710810413_kuhg51\"].data.images }}",
+                "children": []
+              },
+              {
+                "key": "segment_image_urls",
+                "type": "any",
+                "value": "{{ __data__[\"node_1784710810413_6mzpv3\"].data.images }}",
+                "children": []
+              }
+            ]
+          }
+        ],
+        "outputs": [
+          {
+            "key": "result",
+            "type": "object",
+            "children": [
+              {
+                "key": "image_urls",
+                "type": "string",
+                "value": "",
+                "children": []
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e-node_1784710327362_start-node_1784710688692_gpz4m9-mrvuqs5a",
+      "source": "node_1784710327362_start",
+      "target": "node_1784710688692_gpz4m9"
+    },
+    {
+      "id": "e-node_1784710688692_gpz4m9-node_1784710810413_kuhg51-mrvuqs5a",
+      "source": "node_1784710688692_gpz4m9",
+      "target": "node_1784710810413_kuhg51",
+      "sourceHandle": "case-0"
+    },
+    {
+      "id": "e-node_1784710688692_gpz4m9-node_1784710810413_6mzpv3-mrvuqs5b",
+      "source": "node_1784710688692_gpz4m9",
+      "target": "node_1784710810413_6mzpv3",
+      "sourceHandle": "case-1"
+    },
+    {
+      "id": "e-node_1784710810413_kuhg51-node_1784710810414_tuja0r-mrvuqs5b",
+      "source": "node_1784710810413_kuhg51",
+      "target": "node_1784710810414_tuja0r"
+    },
+    {
+      "id": "e-node_1784710810413_6mzpv3-node_1784710810414_tuja0r-mrvuqs5c",
+      "source": "node_1784710810413_6mzpv3",
+      "target": "node_1784710810414_tuja0r"
+    },
+    {
+      "id": "e-node_1784710810414_tuja0r-node_1784710327362_end-mrvuqs5c",
+      "source": "node_1784710810414_tuja0r",
+      "target": "node_1784710327362_end"
+    },
+    {
+      "id": "e-node_1784710327362_start-output:process_type-node_1784710688692_gpz4m9-property:conditions[0].conditions[0].variable",
+      "source": "node_1784710327362_start",
+      "target": "node_1784710688692_gpz4m9",
+      "edgeKind": "reference",
+      "sourceHandle": "output:process_type",
+      "targetHandle": "property:conditions[0].conditions[0].variable"
+    },
+    {
+      "id": "e-node_1784710327362_start-output:process_type-node_1784710688692_gpz4m9-property:conditions[0].conditions[0].field",
+      "source": "node_1784710327362_start",
+      "target": "node_1784710688692_gpz4m9",
+      "edgeKind": "reference",
+      "sourceHandle": "output:process_type",
+      "targetHandle": "property:conditions[0].conditions[0].field"
+    },
+    {
+      "id": "e-node_1784710327362_start-output:process_type-node_1784710688692_gpz4m9-property:conditions[1].conditions[0].variable",
+      "source": "node_1784710327362_start",
+      "target": "node_1784710688692_gpz4m9",
+      "edgeKind": "reference",
+      "sourceHandle": "output:process_type",
+      "targetHandle": "property:conditions[1].conditions[0].variable"
+    },
+    {
+      "id": "e-node_1784710327362_start-output:process_type-node_1784710688692_gpz4m9-property:conditions[1].conditions[0].field",
+      "source": "node_1784710327362_start",
+      "target": "node_1784710688692_gpz4m9",
+      "edgeKind": "reference",
+      "sourceHandle": "output:process_type",
+      "targetHandle": "property:conditions[1].conditions[0].field"
+    },
+    {
+      "id": "e-node_1784710327362_start-output:image_url-node_1784710810413_kuhg51-property:image",
+      "source": "node_1784710327362_start",
+      "target": "node_1784710810413_kuhg51",
+      "edgeKind": "reference",
+      "sourceHandle": "output:image_url",
+      "targetHandle": "property:image"
+    },
+    {
+      "id": "e-node_1784710327362_start-output:image_url-node_1784710810413_6mzpv3-property:image",
+      "source": "node_1784710327362_start",
+      "target": "node_1784710810413_6mzpv3",
+      "edgeKind": "reference",
+      "sourceHandle": "output:image_url",
+      "targetHandle": "property:image"
+    },
+    {
+      "id": "e-node_1784710810413_kuhg51-node_1784710810414_tuja0r-mrvuw6we",
+      "source": "node_1784710810413_kuhg51",
+      "target": "node_1784710810414_tuja0r",
+      "sourceHandle": "output:data.images",
+      "targetHandle": "property:groups[0].variables[0].value",
+      "edgeKind": "reference"
+    },
+    {
+      "id": "e-node_1784710810413_6mzpv3-node_1784710810414_tuja0r-mrvuxcvr",
+      "source": "node_1784710810413_6mzpv3",
+      "target": "node_1784710810414_tuja0r",
+      "sourceHandle": "output:data.images",
+      "targetHandle": "property:groups[0].variables[1].value",
+      "edgeKind": "reference"
+    }
+  ],
+  "createdAt": 1784710327365,
+  "updatedAt": 1784711249920,
+  "published": false,
+  "lastOpenedAt": 1784710327383,
+  "enabledPlugins": [
+    "workflow.baidu-image"
+  ],
+  "groups": [],
+  "lastRunAt": 1784711776383
+}

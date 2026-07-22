@@ -118,6 +118,40 @@
     ]
   },
   {
+    "id": "workflow.baidu-image",
+    "name": "百度AI图像处理",
+    "version": "1.0.0",
+    "description": "百度AI图像处理插件，提供智能抠图（主体分割、透明背景输出）和图像无损放大（长宽各2倍）能力",
+    "author": {
+      "name": "workflow"
+    },
+    "tags": [
+      "AI",
+      "图像处理",
+      "智能抠图",
+      "无损放大",
+      "百度"
+    ],
+    "type": "server",
+    "hasView": false,
+    "hasWorkflow": true,
+    "path": "baidu-image",
+    "iconUrl": "plugins/baidu-image/icon.svg",
+    "md5": "0144f904dc31d8d95e38daf6ae84950c",
+    "updatedAt": "2026-07-22T08:47:30.801Z",
+    "files": [
+      "actions.js",
+      "icon.svg",
+      "info.json",
+      "lang.json",
+      "main.js",
+      "README.md",
+      "shared.js",
+      "tools.js",
+      "workflow.js"
+    ]
+  },
+  {
     "id": "workflow.comfyui",
     "name": "ComfyUI",
     "version": "1.0.0",

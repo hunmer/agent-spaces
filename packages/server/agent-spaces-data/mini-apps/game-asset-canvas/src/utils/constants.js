@@ -4,6 +4,14 @@ export const WORKFLOWS = {
   text_to_image: 'd88dcb7c-7f5f-47c8-962c-89217a2c0ad6',
   // 编辑图片
   edit_image: '19f5f8a9-305d-43a6-9b05-584597213a8f',
+  // 抠图和放大
+  image_enchanter: '8425608e-9e0c-49fa-baa3-32675566a3e6',
+};
+
+// 抠图和放大的处理类型（对应 image_enchanter 工作流 start 节点 process_type）
+export const IMAGE_PROCESS_TYPES = {
+  segment: 'segment', // 抠图
+  enhance: 'enhance', // 放大
 };
 
 // 节点类型

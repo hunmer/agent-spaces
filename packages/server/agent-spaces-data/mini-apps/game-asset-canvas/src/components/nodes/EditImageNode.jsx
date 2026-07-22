@@ -5,6 +5,7 @@ import PromptPickerDialog from '../PromptPickerDialog';
 import PickedPromptBadge from './PickedPromptBadge';
 import { ASPECT_OPTIONS, DEFAULT_MODEL, MODEL_OPTIONS, NODE_TYPES, SIZE_OPTIONS, WORKFLOWS } from '../../utils/constants';
 import { hasPrompt } from '../../utils/prompts';
+import { normalizeImageUrls } from '../../utils/workflow';
 
 /**
  * 编辑图片节点。
@@ -42,7 +43,7 @@ export default function EditImageNode({ id, data, selected }) {
     onGenerate?.(id, NODE_TYPES.editImage, {
       workflowId: WORKFLOWS.edit_image,
       input: {
-        images: inputImages,
+        images: normalizeImageUrls(inputImages),
         prompt: merged,
         model: params.model || DEFAULT_MODEL,
         aspect: params.aspect || '1:1',

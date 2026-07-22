@@ -105,8 +105,9 @@ export default function Canvas() {
       }).catch((e) => console.error('queue addHistory failed:', e));
     },
   });
-  // 节点表单弹窗（从右侧新增节点 tab 触发）
-  const [formNodeType, setFormNodeType] = useState(null);
+  // 节点表单弹窗（右侧新增节点 tab 触发，或节点工具栏【编辑】按钮触发）
+  // { nodeType, initialImages } | null
+  const [formState, setFormState] = useState(null);
   const reactFlow = useReactFlow();
   // 拖拽到画布时记录拖入的节点类型（参考 reactflow.dev drag-and-drop）
   const dragTypeRef = useRef(null);
@@ -191,7 +192,8 @@ export default function Canvas() {
 
   // 添加节点：显式 width/height（NodeResizer 依赖）
   // 创建节点到指定位置（点击添加 / 拖拽放下共用）
-  const createNodeAt = useCallback((type, position) => {
+  // dataPatch: 可选，覆盖/扩展初始 data（如预填 loading/images）
+  const createNodeAt = useCallback((type, position, dataPatch) => {
     const id = genId(type);
     const meta = NODE_META[type] || {};
     const size = DEFAULT_SIZE[type] || DEFAULT_SIZE.default;
@@ -202,7 +204,7 @@ export default function Canvas() {
       width: size.w,
       height: size.h,
       style: { width: size.w, height: size.h },
-      data: { ...initialData(type), label: meta.label },
+      data: { ...initialData(type), label: meta.label, ...(dataPatch || {}) },
     };
     setNodes((prev) => [...prev, node]);
     return id;
@@ -221,15 +223,72 @@ export default function Canvas() {
     event.dataTransfer.effectAllowed = 'move';
   }, []);
 
-  // 拖拽经过画布：必须 preventDefault 才能触发 drop
+  // 拖拽经过画布：必须 preventDefault 才能触发 drop（图片和节点类型都要放行）
   const handleDragOver = useCallback((event) => {
     event.preventDefault();
     event.dataTransfer.dropEffect = 'move';
   }, []);
 
-  // 放下：用 screenToFlowPosition 把鼠标坐标转成画布坐标，创建节点
+  // 系统图片文件拖入画布：在落点建图片展示节点（loading 占位），
+  // 串行上传到后端（window.AgentSpaces.uploadFile 拿 http URL），完成后刷新为图片
+  const handleDropFiles = useCallback(async (fileList, position) => {
+    const files = Array.from(fileList || []).filter((f) => f.type?.startsWith('image/'));
+    if (!files.length) return;
+    const AS = window.AgentSpaces;
+    if (!AS?.uploadFile) return;
+
+    const size = DEFAULT_SIZE[NODE_TYPES.imageDisplay];
+    const gap = 20; // 节点间距
+    const cols = 3; // 每行最多 3 个
+    // 每张图一个节点，按落点 + 完整节点尺寸错落排列，避免重叠
+    const ids = [];
+    setNodes((prev) => {
+      const base = prev.length;
+      const additions = files.map((_, i) => {
+        const id = genId(NODE_TYPES.imageDisplay);
+        ids.push(id);
+        const col = i % cols;
+        const row = Math.floor(i / cols);
+        return {
+          id,
+          type: NODE_TYPES.imageDisplay,
+          position: {
+            x: (position?.x || 120) + col * (size.w + gap),
+            y: (position?.y || 120) + row * (size.h + gap) + base * 10,
+          },
+          width: size.w, height: size.h,
+          style: { width: size.w, height: size.h },
+          data: { ...initialData(NODE_TYPES.imageDisplay), source: 'upload', loading: true, images: [], label: NODE_META[NODE_TYPES.imageDisplay].label },
+        };
+      });
+      return [...prev, ...additions];
+    });
+
+    // 串行上传，每张完成即刷新对应节点
+    files.forEach((file, i) => {
+      AS.uploadFile(file)
+        .then((uploaded) => {
+          const httpUrl = uploaded?.url || uploaded?.httpPath;
+          if (!httpUrl) throw new Error('上传未返回 URL');
+          updateNodeData(ids[i], { images: [httpUrl], loading: false, source: 'upload' });
+        })
+        .catch((err) => {
+          console.error('drop upload failed:', err);
+          updateNodeData(ids[i], { loading: false, source: 'error', error: `上传失败：${err?.message || String(err)}` });
+        });
+    });
+  }, [setNodes, updateNodeData]);
+
+  // 放下：区分节点类型（application/reactflow）和系统图片文件
   const handleDrop = useCallback((event) => {
     event.preventDefault();
+    // 系统图片文件拖入：上传 + 展示
+    if (event.dataTransfer.files?.length) {
+      const position = reactFlow.screenToFlowPosition({ x: event.clientX, y: event.clientY });
+      handleDropFiles(event.dataTransfer.files, position);
+      return;
+    }
+    // 节点拖入：用 screenToFlowPosition 把鼠标坐标转成画布坐标，创建节点
     const type = event.dataTransfer.getData('application/reactflow') || dragTypeRef.current;
     dragTypeRef.current = null;
     if (!type) return;
@@ -238,7 +297,7 @@ export default function Canvas() {
       y: event.clientY,
     });
     createNodeAt(type, position);
-  }, [reactFlow, createNodeAt]);
+  }, [reactFlow, createNodeAt, handleDropFiles]);
 
   const handleClear = useCallback(() => {
     setNodes([]);
@@ -302,6 +361,25 @@ export default function Canvas() {
     addImageNodesFromUrls([url]);
   }, [addImageNodesFromUrls]);
 
+  // 图片加载完成后自动调整节点尺寸：按图片自然宽高比 + 节点内边距，
+  // 在 [minW, maxW] 范围内取合适宽度，按比例算高度，让图片完整展示。
+  // 由图片展示节点 <img onLoad> 触发。
+  const handleAutoSize = useCallback((nodeId, naturalWidth, naturalHeight) => {
+    if (!naturalWidth || !naturalHeight) return;
+    const minW = 220, maxW = 520;
+    // 节点内边距（左右）+ 下方来源/按钮行高度 + 标题栏高度
+    const padX = 32, chromeH = 80;
+    // 以自然宽度为基准，但限制在 [minW, maxW]
+    const w = Math.max(minW, Math.min(maxW, Math.round(naturalWidth)));
+    // 图片区域高度（max 320），加上 chrome 高度得到节点高度
+    const imgH = Math.min(320, Math.round((w - padX) * naturalHeight / naturalWidth));
+    const h = Math.max(160, imgH + chromeH);
+    setNodes((prev) => prev.map((nd) => {
+      if (nd.id !== nodeId) return nd;
+      return { ...nd, width: w, height: h, style: { ...nd.style, width: w, height: h } };
+    }));
+  }, [setNodes]);
+
   // 从右侧表单弹窗提交：根据 nodeType 用 settings 的工作流 ID
   const handleFormSubmit = useCallback((task) => {
     const workflowId = task.nodeType === NODE_TYPES.textToImage
@@ -310,7 +388,52 @@ export default function Canvas() {
     submit({ ...task, workflowId });
   }, [settings, submit]);
 
-  // 给每个节点的 data 注入 onUpdate / onGenerate / onExportImages（节点内部需要）。
+  // 节点工具栏「抠图」「放大」：调用抠图和放大工作流（image_enchanter），
+  // 把处理后的图片作为独立图片展示节点加到画布，并写入生成记录。
+  // 多图批量：image_enchanter 工作流 input 为单图 image_url，对每张图并发调用，合并所有产出。
+  // processType: 'segment'(抠图) | 'enhance'(放大)
+  const handleProcessImage = useCallback(async (sourceImages, processType) => {
+    if (!sourceImages?.length) return;
+    const workflowId = settings.imageEnchanterWorkflowId || WORKFLOWS.image_enchanter;
+    // 结果节点：loading 占位，完成后刷新为结果图
+    const resultId = createNodeAt(NODE_TYPES.imageDisplay, null);
+    updateNodeData(resultId, { images: [], source: 'processing', loading: true, error: undefined });
+    try {
+      // 批量并发：每张图一次工作流调用（input 是单图）
+      const results = await Promise.allSettled(
+        sourceImages.map((url) =>
+          runWorkflow(workflowId, { image_url: url, process_type: processType }, resultId)
+            .then(({ urls }) => urls || []),
+        ),
+      );
+      const allUrls = results
+        .filter((r) => r.status === 'fulfilled')
+        .flatMap((r) => r.value)
+        .filter(Boolean);
+      const failed = results.filter((r) => r.status === 'rejected').length;
+      if (!allUrls.length) throw new Error(failed ? `${failed} 张图片处理全部失败` : '未返回图片');
+      updateNodeData(resultId, {
+        images: allUrls,
+        source: processType === 'segment' ? 'segment' : 'enhance',
+        loading: false,
+        error: failed ? `${failed} 张失败` : undefined,
+      });
+      addHistory({
+        id: genId('hist'),
+        nodeId: null,
+        nodeType: NODE_TYPES.imageDisplay,
+        prompt: processType === 'segment' ? '抠图' : '放大',
+        model: 'image_enchanter',
+        images: allUrls,
+        createdAt: Date.now(),
+      }).catch((e) => console.error('processImage addHistory failed:', e));
+    } catch (err) {
+      console.error('processImage failed:', err);
+      updateNodeData(resultId, { source: 'error', loading: false, error: err?.message || String(err) });
+    }
+  }, [settings, runWorkflow, createNodeAt, updateNodeData, addHistory]);
+
+  // 给每个节点的 data 注入 onUpdate / onGenerate / onExportImages / onProcessImage（节点内部需要）。
   // 注意：不要覆盖 node.selected —— 选中状态由 ReactFlow 通过 onNodesChange 的
   // selection 变更 + applyNodeChanges 自行管理；这里强行赋值会破坏点击选中/删除机制。
   // 对「图片接收节点」(editImage/imageDisplay)，有连入边时用 computeInputImages 派生输入图片覆盖 data.images，
@@ -331,10 +454,15 @@ export default function Canvas() {
           onUpdate: makeOnUpdate(nd.id),
           onGenerate: handleGenerate,
           onExportImages: (imgs) => addImageNodesFromUrls(imgs),
+          onProcessImage: handleProcessImage,
+          // 工具栏【编辑】按钮：打开编辑图片弹窗，预填当前节点图片
+          onEditImages: (imgs) => setFormState({ nodeType: NODE_TYPES.editImage, initialImages: imgs }),
+          // 图片加载完成自动调整节点尺寸（仅图片展示节点用）
+          onAutoSize: handleAutoSize,
         },
       };
     }),
-    [nodes, upstreamMap, makeOnUpdate, handleGenerate, addImageNodesFromUrls],
+    [nodes, upstreamMap, makeOnUpdate, handleGenerate, addImageNodesFromUrls, handleProcessImage, handleAutoSize],
   );
 
   // 面板布局变化 -> 持久化
@@ -412,7 +540,7 @@ export default function Canvas() {
           onDeleteNode={handleDeleteNode}
           onAdd={handleAdd}
           onDragStartNode={handleDragStartNode}
-          onOpenForm={(type) => setFormNodeType(type)}
+          onOpenForm={(type) => setFormState({ nodeType: type, initialImages: [] })}
           history={history}
           onRemoveHistory={removeHistory}
           onClearHistory={clearHistory}
@@ -431,9 +559,10 @@ export default function Canvas() {
       />
 
       <NodeFormDialog
-        open={!!formNodeType}
-        nodeType={formNodeType}
-        onClose={() => setFormNodeType(null)}
+        open={!!formState}
+        nodeType={formState?.nodeType}
+        initialImages={formState?.initialImages}
+        onClose={() => setFormState(null)}
         onSubmit={handleFormSubmit}
       />
     </ResizablePanelGroup>

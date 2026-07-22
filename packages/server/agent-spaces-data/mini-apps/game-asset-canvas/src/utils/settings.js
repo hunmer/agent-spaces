@@ -7,6 +7,7 @@ export { BUILTIN_PLUGIN };
 // 默认工作流 ID（与 constants.WORKFLOWS 一致，作为设置未覆盖时的兜底）
 export const DEFAULT_TEXT_TO_IMAGE_WORKFLOW_ID = WORKFLOWS.text_to_image;
 export const DEFAULT_EDIT_IMAGE_WORKFLOW_ID = WORKFLOWS.edit_image;
+export const DEFAULT_IMAGE_ENCHANTER_WORKFLOW_ID = WORKFLOWS.image_enchanter;
 
 // 设置文件路径（configs/）
 export const SETTINGS_PATH = 'settings.json';
@@ -18,6 +19,9 @@ export const DEFAULT_SETTINGS = {
   // 编辑图片工作流
   editImageWorkflowId: DEFAULT_EDIT_IMAGE_WORKFLOW_ID,
   editImageWorkflowName: 'edit_image',
+  // 抠图和放大工作流
+  imageEnchanterWorkflowId: DEFAULT_IMAGE_ENCHANTER_WORKFLOW_ID,
+  imageEnchanterWorkflowName: 'image_enchanter',
 };
 
 // 工作流槽位：设置页为每个节点类型选一个目标工作流
@@ -40,6 +44,15 @@ export const WORKFLOW_SLOTS = [
     nameKey: 'editImageWorkflowName',
     defaultId: DEFAULT_EDIT_IMAGE_WORKFLOW_ID,
     defaultName: 'edit_image',
+  },
+  {
+    key: 'imageEnchanter',
+    label: '抠图和放大工作流',
+    desc: '节点工具栏「抠图」「放大」按钮执行时调用的工作流',
+    idKey: 'imageEnchanterWorkflowId',
+    nameKey: 'imageEnchanterWorkflowName',
+    defaultId: DEFAULT_IMAGE_ENCHANTER_WORKFLOW_ID,
+    defaultName: 'image_enchanter',
   },
 ];
 

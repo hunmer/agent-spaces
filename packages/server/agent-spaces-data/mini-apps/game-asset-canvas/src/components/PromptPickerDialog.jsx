@@ -62,7 +62,7 @@ export default function PromptPickerDialog({ open, scene = 'text', onClose, onPi
 
   return (
     <Dialog open={open} onOpenChange={(next) => { if (!next) { setEditing(null); onClose?.(); } }}>
-      <DialogContent className="flex h-[80vh] max-h-[640px] max-w-3xl flex-col gap-0 p-0">
+      <DialogContent className="flex h-[80vh] max-h-[640px] !w-[80vw] !max-w-[80vw] flex-col gap-0 p-0">
         <DialogHeader className="shrink-0 border-b border-border px-4 py-3">
           <DialogTitle>📋 提示词库</DialogTitle>
         </DialogHeader>

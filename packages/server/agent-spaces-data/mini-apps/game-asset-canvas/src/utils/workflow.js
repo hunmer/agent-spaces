@@ -5,6 +5,24 @@ import { BUILTIN_PLUGIN, EXEC_TOOL } from './constants';
 const MAX_WAIT_MS = 600_000;
 
 /**
+ * 规范化图片 URL：相对路径（如 /static/uploads/xxx.png）补全为完整 http URL。
+ * 工作流返回的可能是相对路径，浏览器同源能展示，但提交给工作流后端下载时需要完整 URL。
+ * data: URI / 已是 http(s) 的原样返回。
+ */
+export function normalizeImageUrl(url) {
+  if (!url) return url;
+  const s = String(url);
+  if (/^https?:\/\//i.test(s) || s.startsWith('data:')) return s;
+  if (s.startsWith('/')) return `${window.location.origin}${s}`;
+  return s;
+}
+
+export function normalizeImageUrls(urls) {
+  if (!Array.isArray(urls)) return urls;
+  return urls.map(normalizeImageUrl);
+}
+
+/**
  * 同步执行工作流，返回 end 节点的 output 对象。
  * @param {string} workflowId
  * @param {Record<string, unknown>} input start 节点 inputFields 的值
@@ -81,11 +99,12 @@ function extractOutput(steps) {
 }
 
 function hasImages(out) {
-  return Array.isArray(out?.result) || Array.isArray(out?.images);
+  return Array.isArray(out?.result) || Array.isArray(out?.images) || Array.isArray(out?.image_urls);
 }
 
 /**
  * 执行文生图/编辑图片工作流，返回图片 URL 数组。
+ * 兼容多种 output 字段名：result / images / image_urls（image_enchanter 工作流 end 节点用 image_urls）。
  * @param {string} workflowId
  * @param {object} input
  * @returns {Promise<string[]>}
@@ -93,9 +112,13 @@ function hasImages(out) {
 export async function generateImages(workflowId, input) {
   const output = await runWorkflow(workflowId, input, { meta: { mode: workflowId } });
   const result = output?.result;
-  if (Array.isArray(result)) return result.filter(Boolean);
-  if (Array.isArray(output?.images)) return output.images.filter(Boolean);
-  if (typeof result === 'string' && result) return [result];
-  if (output?.error) throw new Error(output.error);
-  return [];
+  let urls;
+  if (Array.isArray(result)) urls = result.filter(Boolean);
+  else if (Array.isArray(output?.images)) urls = output.images.filter(Boolean);
+  else if (Array.isArray(output?.image_urls)) urls = output.image_urls.filter(Boolean);
+  else if (typeof result === 'string' && result) urls = [result];
+  else if (output?.error) throw new Error(output.error);
+  else urls = [];
+  // 规范化：相对路径补全为完整 http URL
+  return normalizeImageUrls(urls);
 }

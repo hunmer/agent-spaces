@@ -15,8 +15,20 @@ import { NODE_TYPES } from '../../utils/constants';
 export default function ImageDisplayNode({ id, data, selected }) {
   const images = data?.images || [];
   const onUpdate = data?.onUpdate;
+  const onAutoSize = data?.onAutoSize;
   const fileRef = useRef(null);
   const [uploading, setUploading] = useState(false);
+  // 处理中（抠图/放大）显示加载占位，完成后刷新为结果图
+  const loading = data?.loading;
+  const source = data?.source;
+
+  // 图片加载完成：按自然尺寸回调 Canvas 自动调整节点尺寸（仅触发一次：图片 URL 变化时重新测量）
+  const handleImgLoad = useCallback((e) => {
+    const img = e.currentTarget;
+    const nw = img?.naturalWidth;
+    const nh = img?.naturalHeight;
+    if (nw && nh && onAutoSize) onAutoSize(id, nw, nh);
+  }, [id, onAutoSize]);
 
   const handleFile = useCallback(async (e) => {
     const file = e.target.files?.[0];
@@ -60,7 +72,13 @@ export default function ImageDisplayNode({ id, data, selected }) {
 
   return (
     <NodeShell nodeType={NODE_TYPES.imageDisplay} data={data} selected={selected} targetHandle sourceHandle>
-      {uploading ? (
+      {loading ? (
+        // 抠图/放大处理中：加载占位
+        <div className="flex h-28 items-center justify-center gap-2 rounded-md border border-dashed border-primary/50 text-xs text-primary">
+          <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+          处理中…
+        </div>
+      ) : uploading ? (
         <div className="flex h-28 items-center justify-center gap-2 rounded-md border border-dashed border-primary/50 text-xs text-primary">
           <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-primary border-t-transparent" />
           上传中…
@@ -72,11 +90,22 @@ export default function ImageDisplayNode({ id, data, selected }) {
             onClick={open}
             className="block w-full overflow-hidden rounded-md border border-border"
           >
-            <img src={images[0]} alt="" className="max-h-[180px] w-full object-cover transition hover:opacity-80" />
+            <img
+              src={images[0]}
+              alt=""
+              className="w-full object-contain transition hover:opacity-80"
+              onLoad={handleImgLoad}
+            />
           </button>
           <div className="flex items-center justify-between gap-2">
             <span className="text-xs text-muted-foreground">
-              {isUpstream ? '来自连线' : data?.source === 'url' ? '来自 URL' : data?.source === 'history' ? '来自记录' : '已上传'}
+              {isUpstream ? '来自连线'
+                : source === 'url' ? '来自 URL'
+                : source === 'history' ? '来自记录'
+                : source === 'segment' ? '抠图结果'
+                : source === 'enhance' ? '放大结果'
+                : source === 'error' ? '处理失败'
+                : '已上传'}
             </span>
             <button
               type="button"
