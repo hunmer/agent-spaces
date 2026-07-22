@@ -37,9 +37,20 @@
 - Handle：source（输出）在底部 Bottom，target（输入）在顶部 Top
 
 ## 工作流调用 (utils/workflow.js)
-- `window.AgentSpaces.callPluginTool('@agent-spaces/builtin', 'execute_workflow_sync', { workflow_id, input, fault_tolerance:'stop' }, { meta })`
-- 结果取 `steps` 里最后 `nodeType==='end'` 的 `output.result`（string[] URL）
-- 工作流 ID：text_to_image=`d88dcb7c-7f5f-47c8-962c-89217a2c0ad6`，edit_image=`19f5f8a9-305d-43a6-9b05-584597213a8f`
+- `window.AgentSpaces.callPluginTool('@agent-spaces/builtin', 'execute_workflow_sync', { workflow_id, input, fault_tolerance:'stop', max_wait_ms:600000 }, { meta })`
+- **max_wait_ms=600000（10分钟）**：execute_workflow_sync 默认仅等 120s，jimeng/可灵等异步图片生成往往超过，必须传满上限避免 timedOut
+- 结果解析（extractOutput，多路径兜底）：优先 end 节点 output.result/images；其次生成节点 output.data.images（jimeng/aliyun 结构）；最后任意 completed 节点
+- 超时容错：timedOut=true 且无产出时抛明确超时错误（不抛隐晦的"未返回图片"）
+- **工作流 ID 可在设置页配置**（见下「设置」），节点执行时优先用 settings 里的 ID，fallback 到 constants 默认值
+- 默认工作流 ID：text_to_image=`d88dcb7c-7f5f-47c8-962c-89217a2c0ad6`，edit_image=`19f5f8a9-305d-43a6-9b05-584597213a8f`
+
+## 设置 (components/SettingsDialog.jsx)
+- 顶栏「⚙ 设置」按钮打开，参考 stickerGenerator/SettingsDialog.jsx
+- 可为每种节点类型配置执行时调用的目标工作流（WORKFLOW_SLOTS：文字生成图片 / 编辑图片）
+- 工作流通过宿主 `WorkflowListDialog` 选择，列表由 `list_workflows` builtin tool 拉取
+- 持久化：存 `configs/settings.json`，走 `invokeService('save_settings')` 单写者
+- 读取：`useSettings` hook（getConfig + onAnyConfigChanged 多端同步 + mergeSettings 补默认值）
+- 节点执行：Canvas.handleGenerate 按 nodeType 从 settings 取工作流 ID，覆盖节点默认值
 
 ## 模型下拉 (utils/constants.js MODEL_OPTIONS)
 工作流 run_code 路由关键字（已补全）：

@@ -6,6 +6,7 @@ import {
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@agent-spaces/ui';
 import Toolbar from './Toolbar';
 import RightPanel from './RightPanel';
+import SettingsDialog from './SettingsDialog';
 import TextToImageNode from './nodes/TextToImageNode';
 import EditImageNode from './nodes/EditImageNode';
 import ImageDisplayNode from './nodes/ImageDisplayNode';
@@ -13,6 +14,7 @@ import NoteNode from './nodes/NoteNode';
 import useCanvasState from '../hooks/useCanvasState';
 import useWorkflow from '../hooks/useWorkflow';
 import useGenerationHistory from '../hooks/useGenerationHistory';
+import useSettings from '../hooks/useSettings';
 import { NODE_META, NODE_TYPES } from '../utils/constants';
 import { autoLayout } from '../utils/layout';
 import { downloadJson, serializeCanvas } from '../utils/export';
@@ -56,7 +58,9 @@ export default function Canvas() {
   const { nodes, edges, loaded, setNodes, setEdges, updateNodeData } = useCanvasState();
   const runWorkflow = useWorkflow();
   const { history, addHistory, removeHistory, clearHistory } = useGenerationHistory();
+  const { settings, saveSettings } = useSettings();
   const [selectedId, setSelectedId] = useState(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const reactFlow = useReactFlow();
   // 拖拽到画布时记录拖入的节点类型（参考 reactflow.dev drag-and-drop）
   const dragTypeRef = useRef(null);
@@ -131,11 +135,17 @@ export default function Canvas() {
     });
   }, [edges, setNodes]);
 
-  // 节点点击"生成"
+  // 节点点击"生成"：优先用设置页配置的工作流 ID，fallback 到节点传的 workflowId
   const handleGenerate = useCallback(async (nodeId, nodeType, { workflowId, input }) => {
+    const settingId = nodeType === NODE_TYPES.textToImage
+      ? settings.textToImageWorkflowId
+      : nodeType === NODE_TYPES.editImage
+        ? settings.editImageWorkflowId
+        : workflowId;
+    const finalWorkflowId = settingId || workflowId;
     updateNodeData(nodeId, { status: 'running', error: undefined });
     try {
-      const { urls } = await runWorkflow(workflowId, input, nodeId);
+      const { urls } = await runWorkflow(finalWorkflowId, input, nodeId);
       if (!urls.length) throw new Error('未返回图片');
       updateNodeData(nodeId, { status: 'done', output: { images: urls } });
       propagateDownstream(nodeId, urls);
@@ -152,7 +162,7 @@ export default function Canvas() {
       console.error('generate failed:', err);
       updateNodeData(nodeId, { status: 'error', error: err?.message || String(err) });
     }
-  }, [runWorkflow, updateNodeData, propagateDownstream, addHistory]);
+  }, [runWorkflow, updateNodeData, propagateDownstream, addHistory, settings]);
 
   // 添加节点：显式 width/height（NodeResizer 依赖）
   // 创建节点到指定位置（点击添加 / 拖拽放下共用）
@@ -298,6 +308,7 @@ export default function Canvas() {
             onClear={handleClear}
             onAutoLayout={handleAutoLayout}
             onExport={handleExport}
+            onOpenSettings={() => setSettingsOpen(true)}
             count={nodes.length}
           />
           {/* 外层 ref + onDrop/onDragOver 实现拖拽新增节点（参考 reactflow.dev drag-and-drop） */}
@@ -344,6 +355,16 @@ export default function Canvas() {
           onUseImage={handleUseImage}
         />
       </ResizablePanel>
+
+      <SettingsDialog
+        open={settingsOpen}
+        value={settings}
+        onClose={() => setSettingsOpen(false)}
+        onSave={async (cfg) => {
+          await saveSettings(cfg);
+          setSettingsOpen(false);
+        }}
+      />
     </ResizablePanelGroup>
   );
 }

@@ -1,85 +1,72 @@
 {
   "nodes": [
     {
-      "id": "textToImage-mrvhwxx6-1",
+      "id": "textToImage-mrvnfju9-2",
       "type": "textToImage",
       "position": {
-        "x": 682.5233881163083,
-        "y": 71.78761061946904
+        "x": 40,
+        "y": 40
+      },
+      "width": 318,
+      "height": 331,
+      "style": {
+        "width": 290,
+        "height": 240
       },
       "data": {
         "status": "done",
         "output": {
           "images": [
-            "https://files.closeai.fans/filesystem/output/20260722/495c5fa9-8684-4028-821d-44a810b69d9b.png"
+            "https://p26-dreamina-sign.byteimg.com/tos-cn-i-tb4s082cfz/9279a1e382c64bc9b15887289c795e23~tplv-tb4s082cfz-aigc_resize:0:0.png?lk3s=7c3bb0db&x-expires=1784707200&x-signature=QBda%2Fs2Dm9%2FNOE%2F5Hr3Gd%2BmOeb8%3D&format=.png",
+            "https://p26-dreamina-sign.byteimg.com/tos-cn-i-tb4s082cfz/0e0e4f8ec5494a5496a12e75cfd4a764~tplv-tb4s082cfz-aigc_resize:0:0.png?lk3s=7c3bb0db&x-expires=1784707200&x-signature=fGbbBKSgT4tSE2KSfhxUlAZLyYw%3D&format=.png",
+            "https://p26-dreamina-sign.byteimg.com/tos-cn-i-tb4s082cfz/ac9b115b0c6a4e62a17f2202d183fc62~tplv-tb4s082cfz-aigc_resize:0:0.png?lk3s=7c3bb0db&x-expires=1784707200&x-signature=MwMGqbRitFivmLrW6iB6Q5X%2B%2BYA%3D&format=.png",
+            "https://p26-dreamina-sign.byteimg.com/tos-cn-i-tb4s082cfz/310904a2985143ed82cb012a34ff74f8~tplv-tb4s082cfz-aigc_resize:0:0.png?lk3s=7c3bb0db&x-expires=1784707200&x-signature=FUn%2Bhk7X7Ka8BEn80o1vjKtM%2FBI%3D&format=.png"
           ]
         },
         "params": {
           "prompt": "像素风格的剑士，重骑士 ，猎手，魔导师，狂战士，影刺客，枪骑兵，牧师，九宫图",
-          "model": "gpt-image-2",
+          "model": "jimeng-5.0",
           "aspect": "1:1",
-          "size": "2k"
+          "size": "1k"
         },
         "label": "文字生成图片"
       },
       "measured": {
-        "width": 720,
-        "height": 582
+        "width": 318,
+        "height": 331
       },
-      "dragging": false,
       "selected": false,
-      "width": 720,
-      "height": 582,
       "resizing": false
     },
     {
-      "id": "imageDisplay-mrvjyxgb-1",
+      "id": "imageDisplay-mrvo7v2p-1",
       "type": "imageDisplay",
       "position": {
-        "x": 684.5,
-        "y": 992
+        "x": -153.69141114203907,
+        "y": 485.35396065420287
       },
+      "width": 246,
+      "height": 370,
       "style": {
         "width": 260,
         "height": 240
       },
       "data": {
         "images": [
-          "blob:http://127.0.0.1:3000/6da39342-1dc4-430f-9de4-6808685aeece"
+          "/static/uploads/4f295de7ffd1e96efdad5ffc6b975199 (1)-2ef37252-3f82-4ccb-811c-e82272cb5495.jpg"
         ],
         "source": "upload",
         "label": "图片展示"
       },
       "measured": {
-        "width": 260,
-        "height": 240
+        "width": 246,
+        "height": 370
       },
-      "dragging": false,
-      "selected": false
-    },
-    {
-      "id": "note-mrvjzbew-1",
-      "type": "note",
-      "position": {
-        "x": 1148.9576485461441,
-        "y": 968.8900126422249
-      },
-      "style": {
-        "width": 200,
-        "height": 120
-      },
-      "data": {
-        "text": "",
-        "label": "便签"
-      },
-      "measured": {
-        "width": 200,
-        "height": 120
-      },
-      "dragging": false,
-      "selected": false
+      "selected": false,
+      "resizing": false,
+      "dragging": false
     }
   ],
   "edges": [],
-  "savedAt": 1784695713870
+  "savedAt": 1784700807391
 }

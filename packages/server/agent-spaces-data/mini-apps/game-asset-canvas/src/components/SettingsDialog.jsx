@@ -1,0 +1,150 @@
+// 设置对话框：为每种节点类型配置执行时调用的目标工作流
+// 参考 stickerGenerator/SettingsDialog.jsx + WorkflowListDialog 工作流选择模式
+import { useEffect, useState } from 'react';
+import {
+  WORKFLOW_SLOTS, BUILTIN_PLUGIN,
+} from '../utils/settings';
+
+const {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+  Button, Label, WorkflowListDialog, Workflow, RotateCcw,
+} = window.AgentSpacesUI;
+
+// 工作流列表归一化（兼容 workflow_id/id、title/name）
+function normalizeWorkflow(workflow) {
+  return {
+    ...workflow,
+    id: workflow.id || workflow.workflow_id,
+    name: workflow.name || workflow.title || '未命名工作流',
+    updatedAt: workflow.updatedAt || 0,
+    nodes: workflow.nodes || [],
+  };
+}
+
+// 工作流槽位行
+function WorkflowSlot({ slot, value, onPick, onReset }) {
+  const name = value[slot.nameKey] || '';
+  const id = value[slot.idKey] || '';
+  const usingDefault = id === slot.defaultId;
+  return (
+    <div className="flex flex-col gap-1.5">
+      <Label className="text-sm font-medium">{slot.label}</Label>
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          className="flex flex-1 items-center gap-2 rounded-md border border-border bg-background px-3 py-2 text-sm transition hover:border-primary"
+          onClick={() => onPick(slot.key)}
+          title={id || '未设置'}
+        >
+          <Workflow className="h-4 w-4 shrink-0 text-muted-foreground" />
+          <span className="flex-1 truncate text-left">
+            {name || id || '点击选择工作流'}
+          </span>
+          {usingDefault && <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">默认</span>}
+        </button>
+        {id && !usingDefault && (
+          <Button size="sm" variant="ghost" className="shrink-0" onClick={onReset}>
+            <RotateCcw className="h-3.5 w-3.5" />
+          </Button>
+        )}
+      </div>
+      <div className="text-xs text-muted-foreground">{slot.desc}</div>
+    </div>
+  );
+}
+
+export default function SettingsDialog({ open, value, onClose, onSave }) {
+  const AS = window.AgentSpaces;
+  const [cfg, setCfg] = useState(value || {});
+  const [workflows, setWorkflows] = useState([]);
+  const [workflowLoading, setWorkflowLoading] = useState(false);
+  const [pickingSlot, setPickingSlot] = useState(null);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (open) {
+      setCfg(value || {});
+      setError('');
+    }
+  }, [open, value]);
+
+  // 打开工作流选择器：拉取列表
+  const openPicker = async (slotKey) => {
+    setPickingSlot(slotKey);
+    setWorkflowLoading(true);
+    try {
+      const resp = await AS.callPluginTool(BUILTIN_PLUGIN, 'list_workflows', { page_size: 50 });
+      const list = resp?.data?.workflows || resp?.result?.data?.workflows || resp?.result?.workflows || resp?.workflows || [];
+      setWorkflows(Array.isArray(list) ? list : []);
+    } catch (err) {
+      setError(err?.message || String(err));
+    } finally {
+      setWorkflowLoading(false);
+    }
+  };
+
+  const onPickWorkflow = (workflow) => {
+    const slot = WORKFLOW_SLOTS.find((s) => s.key === pickingSlot);
+    if (!slot) return;
+    const id = workflow.workflow_id || workflow.id;
+    const name = workflow.title || workflow.name || '未命名工作流';
+    setCfg((prev) => ({ ...prev, [slot.idKey]: id, [slot.nameKey]: name }));
+    setPickingSlot(null);
+  };
+
+  const resetSlot = (slot) => {
+    setCfg((prev) => ({
+      ...prev,
+      [slot.idKey]: slot.defaultId,
+      [slot.nameKey]: slot.defaultName,
+    }));
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(next) => { if (!next) onClose(); }}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>设置</DialogTitle>
+        </DialogHeader>
+
+        <div className="flex flex-col gap-5 py-2">
+          <div className="text-sm font-semibold text-muted-foreground">工作流</div>
+          {WORKFLOW_SLOTS.map((slot) => (
+            <WorkflowSlot
+              key={slot.key}
+              slot={slot}
+              value={cfg}
+              onPick={openPicker}
+              onReset={() => resetSlot(slot)}
+            />
+          ))}
+          <p className="text-xs text-muted-foreground">
+            节点执行时会调用此处配置的工作流；未设置时使用内置默认值。
+          </p>
+
+          {error && (
+            <div className="rounded-md bg-red-500/10 px-3 py-2 text-sm text-red-500">{error}</div>
+          )}
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>取消</Button>
+          <Button onClick={() => onSave(cfg)}>保存</Button>
+        </DialogFooter>
+      </DialogContent>
+
+      <WorkflowListDialog
+        open={!!pickingSlot}
+        workflows={workflows.map(normalizeWorkflow)}
+        onSelect={onPickWorkflow}
+        onCreate={() => window.open('/workflows', '_blank')}
+        onClose={() => setPickingSlot(null)}
+      />
+      {pickingSlot && workflowLoading && (
+        <div className="fixed bottom-4 left-1/2 z-50 -translate-x-1/2 rounded-md bg-card px-4 py-2 text-sm shadow-lg">
+          工作流加载中...
+        </div>
+      )}
+    </Dialog>
+  );
+}

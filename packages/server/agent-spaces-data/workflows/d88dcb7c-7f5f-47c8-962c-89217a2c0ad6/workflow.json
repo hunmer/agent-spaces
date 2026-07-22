@@ -775,12 +775,12 @@
     "workflow.jimeng",
     "workflow.ai-image"
   ],
-  "lastRunAt": 1784689386712,
+  "lastRunAt": 1784700635173,
   "groups": [],
   "description": "文字生成图片",
   "variables": [],
   "layoutSnapshot": {
     "nodeDisplayMode": "normal"
   },
-  "lastOpenedAt": 1784687334498
+  "lastOpenedAt": 1784700140448
 }

@@ -1,6 +1,7 @@
-// 服务端单写者：画布状态 + 生成记录由服务端统一写 configs 并广播，避免多端互相覆盖
+// 服务端单写者：画布状态 + 生成记录 + 设置由服务端统一写 configs 并广播，避免多端互相覆盖
 const CANVAS_CONFIG = 'canvas.json';
 const HISTORY_CONFIG = 'generation-history.json';
+const SETTINGS_CONFIG = 'settings.json';
 const HISTORY_MAX = 200;
 
 export default {
@@ -46,6 +47,12 @@ export default {
   // 清空生成记录
   clear_history: (_payload, ctx) => {
     ctx.writeConfig(HISTORY_CONFIG, []);
+    return { ok: true };
+  },
+
+  // 保存设置（整体覆盖；前端已 merge 默认值）
+  save_settings: ({ settings }, ctx) => {
+    ctx.writeConfig(SETTINGS_CONFIG, settings || {});
     return { ok: true };
   },
 };
