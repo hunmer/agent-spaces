@@ -1,11 +1,12 @@
 /**
- * 顶部工具栏：自动布局 / 导出 / 设置 / 清空，右侧插槽放执行队列。
- * @param {{ onClear, onAutoLayout, onExport, onOpenSettings, count, queueSlot }} props
+ * 顶部工具栏：工作区切换 / 自动布局 / 导出 / 设置 / 清空，右侧插槽放执行队列。
+ * @param {{ onClear, onAutoLayout, onExport, onOpenSettings, count, queueSlot, workspaceSlot }} props
  */
-export default function Toolbar({ onClear, onAutoLayout, onExport, onOpenSettings, count, queueSlot }) {
+export default function Toolbar({ onClear, onAutoLayout, onExport, onOpenSettings, count, queueSlot, workspaceSlot }) {
   return (
     <div className="flex flex-wrap items-center gap-2 border-b border-border bg-card px-3 py-2">
       <span className="mr-1 text-sm font-semibold">🎮 游戏资产生成画布</span>
+      {workspaceSlot}
       <div className="mx-1 h-5 w-px bg-border" />
 
       <button

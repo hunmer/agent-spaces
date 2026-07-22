@@ -92,12 +92,31 @@
 - 工具栏「导出 JSON」按钮触发
 
 ## 持久化
-- 画布状态（nodes/edges）存 `configs/canvas.json`
-- 生成记录存 `configs/generation-history.json`（最新在前，上限 200 条）
-- 自定义提示词存 `configs/prompt-library.json`（用户增删，内置库不写盘）
-- 写入走服务端单写者 `src/services/canvas.js`（`save_canvas`/`add_history`/`remove_history`/`clear_history`/`save_settings`/`save_prompt`/`delete_prompt`，`invokeService`）
+- **多工作区隔离**：节点和生成记录按工作区隔离，存到 `configs/workspaces/<workspaceId>/` 子目录；设置/提示词库/面板布局仍全局共享（用户级偏好）。
+  - 工作区清单：`configs/workspaces.json`，结构 `{ activeId, workspaces: [{id,name,createdAt}] }`
+  - 工作区数据：`configs/workspaces/<id>/canvas.json` 和 `configs/workspaces/<id>/generation-history.json`
+  - 首次无 `workspaces.json` 时兜底返回 `default` 默认工作区（不阻塞使用）
+  - 关键：`safeProjectSubdirPath` 支持子目录路径，`listConfigs` 递归扫描子目录，`configSnapshot`/`configChanged` 广播完整相对路径，所以子目录隔离**无需改宿主**
+- 写入走服务端单写者 `src/services/canvas.js`（`save_canvas`/`add_history`/`remove_history`/`clear_history`/`save_settings`/`save_prompt`/`delete_prompt`/`list_workspaces`/`create_workspace`/`rename_workspace`/`switch_workspace`/`delete_workspace`，`invokeService`）
+- 节点/历史 handler 接收 `{ workspaceId, ... }`，按 workspaceId 路由到隔离子目录
 - 读取用 `getConfig`，订阅 `onAnyConfigChanged` 多端同步（utils/storage.js）
 - 生成图片额外下载到 `data/gen/`（`downloadFile`），上传图片存 `data/uploads/`
+
+## 多工作区切换
+- 顶栏 `WorkspaceSwitcher`（Popover）：展示工作区列表，支持切换/重命名/删除，底部新建 + 批量删除
+- 删除走自定义 `DeleteWorkspacesDialog`（替代原生 confirm）：支持多选 checkbox 批量删除；当前激活工作区不可删（避免清空当前视图，先切走再删）；至少保留一个工作区
+- `useWorkspaces` hook：管理 `workspaces.json`（getConfig + onConfigReady + onAnyConfigChanged 三重读取，invokeService 单写者）
+- `useCanvasState(workspaceId)` / `useGenerationHistory(workspaceId)`：接收 workspaceId，切换时自动重载该工作区的节点/历史
+- Canvas 渲染门控：`activeId` 未就绪或 canvas 未加载完时显示「加载中…」，避免渲染空数据
+- 切换/创建/删除流程：调 service 写 `workspaces.json` → 广播 → `useWorkspaces` 更新 activeId → 子 hook 重载
+
+## 节点复制粘贴（Ctrl+C / Ctrl+V）
+- 选中节点（支持多选）后 Ctrl+C 复制到模块级内存剪贴板（`utils/clipboard.js`），Ctrl+V 粘贴
+- **跨工作区复制**：剪贴板是模块级 ref，切换工作区后 Ctrl+V 仍可粘贴（工作区切换是整画布替换，键盘复制是唯一跨工作区方式）
+- 序列化时剥离注入的函数回调（onUpdate/onGenerate 等，与 export.js 一致），仅保留选中节点**内部**连线（外部连线不复制）
+- 粘贴生成新 id（节点 + 边 id 重映射），整体偏移 {40,40} 避免与原节点重叠
+- 焦点在 input/textarea/contenteditable 时不拦截，让浏览器走原生复制/粘贴
+- 实现：`copyNodes`/`pasteNodes`（clipboard.js）+ Canvas 内 `useEffect` 监听 window keydown
 
 ## 右侧面板 (components/RightPanel.jsx)
 - 用宿主 Tabs 组件，三个 tab：

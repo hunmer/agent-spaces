@@ -9,6 +9,7 @@ import RightPanel from './RightPanel';
 import SettingsDialog from './SettingsDialog';
 import ExecutionQueuePopover from './ExecutionQueuePopover';
 import NodeFormDialog from './NodeFormDialog';
+import WorkspaceSwitcher from './WorkspaceSwitcher';
 import TextToImageNode from './nodes/TextToImageNode';
 import EditImageNode from './nodes/EditImageNode';
 import ImageDisplayNode from './nodes/ImageDisplayNode';
@@ -18,9 +19,11 @@ import useWorkflow from '../hooks/useWorkflow';
 import useGenerationHistory from '../hooks/useGenerationHistory';
 import useSettings from '../hooks/useSettings';
 import useExecutionQueue from '../hooks/useExecutionQueue';
+import useWorkspaces from '../hooks/useWorkspaces';
 import { NODE_META, NODE_TYPES, WORKFLOWS } from '../utils/constants';
 import { autoLayout } from '../utils/layout';
 import { downloadJson, serializeCanvas } from '../utils/export';
+import { copyNodes, hasClipboard, pasteNodes } from '../utils/clipboard';
 import { loadPanelLayout, onAnyConfigChanged, savePanelLayout } from '../utils/storage';
 
 // 节点类型 -> 渲染组件
@@ -83,9 +86,12 @@ function initialData(type) {
 }
 
 export default function Canvas() {
-  const { nodes, edges, loaded, setNodes, setEdges, updateNodeData } = useCanvasState();
+  // 工作区管理（activeId 驱动后续节点/历史的隔离加载）
+  const { workspaces, activeId, createWorkspace, renameWorkspace, switchWorkspace, deleteWorkspace } = useWorkspaces();
+  // hooks 依赖 activeId：切换工作区时自动重载该工作区的节点/历史
+  const { nodes, edges, loaded, setNodes, setEdges, updateNodeData } = useCanvasState(activeId);
   const runWorkflow = useWorkflow();
-  const { history, addHistory, removeHistory, clearHistory } = useGenerationHistory();
+  const { history, addHistory, removeHistory, clearHistory } = useGenerationHistory(activeId);
   const { settings, saveSettings } = useSettings();
   const [selectedId, setSelectedId] = useState(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -371,6 +377,42 @@ export default function Canvas() {
     addImageNodesFromUrls([url]);
   }, [addImageNodesFromUrls]);
 
+  // —— 复制粘贴节点（Ctrl+C / Ctrl+V）——
+  // 剪贴板为模块级内存（utils/clipboard.js），切换工作区后仍可粘贴 → 跨工作区复制。
+  // 焦点在 input/textarea/contenteditable 时不拦截，让浏览器走原生复制/粘贴。
+  const handleCopy = useCallback(() => {
+    const selected = nodes.filter((n) => n.selected);
+    if (!selected.length) return;
+    copyNodes(selected, edges);
+  }, [nodes, edges]);
+
+  const handlePaste = useCallback(() => {
+    if (!hasClipboard()) return;
+    const result = pasteNodes({ genId });
+    if (!result) return;
+    setNodes((prev) => [...prev, ...result.nodes]);
+    setEdges((prev) => [...prev, ...result.edges]);
+  }, [setNodes, setEdges]);
+
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      const t = e.target;
+      const tag = t?.tagName;
+      const isEditable = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT'
+        || t?.isContentEditable;
+      const mod = e.ctrlKey || e.metaKey;
+      if (!mod || isEditable) return;
+      if (e.key === 'c' || e.key === 'C') {
+        const selected = nodes.filter((n) => n.selected);
+        if (selected.length) { e.preventDefault(); handleCopy(); }
+      } else if (e.key === 'v' || e.key === 'V') {
+        if (hasClipboard()) { e.preventDefault(); handlePaste(); }
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [nodes, handleCopy, handlePaste]);
+
   // 图片加载完成后自动调整节点尺寸：按图片自然宽高比 + 节点内边距，
   // 在 [minW, maxW] 范围内取合适宽度，按比例算高度，让图片完整展示。
   // 由图片展示节点 <img onLoad> 触发。
@@ -483,9 +525,30 @@ export default function Canvas() {
 
   const nodeTypes = useMemo(() => NODE_COMPONENTS, []);
 
-  if (!loaded) {
+  // 工作区未就绪或正在加载：等待 activeId 确定 + canvas 载入完成
+  if (!activeId || !loaded) {
     return <div className="flex h-full items-center justify-center text-sm text-muted-foreground">加载中…</div>;
   }
+
+  // 工作区操作：切换/创建/删除/重命名都由 useWorkspaces 调服务端写 workspaces.json；
+  // 写回广播后 activeId 变化，useCanvasState/useGenerationHistory 自动重载新工作区数据。
+  const handleSwitch = (id) => { if (id !== activeId) switchWorkspace(id); };
+  const handleCreate = async (name) => {
+    const res = await createWorkspace(name);
+    // 创建后自动切换到新工作区（空画布）
+    const newWs = res?.workspaces?.slice(-1)?.[0];
+    if (newWs) switchWorkspace(newWs.id);
+  };
+  // 删除：支持单个 id 或 id 数组（批量删除）。逐个调 service，最后按清单 activeId 校正。
+  const handleDelete = async (ids) => {
+    const list = Array.isArray(ids) ? ids : [ids];
+    let last = null;
+    for (const id of list) {
+      if (id === activeId) continue; // 跳过当前激活（DeleteWorkspacesDialog 已限制不可选）
+      last = await deleteWorkspace(id);
+    }
+    if (last?.activeId && last.activeId !== activeId) switchWorkspace(last.activeId);
+  };
 
   return (
     <ResizablePanelGroup
@@ -503,6 +566,16 @@ export default function Canvas() {
             onExport={handleExport}
             onOpenSettings={() => setSettingsOpen(true)}
             count={nodes.length}
+            workspaceSlot={(
+              <WorkspaceSwitcher
+                workspaces={workspaces}
+                activeId={activeId}
+                onSwitch={handleSwitch}
+                onCreate={handleCreate}
+                onDelete={handleDelete}
+                onRename={renameWorkspace}
+              />
+            )}
             queueSlot={(
               <ExecutionQueuePopover
                 jobs={jobs}
