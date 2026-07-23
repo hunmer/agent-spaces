@@ -438,6 +438,103 @@ Do not copy local shims for host dependencies such as carousel, date, or chart l
 
 For Embla carousel projects, call `emblaApi.reInit()` after React commits dynamic slide changes, then call `scrollTo()` or read navigation state.
 
+## Loading Third-Party Bundles (Vendor Files)
+
+When a project needs a third-party library that is **not** renderer-allowlisted (image codecs, color quantizers, zip, etc.), download a self-contained ESM bundle into `src/vendor/` and load it as a **runtime resource** — never through a Babel-compiled `import`.
+
+### Why not static `import`
+
+The React-mode renderer compiles every file under `src/` with Babel `transform-modules-commonjs`. That pipeline:
+
+1. Rewrites `import`/`export` to `require`/`module.exports`.
+2. Replaces every `require(...)` with the renderer's `localRequire`, which only resolves files under `src/` and allowlisted bare imports.
+
+A vendored library is already-compiled output. Feeding it back through Babel re-compiles it and rewrites its internal `require('events')` / `require('buffer')` calls to `localRequire`, which has no Node built-ins → `Cannot read properties of undefined (reading 'EventEmitter')` and similar failures. CDN `import()` / `<script type=module>` also do not work reliably: in the Next.js/turbopack preview runtime the native dynamic `import()` of cross-origin URLs returns an empty module namespace (no `load`/`error` event fires, namespace is `{}`).
+
+### Correct pattern: fetch + Blob URL + native dynamic import
+
+Download the library into `src/vendor/`, then load it from the browser ESM loader without going through Babel:
+
+```js
+// src/utils/vendor.js
+const cache = new Map();
+
+export async function loadVendor(fileName) {
+  if (cache.has(fileName)) return cache.get(fileName);
+  const AS = window.AgentSpaces;
+  if (!AS?.srcFileUrl) throw new Error('host srcFileUrl unavailable');
+  // srcFileUrl -> http URL of a file under src/ (served by GET /api/mini-apps/:id/src/file?path=...)
+  const url = AS.srcFileUrl('vendor/' + fileName);
+  const code = await (await fetch(url)).text();
+  const blobUrl = URL.createObjectURL(new Blob([code], { type: 'text/javascript' }));
+  // Wrap import() in new Function so webpack/turbopack leaves it as a runtime call.
+  const dynamicImport = new Function('u', 'return import(u)');
+  const mod = await dynamicImport(blobUrl);
+  cache.set(fileName, mod);
+  return mod;
+}
+
+// Normalize esm.sh CJS interop: named exports often live under `default`.
+function unwrap(mod) {
+  if (mod?.default && typeof mod.default === 'object') {
+    const { default: _drop, ...rest } = mod;
+    return { ...mod.default, ...rest };
+  }
+  return mod;
+}
+
+export const getGifEnc = () => loadVendor('gifenc.js').then(unwrap);
+```
+
+Key points:
+
+- `window.AgentSpaces.srcFileUrl(relPath)` returns an http URL served from the project `src/` tree — it does **not** require a Babel pass and works for any file (`.js`, `.mjs`, binary).
+- `fetch` -> `Blob` -> `Blob URL` keeps the code same-origin so the browser ESM loader resolves it natively; Node polyfills inside the bundle (events/buffer) run normally.
+- Wrap `import(blobUrl)` in `new Function('u','return import(u)')` so webpack/turbopack does not statically rewrite the `import()` into `require`.
+- Cache the resolved module by file name; module evaluation should happen once.
+
+### Preparing the vendor bundle
+
+Download a self-contained ESM bundle (`?bundle` on esm.sh inlines dependencies):
+
+```bash
+mkdir -p src/vendor
+curl -sL "https://esm.sh/gifenc@1.0.3/es2022/gifenc.bundle.mjs" -o src/vendor/gifuct-js.js
+```
+
+Watch for these failure modes when preparing bundles:
+
+- **Internal cross-package imports** — `gifuct-js` depends on `js-binary-schema-parser`. Use the `.bundle.mjs` variant so the dependency is inlined; the non-bundle `.mjs` still emits `import ... from "/js-binary-schema-parser..."` which cannot resolve.
+- **Node polyfills** — libraries like `image-q` / `jszip` `import` from `/node/process.mjs` and `/node/buffer.mjs`. Download those polyfills too and rewrite the import specifiers to local relative paths:
+  ```bash
+  curl -sL "https://esm.sh/node/process.mjs" -o src/vendor/node-process.js
+  curl -sL "https://esm.sh/node/buffer.mjs"  -o src/vendor/node-buffer.js
+  # Rewrite the absolute specifiers to relative paths inside image-q.js / jszip.js
+  sed -i 's|"/node/process.mjs"|"./node-process.js"|g; s|"/node/buffer.mjs"|"./node-buffer.js"|g' \
+    src/vendor/image-q.js src/vendor/jszip.js
+  ```
+- **Illegal `__esModule` export** — some esm.sh bundles end with `export { X as __esModule, ... }`. Babel (if a file ever does get compiled) rejects it; strip the `X as __esModule,` token from the export list.
+- **CJS interop default collapse** — esm.sh frequently folds all named exports into a single `default` object. Always `unwrap()` so callers can `const { GIFEncoder } = await getGifEnc()` regardless of the bundle's export shape.
+
+If the official package ships a clean ESM build, prefer it over the esm.sh bundle (e.g. `unpkg.com/gifenc@1.0.3/dist/gifenc.esm.js` exports `GIFEncoder`/`quantize`/`applyPalette` as proper named exports).
+
+### Quick verification
+
+Before relying on a vendored library, confirm Babel can still compile any file that *imports the loader* (not the vendor file itself), and that the runtime namespace is non-empty:
+
+```bash
+# The loader file (which does the fetch+import) must compile, but the vendor bundle is never Babel-compiled.
+node --input-type=commonjs -e "require('@babel/standalone').transform(require('fs').readFileSync('src/utils/vendor.js','utf8'),{presets:['react'],plugins:['transform-modules-commonjs'],sourceType:'module'})"
+```
+
+```js
+// Temporary diagnostic inside loadVendor:
+console.log('[vendor] loaded', fileName, 'keys:', Object.keys(mod));
+// keys should list the library's real exports (e.g. GIFEncoder, quantize, applyPalette), not []
+```
+
+Do not add the vendor bundle path to the renderer allowlist or import it statically — that re-introduces the Babel re-compilation problem. The whole point of the `fetch` + Blob URL path is to bypass the Babel pipeline for already-compiled third-party code.
+
 ## Implementation Pattern
 
 For a React project:
@@ -494,6 +591,7 @@ Before finishing, inspect the changed files for these invariants:
 - Shared/mutable config is written through `invokeService` + server `src/services` handlers (single writer) and read via `getConfig`/`onConfigChanged`; the initiator does not also `writeConfigJson` the same value.
 - Multi-client task state uses `onTaskEvent` + the `callPluginTool` options (`taskId`, `meta`) instead of local-only queues; the initiator does not double-write results that `taskFinished` already persists.
 - Routing: when views are switched, the entry is wrapped in `<Router>` (or the route-reading component is inside one), `useRouter()` is not called outside the `<Router>` subtree, unknown `path[0]` values fall back to a default view, and only the active view is rendered. The project does not read or write `window.location` directly.
+- Third-party bundles under `src/vendor/` are loaded via `window.AgentSpaces.srcFileUrl` + fetch + Blob URL + native dynamic import (wrapped in `new Function`), not via static `import` (which would force them back through Babel and break their internal Node `require`s) or via CDN `import()` (which returns an empty namespace in the turbopack runtime).
 - `src/CLAUDE.md` was updated if project structure or decisions changed.
 
 Return concrete manual verification steps for the user, including which page to open, which controls to click, and what result confirms success.

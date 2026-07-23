@@ -101,6 +101,11 @@ function genId(prefix) {
   return `${prefix}-${Date.now().toString(36)}-${seq}`;
 }
 
+// 图像处理任务的 AbortController 注册表（模块级，nodeId -> controller）。
+// 用于取消正在进行的处理：handleProcessLocal 注册，handleCancelProcess abort。
+// 不进节点 data（AbortController 不可序列化），仅用于运行时取消信号。
+const processingControllers = new Map();
+
 // tags 去重保序（图片展示节点 data.tags 用）
 function dedupeTags(tags) {
   const seen = new Set();
@@ -798,11 +803,21 @@ export default function Canvas() {
   // 图像处理节点「执行」：调本地算法（utils/image-ops），不走工作流。
   // 流程：上游 URL → runProcessor（内部按需 CDN 加载库）→ 产出 http URL → 回填本节点 data.output.images。
   // processorId 对应 IMAGE_PROCESSORS 的 id；sourceImages 由节点传入（连线派生的 data.images）。
+  //
+  // 取消机制：用模块级 AbortController Map 跟踪每个节点的处理任务，Promise.race 让取消信号先 resolve，
+  // UI 立即解除「处理中」。底层 fetch 无法真正中断（CDN 跨域 fetch 不支持 abort），结果会丢弃。
   const handleProcessLocal = useCallback(async (nodeId, processorId, processorParams, sourceImages) => {
     if (!sourceImages?.length) return;
+    // 清理旧 controller（同节点重复执行时覆盖）
+    processingControllers.get(nodeId)?.abort();
+    const controller = new AbortController();
+    processingControllers.set(nodeId, controller);
+
     updateNodeData(nodeId, { status: 'running', error: undefined, output: { images: [] } });
     try {
       const urls = await runProcessor(processorId, sourceImages, processorParams || {});
+      // 取消竞速：被取消则丢弃结果
+      if (controller.signal.aborted) return;
       if (!urls.length) throw new Error('处理未返回图片');
       updateNodeData(nodeId, { status: 'done', output: { images: urls } });
       addHistory({
@@ -815,10 +830,27 @@ export default function Canvas() {
         createdAt: Date.now(),
       }).catch((e) => console.error('processLocal addHistory failed:', e));
     } catch (err) {
+      if (controller.signal.aborted) return; // 已取消，不报错
       console.error('processLocal failed:', err);
       updateNodeData(nodeId, { status: 'error', error: err?.message || String(err) });
+    } finally {
+      // 只在未被取消覆盖时清理 controller（取消时 handleCancelProcess 已清理）
+      if (processingControllers.get(nodeId) === controller) {
+        processingControllers.delete(nodeId);
+      }
     }
   }, [updateNodeData, addHistory]);
+
+  // 取消图像处理：abort signal + 置 status='cancelled'（写入节点 data，可观测/持久化）。
+  // 底层任务继续跑但结果会被 handleProcessLocal 的 aborted 检查丢弃。
+  const handleCancelProcess = useCallback((nodeId) => {
+    const controller = processingControllers.get(nodeId);
+    if (controller) {
+      controller.abort();
+      processingControllers.delete(nodeId);
+    }
+    updateNodeData(nodeId, { status: 'cancelled', error: undefined });
+  }, [updateNodeData]);
 
   // 给每个节点的 data 注入 onUpdate / onGenerate / onExportImages / onProcessImage（节点内部需要）。
   // 注意：不要覆盖 node.selected —— 选中状态由 ReactFlow 通过 onNodesChange 的
@@ -849,6 +881,7 @@ export default function Canvas() {
           onExportImages: (imgs) => handleExportImages(nd, imgs),
           onProcessImage: handleProcessImage,
           onProcessLocal: handleProcessLocal,
+          onCancelProcess: handleCancelProcess,
           // 工具栏【编辑】按钮：打开编辑图片弹窗，预填当前节点图片
           onEditImages: (imgs) => setFormState({ nodeType: NODE_TYPES.editImage, initialImages: imgs }),
           // 图片加载完成自动调整节点尺寸（仅图片展示节点用）
@@ -858,7 +891,7 @@ export default function Canvas() {
         },
       };
     }),
-    [nodes, upstreamMap, makeOnUpdate, handleGenerate, handleExportImages, handleProcessImage, handleProcessLocal, handleAutoSize, handleAutoSizeToContent, selectionCount],
+    [nodes, upstreamMap, makeOnUpdate, handleGenerate, handleExportImages, handleProcessImage, handleProcessLocal, handleCancelProcess, handleAutoSize, handleAutoSizeToContent, selectionCount],
   );
 
   // 分组 overlay 的子节点映射 + 选中态（WorkflowGroupOverlay 需要的 childNodes/isSelected）

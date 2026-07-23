@@ -41,8 +41,10 @@ export default function ImageProcessNode({ id, data, selected }) {
   const status = data?.status || 'idle';
   const error = data?.error;
   const running = status === 'running';
+  const cancelled = status === 'cancelled';
   const onUpdate = data?.onUpdate;
   const onProcessLocal = data?.onProcessLocal;
+  const onCancelProcess = data?.onCancelProcess;
   const uploading = data?.uploading;
 
   const processor = IMAGE_PROCESSORS.find((p) => p.id === processorId) || IMAGE_PROCESSORS[0];
@@ -180,15 +182,39 @@ export default function ImageProcessNode({ id, data, selected }) {
         {multipleIn && inputImages.length < 2 && ' · 合成类需 ≥2 张'}
       </div>
 
-      {/* 执行按钮 */}
-      <button
-        type="button"
-        onClick={handleRun}
-        disabled={running || uploading || !inputImages.length || (multipleIn && inputImages.length < 2)}
-        className="w-full rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        {running ? '处理中…' : '⚡ 执行'}
-      </button>
+      {/* 执行按钮 + 取消按钮（处理中时显示） */}
+      {running ? (
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            disabled
+            className="flex-1 cursor-not-allowed rounded-md bg-primary/70 px-3 py-1.5 text-xs font-medium text-primary-foreground opacity-80"
+          >
+            处理中…
+          </button>
+          <button
+            type="button"
+            onClick={() => onCancelProcess?.(id)}
+            title="取消处理"
+            className="shrink-0 rounded-md border border-destructive bg-background px-3 py-1.5 text-xs font-medium text-destructive transition hover:bg-destructive hover:text-destructive-foreground"
+          >
+            取消
+          </button>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={handleRun}
+          disabled={uploading || !inputImages.length || (multipleIn && inputImages.length < 2)}
+          className="w-full rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          ⚡ 执行
+        </button>
+      )}
+
+      {cancelled && (
+        <p className="rounded-md bg-muted px-2 py-1 text-xs text-muted-foreground">已取消</p>
+      )}
 
       {error && (
         <p className="rounded-md bg-red-500/10 px-2 py-1 text-xs text-red-500">{error}</p>
