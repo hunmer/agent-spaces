@@ -1,21 +1,17 @@
 import { useCallback } from 'react';
 import { generateImages } from '../utils/workflow';
-import { downloadImages } from '../utils/storage';
 
 /**
- * 执行一次图片生成工作流：调用 -> 取 URL -> 下载到 data。
- * @returns {(workflowId: string, input: object, nodeId: string) => Promise<{ urls: string[], local: string[] }>}
+ * 执行一次图片生成工作流：调用 generateImages 取 URL。
+ *
+ * generateImages 内部已对非后端地址的外链图统一调用 downloadImage 落地到后端 data 目录
+ * 并替换为后端 httpUrl（失败保留原地址），因此这里无需再做额外的下载。
+ *
+ * @returns {(workflowId: string, input: object) => Promise<{ urls: string[] }>}
  */
 export default function useWorkflow() {
-  return useCallback(async (workflowId, input, nodeId) => {
+  return useCallback(async (workflowId, input) => {
     const urls = await generateImages(workflowId, input);
-    // 下载到 data/ 目录（失败不影响展示）
-    let local = [];
-    try {
-      local = await downloadImages(urls, nodeId);
-    } catch (err) {
-      console.warn('downloadImages failed:', err);
-    }
-    return { urls, local };
+    return { urls };
   }, []);
 }

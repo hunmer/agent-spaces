@@ -20,6 +20,7 @@ export const NODE_TYPES = {
   editImage: 'editImage',
   imageDisplay: 'imageDisplay',
   imageProcess: 'imageProcess',
+  imageEditor: 'imageEditor',
   note: 'note',
   // 注：分组不是节点，是 WorkflowGroupOverlay（由 groups 数据驱动，复用 workflow-editor 同源组件）
 };
@@ -64,6 +65,7 @@ export const NODE_META = {
   [NODE_TYPES.editImage]: { label: '编辑图片', icon: '🖌️', color: '#ec4899' },
   [NODE_TYPES.imageDisplay]: { label: '图片展示', icon: '🖼️', color: '#10b981' },
   [NODE_TYPES.imageProcess]: { label: '图像处理', icon: '🔧', color: '#14b8a6' },
+  [NODE_TYPES.imageEditor]: { label: '图片编辑', icon: '🎨', color: '#f97316' },
   [NODE_TYPES.note]: { label: '便签', icon: '📝', color: '#f59e0b' },
 };
 
@@ -77,6 +79,7 @@ export const IMAGE_TAGS = {
   segment: '抠图',
   enhance: '放大',
   imageProcess: '图像处理',
+  imageEditor: '图片编辑',
   history: '记录',
   upstream: '连线',
   export: '导出',

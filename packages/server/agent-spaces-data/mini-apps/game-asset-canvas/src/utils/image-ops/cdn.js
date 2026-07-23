@@ -25,8 +25,13 @@ const moduleCache = new Map();
 /**
  * fetch 源码 → Blob URL → 浏览器原生 dynamic import。
  * 结果按 URL 缓存（模块只求值一次）。
+ *
+ * @param {string} fileName
+ * @param {string} [esmSuffix] 可选：源码本身非 ESM（如 IIFE/var 格式），追加此字符串
+ *   转 ESM。例如 painterro.min.js 是 `var Painterro=function(){...}().default;`，
+ *   追加 `\nexport default Painterro;` 让浏览器 ESM loader 能拿到命名导出。
  */
-async function loadVendor(fileName) {
+async function loadVendor(fileName, esmSuffix) {
   if (moduleCache.has(fileName)) return moduleCache.get(fileName);
   const AS = window.AgentSpaces;
   if (!AS?.srcFileUrl) throw new Error('宿主未提供 srcFileUrl 能力（需更新 web 服务）');
@@ -34,8 +39,10 @@ async function loadVendor(fileName) {
   const resp = await fetch(url);
   if (!resp.ok) throw new Error(`vendor 加载失败(${resp.status}): ${fileName}`);
   const code = await resp.text();
+  // 非 ESM 源码追加导出语句（如 painterro 的 var Painterro...default;）
+  const finalCode = esmSuffix ? code + esmSuffix : code;
   // Blob URL：浏览器原生 ESM loader 求值，不经 babel/webpack，node polyfill 正常
-  const blob = new Blob([code], { type: 'text/javascript' });
+  const blob = new Blob([finalCode], { type: 'text/javascript' });
   const blobUrl = URL.createObjectURL(blob);
   // 用 new Function 包裹 import，防止 webpack 静态分析改写 import() 为 require
   const dynImport = new Function('u', 'return import(u)');
@@ -83,4 +90,15 @@ export async function getImageQ() {
 /** jszip：ZIP 打包（GIF 拆帧后批量下载用，预留） */
 export async function getJsZip() {
   return unwrap(await loadVendor('jszip.js'));
+}
+
+/**
+ * Painterro：浏览器端图像编辑器（画笔/文字/裁切/马赛克/旋转等）。
+ * 官方 build 是 IIFE 赋值给 `var Painterro`（非 ESM），无法直接 dynamic import。
+ * 这里 fetch 源码后追加 `\nexport default Painterro;` 转 ESM，浏览器原生 loader 求值。
+ * 返回 Painterro 构造函数：`const Painterro = await getPainterro(); const pt = Painterro(opts); pt.show()`
+ */
+export async function getPainterro() {
+  const mod = await loadVendor('painterro.min.js', '\nexport default Painterro;');
+  return mod.default || mod;
 }

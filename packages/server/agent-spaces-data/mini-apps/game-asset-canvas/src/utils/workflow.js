@@ -22,6 +22,53 @@ export function normalizeImageUrls(urls) {
   return urls.map(normalizeImageUrl);
 }
 
+// 后端图片路由特征：/api/mini-apps/<projectId>/(data/file|src/file|local-file|proxy-image)
+// 与 host API proxyImageUrl/dataFileUrl/srcFileUrl/localFileUrl 产出的 URL 一致。
+const BACKEND_IMAGE_PATH_RE = /\/api\/mini-apps\/[^/]+\/(data\/file|src\/file|local-file|proxy-image)/;
+
+/**
+ * 判定图片 URL 是否已是后端地址（无需再下载落地）。
+ * - data:/blob:/非 http(s) 协议：本地内联或相对后端路径，视为后端地址
+ * - 同源 + 路径匹配后端图片路由：后端地址
+ * - 其余（外链 http(s)）：非后端地址
+ */
+export function isBackendUrl(url) {
+  if (!url) return true;
+  const s = String(url);
+  if (/^(data:|blob:)/.test(s)) return true;
+  if (!/^https?:\/\//i.test(s)) return true;
+  try {
+    const u = new URL(s);
+    if (u.origin === window.location.origin && BACKEND_IMAGE_PATH_RE.test(u.pathname)) return true;
+  } catch { /* 非法 URL 保守视为后端，避免误下载 */ }
+  return false;
+}
+
+/**
+ * 把非后端图片 URL 下载到后端 data 目录并替换为后端 httpUrl。
+ * 单张失败保留原地址（不阻塞整体展示）。
+ * @param {string[]} urls 已规范化的完整 http URL 数组
+ * @returns {Promise<string[]>} 后端化后的 URL 数组（顺序保持）
+ */
+export async function persistImagesToBackend(urls) {
+  const out = [];
+  for (const url of Array.isArray(urls) ? urls : []) {
+    if (!url) continue;
+    if (isBackendUrl(url)) { out.push(url); continue; }
+    try {
+      const downloadImage = window.AgentSpaces?.downloadImage;
+      if (typeof downloadImage !== 'function') throw new Error('宿主 downloadImage 不可用');
+      const res = await downloadImage(url);
+      out.push(res?.httpUrl || url);
+    } catch (err) {
+      // 下载失败保留原始外链，至少能展示
+      console.warn('persistImagesToBackend failed:', url, err);
+      out.push(url);
+    }
+  }
+  return out;
+}
+
 /**
  * URL 数组去重保序（按字符串值）。用于把多来源图片（参考图/上传图/连线图）合并成统一输入列表。
  * @param {string[]} urls
@@ -222,5 +269,8 @@ export async function generateImages(workflowId, input) {
   else if (output?.error) throw new Error(output.error);
   else urls = [];
   // 规范化：相对路径补全为完整 http URL
-  return normalizeImageUrls(urls);
+  const normalized = normalizeImageUrls(urls);
+  // 非后端地址的外链图统一下载到后端 data 目录并替换为后端 httpUrl，
+  // 避免外链失效（防盗链/CORS/过期）导致节点图片丢失。失败保留原地址。
+  return persistImagesToBackend(normalized);
 }

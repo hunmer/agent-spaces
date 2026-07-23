@@ -58,6 +58,7 @@ src/
       EditImageNode.jsx         # 同上
       ImageDisplayNode.jsx      # 上传用 window.AgentSpaces.uploadFile 拿 http URL
       ImageProcessNode.jsx      # 图像处理节点：FileUpload 上传 + 连线图只读占位 + 处理器下拉 + 动态参数 + 执行
+      ImageEditorNode.jsx       # 图片编辑节点：FileUpload 单图 + 连线图只读占位 + Painterro 浏览器端编辑（画笔/文字/裁切/马赛克）
       ImageResult.jsx           # 产出网格（max=0 不截断，GIF 拆帧多帧全展示），openMediaGallery 看大图（注意：items 不可二次 map）
       PickedPromptBadge.jsx     # 已选提示词展示条（📎标签+✕清除），三处表单复用
       NoteNode.jsx
@@ -73,7 +74,7 @@ src/
     useWorkspaces.js            # 工作区清单管理（workspaces.json 读写 + 三重读取）
   utils/
     prompts.js                  # 内置提示词库（PROMPT_LIBRARY/PROMPT_CATEGORIES/getPromptsByScene，含 aspect 联动）
-    constants.js                # WORKFLOWS/NODE_TYPES/MODEL_OPTIONS/NODE_META + IMAGE_PROCESSORS（10 处理器）+ IMAGE_PROCESSOR_CATEGORIES + defaultProcessorParams
+    constants.js                # WORKFLOWS/NODE_TYPES/MODEL_OPTIONS/NODE_META（含 imageEditor）+ IMAGE_PROCESSORS（10 处理器）+ IMAGE_PROCESSOR_CATEGORIES + defaultProcessorParams
     workflow.js                 # runWorkflow/generateImages（多路径提取图片）
     storage.js                  # loadCanvas/saveCanvas/onAnyConfigChanged/panel布局/下载（均接收 workspaceId）
     clipboard.js                # 节点剪贴板：copyNodes/pasteNodes/hasClipboard（模块级内存，跨工作区可粘贴）
@@ -244,6 +245,37 @@ src/
 1. **产出数量与展示不一致**：`ImageResult` 硬编码 `max=9`，`slice(0,9)` 截断 16 帧 → 改 `max=0`（不限制），GIF 拆帧多帧全展示；MediaGallery 也传全部 items
 2. **连线图缩略图变形**：`h-10 w-full object-cover` 固定高+裁切 → 改外层固定高容器 + `max-h-full max-w-full object-contain`，按原图比例居中显示
 3. **GIF 合成产出非 ImageData**：encodeFramesToGif 返回 gif Blob，run 约定返回 ImageData[]，用 `__gifUrl` 标记透传，runProcessor 识别后直接用 URL 不再转
+
+## 图片编辑节点（本轮新增，基于 Painterro）
+
+新增「图片编辑」节点（NODE_TYPES.imageEditor），用 Painterro（vanilla JS 浏览器端图像编辑器）实现画笔/文字/裁切/马赛克/旋转/缩放等手工编辑，支持接收上游连线输入或自定义上传单张图片。
+
+### 关键决策
+- **输入设计复用 ImageProcessNode 模式**：FileUpload 单图上传 + 上游连线只读占位。单输入（maxFiles=1），上游连线只取首张。输入优先级：上传 > 连线
+- **Painterro 走 vendor 本地资源加载**（非 CDN、非 npm）：与 gifenc/image-q 同套路。官方 build 是 IIFE（`var Painterro=function(){...}().default;`，非 ESM），无法直接 dynamic import，经 `cdn.js` 的 `loadVendor` 追加 `\nexport default Painterro;` 转 ESM，浏览器原生 loader 求值
+- **编辑器全屏覆盖**：Painterro 默认行为（创建 fullscreen holder）。saveHandler 拿编辑结果 Blob → uploadFile → 写 `data.output.images` → 下游自动派生，NodeToolbar 导出/抠图/放大按钮自动可用
+
+### 改动文件
+- `src/utils/image-ops/cdn.js`：`loadVendor` 新增 `esmSuffix` 参数（追加导出语句转 ESM）；新增 `getPainterro()` 加载器，返回 Painterro 构造函数
+- `src/utils/constants.js`：`NODE_TYPES.imageEditor` + `NODE_META`（🎨 #f97316）+ `IMAGE_TAGS.imageEditor`
+- `src/components/nodes/ImageEditorNode.jsx`（新增）：FileUpload 单图 + 上游连线占位 + 「🎨 编辑图片」按钮 → 懒加载 Painterro → show(inputUrl) → saveHandler 上传产出
+- `src/components/Canvas.jsx`：注册节点组件 + ADD_NODE_ITEMS + `computeInputImages` 纳入 imageEditor + `initialData` 加 imageEditor 分支
+- `src/components/RightPanel.jsx`：ADD_ITEMS 加图片编辑项
+- `src/vendor/painterro.min.js`（新增，~295KB）：从 unpkg@1.2.92 下载的官方 UMD build
+
+### 依赖（vendor 本地加载，web 不装）
+- painterro@1.2.92（IIFE/UMD build），非 ESM，经 cdn.js 转 ESM 加载
+
+### 验收要点
+- 节点支持上传单图或接收上游连线单图（取首张）
+- 点「🎨 编辑图片」打开 Painterro 全屏编辑器（画笔/文字/裁切/马赛克/旋转等）
+- 保存后产出写入 `data.output.images`，可连线下游，NodeToolbar 按钮自动可用
+- 按是否有 alpha 通道自动选 png/jpeg 格式
+- 断网时编辑器加载报错但不崩溃（状态标记 error）
+
+### 踩坑
+- Painterro 官方 build 非 ESM（IIFE 赋值给 `var Painterro`），直接 dynamic import 拿不到导出 → `loadVendor` 加 `esmSuffix` 参数追加 `export default Painterro;` 转 ESM
+- Painterro 的 `saveHandler(image, done)`：`done(true)` 关闭编辑器，`done(false)` 保留让用户重试；用 `savedRef` 区分「保存成功关闭」与「直接 X 关闭」（后者复位 status）
 
 ## 后续可做
 

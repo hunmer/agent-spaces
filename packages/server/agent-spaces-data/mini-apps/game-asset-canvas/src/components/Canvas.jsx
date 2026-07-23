@@ -22,6 +22,7 @@ import TextToImageNode from './nodes/TextToImageNode';
 import EditImageNode from './nodes/EditImageNode';
 import ImageDisplayNode from './nodes/ImageDisplayNode';
 import ImageProcessNode from './nodes/ImageProcessNode';
+import ImageEditorNode from './nodes/ImageEditorNode';
 import NoteNode from './nodes/NoteNode';
 import useCanvasState from '../hooks/useCanvasState';
 import useWorkflow from '../hooks/useWorkflow';
@@ -42,6 +43,7 @@ const NODE_COMPONENTS = {
   [NODE_TYPES.editImage]: EditImageNode,
   [NODE_TYPES.imageDisplay]: ImageDisplayNode,
   [NODE_TYPES.imageProcess]: ImageProcessNode,
+  [NODE_TYPES.imageEditor]: ImageEditorNode,
   [NODE_TYPES.note]: NoteNode,
 };
 
@@ -51,6 +53,7 @@ const ADD_NODE_ITEMS = [
   { type: NODE_TYPES.editImage },
   { type: NODE_TYPES.imageDisplay },
   { type: NODE_TYPES.imageProcess },
+  { type: NODE_TYPES.imageEditor },
   { type: NODE_TYPES.note },
 ];
 
@@ -63,10 +66,11 @@ function computeInputImages(nodes, edges) {
   const byId = new Map(nodes.map((n) => [n.id, n]));
   const map = new Map(); // nodeId -> { images, isDisplay }
   for (const node of nodes) {
-    // editImage / imageDisplay / imageProcess 都接收上游连线图片
+    // editImage / imageDisplay / imageProcess / imageEditor 都接收上游连线图片
     const isReceiver = node.type === NODE_TYPES.editImage
       || node.type === NODE_TYPES.imageDisplay
-      || node.type === NODE_TYPES.imageProcess;
+      || node.type === NODE_TYPES.imageProcess
+      || node.type === NODE_TYPES.imageEditor;
     if (!isReceiver) continue;
     const incoming = edges.filter((e) => e.target === node.id);
     if (!incoming.length) continue;
@@ -129,6 +133,9 @@ function initialData(type) {
       uploadedImages: [],
       params: { processor: 'pixelate', processorParams: defaultProcessorParams('pixelate') },
     };
+  }
+  if (type === NODE_TYPES.imageEditor) {
+    return { status: 'idle', output: { images: [] }, uploadedImages: [] };
   }
   const base = { status: 'idle', output: { images: [] }, uploadedImages: [] };
   return { ...base, params: { prompt: '', model: 'gpt-image-1', aspect: '1:1', size: '1k' } };

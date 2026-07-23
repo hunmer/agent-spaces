@@ -7,6 +7,7 @@ const ADD_ITEMS = [
   { type: NODE_TYPES.editImage, label: '编辑图片' },
   { type: NODE_TYPES.imageDisplay, label: '图片展示' },
   { type: NODE_TYPES.imageProcess, label: '图像处理' },
+  { type: NODE_TYPES.imageEditor, label: '图片编辑' },
   { type: NODE_TYPES.note, label: '便签' },
 ];
 
@@ -197,8 +198,11 @@ function HistoryCard({ item, onRemove, onUseImage }) {
         <p className="mb-1.5 line-clamp-2 text-xs text-muted-foreground">{item.prompt}</p>
       )}
       {cover && (
-        <div className="grid grid-cols-4 gap-1">
-          {images.slice(0, 4).map((url, i) => (
+        <div
+          className="grid gap-1"
+          style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(56px, 1fr))' }}
+        >
+          {images.map((url, i) => (
             <button
               type="button"
               key={i}
