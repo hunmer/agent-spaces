@@ -494,6 +494,17 @@ export default function Canvas() {
     }));
   }, [setNodes]);
 
+  // 首次内容高度自适应：由 NodeShell 用 ResizeObserver 测得「标题栏+内容区」真实高度后上报。
+  // 仅在节点首次挂载触发一次（NodeShell 端 disconnect），用户后续手动 NodeResizer 拖拽不会被覆盖。
+  // 保留原 width，只更新 height；限幅 [120, 800] 避免异常值。
+  const handleAutoSizeToContent = useCallback((nodeId, height) => {
+    const h = Math.max(120, Math.min(800, Math.round(height)));
+    setNodes((prev) => prev.map((nd) => {
+      if (nd.id !== nodeId) return nd;
+      return { ...nd, height: h, style: { ...nd.style, height: h } };
+    }));
+  }, [setNodes]);
+
   // 从右侧表单弹窗提交：根据 nodeType 用 settings 的工作流 ID。
   // 参考 handleProcessImage：提交瞬间即创建 loading 占位节点，工作流跑完后填充该节点，
   // 而非等工作流跑完才插入图片。tag 按节点类型区分（文生图/编辑图片）。
@@ -588,10 +599,12 @@ export default function Canvas() {
           onEditImages: (imgs) => setFormState({ nodeType: NODE_TYPES.editImage, initialImages: imgs }),
           // 图片加载完成自动调整节点尺寸（仅图片展示节点用）
           onAutoSize: handleAutoSize,
+          // 首次内容高度自适应（NodeShell 测量真实表单高度后上报一次）
+          onAutoSizeToContent: handleAutoSizeToContent,
         },
       };
     }),
-    [nodes, upstreamMap, makeOnUpdate, handleGenerate, addImageNodesFromUrls, handleProcessImage, handleAutoSize],
+    [nodes, upstreamMap, makeOnUpdate, handleGenerate, addImageNodesFromUrls, handleProcessImage, handleAutoSize, handleAutoSizeToContent],
   );
 
   // 面板布局变化 -> 持久化

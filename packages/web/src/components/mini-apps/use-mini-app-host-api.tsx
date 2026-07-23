@@ -694,6 +694,25 @@ export function useMiniAppHostApi(projectId: string, runtimeContext?: MiniAppRun
       return settings;
     };
 
+    // ---- 通用 CDN ESM 模块加载器 ----
+    // mini-app 按需从 CDN 动态 import 任意 ESM 库（如 image-q/gifenc），结果按 URL 缓存。
+    // webpackIgnore 让 Next.js webpack 不静态分析此 import（URL 是运行时变量），
+    // 完全交给浏览器运行时从 CDN 拉取。web 的 package.json 无需声明这些依赖。
+    // 对只有 default 导出的 CJS 互操作包自动解包，方便 mini-app 直接拿到库本体。
+    const cdnModuleCache = new Map<string, unknown>();
+    const loadCdnModule = async <T = unknown>(url: string): Promise<T> => {
+      if (!url || typeof url !== 'string') throw new Error('loadCdnModule: url required');
+      if (cdnModuleCache.has(url)) return cdnModuleCache.get(url) as T;
+      // 用 new Function 包一层动态 import，确保所有打包器（webpack/turbopack）都不静态分析
+      const dynamicImport = new Function('u', 'return import(u)') as (u: string) => Promise<any>;
+      const mod = await dynamicImport(/* webpackIgnore: true */ url);
+      const resolved = mod && typeof mod === 'object' && mod.default !== undefined && Object.keys(mod).length === 1
+        ? mod.default
+        : mod;
+      cdnModuleCache.set(url, resolved);
+      return resolved as T;
+    };
+
     // ---- Send notification (server-side notification center via REST) ----
     const sendNotification = async (type: string, title: string, description?: string, data?: Record<string, unknown>) => {
       const resp = await fetchWithAuth(`/api/workspaces/${projectId}/notifications`, {
@@ -857,6 +876,7 @@ export function useMiniAppHostApi(projectId: string, runtimeContext?: MiniAppRun
       subscribeWorkflowEvents,
       sendWorkflowControl,
       stopWorkflow,
+      loadCdnModule,
     };
 
     const fileApi = {

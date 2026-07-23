@@ -73,7 +73,7 @@ export default function ImageDisplayNode({ id, data, selected }) {
   const isUpstream = data?.source === 'upstream';
 
   return (
-    <NodeShell nodeType={NODE_TYPES.imageDisplay} data={data} selected={selected} targetHandle sourceHandle>
+    <NodeShell id={id} nodeType={NODE_TYPES.imageDisplay} data={data} selected={selected} targetHandle sourceHandle>
       {loading ? (
         // 抠图/放大/队列生成处理中：加载占位（含来源 tags）
         <div className="flex flex-col gap-2">

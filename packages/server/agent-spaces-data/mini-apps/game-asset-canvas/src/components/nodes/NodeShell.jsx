@@ -1,3 +1,4 @@
+import { useLayoutEffect, useRef } from 'react';
 import { Handle, NodeResizer, NodeToolbar, Position } from '@xyflow/react';
 import { NODE_META } from '../../utils/constants';
 
@@ -17,6 +18,7 @@ const STATUS_TEXT = {
  * - NodeResizer 默认可见；这里改为选中时显示，避免误触。
  *
  * @param {object} props
+ * @param {string} props.id 节点 id（用于首次内容高度自适应上报）
  * @param {string} props.nodeType NODE_TYPES 之一
  * @param {object} props.data 节点 data
  * @param {boolean} [props.selected] 是否选中（选中才显示 resize 控件）
@@ -26,7 +28,7 @@ const STATUS_TEXT = {
  * @param {React.ReactNode} props.children 节点正文
  */
 export default function NodeShell({
-  nodeType, data, selected, resizable = true,
+  id, nodeType, data, selected, resizable = true,
   targetHandle, sourceHandle, children,
 }) {
   const meta = NODE_META[nodeType] || { label: '节点', icon: '🔹', color: '#64748b' };
@@ -46,8 +48,39 @@ export default function NodeShell({
   // 是否显示编辑按钮：节点有产出图且有编辑回调
   const showEditButton = outputImages.length > 0 && onEditImages;
 
+  // 首次内容高度自适应：测量「标题栏 + 内容区」真实高度，仅上报一次后 disconnect。
+  // 这样插入节点后高度贴合表单；用户之后用 NodeResizer 手动改的尺寸永不被覆盖。
+  // 回调由 Canvas 通过 data.onAutoSizeToContent 注入；未注入（如持久化旧节点）则不测量。
+  const rootRef = useRef(null);
+  const measuredRef = useRef(false);
+  useLayoutEffect(() => {
+    measuredRef.current = false; // 重置：data.onAutoSizeToContent 变化（节点换工作区重挂载）时允许再测一次
+    const onAutoSizeToContent = data?.onAutoSizeToContent;
+    const root = rootRef.current;
+    if (!onAutoSizeToContent || !root || !id) return;
+
+    const measure = () => {
+      if (measuredRef.current) return;
+      const header = root.querySelector('[data-node-header]');
+      const content = root.querySelector('[data-node-content]');
+      if (!header || !content) return;
+      // scrollHeight 为内容真实高度（含 padding，不含 border）；+2 兜边框
+      const h = header.offsetHeight + content.scrollHeight + 2;
+      if (h > 0) {
+        measuredRef.current = true;
+        ro.disconnect();
+        onAutoSizeToContent(id, h);
+      }
+    };
+    const ro = new ResizeObserver(measure);
+    ro.observe(root);
+    // 同步量一次（多数情况下 children 已渲染，无需等回调）
+    measure();
+    return () => ro.disconnect();
+  }, [data?.onAutoSizeToContent, id]);
+
   return (
-    <div className="flex h-full w-full flex-col overflow-hidden rounded-lg border border-border bg-card text-card-foreground shadow-sm">
+    <div ref={rootRef} className="flex h-full w-full flex-col overflow-hidden rounded-lg border border-border bg-card text-card-foreground shadow-sm">
       {(outputImages.length > 0 && onExportImages) || showProcessButtons || showEditButton ? (
         <NodeToolbar isVisible={selected} position={Position.Top} align="end" offset={8}>
           <div className="flex items-center gap-1">
@@ -106,6 +139,7 @@ export default function NodeShell({
         />
       )}
       <div
+        data-node-header
         className="flex shrink-0 items-center justify-between gap-2 px-3 py-2"
         style={{ borderBottom: '1px solid var(--border)', backgroundColor: `rgb(${hexToRgb(meta.color)} / 0.12)` }}
       >
@@ -124,7 +158,7 @@ export default function NodeShell({
       </div>
       {/* nodrag/nopan/nowheel：ReactFlow 约定，带这些 class 的元素不触发节点拖拽、画布平移、滚轮缩放，
           避免在节点内滚动/选文本/操作输入框时误触画布 */}
-      <div className="nodrag nopan nowheel flex min-h-0 flex-1 flex-col gap-2 overflow-auto p-3">
+      <div data-node-content className="nodrag nopan nowheel flex min-h-0 flex-1 flex-col gap-2 overflow-auto p-3">
         {children}
       </div>
       {sourceHandle && (
