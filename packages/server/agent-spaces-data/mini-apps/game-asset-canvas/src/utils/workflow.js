@@ -23,6 +23,23 @@ export function normalizeImageUrls(urls) {
 }
 
 /**
+ * URL 数组去重保序（按字符串值）。用于把多来源图片（参考图/上传图/连线图）合并成统一输入列表。
+ * @param {string[]} urls
+ * @returns {string[]}
+ */
+export function dedupeUrls(urls) {
+  const seen = new Set();
+  const out = [];
+  for (const u of Array.isArray(urls) ? urls : []) {
+    const s = String(u || '').trim();
+    if (!s || seen.has(s)) continue;
+    seen.add(s);
+    out.push(s);
+  }
+  return out;
+}
+
+/**
  * 把提示词条目的 references（相对 src 目录的路径数组，如 ['assets/references/<id>/ref1.png']）
  * 解析为可直接用于 <img>/提交给工作流的 http URL 数组。
  * 走 host 暴露的 window.AgentSpaces.srcFileUrl（对应 /api/mini-apps/<id>/src/file 路由）。
@@ -33,6 +50,78 @@ export function resolveReferenceImages(references) {
   const srcFileUrl = window?.AgentSpaces?.srcFileUrl;
   if (typeof srcFileUrl !== 'function') return [];
   return references.map((rel) => srcFileUrl(rel)).filter(Boolean);
+}
+
+/**
+ * 把 PromptTextEditor 产出的 HTML 转成提交给工作流的纯文本指令。
+ *
+ * - <span class="prompt-mention" data-key="R0">…</span>（tiptap mention 节点）→ 替换为对应参考关键字（R0/R1…）。
+ *   无 data-key 时回退用 data-label 或原文本。
+ * - <br> / </p><p> → 换行；其余 HTML 标签剥离；&nbsp; 等实体解码。
+ * - 多余空行折叠，首尾空白裁剪。
+ *
+ * @param {string} html PromptTextEditor onChange 回传的 HTML
+ * @returns {string} 纯文本指令（含 R0/R1 关键字）
+ */
+export function promptHtmlToText(html) {
+  if (!html) return '';
+  // 用 DOMParser 解析，避免手写正则漏标签（mini-app 运行在浏览器，DOMParser 可用）
+  let doc;
+  try {
+    doc = new DOMParser().parseFromString(`<div>${html}</div>`, 'text/html');
+  } catch {
+    // 兜底：粗暴去标签
+    return String(html)
+      .replace(/<br\s*\/?>(<\/p>)?/gi, '\n')
+      .replace(/<[^>]+>/g, '')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+  }
+  const root = doc.body.firstChild;
+  if (!root) return '';
+  // 把 mention span 替换成其关键字文本，再取整体 textContent
+  root.querySelectorAll('.prompt-mention, [data-mention]').forEach((el) => {
+    const key = el.getAttribute('data-key') || el.getAttribute('data-label') || el.textContent || '';
+    el.replaceWith(doc.createTextNode(String(key)));
+  });
+  // <br> / 段落转换行
+  let text = root.innerHTML;
+  const tmp = doc.createElement('div');
+  tmp.innerHTML = text
+    .replace(/<br\s*\/?>(<\/p>)?/gi, '\n')
+    .replace(/<\/p>\s*<p[^>]*>/gi, '\n')
+    .replace(/<[^>]+>/g, '');
+  text = tmp.textContent || '';
+  return text
+    .replace(/\u00a0/g, ' ')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+/**
+ * 提取 PromptTextEditor HTML 中所有 mention 节点引用的参考图 URL（按出现顺序）。
+ * 用于提交时把这些参考图也纳入 input.images（即便用户没手动加进输入图区）。
+ * @param {string} html
+ * @returns {string[]} 参考图 URL 数组（去重保序）
+ */
+export function extractMentionedReferences(html) {
+  if (!html) return [];
+  let doc;
+  try {
+    doc = new DOMParser().parseFromString(`<div>${html}</div>`, 'text/html');
+  } catch {
+    return [];
+  }
+  const root = doc.body.firstChild;
+  if (!root) return [];
+  const urls = [];
+  const seen = new Set();
+  root.querySelectorAll('.prompt-mention, [data-mention]').forEach((el) => {
+    const url = el.getAttribute('data-url');
+    if (url && !seen.has(url)) { seen.add(url); urls.push(url); }
+  });
+  return urls;
 }
 
 /**

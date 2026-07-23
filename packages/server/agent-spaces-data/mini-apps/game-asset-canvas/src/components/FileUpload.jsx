@@ -4,12 +4,13 @@ import { useCallback, useRef, useState } from 'react';
  * 图片上传组件：支持点击/拖拽上传，调用 window.AgentSpaces.uploadFile 上传到后端，
  * 返回 http URL 后回传给父组件，并展示已上传图片缩略图（可删除）。
  *
- * @param {{ value: string[], onChange:(urls:string[])=>void, max?:number, placeholder?:string, extraItems?:{src:string,badge?:string}[] }} props
+ * @param {{ value: string[], onChange:(urls:string[])=>void, max?:number, placeholder?:string, extraItems?:{src:string,badge?:string,onRemove?:()=>void}[] }} props
  *   value: 已上传图片 URL 数组（http URL，可删）
  *   onChange: 上传成功/删除后回传新的 URL 数组
  *   max: 最大上传数量，默认 6（不含只读项）
- *   extraItems: 只读图片项（如参考图/连线图），渲染在上传图前面，带可选角标，不可删除。
- *               作用：把不同来源的图整合进同一个网格展示，避免「输入图片」「参考图」拆成两个分组。
+ *   extraItems: 整合进同一网格的其它来源图片（参考图/连线图），渲染在上传图前面，带可选角标。
+ *               传 onRemove 则该项右上角显示红色删除按钮（如参考图，可从提示词库带入后移除）；
+ *               不传 onRemove 则纯只读（如连线图，由上游派生，不可在此删）。作用：把不同来源整合进同一网格。
  */
 export default function FileUpload({ value = [], onChange, max = 6, placeholder = '点击或拖拽图片到此处上传', extraItems = [] }) {
   const inputRef = useRef(null);
@@ -83,6 +84,16 @@ export default function FileUpload({ value = [], onChange, max = 6, placeholder 
                   {e.badge}
                 </span>
               )}
+              {typeof e.onRemove === 'function' && (
+                <button
+                  type="button"
+                  onClick={(ev) => { ev.stopPropagation(); e.onRemove(); }}
+                  className="absolute right-0.5 top-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs text-white opacity-0 shadow transition hover:bg-red-600 group-hover:opacity-100"
+                  title="移除"
+                >
+                  ✕
+                </button>
+              )}
             </div>
           ))}
           {urls.map((src, i) => (
@@ -91,7 +102,7 @@ export default function FileUpload({ value = [], onChange, max = 6, placeholder 
               <button
                 type="button"
                 onClick={() => onRemove(i)}
-                className="absolute right-0.5 top-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-black/60 text-xs text-white opacity-0 transition group-hover:opacity-100"
+                className="absolute right-0.5 top-0.5 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white shadow transition hover:bg-red-600"
                 title="移除"
               >
                 ✕

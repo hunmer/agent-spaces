@@ -1,12 +1,12 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
+import { PromptTextEditor } from '@agent-spaces/ui';
 import NodeShell from './NodeShell';
 import ImageResult from './ImageResult';
 import PromptPickerDialog from '../PromptPickerDialog';
 import PickedPromptBadge from './PickedPromptBadge';
 import FileUpload from '../FileUpload';
 import { ASPECT_OPTIONS, DEFAULT_MODEL, MODEL_OPTIONS, NODE_TYPES, SIZE_OPTIONS, WORKFLOWS } from '../../utils/constants';
-import { hasPrompt } from '../../utils/prompts';
-import { normalizeImageUrls, resolveReferenceImages } from '../../utils/workflow';
+import { normalizeImageUrls, resolveReferenceImages, promptHtmlToText, dedupeUrls } from '../../utils/workflow';
 
 /**
  * 编辑图片节点。
@@ -40,28 +40,49 @@ export default function EditImageNode({ id, data, selected }) {
   // 把参考图 + 连线图作为只读项整合进同一个 FileUpload 网格（带来源角标），上传图可删，只读项不可删。
   // 这样「输入图片」与「参考图」合并为单一区块，避免 UI 分组割裂。
   const refImages = Array.isArray(params.referenceImages) ? params.referenceImages : [];
+  const removeReferenceImage = useCallback((idx) => {
+    const next = refImages.filter((_, i) => i !== idx);
+    set({ referenceImages: next.length ? next : undefined });
+  }, [refImages, set]);
   const extraItems = [
-    ...refImages.map((src) => ({ src, badge: '参考' })),
+    ...refImages.map((src, i) => ({ src, badge: '参考', onRemove: () => removeReferenceImage(i) })),
     ...inputImages.map((src) => ({ src, badge: '连线' })),
   ];
 
+  // 编辑指令的富文本 HTML（PromptTextEditor onChange 写入）。提交时转纯文本（@参考图 → R0/R1）。
+  const promptHtml = params.promptHtml || '';
+
+  // 统一的输入图清单：参考图 + 上传图 + 连线图，去重保序。
+  // @ 列表、key(R0/R1…)映射、提交 images 三处都用它，保证「上传后 @ 能选到新图」且 key 与提交顺序一致。
+  const allInputImages = useMemo(
+    () => dedupeUrls([...refImages, ...uploadedImages, ...inputImages]),
+    [refImages, uploadedImages, inputImages],
+  );
+
+  // PromptTextEditor 的 references：全部输入图按顺序映射关键字 R0/R1/…（匹配 prompts.js 里「第一张图→R0」语义）
+  const editorReferences = useMemo(
+    () => allInputImages.map((url, i) => ({ url, label: `图${i + 1}`, key: `R${i}` })),
+    [allInputImages],
+  );
+
   const handleRun = useCallback(() => {
-    // 参考图 + 上传图 + 连线图，至少其一非空才执行；提交时合并去重
-    const allSources = [...refImages, ...uploadedImages, ...inputImages];
-    if (!allSources.length) return;
+    // 至少有一张输入图才执行（allInputImages 已含全部来源 + 去重）
+    if (!allInputImages.length) return;
+    // 编辑指令 HTML → 纯文本（@参考图 mention → R0/R1 关键字）
+    const userPrompt = promptHtmlToText(promptHtml);
     // 提示词库选中 + 用户输入 合并（去空去重）
-    const merged = [params.pickedPrompt, params.prompt].map((s) => (s || '').trim()).filter(Boolean).join('\n');
+    const merged = [params.pickedPrompt, userPrompt].map((s) => (s || '').trim()).filter(Boolean).join('\n');
     onGenerate?.(id, NODE_TYPES.editImage, {
       workflowId: WORKFLOWS.edit_image,
       input: {
-        images: normalizeImageUrls(allSources),
+        images: normalizeImageUrls(allInputImages),
         prompt: merged,
         model: params.model || DEFAULT_MODEL,
         aspect: params.aspect || '1:1',
         size: params.size || '1k',
       },
     });
-  }, [onGenerate, id, inputImages, uploadedImages, params, refImages]);
+  }, [onGenerate, id, params, promptHtml, allInputImages]);
 
   return (
     <NodeShell id={id} nodeType={NODE_TYPES.editImage} data={data} selected={selected} targetHandle sourceHandle>
@@ -80,9 +101,12 @@ export default function EditImageNode({ id, data, selected }) {
         pickedPrompt={params.pickedPrompt}
         onClear={() => set({ pickedPrompt: undefined, referenceImages: undefined })}
       />
-      <label className="flex flex-col gap-1">
+      <div className="flex flex-col gap-1">
         <div className="flex items-center justify-between">
-          <span className="text-xs font-medium text-muted-foreground">编辑指令</span>
+          <span className="text-xs font-medium text-muted-foreground">
+            编辑指令
+            {refImages.length > 0 && <span className="ml-1 text-[10px] text-muted-foreground">（输入 @ 插入参考图）</span>}
+          </span>
           <button
             type="button"
             onClick={() => setPickerOpen(true)}
@@ -91,13 +115,15 @@ export default function EditImageNode({ id, data, selected }) {
             📋 提示词库
           </button>
         </div>
-        <textarea
-          className="min-h-[56px] w-full resize-y rounded-md border border-border bg-background px-2 py-1.5 text-sm outline-none focus:border-primary"
-          placeholder="如：将背景改为星空，保持宝箱主体不变"
-          value={params.prompt || ''}
-          onChange={(e) => set({ prompt: e.target.value })}
-        />
-      </label>
+        <div className="nodrag nopan nowheel min-h-[56px] resize-y rounded-md border border-border bg-background px-2 py-1.5 text-sm focus-within:border-primary">
+          <PromptTextEditor
+            value={promptHtml}
+            onChange={(html) => set({ promptHtml: html })}
+            references={editorReferences}
+            placeholder="如：将背景改为星空，保持宝箱主体不变（输入 @ 插入参考图）"
+          />
+        </div>
+      </div>
 
       <div className="grid grid-cols-2 gap-2">
         <MiniSelect label="模型" value={params.model || DEFAULT_MODEL} options={MODEL_OPTIONS} onChange={(v) => set({ model: v })} />
@@ -107,7 +133,7 @@ export default function EditImageNode({ id, data, selected }) {
 
       <button
         type="button"
-        disabled={running || (!inputImages.length && !uploadedImages.length && !(params.referenceImages || []).length) || !hasPrompt(params)}
+        disabled={running || allInputImages.length === 0 || !((params.pickedPrompt || '').trim() || promptHtmlToText(promptHtml))}
         onClick={handleRun}
         className="w-full rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition disabled:cursor-not-allowed disabled:opacity-50"
       >
