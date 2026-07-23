@@ -81,6 +81,10 @@ export * from 'lucide-react';
 export { default as Selecto } from 'selecto';
 export { WorkflowListDialog } from '@/components/workflow/workflow-list-dialog';
 
+// 分组容器（ReactFlow 画布上的可视化分组 overlay，节点画布类 mini-app 复用）
+export { WorkflowGroupOverlay, useGroupManagement } from '@/components/workflow/workflow-group-node';
+export type { WorkflowNodeSizeOverrides } from '@/components/workflow/workflow-canvas-groups';
+
 // mini-apps 内置路由能力
 export { Router, useRouter, Link, serializeRoute, parseRoute } from '@/components/mini-apps/mini-app-router';
 export type { RouteState, RouterApi } from '@/components/mini-apps/mini-app-router';

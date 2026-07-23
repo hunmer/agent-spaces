@@ -1,6 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { findSmallestContainingRectId, resolveGroupBoundsNode } from './workflow-canvas-helpers';
+import {
+  addCloneToSourceGroups,
+  appendImmediateCanvasClone,
+  findSmallestContainingRectId,
+  resolveGroupBoundsNode,
+} from './workflow-canvas-helpers';
 
 test('findSmallestContainingRectId picks the innermost matching group', () => {
   const targets = [
@@ -18,4 +23,25 @@ test('resolveGroupBoundsNode freezes a detaching node at its drag-start position
 
   assert.equal(resolveGroupBoundsNode(live, initial, true), initial);
   assert.equal(resolveGroupBoundsNode(live, initial, false), live);
+});
+
+test('addCloneToSourceGroups keeps a cloned node in its source group', () => {
+  const groups = [
+    { id: 'source-group', childNodeIds: ['source'] },
+    { id: 'other-group', childNodeIds: ['other'] },
+  ];
+
+  assert.deepEqual(addCloneToSourceGroups(groups, 'source', 'clone'), [
+    { id: 'source-group', childNodeIds: ['source', 'clone'] },
+    groups[1],
+  ]);
+});
+
+test('appendImmediateCanvasClone shows the clone at drag start', () => {
+  const source = { id: 'source', position: { x: 10, y: 20 }, selected: true, dragging: true };
+
+  assert.deepEqual(appendImmediateCanvasClone([source], source, 'clone'), [
+    source,
+    { id: 'clone', position: { x: 10, y: 20 }, selected: false, dragging: false },
+  ]);
 });

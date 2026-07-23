@@ -3,12 +3,13 @@ import { debounce, loadCanvas, onCanvasChanged, saveCanvas } from '../utils/stor
 import { SAVE_DEBOUNCE } from '../utils/constants';
 
 /**
- * 画布节点/边状态管理 + 持久化（按工作区隔离到 configs/workspaces/<id>/canvas.json）+ 多端同步。
- * @param {string} workspaceId 当前工作区 id；变化时重新加载该工作区的节点/边
+ * 画布节点/边/分组状态管理 + 持久化（按工作区隔离到 configs/workspaces/<id>/canvas.json）+ 多端同步。
+ * @param {string} workspaceId 当前工作区 id；变化时重新加载该工作区的节点/边/分组
  */
 export default function useCanvasState(workspaceId) {
   const [nodes, setNodes] = useState([]);
   const [edges, setEdges] = useState([]);
+  const [groups, setGroups] = useState([]);
   const [loaded, setLoaded] = useState(false);
 
   const remoteRef = useRef(false);
@@ -23,10 +24,12 @@ export default function useCanvasState(workspaceId) {
     if (state && Array.isArray(state.nodes)) {
       setNodes(state.nodes);
       setEdges(state.edges || []);
+      setGroups(Array.isArray(state.groups) ? state.groups : []);
     } else {
       // 新工作区：清空，避免上个工作区的节点残留
       setNodes([]);
       setEdges([]);
+      setGroups([]);
     }
     setLoaded(true);
   }, [workspaceId]);
@@ -42,14 +45,15 @@ export default function useCanvasState(workspaceId) {
       lastSavedRef.current = value;
       setNodes(value.nodes);
       setEdges(value.edges || []);
+      setGroups(Array.isArray(value.groups) ? value.groups : []);
     });
     return () => { try { unsub(); } catch {} };
   }, [workspaceId]);
 
   // 防抖保存（本地改动触发）—— 带上 workspaceId 写到对应隔离目录
   const debouncedSave = useMemo(
-    () => debounce((n, e) => {
-      const state = { nodes: n, edges: e };
+    () => debounce((n, e, g) => {
+      const state = { nodes: n, edges: e, groups: g };
       lastSavedRef.current = state;
       dirtyRef.current = false;
       saveCanvas(workspaceId, state).catch((err) => console.warn('saveCanvas failed:', err));
@@ -64,8 +68,8 @@ export default function useCanvasState(workspaceId) {
       return;
     }
     dirtyRef.current = true;
-    debouncedSave(nodes, edges);
-  }, [nodes, edges, loaded, debouncedSave]);
+    debouncedSave(nodes, edges, groups);
+  }, [nodes, edges, groups, loaded, debouncedSave]);
 
   useEffect(() => () => debouncedSave.cancel(), [debouncedSave]);
 
@@ -78,8 +82,8 @@ export default function useCanvasState(workspaceId) {
   }, []);
 
   return {
-    nodes, edges, loaded,
-    setNodes, setEdges,
+    nodes, edges, groups, loaded,
+    setNodes, setEdges, setGroups,
     updateNodeData,
   };
 }

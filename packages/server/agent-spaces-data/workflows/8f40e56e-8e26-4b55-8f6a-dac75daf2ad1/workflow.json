@@ -19,30 +19,30 @@
       "type": "end",
       "label": "End",
       "position": {
-        "x": 345,
-        "y": 360
+        "x": 375,
+        "y": 315
       },
       "data": {}
     },
     {
-      "id": "node_1784775843147_oloolh",
+      "id": "node_1784778038092_br2m9f",
       "type": "run_code",
       "label": "nodes.run_code.label",
       "position": {
-        "x": 792.2353261771236,
-        "y": 200.8997944413542
+        "x": 775,
+        "y": 315
       },
       "data": {
         "code": "async function main({ params }) {\n  const ret = {\n    \"key0\": params.input + params.input,\n    \"key1\": [\"hello\", \"world\"],\n    \"key2\": {\n      \"key21\": \"hi\",\n    },\n  }\n\n  return ret\n}"
       }
     },
     {
-      "id": "node_1784775847475_trr3uh",
+      "id": "node_1784778110889_hxysw6",
       "type": "run_code",
       "label": "nodes.run_code.label",
       "position": {
-        "x": 1050,
-        "y": 345
+        "x": 450,
+        "y": 525
       },
       "data": {
         "code": "async function main({ params }) {\n  const ret = {\n    \"key0\": params.input + params.input,\n    \"key1\": [\"hello\", \"world\"],\n    \"key2\": {\n      \"key21\": \"hi\",\n    },\n  }\n\n  return ret\n}"
@@ -51,7 +51,7 @@
   ],
   "edges": [],
   "createdAt": 1784775785773,
-  "updatedAt": 1784777495421,
+  "updatedAt": 1784778299734,
   "published": false,
   "lastOpenedAt": 1784775838656,
   "groups": [
@@ -59,8 +59,7 @@
       "id": "group_1784775852596_qka86f",
       "name": "分组 1",
       "childNodeIds": [
-        "node_1784775843147_oloolh",
-        "node_1784775847475_trr3uh"
+        "node_1784778038092_br2m9f"
       ],
       "childGroupIds": [],
       "locked": false,

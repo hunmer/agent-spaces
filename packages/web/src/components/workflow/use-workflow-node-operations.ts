@@ -36,6 +36,7 @@ import {
 } from './workflow-canvas-references';
 import { syncWorkflowReferenceEdges } from './workflow-reference-edges';
 import { parseWorkflowFieldHandleId } from './workflow-field-handles';
+import { addCloneToSourceGroups } from './workflow-canvas-helpers';
 
 interface UseNodeOperationsParams {
   workflow: Workflow | null;
@@ -507,7 +508,10 @@ export function useNodeOperations({
     markDirty();
   }, [workflow, isReadOnly, upsertWorkflow, pushUndo, setWorkflow, setSelectedNodeId, setSelectedNodeIds, markDirty]);
 
-  const handleNodeClone = useCallback((nodeId: string) => {
+  const handleNodeClone = useCallback((
+    nodeId: string,
+    options?: { position?: { x: number; y: number }; select?: boolean },
+  ) => {
     if (!workflow || isReadOnly) return;
     const node = workflow.nodes.find(n => n.id === nodeId);
     if (!node) return;
@@ -516,14 +520,21 @@ export function useNodeOperations({
     const cloned = {
       ...node,
       id: newId,
-      position: { x: node.position.x + 40, y: node.position.y + 40 },
-      data: JSON.parse(JSON.stringify(node.data)),
+      position: options?.position ?? { x: node.position.x + 40, y: node.position.y + 40 },
+      data: cloneData(node.data),
     };
-    setWorkflow(w => w ? { ...w, nodes: [...w.nodes, cloned] } : null);
-    setSelectedNodeId(newId);
-    setSelectedNodeIds([newId]);
+    setWorkflow(w => w ? {
+      ...w,
+      nodes: [...w.nodes, cloned],
+      groups: addCloneToSourceGroups(w.groups, nodeId, newId),
+    } : null);
+    if (options?.select !== false) {
+      setSelectedNodeId(newId);
+      setSelectedNodeIds([newId]);
+    }
     markDirty();
-  }, [workflow, isReadOnly, pushUndo, markDirty, setSelectedNodeId, setSelectedNodeIds]);
+    return newId;
+  }, [workflow, isReadOnly, pushUndo, markDirty, setSelectedNodeId, setSelectedNodeIds, setWorkflow]);
 
   const handleNodeCopy = useCallback((nodeId: string) => {
     if (isReadOnly) return;

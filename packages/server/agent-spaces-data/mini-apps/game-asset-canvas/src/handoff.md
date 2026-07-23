@@ -44,7 +44,7 @@ src/
   index.jsx                     # <ReactFlowProvider><Canvas/></ReactFlowProvider>
   CLAUDE.md                     # 项目契约（架构/约定/坑点，必读）
   components/
-    Canvas.jsx                  # 主画布：ReactFlow + 队列 + 表单 + 设置 + 多工作区 + 复制粘贴，状态单一数据源
+    Canvas.jsx                  # 主画布：ReactFlow + 队列 + 表单 + 设置 + 多工作区 + 复制粘贴 + 分组 overlay + 底部多选 toolbar，状态单一数据源
     Toolbar.jsx                 # 顶栏（工作区切换插槽/自动布局/导出/设置/队列插槽/清空）
     RightPanel.jsx              # 右侧三 tab：新增节点/节点管理/生成记录
     SettingsDialog.jsx          # 设置页（配工作流槽位，参考 stickerGenerator）
@@ -54,7 +54,6 @@ src/
     DeleteWorkspacesDialog.jsx  # 批量删除工作区确认弹窗（多选 checkbox，替代原生 confirm）
     nodes/
       NodeShell.jsx             # 节点外壳（Handle/状态/NodeResizer/NodeToolbar/nodrag nopan nowheel）。多选(selectionCount>1)时隐藏 NodeToolbar
-      GroupNode.jsx             # 分组容器节点（虚线框+标题+删除按钮，自动贴合子节点；zIndex:-1）
       TextToImageNode.jsx       # 提示词库按钮 + pickedPrompt 标签 + 合并提交
       EditImageNode.jsx         # 同上
       ImageDisplayNode.jsx      # 上传用 window.AgentSpaces.uploadFile 拿 http URL
@@ -116,13 +115,15 @@ src/
 16. **多工作区切换由 activeId 驱动**：`useCanvasState(workspaceId)`/`useGenerationHistory(workspaceId)` 接收 workspaceId，切换时 useEffect 重载。Canvas 渲染门控 `!activeId || !loaded` 显示加载中，避免空数据闪烁。工作区操作（create/switch/delete）都走 service 写 `workspaces.json` → 广播 → `useWorkspaces` 更新 activeId → 子 hook 自动重载，**前端不直接 setState activeId**。
 17. **节点复制粘贴剪贴板是模块级内存**：`utils/clipboard.js` 用模块级 ref（非 localStorage），刷新失效。这是**唯一跨工作区复制方式**（工作区切换是整画布替换）。焦点在 input/textarea/contenteditable 时必须放行浏览器原生 Ctrl+C/V（keydown 里判 `tagName/isContentEditable`）。复制仅保留选中集**内部**连线，外部连线丢弃。
 18. **多选隐藏节点 toolbar**：`NodeShell` 的 NodeToolbar `isVisible={selected && selectionCount <= 1}`。`selectionCount`（当前选中节点总数）由 Canvas `onSelectionChange` 维护，经 decoratedNodes 注入到每个节点 data。多选时各节点 toolbar 全部隐藏，避免干扰框选操作。
-19. **导出图片分组（group 节点）**：导出多图时不再散落，而是创建一个 `NODE_TYPES.group` 容器节点 + 多个 imageDisplay 子节点，分组名 = 来源节点名 + 时间（如「文字生成图片 导出 14:30」）。**复用 workflow-editor/groups.ts 的 `WorkflowGroup` 数据结构思想**（id/name/childNodeIds），但用普通 ReactFlow 节点实现（非 ViewportPortal），零宿主改动：
-    - group 的 position/width/height 在创建时按子节点包围盒算好写入（自动贴合）
-    - `zIndex:-1` 让子节点叠在容器上方
-    - group 不参与连线/执行（computeInputImages 只处理 imageReceiver 类型，天然跳过）
-    - `data.childIds` 持久化到 canvas.json（useCanvasState 存真值 nodes，注入的 onDeleteGroup 回调只在 decoratedNodes 不写盘）
-    - 单图导出走原 addImageNodesFromUrls（不分组）
-    - 删除分组仅删 group 节点本身，保留子图片节点（deleteGroup）
+19. **导出图片分组（复用宿主 WorkflowGroupOverlay，一套逻辑）**：导出多图时不再散落，而是创建若干 imageDisplay 子节点 + 一条 group 数据，分组名 = 来源节点名 + 时间（如「文字生成图片 导出 14:30」）。**直接复用 workflow 编辑器同源的 `WorkflowGroupOverlay` 组件**（非自写阉割版），经 ui-exports 暴露，mini-app 在 ReactFlow 的 `<ViewportPortal>` 内渲染它，按子节点包围盒自动贴合、跟随画布 pan/zoom：
+    - **数据结构**：`WorkflowGroup`（id/name/childNodeIds/childGroupIds/locked/disabled/savedNodeStates），与 `packages/web/src/stores/workflow-editor/groups.ts` 同源
+    - **分组不是节点**：groups 是独立 state（useCanvasState 第三维，与 nodes/edges 平级），不占 NODE_TYPES、不走 computeInputImages、不被 nodeTypes 注册
+    - **持久化**：canvas.json 新增 `groups` 字段（service save_canvas 透传，useCanvasState 读写）；old canvas.json 无 groups 兜底为 `[]`
+    - **Canvas 实现**：`groupOverlayItems`（groups 映射出 childNodes）+ `screenDeltaToFlowDelta`（screenToFlowPosition 差值）+ `handleGroupMove`（整组平移）+ `deleteGroup`/`updateGroup`；删节点时 `onNodesDelete` 同步清理 groups 里悬空的 childNodeIds
+    - **单图导出**不分组（走原 addImageNodesFromUrls）
+    - **宿主层改动**（需重启 web）：`react-renderer.tsx` allowlist + 顶部 import 加 `ViewportPortal`；`ui-exports.ts` 导出 `WorkflowGroupOverlay`/`useGroupManagement`
+    - **底部多选 toolbar**：选中节点数 `selectionCount > 1` 时，画布底部居中浮出工具条（absolute 定位在画布容器内，`nodrag nopan` 防误触画布），显示「已选 N」+「合并成分组」按钮（`Layers` 图标，从 `@agent-spaces/ui` 导入）。点击调 `createGroupFromSelection`：取选中节点 id 建一条 group 数据（名「分组 N」），建完清空选中（把所有节点 selected 置 false）
+    - **图标来源**：mini-app 内图标一律从 `@agent-spaces/ui` 命名导入（如 `Layers`/`Trash2`/`Crosshair`），**不要**直接 `import from 'lucide-react'`（不在 allowlist，react-renderer 解析时为 undefined 会报 `Cannot read properties of undefined`）
 
 
 ## Service 热重载（宿主层，本轮新增）

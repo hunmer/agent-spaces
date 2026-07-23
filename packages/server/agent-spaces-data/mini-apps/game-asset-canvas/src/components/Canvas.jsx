@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Background, BackgroundVariant, Controls, MarkerType, MiniMap, ReactFlow,
+  ViewportPortal,
   addEdge, applyEdgeChanges, applyNodeChanges, useReactFlow,
 } from '@xyflow/react';
-import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@agent-spaces/ui';
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle, WorkflowGroupOverlay, Layers } from '@agent-spaces/ui';
 import Toolbar from './Toolbar';
 import RightPanel from './RightPanel';
 import SettingsDialog from './SettingsDialog';
@@ -15,7 +16,6 @@ import EditImageNode from './nodes/EditImageNode';
 import ImageDisplayNode from './nodes/ImageDisplayNode';
 import ImageProcessNode from './nodes/ImageProcessNode';
 import NoteNode from './nodes/NoteNode';
-import GroupNode from './nodes/GroupNode';
 import useCanvasState from '../hooks/useCanvasState';
 import useWorkflow from '../hooks/useWorkflow';
 import useGenerationHistory from '../hooks/useGenerationHistory';
@@ -36,7 +36,6 @@ const NODE_COMPONENTS = {
   [NODE_TYPES.imageDisplay]: ImageDisplayNode,
   [NODE_TYPES.imageProcess]: ImageProcessNode,
   [NODE_TYPES.note]: NoteNode,
-  [NODE_TYPES.group]: GroupNode,
 };
 
 // 右键菜单的节点类型列表（与 RightPanel 新增节点 tab 保持一致）
@@ -127,7 +126,7 @@ export default function Canvas() {
   // 工作区管理（activeId 驱动后续节点/历史的隔离加载）
   const { workspaces, activeId, createWorkspace, renameWorkspace, switchWorkspace, deleteWorkspace } = useWorkspaces();
   // hooks 依赖 activeId：切换工作区时自动重载该工作区的节点/历史
-  const { nodes, edges, loaded, setNodes, setEdges, updateNodeData } = useCanvasState(activeId);
+  const { nodes, edges, groups, loaded, setNodes, setEdges, setGroups, updateNodeData } = useCanvasState(activeId);
   const runWorkflow = useWorkflow();
   const { history, addHistory, removeHistory, clearHistory } = useGenerationHistory(activeId);
   const { settings, saveSettings } = useSettings();
@@ -220,12 +219,16 @@ export default function Canvas() {
   // 键盘删除节点：Backspace / Delete（v12 默认含 Backspace，显式补 Delete）
   const deleteKeyCode = useMemo(() => (['Backspace', 'Delete']), []);
 
-  // 节点删除时同步清理相关连线（ReactFlow 默认会删 selected edges，这里兜底）
+  // 节点删除时同步清理相关连线 + 分组里悬空的 childNodeIds 引用
   const onNodesDelete = useCallback((deleted) => {
     if (!deleted?.length) return;
     const ids = new Set(deleted.map((n) => n.id));
     setEdges((prev) => prev.filter((e) => !ids.has(e.source) && !ids.has(e.target)));
-  }, [setEdges]);
+    setGroups((prev) => prev.map((g) => ({
+      ...g,
+      childNodeIds: g.childNodeIds.filter((id) => !ids.has(id)),
+    })));
+  }, [setEdges, setGroups]);
 
   // 节点内部更新 data 的回调（注入到 data.onUpdate）
   const makeOnUpdate = useCallback((nodeId) => (patch) => {
@@ -387,8 +390,9 @@ export default function Canvas() {
   const handleClear = useCallback(() => {
     setNodes([]);
     setEdges([]);
+    setGroups([]);
     setSelectedId(null);
-  }, [setNodes, setEdges]);
+  }, [setNodes, setEdges, setGroups]);
 
   // 删除单个节点（含相关连线）
   const handleDeleteNode = useCallback((nodeId) => {
@@ -455,20 +459,18 @@ export default function Canvas() {
     });
   }, [setNodes]);
 
-  // —— 导出图片：单图直接加节点；多图分组（参考 workflow-editor/groups.ts 的 WorkflowGroup）——
-  // 多图时创建一个 group 容器节点 + 多个 imageDisplay 子节点，分组名 = 来源节点名 + 时间。
-  // group 的 position/width/height 由子节点包围盒算好后写入（自动贴合子节点，无需 ViewportPortal）。
-  const GROUP_PADDING_X = 24;
-  const GROUP_PADDING_TOP = 36; // 分组标题栏高度
-  const GROUP_PADDING_BOTTOM = 24;
+  // —— 导出图片：单图直接加节点；多图分组（复用 workflow-editor 的 WorkflowGroup 数据结构 + WorkflowGroupOverlay 渲染）——
+  // 多图时创建若干 imageDisplay 子节点 + 一条 group 数据（childNodeIds 关联子节点），
+  // 分组名 = 来源节点名 + 时间。group 不作为 ReactFlow 节点，而是由 WorkflowGroupOverlay（在
+  // ViewportPortal 内）按子节点包围盒自动贴合渲染，与宿主 workflow 编辑器完全同源。
   const handleExportImages = useCallback((sourceNode, imgs) => {
     if (!imgs?.length) return;
-    // 单图：保持原行为，直接加一个独立图片节点
+    // 单图：保持原行为，直接加一个独立图片节点（不分组）
     if (imgs.length === 1) {
       addImageNodesFromUrls(imgs, { tags: [IMAGE_TAGS.export] });
       return;
     }
-    // 多图：分组。子节点网格排列在画布空白区，再用包围盒建 group 容器。
+    // 多图：分组。子节点网格排列在画布空白区
     const size = DEFAULT_SIZE[NODE_TYPES.imageDisplay];
     const meta = NODE_META[NODE_TYPES.imageDisplay];
     const cols = Math.min(3, imgs.length);
@@ -480,15 +482,14 @@ export default function Canvas() {
     const mm = String(now.getMinutes()).padStart(2, '0');
     const groupName = `${srcLabel} 导出 ${hh}:${mm}`;
 
+    // 子节点先入画布，拿到它们的 id 再建 group
+    const childIds = imgs.map(() => genId(NODE_TYPES.imageDisplay));
     setNodes((prev) => {
-      // 起点偏移：尽量放在现有节点右侧/下方空白处（用节点数粗略估算避免重叠）
       const base = prev.length;
       const startX = 420 + base * 6;
       const startY = 120;
-      const childIds = [];
       const additions = imgs.map((url, i) => {
-        const id = genId(NODE_TYPES.imageDisplay);
-        childIds.push(id);
+        const id = childIds[i];
         const col = i % cols;
         const row = Math.floor(i / cols);
         return {
@@ -500,30 +501,49 @@ export default function Canvas() {
           data: { ...initialData(NODE_TYPES.imageDisplay), images: [url], source: 'export', tags, label: meta.label },
         };
       });
-      // 子节点包围盒 → group 容器尺寸/位置
-      const rows = Math.ceil(imgs.length / cols);
-      const groupW = cols * size.w + (cols - 1) * 20 + GROUP_PADDING_X * 2;
-      const groupH = rows * size.h + (rows - 1) * 20 + GROUP_PADDING_TOP + GROUP_PADDING_BOTTOM;
-      const groupId = genId(NODE_TYPES.group);
-      const groupNode = {
-        id: groupId,
-        type: NODE_TYPES.group,
-        position: { x: startX - GROUP_PADDING_X, y: startY - GROUP_PADDING_TOP },
-        width: groupW, height: groupH,
-        style: { width: groupW, height: groupH },
-        // group 不参与连线/执行；zIndex 拉低让子节点叠在上方
-        zIndex: -1,
-        data: { id: groupId, name: groupName, childIds },
-      };
-      return [...prev, ...additions, groupNode];
+      return [...prev, ...additions];
     });
-  }, [addImageNodesFromUrls]);
+    // 新增一条 group 数据（WorkflowGroup 结构）
+    setGroups((prev) => [...prev, {
+      id: genId('group'),
+      name: groupName,
+      childNodeIds: childIds,
+      childGroupIds: [],
+      locked: false,
+      disabled: false,
+      savedNodeStates: {},
+    }]);
+  }, [addImageNodesFromUrls, setNodes, setGroups]);
 
-  // 删除分组容器（仅删 group 节点本身，保留其中的图片子节点）
+  // 删除分组（仅删 group 数据，保留其中的图片子节点）
   const deleteGroup = useCallback((groupId) => {
     if (!groupId) return;
-    setNodes((prev) => prev.filter((n) => n.id !== groupId));
-  }, [setNodes]);
+    setGroups((prev) => prev.filter((g) => g.id !== groupId));
+  }, [setGroups]);
+
+  // 更新分组（重命名/颜色/锁定等，WorkflowGroupOverlay 回调）
+  const updateGroup = useCallback((groupId, updates) => {
+    setGroups((prev) => prev.map((g) => (g.id === groupId ? { ...g, ...updates } : g)));
+  }, [setGroups]);
+
+  // 合并选中节点为一个分组（底部 toolbar 触发）：取当前选中节点 id 建 group 数据，
+  // 分组名 = 「分组 N」（N = 当前分组数 + 1）。建完清空选中，避免工具栏持续显示。
+  const createGroupFromSelection = useCallback(() => {
+    const ids = nodes.filter((n) => n.selected).map((n) => n.id);
+    if (ids.length < 2) return;
+    const name = `分组 ${groups.length + 1}`;
+    setGroups((prev) => [...prev, {
+      id: genId('group'),
+      name,
+      childNodeIds: ids,
+      childGroupIds: [],
+      locked: false,
+      disabled: false,
+      savedNodeStates: {},
+    }]);
+    // 清空选中（ReactFlow 原生：把所有节点 selected 置 false）
+    setNodes((prev) => prev.map((n) => (n.selected ? { ...n, selected: false } : n)));
+  }, [nodes, groups.length, setGroups, setNodes]);
 
   // 生成记录「用作输入」
   const handleUseImage = useCallback((url) => {
@@ -693,13 +713,6 @@ export default function Canvas() {
   const upstreamMap = useMemo(() => computeInputImages(nodes, edges), [nodes, edges]);
   const decoratedNodes = useMemo(
     () => nodes.map((nd) => {
-      // 分组容器节点：仅注入删除回调，不走图片/生成等逻辑
-      if (nd.type === NODE_TYPES.group) {
-        return {
-          ...nd,
-          data: { ...nd.data, onDeleteGroup: deleteGroup },
-        };
-      }
       const up = upstreamMap.get(nd.id);
       const data = { ...nd.data };
       if (up) {
@@ -730,8 +743,41 @@ export default function Canvas() {
         },
       };
     }),
-    [nodes, upstreamMap, makeOnUpdate, handleGenerate, handleExportImages, handleProcessImage, handleProcessLocal, handleAutoSize, handleAutoSizeToContent, selectionCount, deleteGroup],
+    [nodes, upstreamMap, makeOnUpdate, handleGenerate, handleExportImages, handleProcessImage, handleProcessLocal, handleAutoSize, handleAutoSizeToContent, selectionCount],
   );
+
+  // 分组 overlay 的子节点映射 + 选中态（WorkflowGroupOverlay 需要的 childNodes/isSelected）
+  const [selectedGroupId, setSelectedGroupId] = useState(null);
+  const groupOverlayItems = useMemo(() => groups.map((group) => ({
+    group,
+    childNodes: nodes
+      .filter((n) => group.childNodeIds.includes(n.id))
+      .map((n) => ({ id: n.id, position: n.position, width: n.width, height: n.height })),
+  })), [groups, nodes]);
+
+  // 拖拽分组时屏幕坐标差 → 画布坐标差（WorkflowGroupOverlay.onMove 需要）
+  const screenDeltaToFlowDelta = useCallback((delta) => {
+    const a = reactFlow.screenToFlowPosition({ x: 0, y: 0 });
+    const b = reactFlow.screenToFlowPosition({ x: delta.x, y: delta.y });
+    return { x: b.x - a.x, y: b.y - a.y };
+  }, [reactFlow]);
+
+  // 拖拽分组：把整组（含子组）按 delta 平移
+  const handleGroupMove = useCallback((groupId, delta) => {
+    if (!delta || (delta.x === 0 && delta.y === 0)) return;
+    // 收集该组及子组所有子节点 id（WorkflowGroup 支持嵌套）
+    const collectIds = (gid, visited = new Set()) => {
+      if (visited.has(gid)) return [];
+      visited.add(gid);
+      const g = groups.find((x) => x.id === gid);
+      if (!g) return [];
+      return [...g.childNodeIds, ...g.childGroupIds.flatMap((cg) => collectIds(cg, visited))];
+    };
+    const ids = new Set(collectIds(groupId));
+    setNodes((prev) => prev.map((n) => ids.has(n.id)
+      ? { ...n, position: { x: n.position.x + delta.x, y: n.position.y + delta.y } }
+      : n));
+  }, [groups, setNodes]);
 
   // 面板布局变化 -> 持久化
   const handlePanelLayoutChange = useCallback((layout) => {
@@ -824,7 +870,43 @@ export default function Canvas() {
                 nodeColor={(n) => (NODE_META[n.type]?.color || '#94a3b8')}
                 maskColor="rgb(0 0 0 / 0.05)"
               />
+              {/* 分组 overlay：复用宿主 WorkflowGroupOverlay（与 workflow 编辑器同源），
+                  放在 ViewportPortal 内跟随画布 pan/zoom，按子节点包围盒自动贴合 */}
+              <ViewportPortal>
+                {groupOverlayItems.map(({ group, childNodes }) => (
+                  <WorkflowGroupOverlay
+                    key={group.id}
+                    group={group}
+                    childNodes={childNodes}
+                    isSelected={selectedGroupId === group.id}
+                    onSelect={setSelectedGroupId}
+                    onDelete={deleteGroup}
+                    onUpdate={updateGroup}
+                    onMove={handleGroupMove}
+                    screenDeltaToFlowDelta={screenDeltaToFlowDelta}
+                  />
+                ))}
+              </ViewportPortal>
             </ReactFlow>
+            {/* 底部 toolbar：选中多个节点时浮出，提供「合并成分组」操作。
+                absolute 定位在画布容器底部居中，z-index 高于 ReactFlow 内容。
+                用 nodrag nopan 防止点击触发画布交互。 */}
+            {selectionCount > 1 && (
+              <div className="nodrag nopan pointer-events-auto absolute bottom-4 left-1/2 z-10 -translate-x-1/2">
+                <div className="flex items-center gap-1 rounded-lg border border-border bg-card px-2 py-1.5 text-card-foreground shadow-md">
+                  <span className="px-1 text-xs text-muted-foreground">已选 {selectionCount}</span>
+                  <div className="mx-1 h-4 w-px bg-border" />
+                  <button
+                    type="button"
+                    onClick={createGroupFromSelection}
+                    className="flex items-center gap-1.5 rounded-md border border-border bg-background px-2.5 py-1 text-xs font-medium text-foreground transition hover:border-primary hover:text-primary"
+                  >
+                    <Layers className="h-3.5 w-3.5" />
+                    合并成分组
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </ResizablePanel>

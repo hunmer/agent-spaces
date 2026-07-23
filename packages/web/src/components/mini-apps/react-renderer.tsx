@@ -49,6 +49,7 @@ import {
   NodeResizer,
   NodeToolbar,
   useReactFlow,
+  ViewportPortal,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import dagre, { graphlib } from '@dagrejs/dagre';
@@ -221,6 +222,7 @@ function resolveExternalModule(id: string) {
       NodeResizer,
       NodeToolbar,
       useReactFlow,
+      ViewportPortal,
     };
   }
   if (id === '@dagrejs/dagre') {

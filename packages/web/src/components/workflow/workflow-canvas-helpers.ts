@@ -23,6 +23,29 @@ export function resolveGroupBoundsNode<T>(liveNode: T, initialNode: T | undefine
   return freeze && initialNode ? initialNode : liveNode;
 }
 
+export function addCloneToSourceGroups<T extends { childNodeIds: string[] }>(
+  groups: T[] | undefined,
+  sourceNodeId: string,
+  clonedNodeId: string,
+) {
+  return groups?.map(group => group.childNodeIds.includes(sourceNodeId)
+    ? { ...group, childNodeIds: [...group.childNodeIds, clonedNodeId] }
+    : group);
+}
+
+export function appendImmediateCanvasClone<T extends {
+  id: string;
+  position: { x: number; y: number };
+}>(nodes: T[], sourceNode: T, clonedNodeId: string): T[] {
+  return [...nodes, {
+    ...sourceNode,
+    id: clonedNodeId,
+    position: { ...sourceNode.position },
+    selected: false,
+    dragging: false,
+  }];
+}
+
 export function isPositionNodeChange(
   change: NodeChange,
 ): change is NodeChange & { type: 'position'; id: string; position: { x: number; y: number } } {

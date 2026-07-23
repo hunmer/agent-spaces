@@ -21,7 +21,7 @@ export const NODE_TYPES = {
   imageDisplay: 'imageDisplay',
   imageProcess: 'imageProcess',
   note: 'note',
-  group: 'group', // 分组容器（仅展示，不参与连线/执行）
+  // 注：分组不是节点，是 WorkflowGroupOverlay（由 groups 数据驱动，复用 workflow-editor 同源组件）
 };
 
 // 工作流内置插件
@@ -65,7 +65,6 @@ export const NODE_META = {
   [NODE_TYPES.imageDisplay]: { label: '图片展示', icon: '🖼️', color: '#10b981' },
   [NODE_TYPES.imageProcess]: { label: '图像处理', icon: '🔧', color: '#14b8a6' },
   [NODE_TYPES.note]: { label: '便签', icon: '📝', color: '#f59e0b' },
-  [NODE_TYPES.group]: { label: '分组', icon: '📁', color: '#64748b' },
 };
 
 // 图片展示节点的来源标签（不同来源传不同 tag 做区分）
