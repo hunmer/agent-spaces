@@ -9,6 +9,20 @@ export function isNonNull<T>(value: T | null): value is T {
   return value !== null;
 }
 
+export function findSmallestContainingRectId(
+  point: { x: number; y: number },
+  targets: Array<{ id: string; rect: { left: number; top: number; right: number; bottom: number } }>,
+) {
+  return targets
+    .filter(({ rect }) => point.x >= rect.left && point.x <= rect.right && point.y >= rect.top && point.y <= rect.bottom)
+    .sort((a, b) => (a.rect.right - a.rect.left) * (a.rect.bottom - a.rect.top)
+      - (b.rect.right - b.rect.left) * (b.rect.bottom - b.rect.top))[0]?.id ?? null;
+}
+
+export function resolveGroupBoundsNode<T>(liveNode: T, initialNode: T | undefined, freeze: boolean) {
+  return freeze && initialNode ? initialNode : liveNode;
+}
+
 export function isPositionNodeChange(
   change: NodeChange,
 ): change is NodeChange & { type: 'position'; id: string; position: { x: number; y: number } } {

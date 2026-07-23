@@ -53,7 +53,8 @@ src/
     WorkspaceSwitcher.jsx       # 工作区切换 popover（切换/重命名/删除/创建/批量删除）
     DeleteWorkspacesDialog.jsx  # 批量删除工作区确认弹窗（多选 checkbox，替代原生 confirm）
     nodes/
-      NodeShell.jsx             # 节点外壳（Handle/状态/NodeResizer/NodeToolbar/nodrag nopan nowheel）
+      NodeShell.jsx             # 节点外壳（Handle/状态/NodeResizer/NodeToolbar/nodrag nopan nowheel）。多选(selectionCount>1)时隐藏 NodeToolbar
+      GroupNode.jsx             # 分组容器节点（虚线框+标题+删除按钮，自动贴合子节点；zIndex:-1）
       TextToImageNode.jsx       # 提示词库按钮 + pickedPrompt 标签 + 合并提交
       EditImageNode.jsx         # 同上
       ImageDisplayNode.jsx      # 上传用 window.AgentSpaces.uploadFile 拿 http URL
@@ -114,6 +115,15 @@ src/
 15. **多工作区数据隔离用 configs 子目录**：`safeProjectSubdirPath` 支持子目录路径，`listConfigs` 递归扫描，`configSnapshot`/`configChanged` 广播**完整相对路径**。所以工作区数据存 `configs/workspaces/<id>/{canvas,generation-history}.json` 即可实现隔离，**零宿主改动**。settings/prompt-library/panel-layout 仍存顶层（用户级偏好，不隔离）。
 16. **多工作区切换由 activeId 驱动**：`useCanvasState(workspaceId)`/`useGenerationHistory(workspaceId)` 接收 workspaceId，切换时 useEffect 重载。Canvas 渲染门控 `!activeId || !loaded` 显示加载中，避免空数据闪烁。工作区操作（create/switch/delete）都走 service 写 `workspaces.json` → 广播 → `useWorkspaces` 更新 activeId → 子 hook 自动重载，**前端不直接 setState activeId**。
 17. **节点复制粘贴剪贴板是模块级内存**：`utils/clipboard.js` 用模块级 ref（非 localStorage），刷新失效。这是**唯一跨工作区复制方式**（工作区切换是整画布替换）。焦点在 input/textarea/contenteditable 时必须放行浏览器原生 Ctrl+C/V（keydown 里判 `tagName/isContentEditable`）。复制仅保留选中集**内部**连线，外部连线丢弃。
+18. **多选隐藏节点 toolbar**：`NodeShell` 的 NodeToolbar `isVisible={selected && selectionCount <= 1}`。`selectionCount`（当前选中节点总数）由 Canvas `onSelectionChange` 维护，经 decoratedNodes 注入到每个节点 data。多选时各节点 toolbar 全部隐藏，避免干扰框选操作。
+19. **导出图片分组（group 节点）**：导出多图时不再散落，而是创建一个 `NODE_TYPES.group` 容器节点 + 多个 imageDisplay 子节点，分组名 = 来源节点名 + 时间（如「文字生成图片 导出 14:30」）。**复用 workflow-editor/groups.ts 的 `WorkflowGroup` 数据结构思想**（id/name/childNodeIds），但用普通 ReactFlow 节点实现（非 ViewportPortal），零宿主改动：
+    - group 的 position/width/height 在创建时按子节点包围盒算好写入（自动贴合）
+    - `zIndex:-1` 让子节点叠在容器上方
+    - group 不参与连线/执行（computeInputImages 只处理 imageReceiver 类型，天然跳过）
+    - `data.childIds` 持久化到 canvas.json（useCanvasState 存真值 nodes，注入的 onDeleteGroup 回调只在 decoratedNodes 不写盘）
+    - 单图导出走原 addImageNodesFromUrls（不分组）
+    - 删除分组仅删 group 节点本身，保留子图片节点（deleteGroup）
+
 
 ## Service 热重载（宿主层，本轮新增）
 
@@ -246,6 +256,11 @@ src/
 - 跨工作区拖拽复制节点（需画布实例间通信，复杂度高；当前用 Ctrl+C/V 已够用）
 - 工作区缩略图预览（取首个节点图片）
 - 工作区排序/收藏
+- 图像处理：上传多图改并发 uploadFile（当前串行）
+- 图像处理：FileUpload value 反推丢失原始文件名（当前合成 upload-1.png），如需保留可把原始名一并存 data
+- 图像处理：GIF 拆帧产出几十上百帧时节点过长，可加分页/折叠（当前全展示）
+- 图像处理：色度键的 spill（抑色）参数当前固定 0，可暴露给用户
+- 图像处理：大图处理阻塞主线程，算法可移入 Web Worker（io.js 的 canvas 操作仍需主线程）
 
 ## Suggested Skills
 

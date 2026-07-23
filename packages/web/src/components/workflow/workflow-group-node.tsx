@@ -14,6 +14,7 @@ interface GroupOverlayProps {
   group: WorkflowGroup;
   childNodes: Array<{ id: string; position: { x: number; y: number }; width?: number; height?: number }>;
   isSelected: boolean;
+  isDropTarget: boolean;
   onSelect: (groupId: string) => void;
   onDelete: (groupId: string) => void;
   onUpdate: (groupId: string, updates: Partial<WorkflowGroup>) => void;
@@ -42,7 +43,7 @@ function getGroupColor(color?: string) {
 }
 
 export function WorkflowGroupOverlay({
-  group, childNodes, isSelected,
+  group, childNodes, isSelected, isDropTarget,
   onSelect, onDelete, onUpdate, onMove, onAutoLayout, layoutEngine, onDragPreviewChange, screenDeltaToFlowDelta,
 }: GroupOverlayProps) {
   const [collapsed, setCollapsed] = useState(false);
@@ -191,6 +192,7 @@ export function WorkflowGroupOverlay({
 
   return (
     <div
+      data-workflow-group-id={group.id}
       className={`pointer-events-none absolute transition-shadow ${isSelected ? 'ring-2 ring-primary ring-offset-1' : ''}`}
       style={{
         left: bounds.x,
@@ -198,7 +200,8 @@ export function WorkflowGroupOverlay({
         width: bounds.width,
         height: bounds.height,
         backgroundColor: colors.bg,
-        border: `2px dashed ${isSelected ? 'var(--primary)' : colors.border}`,
+        border: `2px ${isDropTarget ? 'solid' : 'dashed'} ${isSelected || isDropTarget ? 'var(--primary)' : colors.border}`,
+        boxShadow: isDropTarget ? '0 0 0 2px color-mix(in srgb, var(--primary) 25%, transparent)' : undefined,
         borderRadius: 8,
         overflow: 'hidden',
         zIndex: 0,

@@ -42,6 +42,8 @@ export default function NodeShell({
   const onExportImages = data?.onExportImages;
   const onProcessImage = data?.onProcessImage;
   const onEditImages = data?.onEditImages;
+  // 多选（选中数 > 1）时隐藏节点 toolbar：避免每个被选节点都冒出一排按钮，干扰多选操作
+  const selectionCount = data?.selectionCount ?? 1;
 
   // 是否显示抠图/放大按钮：节点有产出图且有处理回调
   const showProcessButtons = outputImages.length > 0 && onProcessImage;
@@ -82,7 +84,7 @@ export default function NodeShell({
   return (
     <div ref={rootRef} className="flex h-full w-full flex-col overflow-hidden rounded-lg border border-border bg-card text-card-foreground shadow-sm">
       {(outputImages.length > 0 && onExportImages) || showProcessButtons || showEditButton ? (
-        <NodeToolbar isVisible={selected} position={Position.Top} align="end" offset={8}>
+        <NodeToolbar isVisible={selected && selectionCount <= 1} position={Position.Top} align="end" offset={8}>
           <div className="flex items-center gap-1">
             {showEditButton && (
               <button

@@ -15,6 +15,7 @@ import EditImageNode from './nodes/EditImageNode';
 import ImageDisplayNode from './nodes/ImageDisplayNode';
 import ImageProcessNode from './nodes/ImageProcessNode';
 import NoteNode from './nodes/NoteNode';
+import GroupNode from './nodes/GroupNode';
 import useCanvasState from '../hooks/useCanvasState';
 import useWorkflow from '../hooks/useWorkflow';
 import useGenerationHistory from '../hooks/useGenerationHistory';
@@ -35,6 +36,7 @@ const NODE_COMPONENTS = {
   [NODE_TYPES.imageDisplay]: ImageDisplayNode,
   [NODE_TYPES.imageProcess]: ImageProcessNode,
   [NODE_TYPES.note]: NoteNode,
+  [NODE_TYPES.group]: GroupNode,
 };
 
 // 右键菜单的节点类型列表（与 RightPanel 新增节点 tab 保持一致）
@@ -208,8 +210,11 @@ export default function Canvas() {
     ));
   }, [setEdges]);
 
+  // 选中数量（>1 时表示多选；用于 NodeShell 隐藏单节点 toolbar）
+  const [selectionCount, setSelectionCount] = useState(0);
   const onSelectionChange = useCallback(({ nodes: selNodes }) => {
     setSelectedId(selNodes.length === 1 ? selNodes[0].id : null);
+    setSelectionCount(selNodes.length);
   }, []);
 
   // 键盘删除节点：Backspace / Delete（v12 默认含 Backspace，显式补 Delete）
@@ -450,6 +455,76 @@ export default function Canvas() {
     });
   }, [setNodes]);
 
+  // —— 导出图片：单图直接加节点；多图分组（参考 workflow-editor/groups.ts 的 WorkflowGroup）——
+  // 多图时创建一个 group 容器节点 + 多个 imageDisplay 子节点，分组名 = 来源节点名 + 时间。
+  // group 的 position/width/height 由子节点包围盒算好后写入（自动贴合子节点，无需 ViewportPortal）。
+  const GROUP_PADDING_X = 24;
+  const GROUP_PADDING_TOP = 36; // 分组标题栏高度
+  const GROUP_PADDING_BOTTOM = 24;
+  const handleExportImages = useCallback((sourceNode, imgs) => {
+    if (!imgs?.length) return;
+    // 单图：保持原行为，直接加一个独立图片节点
+    if (imgs.length === 1) {
+      addImageNodesFromUrls(imgs, { tags: [IMAGE_TAGS.export] });
+      return;
+    }
+    // 多图：分组。子节点网格排列在画布空白区，再用包围盒建 group 容器。
+    const size = DEFAULT_SIZE[NODE_TYPES.imageDisplay];
+    const meta = NODE_META[NODE_TYPES.imageDisplay];
+    const cols = Math.min(3, imgs.length);
+    const tags = dedupeTags([IMAGE_TAGS.export]);
+    // 分组名：来源节点名 + 时间（HH:mm）
+    const srcLabel = sourceNode ? (NODE_META[sourceNode.type]?.label || '导出') : '导出';
+    const now = new Date();
+    const hh = String(now.getHours()).padStart(2, '0');
+    const mm = String(now.getMinutes()).padStart(2, '0');
+    const groupName = `${srcLabel} 导出 ${hh}:${mm}`;
+
+    setNodes((prev) => {
+      // 起点偏移：尽量放在现有节点右侧/下方空白处（用节点数粗略估算避免重叠）
+      const base = prev.length;
+      const startX = 420 + base * 6;
+      const startY = 120;
+      const childIds = [];
+      const additions = imgs.map((url, i) => {
+        const id = genId(NODE_TYPES.imageDisplay);
+        childIds.push(id);
+        const col = i % cols;
+        const row = Math.floor(i / cols);
+        return {
+          id,
+          type: NODE_TYPES.imageDisplay,
+          position: { x: startX + col * (size.w + 20), y: startY + row * (size.h + 20) },
+          width: size.w, height: size.h,
+          style: { width: size.w, height: size.h },
+          data: { ...initialData(NODE_TYPES.imageDisplay), images: [url], source: 'export', tags, label: meta.label },
+        };
+      });
+      // 子节点包围盒 → group 容器尺寸/位置
+      const rows = Math.ceil(imgs.length / cols);
+      const groupW = cols * size.w + (cols - 1) * 20 + GROUP_PADDING_X * 2;
+      const groupH = rows * size.h + (rows - 1) * 20 + GROUP_PADDING_TOP + GROUP_PADDING_BOTTOM;
+      const groupId = genId(NODE_TYPES.group);
+      const groupNode = {
+        id: groupId,
+        type: NODE_TYPES.group,
+        position: { x: startX - GROUP_PADDING_X, y: startY - GROUP_PADDING_TOP },
+        width: groupW, height: groupH,
+        style: { width: groupW, height: groupH },
+        // group 不参与连线/执行；zIndex 拉低让子节点叠在上方
+        zIndex: -1,
+        data: { id: groupId, name: groupName, childIds },
+      };
+      return [...prev, ...additions, groupNode];
+    });
+  }, [addImageNodesFromUrls]);
+
+  // 删除分组容器（仅删 group 节点本身，保留其中的图片子节点）
+  const deleteGroup = useCallback((groupId) => {
+    if (!groupId) return;
+    setNodes((prev) => prev.filter((n) => n.id !== groupId));
+  }, [setNodes]);
+
   // 生成记录「用作输入」
   const handleUseImage = useCallback((url) => {
     addImageNodesFromUrls([url], { tags: [IMAGE_TAGS.history] });
@@ -618,6 +693,13 @@ export default function Canvas() {
   const upstreamMap = useMemo(() => computeInputImages(nodes, edges), [nodes, edges]);
   const decoratedNodes = useMemo(
     () => nodes.map((nd) => {
+      // 分组容器节点：仅注入删除回调，不走图片/生成等逻辑
+      if (nd.type === NODE_TYPES.group) {
+        return {
+          ...nd,
+          data: { ...nd.data, onDeleteGroup: deleteGroup },
+        };
+      }
       const up = upstreamMap.get(nd.id);
       const data = { ...nd.data };
       if (up) {
@@ -632,9 +714,11 @@ export default function Canvas() {
         ...nd,
         data: {
           ...data,
+          // 当前选中节点总数：多选时隐藏节点 toolbar（避免多选时每个节点都冒出工具栏）
+          selectionCount,
           onUpdate: makeOnUpdate(nd.id),
           onGenerate: handleGenerate,
-          onExportImages: (imgs) => addImageNodesFromUrls(imgs, { tags: [IMAGE_TAGS.export] }),
+          onExportImages: (imgs) => handleExportImages(nd, imgs),
           onProcessImage: handleProcessImage,
           onProcessLocal: handleProcessLocal,
           // 工具栏【编辑】按钮：打开编辑图片弹窗，预填当前节点图片
@@ -646,7 +730,7 @@ export default function Canvas() {
         },
       };
     }),
-    [nodes, upstreamMap, makeOnUpdate, handleGenerate, addImageNodesFromUrls, handleProcessImage, handleProcessLocal, handleAutoSize, handleAutoSizeToContent],
+    [nodes, upstreamMap, makeOnUpdate, handleGenerate, handleExportImages, handleProcessImage, handleProcessLocal, handleAutoSize, handleAutoSizeToContent, selectionCount, deleteGroup],
   );
 
   // 面板布局变化 -> 持久化

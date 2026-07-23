@@ -67,9 +67,11 @@ import {
 } from './workflow-canvas-types';
 import {
   areStringArraysEqual,
+  findSmallestContainingRectId,
   isConnectionEndOnCanvasNode,
   isNonNull,
   isPositionNodeChange,
+  resolveGroupBoundsNode,
 } from './workflow-canvas-helpers';
 
 const nodeTypes = { custom: WorkflowNodeComponent };
@@ -342,6 +344,8 @@ export function WorkflowCanvas({
   const [dragPreview, setDragPreview] = useState<DragPreview | null>(null);
   const [resizePreviewRect, setResizePreviewRect] = useState<LocalRect | null>(null);
   const [dropTargetEdgeId, setDropTargetEdgeId] = useState<string | null>(null);
+  const [dropTargetGroupId, setDropTargetGroupId] = useState<string | null>(null);
+  const [frozenGroupNode, setFrozenGroupNode] = useState<Node | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
   const [rectangleDrawActive, setRectangleDrawActive] = useState(false);
   const [lassoSelectionActive, setLassoSelectionActive] = useState(false);
@@ -632,6 +636,14 @@ export function WorkflowCanvas({
   const isNodeDraggingRef = useRef(false);
   const canvasNodesRef = useRef<Node[]>(rfNodes);
   const draggedNodeIdsRef = useRef<Set<string>>(new Set());
+  const dropTargetGroupIdRef = useRef<string | null>(null);
+  const groupDragSessionRef = useRef<{
+    originGroupId: string | null;
+    originGroupLocked: boolean;
+    detachOnDrop: boolean;
+    initialCanvasNode: Node | undefined;
+    groupRects: Array<{ id: string; rect: { left: number; top: number; right: number; bottom: number } }>;
+  } | null>(null);
   const loopBodyDragSessionRef = useRef<{
     nodeId: string;
     position: { x: number; y: number };
@@ -790,7 +802,11 @@ export function WorkflowCanvas({
         .map((node) => {
           const definition = getNodeDefinition(node.type);
           const size = getWorkflowNodeSize(definition, node.data);
-          const canvasNode = canvasNodeById.get(node.id);
+          const canvasNode = resolveGroupBoundsNode(
+            canvasNodeById.get(node.id),
+            frozenGroupNode ?? undefined,
+            frozenGroupNode?.id === node.id,
+          );
           const width = typeof canvasNode?.width === 'number'
             ? canvasNode.width
             : typeof canvasNode?.measured?.width === 'number' ? canvasNode.measured.width : size.width;
@@ -811,7 +827,7 @@ export function WorkflowCanvas({
         });
       return { group, childNodes };
     }).filter(({ childNodes }) => !isPreview || childNodes.length > 0);
-  }, [canvasNodes, isPreview, visibleNodeIds, workflow.groups, workflow.nodes]);
+  }, [canvasNodes, frozenGroupNode, isPreview, visibleNodeIds, workflow.groups, workflow.nodes]);
 
   const { minimapVisible, toggleMinimap, exportCanvas } = useCanvasExport(
     reactFlowWrapper,
@@ -941,7 +957,26 @@ export function WorkflowCanvas({
     return edgeId;
   }, [workflow.edges]);
 
-  const handleNodeDrag: OnNodeDrag = useCallback((_, node) => {
+  const handleNodeDrag: OnNodeDrag = useCallback((event, node) => {
+    const session = groupDragSessionRef.current;
+    const nodeElement = Array.from(
+      reactFlowWrapper.current?.querySelectorAll<HTMLElement>('.react-flow__node') ?? [],
+    ).find(element => element.dataset.id === node.id);
+    if (session && nodeElement && draggedNodeIdsRef.current.size === 1) {
+      const rect = nodeElement.getBoundingClientRect();
+      const center = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+      const originRect = session.groupRects.find(item => item.id === session.originGroupId);
+      session.detachOnDrop = !!session.originGroupId
+        && !session.originGroupLocked
+        && 'ctrlKey' in event
+        && event.ctrlKey
+        && (!originRect || findSmallestContainingRectId(center, [originRect]) === null);
+      setFrozenGroupNode(session.originGroupId && 'ctrlKey' in event && event.ctrlKey ? session.initialCanvasNode ?? null : null);
+      const nextGroupId = session.originGroupId ? null : findSmallestContainingRectId(center, session.groupRects);
+      dropTargetGroupIdRef.current = nextGroupId;
+      setDropTargetGroupId(current => current === nextGroupId ? current : nextGroupId);
+    }
+
     if (isCanvasLocked || !autoMergeNodeOnEdge || draggedNodeIdsRef.current.size > 1) {
       if (dropTargetEdgeId) setDropTargetEdgeId(null);
       return;
@@ -1157,11 +1192,47 @@ export function WorkflowCanvas({
     draggedNodeIdsRef.current = new Set([node.id]);
     canvasNodesRef.current = canvasNodes;
     setDropTargetEdgeId(null);
+    dropTargetGroupIdRef.current = null;
+    setDropTargetGroupId(null);
+    setFrozenGroupNode(null);
+    const groups = workflow.groups || [];
+    const originGroup = groups.find(group => group.childNodeIds.includes(node.id)) ?? null;
+    const unlockedGroupIds = new Set(groups.filter(group => !group.locked).map(group => group.id));
+    groupDragSessionRef.current = {
+      originGroupId: originGroup?.id ?? null,
+      originGroupLocked: originGroup?.locked ?? false,
+      detachOnDrop: false,
+      initialCanvasNode: canvasNodes.find(item => item.id === node.id),
+      groupRects: Array.from(
+        reactFlowWrapper.current?.querySelectorAll<HTMLElement>('[data-workflow-group-id]') ?? [],
+      ).flatMap((element) => {
+        const id = element.dataset.workflowGroupId;
+        if (!id || !unlockedGroupIds.has(id)) return [];
+        const rect = element.getBoundingClientRect();
+        return [{ id, rect: { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom } }];
+      }),
+    };
     onNodeDragStateChange?.(true);
-  }, [canvasNodes, onNodeDragStateChange]);
+  }, [canvasNodes, onNodeDragStateChange, workflow.groups]);
 
-  const handleNodeDragStop = useCallback((_: React.MouseEvent, node: Node) => {
-    const edgeId = autoMergeNodeOnEdge && draggedNodeIdsRef.current.size === 1
+  const handleNodeDragStop = useCallback((event: React.MouseEvent, node: Node) => {
+    const groupDragSession = groupDragSessionRef.current;
+    const groupId = dropTargetGroupIdRef.current;
+    const isSingleNodeDrag = draggedNodeIdsRef.current.size === 1;
+    if (groupDragSession?.originGroupId && !groupDragSession.originGroupLocked && event.ctrlKey) {
+      const nodeElement = Array.from(
+        reactFlowWrapper.current?.querySelectorAll<HTMLElement>('.react-flow__node') ?? [],
+      ).find(element => element.dataset.id === node.id);
+      const originRect = groupDragSession.groupRects.find(item => item.id === groupDragSession.originGroupId);
+      if (nodeElement && originRect) {
+        const rect = nodeElement.getBoundingClientRect();
+        groupDragSession.detachOnDrop = findSmallestContainingRectId({
+          x: rect.left + rect.width / 2,
+          y: rect.top + rect.height / 2,
+        }, [originRect]) === null;
+      }
+    }
+    const edgeId = autoMergeNodeOnEdge && isSingleNodeDrag
       ? dropTargetEdgeId
       : null;
     const nextCanvasNodes = collisionBoxEnabled
@@ -1197,8 +1268,23 @@ export function WorkflowCanvas({
     if (edgeId) {
       onInsertExistingNodeOnEdge?.(edgeId, node.id);
     }
+    if (isSingleNodeDrag && groupId) {
+      const group = workflow.groups?.find(item => item.id === groupId);
+      if (group && !group.childNodeIds.includes(node.id)) {
+        onGroupUpdate?.(groupId, { childNodeIds: [...group.childNodeIds, node.id] });
+      }
+    } else if (isSingleNodeDrag && groupDragSession?.originGroupId && groupDragSession.detachOnDrop) {
+      const group = workflow.groups?.find(item => item.id === groupDragSession.originGroupId);
+      if (group) {
+        onGroupUpdate?.(group.id, { childNodeIds: group.childNodeIds.filter(id => id !== node.id) });
+      }
+    }
+    groupDragSessionRef.current = null;
+    dropTargetGroupIdRef.current = null;
+    setDropTargetGroupId(null);
+    setFrozenGroupNode(null);
     setDropTargetEdgeId(null);
-  }, [autoMergeNodeOnEdge, collisionBoxEnabled, dropTargetEdgeId, onInsertExistingNodeOnEdge, onNodeDragStateChange, onNodesChange, scopeBoundaryNodeIds, workflow.nodes]);
+  }, [autoMergeNodeOnEdge, collisionBoxEnabled, dropTargetEdgeId, onGroupUpdate, onInsertExistingNodeOnEdge, onNodeDragStateChange, onNodesChange, scopeBoundaryNodeIds, workflow.groups, workflow.nodes]);
 
   const handleReactFlowError = useCallback((code: string, message: string) => {
     console.warn('[WorkflowCanvas] ReactFlow error', { code, message });
@@ -1260,6 +1346,7 @@ export function WorkflowCanvas({
               group={group}
               childNodes={childNodes}
               isSelected={selectedGroupId === group.id}
+              isDropTarget={dropTargetGroupId === group.id}
               onSelect={setSelectedGroupId}
               onDelete={(groupId) => onGroupDelete?.(groupId)}
               onUpdate={(groupId, updates) => onGroupUpdate?.(groupId, updates)}
