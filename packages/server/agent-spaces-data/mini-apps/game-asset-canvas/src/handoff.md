@@ -57,7 +57,8 @@ src/
       TextToImageNode.jsx       # 提示词库按钮 + pickedPrompt 标签 + 合并提交
       EditImageNode.jsx         # 同上
       ImageDisplayNode.jsx      # 上传用 window.AgentSpaces.uploadFile 拿 http URL
-      ImageResult.jsx           # 产出网格，openMediaGallery 看大图（注意：items 不可二次 map）
+      ImageProcessNode.jsx      # 图像处理节点：FileUpload 上传 + 连线图只读占位 + 处理器下拉 + 动态参数 + 执行
+      ImageResult.jsx           # 产出网格（max=0 不截断，GIF 拆帧多帧全展示），openMediaGallery 看大图（注意：items 不可二次 map）
       PickedPromptBadge.jsx     # 已选提示词展示条（📎标签+✕清除），三处表单复用
       NoteNode.jsx
     PromptPickerDialog.jsx      # 提示词库选择器（内置+自定义合并，搜索/分类/增删，onPick 传 item）
@@ -72,13 +73,24 @@ src/
     useWorkspaces.js            # 工作区清单管理（workspaces.json 读写 + 三重读取）
   utils/
     prompts.js                  # 内置提示词库（PROMPT_LIBRARY/PROMPT_CATEGORIES/getPromptsByScene，含 aspect 联动）
-    constants.js                # WORKFLOWS/NODE_TYPES/MODEL_OPTIONS/NODE_META + 工作区路径常量/DEFAULT_WORKSPACE_ID
+    constants.js                # WORKFLOWS/NODE_TYPES/MODEL_OPTIONS/NODE_META + IMAGE_PROCESSORS（10 处理器）+ IMAGE_PROCESSOR_CATEGORIES + defaultProcessorParams
     workflow.js                 # runWorkflow/generateImages（多路径提取图片）
     storage.js                  # loadCanvas/saveCanvas/onAnyConfigChanged/panel布局/下载（均接收 workspaceId）
     clipboard.js                # 节点剪贴板：copyNodes/pasteNodes/hasClipboard（模块级内存，跨工作区可粘贴）
     layout.js                   # dagre autoLayout
     export.js                   # serializeCanvas/downloadJson
     settings.js                 # DEFAULT_SETTINGS/WORKFLOW_SLOTS
+    image-ops/                  # FrameRonin 移植的图像处理算法（统一 ImageData 出入参，详见「FrameRonin 工具移植」）
+      cdn.js                    # CDN 库加载封装（getGifEnc/getGifUct/getImageQ/getJsZip），URL 集中
+      io.js                     # urlToImageData/imageDataToBlob/imageDataToUrl（统一 canvas I/O）
+      imageDataOps.js           # 纯函数 ImageData 操作（缩放/裁切/alpha 提取，无 DOM）
+      gif.js                    # GIF 拆帧 decodeGifToFrames + 合成 encodeFramesToGif
+      spriteSheet.js            # splitSpriteSheet/splitByTransparent/composeSpriteSheet
+      pixelate.js               # pixelate（降采样 + Wu 量化，依赖 image-q）
+      matte.js                  # chromaKey/whiteKey/erodeAlpha/hexToRgb
+      stroke.js                 # resizeNearest/innerStroke(BFS)/crop
+      compose.js                # composeLayers（多图层 alpha-over + 混合模式）
+      index.js                  # PROCESSORS 注册表 + runProcessor 统一入口
   services/
     canvas.js                   # 服务端单写者（save_canvas/add_history/save_settings + workspace CRUD：list/create/rename/switch/delete_workspace）
 ```
@@ -207,6 +219,17 @@ src/
 - 上游连线自动派生输入（computeInputImages 已纳入 imageProcess）
 - 产出走 `data.output.images`，下游自动派生，NodeToolbar 导出按钮自动可用
 - 断网时执行报错但不崩溃
+
+### 输入设计（FileUpload + 连线双来源）
+节点输入由两种来源合并去重：`dedupeUrls([...uploadedImages, ...upstream])`
+- **用户上传**：`@agent-spaces/ui` 的 `FileUpload` 组件，onChange 时对每个新 File 调 `window.AgentSpaces.uploadFile` 拿 http URL，存 `data.uploadedImages`（持久化，刷新不丢）。multipleIn 处理器 maxFiles=0（不限），单输入处理器 maxFiles=1
+- **上游连线**：computeInputImages 派生到 `data.images`，**不进 FileUpload**（FileUpload 每项带删除按钮，连线图交由它管会逻辑混乱），单独渲染「🔗 来自连线 N 张」只读占位区
+- 统计行显示「输入 N 张（上传 X + 连线 Y）」
+
+### 本轮迭代踩坑（已修复）
+1. **产出数量与展示不一致**：`ImageResult` 硬编码 `max=9`，`slice(0,9)` 截断 16 帧 → 改 `max=0`（不限制），GIF 拆帧多帧全展示；MediaGallery 也传全部 items
+2. **连线图缩略图变形**：`h-10 w-full object-cover` 固定高+裁切 → 改外层固定高容器 + `max-h-full max-w-full object-contain`，按原图比例居中显示
+3. **GIF 合成产出非 ImageData**：encodeFramesToGif 返回 gif Blob，run 约定返回 ImageData[]，用 `__gifUrl` 标记透传，runProcessor 识别后直接用 URL 不再转
 
 ## 后续可做
 

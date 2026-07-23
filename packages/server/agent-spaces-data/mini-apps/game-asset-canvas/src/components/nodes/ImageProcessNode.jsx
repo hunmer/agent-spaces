@@ -1,4 +1,5 @@
 import { useCallback } from 'react';
+import { FileUpload } from '@agent-spaces/ui';
 import NodeShell from './NodeShell';
 import ImageResult from './ImageResult';
 import {
@@ -10,12 +11,16 @@ import {
 /**
  * 图像处理节点：选处理器 + 调参 + 执行 → 产出图（本地算法，不走工作流）。
  *
+ * 输入来源（两种合并，去重）：
+ * 1. FileUpload 组件用户自行上传的图（data.uploadedImages: string[]，持久化）
+ * 2. 上游连线推入的图（data.images: string[]，由 computeInputImages 派生）
+ *
  * data.params: { processor: string, processorParams: {...} }
- * data.images: 上游连线推入的输入图 URL（无连线时为空，节点不可执行）
+ * data.uploadedImages: string[] 用户上传的图 http URL
  * data.output: { images: string[] } 处理后的产出
  *
- * 执行流程：data.onProcessLocal(id, processor, processorParams) → Canvas.handleProcessLocal：
- *   上游 URL → io.urlToImageData → PROCESSORS[processor].run → imageDataToUrl → 回填 data.output.images
+ * 执行流程：data.onProcessLocal(id, processor, processorParams, inputImages) → Canvas.handleProcessLocal：
+ *   输入 URL → io.urlToImageData → PROCESSORS[processor].run → imageDataToUrl → 回填 data.output.images
  *
  * CDN 加载：底层算法库（image-q/gifenc/gifuct）首次执行时从 CDN 动态加载，结果缓存。
  * 断网或 CDN 不可达时执行报错，不影响其他节点。
@@ -24,13 +29,17 @@ export default function ImageProcessNode({ id, data, selected }) {
   const params = data?.params || {};
   const processorId = params.processor || 'pixelate';
   const processorParams = params.processorParams || {};
-  const inputImages = data?.images || [];
+  const uploadedImages = Array.isArray(data?.uploadedImages) ? data.uploadedImages : [];
+  const upstreamImages = Array.isArray(data?.images) ? data.images : [];
+  // 合并输入：上传图在前 + 上游连线图在后，去重保序
+  const inputImages = dedupeUrls([...uploadedImages, ...upstreamImages]);
   const images = data?.output?.images || [];
   const status = data?.status || 'idle';
   const error = data?.error;
   const running = status === 'running';
   const onUpdate = data?.onUpdate;
   const onProcessLocal = data?.onProcessLocal;
+  const uploading = data?.uploading;
 
   const processor = IMAGE_PROCESSORS.find((p) => p.id === processorId) || IMAGE_PROCESSORS[0];
   const multipleIn = processor?.multipleIn;
@@ -43,16 +52,60 @@ export default function ImageProcessNode({ id, data, selected }) {
     onUpdate?.({ params: { ...params, processorParams: { ...processorParams, [key]: value } } });
   }, [onUpdate, params, processorParams]);
 
+  // FileUpload onChange：用户增删文件时触发。
+  // value 是 FileUploadFile[]，对每个新文件（无 uploadedUrl 的 File）调 uploadFile 拿 http URL 持久化。
+  // 已上传过的（带 uploadedUrl 的合成对象）保留，被用户删除的过滤掉。
+  const handleFilesChange = useCallback(async (files) => {
+    const AS = window.AgentSpaces;
+    if (!AS?.uploadFile) {
+      console.warn('AgentSpaces.uploadFile 不可用');
+      return;
+    }
+    // 标记上传中
+    onUpdate?.({ uploading: true, uploadError: undefined });
+    try {
+      const urls = [];
+      for (const item of files || []) {
+        const f = item?.file;
+        if (!f) continue;
+        // 已有上传结果（远程 URL 预填 / 之前传过）直接用
+        const existing = f.uploadedUrl || f.uploadedHttpPath || f.url || f.httpPath;
+        if (existing) { urls.push(existing); continue; }
+        // 新文件：上传拿 http URL
+        if (f instanceof File) {
+          const uploaded = await AS.uploadFile(f);
+          const httpUrl = uploaded?.url || uploaded?.httpPath;
+          if (httpUrl) urls.push(httpUrl);
+        }
+      }
+      onUpdate?.({ uploadedImages: urls, uploading: false });
+    } catch (err) {
+      console.error('ImageProcess upload failed:', err);
+      onUpdate?.({ uploading: false, uploadError: err?.message || String(err) });
+    }
+  }, [onUpdate]);
+
   const handleRun = useCallback(() => {
     if (!inputImages.length) return;
     onProcessLocal?.(id, processorId, processorParams, inputImages);
   }, [onProcessLocal, id, processorId, processorParams, inputImages]);
+
+  // FileUpload value：把持久化的 uploadedImages URL 转回 FileUploadFile 格式（带预览）
+  const fileUploadValue = uploadedImages.map((url, i) => ({
+    id: `up-${i}-${url.slice(-12)}`,
+    file: { name: `upload-${i + 1}.png`, size: 0, type: 'image/png', url, httpPath: url },
+    preview: url,
+  }));
 
   // 分组下拉：category → processors
   const grouped = IMAGE_PROCESSOR_CATEGORIES.map((cat) => ({
     cat,
     items: IMAGE_PROCESSORS.filter((p) => p.category === cat.id),
   })).filter((g) => g.items.length);
+
+  // 输入来源描述
+  const upCount = uploadedImages.length;
+  const usCount = upstreamImages.length;
 
   return (
     <NodeShell id={id} nodeType={NODE_TYPES.imageProcess} data={data} selected={selected} targetHandle sourceHandle>
@@ -85,27 +138,58 @@ export default function ImageProcessNode({ id, data, selected }) {
         />
       ))}
 
-      {/* 输入图提示 */}
-      <div className="text-xs text-muted-foreground">
-        {multipleIn
-          ? `输入：${inputImages.length} 张${inputImages.length < 2 ? '（合成类需 ≥2 张，请连线多源）' : ''}`
-          : inputImages.length > 0
-            ? `输入：${inputImages.length} 张（来自连线）`
-            : '输入：无（请连线或上游产出）'}
-      </div>
-      {inputImages.length > 0 && (
-        <div className="grid grid-cols-4 gap-1">
-          {inputImages.slice(0, 8).map((url, i) => (
-            <img key={i} src={url} alt="" className="h-10 w-full rounded border border-border object-cover" />
-          ))}
+      {/* 输入图：FileUpload 上传 + 上游连线 */}
+      <FileUpload
+        value={fileUploadValue}
+        onChange={handleFilesChange}
+        accept={{ 'image/*': ['.png', '.jpg', '.jpeg', '.webp', '.gif'] }}
+        maxFiles={multipleIn ? 0 : 1}
+        placeholder={multipleIn ? '点击或拖入多张图' : '点击或拖入图片'}
+      />
+      {uploading && (
+        <p className="text-[10px] text-primary">上传中…</p>
+      )}
+      {data?.uploadError && (
+        <p className="text-[10px] text-red-500">上传失败：{data.uploadError}</p>
+      )}
+
+      {/* 上游连线图占位（只读，由连线管理，不进 FileUpload） */}
+      {upstreamImages.length > 0 && (
+        <div className="flex flex-col gap-1">
+          <span className="text-[11px] text-muted-foreground">
+            🔗 来自连线 {upstreamImages.length} 张
+          </span>
+          <div className="grid grid-cols-4 gap-1">
+            {upstreamImages.slice(0, 8).map((url, i) => (
+              <div
+                key={i}
+                className="flex h-10 w-full items-center justify-center rounded border border-primary/40 bg-muted/30 overflow-hidden"
+              >
+                <img
+                  src={url}
+                  alt=""
+                  title={`连线图 ${i + 1}`}
+                  className="max-h-full max-w-full object-contain"
+                />
+              </div>
+            ))}
+          </div>
         </div>
       )}
+
+      {/* 输入来源统计 */}
+      <div className="text-[11px] text-muted-foreground">
+        {inputImages.length > 0
+          ? `输入 ${inputImages.length} 张${upCount ? `（上传 ${upCount}` : ''}${upCount && usCount ? ' + ' : ''}${usCount ? `连线 ${usCount}` : ''}${upCount || usCount ? '）' : ''}`
+          : '输入：无（上传或连线）'}
+        {multipleIn && inputImages.length < 2 && ' · 合成类需 ≥2 张'}
+      </div>
 
       {/* 执行按钮 */}
       <button
         type="button"
         onClick={handleRun}
-        disabled={running || !inputImages.length || (multipleIn && inputImages.length < 2)}
+        disabled={running || uploading || !inputImages.length || (multipleIn && inputImages.length < 2)}
         className="w-full rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
       >
         {running ? '处理中…' : '⚡ 执行'}
@@ -121,6 +205,18 @@ export default function ImageProcessNode({ id, data, selected }) {
       )}
     </NodeShell>
   );
+}
+
+/** URL 数组去重保序 */
+function dedupeUrls(urls) {
+  const seen = new Set();
+  const out = [];
+  for (const u of urls) {
+    if (!u || seen.has(u)) continue;
+    seen.add(u);
+    out.push(u);
+  }
+  return out;
 }
 
 /** 动态参数字段渲染 */

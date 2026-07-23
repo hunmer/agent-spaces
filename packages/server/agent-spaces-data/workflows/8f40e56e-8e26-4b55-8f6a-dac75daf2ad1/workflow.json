@@ -1,0 +1,75 @@
+{
+  "id": "8f40e56e-8e26-4b55-8f6a-dac75daf2ad1",
+  "name": "test_group",
+  "type": "normal",
+  "folderId": null,
+  "nodes": [
+    {
+      "id": "node_1784775785770_start",
+      "type": "start",
+      "label": "Start",
+      "position": {
+        "x": 250,
+        "y": 50
+      },
+      "data": {}
+    },
+    {
+      "id": "node_1784775785770_end",
+      "type": "end",
+      "label": "End",
+      "position": {
+        "x": 405,
+        "y": 300
+      },
+      "data": {}
+    },
+    {
+      "id": "node_1784775843147_oloolh",
+      "type": "run_code",
+      "label": "nodes.run_code.label",
+      "position": {
+        "x": 825,
+        "y": 165
+      },
+      "data": {
+        "code": "async function main({ params }) {\n  const ret = {\n    \"key0\": params.input + params.input,\n    \"key1\": [\"hello\", \"world\"],\n    \"key2\": {\n      \"key21\": \"hi\",\n    },\n  }\n\n  return ret\n}"
+      }
+    },
+    {
+      "id": "node_1784775847475_trr3uh",
+      "type": "run_code",
+      "label": "nodes.run_code.label",
+      "position": {
+        "x": 1172.0101795554833,
+        "y": 331.49204723404125
+      },
+      "data": {
+        "code": "async function main({ params }) {\n  const ret = {\n    \"key0\": params.input + params.input,\n    \"key1\": [\"hello\", \"world\"],\n    \"key2\": {\n      \"key21\": \"hi\",\n    },\n  }\n\n  return ret\n}"
+      }
+    }
+  ],
+  "edges": [],
+  "createdAt": 1784775785773,
+  "updatedAt": 1784775898980,
+  "published": false,
+  "lastOpenedAt": 1784775838656,
+  "groups": [
+    {
+      "id": "group_1784775852596_qka86f",
+      "name": "分组 1",
+      "childNodeIds": [
+        "node_1784775843147_oloolh",
+        "node_1784775847475_trr3uh"
+      ],
+      "childGroupIds": [],
+      "locked": false,
+      "disabled": false,
+      "savedNodeStates": {},
+      "x": 833.0102132204881,
+      "y": 133.875885221594,
+      "width": 612.9999896448862,
+      "height": 221.99998372253927
+    }
+  ]
+}

@@ -382,6 +382,19 @@ Use detailed 32-bit pixel art style with proper shading and highlights. Same cha
 画面比例1:1
 宠物姿态与朝向跟参考图一致。`,
   },
+  {
+    // 来源：用户提供的像素怪物动画提示词（鸟）
+    id: 'sprite-monster-bird',
+    category: 'sprite',
+    title: '像素怪物-鸟',
+    desc: '像素怪物 spritesheet，朝向与参考图一致，1:1',
+    scene: 'edit',
+    references: ['assets/references/sprite-monster-bird/ref1.png'],
+    prompt: `你是一个资深的像素动画师，专门用来设计像素怪物动画。
+你将严格按照网格布局生成像素怪物的spritesheet。
+图片中不出现任何文字、网格线和数字。
+画面比例1:1，生成的怪物朝向与参考图一致。`,
+  },
 
   // ============ 背景场景（编辑图片，需角色参考图） ============
   {

@@ -113,6 +113,7 @@ function initialData(type) {
     return {
       status: 'idle',
       output: { images: [] },
+      uploadedImages: [],
       params: { processor: 'pixelate', processorParams: defaultProcessorParams('pixelate') },
     };
   }

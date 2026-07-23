@@ -168,9 +168,14 @@
 ### 架构
 - **处理器清单**（UI 层）：`utils/constants.js` 的 `IMAGE_PROCESSORS`（id/label/params/multipleIn/multipleOut）
 - **算法实现**（算法层）：`utils/image-ops/` 目录，`index.js` 的 `PROCESSORS` 注册表（id → run 函数）
-- **节点组件**：`components/nodes/ImageProcessNode.jsx`（下拉选处理器 + 动态参数表单 + 执行按钮）
+- **节点组件**：`components/nodes/ImageProcessNode.jsx`（下拉选处理器 + 动态参数表单 + FileUpload 输入 + 执行按钮）
 - **Canvas 接入**：`handleProcessLocal(nodeId, processorId, params, sourceImages)` → `runProcessor` → 回填 `data.output.images`
 - **连线**：imageProcess 节点是图片接收节点（computeInputImages 已纳入），有 target/source Handle
+- **输入来源**（两种合并去重）：
+  1. FileUpload 用户上传（`data.uploadedImages: string[]`，持久化，onChange 时 uploadFile 拿 http URL）
+  2. 上游连线图（`data.images`，computeInputImages 派生）
+  - 合并：`dedupeUrls([...uploadedImages, ...upstream])`，上传图在前
+  - maxFiles：multipleIn 处理器不限制，单输入处理器限 1 张
 
 ### image-ops 目录
 ```
