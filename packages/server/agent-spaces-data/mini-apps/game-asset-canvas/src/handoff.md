@@ -167,12 +167,46 @@ src/
 宿主改动 + mini-app 全部源码均未 commit（按规约：用户没要求就不提交）。当前 git status 主要是：
 - `packages/web/src/components/mini-apps/react-renderer.tsx`（M，暴露 xyflow/dagre/NodeResizer/NodeToolbar/useReactFlow）
 - `packages/web/src/lib/ui-exports.ts`（M，导出上述 + Input/Button 等）
-- `packages/web/src/components/mini-apps/use-mini-app-host-api.tsx`（M，workflow WS 能力）
+- `packages/web/src/components/mini-apps/use-mini-app-host-api.tsx`（M，workflow WS 能力 + **loadCdnModule CDN 加载能力**）
 - `packages/server/src/services/mini-app-services.ts`（M，新增 startServicesWatcher）
 - `packages/server/src/app.ts`（M，listen 回调调 startServicesWatcher）
-- `packages/server/agent-spaces-data/mini-apps/game-asset-canvas/`（新增整目录 + 多轮迭代：基础画布 → 提示词库 → 多工作区隔离 → 复制粘贴 → 批量删除弹窗）
+- `packages/server/agent-spaces-data/mini-apps/game-asset-canvas/`（新增整目录 + 多轮迭代：基础画布 → 提示词库 → 多工作区隔离 → 复制粘贴 → 批量删除弹窗 → **FrameRonin 工具移植为图像处理节点**）
 - 两个 workflow.json（M，补全 model 路由关键字）
 - **多工作区/复制粘贴轮次无宿主改动**（纯 mini-app src + service，service 由 watcher 热重载，前端刷新即生效）
+
+## FrameRonin 工具移植（本轮新增）
+
+把 FrameRonin（`C:/Users/Administrator/Downloads/FrameRonin-main`）的像素图像处理工具转成画布「图像处理」节点。
+
+### 关键决策
+- **原任务「抽取硬编码 AI 提示词」无内容可抽**：FrameRonin 的 AI 生成全部走外部 Gemini Gem 链接（`frontend/src/lib/gemPixelUrls.ts`），源码无任何 prompt 文本
+- **算法接入选 CDN 方案**（非 node_modules 全链路、非 allowlist）：经核实三者能力上限相同（opencv 都不可用），CDN 方案零 web 依赖污染、mini-app 自包含。目标功能 6/7 类是纯 JS 算法（仅光流插帧依赖 opencv，不在目标列表）
+- **粒度选纯参数节点**：节点暴露核心参数 + 执行按钮，不做精细画笔/拖拽交互
+
+### 宿主层新增能力
+`window.AgentSpaces.loadCdnModule(url)`（use-mini-app-host-api.tsx）：
+- 用 `new Function('u','return import(u)')(url)` 绕过 webpack/turbopack 静态分析
+- 按 URL 缓存，CJS 互操作自动解包 default
+- **任何 mini-app 都能用**，不止本画布
+
+### mini-app 新增
+- `utils/image-ops/` 目录（10 个文件）：从 FrameRonin 剥离的算法，统一 `(ImageData, params) => ImageData` 签名
+- `components/nodes/ImageProcessNode.jsx`：图像处理节点
+- `utils/constants.js`：NODE_TYPES.imageProcess + IMAGE_PROCESSORS（10 个处理器）+ IMAGE_PROCESSOR_CATEGORIES
+- `Canvas.jsx`：handleProcessLocal + computeInputImages 纳入 imageProcess + initialData + onProcessLocal 注入
+- `RightPanel.jsx`：新增节点 tab 加图像处理项
+- 处理器：gif-split/gif-merge/sprite-split/sprite-merge/pixelate/resize-nearest/inner-stroke/chroma-key/white-key/compose-overlay
+
+### 依赖（CDN 加载，web 不装）
+- gifenc/gifuct-js（GIF 编解码）、image-q（Wu 量化）、jszip（暂未用，预留）
+- CDN 源 esm.sh，URL 集中在 `utils/image-ops/cdn.js`
+- 纯 JS，无 WASM（opencv 相关全砍，mesh 用均匀网格兜底）
+
+### 验收要点
+- 图像处理节点支持单输入（抠图/像素化）和多输入（GIF 合成/图层叠加）
+- 上游连线自动派生输入（computeInputImages 已纳入 imageProcess）
+- 产出走 `data.output.images`，下游自动派生，NodeToolbar 导出按钮自动可用
+- 断网时执行报错但不崩溃
 
 ## 后续可做
 

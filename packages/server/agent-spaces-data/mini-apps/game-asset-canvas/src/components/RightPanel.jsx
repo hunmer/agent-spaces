@@ -6,6 +6,7 @@ const ADD_ITEMS = [
   { type: NODE_TYPES.textToImage, label: '文字生成图片' },
   { type: NODE_TYPES.editImage, label: '编辑图片' },
   { type: NODE_TYPES.imageDisplay, label: '图片展示' },
+  { type: NODE_TYPES.imageProcess, label: '图像处理' },
   { type: NODE_TYPES.note, label: '便签' },
 ];
 

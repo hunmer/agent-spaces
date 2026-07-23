@@ -98,7 +98,7 @@ export default function ImageDisplayNode({ id, data, selected }) {
             <img
               src={images[0]}
               alt=""
-              className="w-full object-contain transition hover:opacity-80"
+              className="w-full object-contain"
               onLoad={handleImgLoad}
             />
           </button>

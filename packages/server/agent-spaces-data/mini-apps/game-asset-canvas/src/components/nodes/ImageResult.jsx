@@ -26,7 +26,7 @@ export default function ImageResult({ images, max = 9 }) {
             onClick={(e) => { e.stopPropagation(); open(i); }}
             className="block aspect-square overflow-hidden rounded border border-border"
           >
-            <img src={url} alt="" className="h-full w-full object-cover transition hover:opacity-80" />
+            <img src={url} alt="" className="h-full w-full object-cover" />
           </button>
         ))}
       </div>

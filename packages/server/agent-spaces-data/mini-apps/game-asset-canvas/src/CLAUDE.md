@@ -10,6 +10,7 @@
 - `textToImage` 文字生成图片 → 调 `text_to_image` 工作流
 - `editImage` 编辑图片 → 调 `edit_image` 工作流（需上游图片）
 - `imageDisplay` 图片展示 → 可上传/粘贴 URL，也接收上游连线图片，带 source 标记（upload/url/upstream/history）
+- `imageProcess` 图像处理 → 本地算法处理（GIF/像素化/抠图等），不走工作流，详见下「图像处理节点」
 - `note` 便签 → 纯文本批注，不参与工作流，无 Handle
 
 ## 节点可调整大小（NodeResizer）
@@ -160,6 +161,59 @@
 - `window.AgentSpaces.sendWorkflowControl(event, data)`：通用 workflow 控制事件发送
 - 实现：use-mini-app-host-api.tsx 用 getWS(projectId).on/send，挂到 window.AgentSpaces
 - useExecutionQueue.submit 并行订阅 workflow:started 拿 executionId，cancel 时 stopWorkflow
+
+## 图像处理节点（本地算法，不走工作流）
+从 FrameRonin 移植的像素图像处理工具，封装成画布节点。参数在节点内配置，点「⚡执行」跑本地算法产出图。
+
+### 架构
+- **处理器清单**（UI 层）：`utils/constants.js` 的 `IMAGE_PROCESSORS`（id/label/params/multipleIn/multipleOut）
+- **算法实现**（算法层）：`utils/image-ops/` 目录，`index.js` 的 `PROCESSORS` 注册表（id → run 函数）
+- **节点组件**：`components/nodes/ImageProcessNode.jsx`（下拉选处理器 + 动态参数表单 + 执行按钮）
+- **Canvas 接入**：`handleProcessLocal(nodeId, processorId, params, sourceImages)` → `runProcessor` → 回填 `data.output.images`
+- **连线**：imageProcess 节点是图片接收节点（computeInputImages 已纳入），有 target/source Handle
+
+### image-ops 目录
+```
+utils/image-ops/
+  cdn.js          # CDN 库加载封装（getGifEnc/getGifUct/getImageQ/getJsZip），URL 集中在此
+  io.js           # urlToImageData / imageDataToBlob / imageDataToUrl（统一 canvas I/O）
+  imageDataOps.js # 纯函数 ImageData 操作（缩放/裁切/alpha 提取）
+  gif.js          # GIF 拆帧 decodeGifToFrames + 合成 encodeFramesToGif（依赖 gifuct-js/gifenc）
+  spriteSheet.js  # splitSpriteSheet（均匀切）/ splitByTransparent（透明切）/ composeSpriteSheet（合成）
+  pixelate.js     # pixelate（降采样 + Wu 量化，依赖 image-q）
+  matte.js        # chromaKey（色度键）/ whiteKey（白底）/ erodeAlpha（侵蚀）
+  stroke.js       # resizeNearest（硬缩放）/ innerStroke（BFS 内描边）/ crop（裁切）
+  compose.js      # composeLayers（多图层 alpha-over + 混合模式）
+  index.js        # PROCESSORS 注册表 + runProcessor 统一入口
+```
+
+### CDN 加载机制（宿主层能力）
+- `window.AgentSpaces.loadCdnModule(url)`：宿主提供的通用 ESM CDN 加载器
+- 实现：`packages/web/src/components/mini-apps/use-mini-app-host-api.tsx`，用 `new Function('u','return import(u)')(url)` 绕过打包器静态分析
+- 缓存：按 URL 缓存，首次加载后复用
+- CDN 源：esm.sh（自动 CJS→ESM 转译），URL 在 `image-ops/cdn.js` 集中管理
+- web 的 package.json **无需声明这些依赖**，mini-app 完全自包含
+- 断网/CDN 不可达：执行报错，节点显示错误，不影响其他功能
+- **宿主层改动需重启 web 服务**（use-mini-app-host-api 不热重载）
+
+### 处理器清单（10 个）
+| id | 类别 | 说明 | 输入 | 输出 |
+|---|---|---|---|---|
+| gif-split | GIF | GIF 拆帧 | 1 GIF | 多 PNG |
+| gif-merge | GIF | 多帧合成 GIF | ≥2 帧 | 1 GIF |
+| sprite-split | Sprite | Sheet 拆分（均匀/透明） | 1 图 | 多帧 |
+| sprite-merge | Sprite | 多帧合成 Sheet | ≥2 帧 | 1 图 |
+| pixelate | 像素 | 降采样+Wu 量化 | 1 图 | 1 图 |
+| resize-nearest | 像素 | 最近邻硬缩放 | 1 图 | 1 图 |
+| inner-stroke | 像素 | BFS 内描边 | 1 图 | 1 图 |
+| chroma-key | 抠图 | 色度键（绿/蓝幕） | 1 图 | 1 图 |
+| white-key | 抠图 | 白底抠图 | 1 图 | 1 图 |
+| compose-overlay | 合成 | 多图层叠加 | ≥2 图 | 1 图 |
+
+### 不做（与纯参数节点粒度冲突）
+- 精细画笔/橡皮（ImageMatte 精细模式）
+- Sprite Sheet 调整的拖拽重排/帧勾选/动画预览
+- 光流插帧（依赖 opencv，CDN 加载不了 WASM）
 
 ## 依赖（宿主已暴露，无需项目内安装）
 - `@xyflow/react`（含 ReactFlow/NodeResizer/NodeToolbar 等，通过 bare import 或 window.AgentSpacesUI 取用）

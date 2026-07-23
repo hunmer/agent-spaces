@@ -13,6 +13,7 @@ import WorkspaceSwitcher from './WorkspaceSwitcher';
 import TextToImageNode from './nodes/TextToImageNode';
 import EditImageNode from './nodes/EditImageNode';
 import ImageDisplayNode from './nodes/ImageDisplayNode';
+import ImageProcessNode from './nodes/ImageProcessNode';
 import NoteNode from './nodes/NoteNode';
 import useCanvasState from '../hooks/useCanvasState';
 import useWorkflow from '../hooks/useWorkflow';
@@ -20,17 +21,19 @@ import useGenerationHistory from '../hooks/useGenerationHistory';
 import useSettings from '../hooks/useSettings';
 import useExecutionQueue from '../hooks/useExecutionQueue';
 import useWorkspaces from '../hooks/useWorkspaces';
-import { IMAGE_TAGS, NODE_META, NODE_TYPES, WORKFLOWS } from '../utils/constants';
+import { IMAGE_TAGS, NODE_META, NODE_TYPES, WORKFLOWS, defaultProcessorParams } from '../utils/constants';
 import { autoLayout } from '../utils/layout';
 import { downloadJson, serializeCanvas } from '../utils/export';
 import { copyNodes, hasClipboard, pasteNodes } from '../utils/clipboard';
 import { loadPanelLayout, onAnyConfigChanged, savePanelLayout } from '../utils/storage';
+import { runProcessor } from '../utils/image-ops';
 
 // 节点类型 -> 渲染组件
 const NODE_COMPONENTS = {
   [NODE_TYPES.textToImage]: TextToImageNode,
   [NODE_TYPES.editImage]: EditImageNode,
   [NODE_TYPES.imageDisplay]: ImageDisplayNode,
+  [NODE_TYPES.imageProcess]: ImageProcessNode,
   [NODE_TYPES.note]: NoteNode,
 };
 
@@ -39,6 +42,7 @@ const ADD_NODE_ITEMS = [
   { type: NODE_TYPES.textToImage },
   { type: NODE_TYPES.editImage },
   { type: NODE_TYPES.imageDisplay },
+  { type: NODE_TYPES.imageProcess },
   { type: NODE_TYPES.note },
 ];
 
@@ -51,7 +55,11 @@ function computeInputImages(nodes, edges) {
   const byId = new Map(nodes.map((n) => [n.id, n]));
   const map = new Map(); // nodeId -> { images, isDisplay }
   for (const node of nodes) {
-    if (node.type !== NODE_TYPES.editImage && node.type !== NODE_TYPES.imageDisplay) continue;
+    // editImage / imageDisplay / imageProcess 都接收上游连线图片
+    const isReceiver = node.type === NODE_TYPES.editImage
+      || node.type === NODE_TYPES.imageDisplay
+      || node.type === NODE_TYPES.imageProcess;
+    if (!isReceiver) continue;
     const incoming = edges.filter((e) => e.target === node.id);
     if (!incoming.length) continue;
     const upstream = [];
@@ -101,6 +109,13 @@ function dedupeTags(tags) {
 function initialData(type) {
   if (type === NODE_TYPES.note) return { text: '' };
   if (type === NODE_TYPES.imageDisplay) return { images: [], source: '' };
+  if (type === NODE_TYPES.imageProcess) {
+    return {
+      status: 'idle',
+      output: { images: [] },
+      params: { processor: 'pixelate', processorParams: defaultProcessorParams('pixelate') },
+    };
+  }
   const base = { status: 'idle', output: { images: [] } };
   return { ...base, params: { prompt: '', model: 'gpt-image-1', aspect: '1:1', size: '1k' } };
 }
@@ -569,6 +584,31 @@ export default function Canvas() {
     }
   }, [settings, runWorkflow, createNodeAt, updateNodeData, addHistory]);
 
+  // 图像处理节点「执行」：调本地算法（utils/image-ops），不走工作流。
+  // 流程：上游 URL → runProcessor（内部按需 CDN 加载库）→ 产出 http URL → 回填本节点 data.output.images。
+  // processorId 对应 IMAGE_PROCESSORS 的 id；sourceImages 由节点传入（连线派生的 data.images）。
+  const handleProcessLocal = useCallback(async (nodeId, processorId, processorParams, sourceImages) => {
+    if (!sourceImages?.length) return;
+    updateNodeData(nodeId, { status: 'running', error: undefined, output: { images: [] } });
+    try {
+      const urls = await runProcessor(processorId, sourceImages, processorParams || {});
+      if (!urls.length) throw new Error('处理未返回图片');
+      updateNodeData(nodeId, { status: 'done', output: { images: urls } });
+      addHistory({
+        id: genId('hist'),
+        nodeId,
+        nodeType: NODE_TYPES.imageProcess,
+        prompt: processorId,
+        model: 'local',
+        images: urls,
+        createdAt: Date.now(),
+      }).catch((e) => console.error('processLocal addHistory failed:', e));
+    } catch (err) {
+      console.error('processLocal failed:', err);
+      updateNodeData(nodeId, { status: 'error', error: err?.message || String(err) });
+    }
+  }, [updateNodeData, addHistory]);
+
   // 给每个节点的 data 注入 onUpdate / onGenerate / onExportImages / onProcessImage（节点内部需要）。
   // 注意：不要覆盖 node.selected —— 选中状态由 ReactFlow 通过 onNodesChange 的
   // selection 变更 + applyNodeChanges 自行管理；这里强行赋值会破坏点击选中/删除机制。
@@ -595,6 +635,7 @@ export default function Canvas() {
           onGenerate: handleGenerate,
           onExportImages: (imgs) => addImageNodesFromUrls(imgs, { tags: [IMAGE_TAGS.export] }),
           onProcessImage: handleProcessImage,
+          onProcessLocal: handleProcessLocal,
           // 工具栏【编辑】按钮：打开编辑图片弹窗，预填当前节点图片
           onEditImages: (imgs) => setFormState({ nodeType: NODE_TYPES.editImage, initialImages: imgs }),
           // 图片加载完成自动调整节点尺寸（仅图片展示节点用）
@@ -604,7 +645,7 @@ export default function Canvas() {
         },
       };
     }),
-    [nodes, upstreamMap, makeOnUpdate, handleGenerate, addImageNodesFromUrls, handleProcessImage, handleAutoSize, handleAutoSizeToContent],
+    [nodes, upstreamMap, makeOnUpdate, handleGenerate, addImageNodesFromUrls, handleProcessImage, handleProcessLocal, handleAutoSize, handleAutoSizeToContent],
   );
 
   // 面板布局变化 -> 持久化
