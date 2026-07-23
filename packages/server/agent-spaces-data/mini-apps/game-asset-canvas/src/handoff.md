@@ -122,7 +122,10 @@ src/
     - **Canvas 实现**：`groupOverlayItems`（groups 映射出 childNodes）+ `screenDeltaToFlowDelta`（screenToFlowPosition 差值）+ `handleGroupMove`（整组平移）+ `deleteGroup`/`updateGroup`；删节点时 `onNodesDelete` 同步清理 groups 里悬空的 childNodeIds
     - **单图导出**不分组（走原 addImageNodesFromUrls）
     - **宿主层改动**（需重启 web）：`react-renderer.tsx` allowlist + 顶部 import 加 `ViewportPortal`；`ui-exports.ts` 导出 `WorkflowGroupOverlay`/`useGroupManagement`
-    - **底部多选 toolbar**：选中节点数 `selectionCount > 1` 时，画布底部居中浮出工具条（absolute 定位在画布容器内，`nodrag nopan` 防误触画布），显示「已选 N」+「合并成分组」按钮（`Layers` 图标，从 `@agent-spaces/ui` 导入）。点击调 `createGroupFromSelection`：取选中节点 id 建一条 group 数据（名「分组 N」），建完清空选中（把所有节点 selected 置 false）
+    - **底部多选 toolbar**：选中节点数 `selectionCount > 1` 时，画布底部居中浮出工具条（absolute 定位在画布容器内，`nodrag nopan` 防误触画布），含三个操作：
+      - **合并成分组**（`Layers` 图标）：调 `createGroupFromSelection`，取选中 id 建一条 group 数据（名「分组 N」），建完清空选中
+      - **对齐分布**（`AlignHorizontalJustifyCenter` 图标，DropdownMenu）：调 `alignDistribute(mode)`，支持左/右/顶/底/水平居中/垂直居中对齐 + 水平/垂直等距分布。分布按 position 排序，首尾不动、中间均分；节点宽高取 `width`/`style.width`（NodeResizer 要求），兜底 200×100
+      - **批量删除**（`Trash2` 图标）：调 `deleteSelectedNodes`，删选中节点 + 相关边 + 清理 groups 里悬空的 childNodeIds，删完清空选中
     - **图标来源**：mini-app 内图标一律从 `@agent-spaces/ui` 命名导入（如 `Layers`/`Trash2`/`Crosshair`），**不要**直接 `import from 'lucide-react'`（不在 allowlist，react-renderer 解析时为 undefined 会报 `Cannot read properties of undefined`）
 
 

@@ -63,17 +63,19 @@ export default function WorkspaceSwitcher({ workspaces, activeId, onSwitch, onCr
   return (
     <>
       <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <button
-            type="button"
-            className="flex items-center gap-1 rounded-md border border-border bg-background px-2.5 py-1 text-xs font-medium transition hover:border-primary"
-            title="切换工作区"
-          >
-            <span>🗂️</span>
-            <span className="max-w-[120px] truncate">{active?.name || '工作区'}</span>
-            <span className="text-muted-foreground">▾</span>
-          </button>
-        </PopoverTrigger>
+        <PopoverTrigger
+          render={
+            <button
+              type="button"
+              className="flex items-center gap-1 rounded-md border border-border bg-background px-2.5 py-1 text-xs font-medium transition hover:border-primary"
+              title="切换工作区"
+            >
+              <span>🗂️</span>
+              <span className="max-w-[120px] truncate">{active?.name || '工作区'}</span>
+              <span className="text-muted-foreground">▾</span>
+            </button>
+          }
+        />
         <PopoverContent className="w-72 p-0" align="start">
           <div className="flex items-center justify-between border-b border-border px-3 py-2">
             <span className="text-sm font-semibold">工作区</span>

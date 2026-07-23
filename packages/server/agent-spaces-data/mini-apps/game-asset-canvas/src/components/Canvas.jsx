@@ -4,9 +4,16 @@ import {
   ViewportPortal,
   addEdge, applyEdgeChanges, applyNodeChanges, useReactFlow,
 } from '@xyflow/react';
-import { ResizablePanelGroup, ResizablePanel, ResizableHandle, WorkflowGroupOverlay, Layers } from '@agent-spaces/ui';
+import {
+  ResizablePanelGroup, ResizablePanel, ResizableHandle, WorkflowGroupOverlay,
+  DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
+  ContextMenu, ContextMenuTrigger, ContextMenuContent, ContextMenuItem,
+  ContextMenuSub, ContextMenuSubTrigger, ContextMenuSubContent, ContextMenuGroup,
+  Layers, AlignHorizontalJustifyCenter, AlignVerticalJustifyCenter, Trash2,
+} from '@agent-spaces/ui';
 import Toolbar from './Toolbar';
 import RightPanel from './RightPanel';
+import ConnectionLine from './ConnectionLine';
 import SettingsDialog from './SettingsDialog';
 import ExecutionQueuePopover from './ExecutionQueuePopover';
 import NodeFormDialog from './NodeFormDialog';
@@ -22,7 +29,7 @@ import useGenerationHistory from '../hooks/useGenerationHistory';
 import useSettings from '../hooks/useSettings';
 import useExecutionQueue from '../hooks/useExecutionQueue';
 import useWorkspaces from '../hooks/useWorkspaces';
-import { IMAGE_TAGS, NODE_META, NODE_TYPES, WORKFLOWS, defaultProcessorParams } from '../utils/constants';
+import { IMAGE_PROCESSOR_CATEGORIES, IMAGE_PROCESSORS, IMAGE_TAGS, NODE_META, NODE_TYPES, WORKFLOWS, defaultProcessorParams } from '../utils/constants';
 import { autoLayout } from '../utils/layout';
 import { downloadJson, serializeCanvas } from '../utils/export';
 import { copyNodes, hasClipboard, pasteNodes } from '../utils/clipboard';
@@ -173,7 +180,7 @@ export default function Canvas() {
   // 节点表单弹窗（右侧新增节点 tab 触发，或节点工具栏【编辑】按钮触发）
   // { nodeType, initialImages } | null
   const [formState, setFormState] = useState(null);
-  // 右键菜单：{ x,y } 屏幕坐标定位浮层，{ flowX,flowY } 画布坐标用于在该处建节点
+  // 右键菜单位置：ContextMenu（Radix）自管浮层定位，这里只记录右键处的画布坐标，用于在该处建节点
   const [contextMenu, setContextMenu] = useState(null);
   const reactFlow = useReactFlow();
   // 拖拽到画布时记录拖入的节点类型（参考 reactflow.dev drag-and-drop）
@@ -202,12 +209,35 @@ export default function Canvas() {
     setEdges((prev) => applyEdgeChanges(changes, prev));
   }, [setEdges]);
 
+  // 连线：拖单个 handle → 目标 handle。
+  // 多选增强（参考 xyflow MultiConnect 示例）：若 source 节点处于选中态，
+  // 把所有 selected 节点都连到 target（去重，已有连线不重复加）。
   const onConnect = useCallback((conn) => {
-    setEdges((prev) => addEdge(
-      { ...conn, markerEnd: { type: MarkerType.ArrowClosed }, animated: true },
-      prev,
-    ));
-  }, [setEdges]);
+    setEdges((prev) => {
+      const sources = nodes.some((n) => n.id === conn.source && n.selected)
+        ? nodes.filter((n) => n.selected).map((n) => n.id)
+        : [conn.source];
+      let next = prev;
+      const existing = new Set(prev.map((e) => `${e.source}->${e.target}`));
+      for (const source of sources) {
+        const key = `${source}->${conn.target}`;
+        if (existing.has(key)) continue;
+        existing.add(key);
+        next = addEdge(
+          {
+            source,
+            target: conn.target,
+            sourceHandle: conn.sourceHandle,
+            targetHandle: conn.targetHandle,
+            markerEnd: { type: MarkerType.ArrowClosed },
+            animated: true,
+          },
+          next,
+        );
+      }
+      return next;
+    });
+  }, [nodes, setEdges]);
 
   // 选中数量（>1 时表示多选；用于 NodeShell 隐藏单节点 toolbar）
   const [selectionCount, setSelectionCount] = useState(0);
@@ -373,17 +403,20 @@ export default function Canvas() {
     createNodeAt(type, position);
   }, [reactFlow, createNodeAt, handleDropFiles]);
 
-  // 画布右键：阻止浏览器默认菜单，记录屏幕坐标（浮层定位）+ 画布坐标（建节点位置）
+  // 画布右键：用 ContextMenu（Radix）原生管理浮层，这里只记录右键处的画布坐标供建节点。
+  // ContextMenuTrigger 自带 onContextMenu 阻止浏览器默认菜单，无需手写。
   const handleContextMenu = useCallback((event) => {
-    event.preventDefault();
     const flow = reactFlow.screenToFlowPosition({ x: event.clientX, y: event.clientY });
-    setContextMenu({ x: event.clientX, y: event.clientY, flowX: flow.x, flowY: flow.y });
+    setContextMenu({ flowX: flow.x, flowY: flow.y });
   }, [reactFlow]);
 
-  // 右键菜单点击某节点类型：在右键位置创建节点并关闭菜单
-  const handleAddAtMenu = useCallback((type) => {
-    if (!contextMenu) return;
-    createNodeAt(type, { x: contextMenu.flowX, y: contextMenu.flowY });
+  // 右键菜单点击某节点类型：在右键位置创建节点。
+  // dataPatch: 可选，覆盖/扩展初始 data（如预选某个图像处理器）。
+  const handleAddAtMenu = useCallback((type, dataPatch) => {
+    const pos = contextMenu
+      ? { x: contextMenu.flowX, y: contextMenu.flowY }
+      : null;
+    createNodeAt(type, pos, dataPatch);
     setContextMenu(null);
   }, [contextMenu, createNodeAt]);
 
@@ -544,6 +577,88 @@ export default function Canvas() {
     // 清空选中（ReactFlow 原生：把所有节点 selected 置 false）
     setNodes((prev) => prev.map((n) => (n.selected ? { ...n, selected: false } : n)));
   }, [nodes, groups.length, setGroups, setNodes]);
+
+  // —— 对齐分布选中节点（底部 toolbar 触发）——
+  // mode: left/right/top/bottom/center-h/center-v（对齐）| h-dist/v-dist（等距分布）
+  // 节点宽高取 style 或顶层 width/height（NodeResizer 要求），兜底 200x100。
+  const nodeSize = (n) => ({
+    w: n.width || n.style?.width || 200,
+    h: n.height || n.style?.height || 100,
+  });
+  const alignDistribute = useCallback((mode) => {
+    const sel = nodes.filter((n) => n.selected);
+    if (sel.length < 2) return;
+    const ids = new Set(sel.map((n) => n.id));
+    // 参考值（均值 / 极值），分布需排序后按序号重排
+    if (mode === 'left') {
+      const m = Math.min(...sel.map((n) => n.position.x));
+      setNodes((p) => p.map((n) => ids.has(n.id) ? { ...n, position: { ...n.position, x: m } } : n));
+    } else if (mode === 'right') {
+      const m = Math.min(...sel.map((n) => n.position.x + nodeSize(n).w));
+      setNodes((p) => p.map((n) => ids.has(n.id) ? { ...n, position: { ...n.position, x: m - nodeSize(n).w } } : n));
+    } else if (mode === 'top') {
+      const m = Math.min(...sel.map((n) => n.position.y));
+      setNodes((p) => p.map((n) => ids.has(n.id) ? { ...n, position: { ...n.position, y: m } } : n));
+    } else if (mode === 'bottom') {
+      const m = Math.max(...sel.map((n) => n.position.y + nodeSize(n).h));
+      setNodes((p) => p.map((n) => ids.has(n.id) ? { ...n, position: { ...n.position, y: m - nodeSize(n).h } } : n));
+    } else if (mode === 'center-h') {
+      const m = sel.reduce((s, n) => s + n.position.x + nodeSize(n).w / 2, 0) / sel.length;
+      setNodes((p) => p.map((n) => ids.has(n.id) ? { ...n, position: { ...n.position, x: m - nodeSize(n).w / 2 } } : n));
+    } else if (mode === 'center-v') {
+      const m = sel.reduce((s, n) => s + n.position.y + nodeSize(n).h / 2, 0) / sel.length;
+      setNodes((p) => p.map((n) => ids.has(n.id) ? { ...n, position: { ...n.position, y: m - nodeSize(n).h / 2 } } : n));
+    } else if (mode === 'h-dist') {
+      // 水平等距分布：按 x 排序，首尾不动，中间均分
+      const sorted = [...sel].sort((a, b) => a.position.x - b.position.x);
+      const first = sorted[0];
+      const last = sorted[sorted.length - 1];
+      const start = first.position.x + nodeSize(first).w;
+      const end = last.position.x;
+      const span = end - start;
+      const gap = sorted.length > 2 ? span / (sorted.length - 1) : 0;
+      let cursor = start;
+      const newById = new Map();
+      sorted.forEach((n, i) => {
+        if (i === 0 || i === sorted.length - 1) return;
+        newById.set(n.id, cursor);
+        cursor += gap + nodeSize(n).w;
+      });
+      setNodes((p) => p.map((n) => {
+        if (!newById.has(n.id)) return n;
+        return { ...n, position: { ...n.position, x: newById.get(n.id) } };
+      }));
+    } else if (mode === 'v-dist') {
+      const sorted = [...sel].sort((a, b) => a.position.y - b.position.y);
+      const first = sorted[0];
+      const last = sorted[sorted.length - 1];
+      const start = first.position.y + nodeSize(first).h;
+      const end = last.position.y;
+      const span = end - start;
+      const gap = sorted.length > 2 ? span / (sorted.length - 1) : 0;
+      let cursor = start;
+      const newById = new Map();
+      sorted.forEach((n, i) => {
+        if (i === 0 || i === sorted.length - 1) return;
+        newById.set(n.id, cursor);
+        cursor += gap + nodeSize(n).h;
+      });
+      setNodes((p) => p.map((n) => {
+        if (!newById.has(n.id)) return n;
+        return { ...n, position: { ...n.position, y: newById.get(n.id) } };
+      }));
+    }
+  }, [nodes, setNodes]);
+
+  // 批量删除选中节点（含相关边 + 清理 groups 悬空引用），删完清空选中
+  const deleteSelectedNodes = useCallback(() => {
+    const ids = new Set(nodes.filter((n) => n.selected).map((n) => n.id));
+    if (ids.size === 0) return;
+    setNodes((prev) => prev.filter((n) => !ids.has(n.id)));
+    setEdges((prev) => prev.filter((e) => !ids.has(e.source) && !ids.has(e.target)));
+    setGroups((prev) => prev.map((g) => ({ ...g, childNodeIds: g.childNodeIds.filter((id) => !ids.has(id)) })));
+    setSelectedId(null);
+  }, [nodes, setNodes, setEdges, setGroups]);
 
   // 生成记录「用作输入」
   const handleUseImage = useCallback((url) => {
@@ -847,14 +962,29 @@ export default function Canvas() {
               />
             )}
           />
-          {/* 外层 ref + onDrop/onDragOver 实现拖拽新增节点（参考 reactflow.dev drag-and-drop） */}
-          <div className="relative min-h-0 flex-1" ref={wrappingRef} onDrop={handleDrop} onDragOver={handleDragOver} onContextMenu={handleContextMenu}>
+          {/* 外层 ref + onDrop/onDragOver 实现拖拽新增节点（参考 reactflow.dev drag-and-drop）。
+              右键用 ContextMenu（Base UI）自管浮层：ContextMenuTrigger 用 render prop 把
+              画布容器作为 trigger element（Base UI 的 render 自动合并 ref/props/children）。
+              onContextMenu 只记录画布坐标供建节点（浮层定位/关闭由 Base UI 管）。 */}
+          <ContextMenu>
+            <ContextMenuTrigger
+              render={
+                <div
+                  className="relative min-h-0 flex-1"
+                  ref={wrappingRef}
+                  onDrop={handleDrop}
+                  onDragOver={handleDragOver}
+                  onContextMenu={handleContextMenu}
+                />
+              }
+            >
             <ReactFlow
               nodes={decoratedNodes}
               edges={edges}
               onNodesChange={onNodesChange}
               onEdgesChange={onEdgesChange}
               onConnect={onConnect}
+              connectionLineComponent={ConnectionLine}
               onSelectionChange={onSelectionChange}
               onNodesDelete={onNodesDelete}
               deleteKeyCode={deleteKeyCode}
@@ -888,7 +1018,7 @@ export default function Canvas() {
                 ))}
               </ViewportPortal>
             </ReactFlow>
-            {/* 底部 toolbar：选中多个节点时浮出，提供「合并成分组」操作。
+            {/* 底部 toolbar：选中多个节点时浮出，提供「合并成分组/对齐分布/批量删除」。
                 absolute 定位在画布容器底部居中，z-index 高于 ReactFlow 内容。
                 用 nodrag nopan 防止点击触发画布交互。 */}
             {selectionCount > 1 && (
@@ -904,10 +1034,92 @@ export default function Canvas() {
                     <Layers className="h-3.5 w-3.5" />
                     合并成分组
                   </button>
+                  {/* 对齐分布下拉菜单 */}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button
+                        type="button"
+                        className="flex items-center gap-1.5 rounded-md border border-border bg-background px-2.5 py-1 text-xs font-medium text-foreground transition hover:border-primary hover:text-primary"
+                      >
+                        <AlignHorizontalJustifyCenter className="h-3.5 w-3.5" />
+                        对齐分布
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="center" className="text-xs">
+                      <DropdownMenuItem onClick={() => alignDistribute('left')}>左对齐</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => alignDistribute('center-h')}>水平居中</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => alignDistribute('right')}>右对齐</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => alignDistribute('top')}>顶对齐</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => alignDistribute('center-v')}>垂直居中</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => alignDistribute('bottom')}>底对齐</DropdownMenuItem>
+                      <div className="my-1 h-px bg-border" />
+                      <DropdownMenuItem onClick={() => alignDistribute('h-dist')}>水平等距分布</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => alignDistribute('v-dist')}>垂直等距分布</DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                  <button
+                    type="button"
+                    onClick={deleteSelectedNodes}
+                    className="flex items-center gap-1.5 rounded-md border border-border bg-background px-2.5 py-1 text-xs font-medium text-foreground transition hover:border-destructive hover:text-destructive"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    批量删除
+                  </button>
                 </div>
               </div>
             )}
-          </div>
+          </ContextMenuTrigger>
+            {/* 画布右键菜单（Base UI ContextMenu）：节点类型列表，点击在右键位置创建节点。
+                「图像处理」用 ContextMenuSub 渲染处理器快捷子菜单，点击子项创建预选该处理器的节点。
+                浮层定位/关闭/键盘导航全部由 Base UI 管，无需手写 state。 */}
+            <ContextMenuContent className="w-52">
+              <ContextMenuGroup>
+                {ADD_NODE_ITEMS.map((it) => {
+                  const meta = NODE_META[it.type];
+                  if (it.type === NODE_TYPES.imageProcess) {
+                    return (
+                      <ContextMenuSub key={it.type}>
+                        <ContextMenuSubTrigger>
+                          <span>{meta.icon}</span>
+                          <span>{meta.label}</span>
+                        </ContextMenuSubTrigger>
+                        <ContextMenuSubContent className="w-52">
+                          {IMAGE_PROCESSOR_CATEGORIES.map((cat) => {
+                            const items = IMAGE_PROCESSORS.filter((p) => p.category === cat.id);
+                            if (!items.length) return null;
+                            return (
+                              <ContextMenuGroup key={cat.id}>
+                                <p className="px-2 py-0.5 text-[10px] text-muted-foreground">
+                                  {cat.icon} {cat.label}
+                                </p>
+                                {items.map((p) => (
+                                  <ContextMenuItem
+                                    key={p.id}
+                                    title={p.desc}
+                                    onClick={() => handleAddAtMenu(it.type, {
+                                      params: { processor: p.id, processorParams: defaultProcessorParams(p.id) },
+                                    })}
+                                  >
+                                    {p.label}
+                                  </ContextMenuItem>
+                                ))}
+                              </ContextMenuGroup>
+                            );
+                          })}
+                        </ContextMenuSubContent>
+                      </ContextMenuSub>
+                    );
+                  }
+                  return (
+                    <ContextMenuItem key={it.type} onClick={() => handleAddAtMenu(it.type)}>
+                      <span>{meta.icon}</span>
+                      <span>{meta.label}</span>
+                    </ContextMenuItem>
+                  );
+                })}
+              </ContextMenuGroup>
+            </ContextMenuContent>
+          </ContextMenu>
         </div>
       </ResizablePanel>
 
@@ -946,40 +1158,6 @@ export default function Canvas() {
         onClose={() => setFormState(null)}
         onSubmit={handleFormSubmit}
       />
-
-      {/* 画布右键菜单：节点类型列表，点击在右键位置创建节点。
-          外层透明遮罩吃掉点击/右键，内层 fixed 浮层定位到鼠标坐标。
-          z-index 高于 ReactFlow，样式对齐 PopoverContent。 */}
-      {contextMenu && (
-        <div
-          className="fixed inset-0 z-[999]"
-          onClick={() => setContextMenu(null)}
-          onContextMenu={(e) => { e.preventDefault(); setContextMenu(null); }}
-        >
-          <div
-            className="absolute w-44 rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md"
-            style={{ left: contextMenu.x, top: contextMenu.y }}
-            onClick={(e) => e.stopPropagation()}
-            onContextMenu={(e) => e.stopPropagation()}
-          >
-            <p className="px-2 py-1 text-[10px] text-muted-foreground">添加节点</p>
-            {ADD_NODE_ITEMS.map((it) => {
-              const meta = NODE_META[it.type];
-              return (
-                <button
-                  key={it.type}
-                  type="button"
-                  onClick={() => handleAddAtMenu(it.type)}
-                  className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs transition hover:bg-accent hover:text-accent-foreground"
-                >
-                  <span>{meta.icon}</span>
-                  <span>{meta.label}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
     </ResizablePanelGroup>
   );
 }

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState, type MouseEvent } from "react";
 import { useDropzone, type Accept, type FileRejection } from "react-dropzone";
-import { Upload, X, FileIcon } from "lucide-react";
+import { Upload, X, FileIcon, GripVertical } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export interface FileUploadFileLike {
@@ -36,6 +36,8 @@ interface FileUploadProps<TFile extends FileUploadFileLike = File> {
   disabled?: boolean;
   className?: string;
   placeholder?: string;
+  /** 文件列表项支持拖拽排序（GIF 合成 / Sprite Sheet 合成等顺序敏感场景）。原生 HTML5 拖拽，无额外依赖。 */
+  sortable?: boolean;
 }
 
 let _fileId = 0;
@@ -52,8 +54,12 @@ export function FileUpload<TFile extends FileUploadFileLike = File>({
   disabled = false,
   className,
   placeholder,
+  sortable = false,
 }: FileUploadProps<TFile>) {
   const [dragError, setDragError] = useState<string | null>(null);
+  // 拖拽排序状态：draggingId = 被拖拽项 id，overId = 当前悬停项 id（用于占位指示）
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [overId, setOverId] = useState<string | null>(null);
   const dropzoneAccept = accept ?? getAcceptFromFileNameFilter(fileNameFilter);
   const files = useMemo(() => value.filter((item) => item?.file), [value]);
 
@@ -98,6 +104,36 @@ export function FileUpload<TFile extends FileUploadFileLike = File>({
     },
     [files, onChange],
   );
+
+  // 拖拽排序：拖起一项，悬停到另一项上时实时重排（受控 value 经 onChange 回写）。
+  // drop 时清空状态。仅 sortable=true 启用。
+  const handleSortDragStart = useCallback(
+    (id: string) => {
+      setDraggingId(id);
+    },
+    [],
+  );
+
+  const handleSortDragOver = useCallback(
+    (e: MouseEvent<HTMLDivElement>, overItemId: string) => {
+      if (!sortable || !draggingId || draggingId === overItemId) return;
+      e.preventDefault(); // 允许 drop
+      if (overId !== overItemId) setOverId(overItemId);
+      const from = files.findIndex((f) => f.id === draggingId);
+      const to = files.findIndex((f) => f.id === overItemId);
+      if (from === -1 || to === -1 || from === to) return;
+      const next = [...files];
+      const [moved] = next.splice(from, 1);
+      next.splice(to, 0, moved);
+      onChange?.(next);
+    },
+    [sortable, draggingId, overId, files, onChange],
+  );
+
+  const handleSortDragEnd = useCallback(() => {
+    setDraggingId(null);
+    setOverId(null);
+  }, []);
 
   const { getRootProps, getInputProps, isDragActive, open: openFilePicker } = useDropzone({
     onDrop,
@@ -160,11 +196,26 @@ export function FileUpload<TFile extends FileUploadFileLike = File>({
           {files.map((item) => {
             const preview = getFilePreview(item);
             const uploaded = Boolean(getUploadedFileUrl(item.file));
+            const isDragging = sortable && draggingId === item.id;
+            const isOver = sortable && overId === item.id && draggingId !== item.id;
             return (
               <div
                 key={item.id}
-                className="flex items-center gap-3 rounded-lg border border-border bg-background px-3 py-2 overflow-hidden"
+                draggable={sortable || undefined}
+                onDragStart={sortable ? () => handleSortDragStart(item.id) : undefined}
+                onDragOver={sortable ? (e) => handleSortDragOver(e, item.id) : undefined}
+                onDragEnd={sortable ? handleSortDragEnd : undefined}
+                onDrop={sortable ? handleSortDragEnd : undefined}
+                className={cn(
+                  "flex items-center gap-3 rounded-lg border bg-background px-3 py-2 overflow-hidden transition-colors",
+                  isDragging ? "border-primary opacity-40" : "border-border",
+                  isOver && "border-primary border-t-2",
+                  sortable && "cursor-grab active:cursor-grabbing",
+                )}
               >
+                {sortable && (
+                  <GripVertical className="size-4 shrink-0 text-muted-foreground" />
+                )}
                 {preview ? (
                   <img src={preview} alt="" className="size-10 rounded-md object-cover" />
                 ) : (
