@@ -80,22 +80,8 @@ export default function NodeFormDialog({ open, nodeType, initialImages, onClose,
                 onChange={setImages}
                 max={6}
                 placeholder="点击或拖拽图片上传"
+                extraItems={referenceImages.map((src) => ({ src, badge: '参考' }))}
               />
-            </Field>
-          )}
-
-          {isEdit && referenceImages.length > 0 && (
-            <Field label={`参考图（来自提示词库，${referenceImages.length} 张）`}>
-              <div className="flex flex-wrap gap-2">
-                {referenceImages.map((url, i) => (
-                  <img
-                    key={i}
-                    src={url}
-                    alt={`参考图${i + 1}`}
-                    className="h-16 w-16 rounded border border-border object-contain"
-                  />
-                ))}
-              </div>
             </Field>
           )}
 

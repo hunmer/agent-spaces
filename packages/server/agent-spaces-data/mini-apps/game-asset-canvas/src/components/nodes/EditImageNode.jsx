@@ -3,6 +3,7 @@ import NodeShell from './NodeShell';
 import ImageResult from './ImageResult';
 import PromptPickerDialog from '../PromptPickerDialog';
 import PickedPromptBadge from './PickedPromptBadge';
+import FileUpload from '../FileUpload';
 import { ASPECT_OPTIONS, DEFAULT_MODEL, MODEL_OPTIONS, NODE_TYPES, SIZE_OPTIONS, WORKFLOWS } from '../../utils/constants';
 import { hasPrompt } from '../../utils/prompts';
 import { normalizeImageUrls, resolveReferenceImages } from '../../utils/workflow';
@@ -15,7 +16,10 @@ import { normalizeImageUrls, resolveReferenceImages } from '../../utils/workflow
  */
 export default function EditImageNode({ id, data, selected }) {
   const params = data?.params || {};
+  // 连线图（由 computeInputImages 派生到 data.images）+ 用户上传图（data.uploadedImages，持久化不被覆盖）
+  // 两种来源并存，提交时合并去重。参考 imageProcess 节点的双来源模式。
   const inputImages = data?.images || [];
+  const uploadedImages = Array.isArray(data?.uploadedImages) ? data.uploadedImages : [];
   const images = data?.output?.images || [];
   const status = data?.status || 'idle';
   const error = data?.error;
@@ -28,76 +32,54 @@ export default function EditImageNode({ id, data, selected }) {
     onUpdate?.({ params: { ...params, ...patch } });
   }, [onUpdate, params]);
 
-  const setImages = useCallback((raw) => {
-    const list = String(raw || '')
-      .split(/[\n,]/)
-      .map((s) => s.trim())
-      .filter(Boolean);
-    onUpdate?.({ images: list });
+  // FileUpload onChange：上传待编辑图片，写入 data.uploadedImages（与连线图 data.images 分离，互不覆盖）
+  const setUploadedImages = useCallback((urls) => {
+    onUpdate?.({ uploadedImages: Array.isArray(urls) ? urls.filter(Boolean) : [] });
   }, [onUpdate]);
 
+  // 把参考图 + 连线图作为只读项整合进同一个 FileUpload 网格（带来源角标），上传图可删，只读项不可删。
+  // 这样「输入图片」与「参考图」合并为单一区块，避免 UI 分组割裂。
+  const refImages = Array.isArray(params.referenceImages) ? params.referenceImages : [];
+  const extraItems = [
+    ...refImages.map((src) => ({ src, badge: '参考' })),
+    ...inputImages.map((src) => ({ src, badge: '连线' })),
+  ];
+
   const handleRun = useCallback(() => {
-    // 参考图（提示词库带入）或 连线/手动图片 至少其一非空才执行
-    const refImages = Array.isArray(params.referenceImages) ? params.referenceImages : [];
-    if (!inputImages.length && !refImages.length) return;
+    // 参考图 + 上传图 + 连线图，至少其一非空才执行；提交时合并去重
+    const allSources = [...refImages, ...uploadedImages, ...inputImages];
+    if (!allSources.length) return;
     // 提示词库选中 + 用户输入 合并（去空去重）
     const merged = [params.pickedPrompt, params.prompt].map((s) => (s || '').trim()).filter(Boolean).join('\n');
-    // 参考图合并到 input.images 前部，与连线/手动图片去重后提交
-    const allImages = normalizeImageUrls([...refImages, ...inputImages]);
     onGenerate?.(id, NODE_TYPES.editImage, {
       workflowId: WORKFLOWS.edit_image,
       input: {
-        images: allImages,
+        images: normalizeImageUrls(allSources),
         prompt: merged,
         model: params.model || DEFAULT_MODEL,
         aspect: params.aspect || '1:1',
         size: params.size || '1k',
       },
     });
-  }, [onGenerate, id, inputImages, params]);
+  }, [onGenerate, id, inputImages, uploadedImages, params, refImages]);
 
   return (
     <NodeShell id={id} nodeType={NODE_TYPES.editImage} data={data} selected={selected} targetHandle sourceHandle>
       <div className="flex flex-col gap-1">
-        <span className="text-xs font-medium text-muted-foreground">
-          输入图片 {inputImages.length > 0 && <span className="text-primary">（{inputImages.length} 张，来自连线）</span>}
-        </span>
-        {inputImages.length > 0 ? (
-          <div className="grid grid-cols-3 gap-1">
-            {inputImages.slice(0, 6).map((url, i) => (
-              <img key={i} src={url} alt="" className="h-12 w-full rounded border border-border object-cover" />
-            ))}
-          </div>
-        ) : (
-          <textarea
-            className="min-h-[48px] w-full resize-y rounded-md border border-border bg-background px-2 py-1.5 text-xs outline-none focus:border-primary"
-            placeholder="无连线时，粘贴图片 URL（多个用换行或逗号分隔）"
-            onChange={(e) => setImages(e.target.value)}
-          />
-        )}
+        <span className="text-xs font-medium text-muted-foreground">输入图片</span>
+        <FileUpload
+          value={uploadedImages}
+          onChange={setUploadedImages}
+          max={6}
+          placeholder="点击或拖拽上传待编辑图片"
+          extraItems={extraItems}
+        />
       </div>
 
       <PickedPromptBadge
         pickedPrompt={params.pickedPrompt}
         onClear={() => set({ pickedPrompt: undefined, referenceImages: undefined })}
       />
-      {(params.referenceImages || []).length > 0 && (
-        <div className="flex flex-col gap-1">
-          <span className="text-xs font-medium text-muted-foreground">
-            参考图（{params.referenceImages.length} 张）
-          </span>
-          <div className="flex flex-wrap gap-1">
-            {params.referenceImages.map((url, i) => (
-              <img
-                key={i}
-                src={url}
-                alt={`参考图${i + 1}`}
-                className="h-12 w-12 rounded border border-border object-contain"
-              />
-            ))}
-          </div>
-        </div>
-      )}
       <label className="flex flex-col gap-1">
         <div className="flex items-center justify-between">
           <span className="text-xs font-medium text-muted-foreground">编辑指令</span>
@@ -125,7 +107,7 @@ export default function EditImageNode({ id, data, selected }) {
 
       <button
         type="button"
-        disabled={running || (!inputImages.length && !(params.referenceImages || []).length) || !hasPrompt(params)}
+        disabled={running || (!inputImages.length && !uploadedImages.length && !(params.referenceImages || []).length) || !hasPrompt(params)}
         onClick={handleRun}
         className="w-full rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition disabled:cursor-not-allowed disabled:opacity-50"
       >

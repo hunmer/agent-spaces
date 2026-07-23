@@ -1,10 +1,11 @@
 import { useMemo, useState } from 'react';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
-  Input, ScrollArea, Button,
+  Input, ScrollArea, Button, openMediaGallery,
 } from '@agent-spaces/ui';
 import { PROMPT_CATEGORIES, PROMPT_LIBRARY, getPromptsByScene } from '../utils/prompts';
 import { ASPECT_OPTIONS } from '../utils/constants';
+import { resolveReferenceImages } from '../utils/workflow';
 import usePromptLibrary from '../hooks/usePromptLibrary';
 
 /**
@@ -120,48 +121,71 @@ export default function PromptPickerDialog({ open, scene = 'text', onClose, onPi
             {list.length === 0 && (
               <p className="col-span-full py-10 text-center text-xs text-muted-foreground">无匹配提示词</p>
             )}
-            {list.map((p) => (
-              <div
-                key={p.id}
-                className="group relative flex flex-col gap-1 rounded-md border border-border bg-background p-3 text-left transition hover:border-primary hover:bg-accent"
-              >
-                <button
-                  type="button"
-                  onClick={() => handlePick(p)}
-                  className="flex flex-1 flex-col gap-1 text-left"
+            {list.map((p) => {
+              const refImages = resolveReferenceImages(p.references);
+              return (
+                <div
+                  key={p.id}
+                  className="group relative flex flex-col gap-1 rounded-md border border-border bg-background p-3 text-left transition hover:border-primary hover:bg-accent"
                 >
-                  <span className="flex items-center gap-1.5">
-                    {p.custom && <span className="rounded bg-primary/15 px-1 text-[10px] text-primary">自</span>}
-                    <span className="line-clamp-1 text-sm font-medium">{p.title}</span>
-                    {p.aspect && <span className="rounded bg-muted px-1 text-[10px] text-muted-foreground">{p.aspect}</span>}
-                  </span>
-                  <span className="line-clamp-2 text-xs text-muted-foreground">{p.desc}</span>
-                  <span className="line-clamp-3 font-mono text-[11px] leading-relaxed text-muted-foreground/70 group-hover:text-muted-foreground">
-                    {p.prompt}
-                  </span>
-                </button>
-                {p.custom && (
-                  <div className="absolute right-1.5 top-1.5 flex gap-1 opacity-0 transition group-hover:opacity-100">
-                    <button
-                      type="button"
-                      onClick={() => setEditing(p)}
-                      className="rounded bg-background/80 px-1.5 py-0.5 text-[11px] text-muted-foreground hover:text-primary"
-                      title="编辑"
-                    >
-                      ✏️
-                    </button>
-                    <button
-                      type="button"
-                      onClick={(e) => handleDelete(e, p)}
-                      className="rounded bg-background/80 px-1.5 py-0.5 text-[11px] text-muted-foreground hover:text-red-500"
-                      title="删除"
-                    >
-                      🗑
-                    </button>
-                  </div>
-                )}
-              </div>
-            ))}
+                  <button
+                    type="button"
+                    onClick={() => handlePick(p)}
+                    className="flex flex-1 flex-col gap-1 text-left"
+                  >
+                    <span className="flex items-center gap-1.5">
+                      {p.custom && <span className="rounded bg-primary/15 px-1 text-[10px] text-primary">自</span>}
+                      <span className="line-clamp-1 text-sm font-medium">{p.title}</span>
+                      {p.aspect && <span className="rounded bg-muted px-1 text-[10px] text-muted-foreground">{p.aspect}</span>}
+                      {refImages.length > 0 && <span className="rounded bg-muted px-1 text-[10px] text-muted-foreground">🖼 {refImages.length}</span>}
+                    </span>
+                    <span className="line-clamp-2 text-xs text-muted-foreground">{p.desc}</span>
+                    {refImages.length > 0 && (
+                      <div className="flex flex-wrap gap-1">
+                        {refImages.map((src, i) => (
+                          <button
+                            key={i}
+                            type="button"
+                            title="点击查看大图"
+                            onClick={(e) => {
+                              // 阻止冒泡到卡片选中按钮，避免选中提示词并关闭弹窗
+                              e.stopPropagation();
+                              openMediaGallery(refImages.map((url) => ({ src: url, type: 'image' })), i);
+                            }}
+                            className="h-12 w-12 shrink-0 overflow-hidden rounded border border-border bg-muted transition hover:border-primary"
+                          >
+                            <img src={src} alt={`参考图 ${i + 1}`} className="h-full w-full object-cover" />
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    <span className="line-clamp-3 font-mono text-[11px] leading-relaxed text-muted-foreground/70 group-hover:text-muted-foreground">
+                      {p.prompt}
+                    </span>
+                  </button>
+                  {p.custom && (
+                    <div className="absolute right-1.5 top-1.5 flex gap-1 opacity-0 transition group-hover:opacity-100">
+                      <button
+                        type="button"
+                        onClick={() => setEditing(p)}
+                        className="rounded bg-background/80 px-1.5 py-0.5 text-[11px] text-muted-foreground hover:text-primary"
+                        title="编辑"
+                      >
+                        ✏️
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => handleDelete(e, p)}
+                        className="rounded bg-background/80 px-1.5 py-0.5 text-[11px] text-muted-foreground hover:text-red-500"
+                        title="删除"
+                      >
+                        🗑
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </ScrollArea>
       </DialogContent>

@@ -130,7 +130,7 @@ function initialData(type) {
       params: { processor: 'pixelate', processorParams: defaultProcessorParams('pixelate') },
     };
   }
-  const base = { status: 'idle', output: { images: [] } };
+  const base = { status: 'idle', output: { images: [] }, uploadedImages: [] };
   return { ...base, params: { prompt: '', model: 'gpt-image-1', aspect: '1:1', size: '1k' } };
 }
 

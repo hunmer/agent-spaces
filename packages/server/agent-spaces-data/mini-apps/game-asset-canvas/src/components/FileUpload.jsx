@@ -4,17 +4,21 @@ import { useCallback, useRef, useState } from 'react';
  * 图片上传组件：支持点击/拖拽上传，调用 window.AgentSpaces.uploadFile 上传到后端，
  * 返回 http URL 后回传给父组件，并展示已上传图片缩略图（可删除）。
  *
- * @param {{ value: string[], onChange:(urls:string[])=>void, max?:number, placeholder?:string }} props
- *   value: 已有图片 URL 数组（http URL）
+ * @param {{ value: string[], onChange:(urls:string[])=>void, max?:number, placeholder?:string, extraItems?:{src:string,badge?:string}[] }} props
+ *   value: 已上传图片 URL 数组（http URL，可删）
  *   onChange: 上传成功/删除后回传新的 URL 数组
- *   max: 最大数量，默认 6
+ *   max: 最大上传数量，默认 6（不含只读项）
+ *   extraItems: 只读图片项（如参考图/连线图），渲染在上传图前面，带可选角标，不可删除。
+ *               作用：把不同来源的图整合进同一个网格展示，避免「输入图片」「参考图」拆成两个分组。
  */
-export default function FileUpload({ value = [], onChange, max = 6, placeholder = '点击或拖拽图片到此处上传' }) {
+export default function FileUpload({ value = [], onChange, max = 6, placeholder = '点击或拖拽图片到此处上传', extraItems = [] }) {
   const inputRef = useRef(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
   const [dragOver, setDragOver] = useState(false);
   const urls = Array.isArray(value) ? value : [];
+  // 只读项归一：过滤无 src 的项
+  const extras = (Array.isArray(extraItems) ? extraItems : []).filter((e) => e && e.src);
 
   const uploadOne = useCallback(async (file) => {
     const AS = window.AgentSpaces;
@@ -69,8 +73,18 @@ export default function FileUpload({ value = [], onChange, max = 6, placeholder 
 
   return (
     <div className="flex flex-col gap-2">
-      {urls.length > 0 && (
+      {(extras.length > 0 || urls.length > 0) && (
         <div className="grid grid-cols-3 gap-1.5">
+          {extras.map((e, i) => (
+            <div key={`ex-${i}`} className="group relative aspect-square overflow-hidden rounded-md border border-border bg-muted/40">
+              <img src={e.src} alt="" className="h-full w-full object-cover" />
+              {e.badge && (
+                <span className="absolute bottom-0.5 left-0.5 rounded bg-black/60 px-1 text-[9px] leading-tight text-white">
+                  {e.badge}
+                </span>
+              )}
+            </div>
+          ))}
           {urls.map((src, i) => (
             <div key={i} className="group relative aspect-square overflow-hidden rounded-md border border-border">
               <img src={src} alt="" className="h-full w-full object-cover" />
