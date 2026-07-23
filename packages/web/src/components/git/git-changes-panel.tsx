@@ -12,6 +12,7 @@ import { useTranslations } from "next-intl";
 
 import { Empty, EmptyDescription, EmptyMedia } from "@/components/ui/empty";
 import { FileIconImg } from "@/components/editor/file-icon";
+import { getMediaType } from "@/stores/editor";
 import { statusColors, statusLabels } from "./git-commit-utils";
 import { sdk } from '@/lib/sdk';
 import type { GitFileStatus, GitDiffResult } from "@agent-spaces/shared";
@@ -54,7 +55,11 @@ function FileDiffHoverCard({
   const [loading, setLoading] = useState(false);
   const fetched = useRef(false);
 
+  const isImage = getMediaType(path) === 'image';
+
   const handleOpenChange = useCallback((isOpen: boolean) => {
+    // 图片直接用文件原始 URL 预览，无需请求 diff
+    if (isImage) return;
     if (isOpen && !fetched.current) {
       fetched.current = true;
       setLoading(true);
@@ -63,11 +68,12 @@ function FileDiffHoverCard({
         .catch(() => {})
         .finally(() => setLoading(false));
     }
-  }, [workspaceId, path]);
+  }, [workspaceId, path, isImage]);
 
   return (
     <HoverCard onOpenChange={handleOpenChange}>
       <HoverCardTrigger
+        render={<div />}
         delay={300}
         closeDelay={150}
         className="block"
@@ -79,16 +85,20 @@ function FileDiffHoverCard({
         </div>
       </HoverCardTrigger>
       <HoverCardContent side="right" sideOffset={4} align="start" className="p-0 w-[480px] max-h-[360px] overflow-auto">
-        {loading && (
+        {isImage ? (
+          <img
+            src={`/api/workspaces/${workspaceId}/files/content?path=${encodeURIComponent(path)}&raw=true`}
+            alt={path}
+            className="block max-w-full max-h-[340px] object-contain"
+          />
+        ) : loading ? (
           <div className="flex items-center justify-center py-6 text-xs text-muted-foreground">
             <Loader2 size={14} className="animate-spin mr-1.5" />
             Loading diff...
           </div>
-        )}
-        {!loading && !diff && (
+        ) : !diff ? (
           <div className="p-3 text-xs text-muted-foreground">No diff available</div>
-        )}
-        {!loading && diff && (diff.isBinary ? (
+        ) : diff.isBinary ? (
           <div className="p-3 text-xs text-muted-foreground">Binary file</div>
         ) : (
           <DiffViewer
@@ -98,7 +108,7 @@ function FileDiffHoverCard({
             newTitle={diff.isNew ? path : undefined}
             className="border-0 shadow-none rounded-none text-[11px]"
           />
-        ))}
+        )}
       </HoverCardContent>
     </HoverCard>
   );
@@ -163,7 +173,7 @@ export function GitChangesPanel({
       {/* File list */}
       <div className="flex-1 overflow-auto">
         {files.map((f) => (
-          <FileDiffHoverCard key={f.path} workspaceId={workspaceId} path={f.path} selectedFile={selectedFile} onContextMenu={onContextMenu} onOpenFile={isVertical ? undefined : onOpenFile}>
+          <FileDiffHoverCard key={f.path} workspaceId={workspaceId} path={f.path} selectedFile={selectedFile} onContextMenu={onContextMenu} onOpenFile={onOpenFile}>
             <FileIconImg name={f.path.split("/").pop() ?? f.path} />
             {f.conflicted && <AlertTriangle size={12} className="shrink-0 text-red-500" />}
             <span className="truncate flex-1 dark:!text-gray-200">{f.path}</span>
