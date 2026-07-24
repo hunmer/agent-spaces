@@ -6,6 +6,10 @@ export const WORKFLOWS = {
   edit_image: '19f5f8a9-305d-43a6-9b05-584597213a8f',
   // 抠图和放大
   image_enchanter: '8425608e-9e0c-49fa-baa3-32675566a3e6',
+  // 文字生成语音
+  text_to_voice: '820bf3b7-9d50-4f6d-966d-8e442960a233',
+  // 生成视频
+  video_generator: '5130958f-a78e-4c36-8f03-1f2f733b87d7',
 };
 
 // 抠图和放大的处理类型（对应 image_enchanter 工作流 start 节点 process_type）
@@ -23,6 +27,8 @@ export const NODE_TYPES = {
   imageEditor: 'imageEditor',
   pixelEditor: 'pixelEditor',
   uiSplitter: 'uiSplitter',
+  textToVoice: 'textToVoice',
+  videoGenerator: 'videoGenerator',
   note: 'note',
   // 注：分组不是节点，是 WorkflowGroupOverlay（由 groups 数据驱动，复用 workflow-editor 同源组件）
 };
@@ -61,6 +67,71 @@ export const ASPECT_OPTIONS = ['21:9', '16:9', '9:16', '1:1', '4:3', '3:4'];
 // 尺寸
 export const SIZE_OPTIONS = ['1k', '2k', '4k'];
 
+// ============ 文字生成语音（text_to_voice 工作流）============
+// 语音服务提供商（工作流 start 节点 model 字段，inputMode=native select）
+// fish-audio 传 voiceId=referenceId, minimax 传 voiceId=voiceId, qianyin 传 voiceId=speakerId
+export const VOICE_PROVIDER_OPTIONS = [
+  { value: 'fish-audio', label: 'Fish Audio' },
+  { value: 'minimax', label: 'MiniMax' },
+  { value: 'qianyin', label: '千音' },
+];
+
+// ============ 生成视频（video_generator 工作流）============
+// 比例（工作流 start 节点 aspect select）
+export const VIDEO_ASPECT_OPTIONS = ['16:9', '9:16', '1:1', '4:3', '3:4'];
+// 质量（工作流 start 节点 quality select）
+export const VIDEO_QUALITY_OPTIONS = ['720', '1080', '512', '768'];
+// 时长秒（工作流 start 节点 duration select）
+export const VIDEO_DURATION_OPTIONS = ['5', '10'];
+// 视频模型选项（按 provider 分组，与 video_generator 工作流 run_code 路由关键字一致）：
+// - jimeng 系列 → case jimeng（jimeng_text_to_video 节点）
+// - minimax 系列 → case minimax（minimax_image_to_video / minimax_start_end_to_video，按是否多图分流）
+// - 其余 → case aliyun（aliyun_image_to_video_v27，需 ≥1 张参考图）
+// 注：aliyun 分支会取 images[0]/images[1] 作为首尾帧，无图时该分支会失败
+export const VIDEO_MODEL_OPTIONS = [
+  {
+    group: '即梦 Jimeng',
+    options: [
+      { value: 'jimeng-video-3.5-pro', label: 'Jimeng Video 3.5 Pro' },
+      { value: 'jimeng-video-3.0-pro', label: 'Jimeng Video 3.0 Pro' },
+      { value: 'jimeng-video-3.0', label: 'Jimeng Video 3.0' },
+      { value: 'jimeng-video-3.0-fast', label: 'Jimeng Video 3.0 Fast' },
+      { value: 'jimeng-video-2.0-pro', label: 'Jimeng Video 2.0 Pro' },
+      { value: 'jimeng-video-2.0', label: 'Jimeng Video 2.0' },
+    ],
+  },
+  {
+    group: 'MiniMax 海螺',
+    options: [
+      { value: 'MiniMax-Hailuo-2.3', label: 'Hailuo 2.3' },
+      { value: 'MiniMax-Hailuo-2.3-Fast', label: 'Hailuo 2.3 Fast' },
+      { value: 'MiniMax-Hailuo-02', label: 'Hailuo 02' },
+      { value: 'I2V-01-Director', label: 'I2V-01 Director' },
+      { value: 'I2V-01-live', label: 'I2V-01 Live' },
+      { value: 'I2V-01', label: 'I2V-01' },
+    ],
+  },
+  {
+    group: '阿里云 Aliyun（需参考图）',
+    options: [
+      { value: 'wanx2.7-image-to-video', label: '万相 2.7 图生视频' },
+      { value: 'wanx2.1-image-to-video', label: '万相 2.1 图生视频' },
+    ],
+  },
+];
+// 默认视频模型（即梦 3.0，纯文生视频也可用，不强依赖参考图）
+export const DEFAULT_VIDEO_MODEL = 'jimeng-video-3.0';
+// 判断模型是否属于 aliyun 分支（需参考图）：未在 jimeng/minimax 枚举里的都走 aliyun
+export function isAliyunVideoModel(model) {
+  if (!model) return false;
+  for (const g of VIDEO_MODEL_OPTIONS) {
+    if (g.group.startsWith('即梦') || g.group.startsWith('MiniMax')) {
+      if (g.options.some((o) => o.value === model)) return false;
+    }
+  }
+  return true;
+}
+
 // 节点显示配置
 export const NODE_META = {
   [NODE_TYPES.textToImage]: { label: '文字生成图片', icon: '✍️', color: '#6366f1' },
@@ -70,6 +141,8 @@ export const NODE_META = {
   [NODE_TYPES.imageEditor]: { label: '图片编辑', icon: '🎨', color: '#f97316' },
   [NODE_TYPES.pixelEditor]: { label: '像素编辑器', icon: '👾', color: '#22c55e' },
   [NODE_TYPES.uiSplitter]: { label: 'UI拆分', icon: '🧩', color: '#0ea5e9' },
+  [NODE_TYPES.textToVoice]: { label: '生成配音', icon: '🔊', color: '#a855f7' },
+  [NODE_TYPES.videoGenerator]: { label: '生成视频', icon: '🎬', color: '#ef4444' },
   [NODE_TYPES.note]: { label: '便签', icon: '📝', color: '#f59e0b' },
 };
 

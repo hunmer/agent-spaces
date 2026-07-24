@@ -8,6 +8,8 @@ export { BUILTIN_PLUGIN };
 export const DEFAULT_TEXT_TO_IMAGE_WORKFLOW_ID = WORKFLOWS.text_to_image;
 export const DEFAULT_EDIT_IMAGE_WORKFLOW_ID = WORKFLOWS.edit_image;
 export const DEFAULT_IMAGE_ENCHANTER_WORKFLOW_ID = WORKFLOWS.image_enchanter;
+export const DEFAULT_TEXT_TO_VOICE_WORKFLOW_ID = WORKFLOWS.text_to_voice;
+export const DEFAULT_VIDEO_GENERATOR_WORKFLOW_ID = WORKFLOWS.video_generator;
 
 // 设置文件路径（configs/）
 export const SETTINGS_PATH = 'settings.json';
@@ -22,6 +24,12 @@ export const DEFAULT_SETTINGS = {
   // 抠图和放大工作流
   imageEnchanterWorkflowId: DEFAULT_IMAGE_ENCHANTER_WORKFLOW_ID,
   imageEnchanterWorkflowName: 'image_enchanter',
+  // 文字生成语音工作流
+  textToVoiceWorkflowId: DEFAULT_TEXT_TO_VOICE_WORKFLOW_ID,
+  textToVoiceWorkflowName: 'text_to_voice',
+  // 生成视频工作流
+  videoGeneratorWorkflowId: DEFAULT_VIDEO_GENERATOR_WORKFLOW_ID,
+  videoGeneratorWorkflowName: 'video_generator',
 };
 
 // 工作流槽位：设置页为每个节点类型选一个目标工作流
@@ -53,6 +61,24 @@ export const WORKFLOW_SLOTS = [
     nameKey: 'imageEnchanterWorkflowName',
     defaultId: DEFAULT_IMAGE_ENCHANTER_WORKFLOW_ID,
     defaultName: 'image_enchanter',
+  },
+  {
+    key: 'textToVoice',
+    label: '文字生成语音工作流',
+    desc: '生成配音节点执行时调用的工作流',
+    idKey: 'textToVoiceWorkflowId',
+    nameKey: 'textToVoiceWorkflowName',
+    defaultId: DEFAULT_TEXT_TO_VOICE_WORKFLOW_ID,
+    defaultName: 'text_to_voice',
+  },
+  {
+    key: 'videoGenerator',
+    label: '生成视频工作流',
+    desc: '生成视频节点执行时调用的工作流',
+    idKey: 'videoGeneratorWorkflowId',
+    nameKey: 'videoGeneratorWorkflowName',
+    defaultId: DEFAULT_VIDEO_GENERATOR_WORKFLOW_ID,
+    defaultName: 'video_generator',
   },
 ];
 

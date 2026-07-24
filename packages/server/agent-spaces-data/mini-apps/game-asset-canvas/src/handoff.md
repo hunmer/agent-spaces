@@ -22,6 +22,9 @@
 - **调用的两个工作流**:
   - text_to_image: `d88dcb7c-7f5f-47c8-962c-89217a2c0ad6`
   - edit_image: `19f5f8a9-305d-43a6-9b05-584597213a8f`
+  - image_enchanter（抠图/放大）: `8425608e-9e0c-49fa-baa3-32675566a3e6`
+  - text_to_voice（文字生成语音）: `820bf3b7-9d50-4f6d-966d-8e442960a233`
+  - video_generator（生成视频）: `5130958f-a78e-4c36-8f03-1f2f733b87d7`
 
 ## 已暴露到 mini-app 的第三方能力
 
@@ -382,6 +385,41 @@ GDScript 用 `print("[PXR] ...")`（经 index.js onPrint 输出，与 `index.js:
 - 右侧列表每项 hover 删除图标 + 标题栏清空图标
 - 底部「导出当前图」Switch + 「保存全部 N 张切片」按钮，导出所有启用图的所有切片，多图文件名带 `img{N}_` 前缀
 - 对话框内右键不弹画布菜单
+
+## 生成配音 / 生成视频节点（本轮新增）
+
+新增两个媒体节点：`TextToVoiceNode`（文字生成语音）和 `VideoGeneratorNode`（生成视频），分别调用 `text_to_voice`（`820bf3b7-9d50-4f6d-966d-8e442960a233`）和 `video_generator`（`5130958f-a78e-4c36-8f03-1f2f733b87d7`）两个工作流，设置对话框已新增两个工作流槽位。
+
+### 关键决策与已踩坑（务必遵守）
+
+1. **媒体节点走独立回调 `onGenerateMedia`，不复用 `onGenerate`**：`handleGenerate` 内部硬编码 `generateImages`（图片专用提取）+ 写 `output.images`，音频/视频产出结构不同（end `result` = tts `audio` 对象 / video URL 字符串），不能复用。新增 `handleGenerateMedia(nodeId, nodeType, kind, {workflowId, input})`，kind=`'audio'`/`'video'`，写 `output.audio` / `output.video`，注入到节点 data 与 `onGenerate` 平级。
+2. **`runWorkflow` 增加 `returnRawEndOutput` 选项**：原 `runWorkflow` 走 `extractOutput`（图片专用，找 `result/images/image_urls` 数组）。媒体节点 end `result` 可能是对象（tts `audio`），`hasImages` 判 false 会漏提取。新增 `opts.returnRawEndOutput: true` 跳过 `extractOutput`，直接返回首个 completed end 节点的完整 output。`generateAudio`/`generateVideo` 都传这个选项。
+3. **媒体 URL 提取用 `pickFirstUrlDeep` 深度优先**：tts/video 节点产出字段名各异（fish-audio `data.httpPath` / qianyin `data.fileUrl` / minimax `data.audioUrl` / video `data.video` 或 `data.videoUrl`），end `result` 可能是对象也可能直接是 URL 字符串。`pickFirstUrlDeep` 优先按已知字段名找，兜底遍历所有 value 找首个 http/https/相对路径字符串。**不要假设固定字段名**。
+4. **媒体产出也调 `persistImagesToBackend`**：外链音频/视频同样可能过期/防盗链，下载到后端 data 目录换 httpUrl（复用 `downloadImage`，文件类型不限）。失败保留原地址。
+5. **`<audio>`/`<video>` 加 `key={url}`**：React 复用同实例时 src 变更不会重新加载，加 key 强制重建。
+6. **视频节点接收上游连线图**：`computeInputImages` 已纳入 `videoGenerator` 为 receiver（取全部连线图，与 uiSplitter 同），`VideoGeneratorNode` 复用 `ImageProcessNode` 的双来源模式（FileUpload 上传 + `UpstreamImageList` 连线只读，`dedupeUrls` 合并），图片作为 `input.images`（string[]）传给工作流。
+7. **生成记录对媒体产出存 `[url]` 数组**：`addHistory` 字段名是 `images`，媒体节点也存进去（单元素数组），「用作输入」按钮能拿到媒体 URL（虽然 HistoryCard 图片网格对音频 URL 会显示 broken img，但不阻塞）。
+
+### 改动文件（mini-app 内，刷新即生效，无宿主改动）
+
+- `src/utils/constants.js`：`WORKFLOWS` 加 `text_to_voice`/`video_generator`；`NODE_TYPES` 加 `textToVoice`/`videoGenerator`；`NODE_META` 加 🔊 #a855f7 / 🎬 #ef4444；新增 `VOICE_PROVIDER_OPTIONS`/`VIDEO_ASPECT_OPTIONS`/`VIDEO_QUALITY_OPTIONS`/`VIDEO_DURATION_OPTIONS`/`VIDEO_MODEL_OPTIONS`（按 provider 分组）/`DEFAULT_VIDEO_MODEL`/`isAliyunVideoModel`
+- `src/utils/settings.js`：`DEFAULT_SETTINGS` 加 `textToVoiceWorkflowId`/`Name`、`videoGeneratorWorkflowId`/`Name`；`WORKFLOW_SLOTS` 加两个槽位（设置对话框自动渲染）
+- `src/utils/workflow.js`：`runWorkflow` 加 `opts.returnRawEndOutput`；新增 `pickFirstUrlDeep`/`generateAudio`/`generateVideo`
+- `src/components/nodes/TextToVoiceNode.jsx`（新增）：textarea + provider select + voiceId input + 生成按钮 + `<audio>` 产出
+- `src/components/nodes/VideoGeneratorNode.jsx`（新增）：FileUpload 多图 + UpstreamImageList + textarea + 模型分组下拉（jimeng/minimax/aliyun）+ 比例/质量/时长 + 生成按钮 + `<video>` 产出；aliyun 模型无参考图时禁用生成并提示
+- `src/components/Canvas.jsx`：import 两个节点 + `NODE_COMPONENTS`/`ADD_NODE_ITEMS` 注册 + `computeInputImages` 纳入 `videoGenerator` + `DEFAULT_SIZE`/`initialData` 加两节点 + `handleGenerateMedia`（addHistory 带 `mediaType`）+ 节点 data 注入 `onGenerateMedia`
+- `src/components/RightPanel.jsx`：`ADD_ITEMS` 加「生成配音」「生成视频」两项；`HistoryCard` 按 `item.mediaType` 渲染 `<audio>`/`<video>` 播放器，不再对媒体 URL 显示 broken 图片网格
+
+### 验收要点
+
+- 右侧「新增节点」tab 出现「生成配音」「生成视频」卡片，点击/拖拽可建节点
+- 设置对话框出现「文字生成语音工作流」「生成视频工作流」两个槽位，可换默认工作流
+- 生成配音节点：输入文本 + 选 provider + 可选 voiceId → 点「生成配音」→ 产出 `<audio>` 播放器 + 下载链接
+- 生成视频节点：上传/连线参考图（可选）+ 提示词 + 模型下拉（按即梦/MiniMax/阿里云分组）+ 比例/质量/时长 → 点「生成视频」→ 产出 `<video>` 播放器 + 下载链接
+- 选阿里云模型且无参考图时，生成按钮禁用并显示「需至少 1 张参考图」提示（工作流 aliyun 分支会取 images[0]/images[1] 作首尾帧）
+- 视频节点支持上游图片节点连线（computeInputImages 派生到 data.images，UI 显示「🔗 来自连线 N 张」）
+- 产出写入 `data.output.audio` / `data.output.video`，刷新后仍可播放
+- 「生成记录」tab 里音频/视频条目显示对应播放器（不再 broken 图），「用作输入」仍可拿到媒体 URL
 
 ## 后续可做
 

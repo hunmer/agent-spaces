@@ -26,9 +26,12 @@ import ImageProcessNode from './nodes/ImageProcessNode';
 import ImageEditorNode from './nodes/ImageEditorNode';
 import PixelEditorNode from './nodes/PixelEditorNode';
 import UiSplitterNode from './nodes/UiSplitterNode';
+import TextToVoiceNode from './nodes/TextToVoiceNode';
+import VideoGeneratorNode from './nodes/VideoGeneratorNode';
 import NoteNode from './nodes/NoteNode';
 import useCanvasState from '../hooks/useCanvasState';
 import useWorkflow from '../hooks/useWorkflow';
+import { generateAudio, generateVideo } from '../utils/workflow';
 import useGenerationHistory from '../hooks/useGenerationHistory';
 import useSettings from '../hooks/useSettings';
 import useExecutionQueue from '../hooks/useExecutionQueue';
@@ -49,6 +52,8 @@ const NODE_COMPONENTS = {
   [NODE_TYPES.imageEditor]: ImageEditorNode,
   [NODE_TYPES.pixelEditor]: PixelEditorNode,
   [NODE_TYPES.uiSplitter]: UiSplitterNode,
+  [NODE_TYPES.textToVoice]: TextToVoiceNode,
+  [NODE_TYPES.videoGenerator]: VideoGeneratorNode,
   [NODE_TYPES.note]: NoteNode,
 };
 
@@ -61,6 +66,8 @@ const ADD_NODE_ITEMS = [
   { type: NODE_TYPES.imageEditor },
   { type: NODE_TYPES.pixelEditor },
   { type: NODE_TYPES.uiSplitter },
+  { type: NODE_TYPES.textToVoice },
+  { type: NODE_TYPES.videoGenerator },
   { type: NODE_TYPES.note },
 ];
 
@@ -73,13 +80,14 @@ function computeInputImages(nodes, edges) {
   const byId = new Map(nodes.map((n) => [n.id, n]));
   const map = new Map(); // nodeId -> { images, isDisplay }
   for (const node of nodes) {
-    // editImage / imageDisplay / imageProcess / imageEditor 都接收上游连线图片
+    // editImage / imageDisplay / imageProcess / imageEditor / videoGenerator 都接收上游连线图片
     const isReceiver = node.type === NODE_TYPES.editImage
       || node.type === NODE_TYPES.imageDisplay
       || node.type === NODE_TYPES.imageProcess
       || node.type === NODE_TYPES.imageEditor
       || node.type === NODE_TYPES.pixelEditor
-      || node.type === NODE_TYPES.uiSplitter;
+      || node.type === NODE_TYPES.uiSplitter
+      || node.type === NODE_TYPES.videoGenerator;
     if (!isReceiver) continue;
     const incoming = edges.filter((e) => e.target === node.id);
     if (!incoming.length) continue;
@@ -102,6 +110,7 @@ const DEFAULT_SIZE = {
   [NODE_TYPES.imageDisplay]: { w: 260, h: 240 },
   [NODE_TYPES.pixelEditor]: { w: 300, h: 260 },
   [NODE_TYPES.uiSplitter]: { w: 290, h: 240 },
+  [NODE_TYPES.videoGenerator]: { w: 300, h: 320 },
   default: { w: 290, h: 240 },
 };
 
@@ -174,6 +183,18 @@ function initialData(type) {
   }
   if (type === NODE_TYPES.uiSplitter) {
     return { status: 'idle', output: { images: [] }, uploadedImages: [] };
+  }
+  if (type === NODE_TYPES.textToVoice) {
+    return { status: 'idle', output: { audio: null }, params: { prompt: '', model: 'fish-audio', voiceId: '' } };
+  }
+  if (type === NODE_TYPES.videoGenerator) {
+    return {
+      status: 'idle',
+      output: { video: null },
+      uploadedImages: [],
+      upstreamOrder: [],
+      params: { prompt: '', model: '', aspect: '16:9', quality: '720', duration: '5' },
+    };
   }
   const base = { status: 'idle', output: { images: [] }, uploadedImages: [] };
   return { ...base, params: { prompt: '', model: 'gpt-image-1', aspect: '1:1', size: '1k' } };
@@ -364,6 +385,40 @@ export default function Canvas() {
       updateNodeData(nodeId, { status: 'error', error: err?.message || String(err) });
     }
   }, [runWorkflow, updateNodeData, addHistory, settings]);
+
+  // 媒体节点（音频/视频）生成：与 handleGenerate 同款，但产出写 output.audio / output.video，
+  // 不走图片提取（generateImages），改用 generateAudio/generateVideo 单 URL 提取。
+  // kind: 'audio' | 'video'
+  const handleGenerateMedia = useCallback(async (nodeId, nodeType, kind, { workflowId, input }) => {
+    const settingId = nodeType === NODE_TYPES.textToVoice
+      ? settings.textToVoiceWorkflowId
+      : nodeType === NODE_TYPES.videoGenerator
+        ? settings.videoGeneratorWorkflowId
+        : workflowId;
+    const finalWorkflowId = settingId || workflowId;
+    const isAudio = kind === 'audio';
+    const runMedia = isAudio ? generateAudio : generateVideo;
+    updateNodeData(nodeId, { status: 'running', error: undefined });
+    try {
+      const { url } = await runMedia(finalWorkflowId, input);
+      if (!url) throw new Error(isAudio ? '未返回音频' : '未返回视频');
+      updateNodeData(nodeId, { status: 'done', output: { [isAudio ? 'audio' : 'video']: url } });
+      addHistory({
+        id: genId('hist'),
+        nodeId,
+        nodeType,
+        prompt: input?.prompt || '',
+        model: input?.model || '',
+        // 媒体产出：单元素数组存 URL，mediaType 标记类型供 HistoryCard 渲染播放器
+        images: [url],
+        mediaType: isAudio ? 'audio' : 'video',
+        createdAt: Date.now(),
+      }).catch((e) => console.error('addHistory(media) failed:', e));
+    } catch (err) {
+      console.error('generateMedia failed:', err);
+      updateNodeData(nodeId, { status: 'error', error: err?.message || String(err) });
+    }
+  }, [generateAudio, generateVideo, updateNodeData, addHistory, settings]);
 
   // 添加节点：显式 width/height（NodeResizer 依赖）
     // 创建节点到指定位置（点击添加 / 拖拽放下 / Agent add_node 共用）
@@ -1177,6 +1232,7 @@ export default function Canvas() {
           selectionCount,
           onUpdate: makeOnUpdate(nd.id),
           onGenerate: handleGenerate,
+          onGenerateMedia: handleGenerateMedia,
           onExportImages: (imgs) => handleExportImages(nd, imgs),
           onProcessImage: handleProcessImage,
           onProcessLocal: handleProcessLocal,
@@ -1190,7 +1246,7 @@ export default function Canvas() {
         },
       };
     }),
-    [nodes, upstreamMap, makeOnUpdate, handleGenerate, handleExportImages, handleProcessImage, handleProcessLocal, handleCancelProcess, handleAutoSize, handleAutoSizeToContent, selectionCount],
+    [nodes, upstreamMap, makeOnUpdate, handleGenerate, handleGenerateMedia, handleExportImages, handleProcessImage, handleProcessLocal, handleCancelProcess, handleAutoSize, handleAutoSizeToContent, selectionCount],
   );
 
   // 分组 overlay 的子节点映射 + 选中态（WorkflowGroupOverlay 需要的 childNodes/isSelected）

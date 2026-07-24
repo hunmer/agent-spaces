@@ -13,6 +13,8 @@
 
 export const PROMPT_CATEGORIES = [
   { id: 'character', label: '角色生成', icon: '🧙' },
+  { id: 'icon', label: '画风 Icon', icon: '🎨' },
+  { id: 'portrait', label: '画风人物立绘', icon: '🖼️' },
   { id: 'sprite', label: '精灵图动画', icon: '🎞️' },
   { id: 'background', label: '背景场景', icon: '🏞️' },
   { id: 'convert', label: '图像转换', icon: '🔄' },
@@ -32,6 +34,176 @@ Include proper shading, highlights, and anti-aliased edges for a polished look.
 The character should have well-defined features, expressive details, and rich colors.
 Show in a front-facing or 3/4 view pose, standing idle, suitable for sprite sheet animation.`,
   },
+  // ============ 画风预设：icon（文生图/编辑皆可，1:1） ============
+  {
+    // 来源：meowa.ai 画风预设参考图
+    id: 'icon-minimal-pet',
+    category: 'icon',
+    title: '简约萌宠 icon',
+    desc: '简约风格的萌宠 icon 预设，干净线条+柔和配色，1:1',
+    scene: 'both',
+    references: ['assets/references/icon-minimal-pet/ref1.png'],
+    aspect: '1:1',
+    prompt: `请严格参考参考图的画风生成一张简约风格的萌宠 icon。
+要求：线条干净、配色柔和、主体居中、留白充足，整体风格与参考图一致。`,
+  },
+  {
+    id: 'icon-ancient-watercolor',
+    category: 'icon',
+    title: '古风水彩 icon',
+    desc: '古风水彩风格 icon 预设，淡雅水墨水彩质感，1:1',
+    scene: 'both',
+    references: ['assets/references/icon-ancient-watercolor/ref1.png'],
+    aspect: '1:1',
+    prompt: `请严格参考参考图的画风生成一张古风水彩风格的 icon。
+要求：水彩晕染质感、淡雅配色、留白意境，整体风格与参考图一致。`,
+  },
+  {
+    id: 'icon-ancient-minimal',
+    category: 'icon',
+    title: '古风简约 icon',
+    desc: '古风简约风格 icon 预设，极简线条+中式元素，1:1',
+    scene: 'both',
+    references: ['assets/references/icon-ancient-minimal/ref1.png'],
+    aspect: '1:1',
+    prompt: `请严格参考参考图的画风生成一张古风简约风格的 icon。
+要求：极简线条、中式元素、留白构图，整体风格与参考图一致。`,
+  },
+  {
+    id: 'icon-modern-minimal',
+    category: 'icon',
+    title: '现代简约 icon',
+    desc: '现代简约风格 icon 预设，几何化+扁平配色，1:1',
+    scene: 'both',
+    references: ['assets/references/icon-modern-minimal/ref1.png'],
+    aspect: '1:1',
+    prompt: `请严格参考参考图的画风生成一张现代简约风格的 icon。
+要求：几何化造型、扁平配色、构图克制，整体风格与参考图一致。`,
+  },
+  {
+    id: 'icon-ink-wash',
+    category: 'icon',
+    title: '水墨 icon',
+    desc: '水墨国风 icon 预设，传统水墨晕染笔触，1:1',
+    scene: 'both',
+    references: ['assets/references/icon-ink-wash/ref1.png'],
+    aspect: '1:1',
+    prompt: `请严格参考参考图的画风生成一张水墨国风风格的 icon。
+要求：水墨晕染笔触、黑白灰层次、写意留白，整体风格与参考图一致。`,
+  },
+  {
+    id: 'icon-warm-healing-watercolor',
+    category: 'icon',
+    title: '温暖治愈水彩 icon',
+    desc: '温暖治愈水彩风格 icon 预设，暖色调+柔和水彩，1:1',
+    scene: 'both',
+    references: ['assets/references/icon-warm-healing-watercolor/ref1.png'],
+    aspect: '1:1',
+    prompt: `请严格参考参考图的画风生成一张温暖治愈水彩风格的 icon。
+要求：暖色调、柔和水彩笔触、治愈氛围，整体风格与参考图一致。`,
+  },
+  {
+    id: 'icon-storybook-watercolor',
+    category: 'icon',
+    title: '童话治愈水彩 icon',
+    desc: '童话绘本水彩风格 icon 预设，梦幻水彩+童话感，1:1',
+    scene: 'both',
+    references: ['assets/references/icon-storybook-watercolor/ref1.png'],
+    aspect: '1:1',
+    prompt: `请严格参考参考图的画风生成一张童话治愈水彩风格的 icon。
+要求：梦幻水彩质感、童话氛围、柔和光影，整体风格与参考图一致。`,
+  },
+  {
+    id: 'icon-cute-cartoon',
+    category: 'icon',
+    title: '可爱卡通 icon',
+    desc: '可爱卡通风格 icon 预设，圆润造型+鲜艳配色，1:1',
+    scene: 'both',
+    references: ['assets/references/icon-cute-cartoon/ref1.png'],
+    aspect: '1:1',
+    prompt: `请严格参考参考图的画风生成一张可爱卡通风格的 icon。
+要求：圆润造型、鲜艳配色、活泼表情，整体风格与参考图一致。`,
+  },
+
+  // ============ 画风预设：人物立绘（文生图/编辑皆可，3:4） ============
+  {
+    id: 'char-warm-healing-watercolor',
+    category: 'portrait',
+    title: '温暖治愈水彩人物',
+    desc: '温暖治愈水彩风格人物立绘预设，暖色调+柔和水彩质感，3:4',
+    scene: 'both',
+    references: ['assets/references/char-warm-healing-watercolor/ref1.png'],
+    aspect: '3:4',
+    prompt: `请严格参考参考图的画风生成一张温暖治愈水彩风格的人物立绘。
+要求：暖色调、柔和水彩笔触、治愈氛围，人物姿态自然，整体风格与参考图一致。`,
+  },
+  {
+    id: 'char-anime-chibi',
+    category: 'portrait',
+    title: '二次元Q版人物',
+    desc: '二次元 Q 版人物立绘预设，大头小身+鲜艳配色，3:4',
+    scene: 'both',
+    references: ['assets/references/char-anime-chibi/ref1.png'],
+    aspect: '3:4',
+    prompt: `请严格参考参考图的画风生成一张二次元 Q 版人物立绘。
+要求：头身比夸张（大头小身）、线条精致、配色鲜艳，整体风格与参考图一致。`,
+  },
+  {
+    id: 'char-storybook-chibi',
+    category: 'portrait',
+    title: '儿童绘本Q版人物',
+    desc: '儿童绘本 Q 版人物立绘预设，柔和笔触+童趣感，3:4',
+    scene: 'both',
+    references: ['assets/references/char-storybook-chibi/ref1.png'],
+    aspect: '3:4',
+    prompt: `请严格参考参考图的画风生成一张儿童绘本 Q 版人物立绘。
+要求：柔和笔触、童趣造型、温暖配色，整体风格与参考图一致。`,
+  },
+  {
+    id: 'char-ancient-watercolor-portrait',
+    category: 'portrait',
+    title: '古风水彩人物立绘',
+    desc: '古风水彩人物立绘预设，淡雅水彩+中式服饰，3:4',
+    scene: 'both',
+    references: ['assets/references/char-ancient-watercolor-portrait/ref1.png'],
+    aspect: '3:4',
+    prompt: `请严格参考参考图的画风生成一张古风水彩人物立绘。
+要求：淡雅水彩晕染、中式服饰与配饰、写意留白，整体风格与参考图一致。`,
+  },
+  {
+    id: 'char-ink-chinese-portrait',
+    category: 'portrait',
+    title: '水墨国风人物立绘',
+    desc: '水墨国风人物立绘预设，传统水墨笔触+留白意境，3:4',
+    scene: 'both',
+    references: ['assets/references/char-ink-chinese-portrait/ref1.png'],
+    aspect: '3:4',
+    prompt: `请严格参考参考图的画风生成一张水墨国风人物立绘。
+要求：传统水墨笔触、黑白灰层次、留白意境，整体风格与参考图一致。`,
+  },
+  {
+    id: 'char-elegant-chinese-portrait',
+    category: 'portrait',
+    title: '淡雅国风人物立绘',
+    desc: '淡雅国风人物立绘预设，低饱和配色+工笔质感，3:4',
+    scene: 'both',
+    references: ['assets/references/char-elegant-chinese-portrait/ref1.png'],
+    aspect: '3:4',
+    prompt: `请严格参考参考图的画风生成一张淡雅国风人物立绘。
+要求：低饱和配色、工笔质感、中式美学，整体风格与参考图一致。`,
+  },
+  {
+    id: 'char-storybook-watercolor',
+    category: 'portrait',
+    title: '童话治愈水彩人物',
+    desc: '童话治愈水彩人物立绘预设，梦幻水彩+童话氛围，3:4',
+    scene: 'both',
+    references: ['assets/references/char-storybook-watercolor/ref1.png'],
+    aspect: '3:4',
+    prompt: `请严格参考参考图的画风生成一张童话治愈水彩人物立绘。
+要求：梦幻水彩质感、童话氛围、柔和光影，人物姿态自然，整体风格与参考图一致。`,
+  },
+
   {
     // 来源：FrameRonin · nanobanana RpgMaker角色生成 V3（Gemini Gem）
     // 依赖参考图，按 R0/R1 关键字切换两张参考图。

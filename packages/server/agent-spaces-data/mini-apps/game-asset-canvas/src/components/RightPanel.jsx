@@ -14,6 +14,8 @@ const ADD_ITEMS = [
   { type: NODE_TYPES.imageEditor, label: '图片编辑' },
   { type: NODE_TYPES.pixelEditor, label: '像素编辑器' },
   { type: NODE_TYPES.uiSplitter, label: 'UI拆分' },
+  { type: NODE_TYPES.textToVoice, label: '生成配音' },
+  { type: NODE_TYPES.videoGenerator, label: '生成视频' },
   { type: NODE_TYPES.note, label: '便签' },
 ];
 
@@ -216,6 +218,10 @@ function HistoryList({ history, onRemoveHistory, onClearHistory, onUseImage }) {
 function HistoryCard({ item, onRemove, onUseImage }) {
   const images = item.images || [];
   const cover = images[0];
+  // 媒体产出（音频/视频）：渲染播放器而非图片网格，避免 broken img
+  const mediaType = item.mediaType;
+  const isAudio = mediaType === 'audio';
+  const isVideo = mediaType === 'video';
   return (
     <div className="rounded-md border border-border p-2">
       <div className="mb-1 flex items-center justify-between gap-2">
@@ -227,7 +233,13 @@ function HistoryCard({ item, onRemove, onUseImage }) {
       {item.prompt && (
         <p className="mb-1.5 line-clamp-2 text-xs text-muted-foreground">{item.prompt}</p>
       )}
-      {cover && (
+      {isAudio && cover && (
+        <audio key={cover} src={cover} controls className="mb-1 w-full" />
+      )}
+      {isVideo && cover && (
+        <video key={cover} src={cover} controls className="mb-1 w-full rounded border border-border" />
+      )}
+      {!isAudio && !isVideo && cover && (
         <div
           className="grid gap-1"
           style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(56px, 1fr))' }}

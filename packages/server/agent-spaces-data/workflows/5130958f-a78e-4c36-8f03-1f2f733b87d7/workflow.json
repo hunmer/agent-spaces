@@ -595,8 +595,9 @@
     "workflow.jimeng",
     "workflow.minimax"
   ],
-  "lastRunAt": 1782294191920,
+  "lastRunAt": 1784914801501,
   "groups": [],
   "description": "生成视频",
-  "variables": []
+  "variables": [],
+  "lastOpenedAt": 1784914435346
 }

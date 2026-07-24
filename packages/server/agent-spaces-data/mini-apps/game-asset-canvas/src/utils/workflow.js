@@ -175,7 +175,9 @@ export function extractMentionedReferences(html) {
  * 同步执行工作流，返回 end 节点的 output 对象。
  * @param {string} workflowId
  * @param {Record<string, unknown>} input start 节点 inputFields 的值
- * @param {{ meta?: Record<string, unknown> }} [opts]
+ * @param {{ meta?: Record<string, unknown>, returnRawEndOutput?: boolean }} [opts]
+ *   returnRawEndOutput: true 时跳过图片专用提取，直接返回首个 completed end 节点的完整 output
+ *   （供音频/视频等非图片媒体节点使用）
  * @returns {Promise<Record<string, unknown>>} end 节点 outputs（如 { result: [url...] }）
  */
 export async function runWorkflow(workflowId, input, opts = {}) {
@@ -194,6 +196,20 @@ export async function runWorkflow(workflowId, input, opts = {}) {
   const status = data?.status;
   const timedOut = !!data?.timedOut;
   const steps = Array.isArray(data?.steps) ? data.steps : [];
+
+  // 媒体节点（音频/视频）：直接拿 end 节点完整 output，不走图片专用提取
+  if (opts.returnRawEndOutput) {
+    const endStep = [...steps].reverse().find(
+      (s) => s?.nodeType === 'end' && s?.status === 'completed',
+    );
+    if (endStep?.output) return endStep.output;
+    if (timedOut) throw new Error('工作流执行超时（>10分钟），未返回结果');
+    if (status && status !== 'completed') {
+      const errStep = [...steps].reverse().find((s) => s?.error && s.status !== 'skipped');
+      throw new Error(errStep?.error || `工作流未完成: ${status}`);
+    }
+    return {};
+  }
 
   // 先尝试从 steps 提取结果（即便超时，生成节点可能已产出图片）
   const output = extractOutput(steps);
@@ -273,4 +289,87 @@ export async function generateImages(workflowId, input) {
   // 非后端地址的外链图统一下载到后端 data 目录并替换为后端 httpUrl，
   // 避免外链失效（防盗链/CORS/过期）导致节点图片丢失。失败保留原地址。
   return persistImagesToBackend(normalized);
+}
+
+/**
+ * 从任意嵌套对象里提取首个非空字符串 URL（http/https/相对路径）。
+ * 用于 audio/video 节点产出，结构可能为：直接 URL / {data:{httpPath|fileUrl|audioUrl|video|videoUrl}} / 其他。
+ * @param {any} v
+ * @returns {string|null}
+ */
+function pickFirstUrlDeep(v) {
+  if (v == null) return null;
+  if (typeof v === 'string') {
+    const s = v.trim();
+    if (/^(https?:\/|\/|data:)/i.test(s) && s.length < 4096) return s;
+    return null;
+  }
+  if (Array.isArray(v)) {
+    for (const x of v) {
+      const u = pickFirstUrlDeep(x);
+      if (u) return u;
+    }
+    return null;
+  }
+  if (typeof v === 'object') {
+    // 优先按已知字段名找（audio/video 节点常见结构）
+    const keys = ['url', 'httpPath', 'fileUrl', 'audioUrl', 'video', 'videoUrl', 'filePath', 'src'];
+    for (const k of keys) {
+      if (v[k] != null) {
+        const u = pickFirstUrlDeep(v[k]);
+        if (u) return u;
+      }
+    }
+    // 兜底遍历所有 value
+    for (const k of Object.keys(v)) {
+      if (k === 'message' || k === 'error') continue;
+      const u = pickFirstUrlDeep(v[k]);
+      if (u) return u;
+    }
+  }
+  return null;
+}
+
+/**
+ * 执行文字生成语音工作流，返回音频 URL。
+ * end 节点 output.result = tts 节点 audio 对象（{success, message, data:{httpPath/fileUrl/audioUrl}}）。
+ * @param {string} workflowId
+ * @param {{ prompt: string, model: string, voiceId?: string }} input
+ * @returns {Promise<{ url: string }>}
+ */
+export async function generateAudio(workflowId, input) {
+  const output = await runWorkflow(workflowId, input, { meta: { mode: workflowId }, returnRawEndOutput: true });
+  // result 可能是对象（tts 产出）/字符串 URL；其余字段兜底
+  const url = pickFirstUrlDeep(output?.result) || pickFirstUrlDeep(output) || null;
+  if (!url) {
+    const errMsg = (typeof output?.result === 'object' && output?.result?.message)
+      || output?.error
+      || '未返回音频';
+    throw new Error(errMsg);
+  }
+  const normalized = normalizeImageUrl(url);
+  // 非后端外链音频也下载到后端 data 目录，避免外链过期
+  const [persisted] = await persistImagesToBackend([normalized]);
+  return { url: persisted };
+}
+
+/**
+ * 执行生成视频工作流，返回视频 URL。
+ * end 节点 output.result = video URL 字符串 或 video 节点产出对象（{success, message, data:{video/videoUrl}}）。
+ * @param {string} workflowId
+ * @param {{ images?: string[], prompt: string, model: string, aspect: string, quality: string, duration: string }} input
+ * @returns {Promise<{ url: string }>}
+ */
+export async function generateVideo(workflowId, input) {
+  const output = await runWorkflow(workflowId, input, { meta: { mode: workflowId }, returnRawEndOutput: true });
+  const url = pickFirstUrlDeep(output?.result) || pickFirstUrlDeep(output) || null;
+  if (!url) {
+    const errMsg = (typeof output?.result === 'object' && output?.result?.message)
+      || output?.error
+      || '未返回视频';
+    throw new Error(errMsg);
+  }
+  const normalized = normalizeImageUrl(url);
+  const [persisted] = await persistImagesToBackend([normalized]);
+  return { url: persisted };
 }
