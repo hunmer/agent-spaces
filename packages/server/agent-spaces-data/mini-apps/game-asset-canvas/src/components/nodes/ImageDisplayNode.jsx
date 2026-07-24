@@ -88,7 +88,7 @@ export default function ImageDisplayNode({ id, data, selected }) {
     : '已上传';
 
   return (
-    <div className="group relative h-full w-full overflow-hidden rounded-lg bg-card shadow-sm">
+    <div className="group relative h-full w-full overflow-visible rounded-lg bg-card shadow-sm">
       {/* NodeToolbar：导出/抠图/放大/编辑（选中且单选时） */}
       {showToolbar && (
         <NodeToolbar isVisible={!!selected && selectionCount <= 1} position={Position.Top} align="end" offset={8}>
@@ -137,11 +137,13 @@ export default function ImageDisplayNode({ id, data, selected }) {
         type="target"
         position={Position.Left}
         className="!h-3 !w-3 !border-2 !border-background !bg-muted-foreground"
+        style={{ zIndex: 50 }}
       />
       <Handle
         type="source"
         position={Position.Right}
         className="!h-3 !w-3 !border-2 !border-background !bg-primary"
+        style={{ zIndex: 50 }}
       />
 
       {/* 顶部自定义拖拽 handle：ReactFlow node.dragHandle 指向 .image-drag-handle，
@@ -155,8 +157,10 @@ export default function ImageDisplayNode({ id, data, selected }) {
 
       {/* 图片主体区域：作为节点拖拽 handle（.image-drag-handle，配合 Canvas node.dragHandle）。
           img 本身 draggable={false} 防止浏览器原生拖图虚影，但父容器是 ReactFlow 拖拽区，
-          按住图片拖动即可移动整个节点。nowheel 防滚轮误触画布缩放。 */}
-      <div className="image-drag-handle nopan nowheel absolute inset-0 flex items-center justify-center p-0">
+          按住图片拖动即可移动整个节点。nowheel 防滚轮误触画布缩放。
+          水平内缩(left-2/right-2)给左右 Handle 留空间，避免视觉遮挡 + 事件覆盖；
+          p-3 让图片本身不贴边。 */}
+      <div className="image-drag-handle nopan nowheel absolute bottom-0 left-2 right-2 top-0 flex items-center justify-center p-3">
         {loading ? (
           <div className="flex h-full w-full items-center justify-center gap-2 text-xs text-primary">
             <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-primary border-t-transparent" />
@@ -168,14 +172,14 @@ export default function ImageDisplayNode({ id, data, selected }) {
             上传中…
           </div>
         ) : images.length > 0 ? (
-          <button type="button" onDoubleClick={open} title="双击查看大图" className="block h-full w-full overflow-hidden">
+          <button type="button" onDoubleClick={open} title="双击查看大图" className="flex max-h-full max-w-full items-center justify-center">
             {current && (
               <img
                 key={current}
                 src={current}
                 alt=""
                 draggable={false}
-                className="h-full w-full select-none object-contain"
+                className="max-h-full max-w-full select-none object-contain"
                 onLoad={handleImgLoad}
               />
             )}

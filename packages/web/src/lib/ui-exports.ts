@@ -128,8 +128,6 @@ export {
   NodeResizer,
   NodeToolbar,
   useReactFlow,
-  useInternalNode,
-  ConnectionMode,
 } from '@xyflow/react';
 
 // dagre（ReactFlow 自动布局）

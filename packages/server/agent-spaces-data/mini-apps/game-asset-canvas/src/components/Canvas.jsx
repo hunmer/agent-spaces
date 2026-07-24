@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Background, BackgroundVariant, Controls, ControlButton, ConnectionMode, MarkerType, MiniMap, ReactFlow,
+  Background, BackgroundVariant, Controls, ControlButton, MarkerType, MiniMap, ReactFlow,
   ViewportPortal,
   addEdge, applyEdgeChanges, applyNodeChanges, useReactFlow,
 } from '@xyflow/react';
@@ -15,7 +15,6 @@ import {
 import Toolbar from './Toolbar';
 import RightPanel from './RightPanel';
 import ConnectionLine from './ConnectionLine';
-import FloatingEdge from './FloatingEdge';
 import SettingsDialog from './SettingsDialog';
 import ExecutionQueuePopover from './ExecutionQueuePopover';
 import NodeFormDialog from './NodeFormDialog';
@@ -1013,9 +1012,6 @@ export default function Canvas() {
   }, [panelLayout]);
 
   const nodeTypes = useMemo(() => NODE_COMPONENTS, []);
-  // floating edge 设为默认类型：所有没有显式 type 的边都走浮动连线（动态连节点最优边界点）。
-  // floating 显式别名保留，便于特殊场景显式指定。
-  const edgeTypes = useMemo(() => ({ default: FloatingEdge, floating: FloatingEdge }), []);
 
   // 工作区未就绪或正在加载：等待 activeId 确定 + canvas 载入完成
   if (!activeId || !loaded) {
@@ -1105,10 +1101,6 @@ export default function Canvas() {
               onNodesDelete={onNodesDelete}
               deleteKeyCode={deleteKeyCode}
               nodeTypes={nodeTypes}
-              edgeTypes={edgeTypes}
-              // Loose 模式：source/target handle 可互换方向连接（floating edges 依赖自由连接）
-              connectionMode={ConnectionMode.Loose}
-              defaultEdgeOptions={{ type: 'floating', markerEnd: { type: MarkerType.ArrowClosed }, animated: true }}
               fitView
               proOptions={{ hideAttribution: true }}
             >
