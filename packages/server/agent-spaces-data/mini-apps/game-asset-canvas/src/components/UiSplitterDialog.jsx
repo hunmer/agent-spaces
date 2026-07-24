@@ -1,41 +1,47 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
-  Button, Input, Label, ScrollArea, Loader,
+  Button, Input, Label, ScrollArea, Loader, ColorPicker, Tooltip,
   ResizablePanelGroup, ResizablePanel, ResizableHandle,
 } from '@agent-spaces/ui';
+import { Undo2, Redo2, Pipette } from '@agent-spaces/ui';
 import { getFabric } from '../utils/image-ops/cdn';
 import {
   loadImageSource, detect, exportBox, sampleColor, cornerColor, toHex,
 } from '../utils/image-ops/sprite-splitter';
 
+// hex(#rrggbb / #rgb) → [r,g,b]
+const hexToRgb = (hex) => {
+  let h = String(hex || '').replace('#', '').trim();
+  if (h.length === 3) h = h.split('').map((c) => c + c).join('');
+  const n = parseInt(h, 16);
+  if (Number.isNaN(n)) return [0, 0, 0];
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+};
+
+// 背景色预设（ColorPicker 色板）
+const BG_PRESETS = ['#ffffff', '#000000', '#f5f5f5', '#1a1a1a', '#00b140', '#ff00ff'];
+
 /**
  * UI 拆分对话框：用 fabric.js 在画布上框选区域 + 自动检测连通域，
  * 把每个框导出成一张切片图，上传后回传给节点。
  *
- * 复刻自 sprite-splitter-web（fabric@5.3.0 + SpriteSplitter 算法），UI 改用 agent-spaces/ui 美化：
- * - 顶部工具条：检测方法/容差/最小面积/边距/吸色/撤销重做/自动检测
- * - 中部：fabric 画布（滚轮缩放、空格拖拽平移、Alt 拉框新建、选中拖拽缩放）
- * - 右侧：切片预览网格 + 下载
- * - 底部：保存全部到节点
- *
- * 交互（保留原行为）：
- * - 滚轮缩放；按住空格拖拽平移；Alt+左键拉框新建切片框
- * - 选中切片框可拖动/缩放
- * - Ctrl+Z / Ctrl+Y(Ctrl+Shift+Z) 撤销/重做
- * - 吸色棒：点击画布取色作为 picked 背景色
+ * 支持多张输入图：顶部横向列表切换，每张图独立保留切片框/撤销重做/背景色。
  *
  * @param {object} props
  * @param {boolean} props.open
- * @param {string[]} props.inputImages 输入图 URL（节点传入，取首张）
- * @param {(urls: string[]) => void} props.onSave 切片上传完成回调
+ * @param {string[]} props.inputImages 输入图 URL（节点传入，多张）
+ * @param {(urls: string[]) => void} props.onSave 切片上传完成回调（保存当前激活图的切片）
  * @param {() => void} props.onClose
  */
 export default function UiSplitterDialog({ open, inputImages, onSave, onClose }) {
   const stageRef = useRef(null);            // fabric 容器 DOM
   const fcRef = useRef(null);               // fabric.Canvas 实例
-  const sourceRef = useRef(null);           // { image, canvas, ctx, imageData }
   const fabricLibRef = useRef(null);        // fabric 命名空间
+  // 每张图的独立状态：imageStatesRef.current[url] = { source, pickedColor:[r,g,b], undo:[], redo:[], rects:[] }
+  const imageStatesRef = useRef({});
+  const activeUrlRef = useRef('');          // 当前激活图 URL（回调闭包读最新值）
+  const roRef = useRef(null);               // 容器尺寸观察器
   // 模式/状态用 ref（fabric 回调闭包读最新值）
   const spaceDownRef = useRef(false);
   const panningRef = useRef(false);
@@ -45,28 +51,31 @@ export default function UiSplitterDialog({ open, inputImages, onSave, onClose })
   const startRef = useRef(null);
   const draftRef = useRef(null);
   const applyingHistoryRef = useRef(false);
-  const undoStackRef = useRef([]);
-  const redoStackRef = useRef([]);
-  const pickedColorRef = useRef([239, 26, 239]);
   const onSaveRef = useRef(onSave);
   onSaveRef.current = onSave;
 
   // 受控表单状态（仅驱动 UI 显示，fabric 逻辑直接读 ref/getter）
+  const [activeUrl, setActiveUrl] = useState('');
+  const [thumbUrls, setThumbUrls] = useState([]);
   const [method, setMethod] = useState('corner');
   const [tolerance, setTolerance] = useState(70);
   const [minArea, setMinArea] = useState(500);
   const [padding, setPadding] = useState(2);
-  const [pickedHex, setPickedHex] = useState(toHex(pickedColorRef.current));
+  const [pickedHex, setPickedHex] = useState(toHex([239, 26, 239]));
   const [canUndo, setCanUndo] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
   const [count, setCount] = useState(0);
   const [status, setStatus] = useState('选择图片开始。滚轮缩放，空格拖拽，Alt 拉框。');
-  const [loading, setLoading] = useState(false);   // fabric 库/图片加载
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const [savedCount, setSavedCount] = useState(0);
 
-  const imageUrl = (inputImages || [])[0] || '';
+  // 当前激活图的 state 对象（读最新 activeUrlRef）
+  const curState = useCallback(() => imageStatesRef.current[activeUrlRef.current], []);
+  // 当前激活图的 source（fabric 闭包统一入口）
+  const sourceRef = useRef(null);
+  const syncSourceRef = useCallback(() => { sourceRef.current = curState()?.source || null; }, [curState]);
 
   // 当前选项快照（fabric 闭包用）
   const optionsRef = useRef({});
@@ -77,14 +86,13 @@ export default function UiSplitterDialog({ open, inputImages, onSave, onClose })
       minArea: Number(minArea) || 0,
       padding: Number(padding) || 0,
     };
-    if (method === 'picked') opts.backgroundColor = pickedColorRef.current;
+    if (method === 'picked') opts.backgroundColor = curState()?.pickedColor || hexToRgb(pickedHex);
     optionsRef.current = opts;
     return opts;
-  }, [method, tolerance, minArea, padding]);
+  }, [method, tolerance, minArea, padding, pickedHex, curState]);
   useEffect(() => { computeOptions(); }, [computeOptions]);
 
   // ===== fabric 切片框辅助 =====
-  // 声明顺序严格按依赖自上而下：被依赖的先定义，避免 useCallback deps 在初始化时触发 TDZ。
   const rects = useCallback(() => {
     const fc = fcRef.current;
     if (!fc) return [];
@@ -127,18 +135,21 @@ export default function UiSplitterDialog({ open, inputImages, onSave, onClose })
   }, []);
 
   const updateHistoryButtons = useCallback(() => {
-    setCanUndo(undoStackRef.current.length > 0);
-    setCanRedo(redoStackRef.current.length > 0);
-  }, []);
+    const st = curState();
+    setCanUndo((st?.undo?.length || 0) > 0);
+    setCanRedo((st?.redo?.length || 0) > 0);
+  }, [curState]);
 
   const pushHistory = useCallback(() => {
     if (applyingHistoryRef.current) return;
-    undoStackRef.current.push(snapshot());
-    redoStackRef.current.length = 0;
+    const st = curState();
+    if (!st) return;
+    st.undo.push(snapshot());
+    st.redo.length = 0;
     updateHistoryButtons();
-  }, [snapshot, updateHistoryButtons]);
+  }, [snapshot, curState, updateHistoryButtons]);
 
-  // 右侧预览列表（被 applySnapshot/runDetect/bindFabricEvents 引用，先定义）
+  // 右侧预览列表
   const [previews, setPreviews] = useState([]); // [{ name, url }]
   const renderList = useCallback(() => {
     const source = sourceRef.current;
@@ -155,8 +166,7 @@ export default function UiSplitterDialog({ open, inputImages, onSave, onClose })
 
   const applySnapshot = useCallback((boxes) => {
     const fc = fcRef.current;
-    const fabric = fabricLibRef.current;
-    if (!fc || !fabric) return;
+    if (!fc) return;
     applyingHistoryRef.current = true;
     clearRects();
     boxes.forEach((box) => addRect(box));
@@ -167,21 +177,24 @@ export default function UiSplitterDialog({ open, inputImages, onSave, onClose })
   }, [clearRects, addRect, renderList, updateHistoryButtons]);
 
   const undo = useCallback(() => {
-    if (!undoStackRef.current.length) return;
-    redoStackRef.current.push(snapshot());
-    applySnapshot(undoStackRef.current.pop());
-  }, [snapshot, applySnapshot]);
+    const st = curState();
+    if (!st?.undo?.length) return;
+    st.redo.push(snapshot());
+    applySnapshot(st.undo.pop());
+  }, [curState, snapshot, applySnapshot]);
 
   const redo = useCallback(() => {
-    if (!redoStackRef.current.length) return;
-    undoStackRef.current.push(snapshot());
-    applySnapshot(redoStackRef.current.pop());
-  }, [snapshot, applySnapshot]);
+    const st = curState();
+    if (!st?.redo?.length) return;
+    st.undo.push(snapshot());
+    applySnapshot(st.redo.pop());
+  }, [curState, snapshot, applySnapshot]);
 
   const setColor = useCallback((color) => {
-    pickedColorRef.current = color;
+    const st = curState();
+    if (st) st.pickedColor = color;
     setPickedHex(toHex(color));
-  }, []);
+  }, [curState]);
 
   // ===== 自动检测 =====
   const runDetect = useCallback(() => {
@@ -197,29 +210,96 @@ export default function UiSplitterDialog({ open, inputImages, onSave, onClose })
     setStatus(`已检测 ${boxes.length} 个区域`);
   }, [pushHistory, clearRects, computeOptions, addRect, renderList]);
 
-  // ===== 打开对话框：加载 fabric + 图片 =====
+  // 让 fabric 视口 contain 居中显示整张图片（坐标系仍是图片像素，仅改 viewportTransform）
+  const fitToStage = useCallback(() => {
+    const fc = fcRef.current;
+    const src = sourceRef.current;
+    if (!fc || !src) return;
+    const cw = fc.getWidth();
+    const ch = fc.getHeight();
+    const iw = src.canvas.width;
+    const ih = src.canvas.height;
+    if (!cw || !ch || !iw || !ih) return;
+    const zoom = Math.min(cw / iw, ch / ih);
+    const left = (cw - iw * zoom) / 2;
+    const top = (ch - ih * zoom) / 2;
+    fc.setViewportTransform([zoom, 0, 0, zoom, left, top]);
+    fc.requestRenderAll();
+  }, []);
+
+  // ===== 切换激活图：存回当前图切片框 → 换 source/背景 → 恢复目标图切片框/栈 =====
+  const switchTo = useCallback((url) => {
+    const fc = fcRef.current;
+    const fabric = fabricLibRef.current;
+    const next = imageStatesRef.current[url];
+    if (!next || !fc) return;
+    // 存回旧图切片框
+    const prevUrl = activeUrlRef.current;
+    if (prevUrl && prevUrl !== url && imageStatesRef.current[prevUrl]) {
+      imageStatesRef.current[prevUrl].rects = snapshot();
+    }
+    activeUrlRef.current = url;
+    setActiveUrl(url);
+    syncSourceRef();
+    // 切背景图
+    if (fabric && next.source) {
+      fabric.Image.fromURL(next.source.canvas.toDataURL('image/png'), (img) => {
+        img.selectable = false;
+        img.evented = false;
+        fc.setBackgroundImage(img, () => {
+          fitToStage();
+          fc.renderAll();
+        });
+      });
+    }
+    // 恢复目标图切片框
+    applyingHistoryRef.current = true;
+    clearRects();
+    (next.rects || []).forEach((box) => addRect(box));
+    applyingHistoryRef.current = false;
+    fc.renderAll();
+    // 恢复背景色显示
+    setPickedHex(toHex(next.pickedColor || [239, 26, 239]));
+    updateHistoryButtons();
+    renderList();
+    setStatus(`已切换到图 ${thumbUrls.indexOf(url) + 1}。`);
+  }, [snapshot, syncSourceRef, clearRects, addRect, fitToStage, updateHistoryButtons, renderList, thumbUrls]);
+
+  // ===== 打开对话框：加载 fabric + 所有图 =====
   useEffect(() => {
-    if (!open || !imageUrl) return;
+    if (!open) return;
+    const urls = (inputImages || []).filter(Boolean);
+    setThumbUrls(urls);
+    if (!urls.length) { setError('没有输入图片'); return; }
     let disposed = false;
     setLoading(true);
     setError('');
     setStatus('正在加载编辑器…');
+    // 重置每图状态（新会话）
+    imageStatesRef.current = {};
 
     (async () => {
       try {
         const fabric = await getFabric();
         if (disposed) return;
         fabricLibRef.current = fabric;
-        const source = await loadImageSource(imageUrl);
-        if (disposed) return;
-        sourceRef.current = source;
-        // 四角色作为默认背景色估计
-        setColor(cornerColor(source.imageData));
-
-        // 初始化 fabric.Canvas（挂到 stage 容器内的 <canvas>
+        // 预加载所有图 source
+        for (const url of urls) {
+          if (disposed) return;
+          const source = await loadImageSource(url);
+          if (disposed) return;
+          const corner = cornerColor(source.imageData);
+          imageStatesRef.current[url] = {
+            source,
+            pickedColor: corner,
+            undo: [],
+            redo: [],
+            rects: [],
+          };
+        }
+        // 初始化 fabric.Canvas（挂到 stage 容器内的 <canvas>）
         const el = stageRef.current?.querySelector('canvas');
         if (!el) throw new Error('画布 DOM 未就绪');
-        // 销毁旧实例（重复打开兜底）
         try { fcRef.current?.dispose?.(); } catch {}
         const fc = new fabric.Canvas(el, {
           selection: true,
@@ -227,20 +307,48 @@ export default function UiSplitterDialog({ open, inputImages, onSave, onClose })
           backgroundColor: '#0f172a',
         });
         fcRef.current = fc;
-        fc.setWidth(source.canvas.width);
-        fc.setHeight(source.canvas.height);
-        fabric.Image.fromURL(source.canvas.toDataURL('image/png'), (img) => {
+        const stageEl = stageRef.current;
+        fc.setWidth(stageEl?.clientWidth || 0);
+        fc.setHeight(stageEl?.clientHeight || 0);
+
+        // 容器尺寸变化时同步 fabric 画布 DOM
+        if (stageEl && typeof ResizeObserver !== 'undefined') {
+          const ro = new ResizeObserver(() => {
+            const f = fcRef.current;
+            if (!f) return;
+            f.setWidth(stageEl.clientWidth);
+            f.setHeight(stageEl.clientHeight);
+            f.calcOffset();
+            f.requestRenderAll();
+          });
+          ro.observe(stageEl);
+          roRef.current = ro;
+        }
+
+        bindFabricEvents(fc, fabric);
+        // 激活第一张
+        const first = urls[0];
+        activeUrlRef.current = first;
+        setActiveUrl(first);
+        syncSourceRef();
+        const firstState = imageStatesRef.current[first];
+        setPickedHex(toHex(firstState.pickedColor));
+        fabric.Image.fromURL(firstState.source.canvas.toDataURL('image/png'), (img) => {
           if (disposed) return;
           img.selectable = false;
           img.evented = false;
-          fc.setBackgroundImage(img, fc.renderAll.bind(fc));
+          fc.setBackgroundImage(img, () => {
+            if (disposed) return;
+            fitToStage();
+            fc.renderAll();
+          });
         });
-
-        bindFabricEvents(fc, fabric);
         setLoading(false);
         setStatus('编辑器就绪。滚轮缩放，空格拖拽，Alt 拉框新建切片。');
+        updateHistoryButtons();
+        renderList();
         // 自动跑一次检测
-        setTimeout(() => { if (!disposed) runDetect(); }, 50);
+        setTimeout(() => { if (!disposed) runDetect(); }, 80);
       } catch (err) {
         console.error('[ui-splitter] init failed:', err);
         if (!disposed) {
@@ -252,19 +360,21 @@ export default function UiSplitterDialog({ open, inputImages, onSave, onClose })
 
     return () => {
       disposed = true;
+      try { roRef.current?.disconnect?.(); } catch {}
+      roRef.current = null;
       try { fcRef.current?.dispose?.(); } catch {}
       fcRef.current = null;
-      sourceRef.current = null;
       fabricLibRef.current = null;
-      undoStackRef.current = [];
-      redoStackRef.current = [];
+      sourceRef.current = null;
+      imageStatesRef.current = {};
+      activeUrlRef.current = '';
       spaceDownRef.current = false;
       panningRef.current = false;
       drawingRef.current = false;
       pickingRef.current = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, imageUrl]);
+  }, [open]);
 
   // 重置预览/计数（打开时）
   useEffect(() => {
@@ -278,7 +388,6 @@ export default function UiSplitterDialog({ open, inputImages, onSave, onClose })
   }, [open]);
 
   // ===== fabric 事件绑定（单独函数，避免重建 fc 时回调读旧闭包） =====
-  // 所有状态读 ref，回调间共享同一份逻辑
   const bindFabricEvents = useCallback((fc, fabric) => {
     const pointerPoint = (event) => {
       const p = fc.getPointer(event.e);
@@ -315,7 +424,7 @@ export default function UiSplitterDialog({ open, inputImages, onSave, onClose })
         setColor(sampleColor(sourceRef.current.imageData, p.x, p.y));
         setMethod('picked');
         pickingRef.current = false;
-        setStatus(`已吸取背景色 ${toHex(pickedColorRef.current)}`);
+        setStatus(`已吸取背景色 ${toHex(curState()?.pickedColor)}`);
         return;
       }
       if (!event.e.altKey) return;
@@ -380,10 +489,9 @@ export default function UiSplitterDialog({ open, inputImages, onSave, onClose })
       fc.__historyScaleStarted = false;
       renderList();
     });
-  }, [pushHistory, renderList, setColor]);
+  }, [pushHistory, renderList, setColor, curState]);
 
   // ===== 键盘：空格平移 / Ctrl+Z 撤销 / Ctrl+Y(Ctrl+Shift+Z) 重做 =====
-  // 挂到 window（fabric canvas 不接收焦点），焦点在表单控件时不拦截
   useEffect(() => {
     if (!open) return;
     const onKeyDown = (e) => {
@@ -429,12 +537,15 @@ export default function UiSplitterDialog({ open, inputImages, onSave, onClose })
     };
   }, [open, undo, redo]);
 
-  // ===== 保存：每张切片转 Blob 上传 =====
+  // ===== 保存：把当前激活图的每张切片转 Blob 上传 =====
   const handleSave = useCallback(async () => {
     const source = sourceRef.current;
     const AS = window.AgentSpaces;
     if (!source || !AS?.uploadFile) { setError('无可保存切片或宿主 uploadFile 不可用'); return; }
-    const boxes = rects().map(realBox);
+    // 先把当前画布上的切片框同步回 state（保证最新）
+    const st = curState();
+    if (st) st.rects = snapshot();
+    const boxes = (st?.rects || []).map(realBox);
     if (!boxes.length) { setError('没有切片框，先自动检测或 Alt 拉框'); return; }
     setSaving(true);
     setSavedCount(0);
@@ -458,7 +569,17 @@ export default function UiSplitterDialog({ open, inputImages, onSave, onClose })
     } finally {
       setSaving(false);
     }
-  }, [rects, realBox, computeOptions, onClose]);
+  }, [curState, snapshot, realBox, computeOptions, onClose]);
+
+  // 吸色 / 背景色选择
+  const togglePicking = useCallback(() => {
+    pickingRef.current = !pickingRef.current;
+    setStatus(pickingRef.current ? '点击画布上的背景色' : '');
+  }, []);
+  const handlePickColor = useCallback((hex) => {
+    setColor(hexToRgb(hex));
+    setMethod('picked');
+  }, [setColor]);
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) onClose?.(); }}>
@@ -470,19 +591,39 @@ export default function UiSplitterDialog({ open, inputImages, onSave, onClose })
           <div className="flex items-center gap-2">
             <DialogTitle className="text-sm">🧩 UI 拆分编辑器</DialogTitle>
             <DialogDescription className="text-[11px] text-muted-foreground">
-              自动检测 + 手动框选切片
+              自动检测 + 手动框选切片 · 多图独立记录
             </DialogDescription>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button size="sm" variant="outline" onClick={onClose} disabled={saving}>取消</Button>
-            <Button size="sm" onClick={handleSave} disabled={saving || count === 0}>
-              {saving ? `保存中 ${savedCount}/${count}` : `保存 ${count} 张切片`}
-            </Button>
           </div>
         </DialogHeader>
 
-        {/* 工具条 */}
-        <div className="grid grid-cols-2 gap-2 border-b border-border bg-muted/30 px-4 py-3 sm:grid-cols-4 lg:grid-cols-7">
+        {/* 输入图片横向列表 */}
+        {thumbUrls.length > 0 && (
+          <div className="flex items-center gap-2 overflow-x-auto border-b border-border bg-muted/20 px-3 py-2">
+            {thumbUrls.map((url, i) => {
+              const active = url === activeUrl;
+              return (
+                <button
+                  key={url + i}
+                  type="button"
+                  onClick={() => switchTo(url)}
+                  className={`group relative flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-md border-2 bg-background transition ${
+                    active ? 'border-primary ring-2 ring-primary/30' : 'border-border hover:border-primary/50'
+                  }`}
+                  title={`图 ${i + 1}`}
+                >
+                  <img src={url} alt={`图${i + 1}`} draggable={false}
+                    className="pointer-events-none max-h-full max-w-full object-contain" />
+                  <span className="absolute left-0 top-0 bg-background/80 px-1 text-[9px] leading-tight text-muted-foreground">
+                    {i + 1}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {/* 工具条（单行 flex，宽度不够自动换行） */}
+        <div className="flex flex-wrap items-end gap-2 border-b border-border bg-muted/30 px-4 py-2">
           <Field label="检测方法">
             <select
               value={method}
@@ -498,40 +639,56 @@ export default function UiSplitterDialog({ open, inputImages, onSave, onClose })
           <Field label={`容差 ${tolerance}`}>
             <Input type="number" min={0} max={765} value={tolerance}
               onChange={(e) => setTolerance(e.target.value)}
-              className="h-8" />
+              className="h-8 w-24" />
           </Field>
           <Field label={`最小面积 ${minArea}`}>
             <Input type="number" min={1} value={minArea}
               onChange={(e) => setMinArea(e.target.value)}
-              className="h-8" />
+              className="h-8 w-28" />
           </Field>
           <Field label={`边距 ${padding}`}>
             <Input type="number" min={0} value={padding}
               onChange={(e) => setPadding(e.target.value)}
-              className="h-8" />
+              className="h-8 w-24" />
           </Field>
           <Field label="背景色">
-            <div className="flex h-8 items-center gap-2 rounded-md border border-border bg-background px-2">
-              <span className="h-4 w-4 rounded border border-border" style={{ background: pickedHex }} />
-              <span className="text-[11px] text-muted-foreground">{pickedHex}</span>
+            <div className="flex h-8 items-center rounded-md border border-border bg-background px-2">
+              <ColorPicker colors={BG_PRESETS} value={pickedHex} onChange={handlePickColor} />
             </div>
           </Field>
           <div className="flex items-end gap-1.5">
-            <Button size="sm" variant="outline" className="h-8 flex-1"
-              onClick={() => { pickingRef.current = true; setStatus('点击画布上的背景色'); }}>
-              💧 吸色
-            </Button>
-            <Button size="sm" variant="outline" className="h-8 flex-1" disabled={canUndo === false}
-              onClick={undo}>
-              ↶ 撤销
-            </Button>
-            <Button size="sm" variant="outline" className="h-8 flex-1" disabled={canRedo === false}
-              onClick={redo}>
-              ↷ 重做
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button size="icon" variant={pickingRef.current ? 'default' : 'outline'}
+                  className={`h-8 w-8 ${pickingRef.current ? 'ring-2 ring-primary/40' : ''}`}
+                  onClick={togglePicking}>
+                  <Pipette className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              {/* @ts-ignore */}
+              <TooltipContent side="bottom">💧 吸取背景色</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button size="icon" variant="outline" className="h-8 w-8" disabled={canUndo === false} onClick={undo}>
+                  <Undo2 className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              {/* @ts-ignore */}
+              <TooltipContent side="bottom">撤销 (Ctrl+Z)</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button size="icon" variant="outline" className="h-8 w-8" disabled={canRedo === false} onClick={redo}>
+                  <Redo2 className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              {/* @ts-ignore */}
+              <TooltipContent side="bottom">重做 (Ctrl+Y)</TooltipContent>
+            </Tooltip>
           </div>
           <div className="flex items-end">
-            <Button size="sm" className="h-8 w-full" onClick={runDetect} disabled={loading}>
+            <Button size="sm" className="h-8" onClick={runDetect} disabled={loading}>
               ✨ 自动检测
             </Button>
           </div>
@@ -546,25 +703,31 @@ export default function UiSplitterDialog({ open, inputImages, onSave, onClose })
 
         {/* 主区：左侧 fabric 画布 + 右侧切片结果（可拖拽调宽） */}
         <ResizablePanelGroup direction="horizontal" className="min-h-0 flex-1">
-          {/* 左：fabric 画布。
-              fabric@5 会在 <canvas> 外套 .canvas-container（display:inline-block，固定宽高）。
-              通过 CSS 让该 wrapper 撑满父容器并居中，fabric 内部 canvas 仍按图片像素固定，
-              超出部分由 .ui-splitter-stage 的 overflow-auto 滚动查看。 */}
+          {/* 左：fabric 画布 */}
           <ResizablePanel id="split-stage" order={1} minSize="40%">
             <div className="relative h-full min-h-0 overflow-hidden bg-muted/20">
               <div
                 ref={stageRef}
-                className="ui-splitter-stage h-full w-full overflow-auto"
-                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                className="ui-splitter-stage h-full w-full"
+                style={{ position: 'relative' }}
               >
                 <canvas />
               </div>
-              {/* fabric 生成的 .canvas-container 居中后撑满视觉区域 */}
               <style>{`
                 .ui-splitter-stage .canvas-container {
-                  margin: auto !important;
-                  max-width: 100% !important;
-                  max-height: 100% !important;
+                  position: absolute !important;
+                  inset: 0 !important;
+                  width: 100% !important;
+                  height: 100% !important;
+                }
+                .ui-splitter-stage .canvas-container canvas,
+                .ui-splitter-stage .canvas-container .lower-canvas,
+                .ui-splitter-stage .canvas-container .upper-canvas {
+                  position: absolute !important;
+                  top: 0 !important;
+                  left: 0 !important;
+                  width: 100% !important;
+                  height: 100% !important;
                 }
               `}</style>
               {loading && (
@@ -578,11 +741,14 @@ export default function UiSplitterDialog({ open, inputImages, onSave, onClose })
 
           <ResizableHandle />
 
-          {/* 右：切片结果 */}
+          {/* 右：切片结果 + 底部保存按钮 */}
           <ResizablePanel id="split-result" order={2} minSize="20%" maxSize="55%" defaultSize="28%">
             <aside className="flex h-full min-h-0 flex-col border-l border-border">
               <div className="flex items-center justify-between border-b border-border px-3 py-2">
-                <span className="text-xs font-medium">切片 {count}</span>
+                <span className="text-xs font-medium">
+                  切片 {count}
+                  {thumbUrls.length > 1 && activeUrl ? `（图 ${thumbUrls.indexOf(activeUrl) + 1}）` : ''}
+                </span>
                 <Button size="sm" variant="ghost" className="h-7 text-[11px]" onClick={renderList} disabled={loading}>
                   刷新预览
                 </Button>
@@ -608,6 +774,13 @@ export default function UiSplitterDialog({ open, inputImages, onSave, onClose })
                   ))}
                 </div>
               </ScrollArea>
+              {/* 保存按钮（从右上角移到列表底部） */}
+              <div className="border-t border-border bg-muted/20 p-3">
+                <Button size="sm" className="h-9 w-full" onClick={handleSave}
+                  disabled={saving || count === 0}>
+                  {saving ? `保存中 ${savedCount}/${count}` : `💾 保存 ${count} 张切片`}
+                </Button>
+              </div>
             </aside>
           </ResizablePanel>
         </ResizablePanelGroup>
