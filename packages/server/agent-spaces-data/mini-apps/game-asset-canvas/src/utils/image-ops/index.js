@@ -147,23 +147,42 @@ export const PROCESSORS = {
     },
   },
 
-  // ============ 云端 AI 放大（走 image_enchanter 工作流）============
-  // 非本地算法：run 内调工作流，用 __url 透传产出 URL，跳过 ImageData 管道。
+  // ============ 云端 AI 放大（走 image_enchanter 工作流，支持批量）============
+  // 非本地算法：run 内对每张输入图并发调工作流，用 __url 透传产出 URL，跳过 ImageData 管道。
   // workflowId 由节点层 handleProcessLocal 从 settings.imageEnchanterWorkflowId 注入到 ctx。
+  // 批量并发：Promise.allSettled，部分失败不阻塞成功的；全部失败才抛错。
   'enhance': {
+    multipleIn: true,
     async run(_inputs, _params, ctx) {
       const { urls, workflowId, runWorkflowFn } = ctx || {};
-      const url = Array.isArray(urls) ? urls[0] : null;
-      if (!url) throw new Error('图片放大需要输入图');
+      const inputUrls = Array.isArray(urls) ? urls.filter(Boolean) : [];
+      if (!inputUrls.length) throw new Error('图片放大需要输入图');
       if (!workflowId) throw new Error('未配置放大工作流（settings.imageEnchanterWorkflowId）');
       if (typeof runWorkflowFn !== 'function') throw new Error('runWorkflowFn 未注入');
-      // 复用 utils/workflow.generateImages：内部已 normalize 输出 + persistImagesToBackend
-      const out = await runWorkflowFn(workflowId, { image_url: url, process_type: 'enhance' });
-      const resultUrls = out?.urls || [];
-      if (!resultUrls.length) throw new Error('放大未返回图片');
+      // 并发：每张图一次工作流调用（image_enchanter input 为单图）
+      const results = await Promise.allSettled(
+        inputUrls.map((url) =>
+          runWorkflowFn(workflowId, { image_url: url, process_type: 'enhance' })
+            .then((out) => out?.urls || []),
+        ),
+      );
+      // 收集所有成功的产出 URL（一张输入可能返回多张，扁平化）
+      const outUrls = [];
+      let failed = 0;
+      for (const r of results) {
+        if (r.status === 'fulfilled') {
+          for (const u of r.value) if (u) outUrls.push(u);
+        } else {
+          failed += 1;
+        }
+      }
+      if (!outUrls.length) {
+        throw new Error(failed ? `${failed} 张图片放大全部失败` : '放大未返回图片');
+      }
       // __url 标记：runProcessor 识别后直接用 URL，不再走 imageDataToUrl
-      // 用首张输入图的尺寸兜底（runProcessor 产出转换不读 width/height，仅识别 __url/__gifUrl）
-      return [{ __url: resultUrls[0] }];
+      // 把部分失败信息附加到首个产出（runProcessor 不读 error 字段，仅作记录）
+      const note = failed ? `${failed} 张失败` : null;
+      return outUrls.map((u, i) => (i === 0 && note ? { __url: u, __note: note } : { __url: u }));
     },
   },
 };

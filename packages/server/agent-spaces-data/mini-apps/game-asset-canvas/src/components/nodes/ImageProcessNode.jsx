@@ -51,6 +51,9 @@ export default function ImageProcessNode({ id, data, selected }) {
 
   const processor = IMAGE_PROCESSORS.find((p) => p.id === processorId) || IMAGE_PROCESSORS[0];
   const multipleIn = processor?.multipleIn;
+  // multipleIn 处理器的最少输入数：合成类（gif-merge/sprite-merge/compose-overlay）需 ≥2，
+  // enhance（图片放大）支持批量但单张也可。未显式声明时 multipleIn 默认 minInputs=2。
+  const minInputs = multipleIn ? (processor?.minInputs ?? 2) : 1;
 
   const setProcessor = useCallback((nextId) => {
     onUpdate?.({ params: { processor: nextId, processorParams: defaultParamsFor(nextId) } });
@@ -181,7 +184,7 @@ export default function ImageProcessNode({ id, data, selected }) {
         {inputImages.length > 0
           ? `输入 ${inputImages.length} 张${upCount ? `（上传 ${upCount}` : ''}${upCount && usCount ? ' + ' : ''}${usCount ? `连线 ${usCount}` : ''}${upCount || usCount ? '）' : ''}`
           : '输入：无（上传或连线）'}
-        {multipleIn && inputImages.length < 2 && ' · 合成类需 ≥2 张'}
+        {multipleIn && inputImages.length < minInputs && ` · 需 ≥${minInputs} 张`}
       </div>
 
       {/* 执行按钮 + 取消按钮（处理中时显示） */}
@@ -207,7 +210,7 @@ export default function ImageProcessNode({ id, data, selected }) {
         <button
           type="button"
           onClick={handleRun}
-          disabled={uploading || !inputImages.length || (multipleIn && inputImages.length < 2)}
+          disabled={uploading || !inputImages.length || (multipleIn && inputImages.length < minInputs)}
           className="w-full rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
         >
           ⚡ 执行

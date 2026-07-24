@@ -408,15 +408,23 @@ GDScript 用 `print("[PXR] ...")`（经 index.js onPrint 输出，与 `index.js:
 
 - `src/components/nodes/VideoGeneratorNode.jsx`：import `normalizeImageUrls`，handleRun 提交前 normalize inputImages
 - `src/components/Canvas.jsx`：import `normalizeImageUrls`；`handleProcessImage` normalize sourceImages；`handleProcessLocal` normalize 输入 + enhance 注入 workflowId/runWorkflowFn + addHistory model 区分
-- `src/utils/image-ops/index.js`：PROCESSORS 加 `enhance` processor（走工作流 + `__url` 透传）；`runProcessor` 加 `extraCtx` 参数 + enhance 跳过预解码 + 识别 `__url`
-- `src/utils/constants.js`：`IMAGE_PROCESSOR_CATEGORIES` 加 `enhance` 分类；`IMAGE_PROCESSORS` 加 `enhance`（图片放大）项
+- `src/utils/image-ops/index.js`：PROCESSORS 加 `enhance` processor（走工作流 + `__url` 透传，**支持批量并发**）；`runProcessor` 加 `extraCtx` 参数 + enhance 跳过预解码 + 识别 `__url`
+- `src/utils/constants.js`：`IMAGE_PROCESSOR_CATEGORIES` 加 `enhance` 分类；`IMAGE_PROCESSORS` 加 `enhance`（图片放大，`multipleIn:true, minInputs:1`）项
+- `src/components/nodes/ImageProcessNode.jsx`：`multipleIn` 处理器按 `minInputs`（默认 2，enhance=1）判断最少输入，单张也能执行；FileUpload 对 enhance 开启多图 + 排序
+
+### enhance 批量放大设计
+
+- `PROCESSORS.enhance.multipleIn = true` + `IMAGE_PROCESSORS.enhance.minInputs = 1`：multipleIn 让 FileUpload 不限张数 + 开启拖拽排序（控制放大顺序），minInputs=1 让单张也能执行（不像合成类强制 ≥2）
+- enhance run 遍历 `ctx.urls` 全部并发（`Promise.allSettled`），每张图调一次 image_enchanter 工作流（input 为单图 `image_url`），收集所有成功产出 URL，部分失败不阻塞成功的
+- 部分失败信息附加到首个产出的 `__note` 字段（runProcessor 不读，仅记录；如需 UI 提示可后续扩展）
 
 ### 验收要点
 
 - 任意节点产出的图（可能是 `/static/uploads/...` 相对路径）→ 点 toolbar「放大」/「抠图」→ 工作流正常执行（不再因 URL 无法下载失败）
 - 视频节点上传/连线图后生成，工作流收到的 images 是完整 http URL
 - 图像处理节点下拉出现新分类「🔍 画质增强」→「图片放大」
-- 选「图片放大」+ 单图输入 → 点执行 → 调 image_enchanter 工作流 → 产出放大后的图
+- 选「图片放大」+ **单图或多图**输入 → 点执行 → 并发调 image_enchanter 工作流 → 产出对应数量的放大图
+- 多图时部分失败不阻塞：成功的图正常产出，全部失败才报错
 - 生成记录里放大条目 model 显示 `image_enchanter`（本地处理器显示 `local`）
 
 ## 生成配音 / 生成视频节点（本轮新增）

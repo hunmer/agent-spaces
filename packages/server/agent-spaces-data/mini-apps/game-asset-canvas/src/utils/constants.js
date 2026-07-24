@@ -298,8 +298,8 @@ export const IMAGE_PROCESSORS = [
   },
   // ---- 画质增强（云端 AI，走 image_enchanter 工作流）----
   {
-    id: 'enhance', label: '图片放大', category: 'enhance',
-    desc: '调用 image_enchanter 工作流云端 AI 放大（高清化），非本地算法',
+    id: 'enhance', label: '图片放大', category: 'enhance', multipleIn: true, minInputs: 1,
+    desc: '调用 image_enchanter 工作流云端 AI 放大（高清化），支持批量，非本地算法',
     params: [],
   },
 ];
