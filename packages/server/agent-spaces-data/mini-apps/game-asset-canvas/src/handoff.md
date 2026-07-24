@@ -342,6 +342,47 @@ GDScript 用 `print("[PXR] ...")`（经 index.js onPrint 输出，与 `index.js:
 - 点「从 Pixelorama 导出」→ Godot 遍历当前 project 所有帧逐帧回传 → 节点产出图，可连线下游，NodeToolbar 按钮自动可用
 - 中文界面正常显示
 
+## UI 拆分编辑器多图重构（本轮新增）
+
+`UiSplitterNode` + `UiSplitterDialog` 重构为支持**多图输入**、每图独立切片记录、一键导出全部切片。
+
+### 关键决策与已踩坑（务必遵守）
+
+1. **useCallback 声明顺序严格自上而下**：被依赖的函数必须先定义。`deleteSelectedRects`/`clearAllRects`/`deleteRectAt` 依赖 `pushHistory`/`renderList`，必须定义在它们之后，否则 `useCallback` 渲染期求值时引用的 `pushHistory` 处于 TDZ，报 `Cannot access 'pushHistory' before initialization`。文件顶部已有注释强调此约定。
+2. **多图状态隔离用 `imageStatesRef.current[url]`**：每张图独立存 `{ source, pickedColor, undo, redo, rects }`。`rects` 存的是**已计算的 box 对象**（`{x,y,width,height}`），不是 fabric Rect。**导出时不要再 `map(realBox)`**（realBox 期望 fabric Rect 带 scaleX，对 box 对象再乘得 NaN → `createImageData(NaN)` 报错）。`switchTo` 切图时存回当前图 rects（`snapshot()`）、恢复目标图 rects。
+3. **画布填满 + contain 居中**：fabric 画布 DOM 尺寸 = 容器 `clientWidth/Height`（不再用图片像素），图片用 `fitToStage()`（`setViewportTransform([zoom,0,0,zoom,left,top]`，contain 计算）显示。**坐标体系不变**（切片框仍是图片像素坐标），`realBox`/`exportBox`/`detect`/保存全部零改动。`ResizeObserver` 监听容器同步 DOM 尺寸（不抹用户缩放/平移）。`.canvas-container` CSS 用 `position:absolute; inset:0; width/height:100%`。
+4. **init 内联检测，不能用 `detectAll` 闭包**：init 的 `setTimeout` 里若调 `detectAll`，拿到的是首次渲染基于空 `thumbUrls=[]` 的闭包，遍历空数组导致首屏 badge 不显示。**正解**：init 内联遍历真实 `urls` 数组做检测写 rects，再调 `renderList` 刷新 badge。表单变化触发的自动检测（`useEffect` 监听 method/tolerance/minArea/padding/pickedHex）才用 `detectAll`，用 `readyRef` 门控避免加载阶段空跑。
+5. **绘制模式 toggle**：`drawModeRef`（fabric 闭包）+ `drawMode`（state 驱动 UI）。`true`=框选（左键空白拉框，切片框不可选，光标十字），`false`=选择（左键点选/移动切片框，光标默认）。Alt 在两种模式都强制拉框。mouse:down 判断 `drawMode && !event.target` 或 `altKey`。切换图/检测/初始化时都要重新应用 drawMode 的 selectable/cursor（三处重复，可抽 `applyDrawMode`）。
+6. **Delete 冲突修复（capture 拦截）**：ReactFlow `deleteKeyCode={['Backspace','Delete']}` 通过 `useKeyPress` 在 **document bubble 阶段**监听。对话框打开时按 Delete 会误删节点。**正解**：Dialog 的 keydown 用 **window capture 阶段**（`addEventListener('keydown', fn, true)`），capture 先于 document bubble，`stopPropagation()` 阻止事件到 document。Delete/Backspace 在对话框内（非输入框）一律拦截 + preventDefault，有选中切片框时调 `deleteSelectedRects()`。
+7. **每图导出开关**：`exportEnabled`/`exportEnabledRef`（{[url]:bool}）。`handleSave` 跳过 `=== false` 的图；`totalCount`（renderList 统计）只算启用图；缩略图 badge 禁用时变灰（`bg-muted-foreground/40`）+ 缩略图 `opacity-50 grayscale`。底部「导出当前图」Switch 控制。
+8. **缩略图 badge**：左上角切片数（有切片高亮 primary，禁用导出变灰），右下角序号。`sliceCounts` state 在 `renderList` 时统计。
+9. **右键菜单冲突**：`DialogContent` 加 `onContextMenu={(e)=>{e.preventDefault();e.stopPropagation();}}`，阻止 fabric canvas 右键冒泡到 Canvas 的 `ContextMenuTrigger`。
+10. **picked 模式每图独立背景色**：`detectFor(url)` 在 picked 模式用 `st.pickedColor`（该图自身），非统一用激活图的。ColorPicker 选色 + Pipette 吸色都写入当前激活图的 `pickedColor`。
+11. **图标来源**：`Undo2`/`Redo2`/`Pipette`/`SquarePen`/`MousePointer2`/`Trash2`/`Eraser` 均从 `@agent-spaces/ui` 命名导入（`export * from 'lucide-react'`）。`ColorPicker`/`Switch`/`Tooltip*` 已在 ui-exports 导出，无需改宿主层。
+
+### 改动文件（mini-app 内，刷新即生效）
+
+- `src/components/UiSplitterDialog.jsx`：完整重构。多图横向列表 + 切换隔离 + contain 画布 + 绘制模式 toggle + 图标按钮工具条 + ColorPicker 背景 + 导出开关 + 列表删除/清空 + capture 拦截 Delete。
+- `src/components/nodes/UiSplitterNode.jsx`：FileUpload 改 `maxFiles={0}`（多图）+ `sortable`；`handleFilesChange` 多图收集（参考 ImageProcessNode）；`inputImages={inputImages}`（上传+连线去重）传对话框；`UpstreamImageList` 多张只读。
+- `src/components/Canvas.jsx`：`computeInputImages` 早已纳入 `uiSplitter` 为 receiver（取全部连线图），本轮**无改动**。
+
+### 无宿主改动
+
+本轮全部在 mini-app src 内，刷新即生效。依赖的 `ColorPicker`/`Switch`/lucide 图标早已在 `@agent-spaces/ui` 导出。
+
+### 验收要点
+
+- UiSplitter 节点支持上传多图 + 多连线，合并去重进输入
+- 编辑器顶部横向缩略图列表，左上角 badge 显示该图切片数（禁用导出变灰），点击切换且切片框/撤销栈/背景色独立保留
+- 打开即对所有图自动检测，badge 首屏即显示（不需切图）
+- 表单参数变化自动重新检测所有图
+- 工具条：绘制模式 toggle（SquarePen/MousePointer2）、吸色（Pipette）、撤销重做（Undo2/Redo2）、背景色 ColorPicker
+- 绘制模式左键拉框；选择模式左键移动切片框；Alt 强制拉框
+- Delete/Backspace 删切片框不删节点
+- 右侧列表每项 hover 删除图标 + 标题栏清空图标
+- 底部「导出当前图」Switch + 「保存全部 N 张切片」按钮，导出所有启用图的所有切片，多图文件名带 `img{N}_` 前缀
+- 对话框内右键不弹画布菜单
+
 ## 后续可做
 
 - 队列任务失败「重试」按钮、执行中实时进度（node:progress 事件）
