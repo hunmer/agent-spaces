@@ -105,10 +105,30 @@ export async function getPainterro() {
 
 /**
  * Fabric.js v5：UI 拆分节点的画布编辑器（框选/拖拽/缩放/平移）。
- * 官方 build 是 IIFE 赋值给全局 `fabric`（非 ESM），追加 `\nexport default fabric;` 转 ESM。
- * 返回 fabric 命名空间对象：`const fabric = await getFabric(); new fabric.Canvas(...)`
+ *
+ * 加载方式（与 painterro 不同）：fabric@5 是完整 UMD，依赖全局作用域——
+ * `var fabric=fabric||{...}` 挂到 window.fabric，主初始化块检查 document/window 后给 fabric
+ * 挂 Canvas/Rect/Image 等。若用 ESM dynamic import（loadVendor + export default），
+ * 顶层 this=undefined 且 var 是模块级，UMD wrapper 初始化异常 → 报
+ * "Cannot read properties of undefined (reading 'fabric')"。
+ *
+ * 正解：间接 eval `(0, eval)(code)`——全局作用域执行，var 声明成为 window 属性，
+ * 同步完成不依赖事件（script tag 在 webpack/turbopack 下 load/error 不触发，不可用）。
+ * 结果缓存到 window.fabric，重复调用直接返回。
  */
 export async function getFabric() {
-  const mod = await loadVendor('fabric.min.js', '\nexport default fabric;');
-  return mod.default || mod;
+  if (window.fabric?.Canvas) return window.fabric;
+  const AS = window.AgentSpaces;
+  if (!AS?.srcFileUrl) throw new Error('宿主未提供 srcFileUrl 能力（需更新 web 服务）');
+  const url = AS.srcFileUrl(VENDOR_BASE + 'fabric.min.js');
+  const resp = await fetch(url);
+  if (!resp.ok) throw new Error(`vendor 加载失败(${resp.status}): fabric.min.js`);
+  const code = await resp.text();
+  // 间接 eval：全局作用域执行，var fabric → window.fabric，UMD 主初始化块正常跑
+  (0, eval)(code);
+  if (!window.fabric?.Canvas) {
+    throw new Error('fabric 加载后 window.fabric.Canvas 为空（UMD 初始化失败）');
+  }
+  console.log('[cdn] fabric loaded, Canvas:', typeof window.fabric.Canvas);
+  return window.fabric;
 }

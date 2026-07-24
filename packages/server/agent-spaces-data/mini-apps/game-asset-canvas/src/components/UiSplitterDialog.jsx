@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
   Button, Input, Label, ScrollArea, Loader,
+  ResizablePanelGroup, ResizablePanel, ResizableHandle,
 } from '@agent-spaces/ui';
 import { getFabric } from '../utils/image-ops/cdn';
 import {
@@ -465,11 +466,11 @@ export default function UiSplitterDialog({ open, inputImages, onSave, onClose })
         className="flex flex-col gap-0 overflow-hidden p-0"
         style={{ width: '94vw', maxWidth: '94vw', maxHeight: '94vh', height: '94vh' }}
       >
-        <DialogHeader className="flex-row items-center justify-between gap-3 border-b border-border px-4 py-3 !gap-0">
-          <div className="flex flex-col gap-0.5">
-            <DialogTitle>🧩 UI 拆分编辑器</DialogTitle>
-            <DialogDescription className="text-[11px]">
-              自动检测 + 手动框选切片，保存后回传为节点产出
+        <DialogHeader className="flex-row items-center justify-between gap-3 border-b border-border px-4 py-2 !gap-0">
+          <div className="flex items-center gap-2">
+            <DialogTitle className="text-sm">🧩 UI 拆分编辑器</DialogTitle>
+            <DialogDescription className="text-[11px] text-muted-foreground">
+              自动检测 + 手动框选切片
             </DialogDescription>
           </div>
           <div className="flex items-center gap-2">
@@ -543,55 +544,73 @@ export default function UiSplitterDialog({ open, inputImages, onSave, onClose })
           <p className="border-b border-border bg-muted/20 px-4 py-1.5 text-[11px] text-muted-foreground">{status}</p>
         )}
 
-        {/* 主区：画布 + 预览面板 */}
-        <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[1fr_300px]">
-          {/* 画布区 */}
-          <div className="relative min-h-0 overflow-hidden bg-muted/20">
-            <div
-              ref={stageRef}
-              className="ui-splitter-stage h-full w-full overflow-auto"
-            >
-              <canvas />
-            </div>
-            {loading && (
-              <div className="absolute inset-0 flex items-center justify-center bg-background/60">
-                <Loader className="mr-2 h-4 w-4" />
-                <span className="text-sm text-muted-foreground">加载编辑器…</span>
+        {/* 主区：左侧 fabric 画布 + 右侧切片结果（可拖拽调宽） */}
+        <ResizablePanelGroup direction="horizontal" className="min-h-0 flex-1">
+          {/* 左：fabric 画布。
+              fabric@5 会在 <canvas> 外套 .canvas-container（display:inline-block，固定宽高）。
+              通过 CSS 让该 wrapper 撑满父容器并居中，fabric 内部 canvas 仍按图片像素固定，
+              超出部分由 .ui-splitter-stage 的 overflow-auto 滚动查看。 */}
+          <ResizablePanel id="split-stage" order={1} minSize="40%">
+            <div className="relative h-full min-h-0 overflow-hidden bg-muted/20">
+              <div
+                ref={stageRef}
+                className="ui-splitter-stage h-full w-full overflow-auto"
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              >
+                <canvas />
               </div>
-            )}
-          </div>
+              {/* fabric 生成的 .canvas-container 居中后撑满视觉区域 */}
+              <style>{`
+                .ui-splitter-stage .canvas-container {
+                  margin: auto !important;
+                  max-width: 100% !important;
+                  max-height: 100% !important;
+                }
+              `}</style>
+              {loading && (
+                <div className="absolute inset-0 flex items-center justify-center bg-background/60">
+                  <Loader className="mr-2 h-4 w-4" />
+                  <span className="text-sm text-muted-foreground">加载编辑器…</span>
+                </div>
+              )}
+            </div>
+          </ResizablePanel>
 
-          {/* 预览面板 */}
-          <aside className="flex min-h-0 flex-col border-t border-border lg:border-l lg:border-t-0">
-            <div className="flex items-center justify-between border-b border-border px-3 py-2">
-              <span className="text-xs font-medium">切片 {count}</span>
-              <Button size="sm" variant="ghost" className="h-7 text-[11px]" onClick={renderList} disabled={loading}>
-                刷新预览
-              </Button>
-            </div>
-            <ScrollArea className="min-h-0 flex-1">
-              <div className="grid grid-cols-1 gap-2 p-3 sm:grid-cols-2 lg:grid-cols-1">
-                {previews.length === 0 && (
-                  <p className="px-2 py-8 text-center text-xs text-muted-foreground">
-                    {loading ? '加载中…' : '无切片。点「自动检测」或 Alt 拉框'}
-                  </p>
-                )}
-                {previews.map((it, i) => (
-                  <div key={i} className="overflow-hidden rounded-md border border-border bg-background">
-                    <div className="flex min-h-[120px] items-center justify-center bg-[conic-gradient(#e2e8f0_25%,transparent_0_50%,#e2e8f0_0_75%,transparent_0)] [background-size:16px_16px] p-2">
-                      <img src={it.url} alt={it.name} className="max-h-[110px] max-w-full object-contain" />
-                    </div>
-                    <div className="flex items-center justify-between gap-1 px-2 py-1.5 text-[11px]">
-                      <span className="truncate text-muted-foreground" title={it.name}>{it.name}</span>
-                      <a href={it.url} download={it.name}
-                        className="shrink-0 font-medium text-primary hover:underline">下载</a>
-                    </div>
-                  </div>
-                ))}
+          <ResizableHandle />
+
+          {/* 右：切片结果 */}
+          <ResizablePanel id="split-result" order={2} minSize="20%" maxSize="55%" defaultSize="28%">
+            <aside className="flex h-full min-h-0 flex-col border-l border-border">
+              <div className="flex items-center justify-between border-b border-border px-3 py-2">
+                <span className="text-xs font-medium">切片 {count}</span>
+                <Button size="sm" variant="ghost" className="h-7 text-[11px]" onClick={renderList} disabled={loading}>
+                  刷新预览
+                </Button>
               </div>
-            </ScrollArea>
-          </aside>
-        </div>
+              <ScrollArea className="min-h-0 flex-1">
+                <div className="grid grid-cols-1 gap-2 p-3 sm:grid-cols-2 lg:grid-cols-1">
+                  {previews.length === 0 && (
+                    <p className="px-2 py-8 text-center text-xs text-muted-foreground">
+                      {loading ? '加载中…' : '无切片。点「自动检测」或 Alt 拉框'}
+                    </p>
+                  )}
+                  {previews.map((it, i) => (
+                    <div key={i} className="overflow-hidden rounded-md border border-border bg-background">
+                      <div className="flex min-h-[120px] items-center justify-center bg-[conic-gradient(#e2e8f0_25%,transparent_0_50%,#e2e8f0_0_75%,transparent_0)] [background-size:16px_16px] p-2">
+                        <img src={it.url} alt={it.name} className="max-h-[110px] max-w-full object-contain" />
+                      </div>
+                      <div className="flex items-center justify-between gap-1 px-2 py-1.5 text-[11px]">
+                        <span className="truncate text-muted-foreground" title={it.name}>{it.name}</span>
+                        <a href={it.url} download={it.name}
+                          className="shrink-0 font-medium text-primary hover:underline">下载</a>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+            </aside>
+          </ResizablePanel>
+        </ResizablePanelGroup>
 
         <div className="border-t border-border bg-muted/20 px-4 py-2 text-[11px] text-muted-foreground">
           滚轮缩放 · 按住 <kbd className="rounded border border-border bg-background px-1">空格</kbd> 拖拽平移 ·
