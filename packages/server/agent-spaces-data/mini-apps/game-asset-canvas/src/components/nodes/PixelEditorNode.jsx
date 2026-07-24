@@ -2,8 +2,10 @@ import { useCallback, useState } from 'react';
 import { FileUpload } from '@agent-spaces/ui';
 import NodeShell from './NodeShell';
 import ImageResult from './ImageResult';
+import UpstreamImageList, { orderUpstream } from './UpstreamImageList';
 import PixelEditorDialog from '../PixelEditorDialog';
 import { NODE_TYPES } from '../../utils/constants';
+import { dedupeUrls } from '../../utils/workflow';
 
 /**
  * 像素编辑器节点：接收上游多图或本地上传图片，节点内展示「编辑」按钮，
@@ -20,20 +22,23 @@ import { NODE_TYPES } from '../../utils/constants';
  */
 export default function PixelEditorNode({ id, data, selected }) {
   const uploadedImages = Array.isArray(data?.uploadedImages) ? data.uploadedImages : [];
-  const upstreamImages = Array.isArray(data?.images) ? data.images : [];
-  // 合并去重（保序）
-  const seen = new Set();
-  const allFrames = [];
-  for (const u of [...uploadedImages, ...upstreamImages]) {
-    if (!u || seen.has(u)) continue;
-    seen.add(u);
-    allFrames.push(u);
-  }
+  const rawUpstream = Array.isArray(data?.images) ? data.images : [];
+  // 上游连线图的排序顺序（url 子集，持久化）。data.images 由 computeInputImages 派生会覆盖，
+  // 所以顺序单独存在 upstreamOrder，order 里有的按 order 排，没有的（新连入）追加到末尾。
+  const upstreamOrder = Array.isArray(data?.upstreamOrder) ? data.upstreamOrder : [];
+  const upstreamImages = orderUpstream(rawUpstream, upstreamOrder);
+  // 合并输入：上传图在前 + 上游连线图（已排序）在后，去重保序
+  const allFrames = dedupeUrls([...uploadedImages, ...upstreamImages]);
   const images = data?.output?.images || [];
   const uploading = data?.uploading;
   const error = data?.error;
   const onUpdate = data?.onUpdate;
+  const createMode = data?.params?.createMode === 'frames' ? 'frames' : 'multi';
   const [editorOpen, setEditorOpen] = useState(false);
+
+  const setCreateMode = useCallback((mode) => {
+    onUpdate?.({ params: { ...(data?.params || {}), createMode: mode } });
+  }, [data?.params, onUpdate]);
 
   // FileUpload onChange：多图，对每个新 File 调 uploadFile 拿 http URL 持久化。
   const handleFilesChange = useCallback(async (files) => {
@@ -83,30 +88,40 @@ export default function PixelEditorNode({ id, data, selected }) {
 
   return (
     <NodeShell id={id} nodeType={NODE_TYPES.pixelEditor} data={data} selected={selected} targetHandle sourceHandle>
+      {/* 新建类型：多文件 / 动画关键帧 */}
+      <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+        <span className="shrink-0">新建类型</span>
+        <select
+          value={createMode}
+          onChange={(e) => setCreateMode(e.target.value)}
+          className="min-w-0 flex-1 rounded-md border border-border bg-background px-1.5 py-1 text-xs outline-none focus:border-primary nodrag nopan"
+        >
+          <option value="multi">多个新文件</option>
+          <option value="frames">动画关键帧</option>
+        </select>
+      </div>
       <FileUpload
         value={fileUploadValue}
         onChange={handleFilesChange}
         accept={{ 'image/*': ['.png', '.jpg', '.jpeg', '.webp', '.gif'] }}
         maxFiles={0}
-        placeholder="点击或拖入多张图片（作为帧）"
+        sortable
+        placeholder="点击或拖入多张图片（作为帧，可拖拽排序）"
       />
       {uploading && <p className="text-[10px] text-primary">上传中…</p>}
       {data?.uploadError && (
         <p className="text-[10px] text-red-500">上传失败：{data.uploadError}</p>
       )}
 
-      {/* 上游连线图（只读，多张） */}
-      {upstreamImages.length > 0 && uploadedImages.length === 0 && (
-        <div className="rounded border border-primary/40 bg-muted/30 px-1.5 py-1">
-          <div className="flex flex-wrap gap-1">
-            {upstreamImages.slice(0, 6).map((url, i) => (
-              <div key={i} className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded">
-                <img src={url} alt="" draggable={false} className="pointer-events-none max-h-full max-w-full object-contain" />
-              </div>
-            ))}
-          </div>
-          <span className="text-[10px] text-muted-foreground">🔗 来自连线 {upstreamImages.length} 张</span>
-        </div>
+      {/* 上游连线图（只读，不可删，由连线管理；可拖拽排序）。
+          data.images 是 computeInputImages 派生真值，会被覆盖，所以顺序单独存 data.upstreamOrder。 */}
+      {upstreamImages.length > 0 && (
+        <UpstreamImageList
+          urls={upstreamImages}
+          sortable
+          onChangeOrder={(next) => onUpdate?.({ upstreamOrder: next })}
+          itemLabel={(i) => `第 ${i + 1} 帧`}
+        />
       )}
 
       {/* 输入来源统计 */}
@@ -136,6 +151,7 @@ export default function PixelEditorNode({ id, data, selected }) {
       <PixelEditorDialog
         open={editorOpen}
         frames={allFrames}
+        createMode={createMode}
         onSave={handleSave}
         onClose={() => setEditorOpen(false)}
       />

@@ -277,49 +277,70 @@ src/
 - Painterro 官方 build 非 ESM（IIFE 赋值给 `var Painterro`），直接 dynamic import 拿不到导出 → `loadVendor` 加 `esmSuffix` 参数追加 `export default Painterro;` 转 ESM
 - Painterro 的 `saveHandler(image, done)`：`done(true)` 关闭编辑器，`done(false)` 保留让用户重试；用 `savedRef` 区分「保存成功关闭」与「直接 X 关闭」（后者复位 status）
 
-## 动画帧编辑器节点（本轮新增，基于 scenejs-timeline）
+## 像素编辑器节点（本轮新增，基于 Pixelorama）
 
-新增「动画帧编辑器」节点（NODE_TYPES.frameEditor），用 Scene.js + @scenejs/timeline（esm.sh CDN ESM）做序列帧时间线编辑，支持调整帧出现时机 + 画面 x/y 偏移，最终导出 GIF。
+新增「像素编辑器」节点（NODE_TYPES.pixelEditor），用本地 Pixelorama web 版（Godot 4.7 导出）做像素/动画编辑，支持上游多图注入、编辑后多帧导出回传。
 
-### 关键决策
-- **位置语义=两者都要**：时间线拖动色块调出现时机（scenejs 原生 `item.setDelay()`，拖 keyframe-group 触发）+ 预览区拖图片调 x/y 偏移（自实现，存帧元数据）
-- **CDN 加载走宿主 loadCdnModule**（零宿主改动、零 vendor 文件、刷新即生效）：`esm.sh/scenejs@1.9.6` + `esm.sh/@scenejs/timeline@0.3.0`，经 `cdn.js` 的 `getSceneTimeline()` 封装，返回 `{ Scene, Timeline }`
-- **GIF 导出复用 image-ops/gif.js 的 encodeFramesToGif**（gifenc，已 CDN 化），各帧先合成到统一画布尺寸的 canvas 再编码
-- **Scene 配置 `selector:false`**：scenejs-timeline 本质是"属性动画时间线"，这里只用它做时间轴 UI + 播放控制，不绑定 DOM；每帧可见性用 `item.set({0:{opacity:0}, [dur]:{opacity:1}})` 表达
+### 核心决策与已踩坑（务必遵守）
 
-### 改动文件
-- `src/utils/constants.js`：NODE_TYPES.frameEditor + NODE_META（🎞️ #a855f7）+ IMAGE_TAGS.frameEditor
-- `src/utils/image-ops/cdn.js`：`getSceneTimeline()` 加载器（走 `window.AgentSpaces.loadCdnModule`，解包 default）
-- `src/components/FrameEditorDialog.jsx`（新增）：编辑器对话框
-  - 顶部工具条：帧间隔(ms) / 画布宽高 / 导出GIF / 关闭
-  - 预览区：监听 `scene.on("animate", e=>e.time)` 选当前帧渲染，当前帧 `<img>` 可鼠标拖拽改 offsetX/offsetY（存 `framesMetaRef`）
-  - 底部 260px 容器：`new Timeline(scene, containerRef, {keyboard:true})` 挂载，拖色块改 delay，Space 播放/暂停
-  - 导出：readOrderedMeta 按 delay 排序 → 逐帧 urlToImageData（跨域经 `proxyImageUrl`）→ 合成到统一画布尺寸 canvas（含 offsetX/Y）→ encodeFramesToGif → uploadFile
-- `src/components/nodes/FrameEditorNode.jsx`（新增）：仿 ImageEditorNode，多图输入（FileUpload maxFiles=0 + 上游连线多图去重合并），「🎞️ 编辑帧序列」按钮开对话框，产出写 `data.output.images`
-- `src/components/Canvas.jsx`：NODE_COMPONENTS + ADD_NODE_ITEMS + computeInputImages(isReceiver) + initialData + DEFAULT_SIZE 加 frameEditor
-- `src/components/RightPanel.jsx`：ADD_ITEMS 加「动画帧编辑器」
+1. **编辑器选型 = 本地 Pixelorama web 版（非 piskel）**：原计划用 piskel（iframe + contentWindow.pskl），但 piskel-embed 在 piskelapp.github.io，**跨域拦截 contentWindow**，且 piskel **无 postMessage API**。改用本地 D:\Pixelorama 源码改 + Godot 重新导出，vendor 本地化到 `src/vendor/pixelorama-web/`（~44MB：index.wasm 37MB + index.pck 12MB 含中文字体）。
+2. **通信协议 = postMessage + JavaScriptBridge.create_callback（关键！）**：
+   - **不要用** `JavaScriptBridge.eval` 在 `_define_js` 里注册 `window.addEventListener('message', fn)` 再让 Godot 轮询 JS 共享状态（`window.__pixelorama._pendingImages`）——COEP 隔离下 JS 监听器写的状态 Godot eval **读不到**（不同 window 代理对象）。
+   - **正解**：`JavaScriptBridge.create_callback` 把 GDScript 函数注册为 JS callback，`win.addEventListener("message", cb)`，message 事件直接进 GDScript `_on_parent_message(args)`，`args[0]` 是 JavaScriptObject（MessageEvent）。JavaScriptObject 属性访问：`event.data` 返回 JSObject，`data.type`/`data.data`/`data.mode` 读 JS 属性（`str()` 转字符串，`int()` 转数字）。
+   - 父→Godot：`iframe.contentWindow.postMessage({type,data,name,mode,index}, '*')`
+   - Godot→父：`window.parent.postMessage(JSON, '*')`（GDScript 用 `_post_to_parent(dict)` → `JSON.stringify` → eval `postMessage(%s,'*')`）
+3. **COOP/COEP（SharedArrayBuffer 前提）由 Pixelorama 自带 service worker 注入**：`index.service.worker.js` 的 `ensureCrossOriginIsolationHeaders` 给响应补 `Cross-Origin-Opener-Policy: same-origin` + `Cross-Origin-Embedder-Policy: require-corp` 头。**零宿主改动**（宿主 src/file 路由不发这些头）。
+4. **🔴 service worker 缓存陷阱（改 pck 后必须处理）**：SW 默认把 `index.pck`/`index.wasm` 列入 `CACHEABLE_FILES` 缓存。改 GDScript 重新导出后，**浏览器加载的是旧 pck**（新诊断日志完全不出现），表现为"代码改动不生效"。**已修复**：把 `CACHEABLE_FILES` 改成 `[]`（pck/wasm 不缓存，每次网络拉最新），改 CACHE_VERSION 加后缀。调试时如遇"改了没反应"，先用无痕窗口或 F12→Application→Service Workers→Unregister + Clear site data。
+5. **跨域/同源**：iframe src 用**父页面 origin**（`window.location.origin`）拼，保证 dev(3000)/dist(3100) 都同源。**不要用 `srcFileUrl` 解析的 origin**（它是 dist 的 3100，dev 下父页面 3000 → 真跨域 → SecurityError）。
+6. **src/file 路由 MIME**：宿主 `SRC_FILE_MIME` 原本不含 `.pck`/`.wasm`，Godot 加载 index.pck 报 `Failed loading file 'index.pck'`。已在 `packages/server/src/routes/mini-apps.ts` 补 `.pck`(octet-stream)/`.wasm`(application/wasm)/`.data` 映射（**需重启 web**）。
+7. **中文乱码**：项目默认 Roboto-Regular.ttf 不含 CJK 字形。已在 `Global.gd` 给 Roboto 加 `fallbacks=[SimHei.ttf]`（复制自 `C:/Windows/Fonts/simhei.ttf` 9.7MB 到 `assets/fonts/`），pck 从 6.5MB→12.3MB。
+8. **跳过欢迎页**：iframe URL 固定带 `?nosplash=1`，`Main.gd._show_splash_screen` 和启动时的 restore_session 弹窗检测到该参数直接 return。
+9. **新建类型参数**（`data.params.createMode`）：`multi`（每张图独立 project/tab）/ `frames`（首张建 project + 后续 `OpenSave.open_image_as_new_frame` 加为同一 project 的关键帧）。父端发 pxr-load 带 `mode`+`index`，GDScript 按 mode 分流。frames 模式首帧后等 600ms（父端）让 Godot 建 project。
 
-### scenejs-timeline API 要点（源码确认）
-- 核心包 `@scenejs/timeline` 继承 `@egjs/component`：`new Timeline(scene, parentEl, {keyboard, onSelect})`，`.on("select", cb)` / `.trigger`
-- 实际 UI/拖拽逻辑在 preact-timeline → react-scenejs-timeline/Timeline.tsx：拖 keyframe-group → `item.setDelay(distX换算)`；拖单个 keyframe → 选中该关键帧
-- 播放：`scene.play()/pause()`，键盘 Space 切换、左右微调 0.05s、Esc finish；`scene.on("animate", e=>{e.time, e.frame.get()})`
-- `scene.getDuration()` 由各 item delay+duration 推导；Timeline 渲染会向 parentEl 追加 DOM，卸载需 `container.innerHTML=''`
+### 改动文件（mini-app 内）
+- `src/vendor/pixelorama-web/`（新增，~45MB，Pixelorama web 导出全套；SW 已改不缓存 pck/wasm）
+- `src/components/nodes/PixelEditorNode.jsx`（新增）：FileUpload 多图 + 「新建类型」select + 上游连线占位 + 「👾 编辑像素」按钮 + 产出
+- `src/components/PixelEditorDialog.jsx`（新增）：iframe + 同源 URL（带 ?nosplash=1）+ postMessage 双向通信 + 创建/注入/导出回传
+- `src/utils/constants.js`：NODE_TYPES.pixelEditor + NODE_META（👾 #22c55e）+ IMAGE_TAGS.pixelEditor（'像素'）
+- `src/components/Canvas.jsx`：NODE_COMPONENTS/ADD_NODE_ITEMS/computeInputImages.isReceiver/DEFAULT_SIZE/initialData 加 pixelEditor
+- `src/components/RightPanel.jsx`：ADD_ITEMS 加「像素编辑器」
 
-### 依赖（CDN 加载，web 不装）
-- scenejs@1.9.6 + @scenejs/timeline@0.3.0（esm.sh ESM，宿主 loadCdnModule 加载）
-- gifenc（已有 vendor，encodeFramesToGif 复用）
+### 改动文件（宿主层，需重启 web）
+- `packages/server/src/routes/mini-apps.ts`：`SRC_FILE_MIME` 加 `.pck`/`.wasm`/`.data`
+
+### 改动文件（D:\Pixelorama，Godot 源码，已重新导出）
+- `src/Autoload/HTML5FileExchange.gd`：`create_callback` 收 message + `_decode_data_url_to_image` + 按 mode 导入（multi→handle_loading_image / frames→_import_as_frame 用 open_image_as_new_frame）+ `_export_current_project_frames`（遍历帧 blend layers → base64 PNG → parent.postMessage）+ `notify_ready`
+- `src/Autoload/Global.gd`：Roboto 加 SimHei fallback（中文）
+- `src/Main.gd`：`?nosplash=1` 跳过 splash + restore_session
+- `assets/fonts/SimHei.ttf`（新增，9.7MB）
+- 重新导出：`"/c/Program Files/Godot/Godot.exe" --headless --export-release "Web"`（Godot 4.7.1，export preset name="Web"，export_path 自动到 D:/Pixelorama_web）
+
+### 重新导出流程（改 GDScript 后必做）
+```bash
+# 1. 语法检查（会打印 HTML5FileExchange/Main/Global 的 parse error）
+"/c/Program Files/Godot/Godot.exe" --headless --quit --path D:/Pixelorama 2>&1 | grep -iE "parse error|SCRIPT ERROR|Failed to load script"
+# 2. 导出（覆盖 D:/Pixelorama_web）
+"/c/Program Files/Godot/Godot.exe" --headless --export-release "Web"  # 在 D:/Pixelorama 下
+# 3. 复制 pck 到 vendor（其他文件 index.html/js/wasm 不变则只复制 index.pck）
+cp D:/Pixelorama_web/index.pck <miniapp>/src/vendor/pixelorama-web/index.pck
+```
+导出 GDScript 类型推断坑：`var x := obj.prop` 会因 prop 无确定类型报 `Cannot infer the type`，改显式声明 `var x: Type = obj.prop`。
+
+### 协议（postMessage 消息格式）
+- 父→Godot（`pxr-load`）：`{type:'pxr-load', data:'data:image/png;base64,...', name:'frame-1.png', mode:'multi'|'frames', index:0}`
+- 父→Godot（`pxr-export`）：`{type:'pxr-export'}`
+- Godot→父（`pxr-ready`）：`{type:'pxr-ready'}`（_ready + 1s timer 后发）
+- Godot→父（`pxr-export`）：`{type:'pxr-export', data:'data:image/png;base64,...', name:'frame_0.png'}`（逐帧）
+- Godot→父（`pxr-export-done`）：`{type:'pxr-export-done', ok:true|false, reason?}`
+
+### 调试日志约定
+GDScript 用 `print("[PXR] ...")`（经 index.js onPrint 输出，与 `index.js:452` 行混排）；父端用 `console.log('[pxr-parent] ...')`。当前保留了全链路诊断日志，功能稳定后可清理。
 
 ### 验收要点
 - 节点支持上传多图或接收上游连线多图（合并去重）
-- 点「🎞️ 编辑帧序列」打开对话框：底部时间线每帧一段色块，Space 播放预览区按时间切帧
-- 拖时间线色块改出现时机；预览区拖图片改 x/y 偏移（左上角实时显示帧号/时间/偏移）
-- 导出 GIF 写入 data.output.images，下游可连线，NodeToolbar 按钮自动可用
-- 断网（esm.sh 不可达）时编辑器加载报错但不崩溃（对话框顶部红字提示）
-
-### 踩坑
-- `urlToImageData` 返回 ImageData 对象（无 `.canvas`），合成统一画布时不能直接 `drawImage(imageData)`，须先 putImageData 到临时 canvas 再 drawImage
-- frameInterval 变化只更新 `framesMetaRef` 的 duration，不重建 Scene（避免丢失用户已做的 delay 拖拽）；重建 Scene 仅在 open/帧列表/画布尺寸变化时
-- Timeline 容器必须 `nodrag nopan nowheel`（NodeShell 约定），否则时间线内滚动/拖拽误触画布
+- 点「👾 编辑像素」打开对话框，Pixelorama 加载（约 3s）不弹欢迎页，上游图按「新建类型」注入（multi=多 tab / frames=单 project 多帧）
+- 点「从 Pixelorama 导出」→ Godot 遍历当前 project 所有帧逐帧回传 → 节点产出图，可连线下游，NodeToolbar 按钮自动可用
+- 中文界面正常显示
 
 ## 后续可做
 
@@ -341,6 +362,11 @@ src/
 - 图像处理：GIF 拆帧产出几十上百帧时节点过长，可加分页/折叠（当前全展示）
 - 图像处理：色度键的 spill（抑色）参数当前固定 0，可暴露给用户
 - 图像处理：大图处理阻塞主线程，算法可移入 Web Worker（io.js 的 canvas 操作仍需主线程）
+- 像素编辑器：vendor/pixelorama-web/index.pck 12MB（含 SimHei 9.7MB），可改用 fonttools 裁剪中文字体子集（常用 3500 字，约 2-3MB）减小加载
+- 像素编辑器：导出格式加 sprite sheet 拼接 / GIF（复用 encodeFramesToGif），当前只导每帧 PNG
+- 像素编辑器：fps / 画布尺寸参数暴露到对话框（当前导出帧不导出 fps）
+- 像素编辑器：清理 GDScript/JSX 里保留的 `[PXR]`/`[pxr-parent]` 诊断日志（功能稳定后）
+- 像素编辑器：D:\Pixelorama 源码改动未 commit（git 仓库），如需保留可单独提交
 
 ## Suggested Skills
 

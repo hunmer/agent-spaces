@@ -102,22 +102,3 @@ export async function getPainterro() {
   const mod = await loadVendor('painterro.min.js', '\nexport default Painterro;');
   return mod.default || mod;
 }
-
-/**
- * Scene.js + @scenejs/timeline：动画帧时间线编辑器。
- * 走宿主通用 loadCdnModule（esm.sh ESM，webpackIgnore 绕静态分析），零 vendor 文件。
- * 返回 { Scene, Timeline }：
- *   const scene = new Scene(opts)
- *   const timeline = new Timeline(scene, containerEl, { keyboard: true, onSelect })
- */
-export async function getSceneTimeline() {
-  const AS = window.AgentSpaces;
-  if (!AS?.loadCdnModule) throw new Error('宿主未提供 loadCdnModule（需更新 web 服务）');
-  const SceneMod = await AS.loadCdnModule('https://esm.sh/scenejs@1.9.6');
-  const TimelineMod = await AS.loadCdnModule('https://esm.sh/@scenejs/timeline@0.3.0');
-  const Scene = SceneMod?.default ?? SceneMod;
-  const Timeline = TimelineMod?.default ?? TimelineMod;
-  if (typeof Scene !== 'function') throw new Error('scenejs 加载异常：Scene 非构造函数');
-  if (typeof Timeline !== 'function') throw new Error('@scenejs/timeline 加载异常：Timeline 非构造函数');
-  return { Scene, Timeline };
-}

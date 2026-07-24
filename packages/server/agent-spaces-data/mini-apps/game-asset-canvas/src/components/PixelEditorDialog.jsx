@@ -17,13 +17,15 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, Button } from '@agent
  * @param {(urls: string[]) => void} props.onSave 导出完成回调
  * @param {() => void} props.onClose
  */
-export default function PixelEditorDialog({ open, frames, onSave, onClose }) {
+export default function PixelEditorDialog({ open, frames, createMode = 'multi', onSave, onClose }) {
   const iframeRef = useRef(null);
   const exportedRef = useRef([]);          // 已导出 url 累积
   const injectedRef = useRef(false);       // 本轮是否已注入上游图
   const readyRef = useRef(false);          // Godot 是否已就绪（message 回调写入）
   const onSaveRef = useRef(onSave);
   onSaveRef.current = onSave;
+  const createModeRef = useRef(createMode);
+  createModeRef.current = createMode;
   const [ready, setReady] = useState(false);
   const [loadError, setLoadError] = useState('');
   const [injecting, setInjecting] = useState(false);
@@ -34,14 +36,18 @@ export default function PixelEditorDialog({ open, frames, onSave, onClose }) {
   const inputFrames = frames || [];
 
   // 构造 Pixelorama index.html 的 path 段 URL（免 token，auth.ts:36 放行 src/file/）
+  // 用父页面 origin 拼，保证 dev(3000)/dist(3100) 都与父同源，避免 COOP/跨域阻断通信。
+  // projectId 从 srcFileUrl 解析（srcFileUrl 的 origin 可能是 dist，需替换成父 origin）。
+  // 固定带 ?nosplash=1：嵌入场景始终跳过启动欢迎页和会话恢复弹窗。
   const pixeloramaUrl = (() => {
     const AS = window.AgentSpaces;
+    let projectId = 'game-asset-canvas';
     if (AS?.srcFileUrl) {
-      const sample = AS.srcFileUrl('x'); // {origin}/api/mini-apps/{id}/src/file?path=x&token=...
-      const m = sample.match(/^(https?:\/\/[^/]+\/api\/mini-apps\/[^/]+)\/src\/file/);
-      if (m) return `${m[1]}/src/file/vendor/pixelorama-web/index.html`;
+      const sample = AS.srcFileUrl('x');
+      const m = sample.match(/\/api\/mini-apps\/([^/]+)\/src\/file/);
+      if (m) projectId = m[1];
     }
-    return `${window.location.origin}/api/mini-apps/game-asset-canvas/src/file/vendor/pixelorama-web/index.html`;
+    return `${window.location.origin}/api/mini-apps/${projectId}/src/file/vendor/pixelorama-web/index.html?nosplash=1`;
   })();
 
   // postMessage 到 iframe（COOP 下 contentWindow.postMessage 仍可用，访问属性才被拦）
@@ -75,13 +81,18 @@ export default function PixelEditorDialog({ open, frames, onSave, onClose }) {
   // 注入所有上游图到 Pixelorama（需 ready）
   const injectFrames = useCallback(async () => {
     if (!readyRef.current || !inputFrames.length || injectedRef.current) return;
+    const mode = createModeRef.current;
     setInjecting(true);
-    setStatusMsg(`正在注入 ${inputFrames.length} 张图…`);
+    setStatusMsg(`正在注入 ${inputFrames.length} 张图（${mode === 'frames' ? '关键帧' : '多文件'}）…`);
     try {
       for (let i = 0; i < inputFrames.length; i++) {
         const dataUrl = await imageUrlToDataUrl(inputFrames[i]);
-        const ok = postToIframe({ type: 'pxr-load', data: dataUrl, name: `frame-${i + 1}.png` });
+        const ok = postToIframe({ type: 'pxr-load', data: dataUrl, name: `frame-${i + 1}.png`, mode, index: i });
         if (!ok) throw new Error('postMessage 到 iframe 失败');
+        // 关键帧模式：首帧建 project 需要时间，后续帧依赖 project 存在，逐帧间隔
+        if (mode === 'frames' && i === 0) {
+          await new Promise((r) => setTimeout(r, 600));
+        }
       }
       injectedRef.current = true;
       setStatusMsg(`已注入 ${inputFrames.length} 张图，可开始编辑`);
@@ -191,7 +202,6 @@ export default function PixelEditorDialog({ open, frames, onSave, onClose }) {
               <Button size="sm" disabled={!ready || exporting} onClick={handleExport}>
                 {exporting ? '导出中…' : '从 Pixelorama 导出'}
               </Button>
-              <Button size="sm" variant="ghost" onClick={onClose}>关闭</Button>
             </div>
           </div>
           {statusMsg && <div className="mt-1 text-[11px] text-muted-foreground">{statusMsg}</div>}
