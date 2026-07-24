@@ -81,36 +81,46 @@ const FORM_NODE_TYPES = new Set([NODE_TYPES.textToImage, NODE_TYPES.editImage]);
 function AddNodeList({ onAdd, onDragStartNode, onOpenForm }) {
   return (
     <ScrollArea className="h-full">
-      <div className="flex flex-col gap-2 p-3">
-        <p className="text-xs text-muted-foreground">点击添加，或拖拽到画布任意位置</p>
-        {ADD_ITEMS.map((it) => {
-          const meta = NODE_META[it.type];
-          const hasForm = FORM_NODE_TYPES.has(it.type);
-          return (
-            <div key={it.type} className="flex items-center gap-1.5">
-              <button
-                type="button"
-                draggable
-                onDragStart={(e) => onDragStartNode?.(it.type, e)}
-                onClick={() => onAdd?.(it.type)}
-                className="flex flex-1 cursor-grab items-center gap-2 rounded-md border border-border bg-background px-3 py-2.5 text-sm font-medium transition hover:border-primary hover:text-primary active:cursor-grabbing"
+      <div className="p-3">
+        <p className="mb-2 text-xs text-muted-foreground">点击添加，或拖拽到画布任意位置</p>
+        <div className="grid grid-cols-2 gap-2">
+          {ADD_ITEMS.map((it) => {
+            const meta = NODE_META[it.type];
+            const hasForm = FORM_NODE_TYPES.has(it.type);
+            return (
+              <div
+                key={it.type}
+                className="group/card relative flex flex-col gap-1 rounded-lg border border-border bg-background p-2.5 transition hover:border-primary/60 hover:shadow-sm"
               >
-                <span className="text-base">{meta.icon}</span>
-                <span>{it.label}</span>
-              </button>
-              {hasForm && (
                 <button
                   type="button"
-                  onClick={() => onOpenForm?.(it.type)}
-                  title="填写参数并提交到执行队列"
-                  className="flex shrink-0 items-center gap-1 rounded-md border border-primary/40 bg-primary/10 px-2.5 py-2.5 text-xs font-medium text-primary transition hover:bg-primary/20"
+                  draggable
+                  onDragStart={(e) => onDragStartNode?.(it.type, e)}
+                  onClick={() => onAdd?.(it.type)}
+                  className="flex flex-1 cursor-grab flex-col items-center gap-1.5 outline-none active:cursor-grabbing"
                 >
-                  ⚡生成
+                  <span
+                    className="flex h-9 w-9 items-center justify-center rounded-md text-lg"
+                    style={{ backgroundColor: `${meta.color}1a` }}
+                  >
+                    {meta.icon}
+                  </span>
+                  <span className="text-center text-xs font-medium leading-tight">{it.label}</span>
                 </button>
-              )}
-            </div>
-          );
-        })}
+                {hasForm && (
+                  <button
+                    type="button"
+                    onClick={() => onOpenForm?.(it.type)}
+                    title="填写参数并提交到执行队列"
+                    className="w-full rounded-md bg-primary/10 px-2 py-1 text-[11px] font-medium text-primary transition hover:bg-primary/20"
+                  >
+                    ⚡ 生成
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
       </div>
     </ScrollArea>
   );

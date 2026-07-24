@@ -1,49 +1,59 @@
+import {
+  Menubar,
+  MenubarMenu,
+  MenubarTrigger,
+  MenubarContent,
+  MenubarItem,
+  MenubarSeparator,
+} from '@agent-spaces/ui';
+
 /**
- * 顶部工具栏：工作区切换 / 自动布局 / 导出 / 设置 / 清空，右侧插槽放执行队列。
+ * 顶部工具栏：标题 + Menubar（文件/工具/编辑器）+ 右侧插槽（工作区切换/执行队列/节点数）。
+ *
+ * Menubar 收纳：自动布局 / 导出 JSON / 设置 / 清空 / 动画编辑器（独立窗口）。
  * @param {{ onClear, onAutoLayout, onExport, onOpenSettings, count, queueSlot, workspaceSlot }} props
  */
 export default function Toolbar({ onClear, onAutoLayout, onExport, onOpenSettings, count, queueSlot, workspaceSlot }) {
+  // 动画编辑器：新窗口打开本地 Pixelorama web 版（与节点内编辑器同源，独立全屏编辑）。
+  // 用 window.location.origin 拼，兼容 dev(3000)/dist(3100)。
+  const openAnimationEditor = () => {
+    const url = `${window.location.origin}/api/mini-apps/game-asset-canvas/src/file/vendor/pixelorama-web/index.html?nosplash=1`;
+    window.open(url, '_blank', 'noopener');
+  };
+
   return (
     <div className="flex flex-wrap items-center gap-2 border-b border-border bg-card px-3 py-2">
-      <span className="mr-1 text-sm font-semibold">🎮 游戏资产生成画布</span>
       {workspaceSlot}
       <div className="mx-1 h-5 w-px bg-border" />
 
-      <button
-        type="button"
-        onClick={onAutoLayout}
-        title="按连线方向自动排列节点"
-        className="rounded-md border border-border bg-background px-2.5 py-1 text-xs font-medium transition hover:border-primary hover:text-primary"
-      >
-        ⊕ 自动布局
-      </button>
-      <button
-        type="button"
-        onClick={onExport}
-        title="导出整张画布为 JSON"
-        className="rounded-md border border-border bg-background px-2.5 py-1 text-xs font-medium transition hover:border-primary hover:text-primary"
-      >
-        ⬇ 导出 JSON
-      </button>
-      <button
-        type="button"
-        onClick={onOpenSettings}
-        title="设置目标工作流"
-        className="rounded-md border border-border bg-background px-2.5 py-1 text-xs font-medium transition hover:border-primary hover:text-primary"
-      >
-        ⚙ 设置
-      </button>
+      <Menubar>
+        <MenubarMenu>
+          <MenubarTrigger>文件</MenubarTrigger>
+          <MenubarContent>
+            <MenubarItem onClick={onExport}>⬇ 导出 JSON</MenubarItem>
+            <MenubarItem onClick={onClear} variant="destructive">🗑 清空画布</MenubarItem>
+          </MenubarContent>
+        </MenubarMenu>
+
+        <MenubarMenu>
+          <MenubarTrigger>工具</MenubarTrigger>
+          <MenubarContent>
+            <MenubarItem onClick={onAutoLayout}>⊕ 自动布局</MenubarItem>
+            <MenubarItem onClick={onOpenSettings}>⚙ 设置</MenubarItem>
+          </MenubarContent>
+        </MenubarMenu>
+
+        <MenubarMenu>
+          <MenubarTrigger>编辑器</MenubarTrigger>
+          <MenubarContent>
+            <MenubarItem onClick={openAnimationEditor}>🎞 动画编辑器</MenubarItem>
+          </MenubarContent>
+        </MenubarMenu>
+      </Menubar>
 
       <div className="ml-auto flex items-center gap-2">
         {queueSlot}
         <span className="text-xs text-muted-foreground">{count} 个节点</span>
-        <button
-          type="button"
-          onClick={onClear}
-          className="rounded-md border border-border px-2.5 py-1 text-xs text-muted-foreground transition hover:border-red-500 hover:text-red-500"
-        >
-          清空
-        </button>
       </div>
     </div>
   );
