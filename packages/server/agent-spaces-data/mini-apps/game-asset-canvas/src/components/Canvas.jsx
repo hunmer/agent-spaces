@@ -1,15 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Background, BackgroundVariant, Controls, MarkerType, MiniMap, ReactFlow,
+  Background, BackgroundVariant, Controls, ControlButton, MarkerType, MiniMap, ReactFlow,
   ViewportPortal,
   addEdge, applyEdgeChanges, applyNodeChanges, useReactFlow,
 } from '@xyflow/react';
 import {
   ResizablePanelGroup, ResizablePanel, ResizableHandle, WorkflowGroupOverlay,
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
+  DropdownMenuGroup, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent,
   ContextMenu, ContextMenuTrigger, ContextMenuContent, ContextMenuItem,
   ContextMenuSub, ContextMenuSubTrigger, ContextMenuSubContent, ContextMenuGroup,
-  Layers, AlignHorizontalJustifyCenter, AlignVerticalJustifyCenter, Trash2,
+  Layers, AlignHorizontalJustifyCenter, AlignVerticalJustifyCenter, Trash2, MapPinned,
 } from '@agent-spaces/ui';
 import Toolbar from './Toolbar';
 import RightPanel from './RightPanel';
@@ -34,7 +35,7 @@ import { IMAGE_PROCESSOR_CATEGORIES, IMAGE_PROCESSORS, IMAGE_TAGS, NODE_META, NO
 import { autoLayout } from '../utils/layout';
 import { downloadJson, serializeCanvas } from '../utils/export';
 import { copyNodes, hasClipboard, pasteNodes } from '../utils/clipboard';
-import { loadPanelLayout, onAnyConfigChanged, savePanelLayout } from '../utils/storage';
+import { loadPanelLayout, loadShowMinimap, onAnyConfigChanged, savePanelLayout } from '../utils/storage';
 import { runProcessor } from '../utils/image-ops';
 
 // 节点类型 -> 渲染组件
@@ -194,6 +195,9 @@ export default function Canvas() {
   const [formState, setFormState] = useState(null);
   // 右键菜单位置：ContextMenu（Radix）自管浮层定位，这里只记录右键处的画布坐标，用于在该处建节点
   const [contextMenu, setContextMenu] = useState(null);
+  // 拖拽连线到空白处放手的「添加节点」菜单：
+  // { clientX, clientY, source, sourceHandle } | null
+  const [dropNodeMenu, setDropNodeMenu] = useState(null);
   const reactFlow = useReactFlow();
   // 拖拽到画布时记录拖入的节点类型（参考 reactflow.dev drag-and-drop）
   const dragTypeRef = useRef(null);
@@ -203,8 +207,9 @@ export default function Canvas() {
   const [panelLayout, setPanelLayout] = useState(() => loadPanelLayout() || DEFAULT_PANEL_LAYOUT);
   useEffect(() => {
     const unsub = onAnyConfigChanged((path, value) => {
-      if (path === 'panel-layout.json' && value?.layout && typeof value.layout === 'object') {
-        setPanelLayout(value.layout);
+      if (path === 'panel-layout.json') {
+        if (value?.layout && typeof value.layout === 'object') setPanelLayout(value.layout);
+        if (typeof value?.showMinimap === 'boolean') setShowMinimap(value.showMinimap);
       }
     });
     return () => { try { unsub(); } catch {} };
@@ -251,8 +256,25 @@ export default function Canvas() {
     });
   }, [nodes, setEdges]);
 
+  // 连线拖到空白处放手（未命中有效 target）：弹出「添加节点」菜单，
+  // 用户选择类型后在落点创建节点并自动与起点连接。
+  // 参考 xyflow AddNodeOnEdgeDrop 示例（onConnectEnd + connectionState.isValid）。
+  const onConnectEnd = useCallback((event, connectionState) => {
+    if (connectionState.isValid) return; // 正常命中 target，交给 onConnect
+    if (!connectionState.fromNode) return;
+    const { clientX, clientY } = 'changedTouches' in event ? event.changedTouches[0] : event;
+    setDropNodeMenu({
+      clientX, clientY,
+      source: connectionState.fromNode.id,
+      sourceHandle: connectionState.fromHandle?.id ?? null,
+    });
+  }, []);
+
   // 选中数量（>1 时表示多选；用于 NodeShell 隐藏单节点 toolbar）
   const [selectionCount, setSelectionCount] = useState(0);
+  // MiniMap 显示开关（Controls 上的按钮切换），默认显示
+  // MiniMap 显示开关（持久化到 panel-layout.json，刷新后恢复）
+  const [showMinimap, setShowMinimap] = useState(() => loadShowMinimap());
   const onSelectionChange = useCallback(({ nodes: selNodes }) => {
     setSelectedId(selNodes.length === 1 ? selNodes[0].id : null);
     setSelectionCount(selNodes.length);
@@ -326,6 +348,34 @@ export default function Canvas() {
     return id;
   }, [nodes.length, setNodes]);
 
+  // 「添加节点」菜单选中类型后：在落点创建节点（居中），并连一条 edge
+  // （必须在 createNodeAt 之后定义，否则 useCallback deps 会触发 TDZ）
+  const handleAddAtDrop = useCallback((type, dataPatch) => {
+    setDropNodeMenu((cur) => {
+      if (!cur) return null;
+      const flow = reactFlow.screenToFlowPosition({ x: cur.clientX, y: cur.clientY });
+      const size = DEFAULT_SIZE[type] || DEFAULT_SIZE.default;
+      // 节点中心落在落点
+      const position = { x: flow.x - size.w / 2, y: flow.y - size.h / 2 };
+      const newId = createNodeAt(type, position, dataPatch);
+      setEdges((prev) => {
+        const key = `${cur.source}->${newId}`;
+        if (prev.some((e) => `${e.source}->${e.target}` === key)) return prev;
+        return addEdge(
+          {
+            source: cur.source,
+            target: newId,
+            sourceHandle: cur.sourceHandle,
+            markerEnd: { type: MarkerType.ArrowClosed },
+            animated: true,
+          },
+          prev,
+        );
+      });
+      return null; // 关闭菜单
+    });
+  }, [reactFlow, createNodeAt, setEdges]);
+
   // 点击添加（默认位置，偏移错落）
   const handleAdd = useCallback((type) => {
     createNodeAt(type, null);
@@ -369,8 +419,9 @@ export default function Canvas() {
           id,
           type: NODE_TYPES.imageDisplay,
           position: {
-            x: (position?.x || 120) + col * (size.w + gap),
-            y: (position?.y || 120) + row * (size.h + gap) + base * 10,
+            // 落点表示节点中心：第一张图中心对齐鼠标位置，其余按网格错落
+            x: (position?.x || 120) + col * (size.w + gap) - size.w / 2,
+            y: (position?.y || 120) + row * (size.h + gap) - size.h / 2,
           },
           width: size.w, height: size.h,
           style: { width: size.w, height: size.h },
@@ -879,6 +930,8 @@ export default function Canvas() {
       }
       return {
         ...nd,
+        // 图片展示节点：限定只能从 .image-drag-handle 拖动（图片区域可点选/看大图不触发拖拽）
+        dragHandle: nd.type === NODE_TYPES.imageDisplay ? '.image-drag-handle' : nd.dragHandle,
         data: {
           ...data,
           // 当前选中节点总数：多选时隐藏节点 toolbar（避免多选时每个节点都冒出工具栏）
@@ -935,10 +988,20 @@ export default function Canvas() {
   }, [groups, setNodes]);
 
   // 面板布局变化 -> 持久化
+  // 面板布局变化 -> 持久化（同时带上当前 showMinimap，避免覆盖）
   const handlePanelLayoutChange = useCallback((layout) => {
     setPanelLayout(layout);
-    savePanelLayout(layout);
-  }, []);
+    savePanelLayout(layout, { showMinimap });
+  }, [showMinimap]);
+
+  // 切换 MiniMap 显隐 -> 持久化（同时带上当前 layout）
+  const toggleMinimap = useCallback(() => {
+    setShowMinimap((prev) => {
+      const next = !prev;
+      savePanelLayout(panelLayout, { showMinimap: next });
+      return next;
+    });
+  }, [panelLayout]);
 
   const nodeTypes = useMemo(() => NODE_COMPONENTS, []);
 
@@ -1024,6 +1087,7 @@ export default function Canvas() {
               onNodesChange={onNodesChange}
               onEdgesChange={onEdgesChange}
               onConnect={onConnect}
+              onConnectEnd={onConnectEnd}
               connectionLineComponent={ConnectionLine}
               onSelectionChange={onSelectionChange}
               onNodesDelete={onNodesDelete}
@@ -1033,13 +1097,24 @@ export default function Canvas() {
               proOptions={{ hideAttribution: true }}
             >
               <Background variant={BackgroundVariant.Dots} gap={16} size={1} />
-              <Controls />
-              <MiniMap
-                pannable
-                zoomable
-                nodeColor={(n) => (NODE_META[n.type]?.color || '#94a3b8')}
-                maskColor="rgb(0 0 0 / 0.05)"
-              />
+              <Controls>
+                {/* 切换 MiniMap 显示：关闭时按钮高亮提示当前状态 */}
+                <ControlButton
+                  title={showMinimap ? '隐藏小地图' : '显示小地图'}
+                  onClick={toggleMinimap}
+                  style={{ background: showMinimap ? undefined : 'var(--accent)' }}
+                >
+                  <MapPinned className="h-4 w-4" />
+                </ControlButton>
+              </Controls>
+              {showMinimap && (
+                <MiniMap
+                  pannable
+                  zoomable
+                  nodeColor={(n) => (NODE_META[n.type]?.color || '#94a3b8')}
+                  maskColor="rgb(0 0 0 / 0.05)"
+                />
+              )}
               {/* 分组 overlay：复用宿主 WorkflowGroupOverlay（与 workflow 编辑器同源），
                   放在 ViewportPortal 内跟随画布 pan/zoom，按子节点包围盒自动贴合 */}
               <ViewportPortal>
@@ -1108,55 +1183,83 @@ export default function Canvas() {
                 </div>
               </div>
             )}
+            {/* 拖拽连线到空白处放手的「添加节点」菜单：复用右键菜单同一份 AddNodeMenuItems。
+                用 DropdownMenu（Base UI Menu）受控打开，trigger 用 1x1 span 定位到放手坐标作锚点。
+                ContextMenu 无法程序化打开，故这里用 DropdownMenu 组件族。 */}
+            {dropNodeMenu && (
+              <DropdownMenu
+                open
+                onOpenChange={(open) => { if (!open) setDropNodeMenu(null); }}
+              >
+                <DropdownMenuTrigger
+                  render={<span style={{ position: 'fixed', left: dropNodeMenu.clientX, top: dropNodeMenu.clientY, width: 1, height: 1, pointerEvents: 'none' }} />}
+                />
+                <DropdownMenuContent
+                  align="start"
+                  sideOffset={0}
+                  className="w-52"
+                >
+                  <AddNodeMenuItems
+                    onPick={handleAddAtDrop}
+                    renderItem={(children, onClick, key) => (
+                      <DropdownMenuItem key={key} onClick={onClick}>
+                        {children}
+                      </DropdownMenuItem>
+                    )}
+                    renderSub={(triggerLabel, subItems, key) => (
+                      <DropdownMenuSub key={key}>
+                        <DropdownMenuSubTrigger>{triggerLabel}</DropdownMenuSubTrigger>
+                        <DropdownMenuSubContent className="w-52">
+                          {subItems.map((s) => (
+                            s.type === 'label' ? (
+                              <p key={s.id} className="px-2 py-0.5 text-[10px] text-muted-foreground">
+                                {s.label}
+                              </p>
+                            ) : (
+                              <DropdownMenuItem key={s.id} title={s.desc} onClick={s.onClick}>
+                                {s.label}
+                              </DropdownMenuItem>
+                            )
+                          ))}
+                        </DropdownMenuSubContent>
+                      </DropdownMenuSub>
+                    )}
+                  />
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
           </ContextMenuTrigger>
             {/* 画布右键菜单（Base UI ContextMenu）：节点类型列表，点击在右键位置创建节点。
                 「图像处理」用 ContextMenuSub 渲染处理器快捷子菜单，点击子项创建预选该处理器的节点。
                 浮层定位/关闭/键盘导航全部由 Base UI 管，无需手写 state。 */}
             <ContextMenuContent className="w-52">
               <ContextMenuGroup>
-                {ADD_NODE_ITEMS.map((it) => {
-                  const meta = NODE_META[it.type];
-                  if (it.type === NODE_TYPES.imageProcess) {
-                    return (
-                      <ContextMenuSub key={it.type}>
-                        <ContextMenuSubTrigger>
-                          <span>{meta.icon}</span>
-                          <span>{meta.label}</span>
-                        </ContextMenuSubTrigger>
-                        <ContextMenuSubContent className="w-52">
-                          {IMAGE_PROCESSOR_CATEGORIES.map((cat) => {
-                            const items = IMAGE_PROCESSORS.filter((p) => p.category === cat.id);
-                            if (!items.length) return null;
-                            return (
-                              <ContextMenuGroup key={cat.id}>
-                                <p className="px-2 py-0.5 text-[10px] text-muted-foreground">
-                                  {cat.icon} {cat.label}
-                                </p>
-                                {items.map((p) => (
-                                  <ContextMenuItem
-                                    key={p.id}
-                                    title={p.desc}
-                                    onClick={() => handleAddAtMenu(it.type, {
-                                      params: { processor: p.id, processorParams: defaultProcessorParams(p.id) },
-                                    })}
-                                  >
-                                    {p.label}
-                                  </ContextMenuItem>
-                                ))}
-                              </ContextMenuGroup>
-                            );
-                          })}
-                        </ContextMenuSubContent>
-                      </ContextMenuSub>
-                    );
-                  }
-                  return (
-                    <ContextMenuItem key={it.type} onClick={() => handleAddAtMenu(it.type)}>
-                      <span>{meta.icon}</span>
-                      <span>{meta.label}</span>
+                <AddNodeMenuItems
+                  onPick={handleAddAtMenu}
+                  renderItem={(children, onClick, key) => (
+                    <ContextMenuItem key={key} onClick={onClick}>
+                      {children}
                     </ContextMenuItem>
-                  );
-                })}
+                  )}
+                  renderSub={(triggerLabel, subItems, key) => (
+                    <ContextMenuSub key={key}>
+                      <ContextMenuSubTrigger>{triggerLabel}</ContextMenuSubTrigger>
+                      <ContextMenuSubContent className="w-52">
+                        {subItems.map((s) => (
+                          s.type === 'label' ? (
+                            <p key={s.id} className="px-2 py-0.5 text-[10px] text-muted-foreground">
+                              {s.label}
+                            </p>
+                          ) : (
+                            <ContextMenuItem key={s.id} title={s.desc} onClick={s.onClick}>
+                              {s.label}
+                            </ContextMenuItem>
+                          )
+                        ))}
+                      </ContextMenuSubContent>
+                    </ContextMenuSub>
+                  )}
+                />
               </ContextMenuGroup>
             </ContextMenuContent>
           </ContextMenu>
@@ -1178,6 +1281,7 @@ export default function Canvas() {
           onRemoveHistory={removeHistory}
           onClearHistory={clearHistory}
           onUseImage={handleUseImage}
+          workspaceId={activeId}
         />
       </ResizablePanel>
 
@@ -1201,3 +1305,52 @@ export default function Canvas() {
     </ResizablePanelGroup>
   );
 }
+
+/**
+ * 添加节点的菜单项列表（右键菜单 / 拖拽落空菜单共用同一份内容）。
+ * 用 render-prop 注入对应组件族，使一份逻辑同时适配 ContextMenu 与 DropdownMenu。
+ *
+ * @param {object} props
+ * @param {Function} props.onPick  (type, dataPatch?) => void
+ * @param {Function} props.renderItem     普通 item 渲染函数：(children, key) => JSX
+ * @param {Function} props.renderSub      子菜单 item 渲染函数：(triggerLabel, items[], key) => JSX，
+ *                                        items 为 [{ id, label, desc, onClick }]
+ */
+function AddNodeMenuItems({ onPick, renderItem, renderSub }) {
+  return ADD_NODE_ITEMS.map((it) => {
+    const meta = NODE_META[it.type];
+    if (it.type === NODE_TYPES.imageProcess) {
+      const subItems = [];
+      IMAGE_PROCESSOR_CATEGORIES.forEach((cat) => {
+        const items = IMAGE_PROCESSORS.filter((p) => p.category === cat.id);
+        if (items.length) {
+          subItems.push({
+            id: `cat-${cat.id}`,
+            type: 'label',
+            label: `${cat.icon} ${cat.label}`,
+          });
+          items.forEach((p) => subItems.push({
+            id: p.id,
+            type: 'item',
+            label: p.label,
+            desc: p.desc,
+            onClick: () => onPick(it.type, {
+              params: { processor: p.id, processorParams: defaultProcessorParams(p.id) },
+            }),
+          }));
+        }
+      });
+      return renderSub(
+        <><span>{meta.icon}</span><span>{meta.label}</span></>,
+        subItems,
+        it.type,
+      );
+    }
+    return renderItem(
+      <><span>{meta.icon}</span><span>{meta.label}</span></>,
+      () => onPick(it.type),
+      it.type,
+    );
+  });
+}
+

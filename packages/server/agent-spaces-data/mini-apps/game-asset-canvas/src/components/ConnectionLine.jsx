@@ -1,65 +1,52 @@
 import { getSimpleBezierPath, useNodes, useReactFlow } from '@xyflow/react';
 
 /**
- * 自定义连接线：多选节点时，从每个选中节点的 source handle 都画一条连线到鼠标位置。
- * 单选/无选中时只画默认的一条（source 就是拖拽起点的那个节点）。
+ * 自定义连接线预览：
+ * - 单节点拖拽：渲染一条 fromNode → 鼠标 的连线（用 ReactFlow 传入的 fromX/fromY，已是 source handle 中心）
+ * - 多选拖拽（source 节点处于选中态）：从每个选中节点的 source handle 都画一条预览线
  *
- * 用法：<ReactFlow connectionLineComponent={ConnectionLine} />
+ * 关键：指定了 connectionLineComponent 后，ReactFlow 不再渲染默认连线，
+ * 所以单节点情况也必须自己返回连线，不能 return null（否则拖拽过程看不到任何预览）。
  *
- * 参考 xyflow 官方 MultiConnectLine 示例（https://reactflow.dev/examples/interaction/multi-connect）。
+ * 参考 xyflow 官方 MultiConnectLine 示例。
  *
- * @param {{ fromX:number, fromY:number, toX:number, toY:number, fromHandle?:object, fromNode?:object }} props
+ * @param {{ fromX:number, fromY:number, toX:number, toY:number, fromNode?:object }} props
  */
 export default function ConnectionLine({ fromX, fromY, toX, toY, fromNode }) {
   const { getInternalNode } = useReactFlow();
   const nodes = useNodes();
-  const selectedNodes = nodes.filter((node) => node.selected);
 
-  // 仅多选时启用多连线预览：单选（0 或 1 个选中）走 ReactFlow 默认（返回 null 让内置渲染接管）
-  if (selectedNodes.length < 2) return null;
+  // fromNode 是否处于多选集合中：是则把所有选中节点都连过去
+  const fromSelected = !!fromNode && nodes.some((n) => n.id === fromNode.id && n.selected);
+  const extraIds = fromSelected
+    ? nodes.filter((n) => n.selected && n.id !== fromNode?.id).map((n) => n.id)
+    : [];
 
-  // fromNode 为当前拖拽起点的节点；确保它一定在连线列表里（即使其 selected 因某种原因未同步）
-  const baseIds = new Set(selectedNodes.map((n) => n.id));
-  if (fromNode?.id) baseIds.add(fromNode.id);
+  // 主线（fromNode）一定渲染，单选/多选都靠它保证拖拽时看得到线
+  const segments = [{ key: fromNode?.id || 'main', x: fromX, y: fromY }];
 
-  const handleBounds = [];
-  for (const id of baseIds) {
+  // 多选：每个附加选中节点都从其 source handle 起一条
+  for (const id of extraIds) {
     const node = getInternalNode(id);
     if (!node) continue;
     const internals = node.internals || {};
-    const bounds = internals.handleBounds;
-    const sources = bounds?.source || [];
+    const pos = internals.positionAbsolute || node.position;
+    const sources = internals.handleBounds?.source || [];
     for (const b of sources) {
-      handleBounds.push({
-        id,
-        positionAbsolute: internals.positionAbsolute || node.position,
-        bounds: b,
+      segments.push({
+        key: `${id}-${b.id || 'default'}`,
+        x: pos.x + b.x + b.width / 2,
+        y: pos.y + b.y + b.height / 2,
       });
     }
   }
 
-  return handleBounds.map(({ id, positionAbsolute, bounds }) => {
-    const fromHandleX = bounds.x + bounds.width / 2;
-    const fromHandleY = bounds.y + bounds.height / 2;
-    const startX = positionAbsolute.x + fromHandleX;
-    const startY = positionAbsolute.y + fromHandleY;
-    const [d] = getSimpleBezierPath({
-      sourceX: startX,
-      sourceY: startY,
-      targetX: toX,
-      targetY: toY,
-    });
+  return segments.map(({ key, x, y }) => {
+    const [d] = getSimpleBezierPath({ sourceX: x, sourceY: y, targetX: toX, targetY: toY });
     return (
-      <g key={`${id}-${bounds.id || 'default'}`}>
+      <g key={key}>
         <path fill="none" strokeWidth={1.5} stroke="#6366f1" d={d} />
-        <circle
-          cx={toX}
-          cy={toY}
-          fill="#fff"
-          r={4}
-          stroke="#6366f1"
-          strokeWidth={1.5}
-        />
+        <circle cx={toX} cy={toY} fill="#fff" r={4} stroke="#6366f1" strokeWidth={1.5} />
       </g>
     );
   });

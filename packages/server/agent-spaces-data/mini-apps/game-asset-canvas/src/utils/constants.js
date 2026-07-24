@@ -112,6 +112,8 @@ export function workspaceConfigPath(workspaceId, fileName) {
 
 export const WORKSPACE_CANVAS = 'canvas.json';
 export const WORKSPACE_HISTORY = 'generation-history.json';
+// 素材库（按工作区隔离）：分类 + 分类下的图片资产
+export const ASSET_LIBRARY_CONFIG = 'asset-library.json';
 
 // ============ 图像处理节点 ============
 // 处理器分类（下拉按此分组），与 utils/image-ops/index.js 的 PROCESSORS 的 id 一一对应。

@@ -1,6 +1,10 @@
 import { useState } from 'react';
-import { openMediaGallery, ScrollArea, Tabs, TabsList, TabsTrigger, TabsContent, Crosshair, Trash2 } from '@agent-spaces/ui';
+import {
+  openMediaGallery, ScrollArea, Tabs, TabsList, TabsTrigger, TabsContent,
+  Crosshair, Trash2, Plus, Boxes, History, Images,
+} from '@agent-spaces/ui';
 import { NODE_META, NODE_TYPES } from '../utils/constants';
+import AssetLibrary from './AssetLibrary';
 
 const ADD_ITEMS = [
   { type: NODE_TYPES.textToImage, label: '文字生成图片' },
@@ -19,14 +23,24 @@ export default function RightPanel({
   nodes, onSelectNode, onLocateNode, onDeleteNode,
   onAdd, onDragStartNode, onOpenForm,
   history, onRemoveHistory, onClearHistory, onUseImage,
+  workspaceId,
 }) {
   return (
     <div className="flex h-full min-h-0 flex-col border-l border-border bg-card">
       <Tabs defaultValue="add" className="flex h-full min-h-0 flex-col">
-        <TabsList className="grid w-full grid-cols-3 rounded-none border-b border-border">
-          <TabsTrigger value="add">新增节点</TabsTrigger>
-          <TabsTrigger value="nodes">节点管理</TabsTrigger>
-          <TabsTrigger value="history">生成记录</TabsTrigger>
+        <TabsList className="flex w-full flex-row flex-nowrap rounded-none border-b border-border">
+          <TabsTrigger value="add" title="新增节点" aria-label="新增节点" className="flex-1">
+            <Plus className="h-4 w-4" />
+          </TabsTrigger>
+          <TabsTrigger value="nodes" title="节点管理" aria-label="节点管理" className="flex-1">
+            <Boxes className="h-4 w-4" />
+          </TabsTrigger>
+          <TabsTrigger value="history" title="生成记录" aria-label="生成记录" className="flex-1">
+            <History className="h-4 w-4" />
+          </TabsTrigger>
+          <TabsTrigger value="assets" title="素材库" aria-label="素材库" className="flex-1">
+            <Images className="h-4 w-4" />
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="add" className="mt-0 min-h-0 flex-1 overflow-hidden">
@@ -49,6 +63,10 @@ export default function RightPanel({
             onClearHistory={onClearHistory}
             onUseImage={onUseImage}
           />
+        </TabsContent>
+
+        <TabsContent value="assets" className="mt-0 min-h-0 flex-1 overflow-hidden">
+          <AssetLibrary workspaceId={workspaceId} />
         </TabsContent>
       </Tabs>
     </div>

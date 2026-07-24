@@ -63,6 +63,9 @@ export { Markdown } from '@/components/ui/markdown';
 export { ExpandableTabs } from '@/components/ui/expandable-tabs';
 export { FileUpload } from '@/components/ui/file-upload';
 export type { FileUploadFile } from '@/components/ui/file-upload';
+// 纯 UI 拖拽接收层（不含上传逻辑，onFiles 回调通知调用方）
+export { Dropzone } from '@/components/ui/dropzone';
+export type { DropzoneProps } from '@/components/ui/dropzone';
 export { VoiceInput } from '@/components/ui/voice-input';
 export { MorphingSpinner } from '@/components/ui/morphing-spinner';
 export { BorderGlide, MovingBorder } from '@/components/ui/border-glide';
@@ -112,6 +115,7 @@ export {
   BackgroundVariant,
   Controls,
   MiniMap,
+  ControlButton,
   useNodesState,
   useEdgesState,
   addEdge,

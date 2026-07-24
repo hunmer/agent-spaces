@@ -1,4 +1,4 @@
-import { CANVAS_CONFIG, HISTORY_CONFIG } from './constants';
+import { CANVAS_CONFIG, HISTORY_CONFIG, ASSET_LIBRARY_CONFIG } from './constants';
 
 const AS = () => window.AgentSpaces;
 
@@ -33,6 +33,11 @@ export function historyConfigPath(workspaceId) {
   return workspaceId ? `workspaces/${workspaceId}/${HISTORY_CONFIG}` : HISTORY_CONFIG;
 }
 
+/** 工作区隔离的 asset-library.json 路径 */
+export function assetLibraryConfigPath(workspaceId) {
+  return workspaceId ? `workspaces/${workspaceId}/${ASSET_LIBRARY_CONFIG}` : ASSET_LIBRARY_CONFIG;
+}
+
 /** 订阅任意 config 变化（多端同步），回调签名 (path, value) */
 export function onAnyConfigChanged(callback) {
   const as = AS();
@@ -65,8 +70,9 @@ export function debounce(fn, wait) {
   return wrapped;
 }
 
-// ============ 面板布局持久化 ============
+// ============ 面板布局 / 视图偏好持久化 ============
 // react-resizable-panels@4: Layout = { [panelId]: number(percentage) }
+// 同文件存其它全局视图偏好（不按工作区隔离），如 MiniMap 显隐。
 const PANEL_LAYOUT_CONFIG = 'panel-layout.json';
 
 /**
@@ -81,12 +87,23 @@ export function loadPanelLayout() {
 }
 
 /**
- * 保存面板布局（轻量本地偏好，用 writeConfigJson 即可）。
- * @param {Record<string, number>} layout { panelId: percentage }
+ * 读取 MiniMap 显隐偏好（缺省视为 true 显示）。
+ * @returns {boolean}
  */
-export function savePanelLayout(layout) {
+export function loadShowMinimap() {
+  const as = AS();
+  const v = as?.getConfig?.(PANEL_LAYOUT_CONFIG);
+  return v?.showMinimap !== false; // 仅显式 false 才隐藏
+}
+
+/**
+ * 保存面板布局 + 视图偏好到同一文件。
+ * @param {Record<string, number>} layout { panelId: percentage }
+ * @param {object} [extra] 额外视图偏好字段（如 { showMinimap }），与 layout 合并存储
+ */
+export function savePanelLayout(layout, extra = {}) {
   const as = AS();
   if (!as?.writeConfigJson) return;
-  as.writeConfigJson(PANEL_LAYOUT_CONFIG, { layout, savedAt: Date.now() }).catch(() => {});
+  as.writeConfigJson(PANEL_LAYOUT_CONFIG, { layout, ...extra, savedAt: Date.now() }).catch(() => {});
 }
 

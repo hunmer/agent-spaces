@@ -47,13 +47,25 @@
       "data": {
         "code": "async function main({ params }) {\n  const ret = {\n    \"key0\": params.input + params.input,\n    \"key1\": [\"hello\", \"world\"],\n    \"key2\": {\n      \"key21\": \"hi\",\n    },\n  }\n\n  return ret\n}"
       }
+    },
+    {
+      "id": "node_1784859744307_c876zd",
+      "type": "toast",
+      "label": "nodes.toast.label",
+      "position": {
+        "x": 570,
+        "y": 690
+      },
+      "data": {
+        "type": "info"
+      }
     }
   ],
   "edges": [],
   "createdAt": 1784775785773,
-  "updatedAt": 1784778299734,
+  "updatedAt": 1784859754357,
   "published": false,
-  "lastOpenedAt": 1784775838656,
+  "lastOpenedAt": 1784859733643,
   "groups": [
     {
       "id": "group_1784775852596_qka86f",

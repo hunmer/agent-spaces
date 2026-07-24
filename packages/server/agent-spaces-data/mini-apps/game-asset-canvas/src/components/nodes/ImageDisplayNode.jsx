@@ -1,30 +1,49 @@
-import { useCallback, useRef, useState } from 'react';
-import { openMediaGallery } from '@agent-spaces/ui';
-import NodeShell from './NodeShell';
-import { NODE_TYPES } from '../../utils/constants';
+import { useCallback, useRef, useState, useEffect } from 'react';
+import { Handle, NodeResizer, NodeToolbar, Position } from '@xyflow/react';
+import { ChevronLeft, ChevronRight, Upload, openMediaGallery } from '@agent-spaces/ui';
 
 /**
- * 图片展示节点：上传一张图片（或粘贴 URL），可连线传给下游编辑节点。
+ * 图片展示节点：纯展示图片，无外壳边框/标题栏。
  *
- * 上传走 window.AgentSpaces.uploadFile（use-mini-app-host-api.tsx）→ 返回 { url, ... }，
- * url 是 http URL，存入节点 data 持久化到 configs/canvas.json，刷新页面后图片不丢失。
+ * 结构：
+ * - 顶部一条窄的「自定义拖拽 handle」（.image-drag-handle），通过 ReactFlow node.dragHandle
+ *   限定整节点只能从该处拖动（图片区域不触发拖拽，便于点图看大图/框选）。
+ * - 图片主体（满宽 object-contain），点击看大图。
+ * - 选中时底部浮出 overlay：来源 tags + 多图切换箭头 + 上传按钮。
+ * - Handle 左(输入)/右(输出)，NodeResizer 选中时显示，NodeToolbar 导出/抠图/放大/编辑（复用 NodeShell 行为）。
  *
- * data.images: string[]  当前展示的图片（http URL）
- * data.source: 'upload' | 'url' | 'upstream' | 'history'  来源标记
+ * data.images: string[]  当前展示的图片（http URL）；多图时底部箭头切换。
+ * data.source: 'upload' | 'url' | 'upstream' | 'history' | ...  来源标记
+ * data.tags: string[]  来源标签
  */
 export default function ImageDisplayNode({ id, data, selected }) {
-  const images = data?.images || [];
+  const images = Array.isArray(data?.images) ? data.images.filter(Boolean) : [];
   const onUpdate = data?.onUpdate;
   const onAutoSize = data?.onAutoSize;
   const fileRef = useRef(null);
   const [uploading, setUploading] = useState(false);
-  // 处理中（抠图/放大/队列生成）显示加载占位，完成后刷新为结果图
   const loading = data?.loading;
   const source = data?.source;
-  // 来源标签数组（不同来源传不同 tag 做区分，如「文生图」「编辑图片」「抠图」等）
   const tags = Array.isArray(data?.tags) ? data.tags.filter(Boolean) : [];
+  // 多图当前索引；图片集合变化时自动夹回有效范围
+  const [imgIndex, setImgIndex] = useState(0);
+  useEffect(() => {
+    if (imgIndex > images.length - 1) setImgIndex(Math.max(0, images.length - 1));
+  }, [images.length, imgIndex]);
 
-  // 图片加载完成：按自然尺寸回调 Canvas 自动调整节点尺寸（仅触发一次：图片 URL 变化时重新测量）
+  const selectionCount = data?.selectionCount ?? 1;
+  const isMulti = images.length > 1;
+  const current = images[Math.min(imgIndex, images.length - 1)] || images[0];
+
+  // 工具栏按钮可见性（与原 NodeShell 逻辑一致：有产出图且有回调）
+  const onExportImages = data?.onExportImages;
+  const onProcessImage = data?.onProcessImage;
+  const onEditImages = data?.onEditImages;
+  const showProcessButtons = images.length > 0 && onProcessImage;
+  const showEditButton = images.length > 0 && onEditImages;
+  const showToolbar = images.length > 0 && onExportImages || showProcessButtons || showEditButton;
+
+  // 图片加载完成：按自然尺寸回调 Canvas 自动调整节点尺寸
   const handleImgLoad = useCallback((e) => {
     const img = e.currentTarget;
     const nw = img?.naturalWidth;
@@ -36,7 +55,6 @@ export default function ImageDisplayNode({ id, data, selected }) {
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
-
     const AS = window.AgentSpaces;
     if (!AS?.uploadFile) {
       console.warn('AgentSpaces.uploadFile 不可用');
@@ -44,112 +62,182 @@ export default function ImageDisplayNode({ id, data, selected }) {
     }
     setUploading(true);
     try {
-      // uploadFile 返回 { name, path, size, type, url, httpPath }
-      // url 即可直接用于 <img src> 的 http URL
       const uploaded = await AS.uploadFile(file);
       const httpUrl = uploaded?.url || uploaded?.httpPath;
       if (!httpUrl) throw new Error('上传未返回 URL');
       onUpdate?.({ images: [httpUrl], source: 'upload' });
     } catch (err) {
       console.error('uploadFile failed:', err);
-      const msg = err?.message || String(err);
-      onUpdate?.({ error: `上传失败：${msg}` });
+      onUpdate?.({ error: `上传失败：${err?.message || String(err)}` });
     } finally {
       setUploading(false);
     }
   }, [onUpdate]);
 
-  const handleUrl = useCallback((raw) => {
-    const url = String(raw || '').trim();
-    if (!url) return;
-    onUpdate?.({ images: [url], source: 'url', error: undefined });
-  }, [onUpdate]);
-
   const open = useCallback(() => {
     if (!images.length) return;
-    openMediaGallery(images.map((src) => ({ src, type: 'image' })), 0);
-  }, [images]);
+    openMediaGallery(images.map((src) => ({ src, type: 'image' })), Math.min(imgIndex, images.length - 1));
+  }, [images, imgIndex]);
 
-  const isUpstream = data?.source === 'upstream';
+  const sourceLabel = data?.source === 'upstream' ? '来自连线'
+    : source === 'url' ? '来自 URL'
+    : source === 'history' ? '来自记录'
+    : source === 'segment' ? '抠图结果'
+    : source === 'enhance' ? '放大结果'
+    : source === 'error' ? '处理失败'
+    : '已上传';
 
   return (
-    <NodeShell id={id} nodeType={NODE_TYPES.imageDisplay} data={data} selected={selected} targetHandle sourceHandle>
-      {loading ? (
-        // 抠图/放大/队列生成处理中：加载占位（含来源 tags）
-        <div className="flex flex-col gap-2">
-          <div className="flex h-28 items-center justify-center gap-2 rounded-md border border-dashed border-primary/50 text-xs text-primary">
+    <div className="group relative h-full w-full overflow-hidden rounded-lg bg-card shadow-sm">
+      {/* NodeToolbar：导出/抠图/放大/编辑（选中且单选时） */}
+      {showToolbar && (
+        <NodeToolbar isVisible={!!selected && selectionCount <= 1} position={Position.Top} align="end" offset={8}>
+          <div className="flex items-center gap-1">
+            {showEditButton && (
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); onEditImages(images); }}
+                className="rounded-md border border-border bg-background px-2.5 py-1 text-xs font-medium text-foreground shadow-sm transition hover:border-primary hover:text-primary"
+              >编辑</button>
+            )}
+            {showProcessButtons && (
+              <>
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); onProcessImage(images, 'segment'); }}
+                  className="rounded-md border border-border bg-background px-2.5 py-1 text-xs font-medium text-foreground shadow-sm transition hover:border-primary hover:text-primary"
+                >抠图</button>
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); onProcessImage(images, 'enhance'); }}
+                  className="rounded-md border border-border bg-background px-2.5 py-1 text-xs font-medium text-foreground shadow-sm transition hover:border-primary hover:text-primary"
+                >放大</button>
+              </>
+            )}
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onExportImages(images); }}
+              className="rounded-md border border-border bg-background px-2.5 py-1 text-xs font-medium text-foreground shadow-sm transition hover:border-primary hover:text-primary"
+            >导出图片</button>
+          </div>
+        </NodeToolbar>
+      )}
+
+      {/* 选中时显示 resize 控件 */}
+      <NodeResizer
+        isVisible={!!selected}
+        minWidth={180}
+        minHeight={120}
+        color="#6366f1"
+        handleClassName="!w-2.5 !h-2.5 !rounded-sm !border-2 !border-background"
+        lineClassName="!border-primary/40"
+      />
+
+      <Handle
+        type="target"
+        position={Position.Left}
+        className="!h-3 !w-3 !border-2 !border-background !bg-muted-foreground"
+      />
+      <Handle
+        type="source"
+        position={Position.Right}
+        className="!h-3 !w-3 !border-2 !border-background !bg-primary"
+      />
+
+      {/* 顶部自定义拖拽 handle：ReactFlow node.dragHandle 指向 .image-drag-handle，
+          整节点只能从这里拖动。透明窄条覆盖图片顶部，hover 时浮现便于发现。 */}
+      <div
+        className="image-drag-handle absolute left-0 right-0 top-0 z-10 h-5 cursor-move opacity-0 transition group-hover:opacity-100"
+        title="拖拽移动"
+      >
+        <div className="mx-auto mt-1 h-1 w-8 rounded-full bg-foreground/30" />
+      </div>
+
+      {/* 图片主体区域：作为节点拖拽 handle（.image-drag-handle，配合 Canvas node.dragHandle）。
+          img 本身 draggable={false} 防止浏览器原生拖图虚影，但父容器是 ReactFlow 拖拽区，
+          按住图片拖动即可移动整个节点。nowheel 防滚轮误触画布缩放。 */}
+      <div className="image-drag-handle nopan nowheel absolute inset-0 flex items-center justify-center p-0">
+        {loading ? (
+          <div className="flex h-full w-full items-center justify-center gap-2 text-xs text-primary">
             <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-primary border-t-transparent" />
             生成中…
           </div>
-          {tags.length > 0 && <TagsRow tags={tags} />}
-        </div>
-      ) : uploading ? (
-        <div className="flex h-28 items-center justify-center gap-2 rounded-md border border-dashed border-primary/50 text-xs text-primary">
-          <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-          上传中…
-        </div>
-      ) : images.length > 0 ? (
-        <div className="flex flex-col gap-2">
-          <button
-            type="button"
-            onClick={open}
-            className="block w-full overflow-hidden rounded-md border border-border"
-          >
-            <img
-              src={images[0]}
-              alt=""
-              className="w-full object-contain"
-              onLoad={handleImgLoad}
-            />
-          </button>
-          <div className="flex flex-wrap items-center gap-1.5">
-            <span className="text-xs text-muted-foreground">
-              {isUpstream ? '来自连线'
-                : source === 'url' ? '来自 URL'
-                : source === 'history' ? '来自记录'
-                : source === 'segment' ? '抠图结果'
-                : source === 'enhance' ? '放大结果'
-                : source === 'error' ? '处理失败'
-                : '已上传'}
-            </span>
-            {tags.map((t) => (
-              <span
-                key={t}
-                className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary"
-              >
-                {t}
-              </span>
-            ))}
-            <button
-              type="button"
-              onClick={() => fileRef.current?.click()}
-              className="ml-auto rounded border border-border px-2 py-0.5 text-xs text-muted-foreground transition hover:border-primary hover:text-primary"
-            >
-              更换
-            </button>
+        ) : uploading ? (
+          <div className="flex h-full w-full items-center justify-center gap-2 text-xs text-primary">
+            <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+            上传中…
           </div>
-        </div>
-      ) : (
-        <div className="flex flex-col gap-2">
+        ) : images.length > 0 ? (
+          <button type="button" onDoubleClick={open} title="双击查看大图" className="block h-full w-full overflow-hidden">
+            {current && (
+              <img
+                key={current}
+                src={current}
+                alt=""
+                draggable={false}
+                className="h-full w-full select-none object-contain"
+                onLoad={handleImgLoad}
+              />
+            )}
+          </button>
+        ) : (
+          // 空态：点开上传。带 image-drag-handle class 让空节点也能从该区域拖动。
           <button
             type="button"
             onClick={() => fileRef.current?.click()}
-            className="flex h-28 flex-col items-center justify-center gap-1 rounded-md border border-dashed border-border text-xs text-muted-foreground transition hover:border-primary hover:text-primary"
+            className="image-drag-handle flex h-full w-full cursor-move flex-col items-center justify-center gap-2 border-2 border-dashed border-border text-xs text-muted-foreground transition hover:border-primary hover:text-primary"
           >
-            <span className="text-2xl">⬆</span>
-            <span>点击上传图片</span>
+            <Upload className="h-6 w-6" />
+            <span className="pointer-events-none select-none">点击上传图片</span>
           </button>
-          <input
-            type="text"
-            placeholder="或粘贴图片 URL"
-            className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-xs outline-none focus:border-primary"
-            onBlur={(e) => handleUrl(e.target.value)}
-          />
+        )}
+      </div>
+
+      {/* 选中时底部 overlay：tags + 多图切换 + 上传 */}
+      {selected && (images.length > 0 || tags.length > 0) && !loading && !uploading && (
+        <div className="nodrag nopan absolute bottom-1.5 left-1.5 right-1.5 z-10 flex items-center gap-1.5 rounded-md bg-background/85 px-2 py-1 text-xs shadow ring-1 ring-border backdrop-blur-sm">
+          {/* 多图切换 */}
+          {isMulti && (
+            <>
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); setImgIndex((i) => (i - 1 + images.length) % images.length); }}
+                className="rounded p-0.5 text-muted-foreground transition hover:bg-accent hover:text-foreground"
+                title="上一张"
+              ><ChevronLeft className="h-3.5 w-3.5" /></button>
+              <span className="shrink-0 tabular-nums text-muted-foreground">
+                {Math.min(imgIndex, images.length - 1) + 1}/{images.length}
+              </span>
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); setImgIndex((i) => (i + 1) % images.length); }}
+                className="rounded p-0.5 text-muted-foreground transition hover:bg-accent hover:text-foreground"
+                title="下一张"
+              ><ChevronRight className="h-3.5 w-3.5" /></button>
+            </>
+          )}
+          {/* 来源 + tags */}
+          <span className="truncate text-muted-foreground">{sourceLabel}</span>
+          {tags.map((t) => (
+            <span
+              key={t}
+              className="shrink-0 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary"
+            >{t}</span>
+          ))}
+          {/* 更换/上传 */}
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); fileRef.current?.click(); }}
+            className="ml-auto flex items-center gap-1 rounded border border-border px-1.5 py-0.5 text-muted-foreground transition hover:border-primary hover:text-primary"
+            title="更换图片"
+          ><Upload className="h-3 w-3" />更换</button>
         </div>
       )}
+
       {data?.error && (
-        <p className="rounded-md bg-red-500/10 px-2 py-1 text-xs text-red-500">{data.error}</p>
+        <p className="absolute bottom-1.5 left-1.5 right-1.5 z-10 rounded bg-red-500/90 px-2 py-1 text-xs text-white">{data.error}</p>
       )}
+
       <input
         ref={fileRef}
         type="file"
@@ -157,23 +245,6 @@ export default function ImageDisplayNode({ id, data, selected }) {
         className="hidden"
         onChange={handleFile}
       />
-    </NodeShell>
-  );
-}
-
-// 来源标签行（loading 占位态复用）
-function TagsRow({ tags }) {
-  if (!tags?.length) return null;
-  return (
-    <div className="flex flex-wrap items-center gap-1.5">
-      {tags.map((t) => (
-        <span
-          key={t}
-          className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary"
-        >
-          {t}
-        </span>
-      ))}
     </div>
   );
 }

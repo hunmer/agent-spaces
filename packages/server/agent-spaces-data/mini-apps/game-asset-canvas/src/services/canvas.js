@@ -5,7 +5,21 @@ const HISTORY_FILE = 'generation-history.json';
 const SETTINGS_CONFIG = 'settings.json';
 const PROMPT_CONFIG = 'prompt-library.json';
 const WORKSPACES_CONFIG = 'workspaces.json';
+const ASSET_LIBRARY_FILE = 'asset-library.json';
 const HISTORY_MAX = 200;
+const ASSET_MAX_PER_CATEGORY = 500; // 单分类资产上限，避免无限膨胀
+
+// 素材库文件路径（工作区隔离）
+function assetLibPath(workspaceId) {
+  return wsPath(workspaceId, ASSET_LIBRARY_FILE);
+}
+
+// 读取素材库（兜底返回空结构，保证调用方总有数据）
+function readAssetLibrary(ctx, workspaceId) {
+  const raw = ctx.readConfig(assetLibPath(workspaceId));
+  if (raw && Array.isArray(raw.categories)) return raw;
+  return { categories: [] };
+}
 
 // 工作区隔离路径（canvas / history 按工作区分目录）
 function wsPath(workspaceId, file) {
@@ -156,6 +170,76 @@ export default {
     // 清空被删工作区的内容数据（目录可保留，避免广播时前端读到旧值）
     ctx.writeConfig(wsPath(id, CANVAS_FILE), { nodes: [], edges: [], savedAt: Date.now() });
     ctx.writeConfig(wsPath(id, HISTORY_FILE), []);
+    ctx.writeConfig(assetLibPath(id), { categories: [] });
+    return next;
+  },
+
+  // —— 素材库（按工作区隔离）——
+  // 数据结构：{ categories: [{ id, name, createdAt, assets: [{ id, url, name, size, uploadedAt }] }] }
+
+  // 列出素材库（兜底空 categories）
+  list_assets: ({ workspaceId }, ctx) => readAssetLibrary(ctx, workspaceId),
+
+  // 创建分类（name 可选，默认「新建分类 N」）
+  create_category: ({ workspaceId, name }, ctx) => {
+    const lib = readAssetLibrary(ctx, workspaceId);
+    const id = `cat-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+    const cat = {
+      id,
+      name: (name || '').trim() || `新建分类 ${lib.categories.length + 1}`,
+      createdAt: Date.now(),
+      assets: [],
+    };
+    const next = { categories: [...lib.categories, cat] };
+    ctx.writeConfig(assetLibPath(workspaceId), next);
+    return next;
+  },
+
+  // 重命名分类
+  rename_category: ({ workspaceId, id, name }, ctx) => {
+    const trimmed = (name || '').trim() || '未命名分类';
+    const lib = readAssetLibrary(ctx, workspaceId);
+    const next = {
+      categories: lib.categories.map((c) => (c.id === id ? { ...c, name: trimmed } : c)),
+    };
+    ctx.writeConfig(assetLibPath(workspaceId), next);
+    return next;
+  },
+
+  // 删除分类
+  delete_category: ({ workspaceId, id }, ctx) => {
+    const lib = readAssetLibrary(ctx, workspaceId);
+    const next = { categories: lib.categories.filter((c) => c.id !== id) };
+    ctx.writeConfig(assetLibPath(workspaceId), next);
+    return next;
+  },
+
+  // 新增资产到指定分类（原子追加到分类 assets 头部，限制单分类上限）
+  add_asset: ({ workspaceId, categoryId, asset }, ctx) => {
+    if (!asset || !asset.url) return { ok: false };
+    const lib = readAssetLibrary(ctx, workspaceId);
+    const next = {
+      categories: lib.categories.map((c) =>
+        c.id === categoryId
+          ? { ...c, assets: [asset, ...(c.assets || [])].slice(0, ASSET_MAX_PER_CATEGORY) }
+          : c,
+      ),
+    };
+    ctx.writeConfig(assetLibPath(workspaceId), next);
+    return next;
+  },
+
+  // 删除分类下的指定资产
+  remove_asset: ({ workspaceId, categoryId, assetId }, ctx) => {
+    const lib = readAssetLibrary(ctx, workspaceId);
+    const next = {
+      categories: lib.categories.map((c) =>
+        c.id === categoryId
+          ? { ...c, assets: (c.assets || []).filter((a) => a.id !== assetId) }
+          : c,
+      ),
+    };
+    ctx.writeConfig(assetLibPath(workspaceId), next);
     return next;
   },
 };
