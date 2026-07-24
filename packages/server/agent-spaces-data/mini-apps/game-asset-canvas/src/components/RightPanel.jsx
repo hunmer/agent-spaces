@@ -12,6 +12,7 @@ const ADD_ITEMS = [
   { type: NODE_TYPES.imageDisplay, label: '图片展示' },
   { type: NODE_TYPES.imageProcess, label: '图像处理' },
   { type: NODE_TYPES.imageEditor, label: '图片编辑' },
+  { type: NODE_TYPES.frameEditor, label: '动画帧编辑器' },
   { type: NODE_TYPES.note, label: '便签' },
 ];
 

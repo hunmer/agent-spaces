@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Background, BackgroundVariant, Controls, ControlButton, MarkerType, MiniMap, ReactFlow,
+  Background, BackgroundVariant, Controls, ControlButton, ConnectionMode, MarkerType, MiniMap, ReactFlow,
   ViewportPortal,
   addEdge, applyEdgeChanges, applyNodeChanges, useReactFlow,
 } from '@xyflow/react';
@@ -15,6 +15,7 @@ import {
 import Toolbar from './Toolbar';
 import RightPanel from './RightPanel';
 import ConnectionLine from './ConnectionLine';
+import FloatingEdge from './FloatingEdge';
 import SettingsDialog from './SettingsDialog';
 import ExecutionQueuePopover from './ExecutionQueuePopover';
 import NodeFormDialog from './NodeFormDialog';
@@ -24,6 +25,7 @@ import EditImageNode from './nodes/EditImageNode';
 import ImageDisplayNode from './nodes/ImageDisplayNode';
 import ImageProcessNode from './nodes/ImageProcessNode';
 import ImageEditorNode from './nodes/ImageEditorNode';
+import FrameEditorNode from './nodes/FrameEditorNode';
 import NoteNode from './nodes/NoteNode';
 import useCanvasState from '../hooks/useCanvasState';
 import useWorkflow from '../hooks/useWorkflow';
@@ -45,6 +47,7 @@ const NODE_COMPONENTS = {
   [NODE_TYPES.imageDisplay]: ImageDisplayNode,
   [NODE_TYPES.imageProcess]: ImageProcessNode,
   [NODE_TYPES.imageEditor]: ImageEditorNode,
+  [NODE_TYPES.frameEditor]: FrameEditorNode,
   [NODE_TYPES.note]: NoteNode,
 };
 
@@ -55,6 +58,7 @@ const ADD_NODE_ITEMS = [
   { type: NODE_TYPES.imageDisplay },
   { type: NODE_TYPES.imageProcess },
   { type: NODE_TYPES.imageEditor },
+  { type: NODE_TYPES.frameEditor },
   { type: NODE_TYPES.note },
 ];
 
@@ -71,7 +75,8 @@ function computeInputImages(nodes, edges) {
     const isReceiver = node.type === NODE_TYPES.editImage
       || node.type === NODE_TYPES.imageDisplay
       || node.type === NODE_TYPES.imageProcess
-      || node.type === NODE_TYPES.imageEditor;
+      || node.type === NODE_TYPES.imageEditor
+      || node.type === NODE_TYPES.frameEditor;
     if (!isReceiver) continue;
     const incoming = edges.filter((e) => e.target === node.id);
     if (!incoming.length) continue;
@@ -92,6 +97,7 @@ function computeInputImages(nodes, edges) {
 const DEFAULT_SIZE = {
   [NODE_TYPES.note]: { w: 200, h: 120 },
   [NODE_TYPES.imageDisplay]: { w: 260, h: 240 },
+  [NODE_TYPES.frameEditor]: { w: 300, h: 260 },
   default: { w: 290, h: 240 },
 };
 
@@ -136,6 +142,9 @@ function initialData(type) {
     };
   }
   if (type === NODE_TYPES.imageEditor) {
+    return { status: 'idle', output: { images: [] }, uploadedImages: [] };
+  }
+  if (type === NODE_TYPES.frameEditor) {
     return { status: 'idle', output: { images: [] }, uploadedImages: [] };
   }
   const base = { status: 'idle', output: { images: [] }, uploadedImages: [] };
@@ -1004,6 +1013,9 @@ export default function Canvas() {
   }, [panelLayout]);
 
   const nodeTypes = useMemo(() => NODE_COMPONENTS, []);
+  // floating edge 设为默认类型：所有没有显式 type 的边都走浮动连线（动态连节点最优边界点）。
+  // floating 显式别名保留，便于特殊场景显式指定。
+  const edgeTypes = useMemo(() => ({ default: FloatingEdge, floating: FloatingEdge }), []);
 
   // 工作区未就绪或正在加载：等待 activeId 确定 + canvas 载入完成
   if (!activeId || !loaded) {
@@ -1093,6 +1105,10 @@ export default function Canvas() {
               onNodesDelete={onNodesDelete}
               deleteKeyCode={deleteKeyCode}
               nodeTypes={nodeTypes}
+              edgeTypes={edgeTypes}
+              // Loose 模式：source/target handle 可互换方向连接（floating edges 依赖自由连接）
+              connectionMode={ConnectionMode.Loose}
+              defaultEdgeOptions={{ type: 'floating', markerEnd: { type: MarkerType.ArrowClosed }, animated: true }}
               fitView
               proOptions={{ hideAttribution: true }}
             >

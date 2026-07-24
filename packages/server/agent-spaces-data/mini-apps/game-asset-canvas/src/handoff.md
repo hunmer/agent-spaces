@@ -277,6 +277,50 @@ src/
 - Painterro 官方 build 非 ESM（IIFE 赋值给 `var Painterro`），直接 dynamic import 拿不到导出 → `loadVendor` 加 `esmSuffix` 参数追加 `export default Painterro;` 转 ESM
 - Painterro 的 `saveHandler(image, done)`：`done(true)` 关闭编辑器，`done(false)` 保留让用户重试；用 `savedRef` 区分「保存成功关闭」与「直接 X 关闭」（后者复位 status）
 
+## 动画帧编辑器节点（本轮新增，基于 scenejs-timeline）
+
+新增「动画帧编辑器」节点（NODE_TYPES.frameEditor），用 Scene.js + @scenejs/timeline（esm.sh CDN ESM）做序列帧时间线编辑，支持调整帧出现时机 + 画面 x/y 偏移，最终导出 GIF。
+
+### 关键决策
+- **位置语义=两者都要**：时间线拖动色块调出现时机（scenejs 原生 `item.setDelay()`，拖 keyframe-group 触发）+ 预览区拖图片调 x/y 偏移（自实现，存帧元数据）
+- **CDN 加载走宿主 loadCdnModule**（零宿主改动、零 vendor 文件、刷新即生效）：`esm.sh/scenejs@1.9.6` + `esm.sh/@scenejs/timeline@0.3.0`，经 `cdn.js` 的 `getSceneTimeline()` 封装，返回 `{ Scene, Timeline }`
+- **GIF 导出复用 image-ops/gif.js 的 encodeFramesToGif**（gifenc，已 CDN 化），各帧先合成到统一画布尺寸的 canvas 再编码
+- **Scene 配置 `selector:false`**：scenejs-timeline 本质是"属性动画时间线"，这里只用它做时间轴 UI + 播放控制，不绑定 DOM；每帧可见性用 `item.set({0:{opacity:0}, [dur]:{opacity:1}})` 表达
+
+### 改动文件
+- `src/utils/constants.js`：NODE_TYPES.frameEditor + NODE_META（🎞️ #a855f7）+ IMAGE_TAGS.frameEditor
+- `src/utils/image-ops/cdn.js`：`getSceneTimeline()` 加载器（走 `window.AgentSpaces.loadCdnModule`，解包 default）
+- `src/components/FrameEditorDialog.jsx`（新增）：编辑器对话框
+  - 顶部工具条：帧间隔(ms) / 画布宽高 / 导出GIF / 关闭
+  - 预览区：监听 `scene.on("animate", e=>e.time)` 选当前帧渲染，当前帧 `<img>` 可鼠标拖拽改 offsetX/offsetY（存 `framesMetaRef`）
+  - 底部 260px 容器：`new Timeline(scene, containerRef, {keyboard:true})` 挂载，拖色块改 delay，Space 播放/暂停
+  - 导出：readOrderedMeta 按 delay 排序 → 逐帧 urlToImageData（跨域经 `proxyImageUrl`）→ 合成到统一画布尺寸 canvas（含 offsetX/Y）→ encodeFramesToGif → uploadFile
+- `src/components/nodes/FrameEditorNode.jsx`（新增）：仿 ImageEditorNode，多图输入（FileUpload maxFiles=0 + 上游连线多图去重合并），「🎞️ 编辑帧序列」按钮开对话框，产出写 `data.output.images`
+- `src/components/Canvas.jsx`：NODE_COMPONENTS + ADD_NODE_ITEMS + computeInputImages(isReceiver) + initialData + DEFAULT_SIZE 加 frameEditor
+- `src/components/RightPanel.jsx`：ADD_ITEMS 加「动画帧编辑器」
+
+### scenejs-timeline API 要点（源码确认）
+- 核心包 `@scenejs/timeline` 继承 `@egjs/component`：`new Timeline(scene, parentEl, {keyboard, onSelect})`，`.on("select", cb)` / `.trigger`
+- 实际 UI/拖拽逻辑在 preact-timeline → react-scenejs-timeline/Timeline.tsx：拖 keyframe-group → `item.setDelay(distX换算)`；拖单个 keyframe → 选中该关键帧
+- 播放：`scene.play()/pause()`，键盘 Space 切换、左右微调 0.05s、Esc finish；`scene.on("animate", e=>{e.time, e.frame.get()})`
+- `scene.getDuration()` 由各 item delay+duration 推导；Timeline 渲染会向 parentEl 追加 DOM，卸载需 `container.innerHTML=''`
+
+### 依赖（CDN 加载，web 不装）
+- scenejs@1.9.6 + @scenejs/timeline@0.3.0（esm.sh ESM，宿主 loadCdnModule 加载）
+- gifenc（已有 vendor，encodeFramesToGif 复用）
+
+### 验收要点
+- 节点支持上传多图或接收上游连线多图（合并去重）
+- 点「🎞️ 编辑帧序列」打开对话框：底部时间线每帧一段色块，Space 播放预览区按时间切帧
+- 拖时间线色块改出现时机；预览区拖图片改 x/y 偏移（左上角实时显示帧号/时间/偏移）
+- 导出 GIF 写入 data.output.images，下游可连线，NodeToolbar 按钮自动可用
+- 断网（esm.sh 不可达）时编辑器加载报错但不崩溃（对话框顶部红字提示）
+
+### 踩坑
+- `urlToImageData` 返回 ImageData 对象（无 `.canvas`），合成统一画布时不能直接 `drawImage(imageData)`，须先 putImageData 到临时 canvas 再 drawImage
+- frameInterval 变化只更新 `framesMetaRef` 的 duration，不重建 Scene（避免丢失用户已做的 delay 拖拽）；重建 Scene 仅在 open/帧列表/画布尺寸变化时
+- Timeline 容器必须 `nodrag nopan nowheel`（NodeShell 约定），否则时间线内滚动/拖拽误触画布
+
 ## 后续可做
 
 - 队列任务失败「重试」按钮、执行中实时进度（node:progress 事件）
