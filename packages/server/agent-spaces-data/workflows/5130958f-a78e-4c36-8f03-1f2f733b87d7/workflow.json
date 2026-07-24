@@ -269,7 +269,7 @@
         "sourceNodeId": "node_1781686908308_6flfam",
         "sourceHandle": "case-0",
         "prompt": "{{ __data__[\"node_1781681576137_start\"].prompt }}",
-        "filePaths": "{{ __data__[\"node_1781681576137_start\"].images }}"
+        "filePaths": "{{ __data__[\"node_1784915000000_upld01\"].urls }}"
       }
     },
     {
@@ -336,7 +336,7 @@
           {
             "key": "images",
             "type": "string[]",
-            "value": "{{ __data__[\"node_1781681576137_start\"].images }}",
+            "value": "{{ __data__[\"node_1784915000000_upld01\"].urls }}",
             "required": true,
             "children": []
           }
@@ -389,7 +389,7 @@
             ]
           }
         ],
-        "firstFrameImage": "{{ __data__[\"node_1781681576137_start\"].images[0] }}",
+        "firstFrameImage": "{{ __data__[\"node_1784915000000_upld01\"].urls[0] }}",
         "prompt": "{{ __data__[\"node_1781681576137_start\"].prompt }}"
       }
     },
@@ -411,8 +411,8 @@
             "conditions": [
               {
                 "id": "cond_1782299101116_av5e",
-                "variable": "{{ __data__[\"node_1781681576137_start\"].images }}",
-                "field": "{{ __data__[\"node_1781681576137_start\"].images }}",
+                "variable": "{{ __data__[\"node_1784915000000_upld01\"].urls }}",
+                "field": "{{ __data__[\"node_1784915000000_upld01\"].urls }}",
                 "compareMode": "length",
                 "operator": "greater_than",
                 "value": "1"
@@ -459,8 +459,8 @@
         ],
         "sourceNodeId": "node_1782299095140_v2k0ss",
         "sourceHandle": "case-0",
-        "firstFrameImage": "{{ __data__[\"node_1781681576137_start\"].images[0] }}",
-        "lastFrameImage": "{{ __data__[\"node_1781681576137_start\"].images[1] }}",
+        "firstFrameImage": "{{ __data__[\"node_1784915000000_upld01\"].urls[0] }}",
+        "lastFrameImage": "{{ __data__[\"node_1784915000000_upld01\"].urls[1] }}",
         "prompt": "{{ __data__[\"node_1781681576137_start\"].prompt }}"
       }
     },
@@ -489,6 +489,45 @@
             "type": "string"
           }
         ]
+      }
+    },
+    {
+      "id": "node_1784915000000_upld01",
+      "type": "sub_workflow",
+      "label": "批量上传文件",
+      "position": {
+        "x": 0,
+        "y": 400
+      },
+      "data": {
+        "outputs": [
+          {
+            "key": "urls",
+            "type": "array",
+            "value": [],
+            "inputMode": "native",
+            "children": [
+              {
+                "key": "url",
+                "type": "string",
+                "value": "",
+                "children": []
+              }
+            ]
+          }
+        ],
+        "sourceNodeId": "node_1781681576137_start",
+        "sourceHandle": "source",
+        "inputFields": [
+          {
+            "key": "urls",
+            "type": "string[]",
+            "value": "{{ __data__[\"node_1781681576137_start\"].images }}",
+            "children": []
+          }
+        ],
+        "workflowId": "c72d5ba1-9b64-4e14-a67b-8d32a96a48a0",
+        "workflowName": "批量上传文件"
       }
     }
   ],
@@ -571,8 +610,22 @@
       "targetHandle": "target"
     },
     {
-      "id": "e-node_1781681576137_start-node_1782302001142_j2q220-mqs0li2k",
+      "id": "e-node_1781681576137_start-node_1784915000000_upld01",
       "source": "node_1781681576137_start",
+      "target": "node_1784915000000_upld01",
+      "sourceHandle": "source"
+    },
+    {
+      "id": "e-node_1781681576137_start-output:images-node_1784915000000_upld01-input:urls",
+      "source": "node_1781681576137_start",
+      "target": "node_1784915000000_upld01",
+      "edgeKind": "reference",
+      "sourceHandle": "output:images",
+      "targetHandle": "input:urls"
+    },
+    {
+      "id": "e-node_1784915000000_upld01-node_1782302001142_j2q220-mqs0li2k",
+      "source": "node_1784915000000_upld01",
       "target": "node_1782302001142_j2q220",
       "sourceHandle": "source",
       "targetHandle": "target"
@@ -583,10 +636,242 @@
       "target": "node_1781686908308_6flfam",
       "sourceHandle": "source",
       "targetHandle": "target"
+    },
+    {
+      "id": "e-node_1782302001142_j2q220-output:target-node_1781686908308_6flfam-property:conditions[0].conditions[0].variable",
+      "source": "node_1782302001142_j2q220",
+      "target": "node_1781686908308_6flfam",
+      "edgeKind": "reference",
+      "sourceHandle": "output:target",
+      "targetHandle": "property:conditions[0].conditions[0].variable"
+    },
+    {
+      "id": "e-node_1782302001142_j2q220-output:target-node_1781686908308_6flfam-property:conditions[0].conditions[0].field",
+      "source": "node_1782302001142_j2q220",
+      "target": "node_1781686908308_6flfam",
+      "edgeKind": "reference",
+      "sourceHandle": "output:target",
+      "targetHandle": "property:conditions[0].conditions[0].field"
+    },
+    {
+      "id": "e-node_1782302001142_j2q220-output:target-node_1781686908308_6flfam-property:conditions[1].conditions[0].variable",
+      "source": "node_1782302001142_j2q220",
+      "target": "node_1781686908308_6flfam",
+      "edgeKind": "reference",
+      "sourceHandle": "output:target",
+      "targetHandle": "property:conditions[1].conditions[0].variable"
+    },
+    {
+      "id": "e-node_1782302001142_j2q220-output:target-node_1781686908308_6flfam-property:conditions[1].conditions[0].field",
+      "source": "node_1782302001142_j2q220",
+      "target": "node_1781686908308_6flfam",
+      "edgeKind": "reference",
+      "sourceHandle": "output:target",
+      "targetHandle": "property:conditions[1].conditions[0].field"
+    },
+    {
+      "id": "e-node_1782302001142_j2q220-output:target-node_1781686908308_6flfam-property:conditions[2].conditions[0].variable",
+      "source": "node_1782302001142_j2q220",
+      "target": "node_1781686908308_6flfam",
+      "edgeKind": "reference",
+      "sourceHandle": "output:target",
+      "targetHandle": "property:conditions[2].conditions[0].variable"
+    },
+    {
+      "id": "e-node_1782302001142_j2q220-output:target-node_1781686908308_6flfam-property:conditions[2].conditions[0].field",
+      "source": "node_1782302001142_j2q220",
+      "target": "node_1781686908308_6flfam",
+      "edgeKind": "reference",
+      "sourceHandle": "output:target",
+      "targetHandle": "property:conditions[2].conditions[0].field"
+    },
+    {
+      "id": "e-node_1782291057464_2sx2fe-output:data.video-node_1782272119586_dim19h-property:groups[0].variables[0].value",
+      "source": "node_1782291057464_2sx2fe",
+      "target": "node_1782272119586_dim19h",
+      "edgeKind": "reference",
+      "sourceHandle": "output:data.video",
+      "targetHandle": "property:groups[0].variables[0].value"
+    },
+    {
+      "id": "e-node_1782291911473_of3iac-output:data.videoUrl-node_1782272119586_dim19h-property:groups[0].variables[1].value",
+      "source": "node_1782291911473_of3iac",
+      "target": "node_1782272119586_dim19h",
+      "edgeKind": "reference",
+      "sourceHandle": "output:data.videoUrl",
+      "targetHandle": "property:groups[0].variables[1].value"
+    },
+    {
+      "id": "e-node_1781681576137_start-output:model-node_1782291057464_2sx2fe-property:model",
+      "source": "node_1781681576137_start",
+      "target": "node_1782291057464_2sx2fe",
+      "edgeKind": "reference",
+      "sourceHandle": "output:model",
+      "targetHandle": "property:model"
+    },
+    {
+      "id": "e-node_1781681576137_start-output:aspect-node_1782291057464_2sx2fe-property:ratio",
+      "source": "node_1781681576137_start",
+      "target": "node_1782291057464_2sx2fe",
+      "edgeKind": "reference",
+      "sourceHandle": "output:aspect",
+      "targetHandle": "property:ratio"
+    },
+    {
+      "id": "e-node_1781681576137_start-output:duration-node_1782291057464_2sx2fe-property:duration",
+      "source": "node_1781681576137_start",
+      "target": "node_1782291057464_2sx2fe",
+      "edgeKind": "reference",
+      "sourceHandle": "output:duration",
+      "targetHandle": "property:duration"
+    },
+    {
+      "id": "e-node_1781681576137_start-output:prompt-node_1782291057464_2sx2fe-property:prompt",
+      "source": "node_1781681576137_start",
+      "target": "node_1782291057464_2sx2fe",
+      "edgeKind": "reference",
+      "sourceHandle": "output:prompt",
+      "targetHandle": "property:prompt"
+    },
+    {
+      "id": "e-node_1784915000000_upld01-output:urls-node_1782291057464_2sx2fe-property:filePaths",
+      "source": "node_1784915000000_upld01",
+      "target": "node_1782291057464_2sx2fe",
+      "edgeKind": "reference",
+      "sourceHandle": "output:urls",
+      "targetHandle": "property:filePaths"
+    },
+    {
+      "id": "e-node_1781681576137_start-output:quality-node_1782291911473_of3iac-property:resolution",
+      "source": "node_1781681576137_start",
+      "target": "node_1782291911473_of3iac",
+      "edgeKind": "reference",
+      "sourceHandle": "output:quality",
+      "targetHandle": "property:resolution"
+    },
+    {
+      "id": "e-node_1781681576137_start-output:duration-node_1782291911473_of3iac-property:duration",
+      "source": "node_1781681576137_start",
+      "target": "node_1782291911473_of3iac",
+      "edgeKind": "reference",
+      "sourceHandle": "output:duration",
+      "targetHandle": "property:duration"
+    },
+    {
+      "id": "e-node_1781681576137_start-output:prompt-node_1782291911473_of3iac-property:prompt",
+      "source": "node_1781681576137_start",
+      "target": "node_1782291911473_of3iac",
+      "edgeKind": "reference",
+      "sourceHandle": "output:prompt",
+      "targetHandle": "property:prompt"
+    },
+    {
+      "id": "e-node_1782292131441_o7bxvz-output:media-node_1782291911473_of3iac-property:media",
+      "source": "node_1782292131441_o7bxvz",
+      "target": "node_1782291911473_of3iac",
+      "edgeKind": "reference",
+      "sourceHandle": "output:media",
+      "targetHandle": "property:media"
+    },
+    {
+      "id": "e-node_1784915000000_upld01-output:urls-node_1782292131441_o7bxvz-input:images",
+      "source": "node_1784915000000_upld01",
+      "target": "node_1782292131441_o7bxvz",
+      "edgeKind": "reference",
+      "sourceHandle": "output:urls",
+      "targetHandle": "input:images"
+    },
+    {
+      "id": "e-node_1781681576137_start-output:model-node_1782299033531_slkx6j-property:model",
+      "source": "node_1781681576137_start",
+      "target": "node_1782299033531_slkx6j",
+      "edgeKind": "reference",
+      "sourceHandle": "output:model",
+      "targetHandle": "property:model"
+    },
+    {
+      "id": "e-node_1781681576137_start-output:quality-node_1782299033531_slkx6j-property:resolution",
+      "source": "node_1781681576137_start",
+      "target": "node_1782299033531_slkx6j",
+      "edgeKind": "reference",
+      "sourceHandle": "output:quality",
+      "targetHandle": "property:resolution"
+    },
+    {
+      "id": "e-node_1784915000000_upld01-output:urls[0]-node_1782299033531_slkx6j-property:firstFrameImage",
+      "source": "node_1784915000000_upld01",
+      "target": "node_1782299033531_slkx6j",
+      "edgeKind": "reference",
+      "sourceHandle": "output:urls[0]",
+      "targetHandle": "property:firstFrameImage"
+    },
+    {
+      "id": "e-node_1781681576137_start-output:prompt-node_1782299033531_slkx6j-property:prompt",
+      "source": "node_1781681576137_start",
+      "target": "node_1782299033531_slkx6j",
+      "edgeKind": "reference",
+      "sourceHandle": "output:prompt",
+      "targetHandle": "property:prompt"
+    },
+    {
+      "id": "e-node_1784915000000_upld01-output:urls-node_1782299095140_v2k0ss-property:conditions[0].conditions[0].variable",
+      "source": "node_1784915000000_upld01",
+      "target": "node_1782299095140_v2k0ss",
+      "edgeKind": "reference",
+      "sourceHandle": "output:urls",
+      "targetHandle": "property:conditions[0].conditions[0].variable"
+    },
+    {
+      "id": "e-node_1784915000000_upld01-output:urls-node_1782299095140_v2k0ss-property:conditions[0].conditions[0].field",
+      "source": "node_1784915000000_upld01",
+      "target": "node_1782299095140_v2k0ss",
+      "edgeKind": "reference",
+      "sourceHandle": "output:urls",
+      "targetHandle": "property:conditions[0].conditions[0].field"
+    },
+    {
+      "id": "e-node_1781681576137_start-output:quality-node_1782300311660_hg69cl-property:resolution",
+      "source": "node_1781681576137_start",
+      "target": "node_1782300311660_hg69cl",
+      "edgeKind": "reference",
+      "sourceHandle": "output:quality",
+      "targetHandle": "property:resolution"
+    },
+    {
+      "id": "e-node_1784915000000_upld01-output:urls[0]-node_1782300311660_hg69cl-property:firstFrameImage",
+      "source": "node_1784915000000_upld01",
+      "target": "node_1782300311660_hg69cl",
+      "edgeKind": "reference",
+      "sourceHandle": "output:urls[0]",
+      "targetHandle": "property:firstFrameImage"
+    },
+    {
+      "id": "e-node_1784915000000_upld01-output:urls[1]-node_1782300311660_hg69cl-property:lastFrameImage",
+      "source": "node_1784915000000_upld01",
+      "target": "node_1782300311660_hg69cl",
+      "edgeKind": "reference",
+      "sourceHandle": "output:urls[1]",
+      "targetHandle": "property:lastFrameImage"
+    },
+    {
+      "id": "e-node_1781681576137_start-output:prompt-node_1782300311660_hg69cl-property:prompt",
+      "source": "node_1781681576137_start",
+      "target": "node_1782300311660_hg69cl",
+      "edgeKind": "reference",
+      "sourceHandle": "output:prompt",
+      "targetHandle": "property:prompt"
+    },
+    {
+      "id": "e-node_1781681576137_start-output:model-node_1782302001142_j2q220-input:model",
+      "source": "node_1781681576137_start",
+      "target": "node_1782302001142_j2q220",
+      "edgeKind": "reference",
+      "sourceHandle": "output:model",
+      "targetHandle": "input:model"
     }
   ],
   "createdAt": 1782275955731,
-  "updatedAt": 1782302567192,
+  "updatedAt": 1784915522828,
   "published": false,
   "enabledPlugins": [
     "workflow.openai",
@@ -595,9 +880,9 @@
     "workflow.jimeng",
     "workflow.minimax"
   ],
-  "lastRunAt": 1784914801501,
+  "lastRunAt": 1784915525871,
   "groups": [],
   "description": "生成视频",
   "variables": [],
-  "lastOpenedAt": 1784914435346
+  "lastOpenedAt": 1784915504658
 }

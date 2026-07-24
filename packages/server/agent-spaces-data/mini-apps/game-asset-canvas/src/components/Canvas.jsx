@@ -31,7 +31,7 @@ import VideoGeneratorNode from './nodes/VideoGeneratorNode';
 import NoteNode from './nodes/NoteNode';
 import useCanvasState from '../hooks/useCanvasState';
 import useWorkflow from '../hooks/useWorkflow';
-import { generateAudio, generateVideo } from '../utils/workflow';
+import { generateAudio, generateVideo, normalizeImageUrls } from '../utils/workflow';
 import useGenerationHistory from '../hooks/useGenerationHistory';
 import useSettings from '../hooks/useSettings';
 import useExecutionQueue from '../hooks/useExecutionQueue';
@@ -1113,13 +1113,15 @@ export default function Canvas() {
     if (!sourceImages?.length) return;
     const workflowId = settings.imageEnchanterWorkflowId || WORKFLOWS.image_enchanter;
     const tag = processType === 'segment' ? IMAGE_TAGS.segment : IMAGE_TAGS.enhance;
+    // 节点产出图可能是相对路径（uploadFile 返回 /static/uploads/...），提交工作流后端跨域下载需完整 http URL
+    const normalized = normalizeImageUrls(sourceImages.filter(Boolean));
     // 结果节点：loading 占位，完成后刷新为结果图
     const resultId = createNodeAt(NODE_TYPES.imageDisplay, null);
     updateNodeData(resultId, { images: [], source: 'processing', loading: true, error: undefined, tags: [tag] });
     try {
       // 批量并发：每张图一次工作流调用（input 是单图）
       const results = await Promise.allSettled(
-        sourceImages.map((url) =>
+        normalized.map((url) =>
           runWorkflow(workflowId, { image_url: url, process_type: processType }, resultId)
             .then(({ urls }) => urls || []),
         ),
@@ -1165,9 +1167,20 @@ export default function Canvas() {
     const controller = new AbortController();
     processingControllers.set(nodeId, controller);
 
+    // 输入图可能是相对路径（uploadFile 返回 /static/uploads/...），提交工作流后端需完整 http URL；
+    // 本地算法的 urlToImageData 走 fetch 同源也能用相对路径，但统一规范化更稳妥。
+    const normalizedImages = normalizeImageUrls(sourceImages.filter(Boolean));
+    // enhance 处理器走 image_enchanter 工作流，需注入 workflowId + runWorkflowFn
+    const extraCtx = processorId === 'enhance'
+      ? {
+          workflowId: settings.imageEnchanterWorkflowId || WORKFLOWS.image_enchanter,
+          runWorkflowFn: runWorkflow,
+        }
+      : {};
+
     updateNodeData(nodeId, { status: 'running', error: undefined, output: { images: [] } });
     try {
-      const urls = await runProcessor(processorId, sourceImages, processorParams || {});
+      const urls = await runProcessor(processorId, normalizedImages, processorParams || {}, extraCtx);
       // 取消竞速：被取消则丢弃结果
       if (controller.signal.aborted) return;
       if (!urls.length) throw new Error('处理未返回图片');
@@ -1177,7 +1190,7 @@ export default function Canvas() {
         nodeId,
         nodeType: NODE_TYPES.imageProcess,
         prompt: processorId,
-        model: 'local',
+        model: processorId === 'enhance' ? 'image_enchanter' : 'local',
         images: urls,
         createdAt: Date.now(),
       }).catch((e) => console.error('processLocal addHistory failed:', e));
@@ -1191,7 +1204,7 @@ export default function Canvas() {
         processingControllers.delete(nodeId);
       }
     }
-  }, [updateNodeData, addHistory]);
+  }, [updateNodeData, addHistory, settings, runWorkflow]);
 
   // 取消图像处理：abort signal + 置 status='cancelled'（写入节点 data，可观测/持久化）。
   // 底层任务继续跑但结果会被 handleProcessLocal 的 aborted 检查丢弃。

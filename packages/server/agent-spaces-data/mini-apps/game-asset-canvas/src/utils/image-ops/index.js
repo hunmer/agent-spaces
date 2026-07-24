@@ -29,6 +29,10 @@ import { innerStroke, resizeNearest } from './stroke';
 /**
  * 处理器清单。节点 constants.IMAGE_PROCESSORS 里的参数表与此处的 id 一一对应，
  * 但常量定义放 constants.js（UI 层），run 实现放这里（算法层），解耦 UI 与算法。
+ *
+ * 注意：'enhance'（图片放大）不是本地算法，而是调用 image_enchanter 工作流（云端 AI 放大）。
+ * 它的 run 通过 ctx.workflowId 拿到工作流 ID（由节点层 handleProcessLocal 从 settings 注入），
+ * 用 ctx.urls[0] 调工作流，产出 URL 用 __url 标记透传（跳过 ImageData 转换），与 __gifUrl 同款机制。
  */
 export const PROCESSORS = {
   // ============ GIF ============
@@ -142,6 +146,26 @@ export const PROCESSORS = {
       return [composeLayers(inputs, { mode: params.mode ?? 'normal' })];
     },
   },
+
+  // ============ 云端 AI 放大（走 image_enchanter 工作流）============
+  // 非本地算法：run 内调工作流，用 __url 透传产出 URL，跳过 ImageData 管道。
+  // workflowId 由节点层 handleProcessLocal 从 settings.imageEnchanterWorkflowId 注入到 ctx。
+  'enhance': {
+    async run(_inputs, _params, ctx) {
+      const { urls, workflowId, runWorkflowFn } = ctx || {};
+      const url = Array.isArray(urls) ? urls[0] : null;
+      if (!url) throw new Error('图片放大需要输入图');
+      if (!workflowId) throw new Error('未配置放大工作流（settings.imageEnchanterWorkflowId）');
+      if (typeof runWorkflowFn !== 'function') throw new Error('runWorkflowFn 未注入');
+      // 复用 utils/workflow.generateImages：内部已 normalize 输出 + persistImagesToBackend
+      const out = await runWorkflowFn(workflowId, { image_url: url, process_type: 'enhance' });
+      const resultUrls = out?.urls || [];
+      if (!resultUrls.length) throw new Error('放大未返回图片');
+      // __url 标记：runProcessor 识别后直接用 URL，不再走 imageDataToUrl
+      // 用首张输入图的尺寸兜底（runProcessor 产出转换不读 width/height，仅识别 __url/__gifUrl）
+      return [{ __url: resultUrls[0] }];
+    },
+  },
 };
 
 /**
@@ -152,24 +176,26 @@ export const PROCESSORS = {
  * @param {object} params 处理器参数
  * @returns {Promise<string[]>} 产出图片的 http URL 数组
  */
-export async function runProcessor(processorId, inputUrls, params) {
+export async function runProcessor(processorId, inputUrls, params, extraCtx) {
   const processor = PROCESSORS[processorId];
   if (!processor) throw new Error(`未知处理器：${processorId}`);
 
-  // GIF 拆帧不预解码（需 ArrayBuffer），通过 ctx 透传 URL
-  const needPreDecode = processorId !== 'gif-split';
+  // GIF 拆帧需 ArrayBuffer、enhance 走工作流用原始 URL —— 都不预解码成 ImageData
+  const needPreDecode = processorId !== 'gif-split' && processorId !== 'enhance';
   let inputs = [];
   if (needPreDecode) {
     inputs = await Promise.all((inputUrls || []).map((u) => urlToImageData(u)));
   }
 
-  const outputs = await processor.run(inputs, params || {}, { urls: inputUrls });
+  const outputs = await processor.run(inputs, params || {}, { urls: inputUrls, ...(extraCtx || {}) });
 
-  // 产出转 http URL。GIF 合成的产出带 __gifUrl 标记，直接用
+  // 产出转 http URL。
+  // - __gifUrl / __url 标记：processor 直接返回 URL（GIF 合成 / 云端放大），跳过 ImageData 转换
+  // - 其余按 ImageData → blob → uploadFile → http URL
   const urls = [];
   for (const out of outputs) {
-    if (out && out.__gifUrl) {
-      urls.push(out.__gifUrl);
+    if (out && (out.__gifUrl || out.__url)) {
+      urls.push(out.__gifUrl || out.__url);
     } else {
       urls.push(await imageDataToUrl(out));
     }

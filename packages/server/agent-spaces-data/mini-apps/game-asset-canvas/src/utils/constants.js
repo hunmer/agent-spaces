@@ -203,6 +203,7 @@ export const IMAGE_PROCESSOR_CATEGORIES = [
   { id: 'pixel', label: '像素处理', icon: '🟦' },
   { id: 'matte', label: '抠图去背', icon: '✂️' },
   { id: 'compose', label: '图层合成', icon: '🧬' },
+  { id: 'enhance', label: '画质增强', icon: '🔍' },
 ];
 
 /**
@@ -294,6 +295,12 @@ export const IMAGE_PROCESSORS = [
     params: [
       { key: 'mode', label: '混合模式', type: 'select', default: 'normal', options: ['normal', 'multiply', 'screen', 'overlay', 'add'] },
     ],
+  },
+  // ---- 画质增强（云端 AI，走 image_enchanter 工作流）----
+  {
+    id: 'enhance', label: '图片放大', category: 'enhance',
+    desc: '调用 image_enchanter 工作流云端 AI 放大（高清化），非本地算法',
+    params: [],
   },
 ];
 
