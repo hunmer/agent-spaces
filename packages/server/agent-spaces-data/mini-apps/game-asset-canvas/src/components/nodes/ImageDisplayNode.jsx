@@ -88,7 +88,7 @@ export default function ImageDisplayNode({ id, data, selected }) {
     : '已上传';
 
   return (
-    <div className="group relative h-full w-full overflow-visible rounded-lg bg-card shadow-sm">
+    <div className="group relative h-full w-full overflow-hidden rounded-lg bg-card shadow-sm">
       {/* NodeToolbar：导出/抠图/放大/编辑（选中且单选时） */}
       {showToolbar && (
         <NodeToolbar isVisible={!!selected && selectionCount <= 1} position={Position.Top} align="end" offset={8}>

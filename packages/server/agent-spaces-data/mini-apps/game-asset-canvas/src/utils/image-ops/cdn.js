@@ -102,3 +102,13 @@ export async function getPainterro() {
   const mod = await loadVendor('painterro.min.js', '\nexport default Painterro;');
   return mod.default || mod;
 }
+
+/**
+ * Fabric.js v5：UI 拆分节点的画布编辑器（框选/拖拽/缩放/平移）。
+ * 官方 build 是 IIFE 赋值给全局 `fabric`（非 ESM），追加 `\nexport default fabric;` 转 ESM。
+ * 返回 fabric 命名空间对象：`const fabric = await getFabric(); new fabric.Canvas(...)`
+ */
+export async function getFabric() {
+  const mod = await loadVendor('fabric.min.js', '\nexport default fabric;');
+  return mod.default || mod;
+}

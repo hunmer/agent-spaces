@@ -25,6 +25,7 @@ import ImageDisplayNode from './nodes/ImageDisplayNode';
 import ImageProcessNode from './nodes/ImageProcessNode';
 import ImageEditorNode from './nodes/ImageEditorNode';
 import PixelEditorNode from './nodes/PixelEditorNode';
+import UiSplitterNode from './nodes/UiSplitterNode';
 import NoteNode from './nodes/NoteNode';
 import useCanvasState from '../hooks/useCanvasState';
 import useWorkflow from '../hooks/useWorkflow';
@@ -47,6 +48,7 @@ const NODE_COMPONENTS = {
   [NODE_TYPES.imageProcess]: ImageProcessNode,
   [NODE_TYPES.imageEditor]: ImageEditorNode,
   [NODE_TYPES.pixelEditor]: PixelEditorNode,
+  [NODE_TYPES.uiSplitter]: UiSplitterNode,
   [NODE_TYPES.note]: NoteNode,
 };
 
@@ -58,6 +60,7 @@ const ADD_NODE_ITEMS = [
   { type: NODE_TYPES.imageProcess },
   { type: NODE_TYPES.imageEditor },
   { type: NODE_TYPES.pixelEditor },
+  { type: NODE_TYPES.uiSplitter },
   { type: NODE_TYPES.note },
 ];
 
@@ -75,7 +78,8 @@ function computeInputImages(nodes, edges) {
       || node.type === NODE_TYPES.imageDisplay
       || node.type === NODE_TYPES.imageProcess
       || node.type === NODE_TYPES.imageEditor
-      || node.type === NODE_TYPES.pixelEditor;
+      || node.type === NODE_TYPES.pixelEditor
+      || node.type === NODE_TYPES.uiSplitter;
     if (!isReceiver) continue;
     const incoming = edges.filter((e) => e.target === node.id);
     if (!incoming.length) continue;
@@ -97,6 +101,7 @@ const DEFAULT_SIZE = {
   [NODE_TYPES.note]: { w: 200, h: 120 },
   [NODE_TYPES.imageDisplay]: { w: 260, h: 240 },
   [NODE_TYPES.pixelEditor]: { w: 300, h: 260 },
+  [NODE_TYPES.uiSplitter]: { w: 290, h: 240 },
   default: { w: 290, h: 240 },
 };
 
@@ -115,6 +120,27 @@ function genId(prefix) {
 // 用于取消正在进行的处理：handleProcessLocal 注册，handleCancelProcess abort。
 // 不进节点 data（AbortController 不可序列化），仅用于运行时取消信号。
 const processingControllers = new Map();
+
+// 自动错落位置计数器（模块级，同步自增）。
+// 解决连续 add_node 时 nodes.length 是过期闭包值导致位置重复的问题：
+// 每次创建节点都让 positionIndex 自增，即使 React state 还没更新，
+// 算出的网格位置也不会撞车。
+let positionIndex = 0;
+const AUTO_GAP_X = 320; // 列间距（大于最大节点宽 290）
+const AUTO_GAP_Y = 160; // 行间距
+const AUTO_COLS = 3;    // 每行 3 个
+const AUTO_ORIGIN_X = 120;
+const AUTO_ORIGIN_Y = 120;
+function autoPosition(baseLen = 0) {
+  const idx = baseLen + positionIndex;
+  positionIndex += 1;
+  const col = idx % AUTO_COLS;
+  const row = Math.floor(idx / AUTO_COLS);
+  return {
+    x: AUTO_ORIGIN_X + col * AUTO_GAP_X,
+    y: AUTO_ORIGIN_Y + row * AUTO_GAP_Y,
+  };
+}
 
 // tags 去重保序（图片展示节点 data.tags 用）
 function dedupeTags(tags) {
@@ -144,6 +170,9 @@ function initialData(type) {
     return { status: 'idle', output: { images: [] }, uploadedImages: [] };
   }
   if (type === NODE_TYPES.pixelEditor) {
+    return { status: 'idle', output: { images: [] }, uploadedImages: [] };
+  }
+  if (type === NODE_TYPES.uiSplitter) {
     return { status: 'idle', output: { images: [] }, uploadedImages: [] };
   }
   const base = { status: 'idle', output: { images: [] }, uploadedImages: [] };
@@ -337,8 +366,10 @@ export default function Canvas() {
   }, [runWorkflow, updateNodeData, addHistory, settings]);
 
   // 添加节点：显式 width/height（NodeResizer 依赖）
-  // 创建节点到指定位置（点击添加 / 拖拽放下共用）
+    // 创建节点到指定位置（点击添加 / 拖拽放下 / Agent add_node 共用）
   // dataPatch: 可选，覆盖/扩展初始 data（如预填 loading/images）
+  // position 不传时自动错落：基于「实际当前节点数 + 本轮新增序号」算网格位置，
+  // 用模块级 seq 计数器保证连续 add_node 不叠加（不依赖 React state 的过期闭包值）。
   const createNodeAt = useCallback((type, position, dataPatch) => {
     const id = genId(type);
     const meta = NODE_META[type] || {};
@@ -346,7 +377,7 @@ export default function Canvas() {
     const node = {
       id,
       type,
-      position: position || { x: 120 + nodes.length * 30, y: 120 + nodes.length * 30 },
+      position: position || autoPosition(nodes.length),
       width: size.w,
       height: size.h,
       style: { width: size.w, height: size.h },
@@ -771,6 +802,206 @@ export default function Canvas() {
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [nodes, handleCopy, handlePaste]);
+
+  // —— Agent RPC 入口：服务端 src/api.js 的画布操作 tool 通过 ctx.requestClient 发来
+  //    miniApp.clientRequest 事件，这里按 type 分流到现有的节点/边操作方法，
+  //    再用 window.AgentSpaces.respondClientRequest 把结果回给服务端（Promise resolve），
+  //    agent 拿到结果（如 nodeId）后继续对话。
+  //    用最新闭包：deps 含所有用到的 nodes/edges/操作方法，避免读到过期状态。
+  useEffect(() => {
+    const AS = window.AgentSpaces;
+    if (!AS?.onTaskEvent) return;
+    const respond = (requestId, result, ok = true, error) => {
+      try { AS.respondClientRequest?.(requestId, result, ok, error); }
+      catch (e) { console.error('respondClientRequest failed:', e); }
+    };
+
+    const unsubscribe = AS.onTaskEvent((event, data) => {
+      if (event !== 'miniApp.clientRequest') return;
+      const requestId = data?.requestId;
+      const type = data?.type;
+      const payload = data?.payload || {};
+      if (!requestId || !type) return;
+
+      try {
+        let result;
+        switch (type) {
+          case 'canvas.addNode': {
+            // 复用 createNodeAt（自动错落 + NodeResizer 尺寸 + initialData）；
+            // data patch 透传，focus 可选
+            const id = createNodeAt(payload.type, payload.position || null, payload.data);
+            if (payload.focus !== false) {
+              // focusNode 用到 nodes 状态，下一帧确保新节点已入 state
+              setTimeout(() => focusNode(id), 0);
+            }
+            result = {
+              ok: true,
+              nodeId: id,
+              position: payload.position || null,
+            };
+            break;
+          }
+          case 'canvas.addNodes': {
+            // 批量新增：一次性 setNodes 追加多个，比循环 createNodeAt 快（少 N 次 setState）
+            const specs = Array.isArray(payload.nodes) ? payload.nodes : [];
+            if (!specs.length) throw new Error('nodes 不能为空');
+            const ids = specs.map(() => genId('node'));
+            setNodes((prev) => {
+              const base = prev.length;
+              const additions = specs.map((spec, i) => {
+                const type = spec.type;
+                const meta = NODE_META[type] || {};
+                const size = DEFAULT_SIZE[type] || DEFAULT_SIZE.default;
+                return {
+                  id: ids[i],
+                  type,
+                  // 用 autoPosition 同步推进 positionIndex，避免和后续单条 add_node 撞位置
+                  position: spec.position || autoPosition(base + i),
+                  width: size.w,
+                  height: size.h,
+                  style: { width: size.w, height: size.h },
+                  data: { ...initialData(type), label: meta.label, ...(spec.data || {}) },
+                };
+              });
+              return [...prev, ...additions];
+            });
+            if (payload.focusFirst !== false && ids.length) {
+              setTimeout(() => focusNode(ids[0]), 0);
+            }
+            result = { ok: true, nodeIds: ids };
+            break;
+          }
+          case 'canvas.updateNodeData': {
+            if (!payload.nodeId) throw new Error('nodeId 必填');
+            updateNodeData(payload.nodeId, payload.data || {});
+            result = { ok: true };
+            break;
+          }
+          case 'canvas.deleteNode': {
+            if (!payload.nodeId) throw new Error('nodeId 必填');
+            if (!nodes.some((n) => n.id === payload.nodeId)) {
+              result = { ok: false, message: `节点不存在：${payload.nodeId}` };
+            } else {
+              handleDeleteNode(payload.nodeId);
+              result = { ok: true };
+            }
+            break;
+          }
+          case 'canvas.connectNodes': {
+            const { sourceId, targetId } = payload;
+            if (!sourceId || !targetId) throw new Error('sourceId 和 targetId 必填');
+            const exists = edges.some((e) => e.source === sourceId && e.target === targetId);
+            if (exists) {
+              result = { ok: true, alreadyExists: true, message: '已存在连线' };
+              break;
+            }
+            if (!nodes.some((n) => n.id === sourceId)) {
+              result = { ok: false, message: `源节点不存在：${sourceId}` };
+              break;
+            }
+            if (!nodes.some((n) => n.id === targetId)) {
+              result = { ok: false, message: `目标节点不存在：${targetId}` };
+              break;
+            }
+            setEdges((prev) => addEdge(
+              {
+                source: sourceId,
+                target: targetId,
+                markerEnd: { type: MarkerType.ArrowClosed },
+                animated: true,
+              },
+              prev,
+            ));
+            result = { ok: true, edgeId: `${sourceId}->${targetId}` };
+            break;
+          }
+          case 'canvas.connectBatch': {
+            // 批量连线：一次性 setEdges，避免 N 次 setState。
+            // 不存在的 sourceId/targetId 跳过（记 invalid），已存在的跳过（记 skipped）。
+            const specs = Array.isArray(payload.edges) ? payload.edges : [];
+            if (!specs.length) throw new Error('edges 不能为空');
+            const existingIds = new Set(nodes.map((n) => n.id));
+            const existingEdges = new Set(edges.map((e) => `${e.source}->${e.target}`));
+            const toAdd = [];
+            let skipped = 0;
+            let invalid = 0;
+            for (const spec of specs) {
+              const { sourceId, targetId } = spec;
+              if (!existingIds.has(sourceId) || !existingIds.has(targetId)) {
+                invalid++;
+                continue;
+              }
+              if (existingEdges.has(`${sourceId}->${targetId}`)) {
+                skipped++;
+                continue;
+              }
+              existingEdges.add(`${sourceId}->${targetId}`); // 防批次内重复
+              toAdd.push({
+                source: sourceId,
+                target: targetId,
+                markerEnd: { type: MarkerType.ArrowClosed },
+                animated: true,
+              });
+            }
+            if (toAdd.length) {
+              setEdges((prev) => [...prev, ...toAdd]);
+            }
+            result = {
+              ok: true,
+              created: toAdd.length,
+              skipped,
+              invalid,
+              summary: `批量连线：新增 ${toAdd.length}，已存在 ${skipped}，无效 ${invalid}`,
+            };
+            break;
+          }
+          case 'canvas.getSelection': {
+            // 用 ReactFlow 自管的 node.selected（与 onSelectionChange / focusNode 同源）
+            const sel = nodes.filter((n) => n.selected);
+            result = {
+              ok: true,
+              count: sel.length,
+              items: sel.map((n) => ({
+                id: n.id,
+                type: n.type,
+                typeLabel: (NODE_META[n.type] && NODE_META[n.type].label) || n.type,
+                label: n.data?.label || '',
+              })),
+            };
+            break;
+          }
+          case 'canvas.deleteEdge': {
+            const { sourceId, targetId } = payload;
+            const before = edges.length;
+            setEdges((prev) => prev.filter((e) => !(e.source === sourceId && e.target === targetId)));
+            result = { ok: true, removed: edges.some((e) => e.source === sourceId && e.target === targetId), before };
+            break;
+          }
+          case 'canvas.getCanvas': {
+            result = {
+              ok: true,
+              nodes: nodes.map((n) => ({
+                id: n.id,
+                type: n.type,
+                label: n.data?.label || '',
+                position: n.position,
+              })),
+              edges: edges.map((e) => ({ source: e.source, target: e.target })),
+            };
+            break;
+          }
+          default:
+            throw new Error(`未知 canvas RPC 类型: ${type}`);
+        }
+        respond(requestId, result);
+      } catch (err) {
+        console.error('canvas RPC error:', err);
+        respond(requestId, null, false, err?.message || String(err));
+      }
+    });
+
+    return () => { try { unsubscribe(); } catch {} };
+  }, [nodes, edges, createNodeAt, updateNodeData, handleDeleteNode, focusNode, setEdges]);
 
   // 图片加载完成后自动调整节点尺寸：按图片自然宽高比 + 节点内边距，
   // 在 [minW, maxW] 范围内取合适宽度，按比例算高度，让图片完整展示。
