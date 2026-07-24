@@ -1003,6 +1003,50 @@ export default function Canvas() {
       : n));
   }, [groups, setNodes]);
 
+  // 分组输出连线：从 group 手柄拖到 targetNodeId 松手时，把组内「末端叶子节点」的输出
+  // 连到 targetNodeId。叶子 = 在组范围内没有下游（出边 target 不在组内）的节点。
+  // 多选增强（复用 onConnect 语义）：一次建多条边（去重，已有连线不重复加）。
+  const handleGroupConnect = useCallback((groupId, targetNodeId) => {
+    setEdges((prev) => {
+      const g = groups.find((x) => x.id === groupId);
+      if (!g) return prev;
+      // 收集该组及子组所有子节点 id（复用 collectIds 同款递归，内联避免依赖 handleGroupMove 闭包）
+      const groupIds = new Set();
+      const collect = (gid, visited = new Set()) => {
+        if (visited.has(gid)) return;
+        visited.add(gid);
+        const cur = groups.find((x) => x.id === gid);
+        if (!cur) return;
+        cur.childNodeIds.forEach((id) => groupIds.add(id));
+        cur.childGroupIds.forEach((cg) => collect(cg, visited));
+      };
+      collect(groupId);
+      // 目标不能是组内节点（否则自连）
+      if (groupIds.has(targetNodeId)) return prev;
+      // 叶子节点：组内节点中，没有出边 target 也在组内的
+      const hasInternalDownstream = (nodeId) => prev.some((e) => e.source === nodeId && groupIds.has(e.target));
+      const leafIds = [...groupIds].filter((id) => !hasInternalDownstream(id));
+      if (!leafIds.length) return prev;
+      const existing = new Set(prev.map((e) => `${e.source}->${e.target}`));
+      let next = prev;
+      for (const source of leafIds) {
+        const key = `${source}->${targetNodeId}`;
+        if (existing.has(key)) continue;
+        existing.add(key);
+        next = addEdge(
+          {
+            source,
+            target: targetNodeId,
+            markerEnd: { type: MarkerType.ArrowClosed },
+            animated: true,
+          },
+          next,
+        );
+      }
+      return next;
+    });
+  }, [groups, setEdges]);
+
   // 面板布局变化 -> 持久化
   // 面板布局变化 -> 持久化（同时带上当前 showMinimap，避免覆盖）
   const handlePanelLayoutChange = useCallback((layout) => {
@@ -1144,6 +1188,7 @@ export default function Canvas() {
                     onDelete={deleteGroup}
                     onUpdate={updateGroup}
                     onMove={handleGroupMove}
+                    onConnect={handleGroupConnect}
                     screenDeltaToFlowDelta={screenDeltaToFlowDelta}
                   />
                 ))}

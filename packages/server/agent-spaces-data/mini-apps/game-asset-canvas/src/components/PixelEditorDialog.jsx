@@ -47,10 +47,13 @@ export default function PixelEditorDialog({ open, frames, onSave, onClose }) {
   // postMessage 到 iframe（COOP 下 contentWindow.postMessage 仍可用，访问属性才被拦）
   const postToIframe = useCallback((payload) => {
     try {
-      iframeRef.current?.contentWindow?.postMessage(payload, '*');
+      const w = iframeRef.current?.contentWindow;
+      console.log('[pxr-parent] postToIframe', payload.type, 'hasContentWindow=', !!w, 'dataLen=', payload.data?.length || 0);
+      if (!w) return false;
+      w.postMessage(payload, '*');
       return true;
     } catch (err) {
-      console.error('postToIframe failed:', err);
+      console.error('[pxr-parent] postToIframe failed:', err);
       return false;
     }
   }, []);
@@ -95,7 +98,8 @@ export default function PixelEditorDialog({ open, frames, onSave, onClose }) {
     if (!open) return;
     const onMsg = async (event) => {
       const msg = event.data || {};
-      // 不校验 origin（同源 + COOP 隔离，来源可信）
+      if (typeof msg !== 'object' || !msg.type) return;
+      console.log('[pxr-parent] recv msg', msg.type, 'from', event.origin);
       if (msg.type === 'pxr-ready') {
         readyRef.current = true;
         setReady(true);

@@ -1,9 +1,29 @@
 'use client';
 
 import React, { useState, useCallback, useMemo, useRef } from 'react';
-import { ChevronDown, ChevronRight, Lock, Unlock, Trash2 } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { ChevronDown, ChevronRight, Lock, Unlock, Trash2, Spline } from 'lucide-react';
 import type { WorkflowGroup } from '@agent-spaces/shared';
 import { WorkflowAutoLayoutMenu, type WorkflowAutoLayoutOptions } from './workflow-auto-layout-menu';
+
+/**
+ * 从屏幕坐标找到落点处的 ReactFlow 节点 id。
+ * 节点 DOM 形如 `<div class="react-flow__node ..." data-id="<nodeId>">`，
+ * 用 elementsFromPoint 取落点处所有元素，向上找最近的带 data-id 的 react-flow__node。
+ * 跳过 group 自身（group 是 overlay，不是 ReactFlow 节点，没有 data-id，天然不会被命中）。
+ */
+function getNodeAtScreenPoint(x: number, y: number): string | null {
+  const els = document.elementsFromPoint(x, y);
+  for (const el of els) {
+    if (!(el instanceof Element)) continue;
+    const nodeEl = el.closest('.react-flow__node[data-id]') as (Element & { getAttribute: (n: string) => string | null }) | null;
+    if (nodeEl) {
+      const id = nodeEl.getAttribute('data-id');
+      if (id) return id;
+    }
+  }
+  return null;
+}
 
 /**
  * GroupNode — visual container overlay for grouping nodes on the canvas.
@@ -27,6 +47,12 @@ interface GroupOverlayProps {
     delta: { x: number; y: number };
   } | null) => void;
   screenDeltaToFlowDelta: (delta: { x: number; y: number }) => { x: number; y: number };
+  /**
+   * 分组连线手柄：传入则显示一个输出手柄。从手柄拖到某节点松手时回调，
+   * 由调用方把分组内（子节点的）输出连到 targetNodeId。
+   * 未传则不显示手柄（opt-in）。
+   */
+  onConnect?: (groupId: string, targetNodeId: string) => void;
 }
 
 const GROUP_COLORS = [
@@ -45,6 +71,7 @@ function getGroupColor(color?: string) {
 export function WorkflowGroupOverlay({
   group, childNodes, isSelected, isDropTarget,
   onSelect, onDelete, onUpdate, onMove, onAutoLayout, layoutEngine, onDragPreviewChange, screenDeltaToFlowDelta,
+  onConnect,
 }: GroupOverlayProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
@@ -194,6 +221,52 @@ export function WorkflowGroupOverlay({
     document.addEventListener('pointercancel', handlePointerCancel);
   }, [bounds, group.id, group.locked, isEditing, onDragPreviewChange, onMove, onSelect, screenDeltaToFlowDelta]);
 
+  // —— 分组输出连线手柄：拖拽到某节点松手后，onConnect 回调由调用方建边 ——
+  // group 不是 ReactFlow 节点，无法用 <Handle>，这里自实现 pointer 拖拽：
+  // pointerdown 时阻止冒泡（不触发分组移动）并 setPointerCapture 锁定后续事件，
+  // pointerup 时用 elementsFromPoint 找落点节点 id，命中非组内节点则 onConnect。
+  const [connectDrag, setConnectDrag] = useState<{ x: number; y: number } | null>(null);
+  const connectStartRef = useRef<{ x: number; y: number } | null>(null);
+
+  const handleConnectPointerDown = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
+    if (!onConnect || group.locked) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const pointerId = event.pointerId;
+    const element = event.currentTarget;
+    element.setPointerCapture(pointerId);
+    connectStartRef.current = { x: event.clientX, y: event.clientY };
+    setConnectDrag({ x: event.clientX, y: event.clientY });
+
+    const handlePointerMove = (moveEvent: PointerEvent) => {
+      if (moveEvent.pointerId !== pointerId) return;
+      setConnectDrag({ x: moveEvent.clientX, y: moveEvent.clientY });
+    };
+    const finishConnect = (upEvent: PointerEvent) => {
+      if (upEvent.pointerId !== pointerId) return;
+      if (element.hasPointerCapture(pointerId)) element.releasePointerCapture(pointerId);
+      document.removeEventListener('pointermove', handlePointerMove);
+      document.removeEventListener('pointerup', handlePointerUp);
+      document.removeEventListener('pointercancel', handlePointerCancel);
+      setConnectDrag(null);
+      const targetId = getNodeAtScreenPoint(upEvent.clientX, upEvent.clientY);
+      if (targetId && targetId !== group.id && !group.childNodeIds.includes(targetId)) {
+        onConnect(group.id, targetId);
+      }
+    };
+    const handlePointerCancel = () => {
+      if (element.hasPointerCapture(pointerId)) element.releasePointerCapture(pointerId);
+      document.removeEventListener('pointermove', handlePointerMove);
+      document.removeEventListener('pointerup', handlePointerUp);
+      document.removeEventListener('pointercancel', handlePointerCancel);
+      setConnectDrag(null);
+    };
+    const handlePointerUp = (upEvent: PointerEvent) => finishConnect(upEvent);
+    document.addEventListener('pointermove', handlePointerMove);
+    document.addEventListener('pointerup', handlePointerUp);
+    document.addEventListener('pointercancel', handlePointerCancel);
+  }, [group.id, group.locked, group.childNodeIds, onConnect]);
+
   return (
     <div
       data-workflow-group-id={group.id}
@@ -278,10 +351,44 @@ export function WorkflowGroupOverlay({
             </button>
           </div>
         )}
+        {/* 分组输出连线手柄：拖到目标节点松手 → onConnect（调用方建边）。onPointerDown 阻止冒泡，不触发分组移动。 */}
+        {onConnect && (
+          <div
+            role="button"
+            title="拖拽连接到目标节点（把分组内节点的输出连过去）"
+            onPointerDown={handleConnectPointerDown}
+            onMouseEnter={() => setIsHovered(true)}
+            className={`pointer-events-auto absolute right-1 top-1/2 flex -translate-y-1/2 cursor-crosshair items-center justify-center rounded-full border-2 border-foreground/50 bg-background/80 text-muted-foreground shadow transition hover:scale-110 hover:border-primary hover:text-primary ${
+              group.locked ? 'opacity-40 pointer-events-none' : ''
+            }`}
+            style={{ width: 16, height: 16 }}
+          >
+            <Spline className="h-2.5 w-2.5" />
+          </div>
+        )}
         {group.locked && !isHovered && (
           <Lock className="h-2.5 w-2.5 text-orange-500 shrink-0" />
         )}
       </div>
+      {/* 拖拽连线指示线：portal 到 body，避免被 group overlay 的 overflow:hidden / 父级 transform 裁剪。
+          fixed 坐标用 connectDrag 屏幕坐标，SVG 直线连接手柄起始点和当前指针位置。 */}
+      {connectDrag && connectStartRef.current && createPortal(
+        (
+          <svg className="pointer-events-none fixed inset-0 z-[9999] h-full w-full">
+            <line
+              x1={connectStartRef.current.x}
+              y1={connectStartRef.current.y}
+              x2={connectDrag.x}
+              y2={connectDrag.y}
+              stroke="var(--primary, hsl(var(--primary)))"
+              strokeWidth={2}
+              strokeDasharray="5,5"
+            />
+            <circle cx={connectDrag.x} cy={connectDrag.y} r={4} fill="var(--primary, hsl(var(--primary)))" />
+          </svg>
+        ),
+        document.body,
+      )}
     </div>
   );
 }
