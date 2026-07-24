@@ -125,6 +125,10 @@ export function WorkflowGroupOverlay({
     if (group.locked || isEditing) return;
     const target = event.target as Element;
     if (target.closest('button,input')) return;
+    // 放行 ReactFlow 的连线手柄 / 调整大小手柄：否则 header 的 pointer-events-auto 区域
+    // 会劫持落在这些控件上的 pointerdown，导致拖 handle 变成拖整组（尤其子节点为图片展示节点、
+    // Handle 位于 header 覆盖区域时）。
+    if (target.closest('.react-flow__handle, .react-flow__resize-control')) return;
 
     event.preventDefault();
     event.stopPropagation();

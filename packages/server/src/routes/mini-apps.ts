@@ -269,6 +269,10 @@ const SRC_FILE_MIME: Record<string, string> = {
   '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
   '.gif': 'image/gif', '.webp': 'image/webp', '.bmp': 'image/bmp', '.ico': 'image/x-icon',
   '.map': 'application/json; charset=utf-8',
+  // Godot/wasm 游戏引擎 web 导出产物（如 Pixelorama）：pck=资源包，wasm=核心二进制，data=侧载资源
+  '.pck': 'application/octet-stream',
+  '.wasm': 'application/wasm',
+  '.data': 'application/octet-stream',
 };
 
 router.get('/:id/src/file', (req: Request<{ id: string }>, res: Response) => {

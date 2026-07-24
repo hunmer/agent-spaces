@@ -25,6 +25,7 @@ import ImageDisplayNode from './nodes/ImageDisplayNode';
 import ImageProcessNode from './nodes/ImageProcessNode';
 import ImageEditorNode from './nodes/ImageEditorNode';
 import FrameEditorNode from './nodes/FrameEditorNode';
+import PixelEditorNode from './nodes/PixelEditorNode';
 import NoteNode from './nodes/NoteNode';
 import useCanvasState from '../hooks/useCanvasState';
 import useWorkflow from '../hooks/useWorkflow';
@@ -47,6 +48,7 @@ const NODE_COMPONENTS = {
   [NODE_TYPES.imageProcess]: ImageProcessNode,
   [NODE_TYPES.imageEditor]: ImageEditorNode,
   [NODE_TYPES.frameEditor]: FrameEditorNode,
+  [NODE_TYPES.pixelEditor]: PixelEditorNode,
   [NODE_TYPES.note]: NoteNode,
 };
 
@@ -58,6 +60,7 @@ const ADD_NODE_ITEMS = [
   { type: NODE_TYPES.imageProcess },
   { type: NODE_TYPES.imageEditor },
   { type: NODE_TYPES.frameEditor },
+  { type: NODE_TYPES.pixelEditor },
   { type: NODE_TYPES.note },
 ];
 
@@ -75,7 +78,8 @@ function computeInputImages(nodes, edges) {
       || node.type === NODE_TYPES.imageDisplay
       || node.type === NODE_TYPES.imageProcess
       || node.type === NODE_TYPES.imageEditor
-      || node.type === NODE_TYPES.frameEditor;
+      || node.type === NODE_TYPES.frameEditor
+      || node.type === NODE_TYPES.pixelEditor;
     if (!isReceiver) continue;
     const incoming = edges.filter((e) => e.target === node.id);
     if (!incoming.length) continue;
@@ -97,6 +101,7 @@ const DEFAULT_SIZE = {
   [NODE_TYPES.note]: { w: 200, h: 120 },
   [NODE_TYPES.imageDisplay]: { w: 260, h: 240 },
   [NODE_TYPES.frameEditor]: { w: 300, h: 260 },
+  [NODE_TYPES.pixelEditor]: { w: 300, h: 260 },
   default: { w: 290, h: 240 },
 };
 
@@ -144,6 +149,9 @@ function initialData(type) {
     return { status: 'idle', output: { images: [] }, uploadedImages: [] };
   }
   if (type === NODE_TYPES.frameEditor) {
+    return { status: 'idle', output: { images: [] }, uploadedImages: [] };
+  }
+  if (type === NODE_TYPES.pixelEditor) {
     return { status: 'idle', output: { images: [] }, uploadedImages: [] };
   }
   const base = { status: 'idle', output: { images: [] }, uploadedImages: [] };
