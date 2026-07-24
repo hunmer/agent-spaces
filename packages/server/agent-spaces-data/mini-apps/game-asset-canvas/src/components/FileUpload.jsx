@@ -1,4 +1,5 @@
 import { useCallback, useRef, useState } from 'react';
+import { openMediaGallery } from '@agent-spaces/ui';
 
 /**
  * 图片上传组件：支持点击/拖拽上传，调用 window.AgentSpaces.uploadFile 上传到后端，
@@ -72,12 +73,26 @@ export default function FileUpload({ value = [], onChange, max = 6, placeholder 
     onChange?.(urls.filter((_, i) => i !== idx));
   }, [urls, onChange]);
 
+  // 统一列表用于 gallery：extras 在前，urls 在后（与渲染顺序一致）
+  const allItems = [
+    ...extras.map((e) => ({ src: e.src, type: 'image' })),
+    ...urls.map((src) => ({ src, type: 'image' })),
+  ];
+  const openAt = useCallback((idx) => {
+    if (!allItems.length) return;
+    openMediaGallery(allItems, Math.max(0, Math.min(idx, allItems.length - 1)));
+  }, [allItems]);
+
   return (
     <div className="flex flex-col gap-2">
       {(extras.length > 0 || urls.length > 0) && (
         <div className="grid grid-cols-3 gap-1.5">
           {extras.map((e, i) => (
-            <div key={`ex-${i}`} className="group relative aspect-square overflow-hidden rounded-md border border-border bg-muted/40">
+            <div
+              key={`ex-${i}`}
+              className="group relative aspect-square cursor-pointer overflow-hidden rounded-md border border-border bg-muted/40"
+              onClick={() => openAt(i)}
+            >
               <img src={e.src} alt="" className="h-full w-full object-cover" />
               {e.badge && (
                 <span className="absolute bottom-0.5 left-0.5 rounded bg-black/60 px-1 text-[9px] leading-tight text-white">
@@ -96,19 +111,26 @@ export default function FileUpload({ value = [], onChange, max = 6, placeholder 
               )}
             </div>
           ))}
-          {urls.map((src, i) => (
-            <div key={i} className="group relative aspect-square overflow-hidden rounded-md border border-border">
-              <img src={src} alt="" className="h-full w-full object-cover" />
-              <button
-                type="button"
-                onClick={() => onRemove(i)}
-                className="absolute right-0.5 top-0.5 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white shadow transition hover:bg-red-600"
-                title="移除"
+          {urls.map((src, i) => {
+            const idx = extras.length + i;
+            return (
+              <div
+                key={i}
+                className="group relative aspect-square cursor-pointer overflow-hidden rounded-md border border-border"
+                onClick={() => openAt(idx)}
               >
-                ✕
-              </button>
-            </div>
-          ))}
+                <img src={src} alt="" className="h-full w-full object-cover" />
+                <button
+                  type="button"
+                  onClick={(ev) => { ev.stopPropagation(); onRemove(i); }}
+                  className="absolute right-0.5 top-0.5 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white shadow transition hover:bg-red-600"
+                  title="移除"
+                >
+                  ✕
+                </button>
+              </div>
+            );
+          })}
         </div>
       )}
 

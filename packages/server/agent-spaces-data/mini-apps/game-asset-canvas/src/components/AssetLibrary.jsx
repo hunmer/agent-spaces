@@ -215,26 +215,28 @@ function AssetThumb({ asset, onRemove }) {
   };
   return (
     <HoverCard>
-      <HoverCardTrigger asChild>
-        <div className="group/asset relative aspect-square cursor-pointer overflow-hidden rounded border border-border">
-          <button type="button" onClick={handleClick} className="block h-full w-full">
-            <img
-              src={asset.url}
-              alt={asset.name || ''}
-              className="h-full w-full object-cover transition hover:opacity-80"
-              loading="lazy"
-            />
-          </button>
-          <button
-            type="button"
-            onClick={(e) => { e.stopPropagation(); onRemove(); }}
-            className="absolute right-0.5 top-0.5 flex size-4 items-center justify-center rounded bg-background/80 text-muted-foreground transition hover:bg-destructive hover:text-destructive-foreground"
-            title="删除图片"
-          >
-            <Trash2 className="h-2.5 w-2.5" />
-          </button>
-        </div>
-      </HoverCardTrigger>
+      <HoverCardTrigger
+        render={
+          <div className="group/asset relative aspect-square cursor-pointer overflow-hidden rounded border border-border">
+            <button type="button" onClick={handleClick} className="block h-full w-full">
+              <img
+                src={asset.url}
+                alt={asset.name || ''}
+                className="h-full w-full object-cover transition hover:opacity-80"
+                loading="lazy"
+              />
+            </button>
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onRemove(); }}
+              className="absolute right-0.5 top-0.5 flex size-4 items-center justify-center rounded bg-background/80 text-muted-foreground transition hover:bg-destructive hover:text-destructive-foreground"
+              title="删除图片"
+            >
+              <Trash2 className="h-2.5 w-2.5" />
+            </button>
+          </div>
+        }
+      />
       <HoverCardContent className="flex w-auto flex-col items-center p-1">
         <img
           src={asset.url}

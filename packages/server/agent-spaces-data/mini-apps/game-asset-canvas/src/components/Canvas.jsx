@@ -1204,15 +1204,17 @@ export default function Canvas() {
                   </button>
                   {/* 对齐分布下拉菜单 */}
                   <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <button
-                        type="button"
-                        className="flex items-center gap-1.5 rounded-md border border-border bg-background px-2.5 py-1 text-xs font-medium text-foreground transition hover:border-primary hover:text-primary"
-                      >
-                        <AlignHorizontalJustifyCenter className="h-3.5 w-3.5" />
-                        对齐分布
-                      </button>
-                    </DropdownMenuTrigger>
+                    <DropdownMenuTrigger
+                      render={
+                        <button
+                          type="button"
+                          className="flex items-center gap-1.5 rounded-md border border-border bg-background px-2.5 py-1 text-xs font-medium text-foreground transition hover:border-primary hover:text-primary"
+                        >
+                          <AlignHorizontalJustifyCenter className="h-3.5 w-3.5" />
+                          对齐分布
+                        </button>
+                      }
+                    />
                     <DropdownMenuContent align="center" className="text-xs">
                       <DropdownMenuItem onClick={() => alignDistribute('left')}>左对齐</DropdownMenuItem>
                       <DropdownMenuItem onClick={() => alignDistribute('center-h')}>水平居中</DropdownMenuItem>
