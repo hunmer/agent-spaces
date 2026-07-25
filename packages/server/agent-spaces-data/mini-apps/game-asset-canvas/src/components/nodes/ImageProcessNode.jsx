@@ -3,6 +3,7 @@ import { FileUpload } from '@agent-spaces/ui';
 import NodeShell from './NodeShell';
 import ImageResult from './ImageResult';
 import UpstreamImageList, { orderUpstream } from './UpstreamImageList';
+import ParamField from './ParamField';
 import {
   IMAGE_PROCESSORS,
   NODE_TYPES,
@@ -212,81 +213,6 @@ export default function ImageProcessNode({ id, type, data, selected }) {
         <ImageResult images={images} />
       )}
     </NodeShell>
-  );
-}
-
-/**
- * 动态参数字段渲染。
- * - select.options 支持 string[] 或 {value,label}[]（后者给中文显示）
- * - number.step 支持小数（如 quality 0.05、maxSizeMB 0.1）
- * - showWhen: { key, eq?, in? } 依据其他参数值条件显隐；不满足时返回 null
- */
-function ParamField({ param, value, onChange, allParams = {} }) {
-  // 条件显隐：showWhen.key 的当前值需满足 eq 或 in
-  if (param.showWhen) {
-    const dep = allParams[param.showWhen.key] ?? param.default;
-    const ok = 'eq' in param.showWhen
-      ? dep === param.showWhen.eq
-      : (Array.isArray(param.showWhen.in) ? param.showWhen.in.includes(dep) : true);
-    if (!ok) return null;
-  }
-  if (param.type === 'bool') {
-    return (
-      <label className="flex items-center gap-2 text-xs">
-        <input
-          type="checkbox"
-          checked={Boolean(value)}
-          onChange={(e) => onChange(e.target.checked)}
-          className="h-3.5 w-3.5"
-        />
-        <span className="text-muted-foreground">{param.label}</span>
-      </label>
-    );
-  }
-  if (param.type === 'color') {
-    return (
-      <label className="flex items-center justify-between gap-2 text-xs">
-        <span className="text-muted-foreground">{param.label}</span>
-        <input
-          type="color"
-          value={value || '#000000'}
-          onChange={(e) => onChange(e.target.value)}
-          className="h-6 w-10 cursor-pointer rounded border border-border bg-background"
-        />
-      </label>
-    );
-  }
-  if (param.type === 'select') {
-    return (
-      <label className="flex items-center justify-between gap-2 text-xs">
-        <span className="text-muted-foreground">{param.label}</span>
-        <select
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          className="rounded border border-border bg-background px-1.5 py-1 text-xs outline-none focus:border-primary"
-        >
-          {(param.options || []).map((opt) => {
-            const o = typeof opt === 'string' ? { value: opt, label: opt } : opt;
-            return <option key={o.value} value={o.value}>{o.label}</option>;
-          })}
-        </select>
-      </label>
-    );
-  }
-  // number
-  return (
-    <label className="flex items-center justify-between gap-2 text-xs">
-      <span className="text-muted-foreground">{param.label}</span>
-      <input
-        type="number"
-        value={value ?? param.default}
-        min={param.min}
-        max={param.max}
-        step={param.step ?? 1}
-        onChange={(e) => onChange(Number(e.target.value))}
-        className="w-20 rounded border border-border bg-background px-1.5 py-1 text-xs outline-none focus:border-primary"
-      />
-    </label>
   );
 }
 

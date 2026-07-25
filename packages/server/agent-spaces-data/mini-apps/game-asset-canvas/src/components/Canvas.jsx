@@ -14,6 +14,7 @@ import ConnectionLine from './ConnectionLine';
 import SettingsDialog from './SettingsDialog';
 import ExecutionQueuePopover from './ExecutionQueuePopover';
 import NodeFormDialog from './NodeFormDialog';
+import NodeExecuteDialog from './NodeExecuteDialog';
 import WorkspaceSwitcher from './WorkspaceSwitcher';
 import CanvasContextMenu from './canvas/CanvasContextMenu';
 import DropNodeMenu from './canvas/DropNodeMenu';
@@ -61,6 +62,8 @@ export default function Canvas() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   // 节点表单弹窗（右侧新增节点 tab 触发，或节点工具栏【编辑】按钮触发）：{ nodeType, initialImages } | null
   const [formState, setFormState] = useState(null);
+  // 节点执行弹窗（右侧新增节点卡片 ⚡ 图标触发，不创建画布节点，产出只写生成记录）：{ nodeType } | null
+  const [executeState, setExecuteState] = useState(null);
   // 右键菜单位置：ContextMenu 自管浮层定位，这里只记录右键处的画布坐标供建节点
   const [contextMenu, setContextMenu] = useState(null);
   // 拖拽连线到空白处放手的「添加节点」菜单：{ clientX, clientY, source, sourceHandle } | null
@@ -386,7 +389,7 @@ export default function Canvas() {
           onDeleteNode={crud.handleDeleteNode}
           onAdd={crud.handleAdd}
           onDragStartNode={crud.handleDragStartNode}
-          onOpenForm={(type) => setFormState({ nodeType: type, initialImages: [] })}
+          onExecute={(type) => setExecuteState({ nodeType: type })}
           history={history}
           onRemoveHistory={removeHistory}
           onClearHistory={clearHistory}
@@ -411,6 +414,14 @@ export default function Canvas() {
         initialImages={formState?.initialImages}
         onClose={() => setFormState(null)}
         onSubmit={crud.handleFormSubmit}
+      />
+
+      <NodeExecuteDialog
+        open={!!executeState}
+        nodeType={executeState?.nodeType}
+        executions={executions}
+        settings={settings}
+        onClose={() => setExecuteState(null)}
       />
     </ResizablePanelGroup>
   );

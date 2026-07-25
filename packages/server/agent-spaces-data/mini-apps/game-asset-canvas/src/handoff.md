@@ -764,10 +764,10 @@ GDScript 用 `print("[PXR] ...")`（经 index.js onPrint 输出，与 `index.js:
 ### 关键决策与已踩坑（务必遵守）
 
 1. **「载入示例」整块删除**：原 `SAMPLE_DATA` 常量 + 工具条「载入示例」按钮 + 空状态文案里的「点载入示例」提示全部移除。空状态改为引导用「AI 分析 / Alt 拉框 / 导入 JSON」。
-2. **右侧面板改 Tabs（3 个 tab）**：
+2. **右侧面板改 Tabs（3 个 tab，顺序：选中信息 / 元素拆分 / AI思考）**：
+   - **选中信息**（首 tab，默认激活）：表单修改选中框（id/type/label/x/y/w/h/depth/exportSlice/ocrText/textRole），「应用修改」写回 fabric Rect
    - **元素拆分**：原元素列表（树形缩进 + hover 联动 + 删除按钮），不动
    - **AI思考**：实时 markdown 渲染 AI 分析过程与返回原文（用宿主 `Markdown` 组件，已暴露于 ui-exports）
-   - **选中信息**：表单修改选中框（id/type/label/x/y/w/h/depth/exportSlice/ocrText/textRole），「应用修改」写回 fabric Rect
 3. **AI 思考过程「实时」=分阶段 markdown 累积（非 token 流）**：`agent_run` 是同步调用（无 token stream 能力），改造为在 `handleAiAnalyze` 各阶段 `setAiThought(t => t + ...)` 累积 markdown 文本（启动/压缩/分析中/返回原文/失败），用 `<Markdown content={aiThought}/>` 渲染。点「AI 分析」时 `setRightTab('ai')` 自动切到此 tab；分析完自动切回 list。
 4. **选中信息 tab 自动切换**：fabric 选中变化（`selection:created/updated/cleared`）触发 `onFabricSelectionChange`：选中 bbox → 写 `selectedIdx` + 从 Rect 读出 `selForm` + `setRightTab('selected')`；移动/缩放中也实时同步表单坐标。
 5. **表单回写 = applySelForm**：把 selForm 的 x/y/w/h 设置到 Rect（scaleX/scaleY 重置 1 + width/height 直接改），meta（id/label/type/exportSlice/ocrText/textRole）回写 `r.__meta`，exportSlice 变化同步 fill/stroke 风格。
@@ -791,10 +791,11 @@ GDScript 用 `print("[PXR] ...")`（经 index.js onPrint 输出，与 `index.js:
 
 - 打开 UI 拆分器：工具条**无**「载入示例」按钮；左侧新增「框选」「平移」两个按钮
 - 框选模式（默认）：左键空白拉新框；平移模式：左键拖拽画布；Alt 在两模式都强制拉框；空格临时平移
-- 右侧 Tabs 三个：元素拆分（同原）/ AI思考（默认空提示）/ 选中信息（默认空提示）
+- 右侧 Tabs 三个，顺序：**选中信息 / 元素拆分 / AI思考**（默认激活「选中信息」）
 - 点「AI 分析」→ 自动切到「AI思考」tab，分阶段显示「启动→压缩→分析中→返回原文」，完成后切回「元素拆分」
 - 在画布选中一个框 → 自动切到「选中信息」tab，表单显示该框的 id/type/坐标/尺寸/层级/exportSlice 等，改完点「应用修改」写回；移动/缩放框时表单坐标实时同步
 - 空状态文案引导「AI 分析 / Alt 拉框 / 导入 JSON」，不再提「载入示例」
+- 「AI 分析」按钮是 split-button（用宿主 `InputGroup`/`InputGroupAddon`/`InputGroupButton` 组件实现）：主按钮触发分析；右侧下拉箭头弹菜单，含「复制 Prompt」→ 把 userPrompt（`{imageUrl}` 占位符替换为当前图地址）+ 图片地址复制到剪贴板，复制成功显示「已复制」1.5s 后恢复
 
 ## 后续可做
 

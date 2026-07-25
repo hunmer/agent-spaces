@@ -1,13 +1,14 @@
 // 设置对话框：为每种节点类型配置执行时调用的目标工作流
 // 参考 stickerGenerator/SettingsDialog.jsx + WorkflowListDialog 工作流选择模式
-import { useEffect, useState } from 'react';
+// 修改即保存（无保存/取消按钮）：cfg 变化时自动 onSave，用 JSON 比较避免与父组件回传 value 死循环。
+import { useEffect, useRef, useState } from 'react';
 import {
   WORKFLOW_SLOTS, BUILTIN_PLUGIN,
 } from '../utils/settings';
 import { BBOX_AGENT_INIT_NAME, BBOX_AI_SYSTEM_PROMPT, BBOX_AI_USER_PROMPT, PROMPT_REVERSE_AGENT_INIT_NAME, PROMPT_REVERSE_SYSTEM_PROMPT, PROMPT_REVERSE_USER_PROMPT } from '../utils/constants';
 
 const {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+  Dialog, DialogContent, DialogHeader, DialogTitle,
   Button, Label, Textarea, WorkflowListDialog, Workflow, RotateCcw, Bot, Sparkles, Search,
 } = window.AgentSpacesUI;
 
@@ -63,9 +64,24 @@ export default function SettingsDialog({ open, value, onClose, onSave }) {
   const [error, setError] = useState('');
   const [agentBusy, setAgentBusy] = useState(false);
 
+  // 自动保存：cfg 变化且与上次已保存值不同时，调 onSave。
+  // 用 lastSavedJson 比较规避与父组件回传 value 的死循环（父传回相同 value 不再触发保存）。
+  const lastSavedJson = useRef('');
+  const savedRef = useRef(onSave);
+  savedRef.current = onSave;
+  useEffect(() => {
+    if (!open) return;
+    const json = JSON.stringify(cfg);
+    if (json === lastSavedJson.current) return;
+    lastSavedJson.current = json;
+    savedRef.current?.(cfg);
+  }, [open, cfg]);
+
+  // 打开时同步外部 value + 重置基准（不触发保存）
   useEffect(() => {
     if (open) {
       setCfg(value || {});
+      lastSavedJson.current = JSON.stringify(value || {});
       setError('');
     }
   }, [open, value]);
@@ -283,12 +299,8 @@ export default function SettingsDialog({ open, value, onClose, onSave }) {
           {error && (
             <div className="rounded-md bg-red-500/10 px-3 py-2 text-sm text-red-500">{error}</div>
           )}
+          <div className="pb-4" />
         </div>
-
-        <DialogFooter className="px-6 pb-6">
-          <Button variant="outline" onClick={onClose}>取消</Button>
-          <Button onClick={() => onSave(cfg)}>保存</Button>
-        </DialogFooter>
       </DialogContent>
 
       <WorkflowListDialog

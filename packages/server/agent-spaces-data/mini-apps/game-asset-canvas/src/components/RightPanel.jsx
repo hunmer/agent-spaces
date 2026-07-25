@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   openMediaGallery, ScrollArea, Tabs, TabsList, TabsTrigger, TabsContent,
-  Crosshair, Trash2, Plus, Boxes, History, Images,
+  Crosshair, Trash2, Plus, Boxes, History, Images, Zap,
 } from '@agent-spaces/ui';
-import { NODE_META, NODE_TYPES } from '../utils/constants';
+import { NODE_META, NODE_TYPES, NODE_TYPE_TO_PROCESSOR } from '../utils/constants';
 import AssetLibrary from './AssetLibrary';
 
 // 节点分类（顶部 chips 筛选用）。category 字段同步打到 ADD_ITEMS 每项。
@@ -60,7 +60,7 @@ const MAX_COLS = 5;
  */
 export default function RightPanel({
   nodes, onSelectNode, onLocateNode, onDeleteNode,
-  onAdd, onDragStartNode, onOpenForm,
+  onAdd, onDragStartNode, onExecute,
   history, onRemoveHistory, onClearHistory, onUseImage,
   workspaceId,
 }) {
@@ -83,7 +83,7 @@ export default function RightPanel({
         </TabsList>
 
         <TabsContent value="add" className="mt-0 min-h-0 flex-1 overflow-hidden">
-          <AddNodeList onAdd={onAdd} onDragStartNode={onDragStartNode} onOpenForm={onOpenForm} />
+          <AddNodeList onAdd={onAdd} onDragStartNode={onDragStartNode} onExecute={onExecute} />
         </TabsContent>
 
         <TabsContent value="nodes" className="mt-0 min-h-0 flex-1 overflow-hidden">
@@ -112,13 +112,24 @@ export default function RightPanel({
   );
 }
 
-// 支持表单提交的节点类型（文生图 / 编辑图片）
-const FORM_NODE_TYPES = new Set([NODE_TYPES.textToImage, NODE_TYPES.editImage]);
+// 可执行节点类型集合（与 NodeExecuteDialog.EXEC_KIND 对应）：文生图/编辑图片/反推提示词/
+// 生成配音/生成视频/抠图 + 12 个 ip* 图像处理节点。这些节点卡片 hover 时右上角显示 ⚡ 图标，
+// 点击打开执行对话框（不创建画布节点，产出只写生成记录）。
+const EXECUTABLE_TYPES = new Set([
+  NODE_TYPES.textToImage,
+  NODE_TYPES.editImage,
+  NODE_TYPES.promptReverse,
+  NODE_TYPES.textToVoice,
+  NODE_TYPES.videoGenerator,
+  NODE_TYPES.cutout,
+  ...Object.keys(NODE_TYPE_TO_PROCESSOR),
+]);
 
-// ============ 新增节点（可点击添加，可拖拽到画布；文生图/编辑图片可填表单提交到队列） ============
+// ============ 新增节点（可点击添加，可拖拽到画布；可执行节点 hover 右上角 ⚡ 直接执行） ============
 // 顶部按分类筛选 + 卡片网格按容器宽度自适应列数（2~5 列）。
-function AddNodeList({ onAdd, onDragStartNode, onOpenForm }) {
+function AddNodeList({ onAdd, onDragStartNode, onExecute }) {
   const [activeCat, setActiveCat] = useState('all');
+  const [hoverType, setHoverType] = useState(null);
   const scrollRef = useRef(null);
   const [cols, setCols] = useState(MIN_COLS);
 
@@ -168,22 +179,47 @@ function AddNodeList({ onAdd, onDragStartNode, onOpenForm }) {
 
       <ScrollArea className="min-h-0 flex-1">
         <div className="p-3">
-          <p className="mb-2 text-xs text-muted-foreground">点击添加，或拖拽到画布任意位置</p>
+          <p className="mb-2 text-xs text-muted-foreground">左上角＋添加到画布，或拖拽到画布任意位置</p>
           <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
             {items.map((it) => {
               const meta = NODE_META[it.type];
-              const hasForm = FORM_NODE_TYPES.has(it.type);
+              const executable = EXECUTABLE_TYPES.has(it.type);
+              const hovered = hoverType === it.type;
               return (
                 <div
                   key={it.type}
-                  className="group/card relative flex flex-col gap-1 rounded-lg border border-border bg-background p-2.5 transition hover:border-primary/60 hover:shadow-sm"
+                  className="relative flex flex-col gap-1 rounded-lg border border-border bg-background p-2.5 transition hover:border-primary/60 hover:shadow-sm"
+                  onMouseEnter={() => setHoverType(it.type)}
+                  onMouseLeave={() => setHoverType(null)}
                 >
+                  {/* 左上角：添加到画布 */}
                   <button
                     type="button"
+                    onClick={() => onAdd?.(it.type)}
+                    title="添加到画布"
+                    className="absolute left-1 top-1 z-10 flex h-6 w-6 items-center justify-center rounded-md bg-muted/60 text-muted-foreground transition hover:bg-primary/10 hover:text-primary"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                  </button>
+                  {/* 右上角：可执行节点 hover 显示 ⚡，直接执行（不进画布） */}
+                  {executable && (
+                    <button
+                      type="button"
+                      onClick={() => onExecute?.(it.type)}
+                      title="直接执行（不创建画布节点）"
+                      className={
+                        'absolute right-1 top-1 z-10 flex h-6 w-6 items-center justify-center rounded-md bg-primary/10 text-primary transition hover:bg-primary/20 ' +
+                        (hovered ? 'opacity-100' : 'opacity-0')
+                      }
+                    >
+                      <Zap className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                  {/* 主体：拖拽手柄，点击不加节点 */}
+                  <div
                     draggable
                     onDragStart={(e) => onDragStartNode?.(it.type, e)}
-                    onClick={() => onAdd?.(it.type)}
-                    className="flex flex-1 cursor-grab flex-col items-center gap-1.5 outline-none active:cursor-grabbing"
+                    className="flex flex-1 cursor-grab flex-col items-center gap-1.5 pt-1 outline-none active:cursor-grabbing"
                   >
                     <span
                       className="flex h-9 w-9 items-center justify-center rounded-md text-lg"
@@ -192,17 +228,7 @@ function AddNodeList({ onAdd, onDragStartNode, onOpenForm }) {
                       {meta.icon}
                     </span>
                     <span className="text-center text-xs font-medium leading-tight">{it.label}</span>
-                  </button>
-                  {hasForm && (
-                    <button
-                      type="button"
-                      onClick={() => onOpenForm?.(it.type)}
-                      title="填写参数并提交到执行队列"
-                      className="w-full rounded-md bg-primary/10 px-2 py-1 text-[11px] font-medium text-primary transition hover:bg-primary/20"
-                    >
-                      ⚡ 生成
-                    </button>
-                  )}
+                  </div>
                 </div>
               );
             })}

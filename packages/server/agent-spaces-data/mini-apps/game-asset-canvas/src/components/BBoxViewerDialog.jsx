@@ -6,10 +6,12 @@ import {
   ResizablePanelGroup, ResizablePanel, ResizableHandle,
   Tabs, TabsList, TabsTrigger, TabsContent,
   Markdown,
+  DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
+  InputGroup, InputGroupAddon, InputGroupButton,
 } from '@agent-spaces/ui';
 import {
   Undo2, Redo2, Eraser, Trash2, Download, Upload, FileJson, Crosshair, Sparkles,
-  SquareMousePointer, Hand,
+  SquareMousePointer, Hand, ChevronDown, Copy, Check,
 } from '@agent-spaces/ui';
 import { getFabric, getJsZip, getImageCompression } from '../utils/image-ops/cdn';
 import { loadImageSource, exportBox } from '../utils/image-ops/sprite-splitter';
@@ -128,9 +130,10 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
   const [analyzing, setAnalyzing] = useState(false);
   const agentConfigRef = useRef(agentConfig);
   agentConfigRef.current = agentConfig;
+  const [promptCopied, setPromptCopied] = useState(false);
 
-  // 右侧面板 Tabs
-  const [rightTab, setRightTab] = useState('list');
+  // 右侧面板 Tabs（顺序：选中信息 / 元素拆分 / AI思考）
+  const [rightTab, setRightTab] = useState('selected');
   // AI 思考过程：累积 markdown 文本
   const [aiThought, setAiThought] = useState('');
   // 选中信息：当前选中 fabric Rect 索引（在 boxes 中），null 表示未选中
@@ -442,6 +445,41 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
     fc.requestRenderAll();
   }, []);
 
+  // ============ 复制 AI 分析 prompt（prompt + 图片地址）到剪贴板 ============
+  const handleCopyPrompt = useCallback(async () => {
+    const ac = agentConfigRef.current;
+    const prompt = (ac?.userPrompt || '').replace(/\{imageUrl\}/g, imageUrl || '').trim();
+    const url = imageUrl || '';
+    const text = [
+      '【分析布局 Prompt】',
+      prompt || '(未配置 userPrompt)',
+      '',
+      '【图片地址】',
+      url || '(未加载图片)',
+    ].join('\n');
+    try {
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        // 兜底：用临时 textarea + execCommand
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+      }
+      setPromptCopied(true);
+      setStatus('已复制 Prompt + 图片地址到剪贴板');
+      setTimeout(() => setPromptCopied(false), 1500);
+    } catch (err) {
+      console.error('[bbox-viewer] copy prompt failed:', err);
+      setError(`复制失败: ${err?.message || err}`);
+    }
+  }, [imageUrl]);
+
   // ============ AI 分析图片（agent_run）============
   const handleAiAnalyze = useCallback(async () => {
     const AS = window.AgentSpaces;
@@ -495,20 +533,36 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
           images: [dataUrl],
         },
       );
+      // host 层 executePluginTool 在 HTTP 错误时不抛异常而是返回错误 payload，
+      // 这里显式判定错误响应（含 error/success===false/非 2xx status），转成异常走 catch
+      if (ret && typeof ret === 'object' && (ret.error || ret.success === false)) {
+        const errMsg = ret.error?.message || ret.error || ret.message || '调用失败';
+        throw new Error(typeof errMsg === 'string' ? errMsg : JSON.stringify(errMsg));
+      }
       // 4. 解析返回 JSON → 渲染框（sourceRef 已是压缩图，sx=1 零换算）
-      const raw = ret?.result || ret?.output || '';
+      const raw = ret?.result || ret?.output || (typeof ret === 'string' ? ret : '') || '';
       setAiThought((t) => t + '\n\n### AI 返回原文\n\n' + (raw || '(空)'));
-      const data = extractJsonFromText(raw);
+      let data;
+      try {
+        data = extractJsonFromText(raw);
+      } catch (parseErr) {
+        // 解析失败时把 AI 原始返回也带进错误信息，方便用户排查
+        const preview = (raw || '').slice(0, 200);
+        const e = new Error(`AI 返回内容不是有效 JSON：${parseErr.message}；原文：${preview}${raw.length > 200 ? '…' : ''}`);
+        e.raw = raw;
+        throw e;
+      }
       applyJsonData(data);
       setStatus(`✨ AI 分析完成，已渲染框`);
       // AI 分析完自动切回列表 tab
       setRightTab('list');
     } catch (err) {
       console.error('[bbox-viewer] AI analyze failed:', err);
-      const msg = err?.message || err;
-      setError(`AI 分析失败: ${msg}`);
-      setStatus('AI 分析失败');
-      setAiThought((t) => t + `\n\n❌ **分析失败**：${msg}`);
+      const msg = err?.message || (typeof err === 'string' ? err : JSON.stringify(err));
+      setError(`AI 分析失败：${msg}`);
+      setStatus('❌ AI 分析失败');
+      setAiThought((t) => t + `\n\n❌ **分析失败**：${msg}\n\n请检查：\n- AI 模型是否配置正确（设置 → BBox AI 分析）\n- 网络是否可达\n- 上方「AI 返回原文」是否有内容`);
+      // 失败时停留在 AI思考 tab，让用户看到错误详情
     } finally {
       setAnalyzing(false);
     }
@@ -1157,19 +1211,38 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
               onClick={() => jsonInputRef.current?.click()}>
               <FileJson className="h-3.5 w-3.5" /> 导入 JSON
             </Button>
-            <Tooltip>
-              <TooltipTrigger render={
-                <Button size="sm" className="h-8 gap-1 text-[11px]"
-                  onClick={handleAiAnalyze}
-                  disabled={analyzing || !imageUrl} />
-              }>
-                <Sparkles className="h-3.5 w-3.5" />
-                {analyzing ? '分析中…' : 'AI 分析'}
-              </TooltipTrigger>
-              <TooltipContent side="bottom">
-                {!agentConfig?.id ? '未配置 AI 模型，请到「设置 → BBox AI 分析」配置' : '用配置的 AI 分析当前图，返回 JSON 自动渲染框；过程实时展示'}
-              </TooltipContent>
-            </Tooltip>
+            {/* AI 分析 split-button（InputGroup）：主按钮 + 下拉按钮 */}
+            <InputGroup className="h-8 w-auto gap-0 rounded-md p-0">
+              <Tooltip>
+                <TooltipTrigger render={
+                  <Button size="sm" className="h-8 gap-1 rounded-md rounded-r-none border-0 text-[11px]"
+                    onClick={handleAiAnalyze}
+                    disabled={analyzing || !imageUrl} />
+                }>
+                    <Sparkles className="h-3.5 w-3.5" />
+                    {analyzing ? '分析中…' : 'AI 分析'}
+                </TooltipTrigger>
+                <TooltipContent side="bottom">
+                  {!agentConfig?.id ? '未配置 AI 模型，请到「设置 → BBox AI 分析」配置' : '用配置的 AI 分析当前图，返回 JSON 自动渲染框；过程实时展示'}
+                </TooltipContent>
+              </Tooltip>
+              <InputGroupAddon align="inline-end" className="border-l border-input pr-0.5">
+                <DropdownMenu>
+                  <DropdownMenuTrigger render={
+                    <InputGroupButton size="icon-xs" variant="ghost"
+                      disabled={analyzing || !imageUrl} />
+                  }>
+                    <ChevronDown className="h-3.5 w-3.5" />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={handleCopyPrompt}>
+                      {promptCopied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                      {promptCopied ? '已复制' : '复制 Prompt'}
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </InputGroupAddon>
+            </InputGroup>
           </div>
         </div>
 
@@ -1230,100 +1303,7 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
                   </TabsTrigger>
                 </TabsList>
 
-                {/* Tab：选中信息（表单） */}
-                <TabsContent value="selected" className="mt-0 min-h-0 flex-1 overflow-hidden">
-                  <div className="flex h-full flex-col">
-                    <div className="flex items-center justify-between border-b border-border px-3 py-2">
-                      <span className="text-xs font-medium">元素 {totalBoxes}</span>
-                      <Button size="sm" variant="ghost" className="h-7 text-[11px]" onClick={() => { syncBoxesState(); refreshLabels(); }} disabled={loading}>
-                        刷新
-                      </Button>
-                    </div>
-                    <ScrollArea className="min-h-0 flex-1">
-                      <div className="flex flex-col gap-0.5 p-2">
-                        {boxes.length === 0 && (
-                          <p className="px-2 py-8 text-center text-xs text-muted-foreground">
-                            {loading ? '加载中…' : '无 bbox。导入 JSON、Alt 拉框或点「AI 分析」生成'}
-                          </p>
-                        )}
-                        {boxes.map((b, i) => {
-                          const meta = b.meta || {};
-                          const label = meta.label || meta.id || `(框 ${i + 1})`;
-                          const tipParts = [meta.type && `type: ${meta.type}`, meta.id && `id: ${meta.id}`].filter(Boolean);
-                          if (meta.ocrText) tipParts.push(`ocr: ${meta.ocrText}`);
-                          if (meta.exportSlice !== undefined && meta.exportSlice !== null) tipParts.push(`export: ${meta.exportSlice ? '是' : '否'}`);
-                          const tip = tipParts.join('\n');
-                          return (
-                            <div
-                              key={i}
-                              className="group flex cursor-pointer items-center gap-2 rounded px-1.5 py-1 text-xs hover:bg-muted"
-                              style={{ paddingLeft: 6 + (meta.depth || 0) * 10 }}
-                              onMouseEnter={() => { setHoveredIdx(i); highlightBox(i); }}
-                              onMouseLeave={() => { setHoveredIdx(null); highlightBox(null); }}
-                              onClick={() => focusBox(i)}
-                            >
-                              <span className="h-3 w-3 shrink-0 rounded-sm border border-white/30"
-                                style={{ backgroundColor: meta.color || '#888' }} />
-                              <span className="flex-1 truncate text-muted-foreground" title={tip || label}>
-                                {meta.type && <span className="mr-1 rounded bg-muted px-1 text-[9px] text-foreground/70">{meta.type}</span>}
-                                {label}
-                                {meta.ocrText && <span className="ml-1 text-[10px] text-primary/80">「{meta.ocrText}」</span>}
-                              </span>
-                              {meta.exportSlice === true && (
-                                <span className="shrink-0 rounded bg-green-500/20 px-1 text-[9px] text-green-600" title="可导出切片">⬇</span>
-                              )}
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  const fc = fcRef.current;
-                                  if (!fc) return;
-                                  const all = rects();
-                                  const r = all[i];
-                                  if (!r) return;
-                                  pushHistory();
-                                  fc.remove(r);
-                                  refreshLabels();
-                                  syncBoxesState();
-                                  if (selectedIdx === i) { setSelectedIdx(null); setSelForm(null); }
-                                }}
-                                title="删除该框"
-                                className="shrink-0 rounded p-0.5 text-muted-foreground opacity-0 transition hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100"
-                              >
-                                <Trash2 className="h-3 w-3" />
-                              </button>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </ScrollArea>
-                  </div>
-                </TabsContent>
-
-                {/* Tab 2：AI 思考过程（Markdown 渲染） */}
-                <TabsContent value="ai" className="mt-0 min-h-0 flex-1 overflow-hidden">
-                  <div className="flex h-full flex-col">
-                    <div className="flex items-center justify-between border-b border-border px-3 py-2">
-                      <span className="text-xs font-medium">
-                        AI 思考过程
-                        {analyzing && <span className="ml-2 text-primary">分析中…</span>}
-                      </span>
-                    </div>
-                    <ScrollArea className="min-h-0 flex-1">
-                      <div className="p-3 text-sm">
-                        {aiThought ? (
-                          <Markdown content={aiThought} />
-                        ) : (
-                          <p className="text-xs text-muted-foreground">
-                            点工具条上的「AI 分析」开始分析。AI 分析的过程与返回文本将在此处实时展示。
-                          </p>
-                        )}
-                      </div>
-                    </ScrollArea>
-                  </div>
-                </TabsContent>
-
-                {/* Tab 3：选中信息（表单） */}
+                {/* Tab 1：选中信息（表单） */}
                 <TabsContent value="selected" className="mt-0 min-h-0 flex-1 overflow-hidden">
                   <div className="flex h-full flex-col">
                     <div className="flex items-center justify-between border-b border-border px-3 py-2">
@@ -1427,6 +1407,99 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
                               </Button>
                             </div>
                           </div>
+                        )}
+                      </div>
+                    </ScrollArea>
+                  </div>
+                </TabsContent>
+
+                {/* Tab 2：元素拆分列表 */}
+                <TabsContent value="list" className="mt-0 min-h-0 flex-1 overflow-hidden">
+                  <div className="flex h-full flex-col">
+                    <div className="flex items-center justify-between border-b border-border px-3 py-2">
+                      <span className="text-xs font-medium">元素 {totalBoxes}</span>
+                      <Button size="sm" variant="ghost" className="h-7 text-[11px]" onClick={() => { syncBoxesState(); refreshLabels(); }} disabled={loading}>
+                        刷新
+                      </Button>
+                    </div>
+                    <ScrollArea className="min-h-0 flex-1">
+                      <div className="flex flex-col gap-0.5 p-2">
+                        {boxes.length === 0 && (
+                          <p className="px-2 py-8 text-center text-xs text-muted-foreground">
+                            {loading ? '加载中…' : '无 bbox。导入 JSON、Alt 拉框或点「AI 分析」生成'}
+                          </p>
+                        )}
+                        {boxes.map((b, i) => {
+                          const meta = b.meta || {};
+                          const label = meta.label || meta.id || `(框 ${i + 1})`;
+                          const tipParts = [meta.type && `type: ${meta.type}`, meta.id && `id: ${meta.id}`].filter(Boolean);
+                          if (meta.ocrText) tipParts.push(`ocr: ${meta.ocrText}`);
+                          if (meta.exportSlice !== undefined && meta.exportSlice !== null) tipParts.push(`export: ${meta.exportSlice ? '是' : '否'}`);
+                          const tip = tipParts.join('\n');
+                          return (
+                            <div
+                              key={i}
+                              className="group flex cursor-pointer items-center gap-2 rounded px-1.5 py-1 text-xs hover:bg-muted"
+                              style={{ paddingLeft: 6 + (meta.depth || 0) * 10 }}
+                              onMouseEnter={() => { setHoveredIdx(i); highlightBox(i); }}
+                              onMouseLeave={() => { setHoveredIdx(null); highlightBox(null); }}
+                              onClick={() => focusBox(i)}
+                            >
+                              <span className="h-3 w-3 shrink-0 rounded-sm border border-white/30"
+                                style={{ backgroundColor: meta.color || '#888' }} />
+                              <span className="flex-1 truncate text-muted-foreground" title={tip || label}>
+                                {meta.type && <span className="mr-1 rounded bg-muted px-1 text-[9px] text-foreground/70">{meta.type}</span>}
+                                {label}
+                                {meta.ocrText && <span className="ml-1 text-[10px] text-primary/80">「{meta.ocrText}」</span>}
+                              </span>
+                              {meta.exportSlice === true && (
+                                <span className="shrink-0 rounded bg-green-500/20 px-1 text-[9px] text-green-600" title="可导出切片">⬇</span>
+                              )}
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const fc = fcRef.current;
+                                  if (!fc) return;
+                                  const all = rects();
+                                  const r = all[i];
+                                  if (!r) return;
+                                  pushHistory();
+                                  fc.remove(r);
+                                  refreshLabels();
+                                  syncBoxesState();
+                                  if (selectedIdx === i) { setSelectedIdx(null); setSelForm(null); }
+                                }}
+                                title="删除该框"
+                                className="shrink-0 rounded p-0.5 text-muted-foreground opacity-0 transition hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100"
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </ScrollArea>
+                  </div>
+                </TabsContent>
+
+                {/* Tab 3：AI 思考过程（Markdown 渲染） */}
+                <TabsContent value="ai" className="mt-0 min-h-0 flex-1 overflow-hidden">
+                  <div className="flex h-full flex-col">
+                    <div className="flex items-center justify-between border-b border-border px-3 py-2">
+                      <span className="text-xs font-medium">
+                        AI 思考过程
+                        {analyzing && <span className="ml-2 text-primary">分析中…</span>}
+                      </span>
+                    </div>
+                    <ScrollArea className="min-h-0 flex-1">
+                      <div className="p-3 text-sm">
+                        {aiThought ? (
+                          <Markdown content={aiThought} />
+                        ) : (
+                          <p className="text-xs text-muted-foreground">
+                            点工具条上的「AI 分析」开始分析。AI 分析的过程与返回文本将在此处实时展示。
+                          </p>
                         )}
                       </div>
                     </ScrollArea>
