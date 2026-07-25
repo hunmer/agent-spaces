@@ -15,8 +15,8 @@
  * - gifenc.js       — GIF 编码 + 调色板量化（官方 ESM build）
  * - gifuct-js.js    — GIF 解码（esm.sh ?bundle，js-binary-schema-parser 已内联）
  * - image-q.js      — Wu 色彩量化（esm.sh ?bundle + node polyfill）
- * - jszip.js        — ZIP 打包（esm.sh ?bundle + node polyfill，预留未用）
- * - node-process.js / node-buffer.js — image-q/jszip 的 node polyfill
+ * - node-process.js / node-buffer.js — image-q 的 node polyfill
+ * （ZIP 打包改用宿主 window.AgentSpaces.downloadZip，不再本地加载 jszip）
  */
 const VENDOR_BASE = 'vendor/';
 
@@ -85,11 +85,6 @@ export async function getGifUct() {
 /** image-q：Wu 色彩量化（buildPaletteSync / applyPaletteSync） */
 export async function getImageQ() {
   return unwrap(await loadVendor('image-q.js'));
-}
-
-/** jszip：ZIP 打包（GIF 拆帧后批量下载用，预留） */
-export async function getJsZip() {
-  return unwrap(await loadVendor('jszip.js'));
 }
 
 /**

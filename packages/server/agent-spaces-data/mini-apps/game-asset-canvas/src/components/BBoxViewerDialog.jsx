@@ -8,12 +8,13 @@ import {
   Markdown,
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
   InputGroup, InputGroupAddon, InputGroupButton,
+  Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription,
 } from '@agent-spaces/ui';
 import {
   Undo2, Redo2, Eraser, Trash2, Download, Upload, FileJson, Crosshair, Sparkles,
-  SquareMousePointer, Hand, ChevronDown, Copy, Check,
+  SquareMousePointer, Hand, ChevronDown, Copy, Check, Boxes,
 } from '@agent-spaces/ui';
-import { getFabric, getJsZip, getImageCompression } from '../utils/image-ops/cdn';
+import { getFabric, getImageCompression } from '../utils/image-ops/cdn';
 import { loadImageSource, exportBox } from '../utils/image-ops/sprite-splitter';
 import { BUILTIN_PLUGIN } from '../utils/constants';
 
@@ -173,24 +174,8 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
     });
   }, []);
 
-  // fabric 选中变化回调（绑定到 fc 上）
-  const onFabricSelectionChange = useCallback(() => {
-    const fc = fcRef.current;
-    if (!fc) return;
-    const active = fc.getActiveObject();
-    if (active && active.kind === 'bbox') {
-      const all = fc.getObjects().filter((o) => o.kind === 'bbox');
-      const idx = all.indexOf(active);
-      if (idx >= 0) {
-        setSelectedIdx(idx);
-        updateSelFormFromRect(idx);
-        setRightTab('selected');
-        return;
-      }
-    }
-    setSelectedIdx(null);
-    setSelForm(null);
-  }, [updateSelFormFromRect]);
+  // 注：onFabricSelectionChange 已移到 highlightBox 之后，避免 TDZ（其依赖数组引用 highlightBox）。
+
 
   // ============ 工具函数 ============
   const rects = useCallback(() => {
@@ -493,9 +478,6 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
       '',
       '# 分析布局 Prompt (userPrompt)',
       userPrompt || '(未配置 userPrompt)',
-      '',
-      '# 图片地址',
-      url || '(未加载图片)',
     ].join('\n');
     try {
       if (navigator?.clipboard?.writeText) {
@@ -594,12 +576,16 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
     }
   }, [imageUrl, applyJsonData]);
 
-  // ============ 切换图例高亮 ============
+  // ============ 切换图例高亮（含区域外黑色遮罩镂空）============
+  // 实现：用 4 块黑色半透明 Rect 围住高亮框，形成「画布其它区域被压暗、框内亮」的聚光灯效果。
+  // 4 块遮罩相对高亮框的位置：上 / 下 / 左 / 右（用 sourceRef 原图尺寸作为画布范围）。
   const highlightBox = useCallback((idx) => {
     const fc = fcRef.current;
+    const fabric = fabricLibRef.current;
     if (!fc) return;
     const all = rects();
-    // 复位
+    // 先移除旧遮罩 + 复位框样式
+    for (const o of fc.getObjects().filter((x) => x.kind === 'bbox-mask')) fc.remove(o);
     for (const r of all) {
       r.set({ opacity: 1, strokeWidth: Number(lineWidth) || 2 });
     }
@@ -616,11 +602,64 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
       for (const r of all) {
         if (r !== target) r.set({ opacity: 0.25, fill: 'rgba(0,0,0,0)' });
       }
+      // 区域外黑色遮罩镂空（4 块围住高亮框）
+      const src = sourceRef.current;
+      const cw = src?.canvas?.width || fc.getWidth();
+      const ch = src?.canvas?.height || fc.getHeight();
+      const bx = target.left;
+      const by = target.top;
+      const bw = target.width * (target.scaleX || 1);
+      const bh = target.height * (target.scaleY || 1);
+      const maskFill = 'rgba(0,0,0,0.55)';
+      const makeMask = (left, top, width, height) => {
+        const m = new fabric.Rect({
+          left, top, width, height,
+          fill: maskFill,
+          selectable: false, evented: false,
+          objectCaching: false,
+        });
+        m.kind = 'bbox-mask';
+        fc.add(m);
+      };
+      makeMask(0, 0, cw, Math.max(0, by));                       // 上
+      makeMask(0, by + bh, cw, Math.max(0, ch - (by + bh)));     // 下
+      makeMask(0, by, Math.max(0, bx), bh);                      // 左
+      makeMask(bx + bw, by, Math.max(0, cw - (bx + bw)), bh);    // 右
+      // 层级：遮罩应在框之下、背景图之上。fabric 5 对象方法为 sendToBack/bringToFront。
+      for (const o of fc.getObjects().filter((x) => x.kind === 'bbox-mask')) {
+        o.sendToBack?.();
+      }
+      // 装饰标签（label/id）和高亮框置顶，确保不被遮罩盖住
+      for (const o of fc.getObjects().filter((x) => x.kind === 'bbox-deco')) o.bringToFront?.();
+      target.bringToFront?.();
     } else {
       for (const r of all) r.set({ fill: 'rgba(0,0,0,0)' });
     }
     fc.requestRenderAll();
   }, [rects, lineWidth]);
+
+  // fabric 选中变化回调（绑定到 fc 上）。
+  // 选中框时联动 highlightBox 显示遮罩（与列表 hover 等效），取消选中时清除遮罩。
+  // 必须声明在 highlightBox 之后：其依赖数组引用 highlightBox，否则 TDZ。
+  const onFabricSelectionChange = useCallback(() => {
+    const fc = fcRef.current;
+    if (!fc) return;
+    const active = fc.getActiveObject();
+    if (active && active.kind === 'bbox') {
+      const all = fc.getObjects().filter((o) => o.kind === 'bbox');
+      const idx = all.indexOf(active);
+      if (idx >= 0) {
+        setSelectedIdx(idx);
+        updateSelFormFromRect(idx);
+        highlightBox(idx);
+        setRightTab('selected');
+        return;
+      }
+    }
+    setSelectedIdx(null);
+    setSelForm(null);
+    highlightBox(null);
+  }, [updateSelFormFromRect, highlightBox]);
 
   const focusBox = useCallback((idx) => {
     const fc = fcRef.current;
@@ -1035,9 +1074,12 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
     };
   }, [open, undo, redo, deleteSelected, rects]);
 
-  // ============ 导出 ZIP ============
+  // ============ 导出 ZIP（走宿主 downloadZip，避免本地 jszip polyfill 问题）============
   const handleDownloadZip = useCallback(async () => {
+    const AS = window.AgentSpaces;
     const src = sourceRef.current;
+    if (!AS?.downloadZip) { setError('宿主 downloadZip 不可用'); return; }
+    if (!AS?.uploadFile) { setError('宿主 uploadFile 不可用'); return; }
     if (!src) { setError('图片未加载'); return; }
     const list = onlyExportSlice ? boxes.filter((b) => b.meta?.exportSlice === true) : boxes;
     if (!list.length) { setError(onlyExportSlice ? '没有 exportSlice=true 的框' : '没有框'); return; }
@@ -1045,9 +1087,8 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
     setExportedCount(0);
     setError('');
     try {
-      const JSZip = await getJsZip();
-      const zip = new JSZip();
       const usedNames = new Set();
+      const files = [];
       for (let i = 0; i < list.length; i++) {
         const b = list[i];
         const meta = b.meta || {};
@@ -1059,19 +1100,14 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
         usedNames.add(name);
         const canvas = exportBox(src.imageData, b, { transparent: false });
         const blob = await new Promise((res) => canvas.toBlob((bb) => res(bb), 'image/png'));
-        zip.file(name, blob);
-        setExportedCount(i + 1);
+        const file = new File([blob], name, { type: 'image/png' });
+        const uploaded = await AS.uploadFile(file);
+        const httpUrl = uploaded?.url || uploaded?.httpPath;
+        if (httpUrl) { files.push({ url: httpUrl, filename: name }); setExportedCount(files.length); }
       }
-      const zipBlob = await zip.generateAsync({ type: 'blob' });
-      const url = URL.createObjectURL(zipBlob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `bbox_export_${Date.now()}.zip`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
-      setStatus(`已导出 ${list.length} 个区域到 ZIP`);
+      if (!files.length) throw new Error('全部区域上传失败');
+      await AS.downloadZip(files, `bbox_export_${Date.now()}.zip`);
+      setStatus(`已导出 ${files.length} 个区域到 ZIP`);
     } catch (err) {
       console.error('[bbox-viewer] zip failed:', err);
       setError(err?.message || String(err));
@@ -1152,7 +1188,38 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
 
         {/* 工具条 */}
         <div className="flex flex-wrap items-end gap-2 border-b border-border bg-muted/30 px-4 py-2">
-          {/* 左侧：交互模式切换（框选 / 平移） */}
+          {/* 最左侧：撤销 / 重做 / 清空 */}
+          <div className="flex items-end gap-1.5">
+            <Tooltip>
+              <TooltipTrigger render={
+                <Button size="icon" variant="outline" className="h-8 w-8" disabled={canUndo === false} onClick={undo} />
+              }>
+                <Undo2 className="h-4 w-4" />
+              </TooltipTrigger>
+              <TooltipContent side="bottom">撤销 (Ctrl+Z)</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger render={
+                <Button size="icon" variant="outline" className="h-8 w-8" disabled={canRedo === false} onClick={redo} />
+              }>
+                <Redo2 className="h-4 w-4" />
+              </TooltipTrigger>
+              <TooltipContent side="bottom">重做 (Ctrl+Y)</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger render={
+                <Button size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                  onClick={clearAll} disabled={totalBoxes === 0} />
+              }>
+                <Eraser className="h-4 w-4" />
+              </TooltipTrigger>
+              <TooltipContent side="bottom">清空所有框</TooltipContent>
+            </Tooltip>
+          </div>
+
+          <div className="mx-1 h-6 w-px self-center bg-border" />
+
+          {/* 交互模式切换（框选 / 平移） */}
           <div className="flex items-end gap-1.5">
             <Tooltip>
               <TooltipTrigger render={
@@ -1204,33 +1271,6 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
             <Switch checked={showId} onCheckedChange={setShowId} className="scale-90" />
             ID
           </label>
-          <div className="flex items-end gap-1.5">
-            <Tooltip>
-              <TooltipTrigger render={
-                <Button size="icon" variant="outline" className="h-8 w-8" disabled={canUndo === false} onClick={undo} />
-              }>
-                <Undo2 className="h-4 w-4" />
-              </TooltipTrigger>
-              <TooltipContent side="bottom">撤销 (Ctrl+Z)</TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger render={
-                <Button size="icon" variant="outline" className="h-8 w-8" disabled={canRedo === false} onClick={redo} />
-              }>
-                <Redo2 className="h-4 w-4" />
-              </TooltipTrigger>
-              <TooltipContent side="bottom">重做 (Ctrl+Y)</TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger render={
-                <Button size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                  onClick={clearAll} disabled={totalBoxes === 0} />
-              }>
-                <Eraser className="h-4 w-4" />
-              </TooltipTrigger>
-              <TooltipContent side="bottom">清空所有框</TooltipContent>
-            </Tooltip>
-          </div>
           {/* 右侧：JSON 导入 / AI 分析 */}
           <div className="ml-auto flex items-end gap-1.5">
             <Button size="sm" variant="outline" className="h-8 gap-1 text-[11px]"
@@ -1340,10 +1380,16 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
                     <ScrollArea className="min-h-0 flex-1">
                       <div className="p-3">
                         {!selForm || selectedIdx == null ? (
-                          <p className="text-xs text-muted-foreground">
-                            选中一个框（或手动拉框）后显示信息并可修改。<br />
-                            切到「框选模式」后在画布空白处拖拽可新建框。
-                          </p>
+                          <Empty>
+                            <EmptyHeader>
+                              <EmptyMedia variant="icon"><Crosshair className="h-4 w-4" /></EmptyMedia>
+                              <EmptyTitle>未选中框</EmptyTitle>
+                              <EmptyDescription>
+                                选中一个框（或手动拉框）后显示信息并可修改。<br />
+                                切到「框选模式」后在画布空白处拖拽可新建框。
+                              </EmptyDescription>
+                            </EmptyHeader>
+                          </Empty>
                         ) : (
                           <div className="flex flex-col gap-3">
                             <FormField label="ID">
@@ -1444,16 +1490,34 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
                   <div className="flex h-full flex-col">
                     <div className="flex items-center justify-between border-b border-border px-3 py-2">
                       <span className="text-xs font-medium">元素 {totalBoxes}</span>
-                      <Button size="sm" variant="ghost" className="h-7 text-[11px]" onClick={() => { syncBoxesState(); refreshLabels(); }} disabled={loading}>
-                        刷新
-                      </Button>
+                      <div className="flex items-center gap-1">
+                        <Button size="sm" variant="ghost" className="h-7 text-[11px]" onClick={() => { syncBoxesState(); refreshLabels(); }} disabled={loading}>
+                          刷新
+                        </Button>
+                        <Tooltip>
+                          <TooltipTrigger render={
+                            <Button size="icon" variant="ghost"
+                              className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                              onClick={clearAll} disabled={loading || totalBoxes === 0} />
+                          }>
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </TooltipTrigger>
+                          <TooltipContent side="bottom">清空所有框</TooltipContent>
+                        </Tooltip>
+                      </div>
                     </div>
                     <ScrollArea className="min-h-0 flex-1">
                       <div className="flex flex-col gap-0.5 p-2">
                         {boxes.length === 0 && (
-                          <p className="px-2 py-8 text-center text-xs text-muted-foreground">
-                            {loading ? '加载中…' : '无 bbox。导入 JSON、Alt 拉框或点「AI 分析」生成'}
-                          </p>
+                          <Empty>
+                            <EmptyHeader>
+                              <EmptyMedia variant="icon"><Boxes className="h-4 w-4" /></EmptyMedia>
+                              <EmptyTitle>无 bbox</EmptyTitle>
+                              <EmptyDescription>
+                                {loading ? '加载中…' : '导入 JSON、Alt 拉框或点「AI 分析」生成'}
+                              </EmptyDescription>
+                            </EmptyHeader>
+                          </Empty>
                         )}
                         {boxes.map((b, i) => {
                           const meta = b.meta || {};
@@ -1523,9 +1587,15 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
                         {aiThought ? (
                           <Markdown content={aiThought} />
                         ) : (
-                          <p className="text-xs text-muted-foreground">
-                            点工具条上的「AI 分析」开始分析。AI 分析的过程与返回文本将在此处实时展示。
-                          </p>
+                          <Empty>
+                            <EmptyHeader>
+                              <EmptyMedia variant="icon"><Sparkles className="h-4 w-4" /></EmptyMedia>
+                              <EmptyTitle>暂无 AI 思考</EmptyTitle>
+                              <EmptyDescription>
+                                点工具条上的「AI 分析」开始分析。AI 分析的过程与返回文本将在此处实时展示。
+                              </EmptyDescription>
+                            </EmptyHeader>
+                          </Empty>
                         )}
                       </div>
                     </ScrollArea>
