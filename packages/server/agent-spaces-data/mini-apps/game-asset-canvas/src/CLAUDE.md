@@ -11,7 +11,21 @@
 - `editImage` 编辑图片 → 调 `edit_image` 工作流（需上游图片）
 - `imageDisplay` 图片展示 → 可上传/粘贴 URL，也接收上游连线图片，带 source 标记（upload/url/upstream/history）
 - `imageProcess` 图像处理 → 本地算法处理（GIF/像素化/抠图等），不走工作流，详见下「图像处理节点」
+- `cutout` 抠图 → 统一抠图节点，select 切换 4 种模式（白底/色度键本地算法 · 工作流云端 · Rembg 插件），详见下「统一抠图节点」
 - `note` 便签 → 纯文本批注，不参与工作流，无 Handle
+
+## 统一抠图节点 (cutout)
+合并「白底抠图」「色度键抠图」「节点 toolbar 工作流抠图」「Rembg 插件抠图」四种能力为单一节点。
+- `data.params: { mode, modeParams }`：mode ∈ `whiteKey|chromaKey|workflow|rembg`；切换 mode 时 modeParams 重置为该模式默认值（`defaultCutoutParams`）
+- 参数表定义在 `utils/constants.js` 的 `CUTOUT_PARAMS`（按 mode 分组，支持 showWhen 条件显隐，与 ImageProcessNode.ParmField 同款）
+- 执行入口 `utils/cutout.js` 的 `runCutout(mode, urls, modeParams, ctx)`，按 mode 分流：
+  - `whiteKey`/`chromaKey` → 复用 `image-ops` 的 `runProcessor('white-key'|'chroma-key', ...)`
+  - `workflow` → 调 `image_enchanter` 工作流 `process_type=segment`（多图并发，ctx 注入 workflowId + runWorkflowFn）
+  - `rembg` → 调 `workflow.rembg` 插件（`rembg_remove|rembg_mask|rembg_alpha_matting|rembg_sam_segment`，按 modeParams.rembgMode 选动作；插件 config baseUrl/model/timeout 由后端注入）
+- Canvas 注入 `data.onCutout(id, mode, modeParams, images)` → `handleCutout`（与 handleProcessLocal 同款取消/状态机，复用 processingControllers）
+- 节点 toolbar「抠图」按钮（NodeShell）改为 `data.onCutoutCreate(images)` → `handleCutoutCreate`：创建 cutout 节点并预填当前产出图，mode 默认 workflow（原直接调工作流的替代）
+- 旧 `ipWhiteKey`/`ipChromaKey` 节点类型保留（兼容旧 canvas.json），但右侧「新增节点」菜单已移除，统一用 cutout
+- Rembg 插件需在插件管理启用 `workflow.rembg`；未启用时 rembg 模式执行会报 callPluginTool 错误（不崩溃）
 
 ## 节点可调整大小（NodeResizer）
 - 参考 https://reactflow.dev/api-reference/components/node-resizer

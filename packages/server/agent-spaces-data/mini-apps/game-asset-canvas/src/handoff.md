@@ -644,6 +644,65 @@ GDScript 用 `print("[PXR] ...")`（经 index.js onPrint 输出，与 `index.js:
 - 原「UI拆分」卡片显示「🧩 雪碧图拆分」；原「BBox查看」显示「📦 UI拆分」
 - 旧 canvas.json 的 imageProcess/uiSplitter/bboxViewer 节点打开仍正常（type id 未变）
 
+## 统一抠图节点 + Rembg 插件接入（本轮新增）
+
+把「白底抠图」「色度键抠图」「节点 toolbar 工作流抠图」「Rembg 插件抠图」四种抠图能力合并为单一 `cutout` 节点，select 切换模式并联动不同表单。
+
+### 关键决策与已踩坑（务必遵守）
+
+1. **合并而非新增第四种**：原 ipWhiteKey/ipChromaKey 是独立节点类型，toolbar 抠图是 NodeShell 按钮直接调工作流，rembg 是外部插件——四者入口散落。新建 `cutout` 节点用 mode select 统一，交互更连贯。旧 ipWhiteKey/ipChromaKey 类型保留（兼容旧 canvas.json），但右侧菜单移除。
+2. **模式分流在 utils 层不在组件层**：`utils/cutout.js` 的 `runCutout(mode, urls, modeParams, ctx)` 是唯一执行入口，按 mode switch 分流到 `runProcessor`(本地) / `runWorkflowFn`(工作流) / `callPluginTool`(rembg)。CutoutNode 只管 UI 和收集参数，不含执行逻辑。与 image-ops 的 runProcessor 解耦一致。
+3. **Rembg 插件 config 由后端注入**：插件 info.json 的 config（baseUrl/model/timeout）由 `pluginService.executePluginTool` 在后端 merge 进 args（`Object.assign({}, pluginConfig, args)`），前端只传用户参数（model/backgroundColor/af/ab/ae/extras/postProcessMask），不传 baseUrl/timeout。与 SKILL.md「不要传 credential 参数」一致。
+4. **rembg 返回结构兼容**：插件单图动作返回 `{success, message, data:{imageUrl, size, model}}`，但 `callPluginTool` 可能再包一层 `{success, result}`。`extractRembgImageUrl` 双层兜底：先解 `{result}` 包装，再取 `data.imageUrl`。
+5. **SAM 模式 extras 必填且所有图共用同一 prompt**：当前不支持逐图 prompt（节点只有 1 个 extras 输入框）。`runRembgCutout` 对 SAM 模式校验 extras 非空，支持 JSON 字符串或对象（`tryParseJson` 兜底）。
+6. **多图批量所有模式都支持**：白底/色度键走 `runProcessor`（内部 Promise.all 解码），工作流/rembg 在 cutout.js 里 `Promise.allSettled` 并发，部分失败不阻塞成功的（与 enhance/compress 同款）。
+7. **toolbar 抠图改创建节点**：原 `onProcessImage(images, 'segment')` 直接调工作流产出独立图片节点，改为 `onCutoutCreate(images)` 创建 cutout 节点并预填 uploadedImages，mode 默认 workflow。用户可在新节点里切换模式再执行。**放大按钮保留原逻辑**（未合并进 cutout）。
+8. **showWhen 格式与 ImageProcessNode.ParmField 一致**：`{ key, eq?|in? }`，按 `allParams[key]` 判断。rembg 模式的 backgroundColor/af/ab/ae/postProcessMask/extras 都用 `showWhen: { key: 'rembgMode', eq/in: ... }` 联动 rembgMode 子下拉。
+9. **TDZ 规避**：`CUTOUT_PARAMS.rembg` 引用 `REMBG_MODELS`，必须把 `REMBG_MODELS` 定义移到 `CUTOUT_PARAMS` 之前（`export const` 是 TDZ，对象字面量求值时引用未初始化常量会报错）。
+10. **ParamField 新增 type='text'**：rembg 的 backgroundColor/extras 是单行文本（非 number/color/select/bool），CutoutNode 的 ParamField 比 ImageProcessNode 多一个 text 分支。
+
+### 改动文件（mini-app 内，刷新即生效，无宿主改动）
+
+- `src/utils/constants.js`：
+  - `NODE_TYPES.cutout` + `NODE_META.cutout`（✂️ #14b8a6）+ `IMAGE_TAGS.cutout`
+  - 新增 `CUTOUT_MODES`（4 模式）/`DEFAULT_CUTOUT_MODE`/`REMBG_MODELS`（16 模型）/`CUTOUT_PARAMS`（按 mode 分组参数表）/`defaultCutoutParams(mode)`
+- `src/utils/cutout.js`（新增）：`runCutout` 统一执行入口 + `runWorkflowCutout`/`runRembgCutout`/`extractRembgImageUrl`/`tryParseJson`
+- `src/components/nodes/CutoutNode.jsx`（新增）：mode select + 动态参数表（showWhen 联动）+ FileUpload 多图 + UpstreamImageList 连线 + 执行/取消 + 产出
+- `src/components/Canvas.jsx`：
+  - import CutoutNode + runCutout + DEFAULT_CUTOUT_MODE/defaultCutoutParams
+  - `NODE_COMPONENTS`/`ADD_NODE_ITEMS` 注册 cutout（移除 ipWhiteKey/ipChromaKey 菜单项）
+  - `computeInputImages.isReceiverType` 加 cutout
+  - `DEFAULT_SIZE`/`initialData` 加 cutout
+  - `handleCutout`（执行回调，与 handleProcessLocal 同款取消/状态机）+ `handleCutoutCreate`（toolbar 抠图创建节点）
+  - decoratedNodes 注入 `onCutout`/`onCutoutCreate`
+- `src/components/nodes/NodeShell.jsx`：抠图按钮 onClick 从 `onProcessImage(segment)` 改为 `onCutoutCreate(images)`；toolbar 显示条件加 `showCutoutButton`
+- `src/components/RightPanel.jsx`：ADD_ITEMS 移除 ipWhiteKey/ipChromaKey，加 cutout
+
+### Rembg 插件对接
+
+- 插件 id：`workflow.rembg`（`packages/templates/plugins/rembg/`，已部署到 `packages/server/agent-spaces-data/plugins/rembg/`）
+- 调用：`window.AgentSpaces.callPluginTool('workflow.rembg', action, { image, model, ... })`
+- 动作映射（modeParams.rembgMode → 插件动作）：
+  - `remove` → `rembg_remove`（去背景，可选 backgroundColor）
+  - `mask` → `rembg_mask`（黑白掩码，可选 postProcessMask）
+  - `alphaMatting` → `rembg_alpha_matting`（精细抠图，af/ab/ae + 可选 backgroundColor）
+  - `sam` → `rembg_sam_segment`（SAM 分割，必填 extras JSON prompt）
+- 插件需在插件管理启用；config（baseUrl=http://localhost:7000, model=u2net, timeout=120000）由后端注入，前端不传
+- Rembg HTTP 服务需本机启动（`D:\rembg\start_gpu.bat`/`start_cpu.bat`），未启动时 rembg 模式报连接超时
+
+### 验收要点
+
+- 右侧「新增节点」出现 ✂️ 抠图卡片（原白底抠图/色度键抠图两项已移除）
+- 节点内「抠图模式」下拉切换 4 种：白底抠图（本地）/色度键抠图（本地）/工作流抠图（云端）/Rembg 抠图（插件）
+- 每种模式参数表独立：白底=容差+侵蚀；色度键=键色+容差+平滑+侵蚀；工作流=无参数；rembg=动作子下拉+模型+（按动作显隐）背景色/Alpha参数/掩码后处理/SAM prompt
+- 切换模式时参数重置为该模式默认值（不残留旧模式参数）
+- 任一模式支持上传多图 + 上游连线（合并去重），批量执行
+- 执行后产出写入 `data.output.images`，可连线下游，NodeToolbar 导出/抠图/放大按钮自动可用
+- 节点 toolbar「抠图」按钮 → 创建抠图节点并预填当前产出图（mode 默认工作流），不再直接调工作流
+- 节点 toolbar「放大」按钮保持原逻辑（未合并）
+- 生成记录里抠图条目 model 按模式显示（local/image_enchanter/rembg）
+- 旧 canvas.json 的 ipWhiteKey/ipChromaKey 节点打开仍正常（类型保留兼容）
+
 ## 后续可做
 
 - 队列任务失败「重试」按钮、执行中实时进度（node:progress 事件）

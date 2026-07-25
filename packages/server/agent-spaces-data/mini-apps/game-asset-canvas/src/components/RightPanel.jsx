@@ -18,8 +18,6 @@ const ADD_ITEMS = [
   { type: NODE_TYPES.ipPixelate, label: '像素化' },
   { type: NODE_TYPES.ipResizeNearest, label: '最近邻缩放' },
   { type: NODE_TYPES.ipInnerStroke, label: '内描边' },
-  { type: NODE_TYPES.ipChromaKey, label: '色度键抠图' },
-  { type: NODE_TYPES.ipWhiteKey, label: '白底抠图' },
   { type: NODE_TYPES.ipComposeOverlay, label: '图层叠加' },
   { type: NODE_TYPES.ipEnhance, label: '图片放大' },
   { type: NODE_TYPES.ipCompress, label: '图片压缩' },
@@ -31,6 +29,7 @@ const ADD_ITEMS = [
   { type: NODE_TYPES.textToVoice, label: '生成配音' },
   { type: NODE_TYPES.videoGenerator, label: '生成视频' },
   { type: NODE_TYPES.imageCompare, label: '图片对比' },
+  { type: NODE_TYPES.cutout, label: '抠图' },
   { type: NODE_TYPES.note, label: '便签' },
 ];
 

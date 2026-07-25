@@ -47,6 +47,8 @@ export const NODE_TYPES = {
   videoGenerator: 'videoGenerator',
   imageCompare: 'imageCompare',
   note: 'note',
+  // 统一抠图节点：合并白底/色度键/工作流抠图/rembg 四种抠图能力，select 切换模式
+  cutout: 'cutout',
   // 注：分组不是节点，是 WorkflowGroupOverlay（由 groups 数据驱动，复用 workflow-editor 同源组件）
 };
 
@@ -207,6 +209,7 @@ export const NODE_META = {
   [NODE_TYPES.videoGenerator]: { label: '生成视频', icon: '🎬', color: '#ef4444' },
   [NODE_TYPES.imageCompare]: { label: '图片对比', icon: '🔀', color: '#06b6d4' },
   [NODE_TYPES.note]: { label: '便签', icon: '📝', color: '#f59e0b' },
+  [NODE_TYPES.cutout]: { label: '抠图', icon: '✂️', color: '#14b8a6' },
 };
 
 // 图片展示节点的来源标签（不同来源传不同 tag 做区分）
@@ -226,6 +229,7 @@ export const IMAGE_TAGS = {
   history: '记录',
   upstream: '连线',
   export: '导出',
+  cutout: '抠图',
 };
 
 // 持久化配置文件名（工作区共享的顶层配置）
@@ -503,4 +507,116 @@ Details: <关键词1>, <关键词2>, ...
 
 // 默认用户提示词（图片以 base64 附件形式传给 AI，不嵌 prompt 文本）
 export const PROMPT_REVERSE_USER_PROMPT = `请对附带的每张图片分别反推一段可直接用于文生图的提示词，按系统提示词的格式输出。`;
+
+// ============ 统一抠图节点（cutout）============
+// 合并「白底抠图」「色度键抠图」「工作流抠图」「Rembg 插件」四种能力，
+// 节点内 select 切换 mode，参数表随 mode 切换（ParamField 的 showWhen 联动）。
+//
+// - mode=whiteKey    本地算法：把接近白色的像素置透明（utils/image-ops PROCESSORS['white-key']）
+// - mode=chromaKey   本地算法：绿幕/蓝幕/自定义键色抠除（PROCESSORS['chroma-key']）
+// - mode=workflow    云端工作流：调 image_enchanter 工作流 process_type=segment
+// - mode=rembg       Rembg 插件：调 workflow.rembg 插件（rembg_remove/mask/alpha_matting/sam）
+//                    rembgMode 子下拉切换 rembg 动作（白底/色度键模式参数表互斥；workflow/rembg 用各自的子参数表）
+//
+// 参数表统一存 data.params，格式与 IMAGE_PROCESSORS 一致（ParamField 可直接渲染）。
+// 多图批量：所有模式均支持多张输入（FileUpload 多图 + 上游连线）。
+export const CUTOUT_MODES = [
+  { value: 'whiteKey', label: '白底抠图（本地）', desc: '把接近白色的像素置透明，适合白底图' },
+  { value: 'chromaKey', label: '色度键抠图（本地）', desc: '绿幕/蓝幕/自定义键色抠除，带平滑带' },
+  { value: 'workflow', label: '工作流抠图（云端）', desc: '调用 image_enchanter 工作流云端 AI 抠图' },
+  { value: 'rembg', label: 'Rembg 抠图（插件）', desc: '调用 Rembg 插件 HTTP 服务，多分割模型可选' },
+];
+
+// 默认 mode
+export const DEFAULT_CUTOUT_MODE = 'whiteKey';
+
+// Rembg 支持的模型列表（与 rembg 插件 actions.js 的 MODEL_OPTIONS 一致）
+// 必须在 CUTOUT_PARAMS 之前定义（CUTOUT_PARAMS.rembg 引用此常量，避免 TDZ）
+export const REMBG_MODELS = [
+  { value: 'u2net', label: 'u2net (默认·通用)' },
+  { value: 'u2netp', label: 'u2netp (轻量·快速)' },
+  { value: 'u2net_human_seg', label: 'u2net_human_seg (人像)' },
+  { value: 'u2net_cloth_seg', label: 'u2net_cloth_seg (服饰)' },
+  { value: 'silueta', label: 'silueta (通用·小体积)' },
+  { value: 'isnet-general-use', label: 'isnet-general-use (通用·高精度)' },
+  { value: 'isnet-anime', label: 'isnet-anime (动漫角色)' },
+  { value: 'birefnet-general', label: 'birefnet-general (通用·BiRefNet)' },
+  { value: 'birefnet-general-lite', label: 'birefnet-general-lite (通用·轻量)' },
+  { value: 'birefnet-portrait', label: 'birefnet-portrait (人像)' },
+  { value: 'birefnet-dis', label: 'birefnet-dis (二分图)' },
+  { value: 'birefnet-hrsod', label: 'birefnet-hrsod (高分辨率显著性)' },
+  { value: 'birefnet-cod', label: 'birefnet-cod (伪装目标)' },
+  { value: 'birefnet-massive', label: 'birefnet-massive (大规模训练)' },
+  { value: 'bria-rmbg', label: 'bria-rmbg (商业级)' },
+  { value: 'sam', label: 'sam (需 prompt 提示)' },
+];
+
+// 模式对应的参数表（ParamField 渲染，支持 showWhen 条件显隐）。
+// workflow 模式无参数（云端黑盒）；其余模式按各自算法/插件字段定义。
+// 每个参数表的 key 与 cutout.js 的 runCutout 解析一一对应。
+// showWhen 格式与 ImageProcessNode.ParmField 一致：{ key, eq?|in? }，按 allParams[key] 判断。
+export const CUTOUT_PARAMS = {
+  // ---- 白底抠图（本地算法 whiteKey）----
+  whiteKey: [
+    { key: 'tolerance', label: '容差', type: 'number', default: 30, min: 0, max: 100 },
+    { key: 'erode', label: '侵蚀(px)', type: 'number', default: 0, min: 0, max: 5 },
+  ],
+  // ---- 色度键抠图（本地算法 chromaKey）----
+  chromaKey: [
+    { key: 'keyColor', label: '键色', type: 'color', default: '#00ff00' },
+    { key: 'tolerance', label: '容差', type: 'number', default: 80, min: 0, max: 200 },
+    { key: 'smoothness', label: '平滑', type: 'number', default: 30, min: 0, max: 100 },
+    { key: 'erode', label: '侵蚀(px)', type: 'number', default: 0, min: 0, max: 5 },
+  ],
+  // ---- 工作流抠图（云端 image_enchanter）----
+  workflow: [],
+  // ---- Rembg 抠图（插件，子动作切换）----
+  // rembgMode 子下拉：去背景/掩码/Alpha Matting/SAM（批量由多图输入自动触发）
+  // model/baseUrl/timeout 由插件配置注入，不在表单里；af/ab/ae 仅 alphaMatting 显；
+  // backgroundColor 仅 remove/alphaMatting 显；postProcessMask 仅 mask 显；extras 仅 sam 显。
+  rembg: [
+    {
+      key: 'rembgMode', label: 'Rembg 动作', type: 'select', default: 'remove',
+      options: [
+        { value: 'remove', label: '去背景（透明）' },
+        { value: 'mask', label: '生成掩码（黑白）' },
+        { value: 'alphaMatting', label: 'Alpha Matting（精细）' },
+        { value: 'sam', label: 'SAM 提示分割' },
+      ],
+    },
+    {
+      key: 'model', label: '分割模型', type: 'select', default: 'u2net',
+      options: REMBG_MODELS,
+    },
+    {
+      key: 'backgroundColor', label: '背景色', type: 'text', default: '',
+      tooltip: '可选纯色背景，如 "255,255,255,255" 或 "#FFFFFF"。留空=透明',
+      showWhen: { key: 'rembgMode', in: ['remove', 'alphaMatting'] },
+    },
+    // Alpha Matting 专用参数
+    { key: 'af', label: '前景阈值', type: 'number', default: 240, min: 0, max: 255,
+      showWhen: { key: 'rembgMode', eq: 'alphaMatting' } },
+    { key: 'ab', label: '背景阈值', type: 'number', default: 10, min: 0, max: 255,
+      showWhen: { key: 'rembgMode', eq: 'alphaMatting' } },
+    { key: 'ae', label: '侵蚀尺寸', type: 'number', default: 10, min: 0, max: 100,
+      showWhen: { key: 'rembgMode', eq: 'alphaMatting' } },
+    // 掩码后处理（mask 模式）
+    { key: 'postProcessMask', label: '掩码后处理', type: 'bool', default: false,
+      showWhen: { key: 'rembgMode', eq: 'mask' } },
+    // SAM prompt（sam 模式）
+    { key: 'extras', label: 'SAM Prompt(JSON)', type: 'text', default: '',
+      tooltip: 'JSON 对象，如 {"sam_prompt":[{"type":"point","data":[724,740],"label":1}]}',
+      showWhen: { key: 'rembgMode', eq: 'sam' } },
+  ],
+};
+
+/** 抠图模式对应参数表的默认值（初始化节点 data.params.modeParams 用） */
+export function defaultCutoutParams(mode) {
+  const params = CUTOUT_PARAMS[mode] || [];
+  const out = {};
+  for (const p of params) out[p.key] = p.default;
+  return out;
+}
+
+
 

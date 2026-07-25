@@ -31,6 +31,7 @@ import PromptReverseNode from './nodes/PromptReverseNode';
 import TextToVoiceNode from './nodes/TextToVoiceNode';
 import VideoGeneratorNode from './nodes/VideoGeneratorNode';
 import ImageCompareNode from './nodes/ImageCompareNode';
+import CutoutNode from './nodes/CutoutNode';
 import NoteNode from './nodes/NoteNode';
 import useCanvasState from '../hooks/useCanvasState';
 import useWorkflow from '../hooks/useWorkflow';
@@ -39,12 +40,13 @@ import useGenerationHistory from '../hooks/useGenerationHistory';
 import useSettings from '../hooks/useSettings';
 import useExecutionQueue from '../hooks/useExecutionQueue';
 import useWorkspaces from '../hooks/useWorkspaces';
-import { IMAGE_PROCESSOR_CATEGORIES, IMAGE_PROCESSORS, IMAGE_TAGS, NODE_META, NODE_TYPES, NODE_TYPE_TO_PROCESSOR, WORKFLOWS, defaultProcessorParams, isImageProcessNodeType } from '../utils/constants';
+import { IMAGE_PROCESSOR_CATEGORIES, IMAGE_PROCESSORS, IMAGE_TAGS, NODE_META, NODE_TYPES, NODE_TYPE_TO_PROCESSOR, WORKFLOWS, defaultProcessorParams, isImageProcessNodeType, DEFAULT_CUTOUT_MODE, defaultCutoutParams } from '../utils/constants';
 import { autoLayout } from '../utils/layout';
 import { downloadJson, serializeCanvas } from '../utils/export';
 import { copyNodes, hasClipboard, pasteNodes } from '../utils/clipboard';
 import { loadPanelLayout, loadShowMinimap, onAnyConfigChanged, savePanelLayout } from '../utils/storage';
 import { runProcessor } from '../utils/image-ops';
+import { runCutout } from '../utils/cutout';
 
 // 节点类型 -> 渲染组件
 const NODE_COMPONENTS = {
@@ -73,6 +75,7 @@ const NODE_COMPONENTS = {
   [NODE_TYPES.textToVoice]: TextToVoiceNode,
   [NODE_TYPES.videoGenerator]: VideoGeneratorNode,
   [NODE_TYPES.imageCompare]: ImageCompareNode,
+  [NODE_TYPES.cutout]: CutoutNode,
   [NODE_TYPES.note]: NoteNode,
 };
 
@@ -89,8 +92,6 @@ const ADD_NODE_ITEMS = [
   { type: NODE_TYPES.ipPixelate },
   { type: NODE_TYPES.ipResizeNearest },
   { type: NODE_TYPES.ipInnerStroke },
-  { type: NODE_TYPES.ipChromaKey },
-  { type: NODE_TYPES.ipWhiteKey },
   { type: NODE_TYPES.ipComposeOverlay },
   { type: NODE_TYPES.ipEnhance },
   { type: NODE_TYPES.ipCompress },
@@ -102,6 +103,7 @@ const ADD_NODE_ITEMS = [
   { type: NODE_TYPES.textToVoice },
   { type: NODE_TYPES.videoGenerator },
   { type: NODE_TYPES.imageCompare },
+  { type: NODE_TYPES.cutout },
   { type: NODE_TYPES.note },
 ];
 
@@ -126,7 +128,8 @@ function computeInputImages(nodes, edges) {
     || type === NODE_TYPES.bboxViewer
     || type === NODE_TYPES.promptReverse
     || type === NODE_TYPES.videoGenerator
-    || type === NODE_TYPES.imageCompare;
+    || type === NODE_TYPES.imageCompare
+    || type === NODE_TYPES.cutout;
 
   // 取某节点「作为 source 时应给出的产出图」：output.images 优先，回退 data.images。
   // derivedByNode 允许把上一轮 receiver 的派生图并入视图（解决多跳转发）。
@@ -183,6 +186,7 @@ const DEFAULT_SIZE = {
   [NODE_TYPES.bboxViewer]: { w: 290, h: 240 },
   [NODE_TYPES.promptReverse]: { w: 320, h: 280 },
   [NODE_TYPES.videoGenerator]: { w: 300, h: 320 },
+  [NODE_TYPES.cutout]: { w: 290, h: 260 },
   default: { w: 290, h: 240 },
 };
 
@@ -283,6 +287,16 @@ function initialData(type) {
   if (type === NODE_TYPES.imageCompare) {
     // 双槽位：first/second 各自独立支持上传 + 连线首张；连线图统一进 data.images（按序分槽位）
     return { status: 'idle', first: { uploadedImages: [] }, second: { uploadedImages: [] } };
+  }
+  if (type === NODE_TYPES.cutout) {
+    // 统一抠图节点：mode（默认白底）+ modeParams（随 mode 切换重置）+ 多图输入
+    return {
+      status: 'idle',
+      output: { images: [] },
+      uploadedImages: [],
+      upstreamOrder: [],
+      params: { mode: DEFAULT_CUTOUT_MODE, modeParams: defaultCutoutParams(DEFAULT_CUTOUT_MODE) },
+    };
   }
   if (type === NODE_TYPES.textToVoice) {
     return { status: 'idle', output: { audio: null }, params: { prompt: '', model: 'fish-audio', voiceId: '' } };
@@ -1381,6 +1395,64 @@ export default function Canvas() {
     }
   }, [updateNodeData, addHistory, settings, runWorkflow]);
 
+  // 统一抠图节点「执行抠图」：调 runCutout 分流（白底/色度键本地算法 / 工作流抠图 / rembg 插件）。
+  // 流程与 handleProcessLocal 一致：上游 URL → runCutout → 产出 http URL → 回填本节点 data.output.images。
+  // workflow 模式需注入 workflowId + runWorkflowFn（image_enchanter 工作流，可被 settings 覆盖）。
+  // 取消机制复用 processingControllers 注册表（与 handleProcessLocal 同款，同节点不会同时跑两个任务）。
+  const handleCutout = useCallback(async (nodeId, mode, modeParams, sourceImages) => {
+    if (!sourceImages?.length) return;
+    processingControllers.get(nodeId)?.abort();
+    const controller = new AbortController();
+    processingControllers.set(nodeId, controller);
+
+    const extraCtx = mode === 'workflow'
+      ? {
+          workflowId: settings.imageEnchanterWorkflowId || WORKFLOWS.image_enchanter,
+          runWorkflowFn: runWorkflow,
+        }
+      : {};
+
+    updateNodeData(nodeId, { status: 'running', error: undefined, output: { images: [] } });
+    try {
+      const urls = await runCutout(mode, sourceImages, modeParams || {}, extraCtx);
+      if (controller.signal.aborted) return;
+      if (!urls.length) throw new Error('抠图未返回图片');
+      updateNodeData(nodeId, { status: 'done', output: { images: urls } });
+      addHistory({
+        id: genId('hist'),
+        nodeId,
+        nodeType: NODE_TYPES.cutout,
+        prompt: `抠图·${mode}`,
+        model: mode === 'workflow' ? 'image_enchanter' : (mode === 'rembg' ? 'rembg' : 'local'),
+        images: urls,
+        createdAt: Date.now(),
+      }).catch((e) => console.error('cutout addHistory failed:', e));
+    } catch (err) {
+      if (controller.signal.aborted) return;
+      console.error('cutout failed:', err);
+      updateNodeData(nodeId, { status: 'error', error: err?.message || String(err) });
+    } finally {
+      if (processingControllers.get(nodeId) === controller) {
+        processingControllers.delete(nodeId);
+      }
+    }
+  }, [updateNodeData, addHistory, settings, runWorkflow]);
+
+  // 节点工具栏「抠图」按钮：创建统一抠图节点，预填当前节点产出图作为输入。
+  // 替代原「直接调 image_enchanter 工作流产出抠图节点」逻辑——用户可在新节点里切换
+  // 白底/色度键/工作流/Rembg 四种模式再执行，交互更连贯。
+  // mode 默认 workflow（toolbar 抠图原本就是云端 AI 抠图场景）。
+  const handleCutoutCreate = useCallback((sourceImages) => {
+    if (!sourceImages?.length) return;
+    const normalized = normalizeImageUrls(sourceImages.filter(Boolean));
+    const mode = 'workflow';
+    createNodeAt(NODE_TYPES.cutout, null, {
+      uploadedImages: normalized,
+      params: { mode, modeParams: defaultCutoutParams(mode) },
+      tags: [IMAGE_TAGS.cutout],
+    });
+  }, [createNodeAt]);
+
   // 取消图像处理：abort signal + 置 status='cancelled'（写入节点 data，可观测/持久化）。
   // 底层任务继续跑但结果会被 handleProcessLocal 的 aborted 检查丢弃。
   const handleCancelProcess = useCallback((nodeId) => {
@@ -1424,6 +1496,10 @@ export default function Canvas() {
           onExportImages: (imgs) => handleExportImages(nd, imgs),
           onProcessImage: handleProcessImage,
           onProcessLocal: handleProcessLocal,
+          // 统一抠图节点执行回调（分流本地算法/工作流/rembg 插件）
+          onCutout: handleCutout,
+          // 节点工具栏「抠图」按钮：创建统一抠图节点并预填当前产出图
+          onCutoutCreate: handleCutoutCreate,
           onCancelProcess: handleCancelProcess,
           // 反推提示词节点执行回调（调视觉 AI agent_run，写文本产出）
           onPromptReverse: handlePromptReverse,
@@ -1441,7 +1517,7 @@ export default function Canvas() {
         },
       };
     }),
-    [nodes, upstreamMap, makeOnUpdate, handleGenerate, handleGenerateMedia, handleExportImages, handleProcessImage, handleProcessLocal, handleCancelProcess, handlePromptReverse, handleAutoSize, handleAutoSizeToContent, selectionCount, settings],
+    [nodes, upstreamMap, makeOnUpdate, handleGenerate, handleGenerateMedia, handleExportImages, handleProcessImage, handleProcessLocal, handleCutout, handleCutoutCreate, handleCancelProcess, handlePromptReverse, handleAutoSize, handleAutoSizeToContent, selectionCount, settings],
   );
 
   // 分组 overlay 的子节点映射 + 选中态（WorkflowGroupOverlay 需要的 childNodes/isSelected）
