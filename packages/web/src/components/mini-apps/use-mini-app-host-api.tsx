@@ -302,15 +302,17 @@ export function useMiniAppHostApi(projectId: string, runtimeContext?: MiniAppRun
       pluginId: string,
       toolName: string,
       args: Record<string, any>,
-      options?: { taskId?: string; meta?: Record<string, unknown> },
+      options?: { taskId?: string; meta?: Record<string, unknown>; signal?: AbortSignal },
     ) => {
       const body: Record<string, unknown> = { name: toolName, args, workspaceId: projectId, executorId };
       if (options?.taskId) body.taskId = options.taskId;
       if (options?.meta) body.meta = options.meta;
+      // signal：透传到 fetch，调用方可真中断 HTTP 请求（fetch 抛 AbortError，后端响应客户端断开）。
       const resp = await fetchWithAuth(`/api/plugins/${encodeURIComponent(pluginId)}/tools/execute`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
+        signal: options?.signal,
       });
       const payload = await resp.json();
       if (!resp.ok) return payload;

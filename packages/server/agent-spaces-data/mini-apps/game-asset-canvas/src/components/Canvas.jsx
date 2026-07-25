@@ -551,6 +551,7 @@ export default function Canvas() {
     try {
       const text = await runAgentVisionText(agentConfig, inputImages, {
         signal: controller.signal,
+        stripThink: true, // 反推产出是给用户/文生图用的纯文本，去除 AI 的 <think> 思考块
         onCompressProgress: (done, total) => {
           updateNodeData(nodeId, { statusMsg: `压缩图片 ${done}/${total}…` });
         },

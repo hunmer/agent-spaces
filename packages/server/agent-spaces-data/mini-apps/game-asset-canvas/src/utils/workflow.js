@@ -429,6 +429,20 @@ export async function compressImagesToDataUrls(urls, { onProgress, signal } = {}
 }
 
 /**
+ * 去除 AI 返回文本里的 <think>…</think> 块（含未闭合的尾随 <think>… 残留）。
+ * 与 server/src/agents/title-generator-agent.ts 的处理同款，供反推等需要纯产出的调用方使用。
+ * 仅在外显调用方主动 opt-in 时用（stripThink=true），默认保留 AI 原始输出（含思考过程）。
+ */
+export function stripThinkTags(text) {
+  if (typeof text !== 'string' || !text) return text;
+  return text
+    .replace(/<think\b[^>]*>[\s\S]*?<\/think>/gi, '') // 完整闭合块
+    .replace(/<think\b[^>]*>[\s\S]*$/gi, '')          // 尾随未闭合块
+    .replace(/<\/think>/gi, '')                        // 残留闭合标签
+    .trim();
+}
+
+/**
  * 调视觉 agent 反推图片为文本（如提示词）。
  * 内部把图片批量压缩成 base64 data URL → 调 agent_run（images 附件通道）→ 返回原始文本。
  *
@@ -436,8 +450,11 @@ export async function compressImagesToDataUrls(urls, { onProgress, signal } = {}
  * @param {string[]} imageUrls 图片 URL（http / 相对路径均可，内部压缩）
  * @param {object} [opts]
  * @param {(done:number,total:number)=>void} [opts.onCompressProgress] 压缩进度回调
- * @param {AbortSignal} [opts.signal] 取消信号：aborted 后即使底层返回也 reject，调用方据此丢弃结果
- * @returns {Promise<string>} AI 返回的原始文本
+ * @param {AbortSignal} [opts.signal] 取消信号：透传到 callPluginTool 的 fetch，真中断 HTTP 请求
+ *                                    （fetch 抛 AbortError，后端响应客户端断开）；
+ *                                    压缩阶段 aborted 也会短路返回。
+ * @param {boolean} [opts.stripThink=false] 是否去除返回文本里的 <think>…</think> 块（默认关闭，保留 AI 原始输出）
+ * @returns {Promise<string>} AI 返回的原始文本（stripThink=true 时已去除 think 块）
  */
 export async function runAgentVisionText(agentConfig, imageUrls, opts = {}) {
   const AS = window.AgentSpaces;
@@ -453,6 +470,7 @@ export async function runAgentVisionText(agentConfig, imageUrls, opts = {}) {
   if (!dataUrls.length) throw new Error('图片预处理失败');
   if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
   const userPrompt = (agentConfig.userPrompt || '').replace(/\{imageUrl\}/g, ''); // 兼容旧模板占位符
+  // signal 透传到 callPluginTool：fetch AbortController 真中断 HTTP，不再等到 AI 跑完才丢弃
   const ret = await AS.callPluginTool(
     BUILTIN_PLUGIN,
     'agent_run',
@@ -462,8 +480,10 @@ export async function runAgentVisionText(agentConfig, imageUrls, opts = {}) {
       permissionMode: 'bypassPermissions',
       images: dataUrls,
     },
+    signal ? { signal } : undefined,
   );
   // agent_run 返回结构：ret.result / ret.output（字符串）
   const raw = ret?.result ?? ret?.output ?? '';
-  return typeof raw === 'string' ? raw : JSON.stringify(raw);
+  const text = typeof raw === 'string' ? raw : JSON.stringify(raw);
+  return opts?.stripThink ? stripThinkTags(text) : text;
 }
