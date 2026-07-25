@@ -24,7 +24,7 @@ export type RuntimeCliId =
   | "xiaomimimo"
   | "githubcopilot";
 export type RuntimeCategory = "cli" | "sdk";
-export type SupportedRuntimeKind = "claude-code" | "codex" | "grok" | "open-agent-sdk" | "hermes" | "pi";
+export type SupportedRuntimeKind = "claude-code" | "codex" | "grok" | "gemini-cli" | "open-agent-sdk" | "hermes" | "pi";
 
 export interface RuntimeCliDiscoveryItem {
   id: RuntimeCliId;
@@ -162,6 +162,7 @@ function normalizeStoredItem(item: unknown): RuntimeCliDiscoveryItem | null {
     runtimeKind: value.runtimeKind === "claude-code"
       || value.runtimeKind === "codex"
       || value.runtimeKind === "grok"
+      || value.runtimeKind === "gemini-cli"
       || value.runtimeKind === "open-agent-sdk"
       || value.runtimeKind === "hermes"
       || value.runtimeKind === "pi"

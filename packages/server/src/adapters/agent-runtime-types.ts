@@ -56,7 +56,7 @@ export interface AgentFunctionTool {
   execute: (input: unknown) => Promise<unknown>;
 }
 
-export type AgentRuntimeKind = 'open-agent-sdk' | 'claude-code' | 'codex' | 'grok' | 'langchain' | 'hermes' | 'pi';
+export type AgentRuntimeKind = 'open-agent-sdk' | 'claude-code' | 'codex' | 'grok' | 'gemini-cli' | 'langchain' | 'hermes' | 'pi';
 
 export interface AgentRuntimeConfig {
   kind?: AgentRuntimeKind;

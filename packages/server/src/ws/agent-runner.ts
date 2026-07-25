@@ -375,7 +375,7 @@ export async function runMentionedAgent(
       });
     const isRuntimeSessionResume = Boolean(
       options.resumeSessionId
-      && (preset.runtimeKind === 'claude-code' || preset.runtimeKind === 'codex' || preset.runtimeKind === 'grok' || preset.runtimeKind === 'langchain')
+      && (preset.runtimeKind === 'claude-code' || preset.runtimeKind === 'codex' || preset.runtimeKind === 'grok' || preset.runtimeKind === 'gemini-cli' || preset.runtimeKind === 'langchain')
     );
     runtimeUserPrompt = expandAgentSlashCommandPrompt(prompt, configDir);
     agentPrompt = isRuntimeSessionResume

@@ -16,6 +16,7 @@ export type {
 } from './agent-runtime-types.js';
 export { HermesRuntime } from './hermes-runtime.js';
 export { GrokRuntime } from './grok-runtime.js';
+export { GeminiCliRuntime } from './gemini-cli-runtime.js';
 export { LangChainRuntime } from './langchain-runtime.js';
 export { PiRuntime } from './pi-runtime.js';
 
@@ -81,6 +82,11 @@ export function createAgentRuntime(
       return new LazyAgentRuntime(async () => {
         const { GrokRuntime } = await import('./grok-runtime.js');
         return new GrokRuntime(config);
+      });
+    case 'gemini-cli':
+      return new LazyAgentRuntime(async () => {
+        const { GeminiCliRuntime } = await import('./gemini-cli-runtime.js');
+        return new GeminiCliRuntime(config);
       });
     case 'langchain':
       return new LangChainRuntime(config);

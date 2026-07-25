@@ -627,7 +627,7 @@ const BUILTIN_TOOLS: BuiltinToolDefinition[] = [
               const m = url.match(/^data:([\w./+-]+)/i);
               const mime = m?.[1] || 'image/png';
               const ext = mime.split('/')[1]?.split('+')[0] || 'png';
-              return { name: `image-${i + 1}.${ext}`, type: mime, url } satisfies Attachment;
+              return { name: `image-${i + 1}.${ext}`, type: mime, url, path: '' } satisfies Attachment;
             })
         : undefined;
 

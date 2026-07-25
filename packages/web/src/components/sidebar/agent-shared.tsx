@@ -105,6 +105,7 @@ export const RUNTIME_OPTIONS: Array<{ value: NonNullable<AgentConfig["runtimeKin
   { value: "open-agent-sdk", labelKey: "openAgentSdk" },
   { value: "codex", labelKey: "codex" },
   { value: "grok", labelKey: "grok" },
+  { value: "gemini-cli", labelKey: "geminiCli" },
   { value: "langchain", labelKey: "langchain" },
   { value: "hermes", labelKey: "hermes" },
   { value: "pi", labelKey: "pi" },

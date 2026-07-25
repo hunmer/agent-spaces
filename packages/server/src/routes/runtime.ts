@@ -12,7 +12,7 @@ const rootDir = join(__dirname, '../..');
 const workspaceRootDir = join(rootDir, '../..');
 const requireFromRoot = createRequire(join(rootDir, 'package.json'));
 
-type SupportedRuntimeKind = Extract<NonNullable<AgentConfig['runtimeKind']>, 'claude-code' | 'codex' | 'grok' | 'open-agent-sdk' | 'hermes' | 'pi'>;
+type SupportedRuntimeKind = Extract<NonNullable<AgentConfig['runtimeKind']>, 'claude-code' | 'codex' | 'grok' | 'gemini-cli' | 'open-agent-sdk' | 'hermes' | 'pi'>;
 type InstallableRuntimePackageId = RuntimeDescriptor['id'];
 type RuntimeCategory = 'cli' | 'sdk';
 type VersionSource = { type: 'npm'; packageName: string } | { type: 'github'; repo: string };
@@ -93,6 +93,7 @@ const RUNTIME_DESCRIPTORS: RuntimeDescriptor[] = [
     category: 'cli',
     label: 'Gemini CLI',
     commands: ['gemini'],
+    runtimeKind: 'gemini-cli',
     versionArgs: ['--version'],
     versionSource: { type: 'npm', packageName: '@google/gemini-cli' },
     installable: true,

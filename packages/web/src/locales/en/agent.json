@@ -12,6 +12,7 @@
     "claudeCode": "Claude Code",
     "codex": "Codex",
     "grok": "Grok",
+    "geminiCli": "Gemini CLI",
     "langchain": "LangChain",
     "hermes": "Hermes",
     "pi": "Pi"

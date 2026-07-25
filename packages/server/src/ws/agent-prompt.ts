@@ -377,13 +377,15 @@ function formatRuntimeToolsLine(runtimeKind?: string): string {
       ? 'Bash, file edits, WebSearch, todo list, MCP tools'
       : runtimeKind === 'grok'
         ? 'Grok CLI built-in tools'
-      : runtimeKind === 'langchain'
-        ? 'Agent Spaces function tools and configured MCP tools'
-        : runtimeKind === 'hermes'
-          ? 'Hermes CLI tools and configured skills'
-          : runtimeKind === 'pi'
-            ? 'Pi built-in tools, discovered extensions, MCP tools, skills, and Agent Spaces function tools'
-            : 'runtime-specific tools exposed by the selected adapter';
+        : runtimeKind === 'gemini-cli'
+          ? 'Gemini CLI built-in tools'
+          : runtimeKind === 'langchain'
+            ? 'Agent Spaces function tools and configured MCP tools'
+            : runtimeKind === 'hermes'
+              ? 'Hermes CLI tools and configured skills'
+              : runtimeKind === 'pi'
+                ? 'Pi built-in tools, discovered extensions, MCP tools, skills, and Agent Spaces function tools'
+                : 'runtime-specific tools exposed by the selected adapter';
 
   return `- Runtime tools available through ${runtimeName}: ${tools}`;
 }
@@ -396,6 +398,8 @@ function formatRuntimeName(runtimeKind?: string): string {
       return 'Codex';
     case 'grok':
       return 'Grok';
+    case 'gemini-cli':
+      return 'Gemini CLI';
     case 'langchain':
       return 'LangChain';
     case 'hermes':
