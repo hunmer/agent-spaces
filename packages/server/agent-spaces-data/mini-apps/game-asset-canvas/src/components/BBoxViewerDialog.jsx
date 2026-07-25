@@ -1,11 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
-  Button, Input, Label, ScrollArea, Loader, Switch,
+  Button, Label, ScrollArea, Loader, Switch,
   Tooltip, TooltipTrigger, TooltipContent,
   ResizablePanelGroup, ResizablePanel, ResizableHandle,
+  Tabs, TabsList, TabsTrigger, TabsContent,
+  Markdown,
 } from '@agent-spaces/ui';
-import { Undo2, Redo2, Eraser, Trash2, Download, Upload, FileJson, Crosshair, Sparkles } from '@agent-spaces/ui';
+import {
+  Undo2, Redo2, Eraser, Trash2, Download, Upload, FileJson, Crosshair, Sparkles,
+  MousePointer2, SquareDashed, Hand,
+} from '@agent-spaces/ui';
 import { getFabric, getJsZip, getImageCompression } from '../utils/image-ops/cdn';
 import { loadImageSource, exportBox } from '../utils/image-ops/sprite-splitter';
 import { BUILTIN_PLUGIN } from '../utils/constants';
@@ -17,50 +22,8 @@ const PALETTE = [
   '#f5c2e7', '#94c4f5', '#ffd580', '#b0f5c2',
 ];
 
-// 示例数据（新 schema：title + elements[]，元素含 coords/type/parentId/exportSlice/ocrText/textRole/children）
-const SAMPLE_DATA = {
-  title: '战棋游戏战斗界面UI',
-  elements: [
-    {
-      id: 'det-0', type: 'Panel', label: 'player info panel',
-      coords: [10, 10, 260, 130], parentId: null, exportSlice: false,
-      children: [
-        { id: 'det-1', type: 'Image', label: 'avatar', coords: [10, 10, 95, 135], parentId: 'det-0', exportSlice: true },
-        { id: 'det-2', type: 'Text', label: 'character name and level', coords: [110, 30, 130, 25], parentId: 'det-0', ocrText: '艾尔文 Lv. 24', textRole: 'dynamic', exportSlice: false },
-        { id: 'det-3', type: 'HealthBar', label: 'hp bar', coords: [110, 75, 130, 25], parentId: 'det-0', ocrText: '1280/1280', textRole: 'dynamic', exportSlice: false },
-        { id: 'det-4', type: 'HealthBar', label: 'mp bar', coords: [110, 100, 130, 25], parentId: 'det-0', ocrText: '640/640', textRole: 'dynamic', exportSlice: false },
-        { id: 'det-5', type: 'Icon', label: 'class icon', coords: [240, 95, 30, 40], parentId: 'det-0', exportSlice: true },
-      ],
-    },
-    {
-      id: 'det-6', type: 'Panel', label: 'resource bar',
-      coords: [300, 20, 450, 45], parentId: null, exportSlice: false,
-      children: [
-        { id: 'det-7', type: 'Icon', label: 'gold icon', coords: [300, 20, 40, 40], parentId: 'det-6', exportSlice: true },
-        { id: 'det-8', type: 'Text', label: 'gold amount', coords: [345, 25, 70, 30], parentId: 'det-6', ocrText: '25680', textRole: 'dynamic', exportSlice: false },
-        { id: 'det-9', type: 'Icon', label: 'crystal icon', coords: [420, 20, 40, 40], parentId: 'det-6', exportSlice: true },
-        { id: 'det-10', type: 'Text', label: 'crystal amount', coords: [465, 25, 60, 30], parentId: 'det-6', ocrText: '1340', textRole: 'dynamic', exportSlice: false },
-        { id: 'det-11', type: 'Icon', label: 'wood icon', coords: [535, 20, 40, 40], parentId: 'det-6', exportSlice: true },
-        { id: 'det-12', type: 'Text', label: 'wood amount', coords: [580, 25, 60, 30], parentId: 'det-6', ocrText: '620', textRole: 'dynamic', exportSlice: false },
-      ],
-    },
-    {
-      id: 'det-13', type: 'Panel', label: 'stage info panel',
-      coords: [790, 25, 200, 120], parentId: null, exportSlice: false,
-      ocrText: '第8章 绿风之谷', textRole: 'decorative',
-    },
-    {
-      id: 'det-14', type: 'Panel', label: 'action buttons panel',
-      coords: [550, 810, 430, 160], parentId: null, exportSlice: false,
-      children: [
-        { id: 'det-15', type: 'Button', label: 'standby button', coords: [550, 830, 90, 120], parentId: 'det-14', ocrText: '待机', textRole: 'decorative', exportSlice: true },
-        { id: 'det-16', type: 'Button', label: 'skill button', coords: [650, 830, 90, 120], parentId: 'det-14', ocrText: '技能', textRole: 'decorative', exportSlice: true },
-        { id: 'det-17', type: 'Button', label: 'item button', coords: [750, 830, 90, 120], parentId: 'det-14', ocrText: '道具', textRole: 'decorative', exportSlice: true },
-        { id: 'det-18', type: 'Button', label: 'attack button', coords: [850, 810, 130, 160], parentId: 'det-14', ocrText: '攻击', textRole: 'decorative', exportSlice: true },
-      ],
-    },
-  ],
-};
+// 交互模式
+const MODE = { DRAW: 'draw', PAN: 'pan' };
 
 // 从 AI/JSON 文本里提取 JSON 对象（兼容 ```json 代码块包裹、前后多余解释）
 function extractJsonFromText(text) {
@@ -142,6 +105,8 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
   const onSaveRef = useRef(onSave);
   onSaveRef.current = onSave;
   const highlightedRef = useRef(null);     // 当前图例高亮的 bbox Rect
+  // 交互模式：draw（框选） / pan（平移）；非持久 ref 给 fabric 闭包用
+  const modeRef = useRef(MODE.DRAW);
 
   // 受控 UI 状态
   const [imageUrl, setImageUrl] = useState('');
@@ -163,6 +128,56 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
   const [analyzing, setAnalyzing] = useState(false);
   const agentConfigRef = useRef(agentConfig);
   agentConfigRef.current = agentConfig;
+
+  // 右侧面板 Tabs
+  const [rightTab, setRightTab] = useState('list');
+  // AI 思考过程：累积 markdown 文本
+  const [aiThought, setAiThought] = useState('');
+  // 选中信息：当前选中 fabric Rect 索引（在 boxes 中），null 表示未选中
+  const [selectedIdx, setSelectedIdx] = useState(null);
+  // 选中表单的本地态（受控）
+  const [selForm, setSelForm] = useState(null);
+
+  const updateSelFormFromRect = useCallback((idx) => {
+    const fc = fcRef.current;
+    if (!fc) { setSelForm(null); return; }
+    const all = fc.getObjects().filter((o) => o.kind === 'bbox');
+    const r = all[idx];
+    if (!r) { setSelForm(null); return; }
+    const meta = r.__meta || {};
+    setSelForm({
+      id: meta.id || '',
+      label: meta.label || '',
+      type: meta.type || '',
+      depth: meta.depth ?? 0,
+      x: Math.round(r.left),
+      y: Math.round(r.top),
+      w: Math.round(r.width * (r.scaleX || 1)),
+      h: Math.round(r.height * (r.scaleY || 1)),
+      exportSlice: meta.exportSlice === true,
+      ocrText: meta.ocrText || '',
+      textRole: meta.textRole || '',
+    });
+  }, []);
+
+  // fabric 选中变化回调（绑定到 fc 上）
+  const onFabricSelectionChange = useCallback(() => {
+    const fc = fcRef.current;
+    if (!fc) return;
+    const active = fc.getActiveObject();
+    if (active && active.kind === 'bbox') {
+      const all = fc.getObjects().filter((o) => o.kind === 'bbox');
+      const idx = all.indexOf(active);
+      if (idx >= 0) {
+        setSelectedIdx(idx);
+        updateSelFormFromRect(idx);
+        setRightTab('selected');
+        return;
+      }
+    }
+    setSelectedIdx(null);
+    setSelForm(null);
+  }, [updateSelFormFromRect]);
 
   // ============ 工具函数 ============
   const rects = useCallback(() => {
@@ -384,6 +399,32 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
 
   const jsonInputRef = useRef(null);
 
+  // ============ 应用交互模式到 fabric ============
+  const applyMode = useCallback(() => {
+    const fc = fcRef.current;
+    if (!fc) return;
+    const isPan = modeRef.current === MODE.PAN;
+    if (isPan) {
+      fc.selection = false;
+      fc.defaultCursor = 'grab';
+      fc.hoverCursor = 'grab';
+      fc.moveCursor = 'grabbing';
+      for (const r of rects()) r.selectable = false;
+    } else {
+      fc.selection = true;
+      fc.defaultCursor = 'crosshair';
+      fc.hoverCursor = 'move';
+      fc.moveCursor = 'move';
+      for (const r of rects()) r.selectable = true;
+    }
+    fc.requestRenderAll();
+  }, [rects]);
+
+  const setMode = useCallback((m) => {
+    modeRef.current = m;
+    applyMode();
+  }, [applyMode]);
+
   // ============ fitToStage（声明在 handleAiAnalyze 之前避免 TDZ）============
   const fitToStage = useCallback(() => {
     const fc = fcRef.current;
@@ -415,10 +456,15 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
     }
     setAnalyzing(true);
     setError('');
+    // 切到「AI思考过程」tab
+    setRightTab('ai');
+    setAiThought('### AI 分析任务启动\n\n- **Agent**：`' + (ac?.id || '?') + '`');
     setStatus('✨ 压缩图片中…');
     try {
+      setAiThought((t) => t + '\n\n⏳ 压缩图片中（Web Worker，不卡 UI）…');
       // 1. 压缩原图 → dataUrl（Web Worker，不卡 UI；失败降级用原图）
       const dataUrl = await compressToDataUrl(imageUrl);
+      setAiThought((t) => t + '\n✅ 图片已压缩，传给视觉模型。');
       // 2. 用压缩图重建 sourceRef + 更新 fabric 背景图，保证 AI 坐标与画布严格 1:1 同源（修复错位 bug）
       const newSource = await loadImageSource(dataUrl);
       sourceRef.current = newSource;
@@ -437,6 +483,7 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
       }
       // 3. 传压缩图给 AI（坐标基于压缩图，与画布背景图同源）
       setStatus('✨ AI 分析中（可能需要数十秒）…');
+      setAiThought((t) => t + '\n\n🤖 调用视觉模型分析中（可能需要数十秒）…');
       const userPrompt = (ac.userPrompt || '').replace(/\{imageUrl\}/g, ''); // 兼容旧模板里的占位符
       const ret = await AS.callPluginTool(
         BUILTIN_PLUGIN,
@@ -450,13 +497,18 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
       );
       // 4. 解析返回 JSON → 渲染框（sourceRef 已是压缩图，sx=1 零换算）
       const raw = ret?.result || ret?.output || '';
+      setAiThought((t) => t + '\n\n### AI 返回原文\n\n' + (raw || '(空)'));
       const data = extractJsonFromText(raw);
       applyJsonData(data);
       setStatus(`✨ AI 分析完成，已渲染框`);
+      // AI 分析完自动切回列表 tab
+      setRightTab('list');
     } catch (err) {
       console.error('[bbox-viewer] AI analyze failed:', err);
-      setError(`AI 分析失败: ${err?.message || err}`);
+      const msg = err?.message || err;
+      setError(`AI 分析失败: ${msg}`);
       setStatus('AI 分析失败');
+      setAiThought((t) => t + `\n\n❌ **分析失败**：${msg}`);
     } finally {
       setAnalyzing(false);
     }
@@ -520,7 +572,8 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
     fc.discardActiveObject();
     refreshLabels();
     syncBoxesState();
-    fc.renderAll();
+    setSelectedIdx(null);
+    setSelForm(null);
     setStatus(`已删除 ${selected.length} 个框`);
     return true;
   }, [rects, pushHistory, refreshLabels, syncBoxesState]);
@@ -534,6 +587,8 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
     for (const r of all) fc.remove(r);
     refreshLabels();
     syncBoxesState();
+    setSelectedIdx(null);
+    setSelForm(null);
     setStatus('已清空所有框');
   }, [rects, pushHistory, refreshLabels, syncBoxesState]);
 
@@ -562,6 +617,52 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
     applySnapshot(redoRef.current.pop());
   }, [snapshot, applySnapshot]);
 
+  // ============ 选中信息表单：把 selForm 写回 fabric Rect ============
+  const applySelForm = useCallback(() => {
+    const fc = fcRef.current;
+    if (!fc || !selForm || selectedIdx == null) return;
+    const all = rects();
+    const r = all[selectedIdx];
+    if (!r) return;
+    pushHistory();
+    r.set({
+      left: Number(selForm.x) || 0,
+      top: Number(selForm.y) || 0,
+      scaleX: 1,
+      scaleY: 1,
+      width: Math.max(1, Number(selForm.w) || 1),
+      height: Math.max(1, Number(selForm.h) || 1),
+    });
+    r.setCoords();
+    // meta 回写：exportSlice 改变时同步 fill/stroke 风格
+    const meta = r.__meta || {};
+    meta.id = selForm.id || '';
+    meta.label = selForm.label || '';
+    meta.type = selForm.type || '';
+    meta.exportSlice = selForm.exportSlice === true;
+    if ('ocrText' in selForm) meta.ocrText = selForm.ocrText || '';
+    if ('textRole' in selForm) meta.textRole = selForm.textRole || '';
+    r.__meta = meta;
+    const isSlice = meta.exportSlice === true;
+    r.set({
+      fill: isSlice ? 'rgba(34,197,94,0.12)' : 'rgba(0,0,0,0)',
+      stroke: isSlice ? '#22c55e' : (meta.color || PALETTE[0]),
+      strokeDashArray: isSlice ? null : [4, 3],
+      borderColor: isSlice ? '#22c55e' : (meta.color || PALETTE[0]),
+    });
+    fc.discardActiveObject();
+    refreshLabels();
+    syncBoxesState();
+    fc.requestRenderAll();
+    setStatus(`已更新框 ${meta.id || meta.label || selectedIdx + 1}`);
+  }, [rects, selectedIdx, selForm, pushHistory, refreshLabels, syncBoxesState]);
+
+  const deleteSelectedFromForm = useCallback(() => {
+    if (selectedIdx == null) return;
+    const ok = deleteSelected();
+    if (ok) setRightTab('list');
+  }, [deleteSelected, selectedIdx]);
+
   // ============ 打开对话框：加载 fabric + 图 ============
   useEffect(() => {
     if (!open) return;
@@ -575,6 +676,11 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
     setStatus('正在加载编辑器…');
     undoRef.current = [];
     redoRef.current = [];
+    modeRef.current = MODE.DRAW;
+    setRightTab('list');
+    setAiThought('');
+    setSelectedIdx(null);
+    setSelForm(null);
 
     (async () => {
       try {
@@ -621,8 +727,10 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
             fc.renderAll();
           });
         });
+        // 初始应用交互模式（draw）
+        applyMode();
         setLoading(false);
-        setStatus('编辑器就绪。滚轮缩放，空格拖拽，Alt 拉框新建。可导入 JSON 或点「载入示例」。');
+        setStatus('编辑器就绪。选择框选/平移工具，Alt 也可强制拉框。可导入 JSON 或点「AI 分析」。');
         updateHistoryButtons();
         syncBoxesState();
       } catch (err) {
@@ -670,14 +778,15 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
 
     fc.on('mouse:down', (event) => {
       if (!sourceRef.current) return;
-      if (spaceDownRef.current) {
+      if (spaceDownRef.current || modeRef.current === MODE.PAN) {
         panningRef.current = true;
         lastPanRef.current = { x: event.e.clientX, y: event.e.clientY };
         fc.defaultCursor = 'grabbing';
         return;
       }
-      // Alt 强制拉框（点中已有框时不拦截）
-      const wantDraw = event.e.altKey && !event.target;
+      // 框选模式：点中空白拉新框；Alt 强制拉框；点中已有框则走默认选中
+      const target = event.target;
+      const wantDraw = !target && (modeRef.current === MODE.DRAW || event.e.altKey);
       if (!wantDraw) return;
       pushHistory();
       drawingRef.current = true;
@@ -721,7 +830,8 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
       if (panningRef.current) {
         panningRef.current = false;
         lastPanRef.current = null;
-        fc.defaultCursor = spaceDownRef.current ? 'grab' : 'default';
+        const isPan = spaceDownRef.current || modeRef.current === MODE.PAN;
+        fc.defaultCursor = isPan ? 'grab' : (modeRef.current === MODE.PAN ? 'grab' : 'crosshair');
         return;
       }
       if (!drawingRef.current) return;
@@ -739,9 +849,28 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
 
     fc.on('object:moving', () => {
       if (!fc.__historyMoveStarted) { pushHistory(); fc.__historyMoveStarted = true; }
+      // 移动中同步选中表单坐标
+      const active = fc.getActiveObject();
+      if (active && active.kind === 'bbox') {
+        const all = fc.getObjects().filter((o) => o.kind === 'bbox');
+        const idx = all.indexOf(active);
+        if (idx >= 0) {
+          setSelectedIdx(idx);
+          updateSelFormFromRect(idx);
+        }
+      }
     });
     fc.on('object:scaling', () => {
       if (!fc.__historyScaleStarted) { pushHistory(); fc.__historyScaleStarted = true; }
+      const active = fc.getActiveObject();
+      if (active && active.kind === 'bbox') {
+        const all = fc.getObjects().filter((o) => o.kind === 'bbox');
+        const idx = all.indexOf(active);
+        if (idx >= 0) {
+          setSelectedIdx(idx);
+          updateSelFormFromRect(idx);
+        }
+      }
     });
     fc.on('object:modified', () => {
       fc.__historyMoveStarted = false;
@@ -749,10 +878,10 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
       refreshLabels();
       syncBoxesState();
     });
-    fc.on('selection:cleared', () => { refreshLabels(); });
-    fc.on('selection:updated', () => { refreshLabels(); });
-    fc.on('selection:created', () => { refreshLabels(); });
-  }, [pushHistory, refreshLabels, syncBoxesState, lineWidth]);
+    fc.on('selection:cleared', () => { refreshLabels(); onFabricSelectionChange(); });
+    fc.on('selection:updated', () => { refreshLabels(); onFabricSelectionChange(); });
+    fc.on('selection:created', () => { refreshLabels(); onFabricSelectionChange(); });
+  }, [pushHistory, refreshLabels, syncBoxesState, lineWidth, onFabricSelectionChange, updateSelFormFromRect]);
 
   // ============ 表单变化联动 ============
   useEffect(() => { if (open) restyleRects(); }, [open, colorMode, lineWidth, restyleRects]);
@@ -809,9 +938,9 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
       e.preventDefault();
       const fc = fcRef.current;
       if (fc) {
-        fc.selection = true;
-        for (const r of rects()) r.selectable = true;
-        fc.defaultCursor = 'default';
+        fc.selection = modeRef.current === MODE.DRAW;
+        for (const r of rects()) r.selectable = modeRef.current === MODE.DRAW;
+        fc.defaultCursor = modeRef.current === MODE.PAN ? 'grab' : 'crosshair';
       }
       spaceDownRef.current = false;
       panningRef.current = false;
@@ -911,6 +1040,12 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
   const exportBoxes = onlyExportSlice ? boxes.filter((b) => b.meta?.exportSlice === true) : boxes;
   const exportCount = exportBoxes.length;
   const sliceCount = boxes.filter((b) => b.meta?.exportSlice === true).length;
+  const currentMode = modeRef.current;
+  const [modeState, setModeState] = useState(MODE.DRAW);
+  const switchMode = useCallback((m) => {
+    setMode(m);
+    setModeState(m);
+  }, [setMode]);
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) onClose?.(); }}>
@@ -937,6 +1072,30 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
 
         {/* 工具条 */}
         <div className="flex flex-wrap items-end gap-2 border-b border-border bg-muted/30 px-4 py-2">
+          {/* 左侧：交互模式切换（框选 / 平移） */}
+          <div className="flex items-end gap-1.5">
+            <Tooltip>
+              <TooltipTrigger render={
+                <Button size="icon" variant={modeState === MODE.DRAW ? 'default' : 'outline'} className="h-8 w-8"
+                  onClick={() => switchMode(MODE.DRAW)} />
+              }>
+                <SquareDashed className="h-4 w-4" />
+              </TooltipTrigger>
+              <TooltipContent side="bottom">框选模式（左键拉框，Alt 强制拉框）</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger render={
+                <Button size="icon" variant={modeState === MODE.PAN ? 'default' : 'outline'} className="h-8 w-8"
+                  onClick={() => switchMode(MODE.PAN)} />
+              }>
+                <Hand className="h-4 w-4" />
+              </TooltipTrigger>
+              <TooltipContent side="bottom">平移模式（左键拖拽画布）</TooltipContent>
+            </Tooltip>
+          </div>
+
+          <div className="mx-1 h-6 w-px self-center bg-border" />
+
           <Field label="配色">
             <select
               value={colorMode}
@@ -992,15 +1151,11 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
               <TooltipContent side="bottom">清空所有框</TooltipContent>
             </Tooltip>
           </div>
-          {/* 右侧：JSON 导入 / 载入示例 / AI 分析 */}
+          {/* 右侧：JSON 导入 / AI 分析 */}
           <div className="ml-auto flex items-end gap-1.5">
             <Button size="sm" variant="outline" className="h-8 gap-1 text-[11px]"
               onClick={() => jsonInputRef.current?.click()}>
               <FileJson className="h-3.5 w-3.5" /> 导入 JSON
-            </Button>
-            <Button size="sm" variant="outline" className="h-8 text-[11px]"
-              onClick={() => applyJsonData(SAMPLE_DATA)}>
-              载入示例
             </Button>
             <Tooltip>
               <TooltipTrigger render={
@@ -1012,7 +1167,7 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
                 {analyzing ? '分析中…' : 'AI 分析'}
               </TooltipTrigger>
               <TooltipContent side="bottom">
-                {!agentConfig?.id ? '未配置 AI 模型，请到「设置 → BBox AI 分析」配置' : '用配置的 AI 分析当前图，返回 JSON 自动渲染框'}
+                {!agentConfig?.id ? '未配置 AI 模型，请到「设置 → BBox AI 分析」配置' : '用配置的 AI 分析当前图，返回 JSON 自动渲染框；过程实时展示'}
               </TooltipContent>
             </Tooltip>
           </div>
@@ -1055,76 +1210,230 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
                   <span className="text-sm text-muted-foreground">加载编辑器…</span>
                 </div>
               )}
+              {/* 当前模式标记（右上角） */}
+              <div className="pointer-events-none absolute right-2 top-2 rounded-md bg-background/80 px-2 py-1 text-[10px] text-muted-foreground">
+                {modeState === MODE.PAN ? '🖱 平移' : '⬚ 框选'}
+              </div>
             </div>
           </ResizablePanel>
 
           <ResizableHandle />
 
-          <ResizablePanel id="bbox-list" order={2} minSize="20%" maxSize="55%" defaultSize="28%">
+          <ResizablePanel id="bbox-list" order={2} minSize="20%" maxSize="55%" defaultSize="30%">
             <aside className="flex h-full min-h-0 flex-col border-l border-border">
-              <div className="flex items-center justify-between border-b border-border px-3 py-2">
-                <span className="text-xs font-medium">元素 {totalBoxes}</span>
-                <Button size="sm" variant="ghost" className="h-7 text-[11px]" onClick={() => { syncBoxesState(); refreshLabels(); }} disabled={loading}>
-                  刷新
-                </Button>
-              </div>
-              <ScrollArea className="min-h-0 flex-1">
-                <div className="flex flex-col gap-0.5 p-2">
-                  {boxes.length === 0 && (
-                    <p className="px-2 py-8 text-center text-xs text-muted-foreground">
-                      {loading ? '加载中…' : '无 bbox。导入 JSON、点「载入示例」或 Alt 拉框新建'}
-                    </p>
-                  )}
-                  {boxes.map((b, i) => {
-                    const meta = b.meta || {};
-                    const label = meta.label || meta.id || `(框 ${i + 1})`;
-                    const tipParts = [meta.type && `type: ${meta.type}`, meta.id && `id: ${meta.id}`].filter(Boolean);
-                    if (meta.ocrText) tipParts.push(`ocr: ${meta.ocrText}`);
-                    if (meta.exportSlice !== undefined && meta.exportSlice !== null) tipParts.push(`export: ${meta.exportSlice ? '是' : '否'}`);
-                    const tip = tipParts.join('\n');
-                    return (
-                      <div
-                        key={i}
-                        className="group flex cursor-pointer items-center gap-2 rounded px-1.5 py-1 text-xs hover:bg-muted"
-                        style={{ paddingLeft: 6 + (meta.depth || 0) * 10 }}
-                        onMouseEnter={() => { setHoveredIdx(i); highlightBox(i); }}
-                        onMouseLeave={() => { setHoveredIdx(null); highlightBox(null); }}
-                        onClick={() => focusBox(i)}
-                      >
-                        <span className="h-3 w-3 shrink-0 rounded-sm border border-white/30"
-                          style={{ backgroundColor: meta.color || '#888' }} />
-                        <span className="flex-1 truncate text-muted-foreground" title={tip || label}>
-                          {meta.type && <span className="mr-1 rounded bg-muted px-1 text-[9px] text-foreground/70">{meta.type}</span>}
-                          {label}
-                          {meta.ocrText && <span className="ml-1 text-[10px] text-primary/80">「{meta.ocrText}」</span>}
-                        </span>
-                        {meta.exportSlice === true && (
-                          <span className="shrink-0 rounded bg-green-500/20 px-1 text-[9px] text-green-600" title="可导出切片">⬇</span>
+              <Tabs value={rightTab} onValueChange={setRightTab} className="flex h-full min-h-0 flex-col">
+                <TabsList className="flex w-full flex-row flex-nowrap rounded-none border-b border-border">
+                  <TabsTrigger value="list" className="flex-1 text-[11px]">元素拆分</TabsTrigger>
+                  <TabsTrigger value="ai" className="flex-1 text-[11px]">
+                    AI思考{analyzing ? '…' : ''}
+                  </TabsTrigger>
+                  <TabsTrigger value="selected" className="flex-1 text-[11px]">选中信息</TabsTrigger>
+                </TabsList>
+
+                {/* Tab 1：元素拆分列表 */}
+                <TabsContent value="list" className="mt-0 min-h-0 flex-1 overflow-hidden">
+                  <div className="flex h-full flex-col">
+                    <div className="flex items-center justify-between border-b border-border px-3 py-2">
+                      <span className="text-xs font-medium">元素 {totalBoxes}</span>
+                      <Button size="sm" variant="ghost" className="h-7 text-[11px]" onClick={() => { syncBoxesState(); refreshLabels(); }} disabled={loading}>
+                        刷新
+                      </Button>
+                    </div>
+                    <ScrollArea className="min-h-0 flex-1">
+                      <div className="flex flex-col gap-0.5 p-2">
+                        {boxes.length === 0 && (
+                          <p className="px-2 py-8 text-center text-xs text-muted-foreground">
+                            {loading ? '加载中…' : '无 bbox。导入 JSON、Alt 拉框或点「AI 分析」生成'}
+                          </p>
                         )}
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            const fc = fcRef.current;
-                            if (!fc) return;
-                            const all = rects();
-                            const r = all[i];
-                            if (!r) return;
-                            pushHistory();
-                            fc.remove(r);
-                            refreshLabels();
-                            syncBoxesState();
-                          }}
-                          title="删除该框"
-                          className="shrink-0 rounded p-0.5 text-muted-foreground opacity-0 transition hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100"
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </button>
+                        {boxes.map((b, i) => {
+                          const meta = b.meta || {};
+                          const label = meta.label || meta.id || `(框 ${i + 1})`;
+                          const tipParts = [meta.type && `type: ${meta.type}`, meta.id && `id: ${meta.id}`].filter(Boolean);
+                          if (meta.ocrText) tipParts.push(`ocr: ${meta.ocrText}`);
+                          if (meta.exportSlice !== undefined && meta.exportSlice !== null) tipParts.push(`export: ${meta.exportSlice ? '是' : '否'}`);
+                          const tip = tipParts.join('\n');
+                          return (
+                            <div
+                              key={i}
+                              className="group flex cursor-pointer items-center gap-2 rounded px-1.5 py-1 text-xs hover:bg-muted"
+                              style={{ paddingLeft: 6 + (meta.depth || 0) * 10 }}
+                              onMouseEnter={() => { setHoveredIdx(i); highlightBox(i); }}
+                              onMouseLeave={() => { setHoveredIdx(null); highlightBox(null); }}
+                              onClick={() => focusBox(i)}
+                            >
+                              <span className="h-3 w-3 shrink-0 rounded-sm border border-white/30"
+                                style={{ backgroundColor: meta.color || '#888' }} />
+                              <span className="flex-1 truncate text-muted-foreground" title={tip || label}>
+                                {meta.type && <span className="mr-1 rounded bg-muted px-1 text-[9px] text-foreground/70">{meta.type}</span>}
+                                {label}
+                                {meta.ocrText && <span className="ml-1 text-[10px] text-primary/80">「{meta.ocrText}」</span>}
+                              </span>
+                              {meta.exportSlice === true && (
+                                <span className="shrink-0 rounded bg-green-500/20 px-1 text-[9px] text-green-600" title="可导出切片">⬇</span>
+                              )}
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const fc = fcRef.current;
+                                  if (!fc) return;
+                                  const all = rects();
+                                  const r = all[i];
+                                  if (!r) return;
+                                  pushHistory();
+                                  fc.remove(r);
+                                  refreshLabels();
+                                  syncBoxesState();
+                                  if (selectedIdx === i) { setSelectedIdx(null); setSelForm(null); }
+                                }}
+                                title="删除该框"
+                                className="shrink-0 rounded p-0.5 text-muted-foreground opacity-0 transition hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100"
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </button>
+                            </div>
+                          );
+                        })}
                       </div>
-                    );
-                  })}
-                </div>
-              </ScrollArea>
+                    </ScrollArea>
+                  </div>
+                </TabsContent>
+
+                {/* Tab 2：AI 思考过程（Markdown 渲染） */}
+                <TabsContent value="ai" className="mt-0 min-h-0 flex-1 overflow-hidden">
+                  <div className="flex h-full flex-col">
+                    <div className="flex items-center justify-between border-b border-border px-3 py-2">
+                      <span className="text-xs font-medium">
+                        AI 思考过程
+                        {analyzing && <span className="ml-2 text-primary">分析中…</span>}
+                      </span>
+                    </div>
+                    <ScrollArea className="min-h-0 flex-1">
+                      <div className="p-3 text-sm">
+                        {aiThought ? (
+                          <Markdown content={aiThought} />
+                        ) : (
+                          <p className="text-xs text-muted-foreground">
+                            点工具条上的「AI 分析」开始分析。AI 分析的过程与返回文本将在此处实时展示。
+                          </p>
+                        )}
+                      </div>
+                    </ScrollArea>
+                  </div>
+                </TabsContent>
+
+                {/* Tab 3：选中信息（表单） */}
+                <TabsContent value="selected" className="mt-0 min-h-0 flex-1 overflow-hidden">
+                  <div className="flex h-full flex-col">
+                    <div className="flex items-center justify-between border-b border-border px-3 py-2">
+                      <span className="text-xs font-medium">
+                        选中信息{selectedIdx != null ? ` · 框 ${selectedIdx + 1}` : ''}
+                      </span>
+                    </div>
+                    <ScrollArea className="min-h-0 flex-1">
+                      <div className="p-3">
+                        {!selForm || selectedIdx == null ? (
+                          <p className="text-xs text-muted-foreground">
+                            选中一个框（或手动拉框）后显示信息并可修改。<br />
+                            切到「框选模式」后在画布空白处拖拽可新建框。
+                          </p>
+                        ) : (
+                          <div className="flex flex-col gap-3">
+                            <FormField label="ID">
+                              <input type="text" value={selForm.id}
+                                onChange={(e) => setSelForm({ ...selForm, id: e.target.value })}
+                                placeholder="如 det-0"
+                                className="h-8 w-full rounded-md border border-border bg-background px-2 text-xs outline-none focus:border-primary" />
+                            </FormField>
+                            <FormField label="类型 (type)">
+                              <input type="text" value={selForm.type}
+                                onChange={(e) => setSelForm({ ...selForm, type: e.target.value })}
+                                placeholder="如 Button / Text / Icon"
+                                list="bbox-type-list"
+                                className="h-8 w-full rounded-md border border-border bg-background px-2 text-xs outline-none focus:border-primary" />
+                            </FormField>
+                            <datalist id="bbox-type-list">
+                              <option value="Panel" />
+                              <option value="Button" />
+                              <option value="Text" />
+                              <option value="Icon" />
+                              <option value="Image" />
+                              <option value="HealthBar" />
+                            </datalist>
+                            <FormField label="标签 (label)">
+                              <input type="text" value={selForm.label}
+                                onChange={(e) => setSelForm({ ...selForm, label: e.target.value })}
+                                placeholder="如 attack button"
+                                className="h-8 w-full rounded-md border border-border bg-background px-2 text-xs outline-none focus:border-primary" />
+                            </FormField>
+                            <div className="grid grid-cols-2 gap-2">
+                              <FormField label="X">
+                                <input type="number" value={selForm.x}
+                                  onChange={(e) => setSelForm({ ...selForm, x: Number(e.target.value) })}
+                                  className="h-8 w-full rounded-md border border-border bg-background px-2 text-xs outline-none focus:border-primary" />
+                              </FormField>
+                              <FormField label="Y">
+                                <input type="number" value={selForm.y}
+                                  onChange={(e) => setSelForm({ ...selForm, y: Number(e.target.value) })}
+                                  className="h-8 w-full rounded-md border border-border bg-background px-2 text-xs outline-none focus:border-primary" />
+                              </FormField>
+                              <FormField label="宽 W">
+                                <input type="number" min={1} value={selForm.w}
+                                  onChange={(e) => setSelForm({ ...selForm, w: Number(e.target.value) })}
+                                  className="h-8 w-full rounded-md border border-border bg-background px-2 text-xs outline-none focus:border-primary" />
+                              </FormField>
+                              <FormField label="高 H">
+                                <input type="number" min={1} value={selForm.h}
+                                  onChange={(e) => setSelForm({ ...selForm, h: Number(e.target.value) })}
+                                  className="h-8 w-full rounded-md border border-border bg-background px-2 text-xs outline-none focus:border-primary" />
+                              </FormField>
+                            </div>
+                            <FormField label="层级 depth">
+                              <input type="number" min={0} value={selForm.depth}
+                                onChange={(e) => setSelForm({ ...selForm, depth: Number(e.target.value) })}
+                                className="h-8 w-full rounded-md border border-border bg-background px-2 text-xs outline-none focus:border-primary" />
+                            </FormField>
+                            <label className="flex items-center justify-between gap-2 rounded-md border border-border bg-background px-2 py-1.5 text-[11px]">
+                              <span>可导出切片 (exportSlice)</span>
+                              <Switch checked={selForm.exportSlice === true}
+                                onCheckedChange={(v) => setSelForm({ ...selForm, exportSlice: v })}
+                                className="scale-90" />
+                            </label>
+                            <FormField label="OCR 文本 (ocrText)">
+                              <input type="text" value={selForm.ocrText}
+                                onChange={(e) => setSelForm({ ...selForm, ocrText: e.target.value })}
+                                placeholder="可选"
+                                className="h-8 w-full rounded-md border border-border bg-background px-2 text-xs outline-none focus:border-primary" />
+                            </FormField>
+                            <FormField label="文本角色 (textRole)">
+                              <input type="text" value={selForm.textRole}
+                                onChange={(e) => setSelForm({ ...selForm, textRole: e.target.value })}
+                                placeholder="dynamic / decorative"
+                                className="h-8 w-full rounded-md border border-border bg-background px-2 text-xs outline-none focus:border-primary" />
+                            </FormField>
+                            <div className="flex gap-2 pt-1">
+                              <Button size="sm" className="h-8 flex-1 text-[11px]" onClick={applySelForm}>
+                                应用修改
+                              </Button>
+                              <Button size="sm" variant="outline" className="h-8 text-[11px]"
+                                onClick={() => updateSelFormFromRect(selectedIdx)}>
+                                重置
+                              </Button>
+                              <Button size="sm" variant="ghost"
+                                className="h-8 text-[11px] text-muted-foreground hover:text-destructive"
+                                onClick={deleteSelectedFromForm}>
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </ScrollArea>
+                  </div>
+                </TabsContent>
+              </Tabs>
+
               {/* 底部：导出范围开关 + 两个导出按钮 */}
               <div className="flex flex-col gap-2 border-t border-border bg-muted/20 p-3">
                 <label className="flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
@@ -1152,8 +1461,9 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
         </ResizablePanelGroup>
 
         <div className="border-t border-border bg-muted/20 px-4 py-2 text-[11px] text-muted-foreground">
-          滚轮缩放 · 按住 <kbd className="rounded border border-border bg-background px-1">空格</kbd> 拖拽平移 ·
-          <kbd className="rounded border border-border bg-background px-1">Alt</kbd> + 左键拉框新建 ·
+          滚轮缩放 · 按住 <kbd className="rounded border border-border bg-background px-1">空格</kbd> 临时平移 ·
+          框选模式左键拉框 · 平移模式左键拖拽 ·
+          <kbd className="rounded border border-border bg-background px-1">Alt</kbd> 强制拉框 ·
           <kbd className="rounded border border-border bg-background px-1">Delete</kbd> 删选中 ·
           <kbd className="rounded border border-border bg-background px-1">Ctrl+Z</kbd> 撤销 ·
           <Crosshair className="inline h-3 w-3 align-text-bottom" /> 点图例定位
@@ -1164,6 +1474,15 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
 }
 
 function Field({ label, children }) {
+  return (
+    <Label className="flex flex-col gap-1">
+      <span className="text-[11px] font-medium text-muted-foreground">{label}</span>
+      {children}
+    </Label>
+  );
+}
+
+function FormField({ label, children }) {
   return (
     <Label className="flex flex-col gap-1">
       <span className="text-[11px] font-medium text-muted-foreground">{label}</span>

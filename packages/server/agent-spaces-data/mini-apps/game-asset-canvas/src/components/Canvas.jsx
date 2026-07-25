@@ -69,6 +69,14 @@ export default function Canvas() {
   const reactFlow = useReactFlow();
   const wrappingRef = useRef(null);
 
+  // nodes/edges 的 ref 镜像：让「只需读最新值、不需响应式重建」的 callback（onConnect/handleCopy 等）
+  // 去掉对 nodes/edges 的依赖，成为稳定 callback，避免触发 nodeCallbacks/decoratedNodes 频繁重算。
+  // 同步在每次渲染后更新（useEffect 兜底 + 直接赋值保证同步读取）。
+  const nodesRef = useRef(nodes);
+  const edgesRef = useRef(edges);
+  nodesRef.current = nodes;
+  edgesRef.current = edges;
+
   // —— 面板布局持久化 ——
   const { panelLayout, showMinimap, handlePanelLayoutChange, toggleMinimap } = usePanelLayout();
 
@@ -148,11 +156,13 @@ export default function Canvas() {
     setEdges((prev) => applyEdgeChanges(changes, prev));
   }, [setEdges]);
 
-  // 连线：多选增强（参考 xyflow MultiConnect）——若 source 选中，把所有选中节点都连到 target
+  // 连线：多选增强（参考 xyflow MultiConnect）——若 source 选中，把所有选中节点都连到 target。
+  // 用 nodesRef 读最新 nodes（多选判断），callback deps 不含 nodes → 稳定引用。
   const onConnect = useCallback((conn) => {
     setEdges((prev) => {
-      const sources = nodes.some((n) => n.id === conn.source && n.selected)
-        ? nodes.filter((n) => n.selected).map((n) => n.id)
+      const curNodes = nodesRef.current;
+      const sources = curNodes.some((n) => n.id === conn.source && n.selected)
+        ? curNodes.filter((n) => n.selected).map((n) => n.id)
         : [conn.source];
       let next = prev;
       const existing = new Set(prev.map((e) => `${e.source}->${e.target}`));
@@ -171,7 +181,7 @@ export default function Canvas() {
       }
       return next;
     });
-  }, [nodes, setEdges]);
+  }, [setEdges]);
 
   // 连线拖到空白处放手：弹出「添加节点」菜单
   const onConnectEnd = useCallback((event, connectionState) => {
@@ -199,22 +209,33 @@ export default function Canvas() {
   const deleteKeyCode = useMemo(() => (['Backspace', 'Delete']), []);
   const nodeTypes = useMemo(() => NODE_COMPONENTS, []);
 
-  // —— 注入到节点 data 的回调集合（useMemo 稳定引用，避免 decoratedNodes 频繁重算）——
+  // —— 注入到节点 data 的回调集合 ——
+  // deps 逐个解构具体 callback（而非整个 executions/crud 对象），任一稳定则 nodeCallbacks 稳定，
+  // 避免因 hook 返回对象引用变化触发 decoratedNodes 全量重算。
+  const {
+    makeOnUpdate, handleGenerate, handleGenerateMedia, handleProcessImage,
+    handleProcessLocal, handleCutout, handleCutoutCreate, handleCancelProcess, handlePromptReverse,
+  } = executions;
+  const { handleAutoSize, handleAutoSizeToContent } = crud;
   const nodeCallbacks = useMemo(() => ({
-    makeOnUpdate: executions.makeOnUpdate,
-    onGenerate: executions.handleGenerate,
-    onGenerateMedia: executions.handleGenerateMedia,
+    makeOnUpdate,
+    onGenerate: handleGenerate,
+    onGenerateMedia: handleGenerateMedia,
     onExportImages: handleExportImages,
-    onProcessImage: executions.handleProcessImage,
-    onProcessLocal: executions.handleProcessLocal,
-    onCutout: executions.handleCutout,
-    onCutoutCreate: executions.handleCutoutCreate,
-    onCancelProcess: executions.handleCancelProcess,
-    onPromptReverse: executions.handlePromptReverse,
+    onProcessImage: handleProcessImage,
+    onProcessLocal: handleProcessLocal,
+    onCutout: handleCutout,
+    onCutoutCreate: handleCutoutCreate,
+    onCancelProcess: handleCancelProcess,
+    onPromptReverse: handlePromptReverse,
     onEditImages: (imgs) => setFormState({ nodeType: NODE_TYPES.editImage, initialImages: imgs }),
-    onAutoSize: crud.handleAutoSize,
-    onAutoSizeToContent: crud.handleAutoSizeToContent,
-  }), [executions, handleExportImages, crud.handleAutoSize, crud.handleAutoSizeToContent]);
+    onAutoSize: handleAutoSize,
+    onAutoSizeToContent: handleAutoSizeToContent,
+  }), [
+    makeOnUpdate, handleGenerate, handleGenerateMedia, handleProcessImage,
+    handleProcessLocal, handleCutout, handleCutoutCreate, handleCancelProcess, handlePromptReverse,
+    handleExportImages, handleAutoSize, handleAutoSizeToContent,
+  ]);
 
   const { decoratedNodes } = useDecoratedNodes({
     nodes, edges,

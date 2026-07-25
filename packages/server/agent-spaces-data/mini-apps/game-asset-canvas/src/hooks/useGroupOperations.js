@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { addEdge, MarkerType } from '@xyflow/react';
 import { genId } from '../utils/canvas-id';
 import { collectGroupNodeIds, findLeafNodeIds } from '../utils/group-helpers';
@@ -9,6 +9,10 @@ import { collectGroupNodeIds, findLeafNodeIds } from '../utils/group-helpers';
  *
  * 分组不是 ReactFlow 节点，是独立 state（与 nodes/edges 平级），
  * 由 WorkflowGroupOverlay 在 ViewportPortal 内按子节点包围盒贴合渲染。
+ *
+ * createGroupFromSelection/handleGroupMove/handleGroupConnect 只需读 nodes/groups 当前值，
+ * 不需响应式重建，故用 ref 持有最新值，deps 去掉 nodes/groups → 稳定 callback。
+ * groupOverlayItems 是派生展示数据，仍需 useMemo 响应 groups/nodes 变化重算。
  *
  * @param {object} deps
  * @param {Array} deps.groups
@@ -22,7 +26,14 @@ import { collectGroupNodeIds, findLeafNodeIds } from '../utils/group-helpers';
 export default function useGroupOperations({ groups, nodes, edges, setGroups, setNodes, setEdges, reactFlow }) {
   const [selectedGroupId, setSelectedGroupId] = useState(null);
 
-  // 分组 overlay 的子节点映射（WorkflowGroupOverlay 需要的 childNodes/isSelected）
+  // nodes/groups 的 ref 镜像：让「读最新值」的 callback 去掉对 nodes/groups 的依赖
+  const nodesRef = useRef(nodes);
+  const groupsRef = useRef(groups);
+  nodesRef.current = nodes;
+  groupsRef.current = groups;
+
+  // 分组 overlay 的子节点映射（WorkflowGroupOverlay 需要的 childNodes/isSelected）。
+  // 这是派生展示数据，必须响应 groups/nodes 变化重算（不能 ref）。
   const groupOverlayItems = useMemo(() => groups.map((group) => ({
     group,
     childNodes: nodes
@@ -43,10 +54,13 @@ export default function useGroupOperations({ groups, nodes, edges, setGroups, se
 
   // 合并选中节点为一个分组（底部 toolbar 触发）：取当前选中节点 id 建 group 数据，
   // 分组名 = 「分组 N」（N = 当前分组数 + 1）。建完清空选中，避免工具栏持续显示。
+  // 用 nodesRef/groupsRef 读最新值，deps 不含 nodes/groups → 稳定 callback。
   const createGroupFromSelection = useCallback(() => {
-    const ids = nodes.filter((n) => n.selected).map((n) => n.id);
+    const curNodes = nodesRef.current;
+    const curGroups = groupsRef.current;
+    const ids = curNodes.filter((n) => n.selected).map((n) => n.id);
     if (ids.length < 2) return;
-    const name = `分组 ${groups.length + 1}`;
+    const name = `分组 ${curGroups.length + 1}`;
     setGroups((prev) => [...prev, {
       id: genId('group'),
       name,
@@ -58,7 +72,7 @@ export default function useGroupOperations({ groups, nodes, edges, setGroups, se
     }]);
     // 清空选中（ReactFlow 原生：把所有节点 selected 置 false）
     setNodes((prev) => prev.map((n) => (n.selected ? { ...n, selected: false } : n)));
-  }, [nodes, groups.length, setGroups, setNodes]);
+  }, [setGroups, setNodes]);
 
   // 拖拽分组时屏幕坐标差 → 画布坐标差（WorkflowGroupOverlay.onMove 需要）
   const screenDeltaToFlowDelta = useCallback((delta) => {
@@ -67,23 +81,25 @@ export default function useGroupOperations({ groups, nodes, edges, setGroups, se
     return { x: b.x - a.x, y: b.y - a.y };
   }, [reactFlow]);
 
-  // 拖拽分组：把整组（含子组）按 delta 平移
+  // 拖拽分组：把整组（含子组）按 delta 平移。用 groupsRef 读最新值。
   const handleGroupMove = useCallback((groupId, delta) => {
     if (!delta || (delta.x === 0 && delta.y === 0)) return;
-    const ids = new Set(collectGroupNodeIds(groups, groupId));
+    const ids = new Set(collectGroupNodeIds(groupsRef.current, groupId));
     setNodes((prev) => prev.map((n) => ids.has(n.id)
       ? { ...n, position: { x: n.position.x + delta.x, y: n.position.y + delta.y } }
       : n));
-  }, [groups, setNodes]);
+  }, [setNodes]);
 
   // 分组输出连线：从 group 手柄拖到 targetNodeId 松手时，把组内「末端叶子节点」的输出
   // 连到 targetNodeId。多选增强：一次建多条边（去重，已有连线不重复加）。
+  // 用 groupsRef 读最新值。
   const handleGroupConnect = useCallback((groupId, targetNodeId) => {
     setEdges((prev) => {
-      const groupIds = new Set(collectGroupNodeIds(groups, groupId));
+      const curGroups = groupsRef.current;
+      const groupIds = new Set(collectGroupNodeIds(curGroups, groupId));
       // 目标不能是组内节点（否则自连）
       if (groupIds.has(targetNodeId)) return prev;
-      const leafIds = findLeafNodeIds(groups, prev, groupId);
+      const leafIds = findLeafNodeIds(curGroups, prev, groupId);
       if (!leafIds.length) return prev;
       const existing = new Set(prev.map((e) => `${e.source}->${e.target}`));
       let next = prev;
@@ -103,7 +119,7 @@ export default function useGroupOperations({ groups, nodes, edges, setGroups, se
       }
       return next;
     });
-  }, [groups, setEdges]);
+  }, [setEdges]);
 
   return {
     selectedGroupId, setSelectedGroupId,

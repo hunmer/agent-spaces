@@ -59,6 +59,12 @@
 
 关键依赖顺序：useImageOutputs 先于 useExecutionQueue（onComplete 前向引用 addImageNodesFromUrls）；processing-controllers 单例跨 useNodeExecutions 内多个 handler 共享。
 
+### callback 稳定性优化（ref 模式）
+多个 callback（onConnect/handleCopy/alignDistribute/deleteSelectedNodes/focusNode/handleExport/handleAutoLayout/createGroupFromSelection/handleGroupMove/handleGroupConnect）只需读 nodes/edges/groups 的**当前值**判断选中态/查找节点，不需响应式重建。这些 callback 用 `nodesRef.current`/`edgesRef.current`/`groupsRef.current` 读最新值，deps 去掉 nodes/edges/groups → 成为稳定 callback，避免触发 nodeCallbacks/decoratedNodes 频繁重算。
+- ref 同步：`nodesRef.current = nodes`（渲染期直接赋值，React 推荐的 ref 同步模式，非 useEffect）
+- 例外：`createNodeAt` deps 仍含 `nodes.length`（autoPosition 的 baseLen，原始值比数组引用稳定，可接受）；`groupOverlayItems` 是派生展示数据，必须 useMemo 响应 groups/nodes 变化
+- Canvas 的 `nodeCallbacks` deps 逐个解构具体 callback（而非整个 executions/crud 对象），任一稳定则 nodeCallbacks 稳定
+
 ## 数据流（连线传图）
 - 节点 data 结构：`{ params, output: { images: string[] }, status, error, onUpdate, onGenerate, onExportImages, label }`
   - 文生图/编辑节点 `params`：`{ prompt, pickedPrompt, model, aspect, size }`

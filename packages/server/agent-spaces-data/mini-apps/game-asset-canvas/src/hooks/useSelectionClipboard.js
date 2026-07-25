@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { copyNodes, hasClipboard, pasteNodes } from '../utils/clipboard';
 import { genId } from '../utils/canvas-id';
 import { computeAlignment } from '../utils/align-distribute';
@@ -9,6 +9,9 @@ import { IMAGE_TAGS } from '../utils/constants';
  * 从 Canvas.jsx 抽出（原 B3 选中部分 + B9 对齐 + B10 删除/复制粘贴）。
  *
  * selectionCount 驱动底部多选 toolbar 显示和 NodeShell 隐藏单节点 toolbar。
+ *
+ * 多个 callback（handleCopy/alignDistribute/deleteSelectedNodes/keydown）只需读 nodes 当前值
+ * 判断选中态，不需响应式重建，故用 nodesRef 持有最新值，deps 去掉 nodes → 稳定 callback。
  *
  * @param {object} deps
  * @param {Array} deps.nodes
@@ -22,6 +25,12 @@ import { IMAGE_TAGS } from '../utils/constants';
 export default function useSelectionClipboard({ nodes, edges, setNodes, setEdges, setGroups, setSelectedId, addImageNodesFromUrls }) {
   const [selectionCount, setSelectionCount] = useState(0);
 
+  // nodes/edges 的 ref 镜像：让「读最新选中态」的 callback 去掉对 nodes/edges 的依赖
+  const nodesRef = useRef(nodes);
+  const edgesRef = useRef(edges);
+  nodesRef.current = nodes;
+  edgesRef.current = edges;
+
   // 选中变化：单选时记录 selectedId，多选时只更新 selectionCount
   const onSelectionChange = useCallback(({ nodes: selNodes }) => {
     setSelectedId(selNodes.length === 1 ? selNodes[0].id : null);
@@ -30,7 +39,7 @@ export default function useSelectionClipboard({ nodes, edges, setNodes, setEdges
 
   // 对齐分布选中节点（底部 toolbar 触发）：纯算法 + setNodes 应用
   const alignDistribute = useCallback((mode) => {
-    const sel = nodes.filter((n) => n.selected);
+    const sel = nodesRef.current.filter((n) => n.selected);
     if (sel.length < 2) return;
     const newPositions = computeAlignment(sel, mode);
     if (!newPositions.size) return;
@@ -39,17 +48,18 @@ export default function useSelectionClipboard({ nodes, edges, setNodes, setEdges
       if (!pos) return n;
       return { ...n, position: { ...n.position, ...pos } };
     }));
-  }, [nodes, setNodes]);
+  }, [setNodes]);
 
   // 批量删除选中节点（含相关边 + 清理 groups 悬空引用），删完清空选中
   const deleteSelectedNodes = useCallback(() => {
-    const ids = new Set(nodes.filter((n) => n.selected).map((n) => n.id));
+    const curNodes = nodesRef.current;
+    const ids = new Set(curNodes.filter((n) => n.selected).map((n) => n.id));
     if (ids.size === 0) return;
     setNodes((prev) => prev.filter((n) => !ids.has(n.id)));
     setEdges((prev) => prev.filter((e) => !ids.has(e.source) && !ids.has(e.target)));
     setGroups((prev) => prev.map((g) => ({ ...g, childNodeIds: g.childNodeIds.filter((id) => !ids.has(id)) })));
     setSelectedId(null);
-  }, [nodes, setNodes, setEdges, setGroups, setSelectedId]);
+  }, [setNodes, setEdges, setGroups, setSelectedId]);
 
   // 生成记录「用作输入」
   const handleUseImage = useCallback((url) => {
@@ -60,10 +70,11 @@ export default function useSelectionClipboard({ nodes, edges, setNodes, setEdges
   // 剪贴板为模块级内存（utils/clipboard.js），切换工作区后仍可粘贴 → 跨工作区复制。
   // 焦点在 input/textarea/contenteditable 时不拦截，让浏览器走原生复制/粘贴。
   const handleCopy = useCallback(() => {
-    const selected = nodes.filter((n) => n.selected);
+    const curNodes = nodesRef.current;
+    const selected = curNodes.filter((n) => n.selected);
     if (!selected.length) return;
-    copyNodes(selected, edges);
-  }, [nodes, edges]);
+    copyNodes(selected, edgesRef.current);
+  }, []);
 
   const handlePaste = useCallback(() => {
     if (!hasClipboard()) return;
@@ -73,7 +84,8 @@ export default function useSelectionClipboard({ nodes, edges, setNodes, setEdges
     setEdges((prev) => [...prev, ...result.edges]);
   }, [setNodes, setEdges]);
 
-  // keydown：Ctrl/Cmd+C/V，跳过 input/textarea/contenteditable
+  // keydown：Ctrl/Cmd+C/V，跳过 input/textarea/contenteditable。
+  // 用 nodesRef 读最新值，deps 不含 nodes → effect 只订阅一次（避免每次 nodes 变重新绑监听）。
   useEffect(() => {
     const onKeyDown = (e) => {
       const t = e.target;
@@ -83,7 +95,7 @@ export default function useSelectionClipboard({ nodes, edges, setNodes, setEdges
       const mod = e.ctrlKey || e.metaKey;
       if (!mod || isEditable) return;
       if (e.key === 'c' || e.key === 'C') {
-        const selected = nodes.filter((n) => n.selected);
+        const selected = nodesRef.current.filter((n) => n.selected);
         if (selected.length) { e.preventDefault(); handleCopy(); }
       } else if (e.key === 'v' || e.key === 'V') {
         if (hasClipboard()) { e.preventDefault(); handlePaste(); }
@@ -91,7 +103,7 @@ export default function useSelectionClipboard({ nodes, edges, setNodes, setEdges
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [nodes, handleCopy, handlePaste]);
+  }, [handleCopy, handlePaste]);
 
   return {
     selectionCount, setSelectionCount,

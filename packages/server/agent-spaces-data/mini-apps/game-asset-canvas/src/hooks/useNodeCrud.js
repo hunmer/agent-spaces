@@ -12,6 +12,9 @@ import { downloadJson, serializeCanvas } from '../utils/export';
  *
  * createNodeAt 是核心，被多处复用（菜单/RPC/表单提交/handleCutoutCreate 等）。
  *
+ * focusNode/handleExport/handleAutoLayout 只需读 nodes/edges 当前值，不需响应式重建，
+ * 故用 ref 持有最新值，deps 去掉 nodes/edges → 稳定 callback。
+ *
  * @param {object} deps
  * @param {Array} deps.nodes
  * @param {Array} deps.edges
@@ -33,6 +36,13 @@ export default function useNodeCrud({
   setDropNodeMenu, setContextMenu,
 }) {
   const dragTypeRef = useRef(null);
+
+  // nodes/edges 的 ref 镜像：让「读最新值」的 callback（focusNode/handleExport/handleAutoLayout）
+  // 去掉对 nodes/edges 的依赖，成为稳定 callback。
+  const nodesRef = useRef(nodes);
+  const edgesRef = useRef(edges);
+  nodesRef.current = nodes;
+  edgesRef.current = edges;
 
   // 创建节点到指定位置（点击添加 / 拖拽放下 / Agent add_node 共用）
   // dataPatch: 可选，覆盖/扩展初始 data（如预填 loading/images）
@@ -193,28 +203,29 @@ export default function useNodeCrud({
 
   // 选中并聚焦节点：设置 ReactFlow 原生 node.selected + setCenter 居中 + 同步面板高亮。
   // 不在 decoratedNodes 里覆盖 selected（见 handoff 第1条），改 useCanvasState 真值。
+  // 用 nodesRef 读最新值，deps 不含 nodes → 稳定 callback。
   const focusNode = useCallback((nodeId) => {
-    const target = nodes.find((n) => n.id === nodeId);
+    const target = nodesRef.current.find((n) => n.id === nodeId);
     if (!target) return;
     setNodes((prev) => prev.map((n) => ({ ...n, selected: n.id === nodeId })));
     const w = target.width || target.style?.width || 280;
     const h = target.height || target.style?.height || 220;
     reactFlow.setCenter(target.position.x + w / 2, target.position.y + h / 2, { zoom: 1, duration: 400 });
     setSelectedId(nodeId);
-  }, [nodes, setNodes, reactFlow, setSelectedId]);
+  }, [setNodes, reactFlow, setSelectedId]);
 
   const handleSelectNode = useCallback((nodeId) => { focusNode(nodeId); }, [focusNode]);
   const handleLocateNode = useCallback((nodeId) => { focusNode(nodeId); }, [focusNode]);
 
-  // 自动布局（dagre）
+  // 自动布局（dagre）：用 edgesRef 读最新值
   const handleAutoLayout = useCallback(() => {
-    setNodes((prev) => autoLayout(prev, edges));
-  }, [edges, setNodes]);
+    setNodes((prev) => autoLayout(prev, edgesRef.current));
+  }, [setNodes]);
 
-  // 导出画布 JSON
+  // 导出画布 JSON：用 ref 读最新值
   const handleExport = useCallback(() => {
-    downloadJson(serializeCanvas(nodes, edges));
-  }, [nodes, edges]);
+    downloadJson(serializeCanvas(nodesRef.current, edgesRef.current));
+  }, []);
 
   // 图片加载完成后自动调整节点尺寸（图片展示节点 <img onLoad> 触发）
   const handleAutoSize = useCallback((nodeId, naturalWidth, naturalHeight) => {
