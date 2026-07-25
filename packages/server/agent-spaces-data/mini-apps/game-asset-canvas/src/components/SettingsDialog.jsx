@@ -137,28 +137,30 @@ export default function SettingsDialog({ open, value, onClose, onSave }) {
 
   return (
     <Dialog open={open} onOpenChange={(next) => { if (!next) onClose(); }}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="!max-w-2xl">
         <DialogHeader>
           <DialogTitle>设置</DialogTitle>
         </DialogHeader>
 
-        <div className="flex flex-col gap-5 py-2">
+        <div className="flex flex-col gap-4 px-2 py-2">
           <div className="text-sm font-semibold text-muted-foreground">工作流</div>
-          {WORKFLOW_SLOTS.map((slot) => (
-            <WorkflowSlot
-              key={slot.key}
-              slot={slot}
-              value={cfg}
-              onPick={openPicker}
-              onReset={() => resetSlot(slot)}
-            />
-          ))}
+          <div className="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2">
+            {WORKFLOW_SLOTS.map((slot) => (
+              <WorkflowSlot
+                key={slot.key}
+                slot={slot}
+                value={cfg}
+                onPick={openPicker}
+                onReset={() => resetSlot(slot)}
+              />
+            ))}
+          </div>
           <p className="text-xs text-muted-foreground">
             节点执行时会调用此处配置的工作流；未设置时使用内置默认值。
           </p>
 
           {/* BBox AI 分析配置 */}
-          <div className="mt-2 border-t border-border pt-4">
+          <div className="mt-1 border-t border-border pt-4 sm:col-span-2">
             <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-muted-foreground">
               <Sparkles className="h-4 w-4" /> BBox AI 分析
             </div>

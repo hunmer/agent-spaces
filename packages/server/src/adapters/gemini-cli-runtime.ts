@@ -23,7 +23,7 @@ export class GeminiCliRuntime implements AgentRuntime {
     const startedAt = Date.now();
     const log = (message: string) => console.log(`[gemini-cli] ${message}`);
 
-    log(`starting | cwd=${cwd} command=${resolveGeminiCommand()} model=${this.config.model ?? 'default'} baseURL=${sanitizeUrlForLog(this.config.baseURL)} auth=${this.config.apiKey ? 'set' : 'default'} resume=${options?.resumeSessionId ?? '-'} maxTurns=${options?.maxTurns ?? '-'} permission=${this.config.permissionMode ?? 'default'}`);
+    log(`starting | cwd=${cwd} command=${resolveGeminiCommand()} model=${this.config.model ?? 'default'} baseURL=${sanitizeUrlForLog(this.config.baseURL)} auth=${this.config.apiKey ? 'set' : 'default'} resume=${options?.resumeSessionId ?? '-'} permission=${this.config.permissionMode ?? 'default'}`);
 
     return new Promise<AgentRunResult>((resolve) => {
       let settled = false;
@@ -201,7 +201,6 @@ export function buildGeminiArgs(prompt: string, config: AgentRuntimeConfig, opti
   const args = ['-p', prompt, '--output-format', 'stream-json'];
   if (config.model) args.push('--model', config.model);
   if (options?.resumeSessionId) args.push('-r', options.resumeSessionId);
-  if (options?.maxTurns) args.push('--max-turns', String(options.maxTurns));
   if (config.permissionMode === 'bypassPermissions') args.push('--yolo');
   else if (config.permissionMode === 'acceptEdits' || config.permissionMode === 'auto') {
     args.push('--approval-mode', 'auto_edit');

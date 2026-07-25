@@ -14,7 +14,6 @@ test('builds documented Gemini CLI headless arguments', () => {
     '--output-format', 'stream-json',
     '--model', 'gemini-2.5-pro',
     '-r', 'session-id',
-    '--max-turns', '3',
     '--yolo',
   ]);
   assert.deepEqual(buildGeminiArgs('hello', { permissionMode: 'acceptEdits' }), [
