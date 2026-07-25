@@ -1,0 +1,75 @@
+import { useMemo } from 'react';
+import { NODE_TYPES, IMAGE_TAGS } from '../utils/constants';
+import { computeInputImages } from '../utils/input-images';
+import { dedupeTags } from '../utils/canvas-constants';
+
+/**
+ * 给每个节点的 data 注入回调与派生数据（computeInputImages 派生输入图 + 注入执行/编辑回调）。
+ * 从 Canvas.jsx 抽出（原 B13）。
+ *
+ * 注意：不要覆盖 node.selected —— 选中状态由 ReactFlow 通过 onNodesChange 的
+ * selection 变更 + applyNodeChanges 自行管理；这里强行赋值会破坏点击选中/删除机制。
+ * 对「图片接收节点」(editImage/imageDisplay)，有连入边时用 computeInputImages 派生输入图片覆盖 data.images，
+ * 无连入边时保留节点自身手动值（粘贴/上传）。ImageDisplay 同时置 source='upstream' 让 UI 区分来源。
+ *
+ * @param {object} deps
+ * @param {Array} deps.nodes
+ * @param {Array} deps.edges
+ * @param {number} deps.selectionCount
+ * @param {object} deps.settings
+ * @param {object} deps.callbacks  注入到节点 data 的回调集合：
+ *   { makeOnUpdate, onGenerate, onGenerateMedia, onExportImages, onProcessImage, onProcessLocal,
+ *     onCutout, onCutoutCreate, onCancelProcess, onPromptReverse, onEditImages, onAutoSize, onAutoSizeToContent }
+ * @returns {{ decoratedNodes: Array }}
+ */
+export default function useDecoratedNodes({ nodes, edges, selectionCount, settings, callbacks }) {
+  const upstreamMap = useMemo(() => computeInputImages(nodes, edges), [nodes, edges]);
+
+  const decoratedNodes = useMemo(() => {
+    const {
+      makeOnUpdate, onGenerate, onGenerateMedia, onExportImages,
+      onProcessImage, onProcessLocal, onCutout, onCutoutCreate, onCancelProcess,
+      onPromptReverse, onEditImages, onAutoSize, onAutoSizeToContent,
+    } = callbacks || {};
+    return nodes.map((nd) => {
+      const up = upstreamMap.get(nd.id);
+      const data = { ...nd.data };
+      if (up) {
+        data.images = up.images;
+        if (up.isDisplay) {
+          data.source = 'upstream';
+          data.tags = dedupeTags([...(nd.data?.tags || []), IMAGE_TAGS.upstream]);
+        }
+      }
+      return {
+        ...nd,
+        // 图片展示节点：限定只能从 .image-drag-handle 拖动（图片区域可点选/看大图不触发拖拽）
+        dragHandle: nd.type === NODE_TYPES.imageDisplay ? '.image-drag-handle' : nd.dragHandle,
+        data: {
+          ...data,
+          selectionCount,
+          onUpdate: makeOnUpdate?.(nd.id),
+          onGenerate,
+          onGenerateMedia,
+          onExportImages: (imgs) => onExportImages?.(nd, imgs),
+          onProcessImage,
+          onProcessLocal,
+          onCutout,
+          onCutoutCreate,
+          onCancelProcess,
+          onPromptReverse,
+          onEditImages: (imgs) => onEditImages?.(imgs),
+          onAutoSize,
+          onAutoSizeToContent,
+          // BBox 查看器 AI 分析配置（从 settings 注入，仅 bboxViewer 节点用；systemPrompt 归 agent preset）
+          agentConfig: nd.type === NODE_TYPES.bboxViewer ? {
+            id: settings.bboxAgentConfigId || '',
+            userPrompt: settings.bboxAiUserPrompt || '',
+          } : undefined,
+        },
+      };
+    });
+  }, [nodes, upstreamMap, selectionCount, settings, callbacks]);
+
+  return { decoratedNodes };
+}

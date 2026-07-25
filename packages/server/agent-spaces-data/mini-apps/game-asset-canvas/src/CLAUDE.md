@@ -43,6 +43,22 @@
 - 节点产出、图片展示节点、生成记录都用宿主 `openMediaGallery(items, index)` 打开大图
 - items 字段是 `src`（不是 url），`type: 'image'`，命令式调用自动管理生命周期
 
+## Canvas 架构（三层拆分）
+`Canvas.jsx` 已从「上帝组件」拆分为编排层 + utils + hooks + 子组件三层：
+- **`components/Canvas.jsx`**（~400行）：hook 装配 + ReactFlow 变更回调（onNodesChange/onConnect/onConnectEnd/onNodesDelete）+ JSX 编排骨架。所有业务逻辑下沉到 hooks。
+- **utils 层**（纯函数/单例）：
+  - `canvas-constants.js`：NODE_COMPONENTS/ADD_NODE_ITEMS/DEFAULT_SIZE/initialData/dedupeTags/PANEL_*（import 所有 Node 组件，是 Canvas 依赖聚合点）
+  - `input-images.js`：computeInputImages（纯函数，fixed-point 多跳转发派生输入图）
+  - `canvas-id.js`：genId+seq / autoPosition+positionIndex（模块级单例，保证连续建节点不撞位置）
+  - `processing-controllers.js`：AbortController 注册表单例（register/abort/clear），跨多个 hook 共享取消
+  - `align-distribute.js`：computeAlignment（对齐分布纯算法）
+  - `group-helpers.js`：collectGroupNodeIds/findLeafNodeIds（分组递归去重）
+- **hooks 层**：usePanelLayout / useImageOutputs / useSelectionClipboard / useGroupOperations / useNodeCrud / useNodeExecutions / useCanvasAgentRpc / useDecoratedNodes
+  - `useCanvasAgentRpc`：WS message 监听，用 ref 持有最新值，effect 只订阅一次（原 deps 极重会重订阅）
+- **components/canvas/**：AddNodeMenuItems / MultiSelectToolbar / DropNodeMenu / CanvasContextMenu / GroupOverlays
+
+关键依赖顺序：useImageOutputs 先于 useExecutionQueue（onComplete 前向引用 addImageNodesFromUrls）；processing-controllers 单例跨 useNodeExecutions 内多个 handler 共享。
+
 ## 数据流（连线传图）
 - 节点 data 结构：`{ params, output: { images: string[] }, status, error, onUpdate, onGenerate, onExportImages, label }`
   - 文生图/编辑节点 `params`：`{ prompt, pickedPrompt, model, aspect, size }`

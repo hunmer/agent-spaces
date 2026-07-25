@@ -1,0 +1,102 @@
+import { useCallback, useEffect, useState } from 'react';
+import { copyNodes, hasClipboard, pasteNodes } from '../utils/clipboard';
+import { genId } from '../utils/canvas-id';
+import { computeAlignment } from '../utils/align-distribute';
+import { IMAGE_TAGS } from '../utils/constants';
+
+/**
+ * 节点选中状态 + 多选对齐分布 + 批量删除 + 复制粘贴。
+ * 从 Canvas.jsx 抽出（原 B3 选中部分 + B9 对齐 + B10 删除/复制粘贴）。
+ *
+ * selectionCount 驱动底部多选 toolbar 显示和 NodeShell 隐藏单节点 toolbar。
+ *
+ * @param {object} deps
+ * @param {Array} deps.nodes
+ * @param {Array} deps.edges
+ * @param {Function} deps.setNodes
+ * @param {Function} deps.setEdges
+ * @param {Function} deps.setGroups
+ * @param {Function} deps.setSelectedId  外部 selectedId 的 setter
+ * @param {Function} deps.addImageNodesFromUrls  生成记录「用作输入」复用
+ */
+export default function useSelectionClipboard({ nodes, edges, setNodes, setEdges, setGroups, setSelectedId, addImageNodesFromUrls }) {
+  const [selectionCount, setSelectionCount] = useState(0);
+
+  // 选中变化：单选时记录 selectedId，多选时只更新 selectionCount
+  const onSelectionChange = useCallback(({ nodes: selNodes }) => {
+    setSelectedId(selNodes.length === 1 ? selNodes[0].id : null);
+    setSelectionCount(selNodes.length);
+  }, [setSelectedId]);
+
+  // 对齐分布选中节点（底部 toolbar 触发）：纯算法 + setNodes 应用
+  const alignDistribute = useCallback((mode) => {
+    const sel = nodes.filter((n) => n.selected);
+    if (sel.length < 2) return;
+    const newPositions = computeAlignment(sel, mode);
+    if (!newPositions.size) return;
+    setNodes((prev) => prev.map((n) => {
+      const pos = newPositions.get(n.id);
+      if (!pos) return n;
+      return { ...n, position: { ...n.position, ...pos } };
+    }));
+  }, [nodes, setNodes]);
+
+  // 批量删除选中节点（含相关边 + 清理 groups 悬空引用），删完清空选中
+  const deleteSelectedNodes = useCallback(() => {
+    const ids = new Set(nodes.filter((n) => n.selected).map((n) => n.id));
+    if (ids.size === 0) return;
+    setNodes((prev) => prev.filter((n) => !ids.has(n.id)));
+    setEdges((prev) => prev.filter((e) => !ids.has(e.source) && !ids.has(e.target)));
+    setGroups((prev) => prev.map((g) => ({ ...g, childNodeIds: g.childNodeIds.filter((id) => !ids.has(id)) })));
+    setSelectedId(null);
+  }, [nodes, setNodes, setEdges, setGroups, setSelectedId]);
+
+  // 生成记录「用作输入」
+  const handleUseImage = useCallback((url) => {
+    addImageNodesFromUrls([url], { tags: [IMAGE_TAGS.history] });
+  }, [addImageNodesFromUrls]);
+
+  // —— 复制粘贴节点（Ctrl+C / Ctrl+V）——
+  // 剪贴板为模块级内存（utils/clipboard.js），切换工作区后仍可粘贴 → 跨工作区复制。
+  // 焦点在 input/textarea/contenteditable 时不拦截，让浏览器走原生复制/粘贴。
+  const handleCopy = useCallback(() => {
+    const selected = nodes.filter((n) => n.selected);
+    if (!selected.length) return;
+    copyNodes(selected, edges);
+  }, [nodes, edges]);
+
+  const handlePaste = useCallback(() => {
+    if (!hasClipboard()) return;
+    const result = pasteNodes({ genId });
+    if (!result) return;
+    setNodes((prev) => [...prev, ...result.nodes]);
+    setEdges((prev) => [...prev, ...result.edges]);
+  }, [setNodes, setEdges]);
+
+  // keydown：Ctrl/Cmd+C/V，跳过 input/textarea/contenteditable
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      const t = e.target;
+      const tag = t?.tagName;
+      const isEditable = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT'
+        || t?.isContentEditable;
+      const mod = e.ctrlKey || e.metaKey;
+      if (!mod || isEditable) return;
+      if (e.key === 'c' || e.key === 'C') {
+        const selected = nodes.filter((n) => n.selected);
+        if (selected.length) { e.preventDefault(); handleCopy(); }
+      } else if (e.key === 'v' || e.key === 'V') {
+        if (hasClipboard()) { e.preventDefault(); handlePaste(); }
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [nodes, handleCopy, handlePaste]);
+
+  return {
+    selectionCount, setSelectionCount,
+    onSelectionChange,
+    alignDistribute, deleteSelectedNodes, handleUseImage,
+    handleCopy, handlePaste,
+  };
+}

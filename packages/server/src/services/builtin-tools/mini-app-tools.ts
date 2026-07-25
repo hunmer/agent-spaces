@@ -307,6 +307,19 @@ function getRuntimeBaseURL(provider?: string, apiBase?: string): string | undefi
   return apiBase;
 }
 
+function normalizeMiniAppRuntimeKind(value: unknown): AgentConfig['runtimeKind'] {
+  return value === 'open-agent-sdk'
+    || value === 'claude-code'
+    || value === 'codex'
+    || value === 'grok'
+    || value === 'gemini-cli'
+    || value === 'langchain'
+    || value === 'hermes'
+    || value === 'pi'
+    ? value
+    : 'langchain';
+}
+
 function requireWorkspaceId(ctx: { workspaceId?: string } | undefined, args?: Record<string, any>): string {
   const workspaceId = typeof ctx?.workspaceId === 'string' && ctx.workspaceId.trim()
     ? ctx.workspaceId.trim()
@@ -790,7 +803,7 @@ function miniAppAgentConfigToPreset(config: JsonRecord): MiniAppAgentPreset {
     name: String(config.name ?? config.id),
     role: 'agent',
     description: typeof config.description === 'string' ? config.description : '',
-    runtimeKind: 'langchain',
+    runtimeKind: normalizeMiniAppRuntimeKind(config.runtimeKind),
     modelProvider: (typeof config.modelProvider === 'string' ? config.modelProvider : provider?.modelProvider) as AgentConfig['modelProvider'],
     providerId,
     modelId: typeof config.modelId === 'string' ? config.modelId : undefined,

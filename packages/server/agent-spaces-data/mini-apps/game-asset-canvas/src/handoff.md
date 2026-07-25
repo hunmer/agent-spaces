@@ -703,6 +703,60 @@ GDScript 用 `print("[PXR] ...")`（经 index.js onPrint 输出，与 `index.js:
 - 生成记录里抠图条目 model 按模式显示（local/image_enchanter/rembg）
 - 旧 canvas.json 的 ipWhiteKey/ipChromaKey 节点打开仍正常（类型保留兼容）
 
+## Canvas.jsx 功能拆分（本轮新增）
+
+把 1969 行的「上帝组件」`Canvas.jsx` 按功能拆分为 **utils（6文件）+ hooks（8个）+ components/canvas（5个）** 三层，Canvas.jsx 降到 396 行只做编排。纯重构，行为完全不变。
+
+### 关键决策与已踩坑（务必遵守）
+
+1. **三层拆分粒度**：utils（纯函数/单例，零 React）→ hooks（自带 state/effect）→ 子组件（纯展示）。Canvas.jsx 只剩 hook 装配 + ReactFlow 变更回调（onNodesChange/onConnect/onConnectEnd/onNodesDelete，逻辑简单）+ JSX 编排骨架。
+2. **模块级单例外移**：`processingControllers`(Map) / `seq`+`positionIndex`(id/位置生成器) 是模块级可变状态，保证连续建节点不撞位置/取消信号跨 hook 共享。抽到 `utils/canvas-id.js` 和 `utils/processing-controllers.js`，封装 register/abort/clear 接口，跨 B4/B14 隐式共享变显式。
+3. **前向引用处理**：`useExecutionQueue({onComplete})` 引用 `addImageNodesFromUrls`（后定义）。拆分时先调 `useImageOutputs` 拿到 `addImageNodesFromUrls`，再传给 useExecutionQueue 的 onComplete 闭包（顺序保证）。
+4. **B11 RPC 重订阅优化**：原 `useEffect` deps 含 `[nodes, edges, ...5个callback]`，每次 nodes/edges 变都重新订阅 WS（潜在抖动）。`useCanvasAgentRpc` 改用 `useRef` 持有最新值，effect deps 为 `[]` 只订阅一次，靠 ref 读最新闭包。
+5. **decoratedNodes callbacks 打包**：`useDecoratedNodes` 接收 `callbacks` 对象（makeOnUpdate/onGenerate/...），Canvas 用 `useMemo` 稳定 callbacks 引用，避免任一 callback 重建触发 decoratedNodes 全量重算。
+6. **collectIds 递归去重**：原 `handleGroupMove`/`handleGroupConnect` 各内联一份递归收集子组节点 id。抽到 `utils/group-helpers.js` 的 `collectGroupNodeIds`/`findLeafNodeIds`，去重。
+7. **alignDistribute 算法外移**：原 `alignDistribute` 内联坐标计算 + setNodes。抽 `utils/align-distribute.js` 的 `computeAlignment`（纯函数返回 Map<id,pos>），组件层只剩 setNodes 应用结果。
+8. **AddNodeMenuItems render-prop 设计保留**：原组件用 render-prop 同时适配 ContextMenu 和 DropdownMenu（一份逻辑两种壳）。独立成 `components/canvas/AddNodeMenuItems.jsx` 保持设计，CanvasContextMenu/DropNodeMenu 各注入对应组件族。
+9. **canvas-constants 是依赖聚合点**：`NODE_COMPONENTS` import 所有 Node 组件，Node 组件只 import `utils/constants`（不 import canvas-constants），无循环依赖。constants.js 是纯常量无副作用，处于依赖链最底层。
+10. **useNodeCrud.handleAddAtMenu 改 setMenu 回调形式**：原实现同步读 `contextMenu` state，拆分后改 `setContextMenu(cur => {...})` 形式读最新值（cur 是最新 state），onPick 在 menu 关闭前同步使用 type/dataPatch，行为一致。
+
+### 改动文件（mini-app 内，刷新即生效，无宿主改动）
+
+#### 新增 utils（6 文件）
+- `utils/canvas-constants.js`：NODE_COMPONENTS/ADD_NODE_ITEMS/DEFAULT_SIZE/initialData/dedupeTags/PANEL_*（原 M1-M10 常量部分，import 所有 Node 组件）
+- `utils/input-images.js`：computeInputImages（原 M3 纯函数，fixed-point 多跳转发）
+- `utils/canvas-id.js`：genId+seq / autoPosition+positionIndex（原 M6+M8 单例）
+- `utils/processing-controllers.js`：AbortController 注册表单例 register/abort/clear/get（原 M7）
+- `utils/align-distribute.js`：computeAlignment 纯函数（原 B9 算法部分）
+- `utils/group-helpers.js`：collectGroupNodeIds/findLeafNodeIds（原 B15 内联递归去重）
+
+#### 新增 hooks（8 文件）
+- `hooks/usePanelLayout.js`：面板布局+小地图持久化（原 B2+B16布局部分）
+- `hooks/useImageOutputs.js`：addImageNodesFromUrls/handleExportImages（原 B7）
+- `hooks/useSelectionClipboard.js`：选中+对齐分布+批量删除+复制粘贴（原 B3选中+B9+B10）
+- `hooks/useGroupOperations.js`：分组数据 ops + overlay 移动/连线（原 B8+B15）
+- `hooks/useNodeCrud.js`：节点 CRUD+定位/布局/导出+尺寸自适应+表单提交（原 B5+B6+B12）
+- `hooks/useNodeExecutions.js`：工作流/媒体/本地算法/抠图/反推提示词执行回调（原 B4+B14）
+- `hooks/useCanvasAgentRpc.js`：WS message 监听，ref 持有最新值只订阅一次（原 B11）
+- `hooks/useDecoratedNodes.js`：节点 data 注入（原 B13）
+
+#### 新增 components/canvas（5 文件）
+- `components/canvas/AddNodeMenuItems.jsx`：render-prop 菜单项（原 B18）
+- `components/canvas/MultiSelectToolbar.jsx`：底部多选浮出 toolbar（分组/对齐/删除）
+- `components/canvas/DropNodeMenu.jsx`：拖拽落空菜单（DropdownMenu）
+- `components/canvas/CanvasContextMenu.jsx`：右键菜单（ContextMenuTrigger 包裹 + Content）
+- `components/canvas/GroupOverlays.jsx`：ViewportPortal 内 WorkflowGroupOverlay 列表
+
+#### 重写
+- `components/Canvas.jsx`：1969 行 → 396 行（hook 装配 + ReactFlow 变更回调 + JSX 编排）
+
+### 验收要点
+
+- 画布所有原有功能完全不变（节点 CRUD/连线/拖拽/右键/落空菜单/多选 toolbar/分组 overlay/复制粘贴/Agent RPC/工作流生成/图像处理/抠图/反推提示词/媒体节点/设置/工作区切换）
+- Agent RPC（canvas.addNode/addNodes/connectNodes 等）行为一致，且不再因 nodes/edges 变化重订阅 WS（性能改善）
+- 文件结构清晰：Canvas.jsx 只做编排，业务逻辑分布在 hooks，纯函数/单例在 utils，展示组件在 components/canvas
+- 无循环依赖：canvas-constants → Node 组件 → constants（单向）
+
 ## 后续可做
 
 - 队列任务失败「重试」按钮、执行中实时进度（node:progress 事件）
