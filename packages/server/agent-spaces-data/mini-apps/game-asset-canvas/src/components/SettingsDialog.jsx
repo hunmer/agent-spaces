@@ -4,11 +4,11 @@ import { useEffect, useState } from 'react';
 import {
   WORKFLOW_SLOTS, BUILTIN_PLUGIN,
 } from '../utils/settings';
-import { BBOX_AGENT_INIT_NAME, BBOX_AI_SYSTEM_PROMPT, BBOX_AI_USER_PROMPT } from '../utils/constants';
+import { BBOX_AGENT_INIT_NAME, BBOX_AI_SYSTEM_PROMPT, BBOX_AI_USER_PROMPT, PROMPT_REVERSE_AGENT_INIT_NAME, PROMPT_REVERSE_SYSTEM_PROMPT, PROMPT_REVERSE_USER_PROMPT } from '../utils/constants';
 
 const {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
-  Button, Label, Textarea, WorkflowListDialog, Workflow, RotateCcw, Bot, Sparkles,
+  Button, Label, Textarea, WorkflowListDialog, Workflow, RotateCcw, Bot, Sparkles, Search,
 } = window.AgentSpacesUI;
 
 // 工作流列表归一化（兼容 workflow_id/id、title/name）
@@ -100,6 +100,39 @@ export default function SettingsDialog({ open, value, onClose, onSave }) {
       bboxAgentConfigId: '',
       bboxAgentName: '',
       bboxAiUserPrompt: BBOX_AI_USER_PROMPT,
+    }));
+  };
+
+  // —— 配置 反推提示词 AI 模型（与 BBox AI 同款：openAgentEditor 弹窗，systemPrompt 在 preset 内配置） ——
+  const configurePromptReverseAgent = async () => {
+    if (!AS?.openAgentEditor) { setError('宿主未提供 openAgentEditor'); return; }
+    setAgentBusy(true);
+    setError('');
+    try {
+      const saved = await AS.openAgentEditor({
+        initialName: PROMPT_REVERSE_AGENT_INIT_NAME,
+        initialPrompt: PROMPT_REVERSE_SYSTEM_PROMPT,
+        agentId: cfg.promptReverseAgentConfigId || undefined,
+      });
+      if (!saved) { setAgentBusy(false); return; }
+      setCfg((prev) => ({
+        ...prev,
+        promptReverseAgentConfigId: saved.id,
+        promptReverseAgentName: saved.name || PROMPT_REVERSE_AGENT_INIT_NAME,
+      }));
+    } catch (e) {
+      setError('打开模型配置失败：' + (e?.message || e));
+    } finally {
+      setAgentBusy(false);
+    }
+  };
+
+  const resetPromptReverseAgent = () => {
+    setCfg((prev) => ({
+      ...prev,
+      promptReverseAgentConfigId: '',
+      promptReverseAgentName: '',
+      promptReverseUserPrompt: PROMPT_REVERSE_USER_PROMPT,
     }));
   };
 
@@ -201,6 +234,48 @@ export default function SettingsDialog({ open, value, onClose, onSave }) {
               </div>
               <p className="text-xs text-muted-foreground">
                 图片以 base64 附件形式传给视觉模型（需 agent runtime 支持，如 Claude/GPT-4o/Gemini）。「配置 AI 模型」弹窗里设置系统提示词（检测规则）。
+              </p>
+            </div>
+          </div>
+
+          {/* 反推提示词 AI 配置 */}
+          <div className="mt-1 border-t border-border pt-4 sm:col-span-2">
+            <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-muted-foreground">
+              <Search className="h-4 w-4" /> 反推提示词 AI
+            </div>
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  className="flex flex-1 items-center gap-2 rounded-md border border-border bg-background px-3 py-2 text-sm transition hover:border-primary disabled:opacity-60"
+                  onClick={configurePromptReverseAgent}
+                  disabled={agentBusy}
+                  title={cfg.promptReverseAgentConfigId || '未配置'}
+                >
+                  <Bot className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <span className="flex-1 truncate text-left">
+                    {cfg.promptReverseAgentName || cfg.promptReverseAgentConfigId || '点击配置 AI 模型'}
+                  </span>
+                  {agentBusy && <span className="shrink-0 text-[10px] text-muted-foreground">打开中…</span>}
+                </button>
+                {cfg.promptReverseAgentConfigId && (
+                  <Button size="sm" variant="ghost" className="shrink-0" onClick={resetPromptReverseAgent}>
+                    <RotateCcw className="h-3.5 w-3.5" />
+                  </Button>
+                )}
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label className="text-xs font-medium">用户提示词（图片会以附件形式传给 AI）</Label>
+                <Textarea
+                  value={cfg.promptReverseUserPrompt ?? ''}
+                  onChange={(e) => setCfg((prev) => ({ ...prev, promptReverseUserPrompt: e.target.value }))}
+                  rows={3}
+                  className="text-xs"
+                  placeholder="请对附带的每张图片分别反推一段可直接用于文生图的提示词。"
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                反推提示词节点支持上传/连线多张图，AI 按顺序为每张图生成一段提示词文本。图片以 base64 附件形式传给视觉模型（需 agent runtime 支持）。「配置 AI 模型」弹窗里设置系统提示词（输出格式）。
               </p>
             </div>
           </div>

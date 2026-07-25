@@ -42,6 +42,7 @@ export const NODE_TYPES = {
   pixelEditor: 'pixelEditor',
   uiSplitter: 'uiSplitter',
   bboxViewer: 'bboxViewer',
+  promptReverse: 'promptReverse',
   textToVoice: 'textToVoice',
   videoGenerator: 'videoGenerator',
   imageCompare: 'imageCompare',
@@ -201,6 +202,7 @@ export const NODE_META = {
   [NODE_TYPES.pixelEditor]: { label: '像素编辑器', icon: '👾', color: '#22c55e' },
   [NODE_TYPES.uiSplitter]: { label: '雪碧图拆分', icon: '🧩', color: '#0ea5e9' },
   [NODE_TYPES.bboxViewer]: { label: 'UI拆分', icon: '📦', color: '#eab308' },
+  [NODE_TYPES.promptReverse]: { label: '反推提示词', icon: '🔍', color: '#8b5cf6' },
   [NODE_TYPES.textToVoice]: { label: '生成配音', icon: '🔊', color: '#a855f7' },
   [NODE_TYPES.videoGenerator]: { label: '生成视频', icon: '🎬', color: '#ef4444' },
   [NODE_TYPES.imageCompare]: { label: '图片对比', icon: '🔀', color: '#06b6d4' },
@@ -465,4 +467,40 @@ export const BBOX_AI_SYSTEM_PROMPT = `# Role
 
 // 默认用户提示词（图片以 base64 附件形式传给 AI，不嵌 prompt 文本）
 export const BBOX_AI_USER_PROMPT = `请分析这张界面图像，按系统提示词的 JSON schema 输出检测结果。`;
+
+// ============ 反推提示词（agent_run，多图）============
+// Agent preset 初始名称（openAgentEditor 用）；系统提示词在 preset 内配置（openAgentEditor 弹窗里编辑）
+export const PROMPT_REVERSE_AGENT_INIT_NAME = '反推提示词';
+
+// 默认系统提示词（作为 openAgentEditor 的 initialPrompt，用户可在 preset 弹窗里改）
+// 产出是「可直接用于文生图」的提示词文本（纯文本 / Markdown），每张图一段。
+export const PROMPT_REVERSE_SYSTEM_PROMPT = `# Role
+你是一个资深的 AI 绘画提示词工程师，擅长根据参考图反推高质量、可直接复用于文生图模型的提示词。
+
+# Task
+对输入的每一张图片，分别生成一段可用于文生图（如 Stable Diffusion / Midjourney / 即梦 / DALL·E 等）的提示词文本。
+
+# Rules
+1. 严格按图片顺序输出，每张图对应一段，用编号标题分隔（如 \`## 图 1\`、\`## 图 2\`）。
+2. 每段提示词包含：
+   - 一句**主体描述**（核心对象 / 画面主题 / 构图）
+   - 一组**风格关键词**（艺术风格 / 色调 / 光影 / 渲染质感）
+   - 一组**细节关键词**（材质 / 镜头 / 质量 / 修饰词）
+3. 关键词用英文逗号分隔，便于直接复制粘贴到文生图模型。
+4. 不输出与画面无关的内容，不编造图中不存在的元素。
+5. 不要输出 JSON，输出纯文本 / Markdown 即可。
+
+# Output Format
+\`\`\`
+## 图 1
+<一句主体描述>
+Style: <关键词1>, <关键词2>, ...
+Details: <关键词1>, <关键词2>, ...
+
+## 图 2
+...
+\`\`\``;
+
+// 默认用户提示词（图片以 base64 附件形式传给 AI，不嵌 prompt 文本）
+export const PROMPT_REVERSE_USER_PROMPT = `请对附带的每张图片分别反推一段可直接用于文生图的提示词，按系统提示词的格式输出。`;
 
