@@ -26,8 +26,10 @@ import ImageProcessNode from './nodes/ImageProcessNode';
 import ImageEditorNode from './nodes/ImageEditorNode';
 import PixelEditorNode from './nodes/PixelEditorNode';
 import UiSplitterNode from './nodes/UiSplitterNode';
+import BBoxViewerNode from './nodes/BBoxViewerNode';
 import TextToVoiceNode from './nodes/TextToVoiceNode';
 import VideoGeneratorNode from './nodes/VideoGeneratorNode';
+import ImageCompareNode from './nodes/ImageCompareNode';
 import NoteNode from './nodes/NoteNode';
 import useCanvasState from '../hooks/useCanvasState';
 import useWorkflow from '../hooks/useWorkflow';
@@ -52,8 +54,10 @@ const NODE_COMPONENTS = {
   [NODE_TYPES.imageEditor]: ImageEditorNode,
   [NODE_TYPES.pixelEditor]: PixelEditorNode,
   [NODE_TYPES.uiSplitter]: UiSplitterNode,
+  [NODE_TYPES.bboxViewer]: BBoxViewerNode,
   [NODE_TYPES.textToVoice]: TextToVoiceNode,
   [NODE_TYPES.videoGenerator]: VideoGeneratorNode,
+  [NODE_TYPES.imageCompare]: ImageCompareNode,
   [NODE_TYPES.note]: NoteNode,
 };
 
@@ -66,8 +70,10 @@ const ADD_NODE_ITEMS = [
   { type: NODE_TYPES.imageEditor },
   { type: NODE_TYPES.pixelEditor },
   { type: NODE_TYPES.uiSplitter },
+  { type: NODE_TYPES.bboxViewer },
   { type: NODE_TYPES.textToVoice },
   { type: NODE_TYPES.videoGenerator },
+  { type: NODE_TYPES.imageCompare },
   { type: NODE_TYPES.note },
 ];
 
@@ -76,30 +82,64 @@ const ADD_NODE_ITEMS = [
 // - 有连入边：input = 所有 source 节点产出图（output.images 优先，回退 data.images），覆盖手动值
 // - 无连入边：不注入，保留节点自身 data.images（手动粘贴/上传）
 // 这样连线 / 断开 / 上游重新生成 / 上游后上传 都能自动反映，无需在 onConnect 里手工推。
+//
+// 🔴 多跳转发（fixed-point 迭代）：receiver 节点（如 imageDisplay）收到上游图后，
+// 这些派生图只活在 decoratedNodes.data 里，不会回写 node.data 真值。当该 receiver 再作为
+// source 连给更下游时，单遍计算会读 node.data 真值取到空 → 下游收不到图。
+// 故迭代到稳定：每轮把上一轮的派生结果并进 source 视图，直到不再变化（最多 nodes.length 轮）。
 function computeInputImages(nodes, edges) {
+  const isReceiverType = (type) => type === NODE_TYPES.editImage
+    || type === NODE_TYPES.imageDisplay
+    || type === NODE_TYPES.imageProcess
+    || type === NODE_TYPES.imageEditor
+    || type === NODE_TYPES.pixelEditor
+    || type === NODE_TYPES.uiSplitter
+    || type === NODE_TYPES.bboxViewer
+    || type === NODE_TYPES.videoGenerator
+    || type === NODE_TYPES.imageCompare;
+
+  // 取某节点「作为 source 时应给出的产出图」：output.images 优先，回退 data.images。
+  // derivedByNode 允许把上一轮 receiver 的派生图并入视图（解决多跳转发）。
+  const sourceImages = (node, derivedByNode) => {
+    const sd = node.data || {};
+    if (sd.output?.images?.length) return sd.output.images;
+    const own = sd.images || [];
+    const derived = derivedByNode.get(node.id);
+    // 自身有手动图优先用；无手动图时才透传上游派生图（避免手动上传被连线图覆盖）
+    return own.length ? own : (derived || []);
+  };
+
+  const incomingByTarget = new Map();
+  for (const e of edges) {
+    if (!incomingByTarget.has(e.target)) incomingByTarget.set(e.target, []);
+    incomingByTarget.get(e.target).push(e);
+  }
   const byId = new Map(nodes.map((n) => [n.id, n]));
   const map = new Map(); // nodeId -> { images, isDisplay }
-  for (const node of nodes) {
-    // editImage / imageDisplay / imageProcess / imageEditor / videoGenerator 都接收上游连线图片
-    const isReceiver = node.type === NODE_TYPES.editImage
-      || node.type === NODE_TYPES.imageDisplay
-      || node.type === NODE_TYPES.imageProcess
-      || node.type === NODE_TYPES.imageEditor
-      || node.type === NODE_TYPES.pixelEditor
-      || node.type === NODE_TYPES.uiSplitter
-      || node.type === NODE_TYPES.videoGenerator;
-    if (!isReceiver) continue;
-    const incoming = edges.filter((e) => e.target === node.id);
-    if (!incoming.length) continue;
-    const upstream = [];
-    for (const e of incoming) {
-      const src = byId.get(e.source);
-      if (!src) continue;
-      const sd = src.data || {};
-      const imgs = sd.output?.images?.length ? sd.output.images : sd.images || [];
-      upstream.push(...imgs);
+  const derived = new Map(); // 视图层累积的派生图（每轮并进 source 视图）
+
+  // fixed-point：每轮重算所有 receiver 的派生图，并把派生结果并进下一轮的 source 视图。
+  // 收敛上限 = nodes.length（最坏线性链）；每轮检测是否还有变化以提前退出。
+  for (let iter = 0; iter < nodes.length; iter++) {
+    let changed = false;
+    for (const node of nodes) {
+      if (!isReceiverType(node.type)) continue;
+      const incoming = incomingByTarget.get(node.id);
+      if (!incoming || !incoming.length) continue;
+      const upstream = [];
+      for (const e of incoming) {
+        const src = byId.get(e.source);
+        if (!src) continue;
+        upstream.push(...sourceImages(src, derived));
+      }
+      const prev = derived.get(node.id);
+      if (!prev || prev.join('|') !== upstream.join('|')) {
+        derived.set(node.id, upstream);
+        map.set(node.id, { images: upstream, isDisplay: node.type === NODE_TYPES.imageDisplay });
+        changed = true;
+      }
     }
-    map.set(node.id, { images: upstream, isDisplay: node.type === NODE_TYPES.imageDisplay });
+    if (!changed) break;
   }
   return map;
 }
@@ -110,6 +150,7 @@ const DEFAULT_SIZE = {
   [NODE_TYPES.imageDisplay]: { w: 260, h: 240 },
   [NODE_TYPES.pixelEditor]: { w: 300, h: 260 },
   [NODE_TYPES.uiSplitter]: { w: 290, h: 240 },
+  [NODE_TYPES.bboxViewer]: { w: 290, h: 240 },
   [NODE_TYPES.videoGenerator]: { w: 300, h: 320 },
   default: { w: 290, h: 240 },
 };
@@ -183,6 +224,13 @@ function initialData(type) {
   }
   if (type === NODE_TYPES.uiSplitter) {
     return { status: 'idle', output: { images: [] }, uploadedImages: [] };
+  }
+  if (type === NODE_TYPES.bboxViewer) {
+    return { status: 'idle', output: { images: [] }, uploadedImages: [] };
+  }
+  if (type === NODE_TYPES.imageCompare) {
+    // 双槽位：first/second 各自独立支持上传 + 连线首张；连线图统一进 data.images（按序分槽位）
+    return { status: 'idle', first: { uploadedImages: [] }, second: { uploadedImages: [] } };
   }
   if (type === NODE_TYPES.textToVoice) {
     return { status: 'idle', output: { audio: null }, params: { prompt: '', model: 'fish-audio', voiceId: '' } };
@@ -1256,10 +1304,15 @@ export default function Canvas() {
           onAutoSize: handleAutoSize,
           // 首次内容高度自适应（NodeShell 测量真实表单高度后上报一次）
           onAutoSizeToContent: handleAutoSizeToContent,
+          // BBox 查看器 AI 分析配置（从 settings 注入，仅 bboxViewer 节点用；systemPrompt 归 agent preset）
+          agentConfig: nd.type === NODE_TYPES.bboxViewer ? {
+            id: settings.bboxAgentConfigId || '',
+            userPrompt: settings.bboxAiUserPrompt || '',
+          } : undefined,
         },
       };
     }),
-    [nodes, upstreamMap, makeOnUpdate, handleGenerate, handleGenerateMedia, handleExportImages, handleProcessImage, handleProcessLocal, handleCancelProcess, handleAutoSize, handleAutoSizeToContent, selectionCount],
+    [nodes, upstreamMap, makeOnUpdate, handleGenerate, handleGenerateMedia, handleExportImages, handleProcessImage, handleProcessLocal, handleCancelProcess, handleAutoSize, handleAutoSizeToContent, selectionCount, settings],
   );
 
   // 分组 overlay 的子节点映射 + 选中态（WorkflowGroupOverlay 需要的 childNodes/isSelected）

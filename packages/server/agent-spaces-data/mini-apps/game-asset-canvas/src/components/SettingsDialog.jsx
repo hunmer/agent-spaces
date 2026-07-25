@@ -4,10 +4,11 @@ import { useEffect, useState } from 'react';
 import {
   WORKFLOW_SLOTS, BUILTIN_PLUGIN,
 } from '../utils/settings';
+import { BBOX_AGENT_INIT_NAME, BBOX_AI_SYSTEM_PROMPT, BBOX_AI_USER_PROMPT } from '../utils/constants';
 
 const {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
-  Button, Label, WorkflowListDialog, Workflow, RotateCcw,
+  Button, Label, Textarea, WorkflowListDialog, Workflow, RotateCcw, Bot, Sparkles,
 } = window.AgentSpacesUI;
 
 // 工作流列表归一化（兼容 workflow_id/id、title/name）
@@ -60,6 +61,7 @@ export default function SettingsDialog({ open, value, onClose, onSave }) {
   const [workflowLoading, setWorkflowLoading] = useState(false);
   const [pickingSlot, setPickingSlot] = useState(null);
   const [error, setError] = useState('');
+  const [agentBusy, setAgentBusy] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -67,6 +69,39 @@ export default function SettingsDialog({ open, value, onClose, onSave }) {
       setError('');
     }
   }, [open, value]);
+
+  // —— 配置 BBox AI 模型（openAgentEditor 弹窗，systemPrompt 在 preset 内配置） ——
+  const configureBboxAgent = async () => {
+    if (!AS?.openAgentEditor) { setError('宿主未提供 openAgentEditor'); return; }
+    setAgentBusy(true);
+    setError('');
+    try {
+      const saved = await AS.openAgentEditor({
+        initialName: BBOX_AGENT_INIT_NAME,
+        initialPrompt: BBOX_AI_SYSTEM_PROMPT,
+        agentId: cfg.bboxAgentConfigId || undefined,
+      });
+      if (!saved) { setAgentBusy(false); return; }
+      setCfg((prev) => ({
+        ...prev,
+        bboxAgentConfigId: saved.id,
+        bboxAgentName: saved.name || BBOX_AGENT_INIT_NAME,
+      }));
+    } catch (e) {
+      setError('打开模型配置失败：' + (e?.message || e));
+    } finally {
+      setAgentBusy(false);
+    }
+  };
+
+  const resetBboxAgent = () => {
+    setCfg((prev) => ({
+      ...prev,
+      bboxAgentConfigId: '',
+      bboxAgentName: '',
+      bboxAiUserPrompt: BBOX_AI_USER_PROMPT,
+    }));
+  };
 
   // 打开工作流选择器：拉取列表
   const openPicker = async (slotKey) => {
@@ -121,6 +156,48 @@ export default function SettingsDialog({ open, value, onClose, onSave }) {
           <p className="text-xs text-muted-foreground">
             节点执行时会调用此处配置的工作流；未设置时使用内置默认值。
           </p>
+
+          {/* BBox AI 分析配置 */}
+          <div className="mt-2 border-t border-border pt-4">
+            <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-muted-foreground">
+              <Sparkles className="h-4 w-4" /> BBox AI 分析
+            </div>
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  className="flex flex-1 items-center gap-2 rounded-md border border-border bg-background px-3 py-2 text-sm transition hover:border-primary disabled:opacity-60"
+                  onClick={configureBboxAgent}
+                  disabled={agentBusy}
+                  title={cfg.bboxAgentConfigId || '未配置'}
+                >
+                  <Bot className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <span className="flex-1 truncate text-left">
+                    {cfg.bboxAgentName || cfg.bboxAgentConfigId || '点击配置 AI 模型'}
+                  </span>
+                  {agentBusy && <span className="shrink-0 text-[10px] text-muted-foreground">打开中…</span>}
+                </button>
+                {cfg.bboxAgentConfigId && (
+                  <Button size="sm" variant="ghost" className="shrink-0" onClick={resetBboxAgent}>
+                    <RotateCcw className="h-3.5 w-3.5" />
+                  </Button>
+                )}
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label className="text-xs font-medium">用户提示词（{`{imageUrl}`} 会被替换成图片 URL）</Label>
+                <Textarea
+                  value={cfg.bboxAiUserPrompt ?? ''}
+                  onChange={(e) => setCfg((prev) => ({ ...prev, bboxAiUserPrompt: e.target.value }))}
+                  rows={3}
+                  className="text-xs"
+                  placeholder="请分析这张界面图：{imageUrl}"
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                「配置 AI 模型」弹窗里设置系统提示词（检测规则）。BBox 查看器「✨ AI 分析」按钮调用此处的 agent 分析当前图，返回 JSON 自动渲染成框。
+              </p>
+            </div>
+          </div>
 
           {error && (
             <div className="rounded-md bg-red-500/10 px-3 py-2 text-sm text-red-500">{error}</div>

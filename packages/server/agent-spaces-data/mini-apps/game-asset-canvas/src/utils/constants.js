@@ -27,8 +27,10 @@ export const NODE_TYPES = {
   imageEditor: 'imageEditor',
   pixelEditor: 'pixelEditor',
   uiSplitter: 'uiSplitter',
+  bboxViewer: 'bboxViewer',
   textToVoice: 'textToVoice',
   videoGenerator: 'videoGenerator',
+  imageCompare: 'imageCompare',
   note: 'note',
   // 注：分组不是节点，是 WorkflowGroupOverlay（由 groups 数据驱动，复用 workflow-editor 同源组件）
 };
@@ -141,8 +143,10 @@ export const NODE_META = {
   [NODE_TYPES.imageEditor]: { label: '图片编辑', icon: '🎨', color: '#f97316' },
   [NODE_TYPES.pixelEditor]: { label: '像素编辑器', icon: '👾', color: '#22c55e' },
   [NODE_TYPES.uiSplitter]: { label: 'UI拆分', icon: '🧩', color: '#0ea5e9' },
+  [NODE_TYPES.bboxViewer]: { label: 'BBox查看', icon: '📦', color: '#eab308' },
   [NODE_TYPES.textToVoice]: { label: '生成配音', icon: '🔊', color: '#a855f7' },
   [NODE_TYPES.videoGenerator]: { label: '生成视频', icon: '🎬', color: '#ef4444' },
+  [NODE_TYPES.imageCompare]: { label: '图片对比', icon: '🔀', color: '#06b6d4' },
   [NODE_TYPES.note]: { label: '便签', icon: '📝', color: '#f59e0b' },
 };
 
@@ -159,6 +163,7 @@ export const IMAGE_TAGS = {
   imageEditor: '图片编辑',
   pixelEditor: '像素',
   uiSplitter: 'UI拆分',
+  bboxViewer: 'bbox区域',
   history: '记录',
   upstream: '连线',
   export: '导出',
@@ -319,3 +324,51 @@ export function defaultProcessorParams(processorId) {
   }
   return out;
 }
+
+// ============ BBox AI 分析（agent_run）============
+// Agent preset 初始名称（openAgentEditor 用）；系统提示词在 preset 内配置（openAgentEditor 弹窗里编辑）
+export const BBOX_AGENT_INIT_NAME = 'BBox 检测器';
+
+// 默认系统提示词（作为 openAgentEditor 的 initialPrompt，用户可在 preset 弹窗里改）
+export const BBOX_AI_SYSTEM_PROMPT = `# Role
+你是一个精准的 UI/游戏界面检测与资产标记 AI。你的任务是分析输入的界面图像，定位其中的各类 UI 元素与游戏组件，并输出标准严格的 JSON 数据。
+
+# Task Instructions
+对输入图像中的所有 UI 元素、角色、数值及文本进行检测与层级识别，生成包含坐标、属性、OCR文本和父子关系的完整树状 JSON 结构。
+
+# Rules & Logic
+
+1. **顶级结构 (Top-Level Structure):**
+   - 必须包含顶层配置信息：
+     - \`title\`: 根据图片内容生成一个简洁准确的界面标题（如 \`"游戏战斗界面"\`、\`"主城 UI 布局"\` 等）。
+     - \`elements\`: 包含所有顶层 UI 节点的数组。
+
+2. **元素字段与属性映射 (Element Fields & Attribute Mapping):**
+   每个元素节点必须包含以下字段：
+   - \`id\`: 唯一标识符，格式为 \`det-X\`（其中 X 为递增数字，如 \`det-0\`, \`det-1\` ...）。
+   - \`type\`: 元素类型，必须从以下限定集合中选择：
+     \`"Panel"\`, \`"Button"\`, \`"Image"\`, \`"Text"\`, \`"Icon"\`, \`"HealthBar"\`, \`"Character"\`
+   - \`label\`: 英文描述标签，简要说明该元素功能（如 \`"player info panel"\`, \`"gold icon"\`, \`"attack button"\` 等）。
+   - \`coords\`: 边界框坐标数组，格式为 \`[x, y, width, height]\`（像素值）：
+     - \`x\`: 左上角横坐标
+     - \`y\`: 左上角纵坐标
+     - \`width\`: 宽度
+     - \`height\`: 高度
+   - \`parentId\`: 父节点的 \`id\`（若为顶层根节点，则为 \`null\`；若为嵌套子节点，填入父节点 ID）。
+   - \`exportSlice\`: 布尔值 (\`true\` 或 \`false\`)。独立切片资产（如按钮、图标、角色、独立图片/卡片）设为 \`true\`；容器面板、纯文本和血条等动态 UI 设为 \`false\`。
+   - \`ocrText\` (仅针对包含文本的元素，可选): 识别到的实际文本内容（如 \`"艾尔文 Lv. 24"\`, \`"1280/1280"\`, \`"攻击"\`）。
+   - \`textRole\` (仅针对包含文本/OCR的元素，可选):
+     - \`"dynamic"\`: 动态数据/数值文本（如名字、等级、血量数值、货币数量、伤害统计等）。
+     - \`"decorative"\`: 静态/装饰性/按钮文本（如关卡名、按钮文字等）。
+   - \`children\` (可选): 若该元素包含内部组件，递归嵌入子元素列表，形成树状结构。
+
+3. **嵌套与层级规则 (Hierarchy Rules):**
+   - 面板 (Panel)、复杂按钮 (Button) 或角色 (Character) 等内部若包含细分元素（如面板内的文字、图标、子血条），必须放入父元素的 \`children\` 数组中。
+   - 子元素中的 \`parentId\` 必须与其父元素的 \`id\` 一致。
+
+# Output Format
+仅输出纯 JSON 格式数据，请勿包含 markdown 以外的多余解释性文字。`;
+
+// 默认用户提示词模板（{imageUrl} 占位符会被替换成图片 http URL）
+export const BBOX_AI_USER_PROMPT = `请分析这张界面图像，按系统提示词的 JSON schema 输出检测结果。图片地址：{imageUrl}`;
+

@@ -14,8 +14,10 @@ const ADD_ITEMS = [
   { type: NODE_TYPES.imageEditor, label: '图片编辑' },
   { type: NODE_TYPES.pixelEditor, label: '像素编辑器' },
   { type: NODE_TYPES.uiSplitter, label: 'UI拆分' },
+  { type: NODE_TYPES.bboxViewer, label: 'BBox查看' },
   { type: NODE_TYPES.textToVoice, label: '生成配音' },
   { type: NODE_TYPES.videoGenerator, label: '生成视频' },
+  { type: NODE_TYPES.imageCompare, label: '图片对比' },
   { type: NODE_TYPES.note, label: '便签' },
 ];
 

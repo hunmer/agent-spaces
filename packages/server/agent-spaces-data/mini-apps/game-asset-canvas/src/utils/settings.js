@@ -1,5 +1,5 @@
 // 设置默认值 + 工作流槽位 + 模型选项
-import { WORKFLOWS, BUILTIN_PLUGIN } from './constants';
+import { WORKFLOWS, BUILTIN_PLUGIN, BBOX_AI_SYSTEM_PROMPT, BBOX_AI_USER_PROMPT } from './constants';
 
 // re-export 供 SettingsDialog 使用
 export { BUILTIN_PLUGIN };
@@ -30,6 +30,10 @@ export const DEFAULT_SETTINGS = {
   // 生成视频工作流
   videoGeneratorWorkflowId: DEFAULT_VIDEO_GENERATOR_WORKFLOW_ID,
   videoGeneratorWorkflowName: 'video_generator',
+  // BBox AI 分析（agent_run；systemPrompt 归 agent preset 自带，不在此重复配置）
+  bboxAgentConfigId: '',
+  bboxAgentName: '',
+  bboxAiUserPrompt: BBOX_AI_USER_PROMPT,
 };
 
 // 工作流槽位：设置页为每个节点类型选一个目标工作流
