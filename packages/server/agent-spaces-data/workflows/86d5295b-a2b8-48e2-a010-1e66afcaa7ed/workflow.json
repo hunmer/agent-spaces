@@ -29,7 +29,7 @@
       "type": "rembg_remove",
       "label": "去除背景",
       "position": {
-        "x": 330,
+        "x": 310,
         "y": 180
       },
       "data": {
@@ -76,7 +76,7 @@
       "label": "生成掩码",
       "position": {
         "x": 735,
-        "y": 225
+        "y": 237
       },
       "data": {
         "baseUrl": "{{ __config__[\"workflow.rembg\"[\"baseUrl\"]}}",
@@ -114,14 +114,60 @@
           }
         ]
       }
+    },
+    {
+      "id": "node_1784973373794_wu3olb",
+      "type": "rembg_sam_segment",
+      "label": "SAM 提示分割",
+      "position": {
+        "x": 1020,
+        "y": 90
+      },
+      "data": {
+        "baseUrl": "{{ __config__[\"workflow.rembg\"][\"baseUrl\"]}}",
+        "model": "{{ __config__[\"workflow.rembg\"][\"model\"]}}",
+        "timeout": "{{ __config__[\"workflow.rembg\"][\"timeout\"]}}",
+        "outputs": [
+          {
+            "key": "success",
+            "type": "boolean",
+            "dataType": "boolean"
+          },
+          {
+            "key": "message",
+            "type": "string"
+          },
+          {
+            "key": "data",
+            "type": "object",
+            "dataType": "object",
+            "children": [
+              {
+                "key": "imageUrl",
+                "type": "string"
+              },
+              {
+                "key": "size",
+                "type": "number",
+                "dataType": "number"
+              },
+              {
+                "key": "model",
+                "type": "string"
+              }
+            ]
+          }
+        ]
+      }
     }
   ],
   "edges": [],
   "createdAt": 1784971941987,
-  "updatedAt": 1784972876202,
+  "updatedAt": 1784973388127,
   "published": false,
   "lastOpenedAt": 1784971955334,
   "enabledPlugins": [
     "workflow.rembg"
-  ]
+  ],
+  "groups": []
 }
