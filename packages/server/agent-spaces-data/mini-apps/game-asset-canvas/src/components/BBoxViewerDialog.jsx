@@ -315,6 +315,8 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
       transparentCorners: false,
       objectCaching: false,
       borderColor: isSlice ? '#22c55e' : color,
+      // 自由比例缩放：角点不锁定宽高比（默认 true 会等比例缩放）
+      uniformScaling: false,
     });
     rect.kind = 'bbox';
     rect.__meta = meta ? { ...meta, color } : { color };
