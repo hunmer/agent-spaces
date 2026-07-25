@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import test from 'node:test';
-import { buildGeminiArgs, normalizeGeminiUsage, parseGeminiJsonLine } from './gemini-cli-runtime.js';
+import { buildGeminiArgs, buildGeminiPrompt, normalizeGeminiUsage, parseGeminiJsonLine, prepareGeminiAttachmentContext } from './gemini-cli-runtime.js';
 
 test('builds documented Gemini CLI headless arguments', () => {
   assert.deepEqual(buildGeminiArgs('hello', {
@@ -37,4 +40,26 @@ test('parses Gemini stream-json events and usage', () => {
     cachedInputTokens: 25,
     totalTokens: 1500,
   });
+});
+
+test('prepares uploaded attachments as workspace-local files for Gemini CLI', () => {
+  const cwd = mkdtempSync(join(tmpdir(), 'gemini-cli-runtime-'));
+  const source = join(cwd, 'uploaded.png');
+  writeFileSync(source, 'png');
+  try {
+    const context = prepareGeminiAttachmentContext([{
+      name: 'example image.png',
+      path: source,
+      url: '/static/uploads/uploaded.png',
+      type: 'image/png',
+      size: 3,
+    }], cwd);
+
+    assert.deepEqual(context.ignored, []);
+    assert.match(context.prepared[0]?.relativePath ?? '', /^\.agentspace\/attachments\/1-.+\.png$/);
+    assert.equal(existsSync(join(cwd, context.prepared[0]!.relativePath)), true);
+    assert.match(buildGeminiPrompt('describe it', context), /\.agentspace\/attachments\/1-.+\.png/);
+  } finally {
+    rmSync(cwd, { recursive: true, force: true });
+  }
 });

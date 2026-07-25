@@ -1,6 +1,8 @@
 import { spawn, type ChildProcess } from 'node:child_process';
-import { existsSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { copyFileSync, existsSync, mkdirSync, statSync, writeFileSync } from 'node:fs';
+import { basename, dirname, extname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import type { Message } from '@agent-spaces/shared';
 import type {
   AgentRunOptions,
   AgentRunResult,
@@ -8,8 +10,10 @@ import type {
   AgentRuntimeConfig,
 } from './agent-runtime-types.js';
 import { appendOutputStyleToPrompt, summarizeResult } from './agent-runtime-types.js';
+import { getDataDir } from '../storage/json-store.js';
 
 type GeminiJsonEvent = Record<string, unknown> & { type?: unknown };
+const SERVER_PUBLIC_DIR = join(fileURLToPath(new URL('../../public/', import.meta.url)));
 
 export class GeminiCliRuntime implements AgentRuntime {
   private child: ChildProcess | null = null;
@@ -19,11 +23,15 @@ export class GeminiCliRuntime implements AgentRuntime {
   async execute(prompt: string, workingDir: string, options?: AgentRunOptions): Promise<AgentRunResult> {
     const output: string[] = [];
     const cwd = workingDir || process.cwd();
-    const args = buildGeminiArgs(appendOutputStyleToPrompt(prompt, options?.outputStyle), this.config, options);
+    const attachmentContext = prepareGeminiAttachmentContext(options?.userAttachments, cwd);
+    const args = buildGeminiArgs(appendOutputStyleToPrompt(buildGeminiPrompt(prompt, attachmentContext), options?.outputStyle), this.config, options);
     const startedAt = Date.now();
     const log = (message: string) => console.log(`[gemini-cli] ${message}`);
 
     log(`starting | cwd=${cwd} command=${resolveGeminiCommand()} model=${this.config.model ?? 'default'} baseURL=${sanitizeUrlForLog(this.config.baseURL)} auth=${this.config.apiKey ? 'set' : 'default'} resume=${options?.resumeSessionId ?? '-'} permission=${this.config.permissionMode ?? 'default'}`);
+    if (options?.userAttachments?.length) {
+      log(`attachments | total=${options.userAttachments.length} prepared=${attachmentContext.prepared.length} ignored=${attachmentContext.ignored.length}`);
+    }
 
     return new Promise<AgentRunResult>((resolve) => {
       let settled = false;
@@ -206,6 +214,88 @@ export function buildGeminiArgs(prompt: string, config: AgentRuntimeConfig, opti
     args.push('--approval-mode', 'auto_edit');
   }
   return args;
+}
+
+type GeminiAttachmentContext = {
+  prepared: Array<{ name: string; type?: string; relativePath: string }>;
+  ignored: string[];
+};
+
+export function buildGeminiPrompt(prompt: string, attachmentContext: GeminiAttachmentContext): string {
+  if (attachmentContext.prepared.length === 0) return prompt;
+  return [
+    prompt,
+    '',
+    'Uploaded attachments are available as local files:',
+    ...attachmentContext.prepared.map((item) => `- ${item.name}${item.type ? ` (${item.type})` : ''}: ${item.relativePath}`),
+    'Use these local files directly when the user asks about the uploaded attachment.',
+  ].join('\n');
+}
+
+export function prepareGeminiAttachmentContext(
+  attachments: Message['attachments'] | undefined,
+  cwd: string,
+): GeminiAttachmentContext {
+  if (!attachments?.length) return { prepared: [], ignored: [] };
+
+  const attachmentsDir = join(cwd, '.agentspace', 'attachments');
+  const prepared: GeminiAttachmentContext['prepared'] = [];
+  const ignored: string[] = [];
+
+  for (let index = 0; index < attachments.length; index += 1) {
+    const attachment = attachments[index];
+    const targetName = safeAttachmentFileName(attachment.name || attachment.path || attachment.url || `attachment-${index}`, index);
+    const targetPath = join(attachmentsDir, targetName);
+    try {
+      mkdirSync(attachmentsDir, { recursive: true });
+      const dataUrlBuffer = readDataUrlBuffer(attachment.url);
+      if (dataUrlBuffer) {
+        writeFileSync(targetPath, dataUrlBuffer);
+      } else {
+        const sourcePath = resolveAttachmentFilePath(attachment);
+        if (!sourcePath) {
+          ignored.push(attachment.name || `attachment-${index}`);
+          continue;
+        }
+        copyFileSync(sourcePath, targetPath);
+      }
+      prepared.push({
+        name: attachment.name || targetName,
+        type: attachment.type,
+        relativePath: `.agentspace/attachments/${targetName}`,
+      });
+    } catch {
+      ignored.push(attachment.name || targetName);
+    }
+  }
+
+  return { prepared, ignored };
+}
+
+function resolveAttachmentFilePath(attachment: NonNullable<Message['attachments']>[number]): string | undefined {
+  const candidatePaths = [
+    attachment.path,
+    attachment.url?.startsWith('/static/')
+      ? join(getDataDir(), 'public', ...attachment.url.replace(/^\/static\/+/, '').split('/'))
+      : undefined,
+    attachment.url?.startsWith('/static/')
+      ? join(SERVER_PUBLIC_DIR, ...attachment.url.replace(/^\/static\/+/, '').split('/'))
+      : undefined,
+  ].filter((value): value is string => Boolean(value));
+
+  return candidatePaths.find((filePath) => existsSync(filePath) && statSync(filePath).isFile());
+}
+
+function readDataUrlBuffer(value: string | undefined): Buffer | undefined {
+  const match = value?.match(/^data:[\w./+-]+;base64,(.*)$/i);
+  return match ? Buffer.from(match[1], 'base64') : undefined;
+}
+
+function safeAttachmentFileName(value: string, index: number): string {
+  const rawName = basename(value.replace(/\\/g, '/'));
+  const ext = extname(rawName);
+  const base = basename(rawName, ext).replace(/[^a-zA-Z0-9._-]/g, '_') || 'attachment';
+  return `${index + 1}-${base}${ext || '.bin'}`;
 }
 
 export function parseGeminiJsonLine(line: string): GeminiJsonEvent | null {
