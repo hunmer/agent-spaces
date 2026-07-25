@@ -106,6 +106,7 @@ import { ClientNodeManager } from './services/client-node-manager.js';
 import { ExecutionManager } from './services/execution-manager.js';
 import { WorkflowTriggerService } from './services/workflow-trigger-service.js';
 import { registerExecutionChannels } from './ws/execution-channels.js';
+import { registerMiniAppChannels } from './ws/mini-app-channels.js';
 import { broadcastToWorkspace } from './ws/connection-manager.js';
 import { createWorkflowHookRouter } from './routes/workflow-hook.js';
 import { setWorkflowExecutionManager } from './services/builtin-tools/index.js';
@@ -336,6 +337,7 @@ app.use('/api/workflows', createWorkflowHookRouter(triggerService, executionMana
 
 // Register WS execution channels
 registerExecutionChannels(executionManager);
+registerMiniAppChannels();
 app.use('/api/workspaces/:id/commands', commandRouter);
 app.use('/api/workspaces/:id/hooks', hooksRouter);
 app.use('/api/workspaces/:id/agents', agentRouter);

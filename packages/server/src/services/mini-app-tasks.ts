@@ -1,4 +1,5 @@
 import type { MiniAppTask, MiniAppTaskStatus } from '@agent-spaces/shared';
+import type { AgentRuntime } from '../adapters/agent-runtime-types.js';
 
 /**
  * Workflow UI 任务状态 cache（进程内）。
@@ -91,4 +92,36 @@ export function listTasks(projectId: string): MiniAppTask[] {
   if (!bucket) return [];
   prune(bucket);
   return [...bucket.values()];
+}
+
+// ============ agent_run runtime 句柄 registry ============
+// agent_run 工具的 execute 内部创建 runtime，把句柄注册到这里（key=taskId）。
+// 外部（WS miniApp.taskStop / 客户端断开）凭 taskId 取句柄调 runtime.stop() 真正中断。
+// stop 后清理句柄，避免长期持有已结束的 runtime。
+const runtimeHandles = new Map<string, AgentRuntime>();
+
+/** 注册一个 running agent_run 的 runtime 句柄（taskId 由路由层生成）。 */
+export function registerRuntime(taskId: string, runtime: AgentRuntime): void {
+  runtimeHandles.set(taskId, runtime);
+}
+
+/** 注销句柄（execute 结束/失败时调用）。 */
+export function unregisterRuntime(taskId: string): void {
+  runtimeHandles.delete(taskId);
+}
+
+/**
+ * 停止指定 taskId 对应的 agent_run 执行。
+ * @returns true=已调用 stop；false=无句柄（已结束或非 agent_run 任务）
+ */
+export function stopTask(taskId: string): boolean {
+  const runtime = runtimeHandles.get(taskId);
+  if (!runtime) return false;
+  try {
+    runtime.stop();
+  } catch (err) {
+    console.warn('[mini-app-tasks] runtime.stop() failed', { taskId, error: err instanceof Error ? err.message : String(err) });
+  }
+  runtimeHandles.delete(taskId);
+  return true;
 }

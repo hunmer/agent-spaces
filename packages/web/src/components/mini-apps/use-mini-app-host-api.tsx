@@ -305,7 +305,11 @@ export function useMiniAppHostApi(projectId: string, runtimeContext?: MiniAppRun
       options?: { taskId?: string; meta?: Record<string, unknown>; signal?: AbortSignal },
     ) => {
       const body: Record<string, unknown> = { name: toolName, args, workspaceId: projectId, executorId };
-      if (options?.taskId) body.taskId = options.taskId;
+      // agent_run：生成 taskId（调用方未提供时），便于 stopAgentRun 中断
+      const isAgentRun = toolName === 'agent_run';
+      const taskId = options?.taskId || (isAgentRun ? (crypto.randomUUID?.() ?? `task_${Date.now()}_${Math.random().toString(36).slice(2)}`) : undefined);
+      if (taskId) body.taskId = taskId;
+      if (isAgentRun && taskId) lastAgentTaskIdRef.current = taskId;
       if (options?.meta) body.meta = options.meta;
       // signal：透传到 fetch，调用方可真中断 HTTP 请求（fetch 抛 AbortError，后端响应客户端断开）。
       const resp = await fetchWithAuth(`/api/plugins/${encodeURIComponent(pluginId)}/tools/execute`, {
@@ -352,6 +356,15 @@ export function useMiniAppHostApi(projectId: string, runtimeContext?: MiniAppRun
     // 中断指定 executionId 的工作流执行
     const stopWorkflow = (executionId: string) => {
       getWS(projectId).send('workflow:stop' as any, { executionId });
+    };
+    // 最近一次 agent_run 的 taskId（由 executePluginTool 调用方传入或自动生成后记录）
+    const lastAgentTaskIdRef = useRef<string | null>(null);
+    // 停止指定 taskId 的 agent_run 执行（后端凭 taskId 找 runtime 句柄调 stop() 真正中断）。
+    // 不传 taskId 时停止最近一次 agent_run。
+    const stopAgentRun = (taskId?: string) => {
+      const id = typeof taskId === 'string' && taskId ? taskId : lastAgentTaskIdRef.current;
+      if (!id) return;
+      getWS(projectId).send('miniApp.taskStop' as any, { taskId: id });
     };
 
     // ---- Config: 服务端为唯一写入方，UI 仅维护内存缓存 + 订阅变更 ----
@@ -878,6 +891,7 @@ export function useMiniAppHostApi(projectId: string, runtimeContext?: MiniAppRun
       subscribeWorkflowEvents,
       sendWorkflowControl,
       stopWorkflow,
+      stopAgentRun,
       loadCdnModule,
     };
 

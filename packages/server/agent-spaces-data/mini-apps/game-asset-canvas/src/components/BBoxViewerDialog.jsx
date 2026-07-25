@@ -12,7 +12,7 @@ import {
 } from '@agent-spaces/ui';
 import {
   Undo2, Redo2, Eraser, Trash2, Download, Upload, FileJson, Crosshair, Sparkles,
-  SquareMousePointer, Hand, ChevronDown, Copy, Check, Boxes,
+  SquareMousePointer, Hand, ChevronDown, Copy, Check, Boxes, Square,
 } from '@agent-spaces/ui';
 import { getFabric, getImageCompression } from '../utils/image-ops/cdn';
 import { loadImageSource, exportBox } from '../utils/image-ops/sprite-splitter';
@@ -139,6 +139,9 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
   const [exportedCount, setExportedCount] = useState(0);
   const [hoveredIdx, setHoveredIdx] = useState(null);   // 图例 hover 索引（驱动渲染）
   const [analyzing, setAnalyzing] = useState(false);
+  // AI 分析的 AbortController：abort 后中断前端 fetch 等待，UI 立即恢复。
+  // 注意：仅放弃等待，后端 agent 进程仍会跑完（当前 API 无真正中断能力）。
+  const analyzeAbortRef = useRef(null);
   const agentConfigRef = useRef(agentConfig);
   agentConfigRef.current = agentConfig;
   const [promptCopied, setPromptCopied] = useState(false);
@@ -550,6 +553,9 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
     }
     setAnalyzing(true);
     setError('');
+    // 新建 AbortController：用户点「停止」时 abort，中断前端 fetch 等待
+    const abort = new AbortController();
+    analyzeAbortRef.current = abort;
     // 切到「AI思考过程」tab
     setRightTab('ai');
     setAiThought('### AI 分析任务启动\n\n- **Agent**：`' + (ac?.id || '?') + '`');
@@ -562,6 +568,7 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
         thresholdMB: ac.compressThresholdMB,
         targetMB: ac.compressTargetMB,
       });
+      if (abort.signal.aborted) return;
       setAiThought((t) => t + '\n✅ 图片已就绪，传给视觉模型（画布仍显示原图）。');
       // 2. 传图给 AI（坐标基于原图尺寸，与画布背景图同源，sx=1 零换算）
       setStatus('✨ AI 分析中（可能需要数十秒）…');
@@ -576,6 +583,7 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
           permissionMode: 'bypassPermissions',
           images: [dataUrl],
         },
+        { signal: abort.signal },
       );
       // host 层 executePluginTool 在 HTTP 错误时不抛异常而是返回错误 payload，
       // 这里显式判定错误响应（含 error/success===false/非 2xx status），转成异常走 catch
@@ -601,6 +609,12 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
       // AI 分析完自动切回列表 tab
       setRightTab('list');
     } catch (err) {
+      // 用户主动停止：abort 触发 fetch AbortError，不算失败
+      if (abort.signal.aborted || err?.name === 'AbortError') {
+        setStatus('已停止 AI 分析');
+        setAiThought((t) => t + '\n\n⏹ **已停止**（已通知后端中断 agent 执行）');
+        return;
+      }
       console.error('[bbox-viewer] AI analyze failed:', err);
       const msg = err?.message || (typeof err === 'string' ? err : JSON.stringify(err));
       setError(`AI 分析失败：${msg}`);
@@ -608,9 +622,22 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
       setAiThought((t) => t + `\n\n❌ **分析失败**：${msg}\n\n请检查：\n- AI 模型是否配置正确（设置 → BBox AI 分析）\n- 网络是否可达\n- 上方「AI 返回原文」是否有内容`);
       // 失败时停留在 AI思考 tab，让用户看到错误详情
     } finally {
+      // 仅当本次 controller 仍是自己时清理（避免被新一轮调用覆盖后又清掉）
+      if (analyzeAbortRef.current === abort) analyzeAbortRef.current = null;
       setAnalyzing(false);
     }
   }, [imageUrl, applyJsonData]);
+
+  // 停止 AI 分析：优先调 stopAgentRun 让后端 runtime.stop() 真正中断 agent 进程；
+  // 同时 abort 前端 controller 让 fetch 立即结束等待（双保险，WS 不通时也能恢复 UI）。
+  const handleStopAnalyze = useCallback(() => {
+    try {
+      window.AgentSpaces?.stopAgentRun?.();
+    } catch (err) {
+      console.warn('[bbox-viewer] stopAgentRun failed:', err?.message || err);
+    }
+    analyzeAbortRef.current?.abort();
+  }, []);
 
   // ============ 切换图例高亮（含区域外黑色遮罩镂空）============
   // 实现：用 4 块黑色半透明 Rect 围住高亮框，形成「画布其它区域被压暗、框内亮」的聚光灯效果。
@@ -1666,6 +1693,17 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
                         AI 思考过程
                         {analyzing && <span className="ml-2 text-primary">分析中…</span>}
                       </span>
+                      {analyzing && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 gap-1 text-[11px]"
+                          onClick={handleStopAnalyze}
+                        >
+                          <Square className="h-3 w-3" />
+                          停止分析
+                        </Button>
+                      )}
                     </div>
                     <ScrollArea className="min-h-0 flex-1">
                       <div className="p-3 text-sm">

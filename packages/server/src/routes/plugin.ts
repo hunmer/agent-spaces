@@ -6,7 +6,7 @@ import * as pluginService from '../services/plugin.js';
 import { createBuiltinPluginApi } from '../services/plugin-runtime-api.js';
 import { BUILTIN_PLUGIN_ID, executeMiniAppBuiltinTool } from '../services/builtin-tools/mini-app-tools.js';
 import { broadcastToWorkspace } from '../ws/connection-manager.js';
-import { startTask, finishTask, failTask } from '../services/mini-app-tasks.js';
+import { startTask, finishTask, failTask, stopTask } from '../services/mini-app-tasks.js';
 
 const router = Router();
 
@@ -161,8 +161,12 @@ router.post('/:pluginId/tools/execute', async (req: Request<{ pluginId: string }
     }
 
     try {
+      // 客户端断开（关闭页面/abort fetch）时兜底停止 agent_run：避免无人收结果仍空跑
+      if (track && effectiveTaskId) {
+        req.on('close', () => { stopTask(effectiveTaskId!); });
+      }
       const result = pluginId === BUILTIN_PLUGIN_ID
-        ? await executeMiniAppBuiltinTool(name, args ?? {}, typeof workspaceId === 'string' ? workspaceId : undefined)
+        ? await executeMiniAppBuiltinTool(name, args ?? {}, typeof workspaceId === 'string' ? workspaceId : undefined, effectiveTaskId ?? undefined)
         : await pluginService.executePluginTool(pluginId, name, args ?? {}, createBuiltinPluginApi(), resolveLocale(req));
       if (track) {
         finishTask(workspaceId, effectiveTaskId!, result);

@@ -12,6 +12,7 @@ import * as llmStore from '../../storage/llm-store.js';
 import * as miniAppStore from '../../storage/mini-app-store.js';
 import * as kbService from '../knowledge-base.js';
 import { getWorkflowExecutionManager } from './workflow-exec-tools.js';
+import { registerRuntime, unregisterRuntime } from '../mini-app-tasks.js';
 
 type JsonRecord = Record<string, unknown>;
 type MiniAppAgentPreset = AgentConfig;
@@ -282,7 +283,7 @@ interface BuiltinToolDefinition {
   description: string;
   input_schema: Record<string, unknown>;
   outputs: unknown[];
-  execute: (args: Record<string, any>, ctx?: { workspaceId?: string }) => Promise<any>;
+  execute: (args: Record<string, any>, ctx?: { workspaceId?: string; taskId?: string }) => Promise<any>;
 }
 
 function normalizeAgentPermissionMode(value: unknown): AgentRuntimeConfig['permissionMode'] {
@@ -628,6 +629,9 @@ const BUILTIN_TOOLS: BuiltinToolDefinition[] = [
       };
 
       const runtime = createAgentRuntime(config);
+      // 把 runtime 句柄注册到全局 registry，外部凭 taskId 可调 stop() 真正中断
+      const taskId = typeof ctx?.taskId === 'string' && ctx.taskId ? ctx.taskId : '';
+      if (taskId) registerRuntime(taskId, runtime);
 
       const workingDir = typeof args.cwd === 'string' && args.cwd.trim()
         ? args.cwd.trim()
@@ -646,21 +650,26 @@ const BUILTIN_TOOLS: BuiltinToolDefinition[] = [
             })
         : undefined;
 
-      const result = await runtime.execute(prompt, workingDir, {
-        maxTurns: 50,
-        systemPrompt: preset?.systemPrompt,
-        outputStyle: preset?.outputStyle,
-        userPrompt: prompt,
-        userAttachments,
-      });
+      try {
+        const result = await runtime.execute(prompt, workingDir, {
+          maxTurns: 50,
+          systemPrompt: preset?.systemPrompt,
+          outputStyle: preset?.outputStyle,
+          userPrompt: prompt,
+          userAttachments,
+        });
 
-      if (!result.success) throw new Error(result.summary || 'Agent execution failed');
+        if (!result.success) throw new Error(result.summary || 'Agent execution failed');
 
-      const content = result.output?.join('\n').trim() || result.summary;
-      return {
-        result: content,
-        usage: result.usage,
-      };
+        const content = result.output?.join('\n').trim() || result.summary;
+        return {
+          result: content,
+          usage: result.usage,
+        };
+      } finally {
+        // 无论成功/失败/中断，都清理句柄，避免长期持有已结束的 runtime
+        if (taskId) unregisterRuntime(taskId);
+      }
     },
   },
   {
@@ -768,10 +777,11 @@ export async function executeMiniAppBuiltinTool(
   toolName: string,
   args: Record<string, any> = {},
   workspaceId?: string,
+  taskId?: string,
 ): Promise<any> {
   const tool = BUILTIN_TOOLS.find(t => t.name === toolName);
   if (!tool) throw new Error(`Tool "${toolName}" not found in builtin tools`);
-  return tool.execute(args, { workspaceId });
+  return tool.execute(args, { workspaceId, taskId });
 }
 
 export function createWorkspaceMiniAppFunctionTools(workspaceId: string): AgentFunctionTool[] {
