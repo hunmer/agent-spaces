@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import type { AgentConfig } from '@agent-spaces/shared';
+import type { AgentConfig, Attachment } from '@agent-spaces/shared';
 import { createAgentRuntime } from '../../adapters/agent-runtime.js';
 import type { AgentRuntimeConfig } from '../../adapters/agent-runtime-types.js';
 import type { AgentFunctionTool } from '../../adapters/agent-runtime-types.js';
@@ -563,7 +563,7 @@ const BUILTIN_TOOLS: BuiltinToolDefinition[] = [
   },
   {
     name: 'agent_run',
-    description: '运行 AI Agent 执行任务。优先先明确 Agent 名称、注释/描述和任务提示词，再指定 agent preset（通过 list_agent_presets 获取）、工作目录和权限模式。',
+    description: '运行 AI Agent 执行任务。优先先明确 Agent 名称、注释/描述和任务提示词，再指定 agent preset（通过 list_agent_presets 获取）、工作目录和权限模式。支持 images 参数传入图片 base64 data URL 给视觉模型（需 agent runtime 支持，如 Claude/OpenAI-4o/Gemini）。',
     input_schema: {
       type: 'object',
       properties: {
@@ -574,6 +574,11 @@ const BUILTIN_TOOLS: BuiltinToolDefinition[] = [
           type: 'string',
           enum: ['default', 'dontAsk', 'acceptEdits', 'plan', 'auto', 'bypassPermissions'],
           description: '权限模式，默认 dontAsk',
+        },
+        images: {
+          type: 'array',
+          items: { type: 'string' },
+          description: '图片 base64 data URL 数组（格式 data:image/png;base64,...），作为附件传给视觉模型分析。非视觉 runtime 会静默忽略。',
         },
       },
       required: ['prompt', 'agentConfigId'],
@@ -613,11 +618,25 @@ const BUILTIN_TOOLS: BuiltinToolDefinition[] = [
         ? args.cwd.trim()
         : agentService.resolveWorkingDir('', preset);
 
+      // images: base64 data URL 数组 → Attachment[]（视觉模型附件通道）
+      // 非视觉 runtime 会静默忽略 userAttachments，不影响纯文本 agent
+      const userAttachments: Attachment[] | undefined = Array.isArray(args.images) && args.images.length
+        ? args.images
+            .filter((url: unknown): url is string => typeof url === 'string' && url.startsWith('data:'))
+            .map((url: string, i: number) => {
+              const m = url.match(/^data:([\w./+-]+)/i);
+              const mime = m?.[1] || 'image/png';
+              const ext = mime.split('/')[1]?.split('+')[0] || 'png';
+              return { name: `image-${i + 1}.${ext}`, type: mime, url } satisfies Attachment;
+            })
+        : undefined;
+
       const result = await runtime.execute(prompt, workingDir, {
         maxTurns: 50,
         systemPrompt: preset?.systemPrompt,
         outputStyle: preset?.outputStyle,
         userPrompt: prompt,
+        userAttachments,
       });
 
       if (!result.success) throw new Error(result.summary || 'Agent execution failed');

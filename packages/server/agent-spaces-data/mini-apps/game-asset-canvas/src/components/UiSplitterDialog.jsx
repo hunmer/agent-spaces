@@ -785,7 +785,7 @@ export default function UiSplitterDialog({ open, inputImages, onSave, onClose })
       >
         <DialogHeader className="flex-row items-center justify-between gap-3 border-b border-border px-4 py-2 !gap-0">
           <div className="flex items-center gap-2">
-            <DialogTitle className="text-sm">🧩 UI 拆分编辑器</DialogTitle>
+            <DialogTitle className="text-sm">🧩 雪碧图拆分编辑器</DialogTitle>
             <DialogDescription className="text-[11px] text-muted-foreground">
               自动检测 + 手动框选切片 · 多图独立记录
             </DialogDescription>

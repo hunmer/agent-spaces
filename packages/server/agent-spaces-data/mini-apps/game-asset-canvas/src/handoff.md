@@ -33,12 +33,28 @@
 - `@dagrejs/dagre@3.0.0` — 自动布局（default + graphlib）
 - `@agent-spaces/ui` — 宿主 UI 组件（Dialog/Tabs/Select/Popover/MediaGallery/openMediaGallery/ResizablePanel/WorkflowListDialog 等）+ lucide 图标
 
+**vendor 本地加载（不走 allowlist，经 `window.AgentSpaces.srcFileUrl` + eval/dynamic import）**：
+- `fabric.min.js`（v5.3.0 UMD）— UI 拆分/BBox 查看器的画布编辑器，`(0,eval)` 全局求值挂 `window.fabric`
+- `browser-image-compression.js`（v2.0.2 UMD）— BBox AI 分析前压缩图片，`(0,eval)` 挂 `window.imageCompression`，Web Worker 不卡 UI
+- `jszip.js` / `gifenc.js` / `gifuct-js.js` / `image-q.js` — 图像处理 + ZIP 打包，`loadVendor` + Blob URL dynamic import
+- `painterro.min.js` — 图片编辑节点，`loadVendor` + `esmSuffix` 转 ESM
+- `img-comparison-slider.js` — 图片对比节点 web component，`(0,eval)` 注册 customElement
+- `pixelorama-web/` — 像素编辑器（Godot 4.7 导出，~45MB，含 index.pck/wasm + service worker）
+
 ## host 层新增能力（本轮加的）
 
 `window.AgentSpaces` 上新增（use-mini-app-host-api.tsx，用 `getWS(projectId).on/send`）：
 - `subscribeWorkflowEvents(cb)` — 监听 `workflow:*` 事件（`workflow:started` 含 executionId）
 - `stopWorkflow(executionId)` — 发 `workflow:stop` 中断执行
 - `sendWorkflowControl(event, data)` — 通用 workflow 控制
+- `loadCdnModule(url)` — CDN 模块动态加载（`new Function('u','return import(u)')` 绕过 webpack 静态分析）
+- `openAgentEditor(opts)` — 打开 Agent preset 配置弹窗，返回 saved preset（含 id/name/modelProvider），用于 `agent_run`
+- `callPluginTool(pluginId, toolName, args, opts)` — 调用插件工具（含内置 `@agent-spaces/builtin` 的 `agent_run`/`list_agent_presets` 等）
+
+**`agent_run` 内置工具（mini-app-tools.ts，本轮加图片支持）**：
+- 参数：`prompt`（必填）/ `agentConfigId`（必填）/ `cwd` / `permissionMode` / `images`（base64 data URL 数组，视觉模型附件）
+- `images` 转 `Attachment[]`（`{name,type,url:'data:...'}`）传给 `runtime.execute` 的 `userAttachments`
+- **只有 claude-code 和 langchain runtime 消费 userAttachments**（其余静默丢图）；两者附件解析已扩展识别 data URL（短路）
 
 ## 当前文件树（mini-app src/）
 
@@ -60,11 +76,18 @@ src/
       TextToImageNode.jsx       # 提示词库按钮 + pickedPrompt 标签 + 合并提交
       EditImageNode.jsx         # 同上
       ImageDisplayNode.jsx      # 上传用 window.AgentSpaces.uploadFile 拿 http URL
-      ImageProcessNode.jsx      # 图像处理节点：FileUpload 上传 + 连线图只读占位 + 处理器下拉 + 动态参数 + 执行
+      ImageProcessNode.jsx      # 图像处理节点：FileUpload 上传 + 连线图只读占位 + 动态参数 + 执行。拆分后按 nodeType 反查固定 processorId（无下拉），12 个 ip* 节点 + 旧 imageProcess 单节点（兼容）共用此组件
       ImageEditorNode.jsx       # 图片编辑节点：FileUpload 单图 + 连线图只读占位 + Painterro 浏览器端编辑（画笔/文字/裁切/马赛克）
       ImageResult.jsx           # 产出网格（max=0 不截断，GIF 拆帧多帧全展示），openMediaGallery 看大图（注意：items 不可二次 map）
       PickedPromptBadge.jsx     # 已选提示词展示条（📎标签+✕清除），三处表单复用
       NoteNode.jsx
+      UiSplitterNode.jsx        # 雪碧图拆分节点（fabric 画布框选+自动检测切片，多图；原 uiSplitter，仅改名）
+      BBoxViewerNode.jsx        # UI拆分节点（JSON bbox 可视化+AI分析+批量导出 ZIP/画布；原 bboxViewer，仅改名）
+      ImageCompareNode.jsx      # 图片对比节点（img-comparison-slider 双图滑块）
+      VideoGeneratorNode.jsx    # 生成视频节点
+      TextToVoiceNode.jsx       # 生成配音节点
+    UiSplitterDialog.jsx        # 雪碧图拆分对话框（fabric + 连通域检测 + 多图切片导出；标题改名）
+    BBoxViewerDialog.jsx        # UI拆分对话框（fabric + JSON导入 + AI分析 + 压缩 + ZIP/画布导出；标题改名）
     PromptPickerDialog.jsx      # 提示词库选择器（内置+自定义合并，搜索/分类/增删，onPick 传 item）
     NodeFormDialog.jsx          # 文生图/编辑图片表单弹窗（提示词库 + pickedPrompt + 合并提交）
   hooks/
@@ -77,7 +100,7 @@ src/
     useWorkspaces.js            # 工作区清单管理（workspaces.json 读写 + 三重读取）
   utils/
     prompts.js                  # 内置提示词库（PROMPT_LIBRARY/PROMPT_CATEGORIES/getPromptsByScene，含 aspect 联动）
-    constants.js                # WORKFLOWS/NODE_TYPES/MODEL_OPTIONS/NODE_META（含 imageEditor）+ IMAGE_PROCESSORS（10 处理器）+ IMAGE_PROCESSOR_CATEGORIES + defaultProcessorParams
+    constants.js                # WORKFLOWS/NODE_TYPES（含 12 个 ip* 图像处理节点 + 旧 imageProcess 兼容）/MODEL_OPTIONS/NODE_META + IMAGE_PROCESSORS（12 处理器）+ IMAGE_PROCESSOR_CATEGORIES（7 类）+ NODE_TYPE_TO_PROCESSOR 映射 + defaultProcessorParams
     workflow.js                 # runWorkflow/generateImages（多路径提取图片）
     storage.js                  # loadCanvas/saveCanvas/onAnyConfigChanged/panel布局/下载（均接收 workspaceId）
     clipboard.js                # 节点剪贴板：copyNodes/pasteNodes/hasClipboard（模块级内存，跨工作区可粘贴）
@@ -85,7 +108,7 @@ src/
     export.js                   # serializeCanvas/downloadJson
     settings.js                 # DEFAULT_SETTINGS/WORKFLOW_SLOTS
     image-ops/                  # FrameRonin 移植的图像处理算法（统一 ImageData 出入参，详见「FrameRonin 工具移植」）
-      cdn.js                    # CDN 库加载封装（getGifEnc/getGifUct/getImageQ/getJsZip），URL 集中
+      cdn.js                    # vendor 库加载封装（getGifEnc/getGifUct/getImageQ/getJsZip/getFabric/getPainterro/getImgComparisonSlider/getImageCompression）
       io.js                     # urlToImageData/imageDataToBlob/imageDataToUrl（统一 canvas I/O）
       imageDataOps.js           # 纯函数 ImageData 操作（缩放/裁切/alpha 提取，无 DOM）
       gif.js                    # GIF 拆帧 decodeGifToFrames + 合成 encodeFramesToGif
@@ -94,7 +117,7 @@ src/
       matte.js                  # chromaKey/whiteKey/erodeAlpha/hexToRgb
       stroke.js                 # resizeNearest/innerStroke(BFS)/crop
       compose.js                # composeLayers（多图层 alpha-over + 混合模式）
-      index.js                  # PROCESSORS 注册表 + runProcessor 统一入口
+      index.js                  # PROCESSORS 注册表（含 compress 本地浏览器压缩 + enhance 云端放大）+ runProcessor 统一入口
   services/
     canvas.js                   # 服务端单写者（save_canvas/add_history/save_settings + workspace CRUD：list/create/rename/switch/delete_workspace）
 ```
@@ -197,12 +220,15 @@ src/
 宿主改动 + mini-app 全部源码均未 commit（按规约：用户没要求就不提交）。当前 git status 主要是：
 - `packages/web/src/components/mini-apps/react-renderer.tsx`（M，暴露 xyflow/dagre/NodeResizer/NodeToolbar/useReactFlow）
 - `packages/web/src/lib/ui-exports.ts`（M，导出上述 + Input/Button 等）
-- `packages/web/src/components/mini-apps/use-mini-app-host-api.tsx`（M，workflow WS 能力 + **loadCdnModule CDN 加载能力**）
+- `packages/web/src/components/mini-apps/use-mini-app-host-api.tsx`（M，workflow WS 能力 + loadCdnModule CDN 加载 + openAgentEditor/callPluginTool）
 - `packages/server/src/services/mini-app-services.ts`（M，新增 startServicesWatcher）
 - `packages/server/src/app.ts`（M，listen 回调调 startServicesWatcher）
-- `packages/server/agent-spaces-data/mini-apps/game-asset-canvas/`（新增整目录 + 多轮迭代：基础画布 → 提示词库 → 多工作区隔离 → 复制粘贴 → 批量删除弹窗 → **FrameRonin 工具移植为图像处理节点**）
+- `packages/server/src/services/builtin-tools/mini-app-tools.ts`（M，**agent_run 加 images 参数 + 转 userAttachments**）
+- `packages/server/src/adapters/langchain-runtime.ts`（M，**toAttachmentDataUrl 加 data URL 短路**）
+- `packages/server/src/adapters/claude-code-runtime/index.ts`（M，**resolveAttachmentFile 加 data URL 分支**）
+- `packages/server/agent-spaces-data/mini-apps/game-asset-canvas/`（新增整目录 + 多轮迭代：基础画布 → 提示词库 → 多工作区隔离 → 复制粘贴 → 批量删除弹窗 → FrameRonin 工具移植 → **BBox 查看节点 + AI 分析 + 图片压缩**）
 - 两个 workflow.json（M，补全 model 路由关键字）
-- **多工作区/复制粘贴轮次无宿主改动**（纯 mini-app src + service，service 由 watcher 热重载，前端刷新即生效）
+- **BBox 节点/AI 分析/图片压缩轮次**：宿主改动 3 文件（agent_run 图片支持，需重启 web）+ mini-app src 全部（刷新即生效）
 
 ## FrameRonin 工具移植（本轮新增）
 
@@ -462,6 +488,162 @@ GDScript 用 `print("[PXR] ...")`（经 index.js onPrint 输出，与 `index.js:
 - 产出写入 `data.output.audio` / `data.output.video`，刷新后仍可播放
 - 「生成记录」tab 里音频/视频条目显示对应播放器（不再 broken 图），「用作输入」仍可拿到媒体 URL
 
+## BBox 查看节点 + AI 分析 + agent_run 图片支持（本轮新增）
+
+新增 `bboxViewer` 节点：上传图 + JSON bbox 可视化（fabric 画布）+ 手动框选 + 批量导出框区域到 ZIP/画布。配合宿主层给 `agent_run` 加图片输入能力，实现「AI 分析图片 → 自动生成 bbox」。
+
+### 关键决策与已踩坑（务必遵守）
+
+1. **独立节点不复用 UiSplitter**：UiSplitter 语义是「按前景色切片去背」，BBox 是「可视化 JSON bbox + 区域导出」，两者 fabric 骨架相似但语义不同。新建 `BBoxViewerDialog`/`BBoxViewerNode`，避免 700 行组件过载。
+2. **JSON schema 单一新格式**（已移除旧兼容）：`{title, elements:[{id,type,label,coords:[x,y,w,h],parentId,exportSlice,ocrText,textRole,children}]}`。`coords` 是 `[x,y,width,height]`（左上角+宽高），**不是**旧版 `bbox_2d:[x1,y1,x2,y2]`。`flatten` 递归 children，无 coords 的容器节点向下传递保持父级色。
+3. **1000 坐标系自动换算**：扫所有 box 的 `max(x+w, y+h)`，若都 ≤1000 且图片 >1000px → 按 1000 比例放大（兼容 LLM 归一化输出）；否则像素坐标系（sx=1）。
+4. **exportSlice 视觉区分**：`exportSlice=true` 的框用**绿色实线 + 半透明绿填充**（可导出资产）；`false` 用**配色虚线**（容器面板）。底部「仅导出切片」开关过滤导出目标。
+5. **agent_run 图片支持（宿主层，需重启 web）**：
+   - `mini-app-tools.ts` 的 `agent_run` 加 `images` 参数（base64 data URL 数组），execute 内转 `Attachment[]`（`{name,type,url:'data:...'}`）传给 `runtime.execute` 的 `userAttachments`
+   - **只有 claude-code 和 langchain runtime 真正消费 userAttachments**（调研结论）：codex/grok/hermes/pi/open-agent-sdk 静默丢图但不报错
+   - 扩展两个 runtime 的附件解析识别 data URL（短路）：`langchain-runtime.ts` 的 `toAttachmentDataUrl` 开头加 `if(url.startsWith('data:')) return url`；`claude-code-runtime/index.ts` 的 `resolveAttachmentFile` 加 data URL 分支（正则解析 mime+base64 → buffer）
+6. **🔴 AI 框错位 bug（已修复）**：根因是 AI 返回的 coords 基于「AI 看到的图」尺寸，画布背景图是 `loadImageSource` 加载的图，两者尺寸不同 → `getBBoxBasis` 的 `sx` 换算错误。**正解**：压缩后用压缩图**同时**重建 sourceRef + 更新 fabric 背景图 + 传 AI，三者同源 → 坐标 1:1 对应 → sx=1 零换算。
+7. **图片压缩（browser-image-compression）**：前端压缩减小 base64 体积 + Web Worker 不卡 UI。库放 `vendor/browser-image-compression.js`（57KB，UMD），走 `getImageCompression()` 加载器（与 getFabric 同款 `(0,eval)` 全局求值，挂 `window.imageCompression`）。压缩参数固定 `maxSizeMB:1, maxWidthOrHeight:1920, useWebWorker:true`，失败降级原图。
+8. **systemPrompt 归 agent preset**：`agent_run` 工具签名本就不接受 systemPrompt（mini-app-tools 验证），systemPrompt 是 preset 自带字段。设置页只管「选哪个 preset + 用户提示词」，preset 内部细节（含 systemPrompt）由 openAgentEditor 弹窗管理。`openAgentEditor` 的 `initialPrompt` 传 `BBOX_AI_SYSTEM_PROMPT`（用户给的完整检测规则）。
+9. **TDZ 规避**：`fitToStage` 必须声明在 `handleAiAnalyze` 之前（handleAiAnalyze 依赖数组含 fitToStage），否则 useCallback 渲染期求值引用未初始化变量报错（handoff 第 1 条坑同款）。
+10. **AI 返回 JSON 提取**：`extractJsonFromText` 兼容 ```` ```json ... ``` ```` 代码块和裸 JSON（找首个 `{` 到末个 `}`），LLM 常在 JSON 前后带解释文本。
+
+### 改动文件
+
+#### 宿主层（需重启 web）
+- `packages/server/src/services/builtin-tools/mini-app-tools.ts`：`agent_run` 加 `images` 参数 + 转 `userAttachments`；import `Attachment` 类型
+- `packages/server/src/adapters/langchain-runtime.ts`：`toAttachmentDataUrl` 加 data URL 短路
+- `packages/server/src/adapters/claude-code-runtime/index.ts`：`resolveAttachmentFile` 加 data URL 分支
+
+#### mini-app 层（刷新即生效）
+- `src/utils/constants.js`：`NODE_TYPES.bboxViewer` + `NODE_META`（📦 #eab308）+ `IMAGE_TAGS.bboxViewer` + `BBOX_AGENT_INIT_NAME`/`BBOX_AI_SYSTEM_PROMPT`/`BBOX_AI_USER_PROMPT`
+- `src/utils/settings.js`：`DEFAULT_SETTINGS` 加 `bboxAgentConfigId`/`bboxAgentName`/`bboxAiUserPrompt`（systemPrompt 归 preset，不存 settings）
+- `src/components/SettingsDialog.jsx`：新增「✨ BBox AI 分析」分区（配置 agent + 用户提示词，无系统提示词）
+- `src/components/BBoxViewerDialog.jsx`（新增 ~700 行）：fabric 画布 + JSON 导入（递归 children + 1000 坐标系换算）+ 配色策略 + 图例 hover 联动 + Alt 拉框 + 撤销重做 + exportSlice 视觉区分 + ZIP 下载（getJsZip）+ 导出画布 + AI 分析（压缩+同步背景图修复错位）
+- `src/components/nodes/BBoxViewerNode.jsx`（新增）：FileUpload 单图 + 连线占位 + 打开对话框 + 透传 agentConfig
+- `src/components/Canvas.jsx`：注册节点（NODE_COMPONENTS/ADD_NODE_ITEMS/computeInputImages/DEFAULT_SIZE/initialData）+ decoratedNodes 注入 `data.agentConfig`（从 settings 读，加进 useMemo 依赖）
+- `src/components/RightPanel.jsx`：ADD_ITEMS 加「BBox查看」
+- `src/utils/image-ops/cdn.js`：新增 `getImageCompression()` 加载器
+- `src/vendor/browser-image-compression.js`（新增 57KB）：v2.0.2 UMD build
+
+### 改动文件（bbox_viewer.html → BBox 节点功能映射）
+原 `C:/Users/Administrator/.zcode/workspace/default/bbox_viewer.html` 的功能落地：
+- 左侧图片 → fabric 编辑器（contain 居中，滚轮缩放/空格平移/Alt 拉框）
+- 方框 → fabric Rect（kind='bbox'，带 `__meta` 元数据）
+- JSON 导入（递归 children）→ `flatten` + `applyJsonData`
+- 配色策略（按层级/父级同色/随机）→ `getColor` + PALETTE 12 色
+- 图例 hover 高亮联动 → `highlightBox`（目标框加粗+半透明黄填充，其它 opacity 0.25）
+- 线宽/显示子元素/标签/ID toggle → 工具条 Switch
+- **新增**：AI 分析（agent_run + 图片压缩）+ 批量导出 ZIP/画布 + exportSlice 视觉区分
+
+### AI 分析流程
+```
+1. compressToDataUrl(imageUrl)  → Web Worker 压缩 → dataUrl（失败降级原图）
+2. loadImageSource(dataUrl)     → 重建 sourceRef（canvas.width=压缩图宽）
+3. fabric.Image.fromURL(dataUrl) → 更新背景图 + fitToStage（保证坐标同源）
+4. callPluginTool('agent_run', {prompt, agentConfigId, images:[dataUrl]}) → AI 分析
+5. extractJsonFromText(raw)     → 解析返回 JSON（兼容代码块包裹）
+6. applyJsonData(data)          → 渲染框（sourceRef 已是压缩图，sx=1 零换算）
+```
+
+### 验收要点
+- 右侧「新增节点」出现 📦 BBox 查看卡片
+- 节点支持上传单图或接收上游连线单图
+- 打开查看器 → fabric 画布显示图 → 点「载入示例」→ 新 schema 框渲染（含 type/ocrText/exportSlice 标记）
+- 配色/线宽/显示 toggle 实时生效；图例 hover 高亮联动；点击聚焦到框
+- Alt+左键拉框新建；Delete 删选中；Ctrl+Z 撤销
+- 「下载 ZIP」→ 浏览器下载含每个框 PNG 的 zip；「导出到画布」→ 节点产出图网格
+- 「仅导出切片」开关过滤 exportSlice=true 的框
+- 设置 → BBox AI 分析 → 配置视觉 agent（Claude/GPT-4o/Gemini）+ 编辑用户提示词
+- 点「✨ AI 分析」→ 状态「压缩图片中…」→「AI 分析中…」→ 框与图片内容**完全吻合不错位**
+- 压缩阶段 UI 不卡（Web Worker）；压缩失败降级原图
+
+## 图像处理节点拆分 + 图片压缩处理器（本轮新增）
+
+把原单一「图像处理」节点（内含 12 处理器下拉切换）拆成 12 个独立节点（一个处理器 = 一个节点类型），并新增「图片压缩」处理器。
+
+### 关键决策与已踩坑（务必遵守）
+
+1. **拆分方案 = 映射表 + 单组件复用**（非 12 套重复组件）：12 个新 `NODE_TYPES.ip*` 全部映射到同一个 `ImageProcessNode` 组件。组件按 `NODE_TYPE_TO_PROCESSOR[type]` 反查**固定 processorId**（无下拉切换），其余逻辑（上传/连线/参数/执行/产出/NodeToolbar）完全复用。改 ImageProcessNode 一处 = 12 个节点全生效。
+2. **type id 不变只改 label**：拆分和重命名都只动 `NODE_META.label`，不改 `NODE_TYPES` 的 key/value。已有 canvas.json 的 `type: 'imageProcess'/'uiSplitter'/'bboxViewer'` 节点打开仍正常（旧 imageProcess 单节点从 `data.params.processor` 读 processorId，新 ip* 节点从 nodeType 反查）。
+3. **旧 imageProcess 单节点保留兼容**：`NODE_TYPES.imageProcess` 未删，组件判断 `NODE_TYPE_TO_PROCESSOR[type] || data.params.processor`（新节点走前者，旧节点走后者）。新画布不再添加旧节点（RightPanel/Canvas 菜单已移除该项），但已存在的能继续用。
+4. **compress 处理器走 `__url` 透传（与 enhance 同款）**：browser-image-compression 接受 File 非 ImageData，run 内 fetch→File→compress→目标格式→uploadFile→`{__url}`，跳过 ImageData 管道。`runProcessor` 把 compress 加入「不预解码」名单（与 gif-split/enhance 同）。
+5. **PNG 兜底用 canvas 重绘**：browser-image-compression 不支持 png 输出，compress 处理器内 `compressPng()` 用 canvas 重绘+缩到最长边（无 quality 概念）。
+6. **ParamField 升级支持 3 个新能力**（compress 等复杂参数表需要）：
+   - select 的 `options` 支持 `{value,label}` 对象数组（中文显示，不仅 string）
+   - number 支持 `step` 小数（quality 0.05、maxSizeMB 0.1）
+   - 新增 `showWhen: { key, eq?/in? }` 条件显隐（按 mode/format 切换显隐对应字段）
+7. **历史记录记真实节点类型**：`handleProcessLocal` 第 5 个参数收 `nodeType`，addHistory 用真实 type（不再写死 `imageProcess`）。HistoryCard 已用 `NODE_META[item.nodeType]` 取 label，12 个新节点各自显示名。旧历史（nodeType=imageProcess）仍显示「图像处理」。
+8. **重命名（仅 label，type id 不变）**：
+   - `uiSplitter`：UI拆分 → **雪碧图拆分**（语义更准：按前景色切片去背）
+   - `bboxViewer`：BBox查看 → **UI拆分**（功能化命名：JSON bbox 可视化+区域导出）
+   - 同步改：NODE_META / IMAGE_TAGS / RightPanel ADD_ITEMS / 对话框标题 / 节点按钮 / api.js NODE_LABELS / tools.js NODE_TYPE_DESC
+
+### 改动文件（mini-app 内，刷新即生效，无宿主改动）
+
+- `utils/constants.js`：
+  - `NODE_TYPES` 加 12 个 `ip*`（ipGifSplit/ipGifMerge/ipSpriteSplit/ipSpriteMerge/ipPixelate/ipResizeNearest/ipInnerStroke/ipChromaKey/ipWhiteKey/ipComposeOverlay/ipEnhance/ipCompress）
+  - 新增 `NODE_TYPE_TO_PROCESSOR` / `PROCESSOR_TO_NODE_TYPE` / `isImageProcessNodeType` 映射
+  - `NODE_META` 加 12 项（共用青色 #14b8a6 + 语义 icon）+ 重命名 uiSplitter/bboxViewer
+  - `IMAGE_TAGS` 同步重命名
+  - `IMAGE_PROCESSOR_CATEGORIES` 加 `compress` 分类（🗜️）
+  - `IMAGE_PROCESSORS` 加 `compress` 处理器（mode/format/quality + showWhen 条件参数表）
+- `utils/image-ops/index.js`：
+  - 新增 `compress` processor（fetch→browser-image-compression→目标格式→uploadFile，`__url` 透传，批量并发部分失败不阻塞）
+  - 新增 `compressPng()` 辅助函数（PNG 用 canvas 重绘兜底）
+  - `runProcessor` 不预解码名单加 compress
+  - import `getImageCompression`
+- `components/nodes/ImageProcessNode.jsx`：
+  - props 加 `type`，processorId 改为 `NODE_TYPE_TO_PROCESSOR[type] || data.params.processor`
+  - 删除处理器下拉 + setProcessor + grouped 计算
+  - `handleRun` 第 5 参数传 `type`
+  - `ParamField` 升级：select 对象 options / number step / showWhen 条件显隐
+- `components/Canvas.jsx`：
+  - `NODE_COMPONENTS` 12 个 ip* 全映射 ImageProcessNode
+  - `ADD_NODE_ITEMS` 加 12 项（移除旧 imageProcess）
+  - `computeInputImages.isReceiverType` 用 `isImageProcessNodeType` 判 receiver
+  - `initialData` 按映射生成处理器初始 params
+  - `handleProcessLocal` 收 nodeType 参数，addHistory 用真实 type
+- `components/RightPanel.jsx`：ADD_ITEMS 移除旧图像处理项、补 12 个拆分节点 + 重命名 uiSplitter/bboxViewer label
+- `components/nodes/BBoxViewerNode.jsx`：按钮「打开 BBox 查看器」→「打开 UI 拆分器」
+- `components/BBoxViewerDialog.jsx`：标题「BBox 查看器」→「UI 拆分器」
+- `components/UiSplitterDialog.jsx`：标题「UI 拆分编辑器」→「雪碧图拆分编辑器」
+- `api.js` / `tools.js`：VALID_NODE_TYPES/NODE_LABELS/NODE_TYPE_ENUM/NODE_TYPE_DESC 补 12 项 + 重命名 uiSplitter 描述（让 AI agent add_node 也能建新节点）
+
+### 12 个拆分节点 ↔ 处理器映射
+
+| 节点类型 | label | 处理器 id | multipleIn |
+|---------|-------|----------|-----------|
+| ipGifSplit | 🎬 GIF 拆帧 | gif-split | 否（multipleOut）|
+| ipGifMerge | 🎞️ GIF 合成 | gif-merge | 是（≥2）|
+| ipSpriteSplit | 🔲 Sheet 拆分 | sprite-split | 否（multipleOut）|
+| ipSpriteMerge | ▦ Sheet 合成 | sprite-merge | 是（≥2）|
+| ipPixelate | 🟦 像素化 | pixelate | 否 |
+| ipResizeNearest | 🔍 最近邻缩放 | resize-nearest | 否 |
+| ipInnerStroke | ✏️ 内描边 | inner-stroke | 否 |
+| ipChromaKey | ✂️ 色度键抠图 | chroma-key | 否 |
+| ipWhiteKey | ⚪ 白底抠图 | white-key | 否 |
+| ipComposeOverlay | 🧬 图层叠加 | compose-overlay | 是（≥2）|
+| ipEnhance | 🔼 图片放大 | enhance | 是（云端，≥1）|
+| ipCompress | 🗜️ 图片压缩 | compress | 是（本地，≥1）|
+
+### compress 处理器参数表
+
+- `mode`（select）：按体积 / 按尺寸
+- `maxSizeMB`（number, 0.01-50, step 0.1，仅 mode=size 显）：目标体积
+- `maxWidthOrHeight`（number, 16-8192，仅 mode=dimensions 显）：最长边
+- `format`（select）：JPEG / WebP / PNG
+- `quality`（number, 0.1-1, step 0.05，仅 jpeg/webp 显）：质量
+
+### 验收要点
+
+- 右侧「新增节点」出现 12 个独立图像处理卡片（GIF 拆帧…图片压缩），原「图像处理」单节点卡片已移除
+- 每个新节点**无处理器下拉**，只显示该处理器专属参数表
+- 选「图片压缩」→ 压缩模式/体积/格式/质量带 showWhen 条件显隐
+- 执行任意图像处理器 → 产出图正常，「生成记录」tab 显示真实节点名（🟦 像素化 / 🗜️ 图片压缩…）
+- 原「UI拆分」卡片显示「🧩 雪碧图拆分」；原「BBox查看」显示「📦 UI拆分」
+- 旧 canvas.json 的 imageProcess/uiSplitter/bboxViewer 节点打开仍正常（type id 未变）
+
 ## 后续可做
 
 - 队列任务失败「重试」按钮、执行中实时进度（node:progress 事件）
@@ -487,6 +669,18 @@ GDScript 用 `print("[PXR] ...")`（经 index.js onPrint 输出，与 `index.js:
 - 像素编辑器：fps / 画布尺寸参数暴露到对话框（当前导出帧不导出 fps）
 - 像素编辑器：清理 GDScript/JSX 里保留的 `[PXR]`/`[pxr-parent]` 诊断日志（功能稳定后）
 - 像素编辑器：D:\Pixelorama 源码改动未 commit（git 仓库），如需保留可单独提交
+- BBox 查看：压缩参数（maxSizeMB/maxWidthOrHeight）暴露到设置页（当前固定 1MB/1920px）
+- BBox 查看：压缩后状态栏显示「原图 X MB → 压缩 Y MB」让用户感知效果
+- BBox 查看：多图批量 AI 分析（当前单图）
+- BBox 查看：手动框（无 depth）当前默认 PALETTE[0]，可加「手动框固定橙色」区分
+- BBox 查看：ZIP 内加 manifest.json 记录每个 png 的原始 bbox 坐标
+- agent_run：返回值标注是否消费了图片（当前非视觉 runtime 静默丢图，用户不知情）
+- agent_run：给 codex/grok/hermes/pi/open-agent-sdk runtime 补 userAttachments 图片支持（当前只 claude-code/langchain 支持）
+- 图像处理拆分：旧 canvas.json 的 imageProcess 节点可写迁移脚本（读 data.params.processor 自动转成对应 ip* 类型）
+- 图像处理拆分：12 个节点卡片在 RightPanel 按分类折叠（当前平铺 20 个卡片，滚动可接受但略长）
+- 图片压缩：产出网格加「原图 X MB → 压缩 Y MB」体积对比标签（当前无感知反馈）
+- 图片压缩：PNG 走 pngquant 无损量化降体积（当前仅 canvas 重绘，体积优化有限）
+- 图片压缩：压缩参数暴露到设置页做默认值（当前每节点单独配）
 
 ## Suggested Skills
 

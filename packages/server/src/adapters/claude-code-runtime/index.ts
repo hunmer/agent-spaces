@@ -574,6 +574,15 @@ function toClaudeAttachmentPart(
 function resolveAttachmentFile(
   attachment: NonNullable<Message['attachments']>[number],
 ): { filePath: string; buffer: Buffer } | undefined {
+  // 已是 data URL（如 agent_run 传入的 base64 图片）：解析 mime + base64，不读文件
+  if (attachment.url?.startsWith('data:')) {
+    const m = attachment.url.match(/^data:([\w./+-]+);base64,(.*)$/i);
+    if (m) {
+      const ext = m[1].split('/')[1]?.split('+')[0] || 'bin';
+      return { filePath: `inline.${ext}`, buffer: Buffer.from(m[2], 'base64') };
+    }
+    return undefined;
+  }
   const candidatePaths = [
     attachment.path,
     attachment.url?.startsWith('/static/')

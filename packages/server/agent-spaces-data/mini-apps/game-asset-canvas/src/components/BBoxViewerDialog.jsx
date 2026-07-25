@@ -6,10 +6,9 @@ import {
   ResizablePanelGroup, ResizablePanel, ResizableHandle,
 } from '@agent-spaces/ui';
 import { Undo2, Redo2, Eraser, Trash2, Download, Upload, FileJson, Crosshair, Sparkles } from '@agent-spaces/ui';
-import { getFabric, getJsZip } from '../utils/image-ops/cdn';
+import { getFabric, getJsZip, getImageCompression } from '../utils/image-ops/cdn';
 import { loadImageSource, exportBox } from '../utils/image-ops/sprite-splitter';
 import { BUILTIN_PLUGIN } from '../utils/constants';
-import { normalizeImageUrls } from '../utils/workflow';
 
 // 12 色调色板（移植自 bbox_viewer.html）
 const PALETTE = [
@@ -78,6 +77,37 @@ function extractJsonFromText(text) {
     return JSON.parse(text.slice(s, e + 1));
   }
   throw new Error('AI 未返回有效 JSON');
+}
+
+// 把图片 URL 压缩后转 base64 data URL（附件通道传给视觉模型 + 同步画布背景图保证坐标同源）
+// browser-image-compression Web Worker 压缩，大图不卡 UI；失败时降级用原图
+async function compressToDataUrl(url) {
+  const resp = await fetch(url);
+  if (!resp.ok) throw new Error(`读取图片失败(${resp.status})`);
+  const blob = await resp.blob();
+  const file = new File([blob], 'image', { type: blob.type || 'image/png' });
+  try {
+    const compress = await getImageCompression();
+    const compressed = await compress(file, {
+      maxSizeMB: 1,
+      maxWidthOrHeight: 1920,
+      useWebWorker: true,
+    });
+    return await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => reject(new Error('压缩图转 base64 失败'));
+      reader.readAsDataURL(compressed);
+    });
+  } catch (err) {
+    console.warn('[bbox-viewer] 压缩失败，降级用原图:', err?.message || err);
+    return await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => reject(new Error('图片转 base64 失败'));
+      reader.readAsDataURL(blob);
+    });
+  }
 }
 
 /**
@@ -354,46 +384,7 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
 
   const jsonInputRef = useRef(null);
 
-  // ============ AI 分析图片（agent_run）============
-  const handleAiAnalyze = useCallback(async () => {
-    const AS = window.AgentSpaces;
-    const ac = agentConfigRef.current;
-    if (!AS?.callPluginTool) { setError('宿主 callPluginTool 不可用'); return; }
-    if (!imageUrl) { setError('图片未加载'); return; }
-    if (!ac?.id) {
-      setError('未配置 AI 模型，请先到「设置 → BBox AI 分析」配置');
-      return;
-    }
-    setAnalyzing(true);
-    setError('');
-    setStatus('✨ AI 分析中（可能需要数十秒）…');
-    try {
-      // normalizeImageUrls 把相对路径补全成 http URL，agent runtime 才能读图
-      const [httpUrl] = normalizeImageUrls([imageUrl]);
-      const userPrompt = (ac.userPrompt || '').replace('{imageUrl}', httpUrl);
-      const ret = await AS.callPluginTool(
-        BUILTIN_PLUGIN,
-        'agent_run',
-        {
-          prompt: userPrompt,
-          agentConfigId: ac.id,
-          permissionMode: 'bypassPermissions',
-        },
-      );
-      const raw = ret?.result || ret?.output || '';
-      const data = extractJsonFromText(raw);
-      applyJsonData(data);
-      setStatus(`✨ AI 分析完成，已渲染框`);
-    } catch (err) {
-      console.error('[bbox-viewer] AI analyze failed:', err);
-      setError(`AI 分析失败: ${err?.message || err}`);
-      setStatus('AI 分析失败');
-    } finally {
-      setAnalyzing(false);
-    }
-  }, [imageUrl, applyJsonData]);
-
-  // ============ fitToStage ============
+  // ============ fitToStage（声明在 handleAiAnalyze 之前避免 TDZ）============
   const fitToStage = useCallback(() => {
     const fc = fcRef.current;
     const src = sourceRef.current;
@@ -409,6 +400,67 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
     fc.setViewportTransform([zoom, 0, 0, zoom, left, top]);
     fc.requestRenderAll();
   }, []);
+
+  // ============ AI 分析图片（agent_run）============
+  const handleAiAnalyze = useCallback(async () => {
+    const AS = window.AgentSpaces;
+    const ac = agentConfigRef.current;
+    const fc = fcRef.current;
+    const fabric = fabricLibRef.current;
+    if (!AS?.callPluginTool) { setError('宿主 callPluginTool 不可用'); return; }
+    if (!imageUrl) { setError('图片未加载'); return; }
+    if (!ac?.id) {
+      setError('未配置 AI 模型，请先到「设置 → BBox AI 分析」配置');
+      return;
+    }
+    setAnalyzing(true);
+    setError('');
+    setStatus('✨ 压缩图片中…');
+    try {
+      // 1. 压缩原图 → dataUrl（Web Worker，不卡 UI；失败降级用原图）
+      const dataUrl = await compressToDataUrl(imageUrl);
+      // 2. 用压缩图重建 sourceRef + 更新 fabric 背景图，保证 AI 坐标与画布严格 1:1 同源（修复错位 bug）
+      const newSource = await loadImageSource(dataUrl);
+      sourceRef.current = newSource;
+      if (fc && fabric) {
+        await new Promise((resolve) => {
+          fabric.Image.fromURL(dataUrl, (img) => {
+            img.selectable = false;
+            img.evented = false;
+            fc.setBackgroundImage(img, () => {
+              fitToStage();
+              fc.renderAll();
+              resolve();
+            });
+          });
+        });
+      }
+      // 3. 传压缩图给 AI（坐标基于压缩图，与画布背景图同源）
+      setStatus('✨ AI 分析中（可能需要数十秒）…');
+      const userPrompt = (ac.userPrompt || '').replace(/\{imageUrl\}/g, ''); // 兼容旧模板里的占位符
+      const ret = await AS.callPluginTool(
+        BUILTIN_PLUGIN,
+        'agent_run',
+        {
+          prompt: userPrompt.trim(),
+          agentConfigId: ac.id,
+          permissionMode: 'bypassPermissions',
+          images: [dataUrl],
+        },
+      );
+      // 4. 解析返回 JSON → 渲染框（sourceRef 已是压缩图，sx=1 零换算）
+      const raw = ret?.result || ret?.output || '';
+      const data = extractJsonFromText(raw);
+      applyJsonData(data);
+      setStatus(`✨ AI 分析完成，已渲染框`);
+    } catch (err) {
+      console.error('[bbox-viewer] AI analyze failed:', err);
+      setError(`AI 分析失败: ${err?.message || err}`);
+      setStatus('AI 分析失败');
+    } finally {
+      setAnalyzing(false);
+    }
+  }, [imageUrl, applyJsonData, fitToStage]);
 
   // ============ 切换图例高亮 ============
   const highlightBox = useCallback((idx) => {
@@ -869,7 +921,7 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
       >
         <DialogHeader className="flex-row items-center justify-between gap-3 border-b border-border px-4 py-2 !gap-0">
           <div className="flex items-center gap-2">
-            <DialogTitle className="text-sm">📦 BBox 查看器</DialogTitle>
+            <DialogTitle className="text-sm">📦 UI 拆分器</DialogTitle>
             <DialogDescription className="text-[11px] text-muted-foreground">
               JSON bbox 可视化 + 手动框选 · 批量导出 ZIP/画布
             </DialogDescription>

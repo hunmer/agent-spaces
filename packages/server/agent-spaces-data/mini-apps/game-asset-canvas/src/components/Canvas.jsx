@@ -38,7 +38,7 @@ import useGenerationHistory from '../hooks/useGenerationHistory';
 import useSettings from '../hooks/useSettings';
 import useExecutionQueue from '../hooks/useExecutionQueue';
 import useWorkspaces from '../hooks/useWorkspaces';
-import { IMAGE_PROCESSOR_CATEGORIES, IMAGE_PROCESSORS, IMAGE_TAGS, NODE_META, NODE_TYPES, WORKFLOWS, defaultProcessorParams } from '../utils/constants';
+import { IMAGE_PROCESSOR_CATEGORIES, IMAGE_PROCESSORS, IMAGE_TAGS, NODE_META, NODE_TYPES, NODE_TYPE_TO_PROCESSOR, WORKFLOWS, defaultProcessorParams, isImageProcessNodeType } from '../utils/constants';
 import { autoLayout } from '../utils/layout';
 import { downloadJson, serializeCanvas } from '../utils/export';
 import { copyNodes, hasClipboard, pasteNodes } from '../utils/clipboard';
@@ -51,6 +51,19 @@ const NODE_COMPONENTS = {
   [NODE_TYPES.editImage]: EditImageNode,
   [NODE_TYPES.imageDisplay]: ImageDisplayNode,
   [NODE_TYPES.imageProcess]: ImageProcessNode,
+  // 拆分后的 12 个图像处理节点全部复用 ImageProcessNode（按 nodeType 反查 processorId）
+  [NODE_TYPES.ipGifSplit]: ImageProcessNode,
+  [NODE_TYPES.ipGifMerge]: ImageProcessNode,
+  [NODE_TYPES.ipSpriteSplit]: ImageProcessNode,
+  [NODE_TYPES.ipSpriteMerge]: ImageProcessNode,
+  [NODE_TYPES.ipPixelate]: ImageProcessNode,
+  [NODE_TYPES.ipResizeNearest]: ImageProcessNode,
+  [NODE_TYPES.ipInnerStroke]: ImageProcessNode,
+  [NODE_TYPES.ipChromaKey]: ImageProcessNode,
+  [NODE_TYPES.ipWhiteKey]: ImageProcessNode,
+  [NODE_TYPES.ipComposeOverlay]: ImageProcessNode,
+  [NODE_TYPES.ipEnhance]: ImageProcessNode,
+  [NODE_TYPES.ipCompress]: ImageProcessNode,
   [NODE_TYPES.imageEditor]: ImageEditorNode,
   [NODE_TYPES.pixelEditor]: PixelEditorNode,
   [NODE_TYPES.uiSplitter]: UiSplitterNode,
@@ -66,7 +79,19 @@ const ADD_NODE_ITEMS = [
   { type: NODE_TYPES.textToImage },
   { type: NODE_TYPES.editImage },
   { type: NODE_TYPES.imageDisplay },
-  { type: NODE_TYPES.imageProcess },
+  // 12 个图像处理节点
+  { type: NODE_TYPES.ipGifSplit },
+  { type: NODE_TYPES.ipGifMerge },
+  { type: NODE_TYPES.ipSpriteSplit },
+  { type: NODE_TYPES.ipSpriteMerge },
+  { type: NODE_TYPES.ipPixelate },
+  { type: NODE_TYPES.ipResizeNearest },
+  { type: NODE_TYPES.ipInnerStroke },
+  { type: NODE_TYPES.ipChromaKey },
+  { type: NODE_TYPES.ipWhiteKey },
+  { type: NODE_TYPES.ipComposeOverlay },
+  { type: NODE_TYPES.ipEnhance },
+  { type: NODE_TYPES.ipCompress },
   { type: NODE_TYPES.imageEditor },
   { type: NODE_TYPES.pixelEditor },
   { type: NODE_TYPES.uiSplitter },
@@ -91,6 +116,7 @@ function computeInputImages(nodes, edges) {
   const isReceiverType = (type) => type === NODE_TYPES.editImage
     || type === NODE_TYPES.imageDisplay
     || type === NODE_TYPES.imageProcess
+    || isImageProcessNodeType(type) // 拆分后的 12 个图像处理节点
     || type === NODE_TYPES.imageEditor
     || type === NODE_TYPES.pixelEditor
     || type === NODE_TYPES.uiSplitter
@@ -214,6 +240,17 @@ function initialData(type) {
       output: { images: [] },
       uploadedImages: [],
       params: { processor: 'pixelate', processorParams: defaultProcessorParams('pixelate') },
+    };
+  }
+  // 拆分后的图像处理节点：按 nodeType 反查 processorId 生成初始 params
+  if (isImageProcessNodeType(type)) {
+    const processorId = NODE_TYPE_TO_PROCESSOR[type];
+    return {
+      status: 'idle',
+      output: { images: [] },
+      uploadedImages: [],
+      upstreamOrder: [],
+      params: { processor: processorId, processorParams: defaultProcessorParams(processorId) },
     };
   }
   if (type === NODE_TYPES.imageEditor) {
@@ -1208,7 +1245,7 @@ export default function Canvas() {
   //
   // 取消机制：用模块级 AbortController Map 跟踪每个节点的处理任务，Promise.race 让取消信号先 resolve，
   // UI 立即解除「处理中」。底层 fetch 无法真正中断（CDN 跨域 fetch 不支持 abort），结果会丢弃。
-  const handleProcessLocal = useCallback(async (nodeId, processorId, processorParams, sourceImages) => {
+  const handleProcessLocal = useCallback(async (nodeId, processorId, processorParams, sourceImages, nodeType) => {
     if (!sourceImages?.length) return;
     // 清理旧 controller（同节点重复执行时覆盖）
     processingControllers.get(nodeId)?.abort();
@@ -1233,10 +1270,12 @@ export default function Canvas() {
       if (controller.signal.aborted) return;
       if (!urls.length) throw new Error('处理未返回图片');
       updateNodeData(nodeId, { status: 'done', output: { images: urls } });
+      // 记录真实节点类型到历史（拆分后的 12 个节点各自显示；旧 imageProcess 单节点/未传 type 时回退）
+      const histNodeType = nodeType || NODE_TYPES.imageProcess;
       addHistory({
         id: genId('hist'),
         nodeId,
-        nodeType: NODE_TYPES.imageProcess,
+        nodeType: histNodeType,
         prompt: processorId,
         model: processorId === 'enhance' ? 'image_enchanter' : 'local',
         images: urls,

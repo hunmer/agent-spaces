@@ -1008,6 +1008,8 @@ function buildImageAttachmentParts(
 }
 
 function toAttachmentDataUrl(attachment: NonNullable<Message['attachments']>[number]): string | undefined {
+  // 已是 data URL（如 agent_run 传入的 base64 图片），直接返回，不走文件读取
+  if (attachment.url?.startsWith('data:')) return attachment.url;
   const candidatePaths = [
     attachment.path,
     attachment.url?.startsWith('/static/')

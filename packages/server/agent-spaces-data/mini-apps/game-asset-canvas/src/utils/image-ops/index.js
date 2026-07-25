@@ -25,6 +25,7 @@ import { pixelate } from './pixelate';
 import { composeSpriteSheet, splitByTransparent, splitSpriteSheet } from './spriteSheet';
 import { imageDataToUrl, urlToImageData } from './io';
 import { innerStroke, resizeNearest } from './stroke';
+import { getImageCompression } from './cdn';
 
 /**
  * 处理器清单。节点 constants.IMAGE_PROCESSORS 里的参数表与此处的 id 一一对应，
@@ -185,7 +186,114 @@ export const PROCESSORS = {
       return outUrls.map((u, i) => (i === 0 && note ? { __url: u, __note: note } : { __url: u }));
     },
   },
+
+  // ============ 图片压缩（browser-image-compression，本地浏览器端 Web Worker）============
+  // 不走 ImageData 管道：run 内对每张输入图 fetch→File→compress→转目标格式→uploadFile，
+  // 用 __url 透传产出 URL。批量并发，部分失败不阻塞成功的。
+  // - mode='size'：压到目标体积（maxSizeMB），同时限最长边 ≤ 4096（防止极端大图）
+  // - mode='dimensions'：缩到最长边 ≤ maxWidthOrHeight（不限体积）
+  // - format：jpeg/webp 体积小（quality 生效），png 无损（quality 忽略）
+  'compress': {
+    multipleIn: true,
+    async run(_inputs, params, ctx) {
+      const inputUrls = Array.isArray(ctx?.urls) ? ctx.urls.filter(Boolean) : [];
+      if (!inputUrls.length) throw new Error('图片压缩需要输入图');
+      const AS = window.AgentSpaces;
+      if (!AS?.uploadFile) throw new Error('宿主 uploadFile 不可用');
+
+      const mode = params.mode === 'dimensions' ? 'dimensions' : 'size';
+      const format = ['jpeg', 'webp', 'png'].includes(params.format) ? params.format : 'jpeg';
+      const quality = Math.min(1, Math.max(0.1, Number(params.quality) || 0.8));
+      const compress = await getImageCompression();
+
+      const results = await Promise.allSettled(
+        inputUrls.map(async (url) => {
+          // 1. URL → File（browser-image-compression 接受 File/Blob）
+          const resp = await fetch(url);
+          if (!resp.ok) throw new Error(`下载失败(${resp.status})`);
+          const blob = await resp.blob();
+          const baseName = (url.split('/').pop() || 'image').replace(/\.[^.]+$/, '');
+          const inFile = new File([blob], `${baseName}.in`, { type: blob.type || 'image/png' });
+
+          // 2. 压缩参数（按模式）
+          const opts = {
+            fileType: `image/${format}`,
+            useWebWorker: true,
+            initialQuality: quality,
+          };
+          if (mode === 'size') {
+            const maxSizeMB = Math.max(0.01, Number(params.maxSizeMB) || 1);
+            opts.maxSizeMB = maxSizeMB;
+            // 极端大图兜底：最长边 ≤ 4096（避免 worker OOM）
+            opts.maxWidthOrHeight = 4096;
+          } else {
+            opts.maxWidthOrHeight = Math.max(16, Math.floor(Number(params.maxWidthOrHeight) || 1920));
+          }
+
+          // 3. 压缩（format=png 时 browser-image-compression 不能转格式，改用 canvas 量化转码）
+          let outBlob;
+          if (format === 'png') {
+            // png 无损：browser-image-compression 不支持目标 png；改用 canvas 直接重绘
+            outBlob = await compressPng(inFile, opts.maxWidthOrHeight);
+          } else {
+            outBlob = await compress(inFile, opts);
+          }
+          if (!outBlob) throw new Error('压缩返回空');
+
+          // 4. 上传
+          const outFile = new File([outBlob], `${baseName}.${format === 'jpeg' ? 'jpg' : format}`, {
+            type: `image/${format}`,
+          });
+          const uploaded = await AS.uploadFile(outFile);
+          const httpUrl = uploaded?.url || uploaded?.httpPath;
+          if (!httpUrl) throw new Error('上传未返回 URL');
+          return httpUrl;
+        }),
+      );
+
+      const outUrls = [];
+      let failed = 0;
+      for (const r of results) {
+        if (r.status === 'fulfilled') outUrls.push(r.value);
+        else failed += 1;
+      }
+      if (!outUrls.length) throw new Error(failed ? `${failed} 张图片压缩全部失败` : '压缩未返回图片');
+      const note = failed ? `${failed} 张失败` : null;
+      return outUrls.map((u, i) => (i === 0 && note ? { __url: u, __note: note } : { __url: u }));
+    },
+  },
 };
+
+/**
+ * PNG 无损压缩：用 canvas 重绘 + 缩放到最长边（browser-image-compression 不支持 png 输出）。
+ * 无 quality 概念，仅缩尺寸。
+ */
+async function compressPng(file, maxEdge) {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise((resolve, reject) => {
+      const im = new Image();
+      im.onload = () => resolve(im);
+      im.onerror = (e) => reject(e);
+      im.src = url;
+    });
+    let { width, height } = img;
+    const longest = Math.max(width, height);
+    if (maxEdge && longest > maxEdge) {
+      const scale = maxEdge / longest;
+      width = Math.round(width * scale);
+      height = Math.round(height * scale);
+    }
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx2d = canvas.getContext('2d');
+    ctx2d.drawImage(img, 0, 0, width, height);
+    return await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
 
 /**
  * 统一执行入口：节点层调用。
@@ -199,8 +307,8 @@ export async function runProcessor(processorId, inputUrls, params, extraCtx) {
   const processor = PROCESSORS[processorId];
   if (!processor) throw new Error(`未知处理器：${processorId}`);
 
-  // GIF 拆帧需 ArrayBuffer、enhance 走工作流用原始 URL —— 都不预解码成 ImageData
-  const needPreDecode = processorId !== 'gif-split' && processorId !== 'enhance';
+  // GIF 拆帧需 ArrayBuffer、enhance/compress 直接用原始 URL（不进 ImageData 管道）—— 都不预解码
+  const needPreDecode = processorId !== 'gif-split' && processorId !== 'enhance' && processorId !== 'compress';
   let inputs = [];
   if (needPreDecode) {
     inputs = await Promise.all((inputUrls || []).map((u) => urlToImageData(u)));

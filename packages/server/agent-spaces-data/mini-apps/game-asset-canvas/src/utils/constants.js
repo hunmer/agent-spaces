@@ -23,7 +23,21 @@ export const NODE_TYPES = {
   textToImage: 'textToImage',
   editImage: 'editImage',
   imageDisplay: 'imageDisplay',
+  // 图像处理：旧的单节点（兼容已有 canvas.json，新画布不再添加）
   imageProcess: 'imageProcess',
+  // 图像处理：拆分后的 12 个独立节点（一个处理器 = 一个节点类型）
+  ipGifSplit: 'ipGifSplit',
+  ipGifMerge: 'ipGifMerge',
+  ipSpriteSplit: 'ipSpriteSplit',
+  ipSpriteMerge: 'ipSpriteMerge',
+  ipPixelate: 'ipPixelate',
+  ipResizeNearest: 'ipResizeNearest',
+  ipInnerStroke: 'ipInnerStroke',
+  ipChromaKey: 'ipChromaKey',
+  ipWhiteKey: 'ipWhiteKey',
+  ipComposeOverlay: 'ipComposeOverlay',
+  ipEnhance: 'ipEnhance',
+  ipCompress: 'ipCompress',
   imageEditor: 'imageEditor',
   pixelEditor: 'pixelEditor',
   uiSplitter: 'uiSplitter',
@@ -34,6 +48,36 @@ export const NODE_TYPES = {
   note: 'note',
   // 注：分组不是节点，是 WorkflowGroupOverlay（由 groups 数据驱动，复用 workflow-editor 同源组件）
 };
+
+/**
+ * 拆分后的图像处理节点类型 → 处理器 id 映射。
+ * ImageProcessNode 通过 nodeType 反查固定 processorId（不再有下拉切换）。
+ * 旧 imageProcess 节点的 processorId 从 data.params.processor 读（兼容）。
+ */
+export const NODE_TYPE_TO_PROCESSOR = {
+  [NODE_TYPES.ipGifSplit]: 'gif-split',
+  [NODE_TYPES.ipGifMerge]: 'gif-merge',
+  [NODE_TYPES.ipSpriteSplit]: 'sprite-split',
+  [NODE_TYPES.ipSpriteMerge]: 'sprite-merge',
+  [NODE_TYPES.ipPixelate]: 'pixelate',
+  [NODE_TYPES.ipResizeNearest]: 'resize-nearest',
+  [NODE_TYPES.ipInnerStroke]: 'inner-stroke',
+  [NODE_TYPES.ipChromaKey]: 'chroma-key',
+  [NODE_TYPES.ipWhiteKey]: 'white-key',
+  [NODE_TYPES.ipComposeOverlay]: 'compose-overlay',
+  [NODE_TYPES.ipEnhance]: 'enhance',
+  [NODE_TYPES.ipCompress]: 'compress',
+};
+
+/** 反向：处理器 id → 节点类型（initialData/Canvas 用） */
+export const PROCESSOR_TO_NODE_TYPE = Object.fromEntries(
+  Object.entries(NODE_TYPE_TO_PROCESSOR).map(([nt, p]) => [p, nt]),
+);
+
+/** 判断节点类型是否为拆分后的图像处理节点 */
+export function isImageProcessNodeType(type) {
+  return Object.prototype.hasOwnProperty.call(NODE_TYPE_TO_PROCESSOR, type);
+}
 
 // 工作流内置插件
 export const BUILTIN_PLUGIN = '@agent-spaces/builtin';
@@ -140,10 +184,23 @@ export const NODE_META = {
   [NODE_TYPES.editImage]: { label: '编辑图片', icon: '🖌️', color: '#ec4899' },
   [NODE_TYPES.imageDisplay]: { label: '图片展示', icon: '🖼️', color: '#10b981' },
   [NODE_TYPES.imageProcess]: { label: '图像处理', icon: '🔧', color: '#14b8a6' },
+  // 拆分后的 12 个图像处理节点（共用青色系，按处理器语义给 icon）
+  [NODE_TYPES.ipGifSplit]: { label: 'GIF 拆帧', icon: '🎬', color: '#14b8a6' },
+  [NODE_TYPES.ipGifMerge]: { label: 'GIF 合成', icon: '🎞️', color: '#14b8a6' },
+  [NODE_TYPES.ipSpriteSplit]: { label: 'Sheet 拆分', icon: '🔲', color: '#14b8a6' },
+  [NODE_TYPES.ipSpriteMerge]: { label: 'Sheet 合成', icon: '▦', color: '#14b8a6' },
+  [NODE_TYPES.ipPixelate]: { label: '像素化', icon: '🟦', color: '#14b8a6' },
+  [NODE_TYPES.ipResizeNearest]: { label: '最近邻缩放', icon: '🔍', color: '#14b8a6' },
+  [NODE_TYPES.ipInnerStroke]: { label: '内描边', icon: '✏️', color: '#14b8a6' },
+  [NODE_TYPES.ipChromaKey]: { label: '色度键抠图', icon: '✂️', color: '#14b8a6' },
+  [NODE_TYPES.ipWhiteKey]: { label: '白底抠图', icon: '⚪', color: '#14b8a6' },
+  [NODE_TYPES.ipComposeOverlay]: { label: '图层叠加', icon: '🧬', color: '#14b8a6' },
+  [NODE_TYPES.ipEnhance]: { label: '图片放大', icon: '🔼', color: '#14b8a6' },
+  [NODE_TYPES.ipCompress]: { label: '图片压缩', icon: '🗜️', color: '#14b8a6' },
   [NODE_TYPES.imageEditor]: { label: '图片编辑', icon: '🎨', color: '#f97316' },
   [NODE_TYPES.pixelEditor]: { label: '像素编辑器', icon: '👾', color: '#22c55e' },
-  [NODE_TYPES.uiSplitter]: { label: 'UI拆分', icon: '🧩', color: '#0ea5e9' },
-  [NODE_TYPES.bboxViewer]: { label: 'BBox查看', icon: '📦', color: '#eab308' },
+  [NODE_TYPES.uiSplitter]: { label: '雪碧图拆分', icon: '🧩', color: '#0ea5e9' },
+  [NODE_TYPES.bboxViewer]: { label: 'UI拆分', icon: '📦', color: '#eab308' },
   [NODE_TYPES.textToVoice]: { label: '生成配音', icon: '🔊', color: '#a855f7' },
   [NODE_TYPES.videoGenerator]: { label: '生成视频', icon: '🎬', color: '#ef4444' },
   [NODE_TYPES.imageCompare]: { label: '图片对比', icon: '🔀', color: '#06b6d4' },
@@ -162,8 +219,8 @@ export const IMAGE_TAGS = {
   imageProcess: '图像处理',
   imageEditor: '图片编辑',
   pixelEditor: '像素',
-  uiSplitter: 'UI拆分',
-  bboxViewer: 'bbox区域',
+  uiSplitter: '雪碧图拆分',
+  bboxViewer: 'UI拆分',
   history: '记录',
   upstream: '连线',
   export: '导出',
@@ -209,6 +266,7 @@ export const IMAGE_PROCESSOR_CATEGORIES = [
   { id: 'matte', label: '抠图去背', icon: '✂️' },
   { id: 'compose', label: '图层合成', icon: '🧬' },
   { id: 'enhance', label: '画质增强', icon: '🔍' },
+  { id: 'compress', label: '图片压缩', icon: '🗜️' },
 ];
 
 /**
@@ -307,6 +365,42 @@ export const IMAGE_PROCESSORS = [
     desc: '调用 image_enchanter 工作流云端 AI 放大（高清化），支持批量，非本地算法',
     params: [],
   },
+  // ---- 图片压缩（browser-image-compression，本地浏览器端，Web Worker 不卡 UI）----
+  // mode='size'：压缩到目标体积（maxSizeMB）。mode='dimensions'：缩放到最长边 ≤ maxWidthOrHeight。
+  // format='jpeg'/'webp' 体积小、'png' 无损但大；quality 仅 jpeg/webp 有效。
+  {
+    id: 'compress', label: '图片压缩', category: 'compress', multipleIn: true, minInputs: 1,
+    desc: '本地浏览器端压缩：按目标体积或目标尺寸缩放，支持 jpeg/webp/png 格式',
+    params: [
+      {
+        key: 'mode', label: '压缩模式', type: 'select', default: 'size',
+        options: [
+          { value: 'size', label: '按体积' },
+          { value: 'dimensions', label: '按尺寸' },
+        ],
+      },
+      {
+        key: 'maxSizeMB', label: '目标体积(MB)', type: 'number', default: 1, min: 0.01, max: 50, step: 0.1,
+        showWhen: { key: 'mode', eq: 'size' },
+      },
+      {
+        key: 'maxWidthOrHeight', label: '最长边(px)', type: 'number', default: 1920, min: 16, max: 8192,
+        showWhen: { key: 'mode', eq: 'dimensions' },
+      },
+      {
+        key: 'format', label: '输出格式', type: 'select', default: 'jpeg',
+        options: [
+          { value: 'jpeg', label: 'JPEG（小）' },
+          { value: 'webp', label: 'WebP（更小）' },
+          { value: 'png', label: 'PNG（无损）' },
+        ],
+      },
+      {
+        key: 'quality', label: '质量(0-1)', type: 'number', default: 0.8, min: 0.1, max: 1, step: 0.05,
+        showWhen: { key: 'format', in: ['jpeg', 'webp'] },
+      },
+    ],
+  },
 ];
 
 /** 按 id 取处理器元信息 */
@@ -369,6 +463,6 @@ export const BBOX_AI_SYSTEM_PROMPT = `# Role
 # Output Format
 仅输出纯 JSON 格式数据，请勿包含 markdown 以外的多余解释性文字。`;
 
-// 默认用户提示词模板（{imageUrl} 占位符会被替换成图片 http URL）
-export const BBOX_AI_USER_PROMPT = `请分析这张界面图像，按系统提示词的 JSON schema 输出检测结果。图片地址：{imageUrl}`;
+// 默认用户提示词（图片以 base64 附件形式传给 AI，不嵌 prompt 文本）
+export const BBOX_AI_USER_PROMPT = `请分析这张界面图像，按系统提示词的 JSON schema 输出检测结果。`;
 

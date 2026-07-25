@@ -134,7 +134,7 @@ export default function BBoxViewerNode({ id, data, selected }) {
         disabled={uploading || !inputUrl}
         className="w-full rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
       >
-        📦 打开 BBox 查看器
+        📦 打开 UI 拆分器
       </button>
 
       {data?.error && (

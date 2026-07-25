@@ -13,7 +13,20 @@ const VALID_NODE_TYPES = [
   'textToImage',   // 文字生成图片
   'editImage',     // 编辑图片
   'imageDisplay',  // 图片展示
-  'imageProcess',  // 图像处理
+  'imageProcess',  // 图像处理（旧单节点，兼容）
+  // 图像处理拆分节点（一个处理器 = 一个节点类型）
+  'ipGifSplit',       // GIF 拆帧
+  'ipGifMerge',       // GIF 合成
+  'ipSpriteSplit',    // Sheet 拆分
+  'ipSpriteMerge',    // Sheet 合成
+  'ipPixelate',       // 像素化
+  'ipResizeNearest',  // 最近邻缩放
+  'ipInnerStroke',    // 内描边
+  'ipChromaKey',      // 色度键抠图
+  'ipWhiteKey',       // 白底抠图
+  'ipComposeOverlay', // 图层叠加
+  'ipEnhance',        // 图片放大
+  'ipCompress',       // 图片压缩
   'imageEditor',   // 图片编辑
   'pixelEditor',   // 像素编辑器
   'uiSplitter',    // UI 拆分
@@ -25,9 +38,21 @@ const NODE_LABELS = {
   editImage: '编辑图片',
   imageDisplay: '图片展示',
   imageProcess: '图像处理',
+  ipGifSplit: 'GIF 拆帧',
+  ipGifMerge: 'GIF 合成',
+  ipSpriteSplit: 'Sheet 拆分',
+  ipSpriteMerge: 'Sheet 合成',
+  ipPixelate: '像素化',
+  ipResizeNearest: '最近邻缩放',
+  ipInnerStroke: '内描边',
+  ipChromaKey: '色度键抠图',
+  ipWhiteKey: '白底抠图',
+  ipComposeOverlay: '图层叠加',
+  ipEnhance: '图片放大',
+  ipCompress: '图片压缩',
   imageEditor: '图片编辑',
   pixelEditor: '像素编辑器',
-  uiSplitter: 'UI拆分',
+  uiSplitter: '雪碧图拆分',
   note: '便签',
 };
 

@@ -134,6 +134,31 @@ export async function getFabric() {
 }
 
 /**
+ * browser-image-compression：前端图片压缩（Web Worker，不卡 UI）。
+ * 用于 AI 分析前把大图压成 base64，减小传输体积 + 保证 AI 坐标与画布背景图同源。
+ *
+ * 加载方式（与 fabric 同款）：UMD 格式 `e.imageCompression=t()` 挂到 globalThis，
+ * 用 (0,eval)(code) 全局求值后 window.imageCompression 可用。
+ * 返回 imageCompression 函数：`const compress = await getImageCompression(); compress(file, opts)`
+ */
+export async function getImageCompression() {
+  if (window.imageCompression) return window.imageCompression;
+  const AS = window.AgentSpaces;
+  if (!AS?.srcFileUrl) throw new Error('宿主未提供 srcFileUrl 能力（需更新 web 服务）');
+  const url = AS.srcFileUrl(VENDOR_BASE + 'browser-image-compression.js');
+  const resp = await fetch(url);
+  if (!resp.ok) throw new Error(`vendor 加载失败(${resp.status}): browser-image-compression.js`);
+  const code = await resp.text();
+  // 间接 eval：全局作用域执行 UMD，e.imageCompression=t() → window.imageCompression
+  (0, eval)(code);
+  if (typeof window.imageCompression !== 'function') {
+    throw new Error('imageCompression 加载后不是函数（UMD 初始化失败）');
+  }
+  console.log('[cdn] imageCompression loaded, version:', window.imageCompression.version);
+  return window.imageCompression;
+}
+
+/**
  * img-comparison-slider：双图前后对比滑块 web component（{@link https://github.com/sneas/img-comparison-slider}）。
  *
  * 官方 dist 是 IIFE（`(()=>{...})()`），内部检查 window.document 后 `customElements.define`

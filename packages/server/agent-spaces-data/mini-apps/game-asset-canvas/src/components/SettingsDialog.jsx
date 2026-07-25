@@ -184,17 +184,17 @@ export default function SettingsDialog({ open, value, onClose, onSave }) {
                 )}
               </div>
               <div className="flex flex-col gap-1.5">
-                <Label className="text-xs font-medium">用户提示词（{`{imageUrl}`} 会被替换成图片 URL）</Label>
+                <Label className="text-xs font-medium">用户提示词（图片会以附件形式传给 AI）</Label>
                 <Textarea
                   value={cfg.bboxAiUserPrompt ?? ''}
                   onChange={(e) => setCfg((prev) => ({ ...prev, bboxAiUserPrompt: e.target.value }))}
                   rows={3}
                   className="text-xs"
-                  placeholder="请分析这张界面图：{imageUrl}"
+                  placeholder="请分析这张界面图像，按系统提示词的 JSON schema 输出检测结果。"
                 />
               </div>
               <p className="text-xs text-muted-foreground">
-                「配置 AI 模型」弹窗里设置系统提示词（检测规则）。BBox 查看器「✨ AI 分析」按钮调用此处的 agent 分析当前图，返回 JSON 自动渲染成框。
+                图片以 base64 附件形式传给视觉模型（需 agent runtime 支持，如 Claude/GPT-4o/Gemini）。「配置 AI 模型」弹窗里设置系统提示词（检测规则）。
               </p>
             </div>
           </div>
