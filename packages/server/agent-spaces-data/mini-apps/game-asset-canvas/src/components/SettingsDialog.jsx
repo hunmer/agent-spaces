@@ -248,8 +248,32 @@ export default function SettingsDialog({ open, value, onClose, onSave }) {
                   placeholder="请分析这张界面图像，按系统提示词的 JSON schema 输出检测结果。"
                 />
               </div>
+              <div className="flex flex-wrap items-end gap-3">
+                <Label className="flex flex-col gap-1">
+                  <span className="text-xs font-medium">压缩阈值 (MB)</span>
+                  <input
+                    type="number"
+                    min={0}
+                    step={0.1}
+                    value={cfg.bboxCompressThresholdMB ?? 2}
+                    onChange={(e) => setCfg((prev) => ({ ...prev, bboxCompressThresholdMB: Number(e.target.value) }))}
+                    className="h-8 w-24 rounded-md border border-border bg-background px-2 text-xs outline-none focus:border-primary"
+                  />
+                </Label>
+                <Label className="flex flex-col gap-1">
+                  <span className="text-xs font-medium">压缩目标 (MB)</span>
+                  <input
+                    type="number"
+                    min={0.01}
+                    step={0.1}
+                    value={cfg.bboxCompressTargetMB ?? 1}
+                    onChange={(e) => setCfg((prev) => ({ ...prev, bboxCompressTargetMB: Number(e.target.value) }))}
+                    className="h-8 w-24 rounded-md border border-border bg-background px-2 text-xs outline-none focus:border-primary"
+                  />
+                </Label>
+              </div>
               <p className="text-xs text-muted-foreground">
-                图片以 base64 附件形式传给视觉模型（需 agent runtime 支持，如 Claude/GPT-4o/Gemini）。「配置 AI 模型」弹窗里设置系统提示词（检测规则）。
+                图片以 base64 附件形式传给视觉模型（需 agent runtime 支持，如 Claude/GPT-4o/Gemini）。原图体积超过「压缩阈值」时才压缩，<b>仅降体积不改尺寸</b>（AI 看到的图与画布原图坐标 1:1 同源，画布预览图不被替换）；≤ 阈值时直接用原图。「配置 AI 模型」弹窗里设置系统提示词（检测规则）。
               </p>
             </div>
           </div>

@@ -502,8 +502,8 @@ GDScript 用 `print("[PXR] ...")`（经 index.js onPrint 输出，与 `index.js:
    - `mini-app-tools.ts` 的 `agent_run` 加 `images` 参数（base64 data URL 数组），execute 内转 `Attachment[]`（`{name,type,url:'data:...'}`）传给 `runtime.execute` 的 `userAttachments`
    - **只有 claude-code 和 langchain runtime 真正消费 userAttachments**（调研结论）：codex/grok/hermes/pi/open-agent-sdk 静默丢图但不报错
    - 扩展两个 runtime 的附件解析识别 data URL（短路）：`langchain-runtime.ts` 的 `toAttachmentDataUrl` 开头加 `if(url.startsWith('data:')) return url`；`claude-code-runtime/index.ts` 的 `resolveAttachmentFile` 加 data URL 分支（正则解析 mime+base64 → buffer）
-6. **🔴 AI 框错位 bug（已修复）**：根因是 AI 返回的 coords 基于「AI 看到的图」尺寸，画布背景图是 `loadImageSource` 加载的图，两者尺寸不同 → `getBBoxBasis` 的 `sx` 换算错误。**正解**：压缩后用压缩图**同时**重建 sourceRef + 更新 fabric 背景图 + 传 AI，三者同源 → 坐标 1:1 对应 → sx=1 零换算。
-7. **图片压缩（browser-image-compression）**：前端压缩减小 base64 体积 + Web Worker 不卡 UI。库放 `vendor/browser-image-compression.js`（57KB，UMD），走 `getImageCompression()` 加载器（与 getFabric 同款 `(0,eval)` 全局求值，挂 `window.imageCompression`）。压缩参数固定 `maxSizeMB:1, maxWidthOrHeight:1920, useWebWorker:true`，失败降级原图。
+6. **🔴 AI 框错位 bug（已修复）**：根因是 AI 返回的 coords 基于「AI 看到的图」尺寸，画布背景图是 `loadImageSource` 加载的原图，两者尺寸不同 → `getBBoxBasis` 的 `sx` 换算错误。**正解（已迭代，见「UI 拆分器压缩重构」轮）**：压缩时**不改尺寸**（不传 `maxWidthOrHeight`，只传 `maxSizeMB`），AI 看到的图与画布显示的原图宽高完全一致，坐标天然 1:1，**无需替换 sourceRef / fabric 背景图**。早期方案是「压缩后用压缩图同时重建 sourceRef + 更新 fabric 背景图 + 传 AI」让三者同源，现已废弃（画布预览图会被压缩图替换，体验差）。
+7. **图片压缩（browser-image-compression）**：前端压缩减小 base64 体积 + Web Worker 不卡 UI。库放 `vendor/browser-image-compression.js`（57KB，UMD），走 `getImageCompression()` 加载器（与 getFabric 同款 `(0,eval)` 全局求值，挂 `window.imageCompression`）。压缩参数：**仅** `maxSizeMB + useWebWorker`（不传 `maxWidthOrHeight` → 保持原尺寸），失败降级原图。**触发条件**：原图体积 > 阈值（默认 2MB，可在设置页「BBox AI 分析」分区调）才压缩；≤ 阈值直接转 dataUrl 不压缩。阈值/目标体积持久化到 `settings.json` 的 `bboxCompressThresholdMB` / `bboxCompressTargetMB`，经 `useDecoratedNodes` 注入 `agentConfig`，`BBoxViewerDialog.compressToDataUrl` 从 props 读取。
 8. **systemPrompt 归 agent preset**：`agent_run` 工具签名本就不接受 systemPrompt（mini-app-tools 验证），systemPrompt 是 preset 自带字段。设置页只管「选哪个 preset + 用户提示词」，preset 内部细节（含 systemPrompt）由 openAgentEditor 弹窗管理。`openAgentEditor` 的 `initialPrompt` 传 `BBOX_AI_SYSTEM_PROMPT`（用户给的完整检测规则）。
 9. **TDZ 规避**：`fitToStage` 必须声明在 `handleAiAnalyze` 之前（handleAiAnalyze 依赖数组含 fitToStage），否则 useCallback 渲染期求值引用未初始化变量报错（handoff 第 1 条坑同款）。
 10. **AI 返回 JSON 提取**：`extractJsonFromText` 兼容 ```` ```json ... ``` ```` 代码块和裸 JSON（找首个 `{` 到末个 `}`），LLM 常在 JSON 前后带解释文本。
@@ -795,7 +795,49 @@ GDScript 用 `print("[PXR] ...")`（经 index.js onPrint 输出，与 `index.js:
 - 点「AI 分析」→ 自动切到「AI思考」tab，分阶段显示「启动→压缩→分析中→返回原文」，完成后切回「元素拆分」
 - 在画布选中一个框 → 自动切到「选中信息」tab，表单显示该框的 id/type/坐标/尺寸/层级/exportSlice 等，改完点「应用修改」写回；移动/缩放框时表单坐标实时同步
 - 空状态文案引导「AI 分析 / Alt 拉框 / 导入 JSON」，不再提「载入示例」
-- 「AI 分析」按钮是 split-button（用宿主 `InputGroup`/`InputGroupAddon`/`InputGroupButton` 组件实现）：主按钮触发分析；右侧下拉箭头弹菜单，含「复制 Prompt」→ 把 userPrompt（`{imageUrl}` 占位符替换为当前图地址）+ 图片地址复制到剪贴板，复制成功显示「已复制」1.5s 后恢复
+- 「AI 分析」按钮是 split-button（用宿主 `InputGroup`/`InputGroupAddon`/`InputGroupButton` 组件实现）：主按钮触发分析；右侧下拉箭头弹菜单，含「复制 Prompt」→ 复制内容含 **systemPrompt + userPrompt（`{imageUrl}` 占位符替换为当前图地址）+ 图片地址** 三段（systemPrompt 通过实时调 `list_agent_presets` 按 id 查 preset 拉取），复制成功显示「已复制」1.5s 后恢复
+
+## list_agent_presets 增加 systemPrompt/outputStyle（本轮新增，宿主层需重启 web）
+
+为支持「复制 Prompt」一并复制 agent 初始化提示词，`list_agent_presets` 的返回 map 增加 `systemPrompt` 和 `outputStyle` 两个字段（原仅 id/name/runtimeKind/modelProvider/modelId/description）。
+
+### 改动文件（宿主层，需重启 web）
+- `packages/server/src/services/builtin-tools/mini-app-tools.ts`：`list_agent_presets` 的 `presets.map` 加 `systemPrompt: p.systemPrompt || ''` + `outputStyle: p.outputStyle || ''`
+
+### 消费方
+- `BBoxViewerDialog.handleCopyPrompt`：复制前调 `list_agent_presets` 按 `agentConfig.id` 查 preset 拿 systemPrompt，拼到剪贴板文本（systemPrompt + userPrompt + 图片地址）。拉取失败时降级仅复制 userPrompt + 图片地址（不阻塞复制）。
+
+### 验收要点
+- 重启 web 后，UI 拆分器「复制 Prompt」剪贴板内容含三段：`# Agent 系统提示词` / `# 分析布局 Prompt` / `# 图片地址`
+- 未重启 web 时 systemPrompt 段显示「(未配置或未读取到 systemPrompt)」，userPrompt + 图片地址仍正常复制（降级）
+
+## UI 拆分器压缩重构（本轮新增）
+
+修复 AI 分析压缩逻辑：压缩目的仅为减小传给 AI 的 base64 体积，不应改尺寸、不应替换画布预览图。
+
+### 关键决策与已踩坑（务必遵守）
+
+1. **压缩不改尺寸（核心）**：`browser-image-compression` 选项**只传** `maxSizeMB + useWebWorker`，**不传** `maxWidthOrHeight` → 尺寸保持原图，仅按体积降质量。这样 AI 看到的图与画布显示的原图宽高完全一致，坐标天然 1:1，**无需替换 sourceRef / fabric 背景图**。废弃早期「压缩后用压缩图重建 sourceRef + 更新背景图」方案（该方案画布预览图被压缩图替换，体验差）。
+2. **触发阈值（默认 2MB）**：原图体积 ≤ 阈值直接转 dataUrl 不压缩；> 阈值才压缩。小图不浪费 CPU。
+3. **阈值/目标可配置（设置页）**：`bboxCompressThresholdMB`（默认 2）/ `bboxCompressTargetMB`（默认 1）存 `settings.json`，设置页「BBox AI 分析」分区加两个 number 输入（step 0.1）。经 `useDecoratedNodes` 注入 `agentConfig`，`BBoxViewerDialog.compressToDataUrl(url, {thresholdMB, targetMB})` 从 props 读，未配置兜底 2/1。
+4. **画布预览图永不替换**：`handleAiAnalyze` 不再重建 sourceRef、不再 `fc.setBackgroundImage`，画布始终显示原图；AI 返回坐标基于原图尺寸，`applyJsonData` 的 `getBBoxBasis` sx=1 零换算。
+5. **AI 思考文案更新**：原「压缩图片中…」改为「准备图片中（原图超过阈值时压缩体积，不改尺寸）…」，避免误导。
+
+### 改动文件（mini-app 内，刷新即生效，无宿主改动）
+
+- `src/components/BBoxViewerDialog.jsx`：
+  - `compressToDataUrl(url, opts)` 加 `thresholdMB`/`targetMB` 参数 + 阈值判断（≤阈值直接转 dataUrl）；压缩选项去掉 `maxWidthOrHeight`（保持尺寸）；提取 `blobToDataUrl` 公用
+  - `handleAiAnalyze` 删除「重建 sourceRef + 重设 fabric 背景图」整段；删除未用的 `fc`/`fabric` 局部变量；调用 `compressToDataUrl` 传 `ac.compressThresholdMB`/`ac.compressTargetMB`；deps 去掉 `fitToStage`（init 仍用，保留声明）
+- `src/utils/settings.js`：`DEFAULT_SETTINGS` 加 `bboxCompressThresholdMB:2` / `bboxCompressTargetMB:1`
+- `src/components/SettingsDialog.jsx`：BBox AI 分析分区加「压缩阈值 (MB)」「压缩目标 (MB)」两个 number 输入（受控 `cfg`），底部说明改文案
+- `src/hooks/useDecoratedNodes.js`：`agentConfig` 注入多带 `compressThresholdMB`/`compressTargetMB`（从 settings 读，Number 兜底）
+
+### 验收要点
+
+- 设置页「BBox AI 分析」分区出现「压缩阈值 (MB)」「压缩目标 (MB)」两个输入，默认 2 / 1，可改且刷新后保留
+- 上传 ≤ 阈值的图点 AI 分析：不压缩，画布图无差异，AI 思考 tab 不出现「压缩」过程
+- 上传 > 阈值的图点 AI 分析：AI 思考 tab 显示压缩过程，**画布预览图保持原图清晰度不被替换**，AI 返回框与图片内容完全吻合（尺寸未变）
+- F12 查 fabric 背景图 naturalWidth/Height：AI 分析前后一致（未被压缩图替换）
 
 ## 后续可做
 
@@ -822,7 +864,6 @@ GDScript 用 `print("[PXR] ...")`（经 index.js onPrint 输出，与 `index.js:
 - 像素编辑器：fps / 画布尺寸参数暴露到对话框（当前导出帧不导出 fps）
 - 像素编辑器：清理 GDScript/JSX 里保留的 `[PXR]`/`[pxr-parent]` 诊断日志（功能稳定后）
 - 像素编辑器：D:\Pixelorama 源码改动未 commit（git 仓库），如需保留可单独提交
-- BBox 查看：压缩参数（maxSizeMB/maxWidthOrHeight）暴露到设置页（当前固定 1MB/1920px）
 - BBox 查看：压缩后状态栏显示「原图 X MB → 压缩 Y MB」让用户感知效果
 - BBox 查看：多图批量 AI 分析（当前单图）
 - BBox 查看：手动框（无 depth）当前默认 PALETTE[0]，可加「手动框固定橙色」区分

@@ -44,34 +44,44 @@ function extractJsonFromText(text) {
   throw new Error('AI 未返回有效 JSON');
 }
 
-// 把图片 URL 压缩后转 base64 data URL（附件通道传给视觉模型 + 同步画布背景图保证坐标同源）
-// browser-image-compression Web Worker 压缩，大图不卡 UI；失败时降级用原图
-async function compressToDataUrl(url) {
+// 把图片 URL 转 base64 data URL 传给视觉模型附件通道。
+// 仅在原图体积超过阈值时做压缩，且只降质量不改尺寸（maxWidthOrHeight 不传 = 保持原尺寸），
+// 这样 AI 看到的图与画布显示的原图坐标体系天然 1:1，无需替换画布背景图。
+// browser-image-compression 走 Web Worker，大图不卡 UI；压缩失败降级用原图。
+// 阈值/目标由设置页传入（agentConfig.compressThresholdMB / compressTargetMB），未配置时兜底 2MB/1MB。
+const DEFAULT_COMPRESS_THRESHOLD_MB = 2;
+const DEFAULT_COMPRESS_TARGET_MB = 1;
+function blobToDataUrl(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(new Error('图片转 base64 失败'));
+    reader.readAsDataURL(blob);
+  });
+}
+async function compressToDataUrl(url, opts = {}) {
+  const thresholdMB = Number(opts.thresholdMB) || DEFAULT_COMPRESS_THRESHOLD_MB;
+  const targetMB = Number(opts.targetMB) || DEFAULT_COMPRESS_TARGET_MB;
   const resp = await fetch(url);
   if (!resp.ok) throw new Error(`读取图片失败(${resp.status})`);
   const blob = await resp.blob();
+  const sizeMB = blob.size / (1024 * 1024);
+  // 小图（≤ 阈值）直接转 dataUrl，无需压缩
+  if (sizeMB <= thresholdMB) {
+    return await blobToDataUrl(blob);
+  }
   const file = new File([blob], 'image', { type: blob.type || 'image/png' });
   try {
     const compress = await getImageCompression();
+    // 仅传 maxSizeMB + useWebWorker，不传 maxWidthOrHeight → 尺寸不变，仅按体积降质量
     const compressed = await compress(file, {
-      maxSizeMB: 1,
-      maxWidthOrHeight: 1920,
+      maxSizeMB: targetMB,
       useWebWorker: true,
     });
-    return await new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result);
-      reader.onerror = () => reject(new Error('压缩图转 base64 失败'));
-      reader.readAsDataURL(compressed);
-    });
+    return await blobToDataUrl(compressed);
   } catch (err) {
     console.warn('[bbox-viewer] 压缩失败，降级用原图:', err?.message || err);
-    return await new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result);
-      reader.onerror = () => reject(new Error('图片转 base64 失败'));
-      reader.readAsDataURL(blob);
-    });
+    return await blobToDataUrl(blob);
   }
 }
 
@@ -236,21 +246,33 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
   }, [colorMode]);
 
   // ============ JSON 解析：递归 children + 配色 ============
-  // schema: { title, elements:[{id,type,label,coords:[x,y,w,h],parentId,exportSlice,ocrText,textRole,children}] }
+  // 支持：
+  // 1) { title, elements:[{id,type,label,coords:[x,y,w,h],parentId,exportSlice,ocrText,textRole,children}] }
+  // 2) { ui_elements:[{id,label,bbox_2d:[x1,y1,x2,y2],children}] }
   // 统一输出：{ box:{x,y,width,height}, meta:{id,label,depth,color,type,exportSlice,ocrText,textRole} }
   const flatten = useCallback((els, depth, parentColor, out) => {
+    const toBox = (el) => {
+      if (Array.isArray(el?.bbox_2d) && el.bbox_2d.length >= 4) {
+        const [x1, y1, x2, y2] = el.bbox_2d.map(Number);
+        return { x: x1, y: y1, width: x2 - x1, height: y2 - y1 };
+      }
+      if (Array.isArray(el?.coords) && el.coords.length >= 4) {
+        const [x, y, w, h] = el.coords.map(Number);
+        return { x, y, width: w, height: h };
+      }
+      return null;
+    };
     const walk = (list, d, pColor) => {
       for (const el of list) {
-        const coords = Array.isArray(el?.coords) ? el.coords : null;
-        if (!coords || coords.length < 4) {
-          // 无 coords 但有 children：容器节点向下传递（保持父级色）
+        const box = toBox(el);
+        if (!box || !Number.isFinite(box.x) || !Number.isFinite(box.y) || box.width <= 0 || box.height <= 0) {
+          // 无有效坐标但有 children：容器节点向下传递（保持父级色）
           if (el?.children) walk(el.children, d, pColor);
           continue;
         }
-        const [x, y, w, h] = coords;
         const color = getColor(d, pColor, out.length);
         out.push({
-          box: { x, y, width: w, height: h },
+          box,
           meta: {
             id: el.id || '',
             label: el.label || '',
@@ -362,9 +384,11 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
   const applyJsonData = useCallback((data) => {
     const fc = fcRef.current;
     if (!fc) return;
-    const els = Array.isArray(data?.elements) ? data.elements : (Array.isArray(data) ? data : []);
+    const els = Array.isArray(data?.elements)
+      ? data.elements
+      : (Array.isArray(data?.ui_elements) ? data.ui_elements : (Array.isArray(data) ? data : []));
     if (!els.length) {
-      setStatus(data?.title ? `已加载标题「${data.title}」但无 elements` : 'JSON 无 elements');
+      setStatus(data?.title ? `已加载标题「${data.title}」但无 elements/ui_elements` : 'JSON 无 elements/ui_elements');
       return;
     }
     const all = flatten(els, 0, null, []);
@@ -445,16 +469,32 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
     fc.requestRenderAll();
   }, []);
 
-  // ============ 复制 AI 分析 prompt（prompt + 图片地址）到剪贴板 ============
+  // ============ 复制 AI 分析 prompt（systemPrompt + userPrompt + 图片地址）到剪贴板 ============
   const handleCopyPrompt = useCallback(async () => {
+    const AS = window.AgentSpaces;
     const ac = agentConfigRef.current;
-    const prompt = (ac?.userPrompt || '').replace(/\{imageUrl\}/g, imageUrl || '').trim();
+    const userPrompt = (ac?.userPrompt || '').replace(/\{imageUrl\}/g, imageUrl || '').trim();
     const url = imageUrl || '';
+    // systemPrompt 归 agent preset，需调 list_agent_presets 实时拉取（host 层已扩展返回该字段）
+    let systemPrompt = '';
+    if (AS?.callPluginTool && ac?.id) {
+      try {
+        const ret = await AS.callPluginTool(BUILTIN_PLUGIN, 'list_agent_presets', {});
+        const presets = ret?.presets || ret?.result?.presets || [];
+        const p = presets.find((x) => x?.id === ac.id);
+        systemPrompt = p?.systemPrompt || '';
+      } catch (err) {
+        console.warn('[bbox-viewer] 拉 systemPrompt 失败，仅复制 userPrompt:', err?.message || err);
+      }
+    }
     const text = [
-      '【分析布局 Prompt】',
-      prompt || '(未配置 userPrompt)',
+      '# Agent 系统提示词 (systemPrompt)',
+      systemPrompt || '(未配置或未读取到 systemPrompt)',
       '',
-      '【图片地址】',
+      '# 分析布局 Prompt (userPrompt)',
+      userPrompt || '(未配置 userPrompt)',
+      '',
+      '# 图片地址',
       url || '(未加载图片)',
     ].join('\n');
     try {
@@ -472,7 +512,7 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
         document.body.removeChild(ta);
       }
       setPromptCopied(true);
-      setStatus('已复制 Prompt + 图片地址到剪贴板');
+      setStatus('已复制 systemPrompt + userPrompt + 图片地址到剪贴板');
       setTimeout(() => setPromptCopied(false), 1500);
     } catch (err) {
       console.error('[bbox-viewer] copy prompt failed:', err);
@@ -484,8 +524,6 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
   const handleAiAnalyze = useCallback(async () => {
     const AS = window.AgentSpaces;
     const ac = agentConfigRef.current;
-    const fc = fcRef.current;
-    const fabric = fabricLibRef.current;
     if (!AS?.callPluginTool) { setError('宿主 callPluginTool 不可用'); return; }
     if (!imageUrl) { setError('图片未加载'); return; }
     if (!ac?.id) {
@@ -497,29 +535,17 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
     // 切到「AI思考过程」tab
     setRightTab('ai');
     setAiThought('### AI 分析任务启动\n\n- **Agent**：`' + (ac?.id || '?') + '`');
-    setStatus('✨ 压缩图片中…');
+    setStatus('✨ 准备图片中…');
     try {
-      setAiThought((t) => t + '\n\n⏳ 压缩图片中（Web Worker，不卡 UI）…');
-      // 1. 压缩原图 → dataUrl（Web Worker，不卡 UI；失败降级用原图）
-      const dataUrl = await compressToDataUrl(imageUrl);
-      setAiThought((t) => t + '\n✅ 图片已压缩，传给视觉模型。');
-      // 2. 用压缩图重建 sourceRef + 更新 fabric 背景图，保证 AI 坐标与画布严格 1:1 同源（修复错位 bug）
-      const newSource = await loadImageSource(dataUrl);
-      sourceRef.current = newSource;
-      if (fc && fabric) {
-        await new Promise((resolve) => {
-          fabric.Image.fromURL(dataUrl, (img) => {
-            img.selectable = false;
-            img.evented = false;
-            fc.setBackgroundImage(img, () => {
-              fitToStage();
-              fc.renderAll();
-              resolve();
-            });
-          });
-        });
-      }
-      // 3. 传压缩图给 AI（坐标基于压缩图，与画布背景图同源）
+      // 1. 原图 >2MB 才压缩（仅降体积、不改尺寸），否则直接用原图 dataUrl
+      //    压缩不改尺寸 → AI 看到的图与画布显示的原图坐标 1:1 同源，画布背景图/sourceRef 保持原图不变
+      setAiThought((t) => t + '\n\n⏳ 准备图片中（原图超过阈值时压缩体积，不改尺寸）…');
+      const dataUrl = await compressToDataUrl(imageUrl, {
+        thresholdMB: ac.compressThresholdMB,
+        targetMB: ac.compressTargetMB,
+      });
+      setAiThought((t) => t + '\n✅ 图片已就绪，传给视觉模型（画布仍显示原图）。');
+      // 2. 传图给 AI（坐标基于原图尺寸，与画布背景图同源，sx=1 零换算）
       setStatus('✨ AI 分析中（可能需要数十秒）…');
       setAiThought((t) => t + '\n\n🤖 调用视觉模型分析中（可能需要数十秒）…');
       const userPrompt = (ac.userPrompt || '').replace(/\{imageUrl\}/g, ''); // 兼容旧模板里的占位符
@@ -539,7 +565,7 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
         const errMsg = ret.error?.message || ret.error || ret.message || '调用失败';
         throw new Error(typeof errMsg === 'string' ? errMsg : JSON.stringify(errMsg));
       }
-      // 4. 解析返回 JSON → 渲染框（sourceRef 已是压缩图，sx=1 零换算）
+      // 3. 解析返回 JSON → 渲染框（AI 坐标基于原图尺寸，与画布同源，sx=1 零换算）
       const raw = ret?.result || ret?.output || (typeof ret === 'string' ? ret : '') || '';
       setAiThought((t) => t + '\n\n### AI 返回原文\n\n' + (raw || '(空)'));
       let data;
@@ -566,7 +592,7 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
     } finally {
       setAnalyzing(false);
     }
-  }, [imageUrl, applyJsonData, fitToStage]);
+  }, [imageUrl, applyJsonData]);
 
   // ============ 切换图例高亮 ============
   const highlightBox = useCallback((idx) => {

@@ -34,6 +34,9 @@ export const DEFAULT_SETTINGS = {
   bboxAgentConfigId: '',
   bboxAgentName: '',
   bboxAiUserPrompt: BBOX_AI_USER_PROMPT,
+  // 图片压缩：仅原图体积超过阈值（MB）才压缩，只降体积不改尺寸，传给 AI 的 base64 附件更小
+  bboxCompressThresholdMB: 2,   // 触发压缩的原图体积阈值（MB）；≤ 该值不压缩
+  bboxCompressTargetMB: 1,      // 压缩目标体积（MB），仅降质量不改尺寸
   // 反推提示词（agent_run 多图；systemPrompt 归 agent preset 自带，不在此重复配置）
   promptReverseAgentConfigId: '',
   promptReverseAgentName: '',

@@ -570,6 +570,8 @@ const BUILTIN_TOOLS: BuiltinToolDefinition[] = [
           modelProvider: p.modelProvider,
           modelId: p.modelId,
           description: p.description,
+          systemPrompt: p.systemPrompt || '',
+          outputStyle: p.outputStyle || '',
         })),
       };
     },

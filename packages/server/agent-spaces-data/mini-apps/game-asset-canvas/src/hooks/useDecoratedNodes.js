@@ -65,6 +65,8 @@ export default function useDecoratedNodes({ nodes, edges, selectionCount, settin
           agentConfig: nd.type === NODE_TYPES.bboxViewer ? {
             id: settings.bboxAgentConfigId || '',
             userPrompt: settings.bboxAiUserPrompt || '',
+            compressThresholdMB: Number(settings.bboxCompressThresholdMB) || 0,
+            compressTargetMB: Number(settings.bboxCompressTargetMB) || 0,
           } : undefined,
         },
       };

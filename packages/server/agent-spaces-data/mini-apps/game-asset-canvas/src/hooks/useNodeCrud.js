@@ -34,6 +34,7 @@ export default function useNodeCrud({
   nodes, edges, setNodes, setEdges, setGroups,
   reactFlow, selectedId, setSelectedId, updateNodeData, settings, submit,
   setDropNodeMenu, setContextMenu,
+  getViewportCenter,
 }) {
   const dragTypeRef = useRef(null);
 
@@ -92,10 +93,15 @@ export default function useNodeCrud({
     });
   }, [reactFlow, createNodeAt, setEdges, setDropNodeMenu]);
 
-  // 点击添加（默认位置，偏移错落）
+  // 点击添加：定位到画布可视区域中心（由调用方提供屏幕中心坐标，hook 内转 flow 坐标）
   const handleAdd = useCallback((type) => {
-    createNodeAt(type, null);
-  }, [createNodeAt]);
+    let position = null;
+    if (getViewportCenter && reactFlow.screenToFlowPosition) {
+      const center = getViewportCenter();
+      if (center) position = reactFlow.screenToFlowPosition(center);
+    }
+    createNodeAt(type, position);
+  }, [createNodeAt, reactFlow, getViewportCenter]);
 
   // 拖拽起始（右侧新增节点列表的 button 上 onDragStart 调用）—— 记录类型
   const handleDragStartNode = useCallback((type, event) => {

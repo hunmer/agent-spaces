@@ -123,10 +123,18 @@ export default function Canvas() {
   });
 
   // —— 节点 CRUD + 定位/布局/导出 + 尺寸自适应 + 表单提交 ——
+  // 画布容器屏幕中心点（供 handleAdd 定位新节点到视口中心）
+  const getViewportCenter = useCallback(() => {
+    const el = wrappingRef.current;
+    if (!el) return null;
+    const rect = el.getBoundingClientRect();
+    return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+  }, []);
   const crud = useNodeCrud({
     nodes, edges, setNodes, setEdges, setGroups,
     reactFlow, selectedId, setSelectedId, updateNodeData, settings, submit,
     setDropNodeMenu, setContextMenu,
+    getViewportCenter,
   });
 
   // —— 节点执行回调（工作流/媒体/本地算法/抠图/反推提示词）——

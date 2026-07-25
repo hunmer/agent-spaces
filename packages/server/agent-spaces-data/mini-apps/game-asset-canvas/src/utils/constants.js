@@ -449,11 +449,12 @@ export const BBOX_AI_SYSTEM_PROMPT = `# Role
    - \`type\`: 元素类型，必须从以下限定集合中选择：
      \`"Panel"\`, \`"Button"\`, \`"Image"\`, \`"Text"\`, \`"Icon"\`, \`"HealthBar"\`, \`"Character"\`
    - \`label\`: 英文描述标签，简要说明该元素功能（如 \`"player info panel"\`, \`"gold icon"\`, \`"attack button"\` 等）。
-   - \`coords\`: 边界框坐标数组，格式为 \`[x, y, width, height]\`（像素值）：
+   - \`coords\`: 边界框坐标数组，格式为 \`[x, y, width, height]\`（必须基于输入图片原始像素尺寸）：
      - \`x\`: 左上角横坐标
      - \`y\`: 左上角纵坐标
      - \`width\`: 宽度
      - \`height\`: 高度
+     - 不要重采样、拉伸或假设图片是 1280x720、1920x1080、1000x1000；只按实际输入图像的像素坐标输出。
    - \`parentId\`: 父节点的 \`id\`（若为顶层根节点，则为 \`null\`；若为嵌套子节点，填入父节点 ID）。
    - \`exportSlice\`: 布尔值 (\`true\` 或 \`false\`)。独立切片资产（如按钮、图标、角色、独立图片/卡片）设为 \`true\`；容器面板、纯文本和血条等动态 UI 设为 \`false\`。
    - \`ocrText\` (仅针对包含文本的元素，可选): 识别到的实际文本内容（如 \`"艾尔文 Lv. 24"\`, \`"1280/1280"\`, \`"攻击"\`）。
@@ -617,6 +618,5 @@ export function defaultCutoutParams(mode) {
   for (const p of params) out[p.key] = p.default;
   return out;
 }
-
 
 
