@@ -914,6 +914,39 @@
     ]
   },
   {
+    "id": "workflow.rembg",
+    "name": "Rembg Background Removal",
+    "version": "1.0.0",
+    "description": "One-click background removal via Rembg HTTP service. Supports URL/local file input, multiple segmentation models, Alpha Matting, solid background color, mask output and batch processing.",
+    "author": {
+      "name": "workflow"
+    },
+    "tags": [
+      "Image",
+      "Background Removal",
+      "Rembg",
+      "Matting"
+    ],
+    "type": "server",
+    "hasView": false,
+    "hasWorkflow": true,
+    "path": "rembg",
+    "iconUrl": "plugins/rembg/icon.png",
+    "md5": "eb66a213802126ec931cee66ee4d2d7c",
+    "updatedAt": "2026-07-25T09:35:07.084Z",
+    "files": [
+      "actions.js",
+      "icon.png",
+      "info.json",
+      "lang.json",
+      "main.js",
+      "README.md",
+      "shared.js",
+      "tools.js",
+      "workflow.js"
+    ]
+  },
+  {
     "id": "workflow.suno",
     "name": "Suno AI Music",
     "version": "1.0.0",

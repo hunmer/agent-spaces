@@ -13,6 +13,7 @@ import type { MiniAppAgentConfig } from "@agent-spaces/sdk";
  * 因此这里用本地 Record 类型承载读写，避免破坏 SDK 类型契约。
  */
 type MiniAppAgentRecord = MiniAppAgentConfig & {
+  runtimeKind?: AgentConfig["runtimeKind"];
   suggestions?: string[];
 };
 
@@ -36,7 +37,7 @@ export function miniAppConfigToAgentPreset(config: MiniAppAgentConfig): AgentPre
     name: config.name || "Agent",
     role: "agent",
     description: "",
-    runtimeKind: "langchain",
+    runtimeKind: record.runtimeKind,
     modelProvider: (config.modelProvider as AgentConfig["modelProvider"]) || undefined,
     providerId: config.providerId || "",
     modelId: config.modelId || "",
@@ -74,6 +75,7 @@ export function agentPresetToMiniAppConfig(
     name: preset.name,
     avatar: preset.icon || preset.avatarUrl || undefined,
     agentId: original.agentId,
+    runtimeKind: preset.runtimeKind,
     modelProvider: preset.modelProvider || undefined,
     providerId: preset.providerId || undefined,
     modelId: preset.modelId || undefined,

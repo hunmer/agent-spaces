@@ -621,6 +621,7 @@ router.put('/:id/agents/:agentId', (req: Request<{ id: string; agentId: string }
       name: String(body.name).trim(),
       avatar: typeof body.avatar === 'string' ? body.avatar : undefined,
       agentId: typeof body.agentId === 'string' ? body.agentId : undefined,
+      runtimeKind: isMiniAppRuntimeKind(body.runtimeKind) ? body.runtimeKind : undefined,
       modelProvider: typeof body.modelProvider === 'string' ? body.modelProvider : undefined,
       providerId: typeof body.providerId === 'string' ? body.providerId : undefined,
       modelId: typeof body.modelId === 'string' ? body.modelId : undefined,
@@ -644,6 +645,17 @@ router.put('/:id/agents/:agentId', (req: Request<{ id: string; agentId: string }
 // 本地文件代理：mini-app 预览代码用 <img src> 访问任意本地绝对路径的图片/视频/音频。
 // Eagle 等本地资源库场景：缩略图/原图位于资源库目录下，浏览器无法直接读 file://。
 // 鉴权由 auth 中间件通过 query token 放行（见 middleware/auth.ts）。
+function isMiniAppRuntimeKind(value: unknown): value is 'open-agent-sdk' | 'claude-code' | 'codex' | 'grok' | 'gemini-cli' | 'langchain' | 'hermes' | 'pi' {
+  return value === 'open-agent-sdk'
+    || value === 'claude-code'
+    || value === 'codex'
+    || value === 'grok'
+    || value === 'gemini-cli'
+    || value === 'langchain'
+    || value === 'hermes'
+    || value === 'pi';
+}
+
 const LOCAL_FILE_MIME: Record<string, string> = {
   '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.gif': 'image/gif',
   '.webp': 'image/webp', '.svg': 'image/svg+xml', '.bmp': 'image/bmp', '.ico': 'image/x-icon',

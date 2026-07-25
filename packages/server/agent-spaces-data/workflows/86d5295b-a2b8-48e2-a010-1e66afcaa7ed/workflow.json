@@ -1,0 +1,127 @@
+{
+  "id": "86d5295b-a2b8-48e2-a010-1e66afcaa7ed",
+  "name": "rembg",
+  "type": "normal",
+  "folderId": null,
+  "nodes": [
+    {
+      "id": "node_1784971941983_start",
+      "type": "start",
+      "label": "Start",
+      "position": {
+        "x": 250,
+        "y": 50
+      },
+      "data": {}
+    },
+    {
+      "id": "node_1784971941983_end",
+      "type": "end",
+      "label": "End",
+      "position": {
+        "x": 250,
+        "y": 400
+      },
+      "data": {}
+    },
+    {
+      "id": "node_1784972031921_p6lq0l",
+      "type": "rembg_remove",
+      "label": "去除背景",
+      "position": {
+        "x": 330,
+        "y": 180
+      },
+      "data": {
+        "baseUrl": "{{ __config__[\"workflow.rembg\"[\"baseUrl\"]}}",
+        "model": "{{ __config__[\"workflow.rembg\"[\"model\"]}}",
+        "timeout": "{{ __config__[\"workflow.rembg\"[\"timeout\"]}}",
+        "outputs": [
+          {
+            "key": "success",
+            "type": "boolean",
+            "dataType": "boolean"
+          },
+          {
+            "key": "message",
+            "type": "string"
+          },
+          {
+            "key": "data",
+            "type": "object",
+            "dataType": "object",
+            "children": [
+              {
+                "key": "imageUrl",
+                "type": "string"
+              },
+              {
+                "key": "size",
+                "type": "number",
+                "dataType": "number"
+              },
+              {
+                "key": "model",
+                "type": "string"
+              }
+            ]
+          }
+        ],
+        "image": "http://127.0.0.1:3000/static/uploads/game_ui_avatar_Player_Character_Portrait_avat-0b50f96e-7627-4af6-a0e9-6ddc9e7c1bc9.png"
+      }
+    },
+    {
+      "id": "node_1784972149490_ugdp3x",
+      "type": "rembg_mask",
+      "label": "生成掩码",
+      "position": {
+        "x": 735,
+        "y": 225
+      },
+      "data": {
+        "baseUrl": "{{ __config__[\"workflow.rembg\"[\"baseUrl\"]}}",
+        "model": "{{ __config__[\"workflow.rembg\"[\"model\"]}}",
+        "timeout": "{{ __config__[\"workflow.rembg\"[\"timeout\"]}}",
+        "outputs": [
+          {
+            "key": "success",
+            "type": "boolean",
+            "dataType": "boolean"
+          },
+          {
+            "key": "message",
+            "type": "string"
+          },
+          {
+            "key": "data",
+            "type": "object",
+            "dataType": "object",
+            "children": [
+              {
+                "key": "imageUrl",
+                "type": "string"
+              },
+              {
+                "key": "size",
+                "type": "number",
+                "dataType": "number"
+              },
+              {
+                "key": "model",
+                "type": "string"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [],
+  "createdAt": 1784971941987,
+  "updatedAt": 1784972187152,
+  "published": false,
+  "lastOpenedAt": 1784971955334,
+  "enabledPlugins": [
+    "workflow.rembg"
+  ]
+}

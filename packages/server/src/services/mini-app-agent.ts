@@ -7,7 +7,7 @@ import { broadcastToWorkspace } from '../ws/connection-manager.js';
 import { executePluginTool } from './plugin.js';
 import { createBuiltinPluginApi } from './plugin-runtime-api.js';
 import { createAgentRuntime } from '../adapters/agent-runtime.js';
-import type { AgentRuntimeConfig, AgentRuntimeEvent, AgentFunctionTool } from '../adapters/agent-runtime-types.js';
+import type { AgentRuntimeConfig, AgentRuntimeEvent, AgentFunctionTool, AgentRuntimeKind } from '../adapters/agent-runtime-types.js';
 import { createMiniAppFunctionTools } from './builtin-tools/mini-app-tools.js';
 import { listPresets } from './agent.js';
 import { listProviders } from '../storage/llm-store.js';
@@ -31,6 +31,7 @@ export interface MiniAppToolSpec {
 }
 
 const miniAppToolRegistry = new Map<string, Record<string, MiniAppToolSpec>>();
+const VALID_RUNTIME_KINDS = new Set<AgentRuntimeKind>(['open-agent-sdk', 'claude-code', 'codex', 'grok', 'gemini-cli', 'langchain', 'hermes', 'pi']);
 
 /**
  * 编译 src/api.js：剥离 import 行（api.js 不依赖外部模块），把 ESM `export default`
@@ -208,6 +209,7 @@ export function createMiniAppToolsCatalogTool(currentProjectId: string): AgentFu
 }
 
 export interface ResolvedAgentCredentials {
+  runtimeKind: AgentRuntimeKind;
   modelProvider?: string;
   providerId?: string;
   modelId?: string;
@@ -228,6 +230,7 @@ export interface ResolvedAgentCredentials {
 export function resolveAgentCredentials(
   entry: {
     agentId?: string;
+    runtimeKind?: string;
     modelProvider?: string;
     providerId?: string;
     modelId?: string;
@@ -239,6 +242,7 @@ export function resolveAgentCredentials(
   },
   presets: Array<{
     id: string;
+    runtimeKind?: string;
     modelProvider?: string;
     providerId?: string;
     modelId?: string;
@@ -252,6 +256,7 @@ export function resolveAgentCredentials(
   const preset = entry.agentId ? presets.find((p) => p.id === entry.agentId) : undefined;
   const provider = resolveProvider(entry.providerId, entry.apiBase, entry.apiKey);
   return {
+    runtimeKind: normalizeRuntimeKind(entry.runtimeKind ?? preset?.runtimeKind),
     modelProvider: entry.modelProvider ?? preset?.modelProvider,
     providerId: entry.providerId ?? preset?.providerId,
     modelId: entry.modelId ?? preset?.modelId,
@@ -261,6 +266,10 @@ export function resolveAgentCredentials(
     temperature: entry.temperature ?? preset?.temperature,
     maxTokens: entry.maxTokens ?? preset?.maxTokens,
   };
+}
+
+function normalizeRuntimeKind(value?: string): AgentRuntimeKind {
+  return VALID_RUNTIME_KINDS.has(value as AgentRuntimeKind) ? value as AgentRuntimeKind : 'langchain';
 }
 
 function resolveProvider(providerId?: string, apiBase?: string, apiKey?: string) {
@@ -310,6 +319,7 @@ export async function runMiniAppAgent(input: MiniAppAgentRunInput): Promise<Mini
   const entry = configs.find((c: any) => c && c.id === agentId) as
     | {
         id: string; name: string; avatar?: string; agentId?: string;
+        runtimeKind?: string;
         modelProvider?: string; providerId?: string; modelId?: string; apiKey?: string; apiBase?: string;
         systemPrompt?: string; temperature?: number; maxTokens?: number;
         tools?: { api?: boolean; plugin?: boolean };
@@ -320,7 +330,7 @@ export async function runMiniAppAgent(input: MiniAppAgentRunInput): Promise<Mini
   const creds = resolveAgentCredentials(entry, listPresets('') as any);
 
   const runtimeConfig: AgentRuntimeConfig = {
-    kind: 'langchain',
+    kind: creds.runtimeKind,
     ...(creds.modelProvider ? { provider: creds.modelProvider as AgentRuntimeConfig['provider'] } : {}),
     ...(creds.modelId ? { model: creds.modelId } : {}),
     ...(creds.apiKey ? { apiKey: creds.apiKey } : {}),

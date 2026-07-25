@@ -30,6 +30,7 @@ export interface MiniAppAgentConfig {
   avatar?: string;
   /** 引用全局 Agent Preset id，复用其密钥（可选） */
   agentId?: string;
+  runtimeKind?: 'open-agent-sdk' | 'claude-code' | 'codex' | 'grok' | 'gemini-cli' | 'langchain' | 'hermes' | 'pi';
   modelProvider?: string;
   providerId?: string;
   modelId?: string;

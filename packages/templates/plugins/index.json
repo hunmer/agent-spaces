@@ -915,6 +915,39 @@
     ]
   },
   {
+    "id": "workflow.rembg",
+    "name": "Rembg 抠图",
+    "version": "1.0.0",
+    "description": "基于 Rembg HTTP 服务的一键去背景/抠图，支持从 URL 或本地文件处理、多种分割模型、Alpha Matting、纯色背景、黑白掩码与批量处理",
+    "author": {
+      "name": "workflow"
+    },
+    "tags": [
+      "图片处理",
+      "抠图",
+      "去背景",
+      "Rembg"
+    ],
+    "type": "server",
+    "hasView": false,
+    "hasWorkflow": true,
+    "path": "rembg",
+    "iconUrl": "plugins/rembg/icon.png",
+    "md5": "eb66a213802126ec931cee66ee4d2d7c",
+    "updatedAt": "2026-07-25T09:35:07.084Z",
+    "files": [
+      "actions.js",
+      "icon.png",
+      "info.json",
+      "lang.json",
+      "main.js",
+      "README.md",
+      "shared.js",
+      "tools.js",
+      "workflow.js"
+    ]
+  },
+  {
     "id": "workflow.suno",
     "name": "Suno AI 音乐生成",
     "version": "1.0.0",

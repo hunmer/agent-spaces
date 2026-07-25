@@ -1,8 +1,8 @@
 {
   "layout": {
-    "canvas-main": 77.888,
-    "canvas-right": 22.112
+    "canvas-main": 72,
+    "canvas-right": 28
   },
-  "showMinimap": false,
-  "savedAt": 1784967323399
+  "showMinimap": true,
+  "savedAt": 1784971939925
 }
