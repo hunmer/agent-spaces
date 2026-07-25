@@ -142,6 +142,8 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
   const agentConfigRef = useRef(agentConfig);
   agentConfigRef.current = agentConfig;
   const [promptCopied, setPromptCopied] = useState(false);
+  // 列表项缩略图（与 boxes 索引一一对应）：每个框对应画布区域的 dataURL
+  const [thumbnails, setThumbnails] = useState([]);
 
   // 右侧面板 Tabs（顺序：选中信息 / 元素拆分 / AI思考）
   const [rightTab, setRightTab] = useState('selected');
@@ -210,6 +212,37 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
 
   const syncBoxesState = useCallback(() => {
     setBoxes(rects().map((r) => ({ ...realBox(r), meta: r.__meta || null })));
+  }, [rects, realBox]);
+
+  // 用 sourceRef.imageData + exportBox 截取每个框对应区域，缩放后转 dataURL 缓存到 thumbnails。
+  // 与 boxes 索引一一对应。失败回退 null（列表渲染时跳过缩略图）。
+  const syncThumbnails = useCallback(() => {
+    const src = sourceRef.current;
+    if (!src?.imageData) { setThumbnails([]); return; }
+    const list = rects();
+    Promise.all(list.map((r) => {
+      const b = realBox(r);
+      try {
+        const canvas = exportBox(src.imageData, b, { transparent: false });
+        // 缩到最长边 40，避免大图渲染卡顿；dataURL 体积小
+        const max = Math.max(canvas.width, canvas.height) || 1;
+        const scale = Math.min(1, 40 / max);
+        const w = Math.max(1, Math.round(canvas.width * scale));
+        const h = Math.max(1, Math.round(canvas.height * scale));
+        const tmp = document.createElement('canvas');
+        tmp.width = w; tmp.height = h;
+        tmp.getContext('2d').drawImage(canvas, 0, 0, w, h);
+        return new Promise((res) => tmp.toBlob((blob) => {
+          if (!blob) return res(null);
+          const fr = new FileReader();
+          fr.onload = () => res(fr.result);
+          fr.onerror = () => res(null);
+          fr.readAsDataURL(blob);
+        }, 'image/png'));
+      } catch {
+        return null;
+      }
+    })).then(setThumbnails).catch(() => setThumbnails([]));
   }, [rects, realBox]);
 
   // 把 fabric Rect 同步到最新配色/线宽/显示开关
@@ -396,6 +429,7 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
     });
     refreshLabels();
     syncBoxesState();
+    syncThumbnails();
     const titleSuffix = data?.title ? `「${data.title}」` : '';
     setStatus(`已加载 ${count} 个 bbox${titleSuffix}（${basis.label}）`);
   }, [flatten, getBBoxBasis, pushHistory, rects, addBBoxRect, refreshLabels, syncBoxesState, showChildren]);
@@ -693,6 +727,7 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
     fc.discardActiveObject();
     refreshLabels();
     syncBoxesState();
+    syncThumbnails();
     setSelectedIdx(null);
     setSelForm(null);
     setStatus(`已删除 ${selected.length} 个框`);
@@ -708,6 +743,7 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
     for (const r of all) fc.remove(r);
     refreshLabels();
     syncBoxesState();
+    syncThumbnails();
     setSelectedIdx(null);
     setSelForm(null);
     setStatus('已清空所有框');
@@ -723,6 +759,7 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
     applyingHistoryRef.current = false;
     refreshLabels();
     syncBoxesState();
+    syncThumbnails();
     updateHistoryButtons();
   }, [rects, addBBoxRect, refreshLabels, syncBoxesState, updateHistoryButtons]);
 
@@ -774,6 +811,7 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
     fc.discardActiveObject();
     refreshLabels();
     syncBoxesState();
+    syncThumbnails();
     fc.requestRenderAll();
     setStatus(`已更新框 ${meta.id || meta.label || selectedIdx + 1}`);
   }, [rects, selectedIdx, selForm, pushHistory, refreshLabels, syncBoxesState]);
@@ -783,6 +821,30 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
     const ok = deleteSelected();
     if (ok) setRightTab('list');
   }, [deleteSelected, selectedIdx]);
+
+  // 列表项 checkbox：切换该框的 exportSlice（true=纳入 ZIP/画布导出）
+  // 联动 fabric 框样式（绿实线 vs 配色虚线）+ syncBoxesState 让计数/底部按钮同步
+  const toggleExportSlice = useCallback((idx) => {
+    const fc = fcRef.current;
+    if (!fc) return;
+    const all = rects();
+    const r = all[idx];
+    if (!r) return;
+    pushHistory();
+    const meta = r.__meta || {};
+    meta.exportSlice = meta.exportSlice !== true;
+    r.__meta = meta;
+    const isSlice = meta.exportSlice === true;
+    r.set({
+      fill: isSlice ? 'rgba(34,197,94,0.12)' : 'rgba(0,0,0,0)',
+      stroke: isSlice ? '#22c55e' : (meta.color || PALETTE[0]),
+      strokeDashArray: isSlice ? null : [4, 3],
+      borderColor: isSlice ? '#22c55e' : (meta.color || PALETTE[0]),
+    });
+    refreshLabels();
+    syncBoxesState();
+    fc.requestRenderAll();
+  }, [rects, pushHistory, refreshLabels, syncBoxesState]);
 
   // ============ 打开对话框：加载 fabric + 图 ============
   useEffect(() => {
@@ -854,6 +916,7 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
         setStatus('编辑器就绪。选择框选/平移工具，Alt 也可强制拉框。可导入 JSON 或点「AI 分析」。');
         updateHistoryButtons();
         syncBoxesState();
+        syncThumbnails();
       } catch (err) {
         console.error('[bbox-viewer] init failed:', err);
         if (!disposed) {
@@ -965,6 +1028,7 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
       d.__meta = { id: '', label: '', depth: 0, color: PALETTE[0] };
       refreshLabels();
       syncBoxesState();
+      syncThumbnails();
       fc.renderAll();
     });
 
@@ -998,11 +1062,12 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
       fc.__historyScaleStarted = false;
       refreshLabels();
       syncBoxesState();
+      syncThumbnails();
     });
     fc.on('selection:cleared', () => { refreshLabels(); onFabricSelectionChange(); });
     fc.on('selection:updated', () => { refreshLabels(); onFabricSelectionChange(); });
     fc.on('selection:created', () => { refreshLabels(); onFabricSelectionChange(); });
-  }, [pushHistory, refreshLabels, syncBoxesState, lineWidth, onFabricSelectionChange, updateSelFormFromRect]);
+  }, [pushHistory, refreshLabels, syncBoxesState, syncThumbnails, lineWidth, onFabricSelectionChange, updateSelFormFromRect]);
 
   // ============ 表单变化联动 ============
   useEffect(() => { if (open) restyleRects(); }, [open, colorMode, lineWidth, restyleRects]);
@@ -1537,8 +1602,25 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
                               onMouseLeave={() => { setHoveredIdx(null); highlightBox(null); }}
                               onClick={() => focusBox(i)}
                             >
-                              <span className="h-3 w-3 shrink-0 rounded-sm border border-white/30"
-                                style={{ backgroundColor: meta.color || '#888' }} />
+                              <input
+                                type="checkbox"
+                                checked={meta.exportSlice === true}
+                                onClick={(e) => e.stopPropagation()}
+                                onChange={() => toggleExportSlice(i)}
+                                title={meta.exportSlice === true ? '已纳入导出（点击取消）' : '未纳入导出（点击勾选）'}
+                                className="h-3.5 w-3.5 shrink-0 cursor-pointer accent-green-600"
+                              />
+                              {/* 缩略图：该框对应画布区域的小预览；外层配色边框替代原色块 */}
+                              {thumbnails[i] ? (
+                                <img
+                                  src={thumbnails[i]}
+                                  alt=""
+                                  className="h-7 w-7 shrink-0 rounded-sm border object-cover"
+                                  style={{ borderColor: meta.color || '#888' }}
+                                />
+                              ) : (
+                                <span className="h-7 w-7 shrink-0 rounded-sm border border-dashed border-white/20 bg-muted/40" />
+                              )}
                               <span className="flex-1 truncate text-muted-foreground" title={tip || label}>
                                 {meta.type && <span className="mr-1 rounded bg-muted px-1 text-[9px] text-foreground/70">{meta.type}</span>}
                                 {label}
@@ -1560,6 +1642,7 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
                                   fc.remove(r);
                                   refreshLabels();
                                   syncBoxesState();
+                                  syncThumbnails();
                                   if (selectedIdx === i) { setSelectedIdx(null); setSelForm(null); }
                                 }}
                                 title="删除该框"
