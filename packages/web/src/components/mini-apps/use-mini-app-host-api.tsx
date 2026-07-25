@@ -255,6 +255,8 @@ export function useMiniAppHostApi(projectId: string, runtimeContext?: MiniAppRun
   const configReadyRef = useRef(false);
   const configChangeCallbacksRef = useRef<Set<(path: string, value: unknown) => void>>(new Set());
   const configReadyCallbacksRef = useRef<Set<(configs: Record<string, unknown>) => void>>(new Set());
+  // 最近一次 agent_run 的 taskId（executePluginTool 调用方未显式传 taskId 时自动生成并记录，作 stopAgentRun() 兜底）
+  const lastAgentTaskIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     runtimeContextRef.current = runtimeContext ?? { route: '/', params: {} };
@@ -305,11 +307,18 @@ export function useMiniAppHostApi(projectId: string, runtimeContext?: MiniAppRun
       options?: { taskId?: string; meta?: Record<string, unknown>; signal?: AbortSignal },
     ) => {
       const body: Record<string, unknown> = { name: toolName, args, workspaceId: projectId, executorId };
-      // agent_run：生成 taskId（调用方未提供时），便于 stopAgentRun 中断
+      // agent_run 的 taskId：
+      // - 调用方显式传 options.taskId → 用它（调用方自管，多调用方并发互不覆盖）
+      // - 未传但 toolName=agent_run → 自动生成，并记入 lastAgentTaskIdRef 作兜底（单调用方场景 stopAgentRun() 不传参时用）
+      // 多调用方并发场景（如 BBox 弹窗 + 其他节点同时跑 agent_run）必须显式传 taskId，否则 ref 会被覆盖。
       const isAgentRun = toolName === 'agent_run';
-      const taskId = options?.taskId || (isAgentRun ? (crypto.randomUUID?.() ?? `task_${Date.now()}_${Math.random().toString(36).slice(2)}`) : undefined);
+      const explicitTaskId = typeof options?.taskId === 'string' && options.taskId ? options.taskId : '';
+      let taskId = explicitTaskId;
+      if (!taskId && isAgentRun) {
+        taskId = crypto.randomUUID?.() ?? `task_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+        lastAgentTaskIdRef.current = taskId;
+      }
       if (taskId) body.taskId = taskId;
-      if (isAgentRun && taskId) lastAgentTaskIdRef.current = taskId;
       if (options?.meta) body.meta = options.meta;
       // signal：透传到 fetch，调用方可真中断 HTTP 请求（fetch 抛 AbortError，后端响应客户端断开）。
       const resp = await fetchWithAuth(`/api/plugins/${encodeURIComponent(pluginId)}/tools/execute`, {
@@ -357,8 +366,6 @@ export function useMiniAppHostApi(projectId: string, runtimeContext?: MiniAppRun
     const stopWorkflow = (executionId: string) => {
       getWS(projectId).send('workflow:stop' as any, { executionId });
     };
-    // 最近一次 agent_run 的 taskId（由 executePluginTool 调用方传入或自动生成后记录）
-    const lastAgentTaskIdRef = useRef<string | null>(null);
     // 停止指定 taskId 的 agent_run 执行（后端凭 taskId 找 runtime 句柄调 stop() 真正中断）。
     // 不传 taskId 时停止最近一次 agent_run。
     const stopAgentRun = (taskId?: string) => {

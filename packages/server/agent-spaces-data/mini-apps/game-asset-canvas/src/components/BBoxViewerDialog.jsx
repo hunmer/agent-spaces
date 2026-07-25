@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
   Button, Label, ScrollArea, Loader, Switch,
@@ -142,11 +142,16 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
   // AI 分析的 AbortController：abort 后中断前端 fetch 等待，UI 立即恢复。
   // 注意：仅放弃等待，后端 agent 进程仍会跑完（当前 API 无真正中断能力）。
   const analyzeAbortRef = useRef(null);
+  // 本次 AI 分析的 agent_run taskId（显式自管，避免与画布其他 agent_run 调用互相覆盖 host 的兜底 ref）。
+  // 调用 callPluginTool 时传入，stopAgentRun 时用它精确停止本次任务。
+  const analyzeTaskIdRef = useRef(null);
   const agentConfigRef = useRef(agentConfig);
   agentConfigRef.current = agentConfig;
   const [promptCopied, setPromptCopied] = useState(false);
   // 列表项缩略图（与 boxes 索引一一对应）：每个框对应画布区域的 dataURL
   const [thumbnails, setThumbnails] = useState([]);
+  // 元素拆分 tab 的激活类型过滤器（Set，支持多选；空集合=不过滤显示全部）
+  const [activeTypes, setActiveTypes] = useState(() => new Set());
 
   // 右侧面板 Tabs（顺序：选中信息 / 元素拆分 / AI思考）
   const [rightTab, setRightTab] = useState('selected');
@@ -213,18 +218,31 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
     updateHistoryButtons();
   }, [snapshot, updateHistoryButtons]);
 
+  // boxesRef：始终持有最新 boxes 数组（syncBoxesState 同步写入 + boxes state 变化时 effect 同步）。
+  // 供 syncThumbnails 立即读取最新框，规避 setBoxes 异步导致的竞态。
+  const boxesRef = useRef([]);
+  useEffect(() => { boxesRef.current = boxes; }, [boxes]);
+
   const syncBoxesState = useCallback(() => {
-    setBoxes(rects().map((r) => ({ ...realBox(r), meta: r.__meta || null })));
+    // 立即同步 boxesRef，让紧随其后调用的 syncThumbnails 能读到最新值（setBoxes 是异步的）
+    const next = rects().map((r) => ({ ...realBox(r), meta: r.__meta || null }));
+    boxesRef.current = next;
+    setBoxes(next);
   }, [rects, realBox]);
 
   // 用 sourceRef.imageData + exportBox 截取每个框对应区域，缩放后转 dataURL 缓存到 thumbnails。
-  // 与 boxes 索引一一对应。失败回退 null（列表渲染时跳过缩略图）。
+  // 直接用 boxes state（与 ZIP 导出同源，保证坐标基准一致）。读 boxesRef.current 规避「syncBoxesState 后
+  // boxes state 尚未更新就调 syncThumbnails」的竞态（手动调用紧挨 setBoxes 时闭包 boxes 是旧值）。
+  // 防竞态：用 generation 计数，过时的异步结果丢弃。
+  const thumbGenRef = useRef(0);
   const syncThumbnails = useCallback(() => {
     const src = sourceRef.current;
-    if (!src?.imageData) { setThumbnails([]); return; }
-    const list = rects();
-    Promise.all(list.map((r) => {
-      const b = realBox(r);
+    const list = boxesRef.current;
+    if (!src?.imageData || !list.length) { setThumbnails([]); return; }
+    const gen = ++thumbGenRef.current;
+    Promise.all(list.map((b) => {
+      // 文本类型不截图（区域是纯文字，截图无视觉意义），返回 null 占位保持索引对齐
+      if (b.meta?.type === 'Text') return null;
       try {
         const canvas = exportBox(src.imageData, b, { transparent: false });
         // 缩到最长边 40，避免大图渲染卡顿；dataURL 体积小
@@ -245,8 +263,15 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
       } catch {
         return null;
       }
-    })).then(setThumbnails).catch(() => setThumbnails([]));
-  }, [rects, realBox]);
+    })).then((urls) => {
+      // 过时的异步结果丢弃（boxes 已变化）
+      if (thumbGenRef.current !== gen) return;
+      setThumbnails(urls);
+    }).catch(() => {
+      if (thumbGenRef.current !== gen) return;
+      setThumbnails([]);
+    });
+  }, []);
 
   // 把 fabric Rect 同步到最新配色/线宽/显示开关
   const restyleRects = useCallback(() => {
@@ -556,6 +581,9 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
     // 新建 AbortController：用户点「停止」时 abort，中断前端 fetch 等待
     const abort = new AbortController();
     analyzeAbortRef.current = abort;
+    // 显式生成 taskId 并自管，传给 callPluginTool 让 host 不走兜底 ref（多调用方并发互不覆盖）
+    const taskId = (window.crypto?.randomUUID?.() || `task_${Date.now()}_${Math.random().toString(36).slice(2)}`);
+    analyzeTaskIdRef.current = taskId;
     // 切到「AI思考过程」tab
     setRightTab('ai');
     setAiThought('### AI 分析任务启动\n\n- **Agent**：`' + (ac?.id || '?') + '`');
@@ -583,7 +611,7 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
           permissionMode: 'bypassPermissions',
           images: [dataUrl],
         },
-        { signal: abort.signal },
+        { taskId, signal: abort.signal },
       );
       // host 层 executePluginTool 在 HTTP 错误时不抛异常而是返回错误 payload，
       // 这里显式判定错误响应（含 error/success===false/非 2xx status），转成异常走 catch
@@ -622,17 +650,19 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
       setAiThought((t) => t + `\n\n❌ **分析失败**：${msg}\n\n请检查：\n- AI 模型是否配置正确（设置 → BBox AI 分析）\n- 网络是否可达\n- 上方「AI 返回原文」是否有内容`);
       // 失败时停留在 AI思考 tab，让用户看到错误详情
     } finally {
-      // 仅当本次 controller 仍是自己时清理（避免被新一轮调用覆盖后又清掉）
+      // 仅当本次 controller/taskId 仍是自己时清理（避免被新一轮调用覆盖后又清掉）
       if (analyzeAbortRef.current === abort) analyzeAbortRef.current = null;
+      if (analyzeTaskIdRef.current === taskId) analyzeTaskIdRef.current = null;
       setAnalyzing(false);
     }
   }, [imageUrl, applyJsonData]);
 
-  // 停止 AI 分析：优先调 stopAgentRun 让后端 runtime.stop() 真正中断 agent 进程；
+  // 停止 AI 分析：用本次 taskId 精确停止后端 agent_run（不误伤画布其他并发任务）；
   // 同时 abort 前端 controller 让 fetch 立即结束等待（双保险，WS 不通时也能恢复 UI）。
   const handleStopAnalyze = useCallback(() => {
+    const tid = analyzeTaskIdRef.current;
     try {
-      window.AgentSpaces?.stopAgentRun?.();
+      if (tid) window.AgentSpaces?.stopAgentRun?.(tid);
     } catch (err) {
       console.warn('[bbox-viewer] stopAgentRun failed:', err?.message || err);
     }
@@ -872,6 +902,26 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
     syncBoxesState();
     fc.requestRenderAll();
   }, [rects, pushHistory, refreshLabels, syncBoxesState]);
+
+  // 元素拆分：按 meta.type 聚合统计（空 type 归为 '其它'），返回 [{type, count}] 按数量降序
+  const typeStats = useMemo(() => {
+    const counts = new Map();
+    for (const b of boxes) {
+      const t = b.meta?.type || '其它';
+      counts.set(t, (counts.get(t) || 0) + 1);
+    }
+    return [...counts.entries()].map(([type, count]) => ({ type, count })).sort((a, b) => b.count - a.count);
+  }, [boxes]);
+
+  // 切换某类型激活态（多选）：点击已激活则取消，未激活则加入；空集合表示不过滤
+  const toggleTypeFilter = useCallback((type) => {
+    setActiveTypes((prev) => {
+      const next = new Set(prev);
+      if (next.has(type)) next.delete(type);
+      else next.add(type);
+      return next;
+    });
+  }, []);
 
   // ============ 打开对话框：加载 fabric + 图 ============
   useEffect(() => {
@@ -1583,7 +1633,14 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
                 <TabsContent value="list" className="mt-0 min-h-0 flex-1 overflow-hidden">
                   <div className="flex h-full flex-col">
                     <div className="flex items-center justify-between border-b border-border px-3 py-2">
-                      <span className="text-xs font-medium">元素 {totalBoxes}</span>
+                      <span className="text-xs font-medium">
+                        元素 {totalBoxes}
+                        {activeTypes.size > 0 && (
+                          <span className="ml-1 text-muted-foreground">
+                            · 筛选 {boxes.filter((b) => activeTypes.has(b.meta?.type || '其它')).length}
+                          </span>
+                        )}
+                      </span>
                       <div className="flex items-center gap-1">
                         <Button size="sm" variant="ghost" className="h-7 text-[11px]" onClick={() => { syncBoxesState(); refreshLabels(); }} disabled={loading}>
                           刷新
@@ -1600,6 +1657,40 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
                         </Tooltip>
                       </div>
                     </div>
+                    {/* 类型 badge 行：按 meta.type 聚合，点击切换激活（多选），激活时列表只显示该类型 */}
+                    {typeStats.length > 0 && (
+                      <div className="flex flex-wrap items-center gap-1 border-b border-border px-3 py-1.5">
+                        {typeStats.map(({ type, count }) => {
+                          const active = activeTypes.has(type);
+                          return (
+                            <button
+                              key={type}
+                              type="button"
+                              onClick={() => toggleTypeFilter(type)}
+                              className={
+                                'inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] transition ' +
+                                (active
+                                  ? 'border-primary bg-primary text-primary-foreground'
+                                  : 'border-border bg-background text-muted-foreground hover:bg-muted')
+                              }
+                              title={active ? `点击取消筛选「${type}」` : `点击筛选「${type}」`}
+                            >
+                              <span>{type}</span>
+                              <span className={'rounded px-1 ' + (active ? 'bg-primary-foreground/20' : 'bg-muted')}>{count}</span>
+                            </button>
+                          );
+                        })}
+                        {activeTypes.size > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => setActiveTypes(new Set())}
+                            className="ml-1 text-[10px] text-muted-foreground underline-offset-2 hover:underline"
+                          >
+                            清除筛选
+                          </button>
+                        )}
+                      </div>
+                    )}
                     <ScrollArea className="min-h-0 flex-1">
                       <div className="flex flex-col gap-0.5 p-2">
                         {boxes.length === 0 && (
@@ -1613,8 +1704,15 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
                             </EmptyHeader>
                           </Empty>
                         )}
+                        {boxes.length > 0 && activeTypes.size > 0 && boxes.every((b) => !activeTypes.has((b.meta?.type) || '其它')) && (
+                          <p className="px-2 py-3 text-center text-[11px] text-muted-foreground">
+                            当前筛选无匹配元素，<button type="button" className="underline hover:text-foreground" onClick={() => setActiveTypes(new Set())}>清除筛选</button>
+                          </p>
+                        )}
                         {boxes.map((b, i) => {
                           const meta = b.meta || {};
+                          // 类型过滤：有激活类型时，只显示激活类型的框（空 type 归为 '其它'）
+                          if (activeTypes.size > 0 && !activeTypes.has(meta.type || '其它')) return null;
                           const label = meta.label || meta.id || `(框 ${i + 1})`;
                           const tipParts = [meta.type && `type: ${meta.type}`, meta.id && `id: ${meta.id}`].filter(Boolean);
                           if (meta.ocrText) tipParts.push(`ocr: ${meta.ocrText}`);
@@ -1638,7 +1736,14 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
                                 className="h-3.5 w-3.5 shrink-0 cursor-pointer accent-green-600"
                               />
                               {/* 缩略图：该框对应画布区域的小预览；外层配色边框替代原色块 */}
-                              {thumbnails[i] ? (
+                              {/* 文本类型（meta.type==='Text'）不截图，用文字图标占位（区域是纯文字，截图无视觉意义） */}
+                              {meta.type === 'Text' ? (
+                                <span
+                                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded-sm border text-[10px] font-medium text-muted-foreground"
+                                  style={{ borderColor: meta.color || '#888' }}
+                                  title="文本类型"
+                                >T</span>
+                              ) : thumbnails[i] ? (
                                 <img
                                   src={thumbnails[i]}
                                   alt=""
