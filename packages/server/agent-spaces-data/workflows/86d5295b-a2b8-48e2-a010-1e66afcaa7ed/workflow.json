@@ -33,9 +33,9 @@
         "y": 180
       },
       "data": {
-        "baseUrl": "{{ __config__[\"workflow.rembg\"[\"baseUrl\"]}}",
-        "model": "{{ __config__[\"workflow.rembg\"[\"model\"]}}",
-        "timeout": "{{ __config__[\"workflow.rembg\"[\"timeout\"]}}",
+        "baseUrl": "{{ __config__[\"workflow.rembg\"][\"baseUrl\"]}}",
+        "model": "{{ __config__[\"workflow.rembg\"][\"model\"]}}",
+        "timeout": "{{ __config__[\"workflow.rembg\"][\"timeout\"]}}",
         "outputs": [
           {
             "key": "success",
@@ -118,7 +118,7 @@
   ],
   "edges": [],
   "createdAt": 1784971941987,
-  "updatedAt": 1784972187152,
+  "updatedAt": 1784972876202,
   "published": false,
   "lastOpenedAt": 1784971955334,
   "enabledPlugins": [

@@ -932,8 +932,8 @@
     "hasWorkflow": true,
     "path": "rembg",
     "iconUrl": "plugins/rembg/icon.png",
-    "md5": "eb66a213802126ec931cee66ee4d2d7c",
-    "updatedAt": "2026-07-25T09:35:07.084Z",
+    "md5": "8b82315e9c6b2d7d222f5db679c705b6",
+    "updatedAt": "2026-07-25T09:51:03.406Z",
     "files": [
       "actions.js",
       "icon.png",

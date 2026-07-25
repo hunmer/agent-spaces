@@ -65,10 +65,17 @@ async function resolveImage(input) {
     return { buffer, mime, filename: `image.${extFromMime(mime)}` }
   }
 
-  // http(s) URL：不在客户端下载，留给 rembg 服务端拉取（GET /api/remove）
-  // 这里只标记来源，真正的去背景走 removeBackgroundFromUrl
+  // http(s) URL：在客户端下载成 buffer，统一走 POST /api/remove 上传。
+  // 不用 GET /api/remove?url=...，因为 rembg 服务端有 SSRF 防护，会拒绝
+  // 回环/内网地址（如 127.0.0.1、192.168.x.x），本地图片必须由客户端下载后上传。
   if (/^https?:\/\//i.test(input)) {
-    return { url: input, filename: basename(input) }
+    const resp = await globalThis.fetch(input)
+    if (!resp.ok) {
+      throw new Error(`下载图片失败: HTTP ${resp.status} ${input}`)
+    }
+    const buffer = Buffer.from(await resp.arrayBuffer())
+    const mime = (resp.headers.get('content-type') || mimeFromExt(input)).split(';')[0].trim()
+    return { buffer, mime, filename: basename(input) || `image.${extFromMime(mime)}` }
   }
 
   // 本地路径
@@ -222,35 +229,17 @@ async function readError(resp) {
   return `Rembg HTTP ${resp.status}${detail ? `: ${detail}` : ''}`
 }
 
-// ── 主调用：从 URL 去背景 ──────────────────────────────────
-// 返回 PNG Buffer
-async function removeBackgroundFromUrl(ctx, args, imageUrl) {
-  const baseUrl = getBaseUrl(args)
-  const timeout = getTimeout(args)
-  const params = buildParams(args)
-  params.url = imageUrl
-
-  const url = `${baseUrl}/api/remove${toQueryString(params)}`
-  ctx.logger.info(`Rembg GET ${baseUrl}/api/remove (url=${imageUrl}, model=${params.model || '-'})`)
-
-  const resp = await globalThis.fetch(url, { method: 'GET' })
-  if (!resp.ok) {
-    throw new Error(await readError(resp))
-  }
-  const buffer = Buffer.from(await resp.arrayBuffer())
-  return buffer
-}
-
-// ── 主调用：从文件 / buffer 去背景 ─────────────────────────
-// image: { buffer, mime, filename } 或 { url }（url 时内部转 GET）
+// ── 主调用：上传 buffer 去背景 ─────────────────────────────
+// 所有输入（URL / 本地路径 / data URI）在 resolveImage 阶段都已转成 buffer，
+// 统一走 POST /api/remove multipart 上传。不用 GET ?url= 是因为 rembg 服务端
+// 有 SSRF 防护，会拒绝回环/内网地址，本地图片必须由客户端下载后上传。
+// image: { buffer, mime, filename }
 async function removeBackgroundFromFile(ctx, args, image) {
-  // URL 走 GET 端点（更高效，无需上传）
-  if (image.url && !image.buffer) {
-    return removeBackgroundFromUrl(ctx, args, image.url)
+  if (!image.buffer) {
+    throw new Error('图片解析失败：缺少 buffer')
   }
 
   const baseUrl = getBaseUrl(args)
-  const timeout = getTimeout(args)
   const formParams = buildParams(args)
   // bgc 与 extras 服务端要求走 query
   const queryArgs = {}
@@ -306,7 +295,6 @@ module.exports = {
   buildParams,
   normalizeColor,
   buildMultipart,
-  removeBackgroundFromUrl,
   removeBackgroundFromFile,
   saveResultImage,
 }
