@@ -75,6 +75,7 @@ Implications:
 - Bare imports only work when the renderer explicitly allowlists them.
 - Browser globals such as `window.AgentSpacesUI`, `window.AgentSpaces`, and `window.AgentSpacesAPI` are available in every file.
 - Do not assume Node APIs, filesystem APIs, environment variables, or bundler plugins are available in preview code.
+- **Never use relative dynamic `import()` in mini-app code.** Because each module is compiled with Babel and executed via `new Function(...)`, the bundler (webpack/turbopack) treats `await import('./image-ops/cdn')` as a static analysis target, fails to find a matching chunk, and returns `Failed to fetch dynamically imported module: http://127.0.0.1:3000/_next/static/chunks/.../image-ops/cdn` (HTTP 404). Use a **static top-level `import`** for any local module under `src/`. The only valid dynamic `import()` targets are Blob URLs built from vendored bundles (see [Loading Third-Party Bundles](#loading-third-party-bundles)) and CDN URLs loaded via `window.AgentSpaces.loadCdnModule(url)`; both must be wrapped in `new Function('u','return import(u)')` so the bundler does not rewrite them.
 
 ## File Layout
 
@@ -139,6 +140,40 @@ Known categories:
 If `window.AgentSpacesUI` component props or composition are unclear, inspect the host implementation in the current working directory, especially `packages/web/src/components/ui` and `packages/web/src/lib/ui-exports.ts`.
 
 `@agent-spaces/ui` is also mapped by the renderer for allowed host UI exports, but destructuring from `window.AgentSpacesUI` is the safest default in preview code.
+
+### Composition: use `render`, never `asChild`
+
+The host overlay components (`Tooltip`, `Popover`, `Select`, `DropdownMenu`, etc.) are built on **Base UI** (`@base-ui/react`), not Radix. Base UI uses the **`render` prop** to compose a child element — it does **not** support the `asChild` prop.
+
+Do **not** write the Radix form:
+
+```jsx
+// ❌ WRONG — asChild leaks to the DOM and nests buttons
+<Tooltip>
+  <TooltipTrigger asChild>
+    <Button onClick={undo}><Undo2 /></Button>
+  </TooltipTrigger>
+  <TooltipContent>撤销</TooltipContent>
+</Tooltip>
+```
+
+Symptoms when you do: a React warning `does not recognize the asChild prop on a DOM element`, plus `<button> cannot be a descendant of <button>` hydration errors. Two `<button>` elements render because Base UI renders its own trigger button and ignores `asChild`, then the inner `<Button>` renders another.
+
+Write the Base UI form instead — pass the composed element via `render`, and put the children inside `<TooltipTrigger>`:
+
+```jsx
+// ✅ CORRECT — render prop + children inside the trigger
+<Tooltip>
+  <TooltipTrigger render={<Button onClick={undo} />}>
+    <Undo2 />
+  </TooltipTrigger>
+  <TooltipContent>撤销</TooltipContent>
+</Tooltip>
+```
+
+Base UI merges its own props (event handlers, ARIA, refs) onto the element passed to `render` and injects the children, so the trigger is a single button with no DOM nesting.
+
+This applies to every Base UI-backed component exported from `@agent-spaces/ui` (Tooltip/Popover/Select/DropdownMenu/Menu/etc.). When a component's composition behavior is unclear, read its source under `packages/web/src/components/ui/` before writing JSX.
 
 The built-in routing symbols (`Router`, `useRouter`, `Link`, `serializeRoute`, `parseRoute`) are exported from `@agent-spaces/ui` and `window.AgentSpacesUI`. Import them explicitly with a bare import (see [Routing](#routing)) rather than expecting them on a `window` sub-object — `useRouter` must be called inside a `<Router>` subtree, so a static `import` is the natural access point.
 
@@ -597,7 +632,9 @@ Before finishing, inspect the changed files for these invariants:
 - The entry file exports a default React component in React mode.
 - Large code was split into focused files under `components/`, `hooks/`, or `utils/`.
 - Local imports are relative and resolve inside `src/`.
+- No relative dynamic `import()` is used anywhere in `src/` (it 404s under the `new Function` renderer). Lazy loading of local helpers is done via static top-level imports; only Blob URLs (vendored bundles) and CDN URLs may use dynamic `import()`, wrapped in `new Function('u','return import(u)')`.
 - Host UI components and lucide icons come from `window.AgentSpacesUI` or `@agent-spaces/ui`, not host source paths.
+- Overlay triggers (`Tooltip`/`Popover`/`Select`/`DropdownMenu`/`Menu`) use the Base UI `render` prop, never `asChild`. There must be no `asChild` anywhere in `src/` — it leaks to the DOM and nests buttons inside buttons.
 - Full-height roots use parent-relative height (`h-full` / `height: 100%`), not viewport height (`h-screen` / `100vh`).
 - Styling uses Tailwind `className` and theme tokens where practical.
 - Light and dark themes remain readable.

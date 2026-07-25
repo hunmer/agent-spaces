@@ -27,6 +27,7 @@ const ADD_ITEMS = [
   { type: NODE_TYPES.pixelEditor, label: '像素编辑器' },
   { type: NODE_TYPES.uiSplitter, label: '雪碧图拆分' },
   { type: NODE_TYPES.bboxViewer, label: 'UI拆分' },
+  { type: NODE_TYPES.promptReverse, label: '反推提示词' },
   { type: NODE_TYPES.textToVoice, label: '生成配音' },
   { type: NODE_TYPES.videoGenerator, label: '生成视频' },
   { type: NODE_TYPES.imageCompare, label: '图片对比' },
@@ -253,7 +254,12 @@ function HistoryCard({ item, onRemove, onUseImage }) {
       {isVideo && cover && (
         <video key={cover} src={cover} controls className="mb-1 w-full rounded border border-border" />
       )}
-      {!isAudio && !isVideo && cover && (
+      {mediaType === 'text' && item.text && (
+        <pre className="nodrag nopan nowheel mb-1 max-h-32 overflow-auto whitespace-pre-wrap break-words rounded border border-border bg-muted/30 p-1.5 text-[10px] leading-snug text-foreground">
+{item.text}
+        </pre>
+      )}
+      {!isAudio && !isVideo && mediaType !== 'text' && cover && (
         <div
           className="grid gap-1"
           style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(56px, 1fr))' }}

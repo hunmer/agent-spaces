@@ -58,7 +58,7 @@ test('prepares uploaded attachments as workspace-local files for Gemini CLI', ()
     assert.deepEqual(context.ignored, []);
     assert.match(context.prepared[0]?.relativePath ?? '', /^\.agentspace\/attachments\/1-.+\.png$/);
     assert.equal(existsSync(join(cwd, context.prepared[0]!.relativePath)), true);
-    assert.match(buildGeminiPrompt('describe it', context), /\.agentspace\/attachments\/1-.+\.png/);
+    assert.match(buildGeminiPrompt('describe it', context), /@\.agentspace\/attachments\/1-.+\.png/);
   } finally {
     rmSync(cwd, { recursive: true, force: true });
   }

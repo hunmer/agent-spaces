@@ -226,9 +226,8 @@ export function buildGeminiPrompt(prompt: string, attachmentContext: GeminiAttac
   return [
     prompt,
     '',
-    'Uploaded attachments are available as local files:',
-    ...attachmentContext.prepared.map((item) => `- ${item.name}${item.type ? ` (${item.type})` : ''}: ${item.relativePath}`),
-    'Use these local files directly when the user asks about the uploaded attachment.',
+    'Uploaded attachments:',
+    attachmentContext.prepared.map((item) => `@${quoteGeminiAtPath(item.relativePath)}`).join(' '),
   ].join('\n');
 }
 
@@ -296,6 +295,10 @@ function safeAttachmentFileName(value: string, index: number): string {
   const ext = extname(rawName);
   const base = basename(rawName, ext).replace(/[^a-zA-Z0-9._-]/g, '_') || 'attachment';
   return `${index + 1}-${base}${ext || '.bin'}`;
+}
+
+function quoteGeminiAtPath(value: string): string {
+  return /\s/.test(value) ? `"${value.replace(/"/g, '\\"')}"` : value;
 }
 
 export function parseGeminiJsonLine(line: string): GeminiJsonEvent | null {

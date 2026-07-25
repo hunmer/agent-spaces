@@ -967,27 +967,27 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
           </label>
           <div className="flex items-end gap-1.5">
             <Tooltip>
-              <TooltipTrigger asChild>
-                <Button size="icon" variant="outline" className="h-8 w-8" disabled={canUndo === false} onClick={undo}>
-                  <Undo2 className="h-4 w-4" />
-                </Button>
+              <TooltipTrigger render={
+                <Button size="icon" variant="outline" className="h-8 w-8" disabled={canUndo === false} onClick={undo} />
+              }>
+                <Undo2 className="h-4 w-4" />
               </TooltipTrigger>
               <TooltipContent side="bottom">撤销 (Ctrl+Z)</TooltipContent>
             </Tooltip>
             <Tooltip>
-              <TooltipTrigger asChild>
-                <Button size="icon" variant="outline" className="h-8 w-8" disabled={canRedo === false} onClick={redo}>
-                  <Redo2 className="h-4 w-4" />
-                </Button>
+              <TooltipTrigger render={
+                <Button size="icon" variant="outline" className="h-8 w-8" disabled={canRedo === false} onClick={redo} />
+              }>
+                <Redo2 className="h-4 w-4" />
               </TooltipTrigger>
               <TooltipContent side="bottom">重做 (Ctrl+Y)</TooltipContent>
             </Tooltip>
             <Tooltip>
-              <TooltipTrigger asChild>
+              <TooltipTrigger render={
                 <Button size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                  onClick={clearAll} disabled={totalBoxes === 0}>
-                  <Eraser className="h-4 w-4" />
-                </Button>
+                  onClick={clearAll} disabled={totalBoxes === 0} />
+              }>
+                <Eraser className="h-4 w-4" />
               </TooltipTrigger>
               <TooltipContent side="bottom">清空所有框</TooltipContent>
             </Tooltip>
@@ -1003,13 +1003,13 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
               载入示例
             </Button>
             <Tooltip>
-              <TooltipTrigger asChild>
+              <TooltipTrigger render={
                 <Button size="sm" className="h-8 gap-1 text-[11px]"
                   onClick={handleAiAnalyze}
-                  disabled={analyzing || !imageUrl}>
-                  <Sparkles className="h-3.5 w-3.5" />
-                  {analyzing ? '分析中…' : 'AI 分析'}
-                </Button>
+                  disabled={analyzing || !imageUrl} />
+              }>
+                <Sparkles className="h-3.5 w-3.5" />
+                {analyzing ? '分析中…' : 'AI 分析'}
               </TooltipTrigger>
               <TooltipContent side="bottom">
                 {!agentConfig?.id ? '未配置 AI 模型，请到「设置 → BBox AI 分析」配置' : '用配置的 AI 分析当前图，返回 JSON 自动渲染框'}

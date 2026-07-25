@@ -865,38 +865,38 @@ export default function UiSplitterDialog({ open, inputImages, onSave, onClose })
           </Field>
           <div className="flex items-end gap-1.5">
             <Tooltip>
-              <TooltipTrigger asChild>
+              <TooltipTrigger render={
                 <Button size="icon" variant={drawMode ? 'default' : 'outline'}
                   className={`h-8 w-8 ${drawMode ? 'ring-2 ring-primary/40' : ''}`}
-                  onClick={toggleDrawMode}>
-                  {drawMode ? <SquarePen className="h-4 w-4" /> : <MousePointer2 className="h-4 w-4" />}
-                </Button>
+                  onClick={toggleDrawMode} />
+              }>
+                {drawMode ? <SquarePen className="h-4 w-4" /> : <MousePointer2 className="h-4 w-4" />}
               </TooltipTrigger>
               <TooltipContent side="bottom">{drawMode ? '框选模式：左键拉框新建切片（当前）' : '选择模式：左键点选/移动切片框（当前）'}（Alt 强制拉框）</TooltipContent>
             </Tooltip>
             <Tooltip>
-              <TooltipTrigger asChild>
+              <TooltipTrigger render={
                 <Button size="icon" variant={pickingRef.current ? 'default' : 'outline'}
                   className={`h-8 w-8 ${pickingRef.current ? 'ring-2 ring-primary/40' : ''}`}
-                  onClick={togglePicking}>
-                  <Pipette className="h-4 w-4" />
-                </Button>
+                  onClick={togglePicking} />
+              }>
+                <Pipette className="h-4 w-4" />
               </TooltipTrigger>
               <TooltipContent side="bottom">💧 吸取背景色</TooltipContent>
             </Tooltip>
             <Tooltip>
-              <TooltipTrigger asChild>
-                <Button size="icon" variant="outline" className="h-8 w-8" disabled={canUndo === false} onClick={undo}>
-                  <Undo2 className="h-4 w-4" />
-                </Button>
+              <TooltipTrigger render={
+                <Button size="icon" variant="outline" className="h-8 w-8" disabled={canUndo === false} onClick={undo} />
+              }>
+                <Undo2 className="h-4 w-4" />
               </TooltipTrigger>
               <TooltipContent side="bottom">撤销 (Ctrl+Z)</TooltipContent>
             </Tooltip>
             <Tooltip>
-              <TooltipTrigger asChild>
-                <Button size="icon" variant="outline" className="h-8 w-8" disabled={canRedo === false} onClick={redo}>
-                  <Redo2 className="h-4 w-4" />
-                </Button>
+              <TooltipTrigger render={
+                <Button size="icon" variant="outline" className="h-8 w-8" disabled={canRedo === false} onClick={redo} />
+              }>
+                <Redo2 className="h-4 w-4" />
               </TooltipTrigger>
               <TooltipContent side="bottom">重做 (Ctrl+Y)</TooltipContent>
             </Tooltip>
@@ -960,11 +960,11 @@ export default function UiSplitterDialog({ open, inputImages, onSave, onClose })
                 </span>
                 <div className="flex items-center gap-1">
                   <Tooltip>
-                    <TooltipTrigger asChild>
+                    <TooltipTrigger render={
                       <Button size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                        onClick={clearAllRects} disabled={loading || count === 0} title="清空当前图所有切片">
-                        <Eraser className="h-3.5 w-3.5" />
-                      </Button>
+                        onClick={clearAllRects} disabled={loading || count === 0} title="清空当前图所有切片" />
+                    }>
+                      <Eraser className="h-3.5 w-3.5" />
                     </TooltipTrigger>
                     <TooltipContent side="bottom">清空当前图切片</TooltipContent>
                   </Tooltip>

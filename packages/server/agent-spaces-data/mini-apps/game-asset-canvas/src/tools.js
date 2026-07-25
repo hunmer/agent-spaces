@@ -23,6 +23,11 @@ const NODE_TYPE_ENUM = [
   'imageEditor',
   'pixelEditor',
   'uiSplitter',
+  'bboxViewer',
+  'promptReverse',
+  'textToVoice',
+  'videoGenerator',
+  'imageCompare',
   'note',
 ];
 
@@ -46,6 +51,11 @@ const NODE_TYPE_DESC = [
   'imageEditor=图片编辑（浏览器端画笔）',
   'pixelEditor=像素编辑器',
   'uiSplitter=雪碧图拆分（画布框选+自动检测切片）',
+  'bboxViewer=UI 拆分（JSON bbox 可视化+批量导出）',
+  'promptReverse=反推提示词（多图→AI生成文生图提示词）',
+  'textToVoice=生成配音（文字→语音）',
+  'videoGenerator=生成视频（图/文→视频）',
+  'imageCompare=图片对比（双图滑块对比）',
   'note=便签（纯文本备注）',
 ].join(' / ');
 

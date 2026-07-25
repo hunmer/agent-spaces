@@ -27,13 +27,14 @@ import ImageEditorNode from './nodes/ImageEditorNode';
 import PixelEditorNode from './nodes/PixelEditorNode';
 import UiSplitterNode from './nodes/UiSplitterNode';
 import BBoxViewerNode from './nodes/BBoxViewerNode';
+import PromptReverseNode from './nodes/PromptReverseNode';
 import TextToVoiceNode from './nodes/TextToVoiceNode';
 import VideoGeneratorNode from './nodes/VideoGeneratorNode';
 import ImageCompareNode from './nodes/ImageCompareNode';
 import NoteNode from './nodes/NoteNode';
 import useCanvasState from '../hooks/useCanvasState';
 import useWorkflow from '../hooks/useWorkflow';
-import { generateAudio, generateVideo, normalizeImageUrls } from '../utils/workflow';
+import { generateAudio, generateVideo, normalizeImageUrls, runAgentVisionText } from '../utils/workflow';
 import useGenerationHistory from '../hooks/useGenerationHistory';
 import useSettings from '../hooks/useSettings';
 import useExecutionQueue from '../hooks/useExecutionQueue';
@@ -68,6 +69,7 @@ const NODE_COMPONENTS = {
   [NODE_TYPES.pixelEditor]: PixelEditorNode,
   [NODE_TYPES.uiSplitter]: UiSplitterNode,
   [NODE_TYPES.bboxViewer]: BBoxViewerNode,
+  [NODE_TYPES.promptReverse]: PromptReverseNode,
   [NODE_TYPES.textToVoice]: TextToVoiceNode,
   [NODE_TYPES.videoGenerator]: VideoGeneratorNode,
   [NODE_TYPES.imageCompare]: ImageCompareNode,
@@ -96,6 +98,7 @@ const ADD_NODE_ITEMS = [
   { type: NODE_TYPES.pixelEditor },
   { type: NODE_TYPES.uiSplitter },
   { type: NODE_TYPES.bboxViewer },
+  { type: NODE_TYPES.promptReverse },
   { type: NODE_TYPES.textToVoice },
   { type: NODE_TYPES.videoGenerator },
   { type: NODE_TYPES.imageCompare },
@@ -121,6 +124,7 @@ function computeInputImages(nodes, edges) {
     || type === NODE_TYPES.pixelEditor
     || type === NODE_TYPES.uiSplitter
     || type === NODE_TYPES.bboxViewer
+    || type === NODE_TYPES.promptReverse
     || type === NODE_TYPES.videoGenerator
     || type === NODE_TYPES.imageCompare;
 
@@ -177,6 +181,7 @@ const DEFAULT_SIZE = {
   [NODE_TYPES.pixelEditor]: { w: 300, h: 260 },
   [NODE_TYPES.uiSplitter]: { w: 290, h: 240 },
   [NODE_TYPES.bboxViewer]: { w: 290, h: 240 },
+  [NODE_TYPES.promptReverse]: { w: 320, h: 280 },
   [NODE_TYPES.videoGenerator]: { w: 300, h: 320 },
   default: { w: 290, h: 240 },
 };
@@ -264,6 +269,16 @@ function initialData(type) {
   }
   if (type === NODE_TYPES.bboxViewer) {
     return { status: 'idle', output: { images: [] }, uploadedImages: [] };
+  }
+  if (type === NODE_TYPES.promptReverse) {
+    // 反推提示词：多图输入，产出是文本（output.text）
+    return {
+      status: 'idle',
+      output: { text: '' },
+      uploadedImages: [],
+      upstreamOrder: [],
+      statusMsg: '',
+    };
   }
   if (type === NODE_TYPES.imageCompare) {
     // 双槽位：first/second 各自独立支持上传 + 连线首张；连线图统一进 data.images（按序分槽位）
@@ -504,6 +519,78 @@ export default function Canvas() {
       updateNodeData(nodeId, { status: 'error', error: err?.message || String(err) });
     }
   }, [generateAudio, generateVideo, updateNodeData, addHistory, settings]);
+
+  // 反推提示词节点「执行」：调视觉 AI（agent_run + 多图附件）→ 写文本产出 + 历史。
+  // 与 handleProcessLocal 同款，但产出是文本（output.text）而非图片，且 agent 配置来自 settings。
+  // inputImages 由节点传入（上传 + 连线去重后的合并列表）。
+  // 取消机制与 handleProcessLocal 共用 processingControllers 注册表（同节点不会同时跑两个本地任务）。
+  const handlePromptReverse = useCallback(async (nodeId, inputImages) => {
+    const agentConfig = {
+      id: settings.promptReverseAgentConfigId || '',
+      userPrompt: settings.promptReverseUserPrompt || '',
+    };
+    if (!agentConfig.id) {
+      updateNodeData(nodeId, {
+        status: 'error',
+        error: '未配置 AI 模型，请先到「设置 → 反推提示词 AI」配置',
+      });
+      return;
+    }
+    if (!inputImages?.length) return;
+    // 清理旧 controller（同节点重复执行时覆盖）
+    processingControllers.get(nodeId)?.abort();
+    const controller = new AbortController();
+    processingControllers.set(nodeId, controller);
+
+    updateNodeData(nodeId, {
+      status: 'running',
+      error: undefined,
+      output: { text: '' },
+      statusMsg: '压缩图片中…',
+    });
+    try {
+      const text = await runAgentVisionText(agentConfig, inputImages, {
+        signal: controller.signal,
+        onCompressProgress: (done, total) => {
+          updateNodeData(nodeId, { statusMsg: `压缩图片 ${done}/${total}…` });
+        },
+      });
+      // 取消竞速：被取消则丢弃结果
+      if (controller.signal.aborted) return;
+      if (!text || !text.trim()) throw new Error('AI 未返回内容');
+      updateNodeData(nodeId, {
+        status: 'done',
+        output: { text },
+        statusMsg: '',
+      });
+      // 文本产出也写入生成记录（images 字段存输入图缩略，便于追溯）
+      addHistory({
+        id: genId('hist'),
+        nodeId,
+        nodeType: NODE_TYPES.promptReverse,
+        prompt: '反推提示词',
+        model: 'agent_run',
+        // 把输入图作为历史缩略，方便从生成记录看到「这张图反推过」
+        images: inputImages.slice(0, 4),
+        mediaType: 'text',
+        text: text.slice(0, 5000),
+        createdAt: Date.now(),
+      }).catch((e) => console.error('promptReverse addHistory failed:', e));
+    } catch (err) {
+      if (controller.signal.aborted) return; // 已取消，不报错
+      console.error('promptReverse failed:', err);
+      updateNodeData(nodeId, {
+        status: 'error',
+        error: err?.message || String(err),
+        statusMsg: '',
+      });
+    } finally {
+      // 只在未被取消覆盖时清理 controller（取消时 handleCancelProcess 已清理）
+      if (processingControllers.get(nodeId) === controller) {
+        processingControllers.delete(nodeId);
+      }
+    }
+  }, [settings, updateNodeData, addHistory]);
 
   // 添加节点：显式 width/height（NodeResizer 依赖）
     // 创建节点到指定位置（点击添加 / 拖拽放下 / Agent add_node 共用）
@@ -1337,6 +1424,8 @@ export default function Canvas() {
           onProcessImage: handleProcessImage,
           onProcessLocal: handleProcessLocal,
           onCancelProcess: handleCancelProcess,
+          // 反推提示词节点执行回调（调视觉 AI agent_run，写文本产出）
+          onPromptReverse: handlePromptReverse,
           // 工具栏【编辑】按钮：打开编辑图片弹窗，预填当前节点图片
           onEditImages: (imgs) => setFormState({ nodeType: NODE_TYPES.editImage, initialImages: imgs }),
           // 图片加载完成自动调整节点尺寸（仅图片展示节点用）
@@ -1351,7 +1440,7 @@ export default function Canvas() {
         },
       };
     }),
-    [nodes, upstreamMap, makeOnUpdate, handleGenerate, handleGenerateMedia, handleExportImages, handleProcessImage, handleProcessLocal, handleCancelProcess, handleAutoSize, handleAutoSizeToContent, selectionCount, settings],
+    [nodes, upstreamMap, makeOnUpdate, handleGenerate, handleGenerateMedia, handleExportImages, handleProcessImage, handleProcessLocal, handleCancelProcess, handlePromptReverse, handleAutoSize, handleAutoSizeToContent, selectionCount, settings],
   );
 
   // 分组 overlay 的子节点映射 + 选中态（WorkflowGroupOverlay 需要的 childNodes/isSelected）

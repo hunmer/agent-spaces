@@ -29,7 +29,12 @@ const VALID_NODE_TYPES = [
   'ipCompress',       // 图片压缩
   'imageEditor',   // 图片编辑
   'pixelEditor',   // 像素编辑器
-  'uiSplitter',    // UI 拆分
+  'uiSplitter',    // 雪碧图拆分
+  'bboxViewer',    // UI 拆分（bbox 可视化）
+  'promptReverse', // 反推提示词
+  'textToVoice',   // 生成配音
+  'videoGenerator',// 生成视频
+  'imageCompare',  // 图片对比
   'note',          // 便签
 ];
 
@@ -53,6 +58,11 @@ const NODE_LABELS = {
   imageEditor: '图片编辑',
   pixelEditor: '像素编辑器',
   uiSplitter: '雪碧图拆分',
+  bboxViewer: 'UI 拆分',
+  promptReverse: '反推提示词',
+  textToVoice: '生成配音',
+  videoGenerator: '生成视频',
+  imageCompare: '图片对比',
   note: '便签',
 };
 

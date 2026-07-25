@@ -1,4 +1,5 @@
 import { BUILTIN_PLUGIN, EXEC_TOOL } from './constants';
+import { getImageCompression } from './image-ops/cdn';
 
 // 同步等待上限 10 分钟（execute_workflow_sync 的 MAX_WORKFLOW_SYNC_TIMEOUT_MS）
 // jimeng/可灵等异步图片生成往往超过默认 120s，必须给足等待时间
@@ -372,4 +373,97 @@ export async function generateVideo(workflowId, input) {
   const normalized = normalizeImageUrl(url);
   const [persisted] = await persistImagesToBackend([normalized]);
   return { url: persisted };
+}
+
+// ============ 视觉 Agent（agent_run + 多图）============
+// 把图片 URL 压缩后转 base64 data URL（附件通道传给视觉模型 + 减小体积）。
+// browser-image-compression Web Worker 压缩，大图不卡 UI；失败时降级用原图。
+// 与 BBoxViewerDialog 里的实现同款，抽到此处供反推提示词等节点复用。
+export async function compressImageToDataUrl(url) {
+  const resp = await fetch(url);
+  if (!resp.ok) throw new Error(`读取图片失败(${resp.status})`);
+  const blob = await resp.blob();
+  const file = new File([blob], 'image', { type: blob.type || 'image/png' });
+  const toDataUrl = (b) => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(new Error('图片转 base64 失败'));
+    reader.readAsDataURL(b);
+  });
+  try {
+    const compress = await getImageCompression();
+    const compressed = await compress(file, {
+      maxSizeMB: 1,
+      maxWidthOrHeight: 1920,
+      useWebWorker: true,
+    });
+    return await toDataUrl(compressed);
+  } catch (err) {
+    console.warn('[vision-agent] 压缩失败，降级用原图:', err?.message || err);
+    return await toDataUrl(blob);
+  }
+}
+
+// 批量压缩多张图（并发）。每张独立压缩，失败降级原图，不阻塞其他图。
+// signal.aborted 后立即短路返回（不再继续后续图），调用方据此丢弃结果。
+export async function compressImagesToDataUrls(urls, { onProgress, signal } = {}) {
+  const list = (urls || []).filter(Boolean);
+  if (!list.length) return [];
+  const results = await Promise.all(list.map((url) => compressImageToDataUrl(url).catch((err) => {
+    console.error('[vision-agent] compress one image failed:', err);
+    return null;
+  })));
+  const out = [];
+  for (let i = 0; i < list.length; i++) {
+    if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
+    const d = results[i];
+    if (d) {
+      out.push(d);
+    } else {
+      // 个别图压缩失败，尝试不压缩直接读
+      try { out.push(await compressImageToDataUrl(list[i])); } catch { /* 跳过 */ }
+    }
+    onProgress?.(i + 1, list.length);
+  }
+  return out.filter(Boolean);
+}
+
+/**
+ * 调视觉 agent 反推图片为文本（如提示词）。
+ * 内部把图片批量压缩成 base64 data URL → 调 agent_run（images 附件通道）→ 返回原始文本。
+ *
+ * @param {object} agentConfig { id, userPrompt }
+ * @param {string[]} imageUrls 图片 URL（http / 相对路径均可，内部压缩）
+ * @param {object} [opts]
+ * @param {(done:number,total:number)=>void} [opts.onCompressProgress] 压缩进度回调
+ * @param {AbortSignal} [opts.signal] 取消信号：aborted 后即使底层返回也 reject，调用方据此丢弃结果
+ * @returns {Promise<string>} AI 返回的原始文本
+ */
+export async function runAgentVisionText(agentConfig, imageUrls, opts = {}) {
+  const AS = window.AgentSpaces;
+  if (!AS?.callPluginTool) throw new Error('宿主 callPluginTool 不可用');
+  if (!agentConfig?.id) throw new Error('未配置 AI 模型');
+  const signal = opts?.signal;
+  const normalized = normalizeImageUrls((imageUrls || []).filter(Boolean));
+  if (!normalized.length) throw new Error('没有输入图片');
+  const dataUrls = await compressImagesToDataUrls(normalized, {
+    onProgress: opts.onCompressProgress,
+    signal,
+  });
+  if (!dataUrls.length) throw new Error('图片预处理失败');
+  if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
+  const userPrompt = (agentConfig.userPrompt || '').replace(/\{imageUrl\}/g, ''); // 兼容旧模板占位符
+  const ret = await AS.callPluginTool(
+    BUILTIN_PLUGIN,
+    'agent_run',
+    {
+      prompt: (userPrompt || '').trim(),
+      agentConfigId: agentConfig.id,
+      permissionMode: 'bypassPermissions',
+      images: dataUrls,
+    },
+  );
+  // agent_run 返回结构：ret.result / ret.output（字符串）
+  const raw = ret?.result ?? ret?.output ?? '';
+  return typeof raw === 'string' ? raw : JSON.stringify(raw);
 }
