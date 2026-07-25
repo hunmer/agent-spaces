@@ -39,12 +39,21 @@ export function SidebarDialogGroup({
       <AgentCommandsDialog open={dialogs.agentCommandsDialogOpen} onOpenChange={dialogs.setAgentCommandsDialogOpen} />
       <ToolsDialog open={dialogs.toolsDialogOpen} onOpenChange={dialogs.setToolsDialogOpen} />
       <SettingsDialog open={dialogs.settingsDialogOpen} onOpenChange={dialogs.setSettingsDialogOpen} />
-      <ModelsDialog open={dialogs.modelsDialogOpen} onOpenChange={dialogs.setModelsDialogOpen} initialProvider={dialogs.modelsDialogProvider} />
+      <ModelsDialog
+        open={dialogs.modelsDialogOpen}
+        onOpenChange={dialogs.setModelsDialogOpen}
+        initialProvider={dialogs.modelsDialogProvider}
+        focusProvider={dialogs.modelsDialogFocusProvider}
+      />
       <ProvidersDialog
         open={dialogs.providersDialogOpen}
         onOpenChange={dialogs.setProvidersDialogOpen}
         onAddModel={(providerName) => {
           dialogs.setModelsDialogProvider(providerName);
+          dialogs.setModelsDialogOpen(true);
+        }}
+        onEditModels={(providerName) => {
+          dialogs.setModelsDialogFocusProvider(providerName);
           dialogs.setModelsDialogOpen(true);
         }}
       />

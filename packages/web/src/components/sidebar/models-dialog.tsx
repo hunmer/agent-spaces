@@ -76,11 +76,14 @@ export function ModelsDialog({
   open,
   onOpenChange,
   initialProvider,
+  focusProvider,
   standalone,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   initialProvider?: string;
+  // 打开列表时滚动定位到该服务商分组（不进入新增表单）
+  focusProvider?: string;
   standalone?: boolean;
 }) {
   const t = useTranslations("models");
@@ -130,6 +133,19 @@ export function ModelsDialog({
   }, [open, initialProvider, draft]);
 
   const handleBack = () => { setSelected(null); setDraft(null); };
+
+  // 仅定位到服务商分组（不进入新增表单）：打开且未进入 draft 时滚动到对应分组
+  const focusHandled = useRef(false);
+  useEffect(() => {
+    if (!open || !focusProvider || draft) {
+      if (!open) focusHandled.current = false;
+      return;
+    }
+    if (focusHandled.current) return;
+    focusHandled.current = true;
+    const el = document.getElementById(`models-group-${focusProvider}`);
+    if (el) el.scrollIntoView({ block: "start", behavior: "smooth" });
+  }, [open, focusProvider, draft]);
 
   const handleAdd = (provider?: string) => {
     setSelected(null);
@@ -398,7 +414,7 @@ function ModelList({
         const entity = providers.find(p => p.name === provider);
         const capabilities = getModelCapabilities(entity?.modelProvider);
         return (
-        <div key={provider}>
+        <div key={provider} id={`models-group-${provider}`}>
           <div className="group flex items-center gap-2 mb-2 px-1">
             <ProviderIcon
               apiBase={entity?.apiBase}

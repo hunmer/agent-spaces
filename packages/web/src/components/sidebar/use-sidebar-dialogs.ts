@@ -46,6 +46,8 @@ export function useSidebarDialogs(isMobile = false) {
   const [toolsDialogOpen, setToolsDialogOpenRaw] = useState(false);
   const [layoutDialogOpen, setLayoutDialogOpenRaw] = useState(false);
   const [modelsDialogProvider, setModelsDialogProvider] = useState<string | undefined>(undefined);
+  // 仅用于"定位到服务商分组"（不进入新增表单），与 initialProvider 区分
+  const [modelsDialogFocusProvider, setModelsDialogFocusProvider] = useState<string | undefined>(undefined);
 
   // 当前 open 状态的 ref 镜像，供 hashchange 同步时判断是否需要更新，避免冗余渲染
   const openStateRef = useRef<Record<string, boolean>>({});
@@ -193,6 +195,8 @@ export function useSidebarDialogs(isMobile = false) {
     setLayoutDialogOpen,
     modelsDialogProvider,
     setModelsDialogProvider,
+    modelsDialogFocusProvider,
+    setModelsDialogFocusProvider,
     setterMap,
   };
 }

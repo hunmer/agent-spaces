@@ -19,6 +19,7 @@
     "noApiBase": "未配置 API 地址",
     "modelsCount": "个模型",
     "addModel": "添加模型",
+    "editModels": "编辑模型",
     "empty": "暂无供应商"
   },
   "form": {

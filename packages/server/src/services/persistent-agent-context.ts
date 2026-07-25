@@ -161,11 +161,11 @@ function collectInstructionFiles(
 
 function resolveInstructionSearchBase(workingDir: string, boundDirs?: string[]): string | null {
   const roots = (boundDirs ?? [])
-    .map((dir) => safeResolve(dir))
+    .map((dir) => safeResolveAbsolute(dir))
     .filter((dir): dir is string => Boolean(dir));
 
   if (roots.length === 0) return null;
-  const cwd = safeResolve(workingDir) ?? roots[0];
+  const cwd = resolveWorkingDir(workingDir, roots) ?? roots[0];
   if (roots.some((dir) => isPathWithin(cwd, dir))) return cwd;
   return roots[0];
 }
@@ -182,7 +182,7 @@ function getInstructionFilenames(options: Pick<PersistentAgentContextOptions, 'e
 
 function resolveInstructionRoot(cwd: string, boundDirs?: string[]): string {
   const roots = (boundDirs ?? [])
-    .map((dir) => safeResolve(dir))
+    .map((dir) => safeResolveAbsolute(dir))
     .filter((dir): dir is string => Boolean(dir))
     .filter((dir) => isPathWithin(cwd, dir))
     .sort((a, b) => a.length - b.length);
@@ -244,9 +244,16 @@ function truncateForBudget(content: string, maxChars: number): string {
   return `${content.slice(0, Math.max(0, maxChars - suffix.length)).trimEnd()}${suffix}`;
 }
 
-function safeResolve(path: string): string | null {
+function safeResolveAbsolute(path: string): string | null {
   if (!path.trim()) return null;
-  return resolve(isAbsolute(path) ? path : join(process.cwd(), path));
+  if (!isAbsolute(path)) return null;
+  return resolve(path);
+}
+
+function resolveWorkingDir(path: string, roots: string[]): string | null {
+  if (!path.trim()) return null;
+  if (isAbsolute(path)) return resolve(path);
+  return roots[0] ? resolve(roots[0], path) : null;
 }
 
 function isPathWithin(path: string, root: string): boolean {

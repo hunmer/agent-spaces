@@ -193,6 +193,23 @@ When adjusting `window.AgentSpacesUI` components, pass visual changes through `c
 
 Small repeated class groups may be local constants when they improve readability.
 
+### Dialog sizing
+
+The host `DialogContent` ships with built-in width/height caps (`w-full max-w-[calc(100%-2rem)] sm:max-w-sm`, and a `maxHeight` inline style). To make a dialog wider/taller than the default, **do not rely on Tailwind `!important` classes** — under Tailwind v4 the `!` prefix syntax changed to a suffix (`class-!`), and even then competing with the built-in `maxHeight` inline style is unreliable.
+
+Instead, pass an inline `style` with explicit `width` / `maxWidth` / `height` / `maxHeight` (e.g. `94vw` / `94vh`), combined with a flex-col + `overflow-hidden p-0` container. Then give the `DialogHeader` / scrollable body / `DialogFooter` their own padding so content does not hug the edge, and put `overflow-y-auto` on the middle body so only it scrolls while header and footer stay fixed:
+
+```jsx
+<DialogContent
+  className="flex flex-col gap-0 overflow-hidden p-0"
+  style={{ width: '94vw', maxWidth: '94vw', maxHeight: '94vh', height: '94vh' }}
+>
+  <DialogHeader className="px-6 pt-6">...</DialogHeader>
+  <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-6 py-4">...</div>
+  <DialogFooter className="px-6 pb-6">...</DialogFooter>
+</DialogContent>
+```
+
 ## Plugin Tools
 
 Preview code should execute enabled plugin tools with:

@@ -136,15 +136,19 @@ export default function SettingsDialog({ open, value, onClose, onSave }) {
   };
 
   return (
-    <Dialog open={open} onOpenChange={(next) => { if (!next) onClose(); }}>
-      <DialogContent className="!max-w-2xl">
-        <DialogHeader>
+    <Dialog open={open} onOpenChange={(o) => { if (!o) onClose?.(); }}>
+      <DialogContent
+        className="flex flex-col gap-0 overflow-hidden p-0"
+        style={{ width: '94vw', maxWidth: '94vw', maxHeight: '94vh', height: '94vh' }}
+        onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); }}
+      >
+        <DialogHeader className="px-6 pt-6">
           <DialogTitle>设置</DialogTitle>
         </DialogHeader>
 
-        <div className="flex flex-col gap-4 px-2 py-2">
+        <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-6 py-4">
           <div className="text-sm font-semibold text-muted-foreground">工作流</div>
-          <div className="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-x-8 gap-y-4 sm:grid-cols-2">
             {WORKFLOW_SLOTS.map((slot) => (
               <WorkflowSlot
                 key={slot.key}
@@ -206,7 +210,7 @@ export default function SettingsDialog({ open, value, onClose, onSave }) {
           )}
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="px-6 pb-6">
           <Button variant="outline" onClick={onClose}>取消</Button>
           <Button onClick={() => onSave(cfg)}>保存</Button>
         </DialogFooter>

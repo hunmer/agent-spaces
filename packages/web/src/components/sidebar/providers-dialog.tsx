@@ -38,11 +38,14 @@ export function ProvidersDialog({
   open,
   onOpenChange,
   onAddModel,
+  onEditModels,
   standalone,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onAddModel: (providerName: string) => void;
+  // 打开模型列表对话框并定位到对应服务商分组（不进入新增表单）
+  onEditModels?: (providerName: string) => void;
   standalone?: boolean;
 }) {
   const t = useTranslations("providers");
@@ -185,6 +188,10 @@ export function ProvidersDialog({
             providerModels={providers.map(p => ({ id: p.id, models: getModelsForProvider(p.name) }))}
             onEdit={handleEdit}
             onDelete={handleDelete}
+            onEditModels={(providerName) => {
+              onEditModels?.(providerName);
+              if (!standalone) onOpenChange(false);
+            }}
             onAddModel={(providerName) => {
               // 先打开 models（设 hash 为 /settings/models），再关闭 providers。
               // 顺序很关键：若先关 providers，syncHash 会 replaceState 清空 hash，
@@ -228,12 +235,14 @@ function ProviderList({
   providerModels,
   onEdit,
   onDelete,
+  onEditModels,
   onAddModel,
 }: {
   providers: LLMProvider[];
   providerModels: Array<{ id: string; models: LLMModel[] }>;
   onEdit: (p: LLMProvider) => void;
   onDelete: (id: string) => void;
+  onEditModels?: (providerName: string) => void;
   onAddModel: (providerName: string) => void;
 }) {
   const t = useTranslations("providers");
@@ -289,15 +298,28 @@ function ProviderList({
                 ))}
               </div>
             )}
-            <Button
-              variant="ghost"
-              size="sm"
-              className="mt-1 ml-11 h-6 text-[11px] text-muted-foreground"
-              onClick={e => { e.stopPropagation(); onAddModel(provider.name); }}
-            >
-              <ExternalLink className="size-3" />
-              {t("list.addModel")}
-            </Button>
+            <div className="mt-1 ml-11 flex items-center gap-1">
+              {onEditModels && models.length > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 text-[11px] text-muted-foreground"
+                  onClick={e => { e.stopPropagation(); onEditModels(provider.name); }}
+                >
+                  <Brain className="size-3" />
+                  {t("list.editModels")}
+                </Button>
+              )}
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 text-[11px] text-muted-foreground"
+                onClick={e => { e.stopPropagation(); onAddModel(provider.name); }}
+              >
+                <ExternalLink className="size-3" />
+                {t("list.addModel")}
+              </Button>
+            </div>
           </div>
         );
       })}

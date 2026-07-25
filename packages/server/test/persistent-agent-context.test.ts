@@ -59,6 +59,34 @@ test('buildPersistentAgentContextDetails loads instruction files from boundDirs 
   }
 });
 
+test('buildPersistentAgentContextDetails does not resolve relative boundDirs against the server cwd', () => {
+  const dataDir = mkdtempSync(join(tmpdir(), 'agent-spaces-data-'));
+  const runtimeDir = mkdtempSync(join(tmpdir(), 'persistent-context-runtime-'));
+  const previousDataDir = process.env.AGENT_SPACES_DATA_DIR;
+  const previousCwd = process.cwd();
+  process.env.AGENT_SPACES_DATA_DIR = dataDir;
+
+  try {
+    writeFileSync(join(runtimeDir, 'CLAUDE.md'), 'runtime instructions', 'utf-8');
+    process.chdir(runtimeDir);
+
+    const details = buildPersistentAgentContextDetails({
+      workspaceId: 'ws-1',
+      workingDir: '.',
+      boundDirs: ['.'],
+    });
+
+    assert.equal(details.summary.counts.total, 0);
+    assert.doesNotMatch(details.instructionContext, /runtime instructions/);
+  } finally {
+    process.chdir(previousCwd);
+    if (previousDataDir === undefined) delete process.env.AGENT_SPACES_DATA_DIR;
+    else process.env.AGENT_SPACES_DATA_DIR = previousDataDir;
+    rmSync(dataDir, { recursive: true, force: true });
+    rmSync(runtimeDir, { recursive: true, force: true });
+  }
+});
+
 test('buildPersistentAgentContextDetails excludes every CLAUDE.md casing for native Claude Code loading', () => {
   const dataDir = mkdtempSync(join(tmpdir(), 'agent-spaces-data-'));
   const workspaceDir = mkdtempSync(join(tmpdir(), 'persistent-context-workspace-'));

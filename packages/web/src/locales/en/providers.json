@@ -19,6 +19,7 @@
     "noApiBase": "No API base configured",
     "modelsCount": "models",
     "addModel": "Add model",
+    "editModels": "Edit models",
     "empty": "No providers yet"
   },
   "form": {
