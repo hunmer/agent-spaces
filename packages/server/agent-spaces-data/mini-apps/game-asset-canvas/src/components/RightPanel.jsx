@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   openMediaGallery, ScrollArea, Tabs, TabsList, TabsTrigger, TabsContent,
   Crosshair, Trash2, Plus, Boxes, History, Images,
@@ -6,32 +6,53 @@ import {
 import { NODE_META, NODE_TYPES } from '../utils/constants';
 import AssetLibrary from './AssetLibrary';
 
-const ADD_ITEMS = [
-  { type: NODE_TYPES.textToImage, label: '文字生成图片' },
-  { type: NODE_TYPES.editImage, label: '编辑图片' },
-  { type: NODE_TYPES.imageDisplay, label: '图片展示' },
-  // 图像处理（按单个处理器拆分为 12 个独立节点）
-  { type: NODE_TYPES.ipGifSplit, label: 'GIF 拆帧' },
-  { type: NODE_TYPES.ipGifMerge, label: 'GIF 合成' },
-  { type: NODE_TYPES.ipSpriteSplit, label: 'Sheet 拆分' },
-  { type: NODE_TYPES.ipSpriteMerge, label: 'Sheet 合成' },
-  { type: NODE_TYPES.ipPixelate, label: '像素化' },
-  { type: NODE_TYPES.ipResizeNearest, label: '最近邻缩放' },
-  { type: NODE_TYPES.ipInnerStroke, label: '内描边' },
-  { type: NODE_TYPES.ipComposeOverlay, label: '图层叠加' },
-  { type: NODE_TYPES.ipEnhance, label: '图片放大' },
-  { type: NODE_TYPES.ipCompress, label: '图片压缩' },
-  { type: NODE_TYPES.imageEditor, label: '图片编辑' },
-  { type: NODE_TYPES.pixelEditor, label: '像素编辑器' },
-  { type: NODE_TYPES.uiSplitter, label: '雪碧图拆分' },
-  { type: NODE_TYPES.bboxViewer, label: 'UI拆分' },
-  { type: NODE_TYPES.promptReverse, label: '反推提示词' },
-  { type: NODE_TYPES.textToVoice, label: '生成配音' },
-  { type: NODE_TYPES.videoGenerator, label: '生成视频' },
-  { type: NODE_TYPES.imageCompare, label: '图片对比' },
-  { type: NODE_TYPES.cutout, label: '抠图' },
-  { type: NODE_TYPES.note, label: '便签' },
+// 节点分类（顶部 chips 筛选用）。category 字段同步打到 ADD_ITEMS 每项。
+const NODE_CATEGORIES = [
+  { id: 'all', label: '全部' },
+  { id: 'generate', label: '生成' },
+  { id: 'image-process', label: '图像处理' },
+  { id: 'edit', label: '编辑' },
+  { id: 'media', label: '媒体' },
+  { id: 'util', label: '工具' },
 ];
+
+const ADD_ITEMS = [
+  // 生成
+  { type: NODE_TYPES.textToImage, label: '文字生成图片', category: 'generate' },
+  { type: NODE_TYPES.editImage, label: '编辑图片', category: 'generate' },
+  // 工具
+  { type: NODE_TYPES.imageDisplay, label: '图片展示', category: 'util' },
+  // 图像处理（按单个处理器拆分为 12 个独立节点）
+  { type: NODE_TYPES.ipGifSplit, label: 'GIF 拆帧', category: 'image-process' },
+  { type: NODE_TYPES.ipGifMerge, label: 'GIF 合成', category: 'image-process' },
+  { type: NODE_TYPES.ipSpriteSplit, label: 'Sheet 拆分', category: 'image-process' },
+  { type: NODE_TYPES.ipSpriteMerge, label: 'Sheet 合成', category: 'image-process' },
+  { type: NODE_TYPES.ipPixelate, label: '像素化', category: 'image-process' },
+  { type: NODE_TYPES.ipResizeNearest, label: '最近邻缩放', category: 'image-process' },
+  { type: NODE_TYPES.ipInnerStroke, label: '内描边', category: 'image-process' },
+  { type: NODE_TYPES.ipComposeOverlay, label: '图层叠加', category: 'image-process' },
+  { type: NODE_TYPES.ipEnhance, label: '图片放大', category: 'image-process' },
+  { type: NODE_TYPES.ipCompress, label: '图片压缩', category: 'image-process' },
+  // 编辑
+  { type: NODE_TYPES.imageEditor, label: '图片编辑', category: 'edit' },
+  { type: NODE_TYPES.pixelEditor, label: '像素编辑器', category: 'edit' },
+  { type: NODE_TYPES.cutout, label: '抠图', category: 'edit' },
+  { type: NODE_TYPES.promptReverse, label: '反推提示词', category: 'edit' },
+  // 工具
+  { type: NODE_TYPES.uiSplitter, label: '雪碧图拆分', category: 'util' },
+  { type: NODE_TYPES.bboxViewer, label: 'UI拆分', category: 'util' },
+  { type: NODE_TYPES.imageCompare, label: '图片对比', category: 'util' },
+  { type: NODE_TYPES.note, label: '便签', category: 'util' },
+  // 媒体
+  { type: NODE_TYPES.textToVoice, label: '生成配音', category: 'media' },
+  { type: NODE_TYPES.videoGenerator, label: '生成视频', category: 'media' },
+];
+
+// 每张卡片最小宽度（px），用于响应式推算列数
+const MIN_CARD_WIDTH = 96;
+// 列数范围
+const MIN_COLS = 2;
+const MAX_COLS = 5;
 
 /**
  * 右侧面板：新增节点 / 节点管理 / 生成记录 三个 tab。
@@ -95,51 +116,103 @@ export default function RightPanel({
 const FORM_NODE_TYPES = new Set([NODE_TYPES.textToImage, NODE_TYPES.editImage]);
 
 // ============ 新增节点（可点击添加，可拖拽到画布；文生图/编辑图片可填表单提交到队列） ============
+// 顶部按分类筛选 + 卡片网格按容器宽度自适应列数（2~5 列）。
 function AddNodeList({ onAdd, onDragStartNode, onOpenForm }) {
+  const [activeCat, setActiveCat] = useState('all');
+  const scrollRef = useRef(null);
+  const [cols, setCols] = useState(MIN_COLS);
+
+  // 响应式：按容器宽度推算列数
+  useEffect(() => {
+    const el = scrollRef.current?.querySelector('[data-radix-scroll-area-viewport]') || scrollRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const update = () => {
+      const w = el.clientWidth;
+      const n = Math.floor(w / MIN_CARD_WIDTH);
+      setCols(Math.min(MAX_COLS, Math.max(MIN_COLS, n)));
+    };
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  const items = useMemo(
+    () => (activeCat === 'all' ? ADD_ITEMS : ADD_ITEMS.filter((it) => it.category === activeCat)),
+    [activeCat],
+  );
+
   return (
-    <ScrollArea className="h-full">
-      <div className="p-3">
-        <p className="mb-2 text-xs text-muted-foreground">点击添加，或拖拽到画布任意位置</p>
-        <div className="grid grid-cols-2 gap-2">
-          {ADD_ITEMS.map((it) => {
-            const meta = NODE_META[it.type];
-            const hasForm = FORM_NODE_TYPES.has(it.type);
-            return (
-              <div
-                key={it.type}
-                className="group/card relative flex flex-col gap-1 rounded-lg border border-border bg-background p-2.5 transition hover:border-primary/60 hover:shadow-sm"
-              >
-                <button
-                  type="button"
-                  draggable
-                  onDragStart={(e) => onDragStartNode?.(it.type, e)}
-                  onClick={() => onAdd?.(it.type)}
-                  className="flex flex-1 cursor-grab flex-col items-center gap-1.5 outline-none active:cursor-grabbing"
+    <div ref={scrollRef} className="flex h-full min-h-0 flex-col">
+      {/* 分类筛选 chips */}
+      <div className="flex flex-wrap gap-1 border-b border-border p-2">
+        {NODE_CATEGORIES.map((c) => {
+          const active = activeCat === c.id;
+          return (
+            <button
+              key={c.id}
+              type="button"
+              onClick={() => setActiveCat(c.id)}
+              className={
+                'rounded-full px-2.5 py-1 text-[11px] font-medium transition ' +
+                (active
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-muted text-muted-foreground hover:bg-muted/70 hover:text-foreground')
+              }
+            >
+              {c.label}
+            </button>
+          );
+        })}
+      </div>
+
+      <ScrollArea className="min-h-0 flex-1">
+        <div className="p-3">
+          <p className="mb-2 text-xs text-muted-foreground">点击添加，或拖拽到画布任意位置</p>
+          <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
+            {items.map((it) => {
+              const meta = NODE_META[it.type];
+              const hasForm = FORM_NODE_TYPES.has(it.type);
+              return (
+                <div
+                  key={it.type}
+                  className="group/card relative flex flex-col gap-1 rounded-lg border border-border bg-background p-2.5 transition hover:border-primary/60 hover:shadow-sm"
                 >
-                  <span
-                    className="flex h-9 w-9 items-center justify-center rounded-md text-lg"
-                    style={{ backgroundColor: `${meta.color}1a` }}
-                  >
-                    {meta.icon}
-                  </span>
-                  <span className="text-center text-xs font-medium leading-tight">{it.label}</span>
-                </button>
-                {hasForm && (
                   <button
                     type="button"
-                    onClick={() => onOpenForm?.(it.type)}
-                    title="填写参数并提交到执行队列"
-                    className="w-full rounded-md bg-primary/10 px-2 py-1 text-[11px] font-medium text-primary transition hover:bg-primary/20"
+                    draggable
+                    onDragStart={(e) => onDragStartNode?.(it.type, e)}
+                    onClick={() => onAdd?.(it.type)}
+                    className="flex flex-1 cursor-grab flex-col items-center gap-1.5 outline-none active:cursor-grabbing"
                   >
-                    ⚡ 生成
+                    <span
+                      className="flex h-9 w-9 items-center justify-center rounded-md text-lg"
+                      style={{ backgroundColor: `${meta.color}1a` }}
+                    >
+                      {meta.icon}
+                    </span>
+                    <span className="text-center text-xs font-medium leading-tight">{it.label}</span>
                   </button>
-                )}
-              </div>
-            );
-          })}
+                  {hasForm && (
+                    <button
+                      type="button"
+                      onClick={() => onOpenForm?.(it.type)}
+                      title="填写参数并提交到执行队列"
+                      className="w-full rounded-md bg-primary/10 px-2 py-1 text-[11px] font-medium text-primary transition hover:bg-primary/20"
+                    >
+                      ⚡ 生成
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          {items.length === 0 && (
+            <p className="px-2 py-8 text-center text-xs text-muted-foreground">该分类暂无节点</p>
+          )}
         </div>
-      </div>
-    </ScrollArea>
+      </ScrollArea>
+    </div>
   );
 }
 

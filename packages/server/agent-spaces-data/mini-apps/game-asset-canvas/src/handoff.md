@@ -757,6 +757,45 @@ GDScript 用 `print("[PXR] ...")`（经 index.js onPrint 输出，与 `index.js:
 - 文件结构清晰：Canvas.jsx 只做编排，业务逻辑分布在 hooks，纯函数/单例在 utils，展示组件在 components/canvas
 - 无循环依赖：canvas-constants → Node 组件 → constants（单向）
 
+## UI 拆分器对话框重构（本轮新增）
+
+`BBoxViewerDialog` 重构：移除「载入示例」、右侧面板改 Tabs（元素拆分/AI思考/选中信息）、Header 工具栏增加框选/平移模式切换。
+
+### 关键决策与已踩坑（务必遵守）
+
+1. **「载入示例」整块删除**：原 `SAMPLE_DATA` 常量 + 工具条「载入示例」按钮 + 空状态文案里的「点载入示例」提示全部移除。空状态改为引导用「AI 分析 / Alt 拉框 / 导入 JSON」。
+2. **右侧面板改 Tabs（3 个 tab）**：
+   - **元素拆分**：原元素列表（树形缩进 + hover 联动 + 删除按钮），不动
+   - **AI思考**：实时 markdown 渲染 AI 分析过程与返回原文（用宿主 `Markdown` 组件，已暴露于 ui-exports）
+   - **选中信息**：表单修改选中框（id/type/label/x/y/w/h/depth/exportSlice/ocrText/textRole），「应用修改」写回 fabric Rect
+3. **AI 思考过程「实时」=分阶段 markdown 累积（非 token 流）**：`agent_run` 是同步调用（无 token stream 能力），改造为在 `handleAiAnalyze` 各阶段 `setAiThought(t => t + ...)` 累积 markdown 文本（启动/压缩/分析中/返回原文/失败），用 `<Markdown content={aiThought}/>` 渲染。点「AI 分析」时 `setRightTab('ai')` 自动切到此 tab；分析完自动切回 list。
+4. **选中信息 tab 自动切换**：fabric 选中变化（`selection:created/updated/cleared`）触发 `onFabricSelectionChange`：选中 bbox → 写 `selectedIdx` + 从 Rect 读出 `selForm` + `setRightTab('selected')`；移动/缩放中也实时同步表单坐标。
+5. **表单回写 = applySelForm**：把 selForm 的 x/y/w/h 设置到 Rect（scaleX/scaleY 重置 1 + width/height 直接改），meta（id/label/type/exportSlice/ocrText/textRole）回写 `r.__meta`，exportSlice 变化同步 fill/stroke 风格。
+6. **Header 工具栏框选/平移切换**：左侧加两个图标按钮（`SquareMousePointer`=框选 / `Hand`=平移），`modeRef`（fabric 闭包用）+ `modeState`（React 重渲染用）双轨。`applyMode` 把 mode 应用到 fabric 的 `selection`/`defaultCursor`/`hoverCursor`/各 Rect 的 `selectable`。鼠标按下时按 mode 分流（draw=拉框/选中、pan=拖拽平移），Alt 仍可强制拉框（与 mode 无关）。空格仍可临时平移（松开恢复 mode）。
+7. **图标 `SquareMousePointer`/`Hand` 走 lucide-react `export *`**：**注意 lucide-react 没导出 `SquareDashed`**（文件存在但主入口未导出），改用 `SquareMousePointer`（方形+光标，语义贴切）。`Hand` 已导出。
+8. **`Markdown` 组件已暴露无需改宿主**：`ui-exports.ts:63` 已有 `export { Markdown } from '@/components/ui/markdown'`，本轮零宿主改动。
+
+### 改动文件（mini-app 内，刷新即生效，无宿主改动）
+
+- `src/components/BBoxViewerDialog.jsx`：完整重构
+  - 删除 `SAMPLE_DATA` + 「载入示例」按钮 + 相关文案
+  - 右侧 `<ResizablePanel id="bbox-list">` 内改为 `<Tabs>`（list/ai/selected），底部导出区移到 Tabs 外（三 tab 共用）
+  - 新增 `aiThought` state + `setAiThought` 阶段性累积，`<Markdown content={aiThought}/>` 渲染
+  - 新增 `selectedIdx`/`selForm` state + `updateSelFormFromRect`/`applySelForm`/`deleteSelectedFromForm`
+  - 新增 `MODE` 常量 + `modeRef`/`modeState` + `applyMode`/`setMode`/`switchMode`
+  - fabric `bindFabricEvents` 加 `selection:created/updated/cleared → onFabricSelectionChange`，`object:moving/scaling` 中同步选中表单坐标
+  - Header 工具条左侧加「框选/平移」两个 `Button`（variant 按 modeState 切换）+ 分隔线
+  - import 增加 `Tabs/TabsList/TabsTrigger/TabsContent/Markdown` + `SquareMousePointer/Hand`，移除未用的 `MousePointer2`
+
+### 验收要点
+
+- 打开 UI 拆分器：工具条**无**「载入示例」按钮；左侧新增「框选」「平移」两个按钮
+- 框选模式（默认）：左键空白拉新框；平移模式：左键拖拽画布；Alt 在两模式都强制拉框；空格临时平移
+- 右侧 Tabs 三个：元素拆分（同原）/ AI思考（默认空提示）/ 选中信息（默认空提示）
+- 点「AI 分析」→ 自动切到「AI思考」tab，分阶段显示「启动→压缩→分析中→返回原文」，完成后切回「元素拆分」
+- 在画布选中一个框 → 自动切到「选中信息」tab，表单显示该框的 id/type/坐标/尺寸/层级/exportSlice 等，改完点「应用修改」写回；移动/缩放框时表单坐标实时同步
+- 空状态文案引导「AI 分析 / Alt 拉框 / 导入 JSON」，不再提「载入示例」
+
 ## 后续可做
 
 - 队列任务失败「重试」按钮、执行中实时进度（node:progress 事件）

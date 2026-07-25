@@ -9,7 +9,7 @@ import {
 } from '@agent-spaces/ui';
 import {
   Undo2, Redo2, Eraser, Trash2, Download, Upload, FileJson, Crosshair, Sparkles,
-  MousePointer2, SquareDashed, Hand,
+  SquareMousePointer, Hand,
 } from '@agent-spaces/ui';
 import { getFabric, getJsZip, getImageCompression } from '../utils/image-ops/cdn';
 import { loadImageSource, exportBox } from '../utils/image-ops/sprite-splitter';
@@ -1079,7 +1079,7 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
                 <Button size="icon" variant={modeState === MODE.DRAW ? 'default' : 'outline'} className="h-8 w-8"
                   onClick={() => switchMode(MODE.DRAW)} />
               }>
-                <SquareDashed className="h-4 w-4" />
+                <SquareMousePointer className="h-4 w-4" />
               </TooltipTrigger>
               <TooltipContent side="bottom">框选模式（左键拉框，Alt 强制拉框）</TooltipContent>
             </Tooltip>
@@ -1223,15 +1223,15 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
             <aside className="flex h-full min-h-0 flex-col border-l border-border">
               <Tabs value={rightTab} onValueChange={setRightTab} className="flex h-full min-h-0 flex-col">
                 <TabsList className="flex w-full flex-row flex-nowrap rounded-none border-b border-border">
+                  <TabsTrigger value="selected" className="flex-1 text-[11px]">选中信息</TabsTrigger>
                   <TabsTrigger value="list" className="flex-1 text-[11px]">元素拆分</TabsTrigger>
                   <TabsTrigger value="ai" className="flex-1 text-[11px]">
                     AI思考{analyzing ? '…' : ''}
                   </TabsTrigger>
-                  <TabsTrigger value="selected" className="flex-1 text-[11px]">选中信息</TabsTrigger>
                 </TabsList>
 
-                {/* Tab 1：元素拆分列表 */}
-                <TabsContent value="list" className="mt-0 min-h-0 flex-1 overflow-hidden">
+                {/* Tab：选中信息（表单） */}
+                <TabsContent value="selected" className="mt-0 min-h-0 flex-1 overflow-hidden">
                   <div className="flex h-full flex-col">
                     <div className="flex items-center justify-between border-b border-border px-3 py-2">
                       <span className="text-xs font-medium">元素 {totalBoxes}</span>
