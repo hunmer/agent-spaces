@@ -38,8 +38,6 @@ export default function ImageEditorDialog({
   const containerRef = useRef(null);           // Painterro 独占的挂载容器
   const containerIdRef = useRef(`painterro-editor-${Math.random().toString(36).slice(2)}`);
   const painterroRef = useRef(null);           // Painterro 实例
-  const colorImageRef = useRef(null);
-  const colorCanvasRef = useRef(null);
   const savedRef = useRef(false);              // saveHandler 是否已成功保存
   const mountedRef = useRef(false);            // 本轮是否已成功挂载（防 StrictMode 双跑）
   const onSaveRef = useRef(onSave);
@@ -49,6 +47,7 @@ export default function ImageEditorDialog({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [pickedColor, setPickedColor] = useState(initialColor || '');
+  const [zoomPercent, setZoomPercent] = useState(100);
 
   // 自定义 id 模式不会创建 body wrapper，Dialog 卸载时 React 会回收容器 DOM。
   const cleanupInstance = useCallback(() => {
@@ -58,7 +57,7 @@ export default function ImageEditorDialog({
 
   // 打开时初始化 Painterro（仅依赖 open + imageUrl，回调用 ref 避免重跑）
   useEffect(() => {
-    if (!open || !imageUrl || colorPickerMode) return;
+    if (!open || !imageUrl) return;
     if (mountedRef.current) return;             // 防 StrictMode 双跑重复创建
     mountedRef.current = true;
 
@@ -79,7 +78,14 @@ export default function ImageEditorDialog({
           activeFillColor: '#000000',
           activeFillColorAlpha: 0,
           defaultTool: 'brush',
-          hiddenTools: ['redo'],
+          hiddenTools: colorPickerMode
+            ? ['crop', 'pixelize', 'line', 'arrow', 'rect', 'ellipse', 'text', 'eraser', 'fill', 'rotate', 'resize', 'open', 'save', 'close', 'undo', 'redo', 'settings', 'zoomin', 'zoomout']
+            : ['redo'],
+          onImageLoaded: () => {
+            if (!colorPickerMode) return;
+            const current = painterroRef.current;
+            setZoomPercent(Math.round((current?.zoomFactor || 1) * 100));
+          },
           saveHandler: async (image, done) => {
             try {
               const hasAlpha = typeof image.hasAlphaChannel === 'function' && image.hasAlphaChannel();
@@ -106,6 +112,42 @@ export default function ImageEditorDialog({
         });
         painterroRef.current = instance;
         instance.show(imageUrl);
+        if (colorPickerMode && instance.colorPicker && instance.toolContainer) {
+          const picker = instance.colorPicker;
+          const pickingArea = instance.toolContainer;
+          const pickerDocument = instance.doc || document;
+          const zoomer = instance.zoomHelper?.zomer;
+          const isPickingTarget = (target) => target === pickingArea || target === zoomer;
+          const syncPickingState = (event) => {
+            picker.choosing = isPickingTarget(event.target);
+          };
+          const disablePicking = () => {
+            picker.choosing = false;
+            picker.choosingActive = false;
+            instance.zoomHelper?.hideZoomHelper?.();
+          };
+
+          const handlePickedColor = (colorState) => {
+            if (colorState?.palleteColor) {
+              setPickedColor(colorState.palleteColor);
+              setError('');
+            }
+          };
+          instance.closeActiveTool(true);
+          picker.target = 'line';
+          picker.callback = handlePickedColor;
+          picker.addCallback = undefined;
+          picker.choosing = true;
+          pickerDocument.addEventListener('mousedown', syncPickingState, true);
+          pickerDocument.addEventListener('mousemove', syncPickingState, true);
+          pickerDocument.addEventListener('touchstart', syncPickingState, true);
+          instance.__colorPickerCleanup = () => {
+            disablePicking();
+            pickerDocument.removeEventListener('mousedown', syncPickingState, true);
+            pickerDocument.removeEventListener('mousemove', syncPickingState, true);
+            pickerDocument.removeEventListener('touchstart', syncPickingState, true);
+          };
+        }
         notifyHide = true;
       } catch (err) {
         console.error('painterro load/open failed:', err);
@@ -118,6 +160,7 @@ export default function ImageEditorDialog({
     return () => {
       cancelled = true;
       notifyHide = false;
+      painterroRef.current?.__colorPickerCleanup?.();
       cleanupInstance();
       mountedRef.current = false;
     };
@@ -126,46 +169,17 @@ export default function ImageEditorDialog({
   useEffect(() => {
     if (!open || !colorPickerMode) return;
     setPickedColor(initialColor || '');
+    setZoomPercent(100);
     setError(imageUrl ? '' : '请先上传图片或连接上游图片');
   }, [open, colorPickerMode, initialColor, imageUrl]);
 
-  const drawColorImage = useCallback(() => {
-    const image = colorImageRef.current;
-    const canvas = colorCanvasRef.current;
-    if (!image || !canvas || !image.naturalWidth || !image.naturalHeight) return;
-    canvas.width = image.naturalWidth;
-    canvas.height = image.naturalHeight;
-    canvas.getContext('2d', { willReadFrequently: true })?.drawImage(image, 0, 0);
-  }, []);
-
-  const handlePickColor = useCallback((event) => {
-    const canvas = colorCanvasRef.current;
-    const image = colorImageRef.current;
-    const ctx = canvas?.getContext('2d', { willReadFrequently: true });
-    if (!canvas || !image || !ctx) return;
-    try {
-      ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
-      const rect = canvas.getBoundingClientRect();
-      const x = Math.max(0, Math.min(canvas.width - 1, Math.floor((event.clientX - rect.left) * canvas.width / rect.width)));
-      const y = Math.max(0, Math.min(canvas.height - 1, Math.floor((event.clientY - rect.top) * canvas.height / rect.height)));
-      const [r, g, b] = ctx.getImageData(x, y, 1, 1).data;
-      const color = `#${[r, g, b].map((v) => v.toString(16).padStart(2, '0')).join('')}`;
-      setPickedColor(color);
-
-      const scale = canvas.width / rect.width;
-      ctx.beginPath();
-      ctx.arc(x, y, 7 * scale, 0, Math.PI * 2);
-      ctx.lineWidth = 2 * scale;
-      ctx.strokeStyle = '#ffffff';
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.arc(x, y, 9 * scale, 0, Math.PI * 2);
-      ctx.lineWidth = 2 * scale;
-      ctx.strokeStyle = '#000000';
-      ctx.stroke();
-    } catch (err) {
-      setError(`无法读取图片颜色：${err?.message || String(err)}`);
-    }
+  const changeZoom = useCallback((delta) => {
+    const instance = painterroRef.current;
+    if (!instance?.size || typeof instance.setZoom !== 'function') return;
+    const current = Math.round((instance.zoomFactor || 1) * 100);
+    const next = Math.max(25, Math.min(400, current + delta));
+    instance.setZoom(next);
+    setZoomPercent(Math.round((instance.zoomFactor || next / 100) * 100));
   }, []);
 
   return (
@@ -182,76 +196,64 @@ export default function ImageEditorDialog({
           <p className="shrink-0 px-4 py-2 text-xs text-red-500 bg-red-500/10 whitespace-pre-wrap">{error}</p>
         )}
 
+        <div className="relative min-h-0 flex-1 overflow-hidden bg-muted/20">
+          <style>{`
+            #${containerIdRef.current} .ptro-bar {
+              ${colorPickerMode ? 'display: none !important;' : 'position: absolute !important; z-index: 20 !important;'}
+            }
+            #${containerIdRef.current} .ptro-wrapper {
+              ${colorPickerMode ? 'top: 0 !important; bottom: 0 !important;' : ''}
+            }
+          `}</style>
+          <div
+            id={containerIdRef.current}
+            ref={containerRef}
+            className="ptro-holder"
+            style={{
+              position: 'absolute',
+              inset: 0,
+              width: 'auto',
+              height: 'auto',
+              overflow: 'hidden',
+              boxShadow: 'none',
+            }}
+          />
+          {loading && (
+            <div className="absolute inset-0 flex items-center justify-center text-xs text-muted-foreground">
+              加载编辑器…
+            </div>
+          )}
+        </div>
+
         {colorPickerMode ? (
-          <>
-            <div className="relative flex min-h-0 flex-1 items-center justify-center overflow-auto bg-muted/20 p-4">
-              <img
-                ref={colorImageRef}
-                src={imageUrl}
-                alt=""
-                crossOrigin="anonymous"
-                className="hidden"
-                onLoad={drawColorImage}
-                onError={() => setError('取色图片加载失败')}
-              />
-              <canvas
-                ref={colorCanvasRef}
-                onClick={handlePickColor}
-                className="block max-h-full max-w-full cursor-crosshair object-contain shadow-sm"
-              />
+          <DialogFooter className="relative z-10 shrink-0 items-center border-t border-border bg-background px-4 py-3 sm:justify-between">
+            <div className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
+              <span className="h-6 w-6 shrink-0 rounded border border-border" style={{ backgroundColor: pickedColor || 'transparent' }} />
+              <span className="font-mono text-foreground">{pickedColor || '尚未取色'}</span>
+              <div className="ml-2 flex items-center gap-1">
+                <Button type="button" variant="outline" size="sm" className="h-8 w-8 p-0" title="缩小" onClick={() => changeZoom(-25)}>−</Button>
+                <span className="w-12 text-center tabular-nums">{zoomPercent}%</span>
+                <Button type="button" variant="outline" size="sm" className="h-8 w-8 p-0" title="放大" onClick={() => changeZoom(25)}>+</Button>
+              </div>
             </div>
-            <DialogFooter className="relative z-10 shrink-0 items-center border-t border-border bg-background px-4 py-3 sm:justify-between">
-              <div className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
-                <span className="h-6 w-6 shrink-0 rounded border border-border" style={{ backgroundColor: pickedColor || 'transparent' }} />
-                <span className="font-mono text-foreground">{pickedColor || '尚未取色'}</span>
-              </div>
-              <div className="flex gap-2">
-                <Button type="button" variant="outline" onClick={() => onCloseRef.current?.()}>取消</Button>
-                <Button
-                  type="button"
-                  disabled={!pickedColor}
-                  onClick={() => {
-                    onColorPick?.(pickedColor);
-                    onCloseRef.current?.();
-                  }}
-                >
-                  确定
-                </Button>
-              </div>
-            </DialogFooter>
-          </>
-        ) : (
-          <>
-            <div className="relative min-h-0 flex-1 overflow-hidden bg-muted/20">
-              <style>{`
-                #${containerIdRef.current} .ptro-bar {
-                  position: absolute !important;
-                  z-index: 20 !important;
-                }
-              `}</style>
-              <div
-                id={containerIdRef.current}
-                ref={containerRef}
-                className="ptro-holder"
-                style={{
-                  position: 'absolute',
-                  inset: 0,
-                  width: 'auto',
-                  height: 'auto',
-                  overflow: 'hidden',
-                  boxShadow: 'none',
+            <div className="flex gap-2">
+              <Button type="button" variant="outline" onClick={() => onCloseRef.current?.()}>取消</Button>
+              <Button
+                type="button"
+                disabled={!pickedColor}
+                onClick={() => {
+                  onColorPick?.(pickedColor);
+                  onCloseRef.current?.();
                 }}
-              />
-              {loading && (
-                <div className="absolute inset-0 flex items-center justify-center text-xs text-muted-foreground">
-                  加载编辑器…
-                </div>
-              )}
+              >
+                确定
+              </Button>
             </div>
-            <div className="relative z-10 shrink-0 border-t border-border bg-background px-4 py-2 text-[11px] text-muted-foreground">
-              编辑后点工具栏「保存」回传 · 关闭对话框放弃修改
-            </div>
-          </>
+          </DialogFooter>
+        ) : (
+          <div className="relative z-10 shrink-0 border-t border-border bg-background px-4 py-2 text-[11px] text-muted-foreground">
+            编辑后点工具栏「保存」回传 · 关闭对话框放弃修改
+          </div>
         )}
       </DialogContent>
     </Dialog>
