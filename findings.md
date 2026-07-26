@@ -1,5 +1,22 @@
 # Findings
 
+## 2026-07-26 Image editor dialog
+
+- Handoff points to `ImageEditorNode.jsx`, `utils/image-ops/cdn.js`, and host `react-renderer.tsx` as the relevant path.
+- Reported failures are null DOM access during dialog open: `dispatchEvent` and `setAttribute`, followed by immediate close.
+- CodeGraph is unavailable in this session, so project rules require targeted `rg` inspection.
+- `react-renderer.tsx` does not call `dispatchEvent` or `setAttribute` in the mini-app lifecycle; the stack location is the dynamically evaluated module boundary.
+- `ImageEditorDialog.jsx` currently creates Painterro with its default body wrapper, calls `show(imageUrl)`, then reparents that wrapper into a Radix Dialog portal. Cleanup calls `hide()` and manually removes the wrapper.
+- The current DOM reparenting/cleanup strategy can invalidate Painterro's internal DOM queries and event targets, matching both null-access errors.
+- Painterro 1.2.92 constructs its custom-event target with `document.querySelector('#' + options.id) || document.getElementById('app')`. With no `id` and no host `#app`, that target is deterministically null.
+- In custom-id mode all `holderEl` uses are guarded; the previous comment claiming that mode dereferences a null holder was incorrect.
+- The Painterro mount must be an empty element owned exclusively by Painterro because its constructor replaces the target's children.
+- Painterro's constructor calls `hide()` before returning. An unconditional `onHide -> onClose` therefore explains the immediate dialog close independently of the null DOM errors.
+- The cutout node owns the actual input image list, while `ParamField` is shared by unrelated processors. Color picking therefore belongs in `CutoutNode`, with `ParamField` exposing only an optional trigger.
+- Rembg `backgroundColor` must preserve an empty value as transparent; the picker displays that state and only writes a hex color after confirmation.
+- Painterro injects media-query CSS at runtime that resets `.ptro-holder` to `position: fixed`; runtime Tailwind arbitrary selectors are not a reliable override in this mini-app. Inline holder bounds plus a scoped toolbar z-index keep the full editor inside the dialog body.
+- Cutout color picking can use the current input image or an existing output image. The trigger should remain clickable and let the dialog explain when neither exists.
+
 - Team detail UI entry: `packages/web/src/components/teams/team-detail-panel.tsx`, component `TeamDetailPanel`.
 - Server SkyOffice room class: `packages/server/src/skyoffice/rooms/SkyOffice.ts`; it supports chat/status messages through its dispatcher.
 - Team memberships contain `teamId`, `agentId`, optional agent data and active status.

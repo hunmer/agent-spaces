@@ -564,7 +564,7 @@ export const CUTOUT_PARAMS = {
   ],
   // ---- 色度键抠图（本地算法 chromaKey）----
   chromaKey: [
-    { key: 'keyColor', label: '键色', type: 'color', default: '#00ff00' },
+    { key: 'keyColor', label: '键色', type: 'color', colorPicker: true, default: '#00ff00' },
     { key: 'tolerance', label: '容差', type: 'number', default: 80, min: 0, max: 200 },
     { key: 'smoothness', label: '平滑', type: 'number', default: 30, min: 0, max: 100 },
     { key: 'erode', label: '侵蚀(px)', type: 'number', default: 0, min: 0, max: 5 },
@@ -590,7 +590,7 @@ export const CUTOUT_PARAMS = {
       options: REMBG_MODELS,
     },
     {
-      key: 'backgroundColor', label: '背景色', type: 'text', default: '',
+      key: 'backgroundColor', label: '背景色', type: 'text', colorPicker: true, default: '',
       tooltip: '可选纯色背景，如 "255,255,255,255" 或 "#FFFFFF"。留空=透明',
       showWhen: { key: 'rembgMode', in: ['remove', 'alphaMatting'] },
     },
@@ -618,5 +618,4 @@ export function defaultCutoutParams(mode) {
   for (const p of params) out[p.key] = p.default;
   return out;
 }
-
 

@@ -43,6 +43,8 @@
 - **`__url` 透传机制**：云端处理器（enhance/compress）run 直接返回 URL，用 `{__url}` 标记，`runProcessor` 跳过 ImageData 转换（与 `__gifUrl` 同款）。
 - **多图批量并发用 `Promise.allSettled`**：部分失败不阻塞成功的，全部失败才抛错。
 - **`persistImagesToBackend`**：外链图（含音频/视频）下载到后端 data 目录换 httpUrl，避免防盗链/CORS/过期。失败保留原地址。
+- **Painterro 挂载**：必须传唯一 `id` 并使用独占空容器；构造函数会先触发一次 `onHide`，只能在 `show()` 成功后响应关闭。React 状态节点放在挂载容器之外。其运行时 CSS 会把 holder 重置为 fixed，Dialog 内嵌时必须用 holder 内联样式限制边界，并显式提高 `.ptro-bar` 层级。
+- **图片取色**：复用 `ImageEditorDialog mode="colorPicker"`，该模式不加载 Painterro；颜色字段通过 `ParamField.colorPicker + onPickColor` 接入，并由持有输入图的节点负责回填参数。
 
 ## Agent RPC 约定
 

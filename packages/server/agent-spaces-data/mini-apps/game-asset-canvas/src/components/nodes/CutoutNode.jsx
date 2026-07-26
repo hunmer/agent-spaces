@@ -1,5 +1,6 @@
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { FileUpload } from '@agent-spaces/ui';
+import ImageEditorDialog from '../ImageEditorDialog';
 import NodeShell from './NodeShell';
 import ImageResult from './ImageResult';
 import UpstreamImageList, { orderUpstream } from './UpstreamImageList';
@@ -42,6 +43,7 @@ export default function CutoutNode({ id, type, data, selected }) {
   const upstreamImages = orderUpstream(rawUpstream, upstreamOrder);
   const inputImages = dedupeUrls([...uploadedImages, ...upstreamImages]);
   const images = data?.output?.images || [];
+  const colorPickerImage = inputImages[0] || images[0] || '';
   const status = data?.status || 'idle';
   const error = data?.error;
   const running = status === 'running';
@@ -50,6 +52,7 @@ export default function CutoutNode({ id, type, data, selected }) {
   const onCutout = data?.onCutout;
   const onCancelProcess = data?.onCancelProcess;
   const uploading = data?.uploading;
+  const [colorPicker, setColorPicker] = useState(null);
 
   // 当前模式的参数表（动态切换）
   const paramDefs = CUTOUT_PARAMS[mode] || [];
@@ -138,6 +141,10 @@ export default function CutoutNode({ id, type, data, selected }) {
           value={modeParams[param.key] ?? param.default}
           allParams={modeParams}
           onChange={(v) => setModeParam(param.key, v)}
+          onPickColor={param.colorPicker
+            ? () => setColorPicker({ key: param.key, value: modeParams[param.key] || param.default })
+            : undefined}
+          colorPickerDisabled={!colorPickerImage}
         />
       ))}
 
@@ -206,8 +213,18 @@ export default function CutoutNode({ id, type, data, selected }) {
       )}
 
       {images.length > 0 && <ImageResult images={images} />}
+
+      <ImageEditorDialog
+        open={!!colorPicker}
+        mode="colorPicker"
+        imageUrl={colorPickerImage}
+        initialColor={colorPicker?.value || ''}
+        onColorPick={(color) => {
+          if (colorPicker?.key) setModeParam(colorPicker.key, color);
+          setColorPicker(null);
+        }}
+        onClose={() => setColorPicker(null)}
+      />
     </NodeShell>
   );
 }
-
-

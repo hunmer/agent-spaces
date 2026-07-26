@@ -1,7 +1,7 @@
 // 共享参数字段渲染器：图像处理节点 / 抠图节点 / 执行对话框 复用。
 // 支持的 param.type：bool / color / select / text / number。
 // 支持 param.showWhen: { key, eq? | in? } 按 allParams[key] 条件显隐。
-export default function ParamField({ param, value, onChange, allParams = {} }) {
+export default function ParamField({ param, value, onChange, onPickColor, colorPickerDisabled, allParams = {} }) {
   // 条件显隐：showWhen.key 的当前值需满足 eq 或 in
   if (param.showWhen) {
     const dep = allParams[param.showWhen.key] ?? param.default;
@@ -21,6 +21,22 @@ export default function ParamField({ param, value, onChange, allParams = {} }) {
         />
         <span className="text-muted-foreground">{param.label}</span>
       </label>
+    );
+  }
+  if (param.colorPicker && onPickColor) {
+    return (
+      <div className="flex items-center justify-between gap-2 text-xs">
+        <span className="text-muted-foreground">{param.label}</span>
+        <button
+          type="button"
+          onClick={onPickColor}
+          disabled={colorPickerDisabled}
+          className="flex min-w-0 items-center gap-2 rounded border border-border bg-background px-2 py-1 text-xs transition hover:border-primary disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          <span className="h-4 w-4 shrink-0 rounded-sm border border-border" style={{ backgroundColor: value || 'transparent' }} />
+          <span className="max-w-24 truncate font-mono">{value || '透明'}</span>
+        </button>
+      </div>
     );
   }
   if (param.type === 'color') {
