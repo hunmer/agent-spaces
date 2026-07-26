@@ -3,6 +3,7 @@ import NodeShell from './NodeShell';
 import ImageResult from './ImageResult';
 import PromptPickerDialog from '../PromptPickerDialog';
 import PickedPromptBadge from './PickedPromptBadge';
+import CountAndConcurrency from './CountAndConcurrency';
 import { ASPECT_OPTIONS, DEFAULT_MODEL, MODEL_OPTIONS, NODE_TYPES, SIZE_OPTIONS, WORKFLOWS } from '../../utils/constants';
 import { hasPrompt } from '../../utils/prompts';
 
@@ -37,6 +38,8 @@ export default function TextToImageNode({ id, data, selected }) {
         model: params.model || DEFAULT_MODEL,
         aspect: params.aspect || '1:1',
         size: params.size || '1k',
+        count: Math.max(1, Number(params.count) || 1),
+        concurrency: Math.max(1, Number(params.concurrency) || 1),
       },
     });
   }, [onGenerate, id, params]);
@@ -71,6 +74,12 @@ export default function TextToImageNode({ id, data, selected }) {
         <LabeledSelect label="比例" value={params.aspect || '1:1'} rawOptions={ASPECT_OPTIONS} onChange={(v) => set({ aspect: v })} />
         <LabeledSelect label="尺寸" value={params.size || '1k'} rawOptions={SIZE_OPTIONS} onChange={(v) => set({ size: v })} />
       </div>
+
+      <CountAndConcurrency
+        count={params.count ?? 1}
+        concurrency={params.concurrency ?? 1}
+        onChange={(patch) => set(patch)}
+      />
 
       <button
         type="button"

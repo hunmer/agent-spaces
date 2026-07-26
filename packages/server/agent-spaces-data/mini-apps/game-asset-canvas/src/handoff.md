@@ -1016,6 +1016,9 @@ cp -R dist/. <miniapp>/src/vendor/director-desk-web/
 - `Canvas` 经 `useDecoratedNodes` 向节点注入 `data.outputPreviewMode`；只使用 `data.output.images` 判断是否有图片输出，不能把 `data.images` 上游输入误判为输出。
 - 开启后，有图片输出的 `NodeShell` 直接切换为独立的无标题栏/无边框预览 DOM，只展示 `ImageResult preview` 的全宽纵向图片列表；鼠标进入节点时恢复完整节点外壳与原表单，移出后恢复图片输出。
 - 独立预览右上角用 `Badge` 叠加显示 `NODE_META[nodeType].label`，Badge 绝对定位，不参与节点高度计算。
+- 表单态使用 `onFocusCapture/onBlurCapture` 锁定：焦点仍在节点输入控件内时，即使鼠标移出也不切回图片预览；仅在焦点离开且鼠标不在节点内时恢复预览。
+- 当图片预览高度大于原表单高度时，hover 恢复原高度可能使鼠标瞬间落在节点新边界外，节点不会自然收到 `mouseleave`；表单态用临时 window `pointermove` 按实时 DOM 矩形补充检测并恢复预览，输入焦点锁定优先。
+- 预览模式下节点 `status === 'running'` 时保持独立无边框预览，使用 `Loader` + `statusMsg` 占位；即使执行开始时清空 `output.images` 也不会退回表单，完成后再切换为图片输出。
 - 原节点 children 始终保持挂载，仅通过样式切换显隐，避免 hover 导致输入框、对话框开关等节点局部状态丢失。
 - 独立预览 DOM 不继承原节点固定高度，`ResizeObserver` + 图片 `onLoad` 上报自然高度；`Canvas` 用临时 `outputPreviewState` 仅覆盖 decorated node 的展示高度。移入节点恢复原节点高度，移出恢复预览高度，不写回持久化节点尺寸。
 - 无图片输出的节点、文本/音频/视频输出节点以及不使用 `NodeShell` 的纯图片展示节点保持原行为。
@@ -1026,6 +1029,46 @@ cp -R dist/. <miniapp>/src/vendor/director-desk-web/
 - 鼠标移入上述节点立即显示原节点表单，移出后重新显示图片网格；表单输入状态不丢失。
 - 预览态高度随纵向图片列表自适应；hover 表单态恢复节点原高度，关闭模式后原尺寸保持不变。
 - 只有输入图、没有输出图的节点不切换预览；节点选择、拖拽、缩放、连线和 NodeToolbar 行为不变。
+
+## 生成数量 + 并发（本轮新增）
+
+给【文字生成图片】【编辑图片】【生成配音】【生成视频】四个节点统一加「生成数量」与「并发」选项。count>1 时按 count 重复调用同一工作流，限并发执行后合并产出。
+
+### 关键决策与已踩坑（务必遵守）
+
+1. **共享控件抽组件**：四个节点的「生成数量 + 并发」UI 完全一致，抽到 `components/nodes/CountAndConcurrency.jsx`。number 输入 count（1..20）+ 仅当 count>1 时显示 Slider 并发（1..count）。count 收敛 concurrency：count 减小时若 concurrency 超过新 count 自动压到 count，避免非法态。
+2. **并发池 helper**：`utils/workflow.js` 加 `runWithConcurrency(total, concurrency, factory)` 通用并发池（cursor + N 个 worker）。按提交顺序返回结果数组。不写死「图片/媒体」语义，可复用。
+3. **count/concurrency 不进工作流 input**：`handleGenerate`/`handleGenerateMedia` 在调用前 `delete wfInput.count/concurrency`，避免污染 start 节点 inputFields（工作流定义里没有这两个字段，传了会被忽略但语义脏）。
+4. **count 上限 20**：`Math.max(1, Math.min(20, Number(count)||1))` 防呆，避免误填 1000 把后端打爆。如需上调改这一处。
+5. **图片合并、媒体合并**：图片节点把 N 次返回的 `urls` `.flat()` 合并到 `output.images`；媒体节点把 N 次返回的 `url` 收集到 `output.audios`/`output.videos` 数组，**同时写 `output.audio`/`output.video` 单值（取首项）** 保留旧字段兼容。
+6. **节点产出渲染改数组**：`TextToVoiceNode` 读 `output.audios || [output.audio]`、`VideoGeneratorNode` 读 `output.videos || [output.video]`，map 多个 `<audio>`/`<video>` 播放器。HistoryCard 同步：媒体产出（isAudio/isVideo）按 `images` 数组全部渲染（旧版只渲染 `cover=images[0]`，多份会丢）。
+7. **部分失败不阻塞**：`runWithConcurrency` 的 factory 内 `.catch(() => [])`（图片）/ `.catch(() => '')`（媒体），收集成功产出。全部失败时由后置 `if (!urls.length) throw` 兜底报错。
+8. **concurrency 默认 1（保守）**：用户主动调高才并发。避免无脑并发把工作流后端排队打满。
+9. **Slider 走 `@agent-spaces/ui`**：`ui-exports.ts:13` 已 `export { Slider }`，无宿主改动。
+
+### 改动文件（mini-app 内，刷新即生效，无宿主改动）
+
+- `src/utils/workflow.js`：新增 `runWithConcurrency(total, concurrency, factory)` 通用并发池
+- `src/hooks/useNodeExecutions.js`：
+  - `handleGenerate` 从 input 剥 count/concurrency，按 count 用 `runWithConcurrency` 并发循环 `runWorkflow`，flat 合并 urls
+  - `handleGenerateMedia` 同款，按 count 并发循环 `generateAudio`/`generateVideo`，合并到 `output.audios`/`videos`（兼容旧单值字段）
+- `src/components/nodes/CountAndConcurrency.jsx`（新增）：number + Slider 共享控件
+- `src/components/nodes/TextToImageNode.jsx`：import + handleRun input 加 count/concurrency + 控件
+- `src/components/nodes/EditImageNode.jsx`：同上
+- `src/components/nodes/TextToVoiceNode.jsx`：同上 + 产出改 `audios` 数组渲染多个 `<audio>`
+- `src/components/nodes/VideoGeneratorNode.jsx`：同上 + 产出改 `videos` 数组渲染多个 `<video>`
+- `src/components/RightPanel.jsx`：`HistoryCard` 媒体产出按 `images` 数组全部渲染（不再只渲染 cover）
+
+### 验收要点
+
+- 四个节点的配置面板出现「生成数量」number 输入，默认 1
+- 把生成数量改成 >1（如 3）：下方出现「并发」Slider，范围 1..3；改回 1 时 Slider 消失
+- 生成数量减小（如 5→2）时，若并发曾是 4，自动收敛为 2
+- 文生图/编辑图片：count=3 生成后产出 3×（每次工作流返回的图片数）张，全部展示在节点产出网格
+- 生成配音/视频：count=3 生成后产出 3 个播放器，每个独立可播放/下载
+- 生成记录 tab 的音频/视频条目也展示全部 N 个播放器
+- 并发=1 时串行执行（count=3 时一个一个跑）；并发=count 时全部同时跑
+- count=1 时行为与改动前完全一致（无并发、单份产出）
 
 ## 后续可做
 

@@ -31,6 +31,16 @@ export type PluginSource = {
 // 跨 async/await 透传当前调用栈的插件来源，供 httpDebug / wrapFetchWithDebug 读取。
 const pluginSourceStorage = new AsyncLocalStorage<PluginSource>();
 
+// 在插件/mini-app 代码执行入口包裹，使其内部任意 fetch（含 globalThis.fetch）都能带上来源。
+// 同一调用栈若已有相同来源则直接执行，避免无意义嵌套。
+export function runWithPluginSource<T>(source: PluginSource, fn: () => T): T {
+  const outer = pluginSourceStorage.getStore();
+  if (outer && outer.pluginId === source.pluginId && outer.pluginName === source.pluginName) {
+    return fn();
+  }
+  return pluginSourceStorage.run(source, fn);
+}
+
 function createHttpsTunnel(proxyUrl: string, targetHost: string, targetPort: number): Promise<tls.TLSSocket> {
   const proxy = new URL(proxyUrl);
   const proxyPort = Number(proxy.port) || 8080;

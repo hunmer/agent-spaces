@@ -5,7 +5,7 @@ import { getProjectDir } from '../storage/mini-app-store.js';
 import * as miniAppStore from '../storage/mini-app-store.js';
 import { broadcastToWorkspace } from '../ws/connection-manager.js';
 import { executePluginTool } from './plugin.js';
-import { createBuiltinPluginApi } from './plugin-runtime-api.js';
+import { createBuiltinPluginApi, runWithPluginSource } from './plugin-runtime-api.js';
 import { createAgentRuntime } from '../adapters/agent-runtime.js';
 import type { AgentRuntimeConfig, AgentRuntimeEvent, AgentFunctionTool, AgentRuntimeKind } from '../adapters/agent-runtime-types.js';
 import { createMiniAppFunctionTools } from './builtin-tools/mini-app-tools.js';
@@ -176,7 +176,12 @@ export function buildApiFunctionTools(
         const record = input && typeof input === 'object' && !Array.isArray(input)
           ? input as Record<string, unknown>
           : {};
-        return handler(record, ctxProvider());
+        const ctx = ctxProvider();
+        // 包裹 mini-app api.js 执行入口，使其内部任意 fetch 都能在调试日志带上 mini-app 来源。
+        return runWithPluginSource(
+          { pluginId: `mini-app:${ctx.projectId}`, pluginName: ctx.projectId },
+          () => handler(record, ctx),
+        );
       },
     };
   });

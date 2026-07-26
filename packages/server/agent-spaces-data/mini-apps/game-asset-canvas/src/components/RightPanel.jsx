@@ -332,10 +332,12 @@ function HistoryList({ history, onRemoveHistory, onClearHistory, onUseImage }) {
 function HistoryCard({ item, onRemove, onUseImage }) {
   const images = item.images || [];
   const cover = images[0];
-  // 媒体产出（音频/视频）：渲染播放器而非图片网格，避免 broken img
+  // 媒体产出（音频/视频）：渲染播放器而非图片网格，避免 broken img。
+  // 多份产出（count>1）时全部渲染，单个用 cover 兜底。
   const mediaType = item.mediaType;
   const isAudio = mediaType === 'audio';
   const isVideo = mediaType === 'video';
+  const mediaUrls = (isAudio || isVideo) && images.length ? images : (cover ? [cover] : []);
   return (
     <div className="rounded-md border border-border p-2">
       <div className="mb-1 flex items-center justify-between gap-2">
@@ -347,12 +349,12 @@ function HistoryCard({ item, onRemove, onUseImage }) {
       {item.prompt && (
         <p className="mb-1.5 line-clamp-2 text-xs text-muted-foreground">{item.prompt}</p>
       )}
-      {isAudio && cover && (
-        <audio key={cover} src={cover} controls className="mb-1 w-full" />
-      )}
-      {isVideo && cover && (
-        <video key={cover} src={cover} controls className="mb-1 w-full rounded border border-border" />
-      )}
+      {isAudio && mediaUrls.map((url, i) => (
+        <audio key={url + i} src={url} controls className="mb-1 w-full" />
+      ))}
+      {isVideo && mediaUrls.map((url, i) => (
+        <video key={url + i} src={url} controls className="mb-1 w-full rounded border border-border" />
+      ))}
       {mediaType === 'text' && item.text && (
         <pre className="nodrag nopan nowheel mb-1 max-h-32 overflow-auto whitespace-pre-wrap break-words rounded border border-border bg-muted/30 p-1.5 text-[10px] leading-snug text-foreground">
 {item.text}

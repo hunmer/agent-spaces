@@ -4,6 +4,7 @@ import NodeShell from './NodeShell';
 import UpstreamImageList, { orderUpstream } from './UpstreamImageList';
 import PromptPickerDialog from '../PromptPickerDialog';
 import PickedPromptBadge from './PickedPromptBadge';
+import CountAndConcurrency from './CountAndConcurrency';
 import {
   DEFAULT_VIDEO_MODEL, NODE_TYPES, VIDEO_ASPECT_OPTIONS, VIDEO_DURATION_OPTIONS,
   VIDEO_MODEL_OPTIONS, VIDEO_QUALITY_OPTIONS, WORKFLOWS, isAliyunVideoModel,
@@ -29,7 +30,10 @@ export default function VideoGeneratorNode({ id, data, selected }) {
   const upstreamImages = orderUpstream(rawUpstream, upstreamOrder);
   const inputImages = dedupeUrls([...uploadedImages, ...upstreamImages]);
 
-  const video = data?.output?.video || null;
+  // 产出优先取 videos 数组（count>1 时由后端写入），降级旧单 video 字段
+  const videos = Array.isArray(data?.output?.videos) && data.output.videos.length
+    ? data.output.videos
+    : (data?.output?.video ? [data.output.video] : []);
   const status = data?.status || 'idle';
   const error = data?.error;
   const running = status === 'running';
@@ -90,6 +94,8 @@ export default function VideoGeneratorNode({ id, data, selected }) {
         duration: params.duration || VIDEO_DURATION_OPTIONS[0],
         // 图片可作为参考输入传给工作流（string[]）；aliyun 分支会用 images[0]/images[1] 作首尾帧
         images,
+        count: Math.max(1, Number(params.count) || 1),
+        concurrency: Math.max(1, Number(params.concurrency) || 1),
       },
     });
   }, [onGenerate, id, params, inputImages]);
@@ -176,6 +182,11 @@ export default function VideoGeneratorNode({ id, data, selected }) {
         <LabeledSelect label="质量" value={params.quality || VIDEO_QUALITY_OPTIONS[0]} rawOptions={VIDEO_QUALITY_OPTIONS} onChange={(v) => set({ quality: v })} />
         <LabeledSelect label="时长" value={params.duration || VIDEO_DURATION_OPTIONS[0]} rawOptions={VIDEO_DURATION_OPTIONS} onChange={(v) => set({ duration: v })} />
       </div>
+      <CountAndConcurrency
+        count={params.count ?? 1}
+        concurrency={params.concurrency ?? 1}
+        onChange={(patch) => set(patch)}
+      />
       {needsRefImage && inputImages.length === 0 && (
         <p className="rounded-md bg-amber-500/10 px-2 py-1 text-[11px] text-amber-600">
           该模型（阿里云）需至少 1 张参考图，请上传或连线上游图片
@@ -195,18 +206,24 @@ export default function VideoGeneratorNode({ id, data, selected }) {
         <p className="rounded-md bg-red-500/10 px-2 py-1 text-xs text-red-500">{error}</p>
       )}
 
-      {video && (
+      {videos.length > 0 && (
         <div className="flex flex-col gap-1.5">
-          <span className="text-xs font-medium text-muted-foreground">产出</span>
-          <video key={video} src={video} controls className="w-full rounded border border-border" />
-          <a
-            href={video}
-            target="_blank"
-            rel="noreferrer"
-            className="truncate text-xs text-primary underline-offset-2 hover:underline"
-          >
-            下载 / 打开视频
-          </a>
+          <span className="text-xs font-medium text-muted-foreground">
+            产出{videos.length > 1 ? `（${videos.length}）` : ''}
+          </span>
+          {videos.map((url, i) => (
+            <div key={url + i} className="flex flex-col gap-1">
+              <video key={url} src={url} controls className="w-full rounded border border-border" />
+              <a
+                href={url}
+                target="_blank"
+                rel="noreferrer"
+                className="truncate text-xs text-primary underline-offset-2 hover:underline"
+              >
+                {videos.length > 1 ? `#${i + 1} ` : ''}下载 / 打开视频
+              </a>
+            </div>
+          ))}
         </div>
       )}
 

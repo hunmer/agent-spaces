@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { NODE_TYPES, IMAGE_TAGS, WORKFLOWS, defaultCutoutParams } from '../utils/constants';
-import { generateAudio, generateVideo, normalizeImageUrls, runAgentVisionText } from '../utils/workflow';
+import { generateAudio, generateVideo, normalizeImageUrls, runAgentVisionText, runWithConcurrency } from '../utils/workflow';
 import { runProcessor } from '../utils/image-ops';
 import { runCutout } from '../utils/cutout';
 import { genId } from '../utils/canvas-id';
@@ -27,6 +27,7 @@ export default function useNodeExecutions({ runWorkflow, updateNodeData, addHist
   }, [updateNodeData]);
 
   // 节点点击"生成"：优先用设置页配置的工作流 ID，fallback 到节点传的 workflowId
+  // input.count > 1 时按 count 重复调用工作流（runWithConcurrency 限并发），图片合并。
   const handleGenerate = useCallback(async (nodeId, nodeType, { workflowId, input }) => {
     // 记忆上次提交参数（剥离图片，按工作区+nodeType 隔离）—— 失败不阻塞执行
     try {
@@ -39,9 +40,22 @@ export default function useNodeExecutions({ runWorkflow, updateNodeData, addHist
         ? settings.editImageWorkflowId
         : workflowId;
     const finalWorkflowId = settingId || workflowId;
+    const count = Math.max(1, Math.min(20, Number(input?.count) || 1));
+    const concurrency = Math.max(1, Math.min(count, Number(input?.concurrency) || 1));
+    // count/concurrency 不传给工作流 input（避免污染 start 节点 inputFields）
+    const wfInput = { ...input };
+    delete wfInput.count;
+    delete wfInput.concurrency;
     updateNodeData(nodeId, { status: 'running', error: undefined });
     try {
-      const { urls } = await runWorkflow(finalWorkflowId, input, nodeId);
+      const batches = await runWithConcurrency(count, concurrency, () =>
+        runWorkflow(finalWorkflowId, wfInput, nodeId).then((r) => r.urls || []).catch((e) => {
+          // 部分失败不阻塞：返回空数组让成功的合并；全部失败由最终 length 校验抛错
+          console.warn('generate one batch failed:', e);
+          return [];
+        }),
+      );
+      const urls = batches.flat().filter(Boolean);
       if (!urls.length) throw new Error('未返回图片');
       updateNodeData(nodeId, { status: 'done', output: { images: urls } });
       addHistory({
@@ -59,7 +73,8 @@ export default function useNodeExecutions({ runWorkflow, updateNodeData, addHist
     }
   }, [runWorkflow, updateNodeData, addHistory, settings, saveLastParams]);
 
-  // 媒体节点（音频/视频）生成：与 handleGenerate 同款，但产出写 output.audio / output.video
+  // 媒体节点（音频/视频）生成：与 handleGenerate 同款，但产出写 output.audio(s) / output.video(s)。
+  // count > 1 时按 count 并发调用，产出合并为 audios/videos 数组（媒体单值 audio/video 保留兼容：取首项）。
   const handleGenerateMedia = useCallback(async (nodeId, nodeType, kind, { workflowId, input }) => {
     // 记忆上次提交参数（按 nodeType 存对应字段，剥离图片）—— 失败不阻塞
     try {
@@ -79,18 +94,37 @@ export default function useNodeExecutions({ runWorkflow, updateNodeData, addHist
     const finalWorkflowId = settingId || workflowId;
     const isAudio = kind === 'audio';
     const runMedia = isAudio ? generateAudio : generateVideo;
+    const count = Math.max(1, Math.min(20, Number(input?.count) || 1));
+    const concurrency = Math.max(1, Math.min(count, Number(input?.concurrency) || 1));
+    // count/concurrency 不传给工作流 input（避免污染 start 节点 inputFields）
+    const wfInput = { ...input };
+    delete wfInput.count;
+    delete wfInput.concurrency;
     updateNodeData(nodeId, { status: 'running', error: undefined });
     try {
-      const { url } = await runMedia(finalWorkflowId, input);
-      if (!url) throw new Error(isAudio ? '未返回音频' : '未返回视频');
-      updateNodeData(nodeId, { status: 'done', output: { [isAudio ? 'audio' : 'video']: url } });
+      const batches = await runWithConcurrency(count, concurrency, () =>
+        runMedia(finalWorkflowId, wfInput).then((r) => r.url || '').catch((e) => {
+          console.warn('generateMedia one batch failed:', e);
+          return '';
+        }),
+      );
+      const urls = batches.filter(Boolean);
+      if (!urls.length) throw new Error(isAudio ? '未返回音频' : '未返回视频');
+      // 单值字段保留兼容（旧渲染逻辑用 output.audio / output.video），多值用 audios / videos 数组
+      const patch = { status: 'done' };
+      if (isAudio) {
+        patch.output = { audio: urls[0], audios: urls };
+      } else {
+        patch.output = { video: urls[0], videos: urls };
+      }
+      updateNodeData(nodeId, patch);
       addHistory({
         id: genId('hist'),
         nodeId,
         nodeType,
         prompt: input?.prompt || '',
         model: input?.model || '',
-        images: [url],
+        images: urls,
         mediaType: isAudio ? 'audio' : 'video',
         createdAt: Date.now(),
       }).catch((e) => console.error('addHistory(media) failed:', e));

@@ -50,7 +50,8 @@ export default function useDecoratedNodes({
         }
       }
       const preview = outputPreviewState?.[nd.id];
-      const previewEnabled = outputPreviewMode && data?.output?.images?.length > 0;
+      const previewEnabled = outputPreviewMode
+        && (data?.output?.images?.length > 0 || data?.status === 'running');
       const previewHeight = previewEnabled && !preview?.hovered ? preview?.height : null;
       return {
         ...nd,

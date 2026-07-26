@@ -5,6 +5,7 @@ import ImageResult from './ImageResult';
 import PromptPickerDialog from '../PromptPickerDialog';
 import PickedPromptBadge from './PickedPromptBadge';
 import FileUpload from '../FileUpload';
+import CountAndConcurrency from './CountAndConcurrency';
 import { ASPECT_OPTIONS, DEFAULT_MODEL, MODEL_OPTIONS, NODE_TYPES, SIZE_OPTIONS, WORKFLOWS } from '../../utils/constants';
 import { normalizeImageUrls, resolveReferenceImages, promptHtmlToText, dedupeUrls } from '../../utils/workflow';
 
@@ -80,6 +81,8 @@ export default function EditImageNode({ id, data, selected }) {
         model: params.model || DEFAULT_MODEL,
         aspect: params.aspect || '1:1',
         size: params.size || '1k',
+        count: Math.max(1, Number(params.count) || 1),
+        concurrency: Math.max(1, Number(params.concurrency) || 1),
       },
     });
   }, [onGenerate, id, params, promptHtml, allInputImages]);
@@ -130,6 +133,12 @@ export default function EditImageNode({ id, data, selected }) {
         <MiniSelect label="比例" value={params.aspect || '1:1'} rawOptions={ASPECT_OPTIONS} onChange={(v) => set({ aspect: v })} />
         <MiniSelect label="尺寸" value={params.size || '1k'} rawOptions={SIZE_OPTIONS} onChange={(v) => set({ size: v })} />
       </div>
+
+      <CountAndConcurrency
+        count={params.count ?? 1}
+        concurrency={params.concurrency ?? 1}
+        onChange={(patch) => set(patch)}
+      />
 
       <button
         type="button"

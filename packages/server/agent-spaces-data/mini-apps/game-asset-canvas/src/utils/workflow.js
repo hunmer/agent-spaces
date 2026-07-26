@@ -443,6 +443,35 @@ export function stripThinkTags(text) {
 }
 
 /**
+ * 通用并发池：最多 concurrency 个任务同时执行，按提交顺序返回结果。
+ * 单个任务失败抛出 -> 抛出异常并带上失败任务的 index（含成功任务的结果在 finally 块）。
+ * 任务函数 factory(i) 返回 Promise，i 为序号 0..total-1。
+ *
+ * 与 Promise.all 语义不同：限制并发而非无限并发；用于按 count 重复生成时
+ * 防止一次性同时打 N 个工作流请求（既快又稳）。
+ *
+ * @param {number} total 总任务数
+ * @param {number} concurrency 最大并发
+ * @param {(i:number)=>Promise<any>} factory 任务工厂
+ * @returns {Promise<any[]>} 按 i 排序的结果数组
+ */
+export async function runWithConcurrency(total, concurrency, factory) {
+  const n = Math.max(0, Math.floor(total || 0));
+  const cap = Math.min(Math.max(1, Math.floor(concurrency || 1)), Math.max(1, n)) || 1;
+  const results = new Array(n);
+  let cursor = 0;
+  const workers = Array.from({ length: cap }, async () => {
+    while (true) {
+      const i = cursor++;
+      if (i >= n) return;
+      results[i] = await factory(i);
+    }
+  });
+  await Promise.all(workers);
+  return results;
+}
+
+/**
  * 调视觉 agent 反推图片为文本（如提示词）。
  * 内部把图片批量压缩成 base64 data URL → 调 agent_run（images 附件通道）→ 返回原始文本。
  *

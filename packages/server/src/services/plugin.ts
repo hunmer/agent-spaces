@@ -7,7 +7,7 @@ import { builtinModules } from 'node:module';
 import { spawnSync } from 'node:child_process';
 import vm from 'node:vm';
 import AdmZip from 'adm-zip';
-import { createBuiltinPluginApi } from './plugin-runtime-api.js';
+import { createBuiltinPluginApi, runWithPluginSource } from './plugin-runtime-api.js';
 import { getNpmSettings } from '../storage/npm-settings-store.js';
 
 const require = createRequire(import.meta.url);
@@ -1155,7 +1155,10 @@ export async function executePluginTool(
   if (!actions.length) throw new Error(`Plugin has no registered tools: ${pluginId}`);
 
   const mergedArgs = Object.assign({}, pluginConfig, args);
-  return createPluginActions(actions).tools().handler(name, mergedArgs, { ...api, config: pluginConfig });
+  // 包裹 handler 执行入口，使插件内部任意 fetch 都能在调试日志带上 plugin 来源。
+  return runWithPluginSource({ pluginId, pluginName: plugin.name }, () =>
+    createPluginActions(actions).tools().handler(name, mergedArgs, { ...api, config: pluginConfig }),
+  );
 }
 
 function getExecutablePluginByNodeType(nodeType: string): ExecutablePlugin | null {
@@ -1225,14 +1228,16 @@ export async function executeWorkflowNode(
   const executable = getExecutablePluginByNodeType(nodeType);
   if (!executable) throw new Error(`Plugin node is not enabled or has no executable handler: ${nodeType}`);
 
-  return executable.handler(
-    {
-      api: executable.api,
-      nodeId: '',
-      nodeLabel: nodeType,
-      upstream: {},
-      logger: hooks.logger,
-    },
-    args,
+  return runWithPluginSource({ pluginId: executable.plugin.id, pluginName: executable.plugin.name }, () =>
+    executable.handler(
+      {
+        api: executable.api,
+        nodeId: '',
+        nodeLabel: nodeType,
+        upstream: {},
+        logger: hooks.logger,
+      },
+      args,
+    ),
   );
 }

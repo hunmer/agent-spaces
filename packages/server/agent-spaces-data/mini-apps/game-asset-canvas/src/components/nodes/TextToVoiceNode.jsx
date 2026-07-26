@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react';
 import NodeShell from './NodeShell';
 import PromptPickerDialog from '../PromptPickerDialog';
 import PickedPromptBadge from './PickedPromptBadge';
+import CountAndConcurrency from './CountAndConcurrency';
 import { NODE_TYPES, VOICE_PROVIDER_OPTIONS, WORKFLOWS } from '../../utils/constants';
 import { hasPrompt } from '../../utils/prompts';
 
@@ -16,7 +17,10 @@ import { hasPrompt } from '../../utils/prompts';
  */
 export default function TextToVoiceNode({ id, data, selected }) {
   const params = data?.params || {};
-  const audio = data?.output?.audio || null;
+  // 产出优先取 audios 数组（count>1 时由后端写入），降级旧单 audio 字段
+  const audios = Array.isArray(data?.output?.audios) && data.output.audios.length
+    ? data.output.audios
+    : (data?.output?.audio ? [data.output.audio] : []);
   const status = data?.status || 'idle';
   const error = data?.error;
   const running = status === 'running';
@@ -36,6 +40,8 @@ export default function TextToVoiceNode({ id, data, selected }) {
         prompt: merged,
         model: params.model || VOICE_PROVIDER_OPTIONS[0].value,
         ...(params.voiceId ? { voiceId: params.voiceId } : {}),
+        count: Math.max(1, Number(params.count) || 1),
+        concurrency: Math.max(1, Number(params.concurrency) || 1),
       },
     });
   }, [onGenerate, id, params]);
@@ -86,6 +92,12 @@ export default function TextToVoiceNode({ id, data, selected }) {
         </label>
       </div>
 
+      <CountAndConcurrency
+        count={params.count ?? 1}
+        concurrency={params.concurrency ?? 1}
+        onChange={(patch) => set(patch)}
+      />
+
       <button
         type="button"
         disabled={running || !hasPrompt(params)}
@@ -99,19 +111,25 @@ export default function TextToVoiceNode({ id, data, selected }) {
         <p className="rounded-md bg-red-500/10 px-2 py-1 text-xs text-red-500">{error}</p>
       )}
 
-      {audio && (
+      {audios.length > 0 && (
         <div className="flex flex-col gap-1.5">
-          <span className="text-xs font-medium text-muted-foreground">产出</span>
-          {/* key 加 url 末段，避免 React 复用同 <audio> 实例导致 src 更新后不重新加载 */}
-          <audio key={audio} src={audio} controls className="w-full" />
-          <a
-            href={audio}
-            target="_blank"
-            rel="noreferrer"
-            className="truncate text-xs text-primary underline-offset-2 hover:underline"
-          >
-            下载 / 打开音频
-          </a>
+          <span className="text-xs font-medium text-muted-foreground">
+            产出{audios.length > 1 ? `（${audios.length}）` : ''}
+          </span>
+          {audios.map((url, i) => (
+            <div key={url + i} className="flex flex-col gap-1">
+              {/* key 加 url 末段，避免 React 复用同 <audio> 实例导致 src 更新后不重新加载 */}
+              <audio key={url} src={url} controls className="w-full" />
+              <a
+                href={url}
+                target="_blank"
+                rel="noreferrer"
+                className="truncate text-xs text-primary underline-offset-2 hover:underline"
+              >
+                {audios.length > 1 ? `#${i + 1} ` : ''}下载 / 打开音频
+              </a>
+            </div>
+          ))}
         </div>
       )}
 

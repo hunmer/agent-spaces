@@ -1,6 +1,6 @@
-import { useCallback, useLayoutEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Handle, NodeResizer, NodeToolbar, Position } from '@xyflow/react';
-import { Badge, RotateCcw } from '@agent-spaces/ui';
+import { Badge, Loader, RotateCcw } from '@agent-spaces/ui';
 import { NODE_META } from '../../utils/constants';
 import useViewportActivation from '../../hooks/useViewportActivation';
 import ImageResult from './ImageResult';
@@ -43,7 +43,7 @@ export default function NodeShell({
   // 产出图片：文生图/编辑节点存在 data.output.images；图片展示节点存在 data.images
   const outputImages = data?.output?.images?.length ? data.output.images : (data?.images || []);
   const previewImages = data?.output?.images || [];
-  const outputPreviewEnabled = !!data?.outputPreviewMode && previewImages.length > 0;
+  const outputPreviewEnabled = !!data?.outputPreviewMode && (previewImages.length > 0 || status === 'running');
   const [hovered, setHovered] = useState(false);
   const onExportImages = data?.onExportImages;
   const onProcessImage = data?.onProcessImage;
@@ -53,6 +53,7 @@ export default function NodeShell({
   // 多选（选中数 > 1）时隐藏节点 toolbar：避免每个被选节点都冒出一排按钮，干扰多选操作
   const selectionCount = data?.selectionCount ?? 1;
   const rootRef = useRef(null);
+  const pointerInsideRef = useRef(false);
 
   const reportOutputPreviewHeight = useCallback(() => {
     if (!outputPreviewEnabled || hovered) return;
@@ -79,14 +80,47 @@ export default function NodeShell({
   const showEditButton = outputImages.length > 0 && onEditImages;
 
   const handleMouseEnter = () => {
+    pointerInsideRef.current = true;
     if (!outputPreviewEnabled) return;
     setHovered(true);
     data?.onOutputPreviewHover?.(true);
   };
   const handleMouseLeave = () => {
+    pointerInsideRef.current = false;
+    if (rootRef.current?.contains(document.activeElement)) return;
     setHovered(false);
     if (outputPreviewEnabled) data?.onOutputPreviewHover?.(false);
   };
+  const handleFocusCapture = () => {
+    if (!outputPreviewEnabled) return;
+    setHovered(true);
+    data?.onOutputPreviewHover?.(true);
+  };
+  const handleBlurCapture = (event) => {
+    if (!outputPreviewEnabled) return;
+    if (event.currentTarget.contains(event.relatedTarget) || pointerInsideRef.current) return;
+    setHovered(false);
+    data?.onOutputPreviewHover?.(false);
+  };
+
+  // 预览高度可能大于原表单高度。切回表单后节点会立即缩短，鼠标可能已在新边界外，
+  // 此时节点自身收不到 mouseleave，需从 window 的指针移动重新判断实际边界。
+  useEffect(() => {
+    if (!outputPreviewEnabled || !hovered) return;
+    const handlePointerMove = (event) => {
+      const root = rootRef.current;
+      if (!root || root.contains(document.activeElement)) return;
+      const rect = root.getBoundingClientRect();
+      const inside = event.clientX >= rect.left && event.clientX <= rect.right
+        && event.clientY >= rect.top && event.clientY <= rect.bottom;
+      pointerInsideRef.current = inside;
+      if (inside) return;
+      setHovered(false);
+      data?.onOutputPreviewHover?.(false);
+    };
+    window.addEventListener('pointermove', handlePointerMove);
+    return () => window.removeEventListener('pointermove', handlePointerMove);
+  }, [outputPreviewEnabled, hovered, data?.onOutputPreviewHover]);
 
   // 首次内容高度自适应：测量「标题栏 + 内容区」真实高度，仅上报一次后 disconnect。
   // 这样插入节点后高度贴合表单；用户之后用 NodeResizer 手动改的尺寸永不被覆盖。
@@ -152,7 +186,12 @@ export default function NodeShell({
           />
         )}
         <div className="nodrag nopan nowheel w-full">
-          {viewportActivated ? (
+          {status === 'running' ? (
+            <div className="flex min-h-[160px] w-full flex-col items-center justify-center gap-2 text-muted-foreground">
+              <Loader className="h-6 w-6" />
+              <span className="text-xs">{data?.statusMsg || '处理中…'}</span>
+            </div>
+          ) : viewportActivated ? (
             <ImageResult images={previewImages} preview onImageLoad={reportOutputPreviewHeight} />
           ) : null}
         </div>
@@ -173,6 +212,8 @@ export default function NodeShell({
       className="flex h-full w-full flex-col overflow-hidden rounded-lg border border-border bg-card text-card-foreground shadow-sm"
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
+      onFocusCapture={handleFocusCapture}
+      onBlurCapture={handleBlurCapture}
     >
       {(outputImages.length > 0 && onExportImages) || showProcessButtons || showEditButton || showCutoutButton ? (
         <NodeToolbar isVisible={selected && selectionCount <= 1} position={Position.Top} align="end" offset={8}>
