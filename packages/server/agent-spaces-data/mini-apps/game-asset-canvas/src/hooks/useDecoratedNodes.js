@@ -37,7 +37,7 @@ export default function useDecoratedNodes({
     const {
       makeOnUpdate, onGenerate, onGenerateMedia, onExportImages,
       onProcessImage, onProcessLocal, onCutout, onCutoutCreate, onCancelProcess,
-      onPromptReverse, onEditImages, onAutoSize, onAutoSizeToContent, onBBoxCutout,
+      onPromptReverse, onEditImages, onAutoSize, onAutoSizeToContent, onBBoxCutout, onResetParams,
     } = callbacks || {};
     return nodes.map((nd) => {
       const up = upstreamMap.get(nd.id);
@@ -88,6 +88,10 @@ export default function useDecoratedNodes({
           } : undefined,
           // BBox 查看器元素拆分抠图回调（仅 bboxViewer 用）
           onCutout: nd.type === NODE_TYPES.bboxViewer ? onBBoxCutout : undefined,
+          // 重置参数回调：仅对有 params 的节点注入（imageDisplay/note/uiSplitter 等无 params 不注入）
+          onResetParams: (data?.params != null && typeof data.params === 'object')
+            ? () => onResetParams?.(nd.id, nd.type)
+            : undefined,
         },
       };
     });

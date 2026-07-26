@@ -1,6 +1,6 @@
 import { useCallback, useLayoutEffect, useRef, useState } from 'react';
 import { Handle, NodeResizer, NodeToolbar, Position } from '@xyflow/react';
-import { Badge } from '@agent-spaces/ui';
+import { Badge, RotateCcw } from '@agent-spaces/ui';
 import { NODE_META } from '../../utils/constants';
 import useViewportActivation from '../../hooks/useViewportActivation';
 import ImageResult from './ImageResult';
@@ -49,6 +49,7 @@ export default function NodeShell({
   const onProcessImage = data?.onProcessImage;
   const onCutoutCreate = data?.onCutoutCreate;
   const onEditImages = data?.onEditImages;
+  const onResetParams = data?.onResetParams;
   // 多选（选中数 > 1）时隐藏节点 toolbar：避免每个被选节点都冒出一排按钮，干扰多选操作
   const selectionCount = data?.selectionCount ?? 1;
   const rootRef = useRef(null);
@@ -241,14 +242,28 @@ export default function NodeShell({
           <span className="text-base leading-none">{meta.icon}</span>
           <span className="truncate text-sm font-semibold">{meta.label}</span>
         </div>
-        {status !== 'idle' && (
-          <span
-            className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium"
-            style={{ backgroundColor: `rgb(${hexToRgb(statusColor)} / 0.15)`, color: statusColor }}
-          >
-            {STATUS_TEXT[status] || status}
-          </span>
-        )}
+        <div className="flex shrink-0 items-center gap-1.5">
+          {status !== 'idle' && (
+            <span
+              className="rounded-full px-2 py-0.5 text-[10px] font-medium"
+              style={{ backgroundColor: `rgb(${hexToRgb(statusColor)} / 0.15)`, color: statusColor }}
+            >
+              {STATUS_TEXT[status] || status}
+            </span>
+          )}
+          {/* 重置参数：表单回 initialData 默认值 + 清掉该 nodeType 的持久化记忆。
+              nodrag/nopan 防误触画布；仅对有 params 的节点注入（data.onResetParams 为 undefined 时不渲染） */}
+          {onResetParams && (
+            <button
+              type="button"
+              title="重置参数（恢复默认值并清除记忆）"
+              onClick={(e) => { e.stopPropagation(); onResetParams(); }}
+              className="rounded p-1 text-muted-foreground transition hover:bg-foreground/10 hover:text-foreground"
+            >
+              <RotateCcw className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
       </div>
       {/* nodrag/nopan/nowheel：ReactFlow 约定，带这些 class 的元素不触发节点拖拽、画布平移、滚轮缩放，
           避免在节点内滚动/选文本/操作输入框时误触画布 */}

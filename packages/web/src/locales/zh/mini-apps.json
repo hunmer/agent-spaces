@@ -167,6 +167,8 @@
   },
   "agent": {
     "open": "打开助手",
+    "dockOpen": "侧边打开助手",
+    "dockClose": "关闭侧边助手",
     "switch": "切换助手",
     "inputPlaceholder": "对助手说点什么…",
     "empty": "暂无消息",

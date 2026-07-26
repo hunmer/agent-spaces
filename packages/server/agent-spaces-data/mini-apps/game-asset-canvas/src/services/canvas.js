@@ -2,6 +2,7 @@
 // 工作区数据隔离在 configs/workspaces/<id>/ 子目录；settings/prompt-library 仍共享。
 const CANVAS_FILE = 'canvas.json';
 const HISTORY_FILE = 'generation-history.json';
+const LAST_PARAMS_FILE = 'last-params.json';
 const SETTINGS_CONFIG = 'settings.json';
 const PROMPT_CONFIG = 'prompt-library.json';
 const WORKSPACES_CONFIG = 'workspaces.json';
@@ -92,6 +93,17 @@ export default {
   // 清空生成记录
   clear_history: ({ workspaceId }, ctx) => {
     ctx.writeConfig(wsPath(workspaceId, HISTORY_FILE), []);
+    return { ok: true };
+  },
+
+  // —— 上次提交参数（按工作区隔离，KV: { [nodeType]: paramsSubset }）——
+  // 新增/更新某节点类型的上次提交参数（原子 upsert：覆盖该 nodeType，其余保留）
+  save_last_params: ({ workspaceId, nodeType, params }, ctx) => {
+    if (!nodeType) return { ok: false };
+    ctx.updateConfig(wsPath(workspaceId, LAST_PARAMS_FILE), (prev) => {
+      const map = (prev && typeof prev === 'object' && !Array.isArray(prev)) ? prev : {};
+      return { ...map, [nodeType]: params };
+    });
     return { ok: true };
   },
 

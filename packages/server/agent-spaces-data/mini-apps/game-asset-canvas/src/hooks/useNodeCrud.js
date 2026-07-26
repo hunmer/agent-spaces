@@ -29,12 +29,14 @@ import { downloadJson, serializeCanvas } from '../utils/export';
  * @param {Function} deps.submit  useExecutionQueue 的 submit
  * @param {Function} deps.setDropNodeMenu  落空菜单 state setter
  * @param {Function} deps.setContextMenu    右键菜单 state setter
+ * @param {Function} deps.getLastParams  useLastParams().getLastParams —— 读某 nodeType 上次提交参数（稳定 callback，读 ref）
+ * @param {Function} deps.saveLastParams useLastParams().saveLastParams —— 表单提交时存参数子集
  */
 export default function useNodeCrud({
   nodes, edges, setNodes, setEdges, setGroups,
   reactFlow, selectedId, setSelectedId, updateNodeData, settings, submit,
   setDropNodeMenu, setContextMenu,
-  getViewportCenter,
+  getViewportCenter, getLastParams, saveLastParams,
 }) {
   const dragTypeRef = useRef(null);
 
@@ -49,10 +51,19 @@ export default function useNodeCrud({
   // dataPatch: 可选，覆盖/扩展初始 data（如预填 loading/images）
   // position 不传时自动错落：基于「实际当前节点数 + 本轮新增序号」算网格位置，
   // 用模块级 seq 计数器保证连续 add_node 不叠加（不依赖 React state 的过期闭包值）。
+  // params 合并优先级：dataPatch.params（显式） > getLastParams(type)（上次提交） > initialData.params（默认）。
+  // 无 lastParams 时行为与原逻辑一致（零侵入）。
   const createNodeAt = useCallback((type, position, dataPatch) => {
     const id = genId(type);
     const meta = NODE_META[type] || {};
     const size = DEFAULT_SIZE[type] || DEFAULT_SIZE.default;
+    const baseData = { ...initialData(type), label: meta.label };
+    const patch = dataPatch || {};
+    // 仅当 baseData 有 params 且显式 patch 未带 params 时，用上次提交参数补默认值
+    const last = patch.params ? null : getLastParams?.(type);
+    const data = last
+      ? { ...baseData, params: { ...(baseData.params || {}), ...last }, ...patch }
+      : { ...baseData, ...patch };
     const node = {
       id,
       type,
@@ -60,11 +71,11 @@ export default function useNodeCrud({
       width: size.w,
       height: size.h,
       style: { width: size.w, height: size.h },
-      data: { ...initialData(type), label: meta.label, ...(dataPatch || {}) },
+      data,
     };
     setNodes((prev) => [...prev, node]);
     return id;
-  }, [nodes.length, setNodes]);
+  }, [nodes.length, setNodes, getLastParams]);
 
   // 「添加节点」菜单选中类型后：在落点创建节点（居中），并连一条 edge
   const handleAddAtDrop = useCallback((type, dataPatch) => {
@@ -256,19 +267,36 @@ export default function useNodeCrud({
     }));
   }, [setNodes]);
 
+  // 重置节点参数：表单回 initialData(type).params 默认值 + 持久化记忆覆盖为默认（下次新建同类型不再预填旧值）。
+  // 无 params 的节点（imageDisplay/note/uiSplitter 等）调用方不会注入 onResetParams，这里不判空。
+  const handleResetParams = useCallback((nodeId, nodeType) => {
+    if (!nodeType) return;
+    const defaults = initialData(nodeType)?.params;
+    if (!defaults || typeof defaults !== 'object') return;
+    // 同步状态重置；saveLastParams 失败不阻塞重置动作
+    updateNodeData(nodeId, { params: defaults });
+    try { saveLastParams?.(nodeType, defaults); }
+    catch (e) { console.error('resetParams saveLastParams failed:', e); }
+  }, [updateNodeData, saveLastParams]);
+
   // 从右侧表单弹窗提交：建 loading 占位节点 + submit 入队
   const handleFormSubmit = useCallback((task) => {
     const workflowId = task.nodeType === NODE_TYPES.textToImage
       ? (settings.textToImageWorkflowId || WORKFLOWS.text_to_image)
       : (settings.editImageWorkflowId || WORKFLOWS.edit_image);
     const tag = task.nodeType === NODE_TYPES.editImage ? IMAGE_TAGS.editImage : IMAGE_TAGS.textToImage;
+    // 记忆上次提交参数（剥离图片，按工作区+nodeType）—— 失败不阻塞
+    try {
+      const { prompt, model, aspect, size } = task.input || {};
+      saveLastParams?.(task.nodeType, { prompt, model, aspect, size });
+    } catch (e) { console.error('saveLastParams failed:', e); }
     const placeholderNodeId = createNodeAt(
       NODE_TYPES.imageDisplay,
       null,
       { images: [], source: 'queue', loading: true, error: undefined, tags: [tag] },
     );
     submit({ ...task, workflowId, placeholderNodeId, tags: [tag] });
-  }, [settings, submit, createNodeAt]);
+  }, [settings, submit, createNodeAt, saveLastParams]);
 
   return {
     createNodeAt,
@@ -277,6 +305,6 @@ export default function useNodeCrud({
     handleContextMenu, handleClear,
     handleDeleteNode, focusNode, handleSelectNode, handleLocateNode,
     handleAutoLayout, handleExport,
-    handleAutoSize, handleAutoSizeToContent, handleFormSubmit,
+    handleAutoSize, handleAutoSizeToContent, handleFormSubmit, handleResetParams,
   };
 }

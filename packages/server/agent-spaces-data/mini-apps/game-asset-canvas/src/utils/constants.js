@@ -239,6 +239,8 @@ export const IMAGE_TAGS = {
 // 持久化配置文件名（工作区共享的顶层配置）
 export const CANVAS_CONFIG = 'canvas.json';
 export const HISTORY_CONFIG = 'generation-history.json';
+// 每工作区、每节点类型的上次提交参数（KV: { [nodeType]: paramsSubset }）
+export const LAST_PARAMS_CONFIG = 'last-params.json';
 // 自动保存防抖(ms)
 export const SAVE_DEBOUNCE = 600;
 

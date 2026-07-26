@@ -11,6 +11,7 @@ import { resolveServerAssetUrl } from '@/lib/server';
 import { getWS } from '@/lib/ws';
 import { cn } from '@/lib/utils';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -19,7 +20,7 @@ import { AvatarGroup } from '@/components/ui/avatar-group';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ChatPanel, type ChatMessage } from '@/components/ui/chat-panel';
-import { PanelRightOpen, Loader2, Search, Sparkles, Settings2, Settings, Eraser, Smartphone, Monitor, Tablet, Info, X, AlertTriangle } from 'lucide-react';
+import { PanelRightOpen, Loader2, Search, Sparkles, Settings2, Settings, Eraser, Smartphone, Monitor, Tablet, Info, AlertTriangle, MessageSquareText } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { AgentEditor } from '@/components/sidebar/agent-editor';
@@ -241,12 +242,11 @@ function miniAppToolCallsToTimeline(toolCalls?: Array<{ name: string; input: unk
   })) ?? [];
 }
 
-function MiniAppAgentPopover({ projectId }: { projectId: string }) {
-  const t = useTranslations('mini-apps');
+/** Mini-app Agent 对话逻辑（popover 与 dock 共享同一份会话状态）。 */
+function useMiniAppAgentChat(projectId: string) {
   const searchParams = useSearchParams();
   const route = searchParams.get('route') ?? '/';
 
-  const [open, setOpen] = useState(false);
   const [agents, setAgents] = useState<Array<{ id: string; name: string; avatar?: string; suggestions?: string[] }>>([]);
   const [agentId, setAgentId] = useState<string>('');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -272,7 +272,7 @@ function MiniAppAgentPopover({ projectId }: { projectId: string }) {
     }).catch(() => {});
   }, [projectId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // agent 变化或首次打开 → 拉历史
+  // agent 变化 → 拉历史
   const loadHistory = useCallback(async () => {
     if (!projectId || !agentId) return;
     try {
@@ -286,8 +286,6 @@ function MiniAppAgentPopover({ projectId }: { projectId: string }) {
       })));
     } catch { /* ignore */ }
   }, [projectId, agentId, sessionId]);
-
-  useEffect(() => { if (open) loadHistory(); }, [open, loadHistory]);
 
   const handleSend = useCallback(async (overrideText?: string) => {
     const text = (overrideText ?? input).trim();
@@ -389,67 +387,27 @@ function MiniAppAgentPopover({ projectId }: { projectId: string }) {
   const current = agents.find((a) => a.id === agentId);
   const suggestions = current?.suggestions ?? [];
 
+  return {
+    agents, agentId, setAgentId,
+    messages, input, setInput, sending,
+    handleSend, handleStop,
+    clearOpen, setClearOpen, handleClear,
+    settingsOpen, setSettingsOpen, settingsLoading, settingsDraft, originalConfig,
+    openSettings, handleSettingsSaved,
+    current, suggestions,
+    loadHistory,
+  };
+}
+
+/** Agent 设置 + 清空确认弹窗（两种形态共用）。 */
+function MiniAppAgentDialogs({ projectId, chat }: { projectId: string; chat: ReturnType<typeof useMiniAppAgentChat> }) {
+  const t = useTranslations('mini-apps');
+  const {
+    settingsOpen, setSettingsOpen, settingsLoading, settingsDraft, originalConfig, handleSettingsSaved,
+    clearOpen, setClearOpen, handleClear,
+  } = chat;
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger render={<Button variant="ghost" size="icon" className="h-7 w-7" aria-label={t('agent.open')} />}>
-        <Sparkles className="h-4 w-4" />
-      </PopoverTrigger>
-      <PopoverContent align="end" className="w-auto p-0 border-0 bg-transparent shadow-none">
-        <ChatPanel
-          onClose={() => setOpen(false)}
-          agent={{
-            name: current?.name ?? 'Agent',
-            avatar: current?.avatar,
-            status: sending ? 'busy' : 'online',
-          }}
-          messages={messages}
-          sending={sending}
-          input={input}
-          onInputChange={setInput}
-          onSend={handleSend}
-          onStop={handleStop}
-          inputPlaceholder={t('agent.inputPlaceholder')}
-          suggestions={suggestions}
-          headerActions={
-            <>
-              {agents.length > 1 && (
-                <Select value={agentId} onValueChange={(v) => setAgentId(v ?? '')}>
-                  <SelectTrigger className="h-7 w-[120px] text-xs"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {agents.map((a) => (
-                      <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 rounded-full hover:bg-background/50"
-                onClick={openSettings}
-                disabled={!agentId}
-                title={t('agent.settings')}
-                aria-label={t('agent.settings')}
-              >
-                <Settings2 className="h-4 w-4" />
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 rounded-full hover:bg-background/50"
-                onClick={() => setClearOpen(true)}
-                disabled={!agentId || sending || messages.length === 0}
-                title={t('agent.clear')}
-                aria-label={t('agent.clear')}
-              >
-                <Eraser className="h-4 w-4" />
-              </Button>
-            </>
-          }
-        />
-      </PopoverContent>
+    <>
       <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
         <DialogContent className="flex max-h-[86vh] min-w-[60vw] flex-col overflow-hidden p-0">
           <DialogHeader className="border-b px-5 py-4">
@@ -490,17 +448,149 @@ function MiniAppAgentPopover({ projectId }: { projectId: string }) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+    </>
+  );
+}
+
+/** ChatPanel 顶部工具区（切换 agent / 设置 / 清空），popover 与 dock 共用。 */
+function MiniAppAgentHeaderActions({ chat }: { chat: ReturnType<typeof useMiniAppAgentChat> }) {
+  const t = useTranslations('mini-apps');
+  const { agents, agentId, setAgentId, openSettings, sending, messages } = chat;
+  return (
+    <>
+      {agents.length > 1 && (
+        <Select value={agentId} onValueChange={(v) => setAgentId(v ?? '')}>
+          <SelectTrigger className="h-7 w-[120px] text-xs"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {agents.map((a) => (
+              <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      )}
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        className="h-8 w-8 rounded-full hover:bg-background/50"
+        onClick={openSettings}
+        disabled={!agentId}
+        title={t('agent.settings')}
+        aria-label={t('agent.settings')}
+      >
+        <Settings2 className="h-4 w-4" />
+      </Button>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        className="h-8 w-8 rounded-full hover:bg-background/50"
+        onClick={() => chat.setClearOpen(true)}
+        disabled={!agentId || sending || messages.length === 0}
+        title={t('agent.clear')}
+        aria-label={t('agent.clear')}
+      >
+        <Eraser className="h-4 w-4" />
+      </Button>
+    </>
+  );
+}
+
+/** AI 助手 Popover 形态（按钮触发，浮层 ChatPanel）。 */
+function MiniAppAgentPopover({ projectId }: { projectId: string }) {
+  const t = useTranslations('mini-apps');
+  const chat = useMiniAppAgentChat(projectId);
+  const [open, setOpen] = useState(false);
+
+  // 打开时拉取一次历史
+  useEffect(() => { if (open) chat.loadHistory(); }, [open, chat.loadHistory]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const { messages, input, setInput, sending, handleSend, handleStop, current, suggestions } = chat;
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger render={<Button variant="ghost" size="icon" className="h-7 w-7" aria-label={t('agent.open')} />}>
+        <Sparkles className="h-4 w-4" />
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-auto p-0 border-0 bg-transparent shadow-none">
+        <ChatPanel
+          onClose={() => setOpen(false)}
+          agent={{
+            name: current?.name ?? 'Agent',
+            avatar: current?.avatar,
+            status: sending ? 'busy' : 'online',
+          }}
+          messages={messages}
+          sending={sending}
+          input={input}
+          onInputChange={setInput}
+          onSend={handleSend}
+          onStop={handleStop}
+          inputPlaceholder={t('agent.inputPlaceholder')}
+          suggestions={suggestions}
+          headerActions={<MiniAppAgentHeaderActions chat={chat} />}
+        />
+      </PopoverContent>
+      <MiniAppAgentDialogs projectId={projectId} chat={chat} />
     </Popover>
   );
 }
 
-/** 右侧应用信息面板（左右布局，非 drawer）。 */
-function MiniAppInfoPanel({ projectId, onClose }: { projectId: string; onClose: () => void }) {
+/** AI 助手 Dock 形态（右侧固定侧栏 ChatPanel）。 */
+function MiniAppAgentDock({ projectId, onClose }: { projectId: string; onClose: () => void }) {
+  const t = useTranslations('mini-apps');
+  const chat = useMiniAppAgentChat(projectId);
+
+  // dock 常驻时，agent 切换即拉历史
+  useEffect(() => { chat.loadHistory(); }, [chat.loadHistory]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const { messages, input, setInput, sending, handleSend, handleStop, current, suggestions } = chat;
+
+  return (
+    <div className="flex h-full w-full flex-col border-l bg-background">
+      <ChatPanel
+        onClose={onClose}
+        fillContainer
+        className="h-full w-full rounded-none border-0 shadow-none ring-0"
+        agent={{
+          name: current?.name ?? 'Agent',
+          avatar: current?.avatar,
+          status: sending ? 'busy' : 'online',
+        }}
+        messages={messages}
+        sending={sending}
+        input={input}
+        onInputChange={setInput}
+        onSend={handleSend}
+        onStop={handleStop}
+        inputPlaceholder={t('agent.inputPlaceholder')}
+        suggestions={suggestions}
+        headerActions={<MiniAppAgentHeaderActions chat={chat} />}
+      />
+      <MiniAppAgentDialogs projectId={projectId} chat={chat} />
+    </div>
+  );
+}
+
+/** 应用信息键值行。 */
+function InfoRow({ label, value }: { label: string; value?: ReactNode }) {
+  if (value === undefined || value === null || value === '') return null;
+  return (
+    <div className="grid grid-cols-[88px_1fr] gap-2 px-3 py-1.5 text-xs">
+      <span className="text-muted-foreground">{label}</span>
+      <span className="break-all">{value}</span>
+    </div>
+  );
+}
+
+/** 应用信息 Dialog（独立弹窗）。 */
+function MiniAppInfoDialog({ open, onOpenChange, projectId }: { open: boolean; onOpenChange: (o: boolean) => void; projectId: string }) {
   const t = useTranslations('mini-apps');
   const [project, setProject] = useState<MiniAppProject | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!open) return;
     let alive = true;
     setLoading(true);
     sdk.miniApp.get(projectId)
@@ -508,61 +598,50 @@ function MiniAppInfoPanel({ projectId, onClose }: { projectId: string; onClose: 
       .catch(() => { if (alive) setProject(null); })
       .finally(() => { if (alive) setLoading(false); });
     return () => { alive = false; };
-  }, [projectId]);
-
-  const Row = ({ label, value }: { label: string; value?: ReactNode }) => {
-    if (value === undefined || value === null || value === '') return null;
-    return (
-      <div className="grid grid-cols-[88px_1fr] gap-2 px-3 py-1.5 text-xs">
-        <span className="text-muted-foreground">{label}</span>
-        <span className="break-all">{value}</span>
-      </div>
-    );
-  };
+  }, [open, projectId]);
 
   return (
-    <div className="flex h-full w-72 shrink-0 flex-col border-l bg-background">
-      <div className="flex shrink-0 items-center justify-between border-b px-3 py-2">
-        <span className="text-sm font-medium">{t('preview.info')}</span>
-        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onClose} aria-label="close">
-          <X className="h-4 w-4" />
-        </Button>
-      </div>
-      <ScrollArea className="min-h-0 flex-1">
-        {loading ? (
-          <div className="flex items-center justify-center gap-2 py-8 text-xs text-muted-foreground">
-            <Loader2 className="size-4 animate-spin" />
-            {t('preview.infoLoading')}
-          </div>
-        ) : project ? (
-          <div className="py-1">
-            <Row label={t('preview.infoName')} value={project.name} />
-            <Row label={t('preview.infoId')} value={<code className="text-[11px]">{project.id}</code>} />
-            <Row label={t('preview.infoVersion')} value={project.version} />
-            <Row label={t('preview.infoType')} value={project.type} />
-            <Row label={t('preview.infoMainFile')} value={<code className="text-[11px]">{project.mainFile}</code>} />
-            <Row label={t('preview.infoDescription')} value={project.description} />
-            {project.devices?.length ? (
-              <Row label={t('preview.infoDevices')} value={project.devices.join(', ')} />
-            ) : null}
-            {project.tags?.length ? (
-              <Row label={t('preview.infoTags')} value={(
-                <span className="flex flex-wrap gap-1">
-                  {project.tags.map((tag) => <Badge key={tag} variant="secondary" className="text-[10px]">{tag}</Badge>)}
-                </span>
-              )} />
-            ) : null}
-            {project.enabledPlugins?.length ? (
-              <Row label={t('preview.infoPlugins')} value={project.enabledPlugins.join(', ')} />
-            ) : null}
-            <Row label={t('preview.infoCreatedAt')} value={new Date(project.createdAt).toLocaleString()} />
-            <Row label={t('preview.infoUpdatedAt')} value={new Date(project.updatedAt).toLocaleString()} />
-          </div>
-        ) : (
-          <div className="py-8 text-center text-xs text-muted-foreground">{t('preview.infoEmpty')}</div>
-        )}
-      </ScrollArea>
-    </div>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="flex max-h-[86vh] min-w-[420px] max-w-md flex-col overflow-hidden p-0">
+        <DialogHeader className="border-b px-5 py-4">
+          <DialogTitle>{t('preview.info')}</DialogTitle>
+        </DialogHeader>
+        <ScrollArea className="min-h-0 flex-1">
+          {loading ? (
+            <div className="flex items-center justify-center gap-2 py-8 text-xs text-muted-foreground">
+              <Loader2 className="size-4 animate-spin" />
+              {t('preview.infoLoading')}
+            </div>
+          ) : project ? (
+            <div className="py-1">
+              <InfoRow label={t('preview.infoName')} value={project.name} />
+              <InfoRow label={t('preview.infoId')} value={<code className="text-[11px]">{project.id}</code>} />
+              <InfoRow label={t('preview.infoVersion')} value={project.version} />
+              <InfoRow label={t('preview.infoType')} value={project.type} />
+              <InfoRow label={t('preview.infoMainFile')} value={<code className="text-[11px]">{project.mainFile}</code>} />
+              <InfoRow label={t('preview.infoDescription')} value={project.description} />
+              {project.devices?.length ? (
+                <InfoRow label={t('preview.infoDevices')} value={project.devices.join(', ')} />
+              ) : null}
+              {project.tags?.length ? (
+                <InfoRow label={t('preview.infoTags')} value={(
+                  <span className="flex flex-wrap gap-1">
+                    {project.tags.map((tag) => <Badge key={tag} variant="secondary" className="text-[10px]">{tag}</Badge>)}
+                  </span>
+                )} />
+              ) : null}
+              {project.enabledPlugins?.length ? (
+                <InfoRow label={t('preview.infoPlugins')} value={project.enabledPlugins.join(', ')} />
+              ) : null}
+              <InfoRow label={t('preview.infoCreatedAt')} value={new Date(project.createdAt).toLocaleString()} />
+              <InfoRow label={t('preview.infoUpdatedAt')} value={new Date(project.updatedAt).toLocaleString()} />
+            </div>
+          ) : (
+            <div className="py-8 text-center text-xs text-muted-foreground">{t('preview.infoEmpty')}</div>
+          )}
+        </ScrollArea>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -571,6 +650,28 @@ export function MiniAppPreview({ type, sourceCode, error, onError, projectId, pr
   const router = useRouter();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [infoOpen, setInfoOpen] = useState(false);
+  const [chatDockOpen, setChatDockOpen] = useState(false);
+  // dock 布局持久化（百分比 Layout，见 docs/ui/react-resizable-panels-size-units.md）
+  const dockLayoutKey = 'mini-app-dock:layout';
+  const defaultDockLayout: Record<string, number> = { 'mini-app-preview': 70, 'mini-app-agent-dock': 30 };
+  const [dockLayout, setDockLayout] = useState<Record<string, number>>(() => {
+    if (typeof window === 'undefined') return defaultDockLayout;
+    try {
+      const raw = window.localStorage.getItem(dockLayoutKey);
+      const parsed = raw ? JSON.parse(raw) as Record<string, number> : null;
+      return parsed ?? defaultDockLayout;
+    } catch {
+      return defaultDockLayout;
+    }
+  });
+  const dockLayoutSaveTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const handleDockLayoutChange = useCallback((layout: Record<string, number>) => {
+    setDockLayout(layout);
+    if (dockLayoutSaveTimer.current) clearTimeout(dockLayoutSaveTimer.current);
+    dockLayoutSaveTimer.current = setTimeout(() => {
+      try { window.localStorage.setItem(dockLayoutKey, JSON.stringify(layout)); } catch {}
+    }, 200);
+  }, []);
   const [projects, setProjects] = useState<MiniAppProject[]>([]);
   const [projectsLoading, setProjectsLoading] = useState(false);
   const [search, setSearch] = useState('');
@@ -799,16 +900,28 @@ export function MiniAppPreview({ type, sourceCode, error, onError, projectId, pr
                 </SelectContent>
               </Select>
             )}
-            {enableAgents && projectId && <MiniAppAgentPopover projectId={projectId} />}
-            {projectId && (
+            {enableAgents && projectId && !chatDockOpen && <MiniAppAgentPopover projectId={projectId} />}
+            {enableAgents && projectId && (
               <Button
-                variant={infoOpen ? 'secondary' : 'ghost'}
+                variant={chatDockOpen ? 'secondary' : 'ghost'}
                 size="icon"
                 className="h-7 w-7"
-                onClick={() => setInfoOpen((v) => !v)}
+                onClick={() => setChatDockOpen((v) => !v)}
+                title={chatDockOpen ? t('agent.dockClose') : t('agent.dockOpen')}
+                aria-label={chatDockOpen ? t('agent.dockClose') : t('agent.dockOpen')}
+                aria-pressed={chatDockOpen}
+              >
+                <MessageSquareText className="h-4 w-4" />
+              </Button>
+            )}
+            {projectId && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={() => setInfoOpen(true)}
                 title={t('preview.info')}
                 aria-label={t('preview.info')}
-                aria-pressed={infoOpen}
               >
                 <Info className="h-4 w-4" />
               </Button>
@@ -872,8 +985,9 @@ export function MiniAppPreview({ type, sourceCode, error, onError, projectId, pr
         </div>
       )}
       <div className="flex min-h-0 flex-1">
-        <div className={cn('min-h-0 flex-1', allowScroll ? 'overflow-auto' : 'overflow-hidden')}>
-          {(() => {
+        {(() => {
+          // 预览主体内容（dock 打开/关闭共用）
+          const previewEl = (() => {
             const rendererEl = (
               <MiniAppRenderer
                 type={type}
@@ -885,22 +999,50 @@ export function MiniAppPreview({ type, sourceCode, error, onError, projectId, pr
                 allowScroll={allowScroll}
               />
             );
-
             // 不套外框：原样渲染
             if (device === 'none' || !DEVICE_FRAMES[device]) return rendererEl;
-
             const meta = DEVICE_FRAMES[device];
             return (
               <div className="h-full w-full overflow-hidden flex items-center justify-center p-4">
                 <DeviceFrame meta={meta}>{rendererEl}</DeviceFrame>
               </div>
             );
-          })()}
-        </div>
-        {infoOpen && projectId && (
-          <MiniAppInfoPanel projectId={projectId} onClose={() => setInfoOpen(false)} />
-        )}
+          })();
+          const previewPane = (
+            <div className={cn('h-full min-h-0 w-full', allowScroll ? 'overflow-auto' : 'overflow-hidden')}>
+              {previewEl}
+            </div>
+          );
+
+          const showDock = enableAgents && !!projectId && chatDockOpen;
+
+          // dock 打开：用 ResizablePanelGroup 拖拽分隔
+          if (showDock) {
+            return (
+              <ResizablePanelGroup
+                orientation="horizontal"
+                className="min-h-0 flex-1"
+                defaultLayout={dockLayout}
+                onLayoutChange={handleDockLayoutChange}
+              >
+                <ResizablePanel id="mini-app-preview" defaultSize="70%" minSize="40%">
+                  {previewPane}
+                </ResizablePanel>
+                <ResizableHandle withHandle />
+                <ResizablePanel id="mini-app-agent-dock" defaultSize="30%" minSize="20%" maxSize="60%">
+                  <MiniAppAgentDock projectId={projectId!} onClose={() => setChatDockOpen(false)} />
+                </ResizablePanel>
+              </ResizablePanelGroup>
+            );
+          }
+
+          // dock 关闭：单列布局
+          return <div className="min-h-0 flex-1">{previewPane}</div>;
+        })()}
       </div>
+      {projectId && (
+        <MiniAppInfoDialog open={infoOpen} onOpenChange={setInfoOpen} projectId={projectId} />
+      )}
       <WorkflowPluginConfigDialog
         open={Boolean(configPlugin)}
         onOpenChange={(o) => { if (!o) setConfigPlugin(null); }}

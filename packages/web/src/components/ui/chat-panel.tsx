@@ -77,6 +77,8 @@ export interface ChatPanelProps {
   className?: string;
   messageListClassName?: string;
   style?: React.CSSProperties;
+  /** 填充父容器：根元素 h-full、消息区 flex-1 自适应（用于侧栏 dock 场景）。 */
+  fillContainer?: boolean;
 }
 
 const containerVariants: Variants = {
@@ -141,6 +143,7 @@ export function ChatPanel({
   className,
   messageListClassName,
   style,
+  fillContainer = false,
 }: ChatPanelProps) {
   const widgetId = useId();
   const listRef = useRef<HTMLDivElement>(null);
@@ -198,9 +201,10 @@ export function ChatPanel({
       exit="exit"
       className={cn(
         "relative overflow-hidden rounded-2xl border border-border/40 bg-background/60 shadow-2xl backdrop-blur-xl ring-1 ring-white/10",
+        fillContainer && "flex h-full flex-col",
         className
       )}
-      style={{ width, maxHeight: height + 220, ...style }}
+      style={fillContainer ? { width: '100%', height: '100%', maxHeight: 'none', ...style } : { width, maxHeight: height + 220, ...style }}
     >
       {/* Header */}
       <div className="relative border-b border-border/40 bg-muted/30 p-4 overflow-hidden">
@@ -243,9 +247,10 @@ export function ChatPanel({
         ref={listRef}
         className={cn(
           "flex flex-col gap-3 overflow-y-auto p-4 bg-gradient-to-b from-background/20 to-background/40",
+          fillContainer && "min-h-0 flex-1",
           messageListClassName
         )}
-        style={{ height }}
+        style={fillContainer ? undefined : { height }}
       >
         <ChatMessageList
           messages={messages}

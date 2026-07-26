@@ -18,8 +18,9 @@ import { registerController, clearController, abortController } from '../utils/p
  * @param {Function} deps.addHistory
  * @param {object} deps.settings
  * @param {Function} deps.createNodeAt
+ * @param {Function} deps.saveLastParams  useLastParams().saveLastParams —— 提交时存参数子集（按工作区+nodeType）
  */
-export default function useNodeExecutions({ runWorkflow, updateNodeData, addHistory, settings, createNodeAt }) {
+export default function useNodeExecutions({ runWorkflow, updateNodeData, addHistory, settings, createNodeAt, saveLastParams }) {
   // 节点内部更新 data 的回调（注入到 data.onUpdate）—— 留在 Canvas 也可，但与执行强相关放这里
   const makeOnUpdate = useCallback((nodeId) => (patch) => {
     updateNodeData(nodeId, patch);
@@ -27,6 +28,11 @@ export default function useNodeExecutions({ runWorkflow, updateNodeData, addHist
 
   // 节点点击"生成"：优先用设置页配置的工作流 ID，fallback 到节点传的 workflowId
   const handleGenerate = useCallback(async (nodeId, nodeType, { workflowId, input }) => {
+    // 记忆上次提交参数（剥离图片，按工作区+nodeType 隔离）—— 失败不阻塞执行
+    try {
+      const { prompt, model, aspect, size } = input || {};
+      saveLastParams?.(nodeType, { prompt, model, aspect, size });
+    } catch (e) { console.error('saveLastParams failed:', e); }
     const settingId = nodeType === NODE_TYPES.textToImage
       ? settings.textToImageWorkflowId
       : nodeType === NODE_TYPES.editImage
@@ -51,10 +57,20 @@ export default function useNodeExecutions({ runWorkflow, updateNodeData, addHist
       console.error('generate failed:', err);
       updateNodeData(nodeId, { status: 'error', error: err?.message || String(err) });
     }
-  }, [runWorkflow, updateNodeData, addHistory, settings]);
+  }, [runWorkflow, updateNodeData, addHistory, settings, saveLastParams]);
 
   // 媒体节点（音频/视频）生成：与 handleGenerate 同款，但产出写 output.audio / output.video
   const handleGenerateMedia = useCallback(async (nodeId, nodeType, kind, { workflowId, input }) => {
+    // 记忆上次提交参数（按 nodeType 存对应字段，剥离图片）—— 失败不阻塞
+    try {
+      if (nodeType === NODE_TYPES.videoGenerator) {
+        const { prompt, model, aspect, quality, duration } = input || {};
+        saveLastParams?.(nodeType, { prompt, model, aspect, quality, duration });
+      } else if (nodeType === NODE_TYPES.textToVoice) {
+        const { prompt, model, voiceId } = input || {};
+        saveLastParams?.(nodeType, { prompt, model, voiceId });
+      }
+    } catch (e) { console.error('saveLastParams failed:', e); }
     const settingId = nodeType === NODE_TYPES.textToVoice
       ? settings.textToVoiceWorkflowId
       : nodeType === NODE_TYPES.videoGenerator
@@ -82,7 +98,7 @@ export default function useNodeExecutions({ runWorkflow, updateNodeData, addHist
       console.error('generateMedia failed:', err);
       updateNodeData(nodeId, { status: 'error', error: err?.message || String(err) });
     }
-  }, [generateAudio, generateVideo, updateNodeData, addHistory, settings]);
+  }, [generateAudio, generateVideo, updateNodeData, addHistory, settings, saveLastParams]);
 
   // 反推提示词节点「执行」：调视觉 AI（agent_run + 多图附件）→ 写文本产出 + 历史。
   // 取消机制与 handleProcessLocal 共用 processingControllers 注册表。
@@ -194,6 +210,9 @@ export default function useNodeExecutions({ runWorkflow, updateNodeData, addHist
   // 图像处理节点「执行」：调本地算法（utils/image-ops），不走工作流。
   const handleProcessLocal = useCallback(async (nodeId, processorId, processorParams, sourceImages, nodeType) => {
     if (!sourceImages?.length) return;
+    // 记忆上次提交参数（仅 processorParams，processor 由 nodeType 固定）—— 失败不阻塞
+    try { saveLastParams?.(nodeType, { processorParams: processorParams || {} }); }
+    catch (e) { console.error('saveLastParams failed:', e); }
     const controller = new AbortController();
     registerController(nodeId, controller);
 
@@ -229,11 +248,14 @@ export default function useNodeExecutions({ runWorkflow, updateNodeData, addHist
     } finally {
       clearController(nodeId, controller);
     }
-  }, [updateNodeData, addHistory, settings, runWorkflow]);
+  }, [updateNodeData, addHistory, settings, runWorkflow, saveLastParams]);
 
   // 统一抠图节点「执行抠图」：调 runCutout 分流（白底/色度键本地算法 / 工作流抠图 / rembg 插件）。
   const handleCutout = useCallback(async (nodeId, mode, modeParams, sourceImages) => {
     if (!sourceImages?.length) return;
+    // 记忆上次提交参数（mode + modeParams）—— 失败不阻塞
+    try { saveLastParams?.(NODE_TYPES.cutout, { mode, modeParams: modeParams || {} }); }
+    catch (e) { console.error('saveLastParams failed:', e); }
     const controller = new AbortController();
     registerController(nodeId, controller);
 
@@ -266,7 +288,7 @@ export default function useNodeExecutions({ runWorkflow, updateNodeData, addHist
     } finally {
       clearController(nodeId, controller);
     }
-  }, [updateNodeData, addHistory, settings, runWorkflow]);
+  }, [updateNodeData, addHistory, settings, runWorkflow, saveLastParams]);
 
   // 节点工具栏「抠图」按钮：创建统一抠图节点，预填当前节点产出图作为输入。mode 默认 workflow。
   const handleCutoutCreate = useCallback((sourceImages) => {

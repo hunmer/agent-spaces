@@ -167,6 +167,8 @@
   },
   "agent": {
     "open": "Open assistant",
+    "dockOpen": "Open assistant in side panel",
+    "dockClose": "Close side assistant",
     "switch": "Switch assistant",
     "inputPlaceholder": "Message assistant…",
     "empty": "No messages",

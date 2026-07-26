@@ -33,6 +33,7 @@ import useSelectionClipboard from '../hooks/useSelectionClipboard';
 import useGroupOperations from '../hooks/useGroupOperations';
 import useNodeCrud from '../hooks/useNodeCrud';
 import useNodeExecutions from '../hooks/useNodeExecutions';
+import useLastParams from '../hooks/useLastParams';
 import { runCutout } from '../utils/cutout';
 import { WORKFLOWS } from '../utils/constants';
 import useCanvasAgentRpc from '../hooks/useCanvasAgentRpc';
@@ -61,6 +62,8 @@ export default function Canvas() {
   const runWorkflow = useWorkflow();
   const { history, addHistory, removeHistory, clearHistory } = useGenerationHistory(activeId);
   const { settings, saveSettings } = useSettings();
+  // 上次提交参数（按工作区+nodeType 隔离）：saveLastParams 给执行回调用，getLastParams 给 createNodeAt 预填用
+  const { saveLastParams, getLastParams } = useLastParams(activeId);
 
   // —— 本组件局部 state ——
   const [selectedId, setSelectedId] = useState(null);
@@ -141,12 +144,12 @@ export default function Canvas() {
     nodes, edges, setNodes, setEdges, setGroups,
     reactFlow, selectedId, setSelectedId, updateNodeData, settings, submit,
     setDropNodeMenu, setContextMenu,
-    getViewportCenter,
+    getViewportCenter, getLastParams, saveLastParams,
   });
 
   // —— 节点执行回调（工作流/媒体/本地算法/抠图/反推提示词）——
   const executions = useNodeExecutions({
-    runWorkflow, updateNodeData, addHistory, settings, createNodeAt: crud.createNodeAt,
+    runWorkflow, updateNodeData, addHistory, settings, createNodeAt: crud.createNodeAt, saveLastParams,
   });
 
   // —— 选中 + 复制粘贴 + 对齐分布 + 批量删除 ——
@@ -253,6 +256,7 @@ export default function Canvas() {
     handleProcessLocal, handleCutout, handleCutoutCreate, handleCancelProcess, handlePromptReverse,
   } = executions;
   const { handleAutoSize, handleAutoSizeToContent } = crud;
+  const { handleResetParams } = crud;
 
   // BBox 查看器「元素拆分」抠图回调：直接调 runCutout（不经节点状态机），注入 workflow 依赖。
   // 签名 (mode, modeParams, urls) => Promise<string[]|null>，与 CutoutDialog.onRun 对齐。
@@ -283,10 +287,11 @@ export default function Canvas() {
     onAutoSize: handleAutoSize,
     onAutoSizeToContent: handleAutoSizeToContent,
     onBBoxCutout: handleBBoxCutout,
+    onResetParams: handleResetParams,
   }), [
     makeOnUpdate, handleGenerate, handleGenerateMedia, handleProcessImage,
     handleProcessLocal, handleCutout, handleCutoutCreate, handleCancelProcess, handlePromptReverse,
-    handleExportImages, handleAutoSize, handleAutoSizeToContent, handleBBoxCutout,
+    handleExportImages, handleAutoSize, handleAutoSizeToContent, handleBBoxCutout, handleResetParams,
   ]);
 
   const { decoratedNodes } = useDecoratedNodes({

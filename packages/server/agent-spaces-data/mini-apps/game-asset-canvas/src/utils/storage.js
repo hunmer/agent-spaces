@@ -1,4 +1,4 @@
-import { CANVAS_CONFIG, HISTORY_CONFIG, ASSET_LIBRARY_CONFIG } from './constants';
+import { CANVAS_CONFIG, HISTORY_CONFIG, ASSET_LIBRARY_CONFIG, LAST_PARAMS_CONFIG } from './constants';
 
 const AS = () => window.AgentSpaces;
 
@@ -36,6 +36,11 @@ export function historyConfigPath(workspaceId) {
 /** 工作区隔离的 asset-library.json 路径 */
 export function assetLibraryConfigPath(workspaceId) {
   return workspaceId ? `workspaces/${workspaceId}/${ASSET_LIBRARY_CONFIG}` : ASSET_LIBRARY_CONFIG;
+}
+
+/** 工作区隔离的 last-params.json 路径（每节点类型上次提交参数） */
+export function lastParamsConfigPath(workspaceId) {
+  return workspaceId ? `workspaces/${workspaceId}/${LAST_PARAMS_CONFIG}` : LAST_PARAMS_CONFIG;
 }
 
 /** 订阅任意 config 变化（多端同步），回调签名 (path, value) */
