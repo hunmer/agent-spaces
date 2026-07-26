@@ -5,7 +5,7 @@ import {
 } from '@xyflow/react';
 import {
   ResizablePanelGroup, ResizablePanel, ResizableHandle,
-  MapPinned,
+  Images, MapPinned,
 } from '@agent-spaces/ui';
 
 import Toolbar from './Toolbar';
@@ -54,7 +54,10 @@ import { genId } from '../utils/canvas-id';
 export default function Canvas() {
   // —— 工作区 + 画布状态 + 设置 + 历史（基础数据源）——
   const { workspaces, activeId, createWorkspace, renameWorkspace, switchWorkspace, deleteWorkspace } = useWorkspaces();
-  const { nodes, edges, groups, loaded, setNodes, setEdges, setGroups, updateNodeData } = useCanvasState(activeId);
+  const {
+    nodes, edges, groups, outputPreviewMode, loaded,
+    setNodes, setEdges, setGroups, setOutputPreviewMode, updateNodeData,
+  } = useCanvasState(activeId);
   const runWorkflow = useWorkflow();
   const { history, addHistory, removeHistory, clearHistory } = useGenerationHistory(activeId);
   const { settings, saveSettings } = useSettings();
@@ -62,6 +65,8 @@ export default function Canvas() {
   // —— 本组件局部 state ——
   const [selectedId, setSelectedId] = useState(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  // 预览高度/hover 仅影响当前展示；模式开关由 useCanvasState 按工作区持久化。
+  const [outputPreviewState, setOutputPreviewState] = useState({});
   // 节点表单弹窗（右侧新增节点 tab 触发，或节点工具栏【编辑】按钮触发）：{ nodeType, initialImages } | null
   const [formState, setFormState] = useState(null);
   // 节点执行弹窗（右侧新增节点卡片 ⚡ 图标触发，不创建画布节点，产出只写生成记录）：{ nodeType } | null
@@ -222,6 +227,24 @@ export default function Canvas() {
   const deleteKeyCode = useMemo(() => (['Backspace', 'Delete']), []);
   const nodeTypes = useMemo(() => NODE_COMPONENTS, []);
 
+  const handleOutputPreviewHeight = useCallback((id, height) => {
+    if (!id || !Number.isFinite(height) || height <= 0) return;
+    setOutputPreviewState((prev) => {
+      const current = prev[id];
+      if (current?.height === height) return prev;
+      return { ...prev, [id]: { ...current, height } };
+    });
+  }, []);
+
+  const handleOutputPreviewHover = useCallback((id, hovered) => {
+    if (!id) return;
+    setOutputPreviewState((prev) => {
+      const current = prev[id];
+      if (!!current?.hovered === hovered) return prev;
+      return { ...prev, [id]: { ...current, hovered } };
+    });
+  }, []);
+
   // —— 注入到节点 data 的回调集合 ——
   // deps 逐个解构具体 callback（而非整个 executions/crud 对象），任一稳定则 nodeCallbacks 稳定，
   // 避免因 hook 返回对象引用变化触发 decoratedNodes 全量重算。
@@ -269,6 +292,10 @@ export default function Canvas() {
   const { decoratedNodes } = useDecoratedNodes({
     nodes, edges,
     selectionCount: selection.selectionCount,
+    outputPreviewMode,
+    outputPreviewState,
+    onOutputPreviewHeight: handleOutputPreviewHeight,
+    onOutputPreviewHover: handleOutputPreviewHover,
     settings, callbacks: nodeCallbacks,
   });
 
@@ -308,6 +335,9 @@ export default function Canvas() {
             onAutoLayout={crud.handleAutoLayout}
             onExport={crud.handleExport}
             onOpenSettings={() => setSettingsOpen(true)}
+            onSelectAll={selection.handleSelectAll}
+            onInvertSelect={selection.handleInvertSelect}
+            onClearSelection={selection.handleClearSelection}
             count={nodes.length}
             workspaceSlot={(
               <WorkspaceSwitcher
@@ -358,6 +388,15 @@ export default function Canvas() {
             >
               <Background variant={BackgroundVariant.Dots} gap={16} size={1} />
               <Controls>
+                <ControlButton
+                  title={outputPreviewMode ? '关闭节点输出预览' : '开启节点输出预览'}
+                  aria-label={outputPreviewMode ? '关闭节点输出预览' : '开启节点输出预览'}
+                  aria-pressed={outputPreviewMode}
+                  onClick={() => setOutputPreviewMode((enabled) => !enabled)}
+                  style={{ background: outputPreviewMode ? 'var(--accent)' : undefined }}
+                >
+                  <Images className="h-4 w-4" />
+                </ControlButton>
                 <ControlButton
                   title={showMinimap ? '隐藏小地图' : '显示小地图'}
                   onClick={toggleMinimap}

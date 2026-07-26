@@ -50,6 +50,7 @@ export default {
       nodes: Array.isArray(payload.nodes) ? payload.nodes : [],
       edges: Array.isArray(payload.edges) ? payload.edges : [],
       groups: Array.isArray(payload.groups) ? payload.groups : [],
+      outputPreviewMode: payload.outputPreviewMode === true,
       savedAt: Date.now(),
     });
     return { ok: true };
@@ -60,7 +61,9 @@ export default {
 
   // 清空画布
   clear_canvas: ({ workspaceId }, ctx) => {
-    ctx.writeConfig(wsPath(workspaceId, CANVAS_FILE), { nodes: [], edges: [], savedAt: Date.now() });
+    ctx.writeConfig(wsPath(workspaceId, CANVAS_FILE), {
+      nodes: [], edges: [], groups: [], outputPreviewMode: false, savedAt: Date.now(),
+    });
     return { ok: true };
   },
 

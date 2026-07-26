@@ -22,6 +22,7 @@ export default function DropNodeMenu({ dropNodeMenu, onClose, onPick }) {
   return (
     <DropdownMenu open onOpenChange={(open) => { if (!open) onClose(); }}>
       <DropdownMenuTrigger
+        nativeButton={false}
         render={<span style={{ position: 'fixed', left: dropNodeMenu.clientX, top: dropNodeMenu.clientY, width: 1, height: 1, pointerEvents: 'none' }} />}
       />
       <DropdownMenuContent align="start" sideOffset={0} className="w-52">

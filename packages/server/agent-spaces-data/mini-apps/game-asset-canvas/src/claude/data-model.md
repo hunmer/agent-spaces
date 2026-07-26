@@ -162,6 +162,22 @@ interface WorkflowGroup {
 - 旧 canvas.json 无 groups 兜底为 `[]`。
 - 删节点时 `onNodesDelete` 同步清理 groups 里悬空的 childNodeIds。
 
+## 画布文件（CanvasFile）
+
+存 `configs/workspaces/<id>/canvas.json`（按工作区隔离）：
+
+```typescript
+interface CanvasFile {
+  nodes: Node[];
+  edges: Edge[];
+  groups: WorkflowGroup[];
+  outputPreviewMode: boolean;    // 节点图片输出预览模式，缺省 false
+  savedAt: number;
+}
+```
+
+`outputPreviewMode` 只持久化开关；节点预览高度和 hover 状态是运行时派生数据，不写入文件。
+
 ## 生成记录（HistoryItem）
 
 存 `configs/workspaces/<id>/generation-history.json`（数组，最新在前，HISTORY_MAX=200）：

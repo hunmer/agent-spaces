@@ -1,7 +1,9 @@
-import { useLayoutEffect, useRef } from 'react';
+import { useCallback, useLayoutEffect, useRef, useState } from 'react';
 import { Handle, NodeResizer, NodeToolbar, Position } from '@xyflow/react';
+import { Badge } from '@agent-spaces/ui';
 import { NODE_META } from '../../utils/constants';
 import useViewportActivation from '../../hooks/useViewportActivation';
+import ImageResult from './ImageResult';
 
 const STATUS_TEXT = {
   idle: '',
@@ -40,12 +42,33 @@ export default function NodeShell({
     : '#94a3b8';
   // 产出图片：文生图/编辑节点存在 data.output.images；图片展示节点存在 data.images
   const outputImages = data?.output?.images?.length ? data.output.images : (data?.images || []);
+  const previewImages = data?.output?.images || [];
+  const outputPreviewEnabled = !!data?.outputPreviewMode && previewImages.length > 0;
+  const [hovered, setHovered] = useState(false);
   const onExportImages = data?.onExportImages;
   const onProcessImage = data?.onProcessImage;
   const onCutoutCreate = data?.onCutoutCreate;
   const onEditImages = data?.onEditImages;
   // 多选（选中数 > 1）时隐藏节点 toolbar：避免每个被选节点都冒出一排按钮，干扰多选操作
   const selectionCount = data?.selectionCount ?? 1;
+  const rootRef = useRef(null);
+
+  const reportOutputPreviewHeight = useCallback(() => {
+    if (!outputPreviewEnabled || hovered) return;
+    const root = rootRef.current;
+    if (!root?.hasAttribute('data-output-preview')) return;
+    const height = Math.ceil(root.scrollHeight);
+    data?.onOutputPreviewHeight?.(height);
+  }, [outputPreviewEnabled, hovered, data?.onOutputPreviewHeight]);
+
+  useLayoutEffect(() => {
+    if (!outputPreviewEnabled || hovered || !rootRef.current) return;
+    const root = rootRef.current;
+    const observer = new ResizeObserver(reportOutputPreviewHeight);
+    observer.observe(root);
+    reportOutputPreviewHeight();
+    return () => observer.disconnect();
+  }, [reportOutputPreviewHeight]);
 
   // 是否显示抠图/放大按钮：节点有产出图且有处理回调
   const showProcessButtons = outputImages.length > 0 && onProcessImage;
@@ -54,10 +77,19 @@ export default function NodeShell({
   // 是否显示编辑按钮：节点有产出图且有编辑回调
   const showEditButton = outputImages.length > 0 && onEditImages;
 
+  const handleMouseEnter = () => {
+    if (!outputPreviewEnabled) return;
+    setHovered(true);
+    data?.onOutputPreviewHover?.(true);
+  };
+  const handleMouseLeave = () => {
+    setHovered(false);
+    if (outputPreviewEnabled) data?.onOutputPreviewHover?.(false);
+  };
+
   // 首次内容高度自适应：测量「标题栏 + 内容区」真实高度，仅上报一次后 disconnect。
   // 这样插入节点后高度贴合表单；用户之后用 NodeResizer 手动改的尺寸永不被覆盖。
   // 回调由 Canvas 通过 data.onAutoSizeToContent 注入；未注入（如持久化旧节点）则不测量。
-  const rootRef = useRef(null);
   const viewportActivated = useViewportActivation(rootRef);
   const measuredRef = useRef(false);
   useLayoutEffect(() => {
@@ -86,8 +118,61 @@ export default function NodeShell({
     return () => ro.disconnect();
   }, [viewportActivated, data?.onAutoSizeToContent, id]);
 
+  if (outputPreviewEnabled && !hovered) {
+    return (
+      <div
+        ref={rootRef}
+        data-output-preview
+        className="relative w-full overflow-hidden rounded-lg bg-card shadow-sm"
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+      >
+        <Badge
+          variant="secondary"
+          className="pointer-events-none absolute right-2 top-2 z-10 max-w-[calc(100%-1rem)] truncate bg-background/85 shadow-sm backdrop-blur-sm"
+        >
+          {meta.label}
+        </Badge>
+        {resizable && (
+          <NodeResizer
+            isVisible={!!selected}
+            minWidth={220}
+            minHeight={120}
+            color="#6366f1"
+            handleClassName="!w-2.5 !h-2.5 !rounded-sm !border-2 !border-background"
+            lineClassName="!border-primary/40"
+          />
+        )}
+        {targetHandle && (
+          <Handle
+            type="target"
+            position={Position.Top}
+            className="!h-3 !w-3 !border-2 !border-background !bg-muted-foreground"
+          />
+        )}
+        <div className="nodrag nopan nowheel w-full">
+          {viewportActivated ? (
+            <ImageResult images={previewImages} preview onImageLoad={reportOutputPreviewHeight} />
+          ) : null}
+        </div>
+        {sourceHandle && (
+          <Handle
+            type="source"
+            position={Position.Bottom}
+            className="!h-3 !w-3 !border-2 !border-background !bg-primary"
+          />
+        )}
+      </div>
+    );
+  }
+
   return (
-    <div ref={rootRef} className="flex h-full w-full flex-col overflow-hidden rounded-lg border border-border bg-card text-card-foreground shadow-sm">
+    <div
+      ref={rootRef}
+      className="flex h-full w-full flex-col overflow-hidden rounded-lg border border-border bg-card text-card-foreground shadow-sm"
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+    >
       {(outputImages.length > 0 && onExportImages) || showProcessButtons || showEditButton || showCutoutButton ? (
         <NodeToolbar isVisible={selected && selectionCount <= 1} position={Position.Top} align="end" offset={8}>
           <div className="flex items-center gap-1">

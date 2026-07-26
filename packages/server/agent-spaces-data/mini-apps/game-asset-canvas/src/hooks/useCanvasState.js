@@ -10,6 +10,7 @@ export default function useCanvasState(workspaceId) {
   const [nodes, setNodes] = useState([]);
   const [edges, setEdges] = useState([]);
   const [groups, setGroups] = useState([]);
+  const [outputPreviewMode, setOutputPreviewMode] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
   const remoteRef = useRef(false);
@@ -25,11 +26,13 @@ export default function useCanvasState(workspaceId) {
       setNodes(state.nodes);
       setEdges(state.edges || []);
       setGroups(Array.isArray(state.groups) ? state.groups : []);
+      setOutputPreviewMode(state.outputPreviewMode === true);
     } else {
       // 新工作区：清空，避免上个工作区的节点残留
       setNodes([]);
       setEdges([]);
       setGroups([]);
+      setOutputPreviewMode(false);
     }
     setLoaded(true);
   }, [workspaceId]);
@@ -46,14 +49,15 @@ export default function useCanvasState(workspaceId) {
       setNodes(value.nodes);
       setEdges(value.edges || []);
       setGroups(Array.isArray(value.groups) ? value.groups : []);
+      setOutputPreviewMode(value.outputPreviewMode === true);
     });
     return () => { try { unsub(); } catch {} };
   }, [workspaceId]);
 
   // 防抖保存（本地改动触发）—— 带上 workspaceId 写到对应隔离目录
   const debouncedSave = useMemo(
-    () => debounce((n, e, g) => {
-      const state = { nodes: n, edges: e, groups: g };
+    () => debounce((n, e, g, previewMode) => {
+      const state = { nodes: n, edges: e, groups: g, outputPreviewMode: previewMode };
       lastSavedRef.current = state;
       dirtyRef.current = false;
       saveCanvas(workspaceId, state).catch((err) => console.warn('saveCanvas failed:', err));
@@ -68,8 +72,8 @@ export default function useCanvasState(workspaceId) {
       return;
     }
     dirtyRef.current = true;
-    debouncedSave(nodes, edges, groups);
-  }, [nodes, edges, groups, loaded, debouncedSave]);
+    debouncedSave(nodes, edges, groups, outputPreviewMode);
+  }, [nodes, edges, groups, outputPreviewMode, loaded, debouncedSave]);
 
   useEffect(() => () => debouncedSave.cancel(), [debouncedSave]);
 
@@ -82,8 +86,9 @@ export default function useCanvasState(workspaceId) {
   }, []);
 
   return {
-    nodes, edges, groups, loaded,
+    nodes, edges, groups, outputPreviewMode, loaded,
     setNodes, setEdges, setGroups,
+    setOutputPreviewMode,
     updateNodeData,
   };
 }

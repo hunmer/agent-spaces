@@ -89,6 +89,16 @@ export default function useSelectionClipboard({ nodes, edges, setNodes, setEdges
     setNodes((prev) => prev.map((n) => ({ ...n, selected: true })));
   }, [setNodes]);
 
+  // 反选：selected 取反
+  const handleInvertSelect = useCallback(() => {
+    setNodes((prev) => prev.map((n) => ({ ...n, selected: !n.selected })));
+  }, [setNodes]);
+
+  // 取消选择：全部 selected 置 false
+  const handleClearSelection = useCallback(() => {
+    setNodes((prev) => prev.map((n) => ({ ...n, selected: false })));
+  }, [setNodes]);
+
   // keydown：Ctrl/Cmd+A/C/V，跳过 input/textarea/contenteditable。
   // 用 nodesRef 读最新值，deps 不含 nodes → effect 只订阅一次（避免每次 nodes 变重新绑监听）。
   useEffect(() => {
@@ -118,5 +128,6 @@ export default function useSelectionClipboard({ nodes, edges, setNodes, setEdges
     onSelectionChange,
     alignDistribute, deleteSelectedNodes, handleUseImage,
     handleCopy, handlePaste,
+    handleSelectAll, handleInvertSelect, handleClearSelection,
   };
 }

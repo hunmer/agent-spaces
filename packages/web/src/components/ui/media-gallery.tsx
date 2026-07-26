@@ -52,7 +52,7 @@ export function MediaGallery({ items, className }: { items: MediaItem[]; classNa
       plugins: [lgZoom, lgVideo, lgThumbnail],
       speed: 300,
       licenseKey: '0000-0000-0000-0000',
-      download: false,
+      download: true,
       dynamic: true,
       dynamicEl: buildDynamicEl(items),
     })
@@ -78,7 +78,7 @@ export function openMediaGallery(items: MediaItem[], startIndex = 0) {
     plugins: [lgZoom, lgVideo, lgThumbnail],
     speed: 300,
     licenseKey: '0000-0000-0000-0000',
-    download: false,
+    download: true,
     dynamic: true,
     index: startIndex,
     dynamicEl: buildDynamicEl(items),

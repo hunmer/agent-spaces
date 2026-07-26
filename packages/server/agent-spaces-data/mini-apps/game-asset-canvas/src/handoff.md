@@ -1010,6 +1010,23 @@ cp -R dist/. <miniapp>/src/vendor/director-desk-web/
 - 将已加载节点移出视窗再移回，图片保持展示，Network 中不产生新的图片请求。
 - 节点选择、拖拽、连线、缩放和小地图行为不变。
 
+## ReactFlow 节点输出预览模式（本轮新增）
+
+- ReactFlow 左下角 `Controls` 新增图片图标切换按钮，`outputPreviewMode` 随当前工作区的 `canvas.json` 保存，刷新或切回工作区时自动恢复。
+- `Canvas` 经 `useDecoratedNodes` 向节点注入 `data.outputPreviewMode`；只使用 `data.output.images` 判断是否有图片输出，不能把 `data.images` 上游输入误判为输出。
+- 开启后，有图片输出的 `NodeShell` 直接切换为独立的无标题栏/无边框预览 DOM，只展示 `ImageResult preview` 的全宽纵向图片列表；鼠标进入节点时恢复完整节点外壳与原表单，移出后恢复图片输出。
+- 独立预览右上角用 `Badge` 叠加显示 `NODE_META[nodeType].label`，Badge 绝对定位，不参与节点高度计算。
+- 原节点 children 始终保持挂载，仅通过样式切换显隐，避免 hover 导致输入框、对话框开关等节点局部状态丢失。
+- 独立预览 DOM 不继承原节点固定高度，`ResizeObserver` + 图片 `onLoad` 上报自然高度；`Canvas` 用临时 `outputPreviewState` 仅覆盖 decorated node 的展示高度。移入节点恢复原节点高度，移出恢复预览高度，不写回持久化节点尺寸。
+- 无图片输出的节点、文本/音频/视频输出节点以及不使用 `NodeShell` 的纯图片展示节点保持原行为。
+
+### 验收要点
+- 关闭按钮时所有节点行为与原来一致。
+- 开启按钮后，有 `data.output.images` 的节点在鼠标移出时只显示无边框的全宽纵向图片列表，点击图片可打开 Media Gallery。
+- 鼠标移入上述节点立即显示原节点表单，移出后重新显示图片网格；表单输入状态不丢失。
+- 预览态高度随纵向图片列表自适应；hover 表单态恢复节点原高度，关闭模式后原尺寸保持不变。
+- 只有输入图、没有输出图的节点不切换预览；节点选择、拖拽、缩放、连线和 NodeToolbar 行为不变。
+
 ## 后续可做
 
 - 队列任务失败「重试」按钮、执行中实时进度（node:progress 事件）
