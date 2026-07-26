@@ -36,7 +36,7 @@ src/
     Toolbar/RightPanel/...   # 顶层 UI
     canvas/                 # 画布级子组件（右键菜单/落空菜单/多选 toolbar/分组 overlay/添加菜单项）
     nodes/                  # 节点组件（19个）+ NodeShell 通用外壳 + ImageResult/ParamField 等通用件
-  hooks/                    # 业务逻辑 hooks（16个，见 module-responsibilities.md）
+  hooks/                    # 业务逻辑 hooks（17个，见 module-responsibilities.md）
   utils/                    # 纯函数/常量/单例
     constants.js            # 全局常量（NODE_TYPES/NODE_META/IMAGE_PROCESSORS/CUTOUT_PARAMS/工作流 ID/Agent 提示词）
     canvas-constants.js     # Canvas 依赖聚合点（NODE_COMPONENTS/ADD_NODE_ITEMS/initialData）

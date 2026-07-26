@@ -21,6 +21,7 @@
 2. **NodeResizer 要求**：建节点必须同时给顶层 `width`/`height` 字段 **和** `style:{width,height}`，否则 resize 无效。`NodeResizer isVisible={selected}`。
 3. **交互抑制**：节点内容区 + NoteNode textarea 必须加 `nodrag nopan nowheel` class，否则节点内滚动/选文本会误触画布。
 4. **删除键**：`deleteKeyCode={['Backspace','Delete']}`（v12 默认只含 Backspace，必须显式补 Delete）。焦点在 textarea/input 时 ReactFlow 忽略删除键，需先点画布空白让 ReactFlow 重获焦点。
+5. **节点内容视窗懒加载**：不要开启 `ReactFlow.onlyRenderVisibleElements`（会让节点离屏后卸载、重新进入时重建图片）。统一由 `useViewportActivation` 控制：节点首次进入视窗后挂载正文并永久保持，已加载图片离屏再进入时不重新加载。
 
 ## 状态管理约定
 

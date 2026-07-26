@@ -24,7 +24,7 @@ Agent Spaces 宿主里的 React mini-app，用 ReactFlow 搭一个节点化的�
 |------|------|---------|
 | [架构总览](claude/overview.md) | 在宿主中的位置、三层源码结构、核心数据流、关键设计取舍 | 首次了解项目时 |
 | [开发约定](claude/conventions.md) | 改动生效规则、ReactFlow/状态/工作流/图片处理/Agent RPC 约定、命名风格、安全边界 | 改代码前必读 |
-| [模块职责](claude/module-responsibilities.md) | 节点类型清单、16 个 hooks、utils、components、services、api/tools 职责 | 找某模块在哪实现 |
+| [模块职责](claude/module-responsibilities.md) | 节点类型清单、17 个 hooks、utils、components、services、api/tools 职责 | 找某模块在哪实现 |
 | [入口与启动](claude/entrypoints.md) | manifest 注册、index.jsx、Canvas 启动流程、工作区切换重载、服务端单写者加载 | 调启动问题/理解初始化 |
 | [对外接口](claude/public-interfaces.md) | Agent 画布 API（10 handler）、服务端单写者 handlers、宿主 API、工作流契约 | 改 Agent 能力/service handler 时 |
 | [依赖与配置](claude/dependencies-and-config.md) | 宿主暴露的库、vendor 本地库、CDN 库、configs/ 数据布局、环境差异 | 加新依赖/改配置时 |
@@ -39,7 +39,7 @@ Agent Spaces 宿主里的 React mini-app，用 ReactFlow 搭一个节点化的�
 ```mermaid
 graph TD
     A[index.jsx 入口] --> B[Canvas.jsx 编排层]
-    B --> C[hooks 16个]
+    B --> C[hooks 17个]
     B --> D[components/canvas 5个]
     B --> E[components/nodes 19个]
     C --> F[utils 纯函数/单例]
@@ -50,7 +50,7 @@ graph TD
 ```
 
 - **components/**（顶层 17 + canvas 5 + nodes 19）：UI 展示
-- **hooks/**（16）：业务逻辑，自带 state/effect
+- **hooks/**（17）：业务逻辑，自带 state/effect
 - **utils/**（16 顶层 + 11 image-ops）：纯函数/常量/单例
 - **services/**（1）：服务端单写者
 - **api.js / tools.js**：Agent 对外接口（RPC 到浏览器）

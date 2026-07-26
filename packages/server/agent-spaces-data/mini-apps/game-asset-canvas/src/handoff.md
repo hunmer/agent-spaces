@@ -40,6 +40,7 @@
 - `painterro.min.js` — 图片编辑节点，`loadVendor` + `esmSuffix` 转 ESM
 - `img-comparison-slider.js` — 图片对比节点 web component，`(0,eval)` 注册 customElement
 - `pixelorama-web/` — 像素编辑器（Godot 4.7 导出，~45MB，含 index.pck/wasm + service worker）
+- `director-desk-web/` — 3D导演台节点（React/Three.js/R3F 构建产物，~2MB，iframe 同源加载，经 postMessage 收发截图）
 
 ## host 层新增能力（本轮加的）
 
@@ -86,8 +87,11 @@ src/
       ImageCompareNode.jsx      # 图片对比节点（img-comparison-slider 双图滑块）
       VideoGeneratorNode.jsx    # 生成视频节点
       TextToVoiceNode.jsx       # 生成配音节点
+      DirectorDeskNode.jsx      # 3D导演台节点（iframe 加载 vendor/director-desk-web，postMessage 收发截图）
     UiSplitterDialog.jsx        # 雪碧图拆分对话框（fabric + 连通域检测 + 多图切片导出；标题改名）
     BBoxViewerDialog.jsx        # UI拆分对话框（fabric + JSON导入 + AI分析 + 压缩 + ZIP/画布导出；标题改名）
+    PixelEditorDialog.jsx       # 像素编辑器对话框（iframe + postMessage 注入/导出）
+    DirectorDeskDialog.jsx      # 3D导演台对话框（iframe + postMessage 收 captures-sent 上传回传）
     PromptPickerDialog.jsx      # 提示词库选择器（内置+自定义合并，搜索/分类/增删，onPick 传 item）
     NodeFormDialog.jsx          # 文生图/编辑图片表单弹窗（提示词库 + pickedPrompt + 合并提交）
   hooks/
@@ -926,6 +930,80 @@ const handleDialogDataChange = useCallback((next) => {
 - `canvas.json` 中只出现纯 JSON 数据，不包含运行时对象或临时 UI 状态。
 
 除非对话框明确是一次性确认框、没有任何需要恢复的业务编辑态，否则新节点不得偏离此默认模式；确需例外时必须在组件注释和 handoff 中说明原因。
+
+## 3D导演台节点（本轮新增）
+
+新增 `directorDesk` 节点：iframe 加载本地 `storyai-3d-director-desk` 构建产物（vendor/director-desk-web），在画布内做 3D 分镜/摆位/多视角截图，截图经 postMessage 回传为节点产出。
+
+### 关键决策与已踩坑（务必遵守）
+
+1. **构建产物 vendor 化（非 npm、非 CDN）**：与 pixelorama-web 同套路，把 `~/Documents/storyai-3d-director-desk` 的 `npm run build` 产物（dist 全量 ~2MB，含 `index.html` + `assets/*.{js,css}` + `models/*.glb`）复制到 `src/vendor/director-desk-web/`。iframe 同源加载，无 COOP/COEP/跨域阻断（导演台不需要 SharedArrayBuffer，无 service worker）。
+2. **vite `base` 必须改 `"./"`**：原 `base:"/"` 会让 index.html 引用 `/assets/xxx.js`，嵌入到子路径 `vendor/director-desk-web/` 时浏览器会去站点根找 → 404。改成相对路径 `./assets/...` 才能正确解析。改后重新 build + 复制 dist。
+3. **导出走 postMessage（不下载）**：原 `CapturePanel.handleCapture` 调 `downloadCaptureResults`（浏览器直接下载），嵌入场景下用户拿不到图。改造：`isEmbeddedInHost()`（`window.parent !== window`）判嵌入模式，嵌入时调 hostBridge 已有的 `postDirectorDeskCapturesToHost(results)`（发 `storyai:director-desk-captures-sent`），独立模式保留原下载行为。
+4. **复用 hostBridge 已有协议**（`src/editor/io/hostBridge.ts` 已实现，本轮零改动）：
+   - iframe→父 `storyai:director-desk-ready`：导演台就绪（App.tsx useEffect 发）
+   - iframe→父 `storyai:director-desk-captures-sent`：`{captures:[{dataUrl,fileName}]}` 截图列表
+   - iframe→父 `storyai:director-desk-close`：用户点导演台 X（嵌入由父端关 dialog）
+   - 父→iframe `storyai:director-desk-panorama`：`{imageUrl,fileName}` 把上游全景图作为背景导入
+5. **projectId 解析复用 PixelEditor 模式**：iframe src 用父页面 origin + `srcFileUrl('x')` 反解 projectId 拼 `${origin}/api/mini-apps/${projectId}/src/file/vendor/director-desk-web/index.html`，dev/dist 都同源。
+6. **dataUrl → uploadFile → httpUrl**：父端收到 captures 后，每张 dataUrl 经 `fetch→blob→File→AS.uploadFile` 转 httpUrl 收集，全部完成后一次性 `onSave(urls)`。与 PixelEditor 的 `pxr-export` 处理同款。
+7. **可选全景图输入**：节点接收上传图（`data.uploadedImages`）+ 上游连线图（`data.images`，computeInputImages 已纳入 directorDesk 为 receiver），合并去重后作为全景图就绪后逐张注入。无输入也允许进导演台（摆位不需要背景）。
+8. **不进对话框数据持久化默认模式**：导演台工程态由其自身 `localStorage`（`scopedScene` + `instanceId`）管理，画布端不保存工程 JSON。节点只持久化 `uploadedImages`/`upstreamOrder`/`output.images`（与 PixelEditor 同款例外，已在节点注释说明）。
+
+### 改动文件
+
+#### storyai-3d-director-desk（源项目）
+- `vite.config.ts`：`base:"/"` → `base:"./"`（嵌入子路径必须相对路径）
+- `src/editor/panels/CapturePanel.tsx`：新增 `isEmbeddedInHost()` + 嵌入模式调 `postDirectorDeskCapturesToHost`，独立模式保留 `downloadCaptureResults`
+- `npm run build` → `dist/`（~2MB）→ 复制到 `src/vendor/director-desk-web/`
+
+#### mini-app（刷新即生效，无宿主改动）
+- `src/utils/constants.js`：`NODE_TYPES.directorDesk` + `NODE_META`（🎥 #7c3aed）+ `IMAGE_TAGS.directorDesk`
+- `src/components/DirectorDeskDialog.jsx`（新增）：iframe + postMessage 监听 + captures 上传回传 + 可选全景图注入
+- `src/components/nodes/DirectorDeskNode.jsx`（新增）：FileUpload 多图 + UpstreamImageList 连线 + 打开按钮 + 产出
+- `src/utils/canvas-constants.js`：NODE_COMPONENTS / ADD_NODE_ITEMS / DEFAULT_SIZE / initialData 加 directorDesk
+- `src/utils/input-images.js`：`isReceiverType` 加 directorDesk
+- `src/components/RightPanel.jsx`：ADD_ITEMS 加「3D导演台」（category: edit）
+- `src/api.js`：VALID_NODE_TYPES + NODE_LABELS 加 cutout/directorDesk（cutout 此前漏补，一并补上）
+- `src/tools.js`：NODE_TYPE_ENUM + NODE_TYPE_DESC 加 cutout/directorDesk
+- `src/vendor/director-desk-web/`（新增 ~2MB）：storyai-3d-director-desk 构建产物
+- `manifest.json`：agent systemPrompt 节点类型列表加 directorDesk
+
+### 协议（postMessage 消息格式）
+- 父→iframe（`storyai:director-desk-panorama`）：`{type, payload:{imageUrl, fileName}}`
+- iframe→父（`storyai:director-desk-ready`）：`{type}`（就绪）
+- iframe→父（`storyai:director-desk-captures-sent`）：`{type, payload:{captures:[{dataUrl, fileName}]}}`
+- iframe→父（`storyai:director-desk-close`）：`{type}`（用户点 X）
+
+### 重新构建流程（改 storyai-3d-director-desk 后必做）
+```bash
+cd ~/Documents/storyai-3d-director-desk
+npm run build
+# 复制 dist 全量覆盖 vendor
+rm -rf <miniapp>/src/vendor/director-desk-web && mkdir -p <miniapp>/src/vendor/director-desk-web
+cp -R dist/. <miniapp>/src/vendor/director-desk-web/
+```
+
+### 验收要点
+- 右侧「新增节点」出现 🎥 3D导演台卡片（category: edit）
+- 节点支持可选上传多图 + 上游连线（合并去重）作为全景图输入
+- 点「🎥 打开 3D 导演台」→ iframe 加载导演台（约 1-2s）→ 就绪后自动注入全景图（若有）
+- 在导演台左侧「截图」面板点「当前/四方位/十二方位视角截图」→ 截图自动回传 → 节点产出图网格 → 可连线下游，NodeToolbar 按钮自动可用
+- 用户点导演台右上角 X → 父端自动关 dialog
+- 独立打开导演台（非嵌入）时点截图仍走浏览器下载（行为不变）
+
+## ReactFlow 节点图片视窗懒加载（本轮新增）
+
+- 不使用 `ReactFlow.onlyRenderVisibleElements`：该属性会在节点离屏时卸载节点，重新进入时重建图片元素。
+- `src/hooks/useViewportActivation.js` 用 `IntersectionObserver` 监听节点首次进入可见区域；激活状态只从 `false` 变为 `true`，离屏后不回退。
+- `NodeShell` 在首次激活前不挂载节点正文，激活后永久保留正文 DOM；`ImageDisplayNode` 因不使用通用外壳，单独用同一 hook 控制图片首次挂载。
+- 因此未进入过视窗的节点不会加载图片，已进入过的节点离屏再返回时保留原图片元素，不会重新加载。
+
+### 验收要点
+- 打开包含多张图片且部分节点位于视窗外的画布，刷新后 Network 中只请求视窗内节点图片。
+- 平移画布使视窗外图片节点进入视窗，对应图片请求此时才出现，节点图片正常展示。
+- 将已加载节点移出视窗再移回，图片保持展示，Network 中不产生新的图片请求。
+- 节点选择、拖拽、连线、缩放和小地图行为不变。
 
 ## 后续可做
 

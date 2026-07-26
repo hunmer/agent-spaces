@@ -22,7 +22,7 @@
 
 > 「分组」不是节点类型，是 `WorkflowGroupOverlay`（groups 数据驱动，与 nodes/edges 平级），复用 workflow-editor 同源组件。
 
-## hooks（src/hooks/，16 个）
+## hooks（src/hooks/，17 个）
 
 | hook | 职责 |
 |------|------|
@@ -42,6 +42,7 @@
 | useCanvasAgentRpc | WS message 监听（ref 持有最新值，effect 只订阅一次） |
 | useDecoratedNodes | 节点 data 注入回调（与 settings/selectionCount 联动） |
 | useAssetLibrary | 素材库（asset-library.json，按工作区隔离） |
+| useViewportActivation | 节点首次进入视窗后永久激活正文，离屏不卸载已加载图片 |
 
 ## utils 纯函数/单例（src/utils/，16 个文件 + image-ops/）
 

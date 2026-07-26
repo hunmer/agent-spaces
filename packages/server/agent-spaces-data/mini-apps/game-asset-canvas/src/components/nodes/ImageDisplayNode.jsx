@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState, useEffect } from 'react';
 import { Handle, NodeResizer, NodeToolbar, Position } from '@xyflow/react';
 import { ChevronLeft, ChevronRight, Upload, openMediaGallery } from '@agent-spaces/ui';
+import useViewportActivation from '../../hooks/useViewportActivation';
 
 /**
  * 图片展示节点：纯展示图片，无外壳边框/标题栏。
@@ -21,6 +22,8 @@ export default function ImageDisplayNode({ id, data, selected }) {
   const onUpdate = data?.onUpdate;
   const onAutoSize = data?.onAutoSize;
   const fileRef = useRef(null);
+  const rootRef = useRef(null);
+  const viewportActivated = useViewportActivation(rootRef);
   const [uploading, setUploading] = useState(false);
   const loading = data?.loading;
   const source = data?.source;
@@ -88,7 +91,7 @@ export default function ImageDisplayNode({ id, data, selected }) {
     : '已上传';
 
   return (
-    <div className="group relative h-full w-full overflow-hidden rounded-lg bg-card shadow-sm">
+    <div ref={rootRef} className="group relative h-full w-full overflow-hidden rounded-lg bg-card shadow-sm">
       {/* NodeToolbar：导出/抠图/放大/编辑（选中且单选时） */}
       {showToolbar && (
         <NodeToolbar isVisible={!!selected && selectionCount <= 1} position={Position.Top} align="end" offset={8}>
@@ -173,7 +176,7 @@ export default function ImageDisplayNode({ id, data, selected }) {
           </div>
         ) : images.length > 0 ? (
           <button type="button" onDoubleClick={open} title="双击查看大图" className="flex max-h-full max-w-full items-center justify-center">
-            {current && (
+            {current && viewportActivated && (
               <img
                 key={current}
                 src={current}

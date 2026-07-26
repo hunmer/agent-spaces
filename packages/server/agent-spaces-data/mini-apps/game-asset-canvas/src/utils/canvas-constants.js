@@ -24,6 +24,7 @@ import TextToVoiceNode from '../components/nodes/TextToVoiceNode';
 import VideoGeneratorNode from '../components/nodes/VideoGeneratorNode';
 import ImageCompareNode from '../components/nodes/ImageCompareNode';
 import CutoutNode from '../components/nodes/CutoutNode';
+import DirectorDeskNode from '../components/nodes/DirectorDeskNode';
 import NoteNode from '../components/nodes/NoteNode';
 
 // 节点类型 -> 渲染组件
@@ -54,6 +55,7 @@ export const NODE_COMPONENTS = {
   [NODE_TYPES.videoGenerator]: VideoGeneratorNode,
   [NODE_TYPES.imageCompare]: ImageCompareNode,
   [NODE_TYPES.cutout]: CutoutNode,
+  [NODE_TYPES.directorDesk]: DirectorDeskNode,
   [NODE_TYPES.note]: NoteNode,
 };
 
@@ -82,6 +84,7 @@ export const ADD_NODE_ITEMS = [
   { type: NODE_TYPES.videoGenerator },
   { type: NODE_TYPES.imageCompare },
   { type: NODE_TYPES.cutout },
+  { type: NODE_TYPES.directorDesk },
   { type: NODE_TYPES.note },
 ];
 
@@ -95,6 +98,7 @@ export const DEFAULT_SIZE = {
   [NODE_TYPES.promptReverse]: { w: 320, h: 280 },
   [NODE_TYPES.videoGenerator]: { w: 300, h: 320 },
   [NODE_TYPES.cutout]: { w: 290, h: 260 },
+  [NODE_TYPES.directorDesk]: { w: 300, h: 260 },
   default: { w: 290, h: 240 },
 };
 
@@ -176,6 +180,10 @@ export function initialData(type) {
   }
   if (type === NODE_TYPES.textToVoice) {
     return { status: 'idle', output: { audio: null }, params: { prompt: '', model: 'fish-audio', voiceId: '' } };
+  }
+  if (type === NODE_TYPES.directorDesk) {
+    // 3D导演台：可选全景图输入 + 截图产出
+    return { status: 'idle', output: { images: [] }, uploadedImages: [], upstreamOrder: [] };
   }
   if (type === NODE_TYPES.videoGenerator) {
     return {

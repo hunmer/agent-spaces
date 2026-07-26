@@ -35,6 +35,8 @@ const VALID_NODE_TYPES = [
   'textToVoice',   // 生成配音
   'videoGenerator',// 生成视频
   'imageCompare',  // 图片对比
+  'cutout',        // 抠图（统一节点：白底/色度键/工作流/rembg）
+  'directorDesk',  // 3D导演台
   'note',          // 便签
 ];
 
@@ -63,6 +65,8 @@ const NODE_LABELS = {
   textToVoice: '生成配音',
   videoGenerator: '生成视频',
   imageCompare: '图片对比',
+  cutout: '抠图',
+  directorDesk: '3D导演台',
   note: '便签',
 };
 

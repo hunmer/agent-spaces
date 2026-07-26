@@ -86,7 +86,7 @@ nodes/
   ParamField.jsx             # 通用参数字段（number/color/select/bool/text + showWhen）
 ```
 
-## src/hooks/（16 个）
+## src/hooks/（17 个）
 
 ```
 hooks/
@@ -106,6 +106,7 @@ hooks/
   useCanvasAgentRpc.js       # WS message 监听
   useDecoratedNodes.js       # 节点 data 注入回调
   useAssetLibrary.js         # 素材库
+  useViewportActivation.js   # 节点首次进入视窗后永久激活正文
 ```
 
 ## src/utils/（16 个顶层 + image-ops/ 11 个）

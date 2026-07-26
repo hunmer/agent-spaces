@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef } from 'react';
 import { Handle, NodeResizer, NodeToolbar, Position } from '@xyflow/react';
 import { NODE_META } from '../../utils/constants';
+import useViewportActivation from '../../hooks/useViewportActivation';
 
 const STATUS_TEXT = {
   idle: '',
@@ -57,12 +58,13 @@ export default function NodeShell({
   // 这样插入节点后高度贴合表单；用户之后用 NodeResizer 手动改的尺寸永不被覆盖。
   // 回调由 Canvas 通过 data.onAutoSizeToContent 注入；未注入（如持久化旧节点）则不测量。
   const rootRef = useRef(null);
+  const viewportActivated = useViewportActivation(rootRef);
   const measuredRef = useRef(false);
   useLayoutEffect(() => {
     measuredRef.current = false; // 重置：data.onAutoSizeToContent 变化（节点换工作区重挂载）时允许再测一次
     const onAutoSizeToContent = data?.onAutoSizeToContent;
     const root = rootRef.current;
-    if (!onAutoSizeToContent || !root || !id) return;
+    if (!viewportActivated || !onAutoSizeToContent || !root || !id) return;
 
     const measure = () => {
       if (measuredRef.current) return;
@@ -82,7 +84,7 @@ export default function NodeShell({
     // 同步量一次（多数情况下 children 已渲染，无需等回调）
     measure();
     return () => ro.disconnect();
-  }, [data?.onAutoSizeToContent, id]);
+  }, [viewportActivated, data?.onAutoSizeToContent, id]);
 
   return (
     <div ref={rootRef} className="flex h-full w-full flex-col overflow-hidden rounded-lg border border-border bg-card text-card-foreground shadow-sm">
@@ -166,7 +168,7 @@ export default function NodeShell({
       {/* nodrag/nopan/nowheel：ReactFlow 约定，带这些 class 的元素不触发节点拖拽、画布平移、滚轮缩放，
           避免在节点内滚动/选文本/操作输入框时误触画布 */}
       <div data-node-content className="nodrag nopan nowheel flex min-h-0 flex-1 flex-col gap-2 overflow-auto p-3">
-        {children}
+        {viewportActivated ? children : null}
       </div>
       {sourceHandle && (
         <Handle

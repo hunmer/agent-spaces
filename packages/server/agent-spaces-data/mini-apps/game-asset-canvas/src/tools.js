@@ -28,6 +28,8 @@ const NODE_TYPE_ENUM = [
   'textToVoice',
   'videoGenerator',
   'imageCompare',
+  'cutout',
+  'directorDesk',
   'note',
 ];
 
@@ -56,6 +58,8 @@ const NODE_TYPE_DESC = [
   'textToVoice=生成配音（文字→语音）',
   'videoGenerator=生成视频（图/文→视频）',
   'imageCompare=图片对比（双图滑块对比）',
+  'cutout=抠图（白底/色度键/工作流/rembg 四合一）',
+  'directorDesk=3D导演台（3D摆位+多视角截图）',
   'note=便签（纯文本备注）',
 ].join(' / ');
 

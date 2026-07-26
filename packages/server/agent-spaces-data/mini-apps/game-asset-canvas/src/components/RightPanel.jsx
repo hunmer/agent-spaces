@@ -38,6 +38,7 @@ const ADD_ITEMS = [
   { type: NODE_TYPES.pixelEditor, label: '像素编辑器', category: 'edit' },
   { type: NODE_TYPES.cutout, label: '抠图', category: 'edit' },
   { type: NODE_TYPES.promptReverse, label: '反推提示词', category: 'edit' },
+  { type: NODE_TYPES.directorDesk, label: '3D导演台', category: 'edit' },
   // 工具
   { type: NODE_TYPES.uiSplitter, label: '雪碧图拆分', category: 'util' },
   { type: NODE_TYPES.bboxViewer, label: 'UI拆分', category: 'util' },
