@@ -839,6 +839,94 @@ GDScript 用 `print("[PXR] ...")`（经 index.js onPrint 输出，与 `index.js:
 - 上传 > 阈值的图点 AI 分析：AI 思考 tab 显示压缩过程，**画布预览图保持原图清晰度不被替换**，AI 返回框与图片内容完全吻合（尺寸未变）
 - F12 查 fabric 背景图 naturalWidth/Height：AI 分析前后一致（未被压缩图替换）
 
+## UI 拆分器「子元素」开关实时生效 + label 跟随隐藏（本轮修复）
+
+修复 BBoxViewerDialog「子元素」开关（showChildren）切换不生效的问题：原 effect 是空函数（注释「需重新解析 JSON」），且 `applyJsonData` 把「解析 + 渲染」耦合在一起，切开关无法复用。
+
+### 关键决策
+1. **抽出 `renderFlattened(all, basisLabel, {silent})`**：把 `applyJsonData` 里的「清框→按 showChildren 过滤→加框→refreshLabels→syncBoxesState→syncThumbnails」渲染段抽成独立函数，复用于「导入 JSON」和「切开关」两个入口。sx/sy 从 sourceRef + basisLabel 实时重算（basisLabel==='1000坐标系' 时按 1000 缩放，否则 1:1），与 `getBBoxBasis` 同源。
+2. **`lastFlatRef` 缓存最近一次 flatten 结果**：`applyJsonData` 解析后存 `{ all, basisLabel }`，切 showChildren 时直接读 ref 复用，不重新解析 JSON。
+3. **label 跟随隐藏是自然结果**：`refreshLabels` 遍历 `rects()`（当前画布实际存在的框）重建 label 装饰；被 showChildren 过滤掉的子元素框不在画布上 → 不带 label，无需额外处理。
+4. **切开关 silent=true 不入撤销栈**：避免来回切开关刷爆撤销栈；撤销栈顶仍是 `applyJsonData` 时的整批快照，Ctrl+Z 能正确回到导入前。
+5. **TDZ 规避**：`renderFlattened` 必须声明在 `applyJsonData` 之前（applyJsonData 依赖它）；showChildren 的 useEffect 也必须在 renderFlattened 之后（deps 引用）。
+
+### 改动文件（mini-app 内，刷新即生效，无宿主改动）
+- `src/components/BBoxViewerDialog.jsx`：
+  - 新增 `lastFlatRef`（存 `{all, basisLabel}`）+ `renderFlattened(all, basisLabel, {silent})` 函数
+  - `applyJsonData` 改为「解析→缓存→调 renderFlattened」，删除内联渲染段
+  - showChildren 的 useEffect 从空函数改为调 `renderFlattened(last.all, last.basisLabel, {silent:true})` + 状态提示
+
+### 验收要点
+- 导入 JSON 后切「子元素」开关：子元素框（depth>0）立即隐藏/显示，**无需重新导入 JSON**
+- 隐藏子元素时，其 label 标题一同消失（不残留）；显示时 label 跟着重现
+- 切开关不污染撤销栈（Ctrl+Z 回到导入前，而非切开关前的中间态）
+
+## 节点对话框数据持久化规范（新节点默认模式）
+
+节点打开独立对话框编辑数据时，**对话框的业务数据默认必须保存到所属节点的 `data` 中**，由 `useCanvasState` 随 `canvas.json` 统一持久化。以后编写新节点默认采用此模式，不能只把业务数据放在 Dialog 内部 `useState`/`useRef`，否则关闭对话框、刷新页面或切换工作区后会丢失。
+
+### 标准数据流
+
+1. **节点组件是持久化边界**：节点从 `data.<featureData>` 读取已保存数据，通过注入的 `data.onUpdate` 写回节点；不在对话框里直接调用 service 或写配置文件。
+2. **对话框使用 `initialData + onDataChange`**：节点把持久化快照作为 `initialData` 传入；对话框每次有效业务变更后调用统一的 `onDataChange(next)`。
+3. **节点写回**：`onDataChange` 在节点组件中转换为 `onUpdate?.({ <featureData>: next })`。`useCanvasState` 已负责节点 state 更新、防抖保存和工作区隔离，无需新增一套存储逻辑。
+4. **重新打开时恢复**：对话框完成第三方编辑器/画布初始化后，从 `initialData` 重建运行时对象，并同步 React 展示状态。
+5. **输入源必须绑定**：依赖图片、音频等输入的编辑数据要保存 `sourceUrl`/`imageUrl` 或等价输入标识。恢复前必须确认标识与当前输入一致；更换或清空输入时清除旧数据，禁止把旧坐标/时间轴套到新输入。
+
+```jsx
+// Node.jsx：默认写法
+const dialogData = data?.dialogData || null;
+const handleDialogDataChange = useCallback((next) => {
+  data?.onUpdate?.({ dialogData: next });
+}, [data?.onUpdate]);
+
+<FeatureDialog
+  open={dialogOpen}
+  initialData={dialogData}
+  onDataChange={handleDialogDataChange}
+/>
+```
+
+### 持久化内容边界
+
+- **只保存可 JSON 序列化的业务数据**：数字、字符串、布尔值、数组和普通对象。
+- **不能保存运行时对象**：Fabric Rect/Canvas、DOM、File/Blob、AbortController、函数、组件实例、object URL、hover/selection/loading 等临时 UI 状态。
+- 第三方编辑器对象变化后，先转换成纯数据快照再写回；嵌套 `meta` 等对象要防御性复制，避免后续运行时修改直接污染 React 节点数据。
+- 导出结果与编辑态分开：`onSave` 可继续写 `data.output`，`onDataChange` 专门保存可恢复的编辑态，两者不要混为一次“导出时才保存”。用户即使直接关闭对话框，也应保留最后一次有效编辑。
+- 所有增删改入口必须汇总到统一同步函数，避免 AI 导入、手工绘制、表单修改、删除、撤销/重做中某条路径漏保存。
+
+### BBoxViewer 本次实践
+
+- 节点字段：`data.bboxData = { imageUrl, boxes }`。
+- `boxes` 元素为 `{x,y,width,height,meta}`，`meta` 保存 `id/label/type/depth/color/exportSlice/ocrText/textRole`。
+- `BBoxViewerDialog.syncBoxesState()` 从 Fabric Rect 生成纯数据快照，同时更新列表 state 并调用 `onDataChange`。
+- `BBoxViewerNode.handleBBoxDataChange()` 调 `onUpdate?.({ bboxData: next })` 写回对应节点。
+- 对话框初始化 Fabric 后，仅在 `bboxData.imageUrl === 当前输入图` 时恢复 Rect；上传新图或清空图片时将 `bboxData` 置空。
+- 回调和初始快照用 ref 持有，避免节点数据写回引起父组件重渲染后重复初始化对话框。
+
+### UiSplitter 本次实践（多图独立快照）
+
+- 节点字段：`data.splitData = { inputSignature, method, tolerance, minArea, padding, pickedHex, perImage }`。
+  - `inputSignature` = inputImages 用 `|` 拼接的签名，用于判定恢复时输入是否一致（增删/换序/换 URL 都会判不一致）。
+  - `perImage[url] = { rects: [{x,y,width,height}], pickedColor: [r,g,b]|null, exportEnabled: boolean }`，每张图独立切片框/背景色/导出开关。
+- `UiSplitterDialog.syncSplitData()` 是统一写回函数（`useCallback` deps `[]`，稳定引用）：从 `imageStatesRef` + `exportEnabledRef` + 表单 ref 生成纯数据快照调 `onDataChange`。所有增删改入口（自动检测/手工拉框/表单参数/删除/撤销重做/切换图/导出开关）都汇总到 `renderList → syncSplitData`；表单参数额外有一个 effect 兜底「改参数但未触发检测」的路径。
+- `UiSplitterNode.handleSplitDataChange()` 调 `onUpdate?.({ splitData: next })` 写回；`handleFilesChange` 在输入图变化时 `splitData: null`（规范第 5 条，换输入清旧数据）。
+- 恢复时机：fabric + 所有图 source 加载完后，仅当 `splitData.inputSignature === 当前 inputImages 签名` 才恢复 —— 表单参数灌回 `setMethod/setTolerance/...`（同步更新 ref，保证 `computeOptions` 读最新值），每图 `pickedColor` 在加载 source 时覆盖默认四角色，有持久化 `rects` 的图直接灌回（跳过自动检测，保留用户上次编辑），无 rects 的图照常自动检测；导出开关优先用持久化值。
+- **关键时序坑**：`readyRef.current = true` 必须延迟到 setTimeout 末尾（自动检测/恢复完成之后），否则恢复参数触发的 `setMethod` 会立即触发「表单变化自动检测」effect，把刚恢复的 rects 又覆盖掉。
+- 表单参数（method/tolerance/minArea/padding/pickedHex）用 ref 同步（`methodRef` 等），`syncSplitData` 写回时读 ref 规避 setState 异步导致写回旧值；`thumbUrls`/`exportEnabled` 同样有 ref。
+- 不持久化运行时对象：source/imageData（从 URL 重新加载）、undo/redo 栈、fabric Rect/Canvas、activeUrl、loading/saving/status 等临时 UI 状态。
+- PixelEditorNode（像素编辑器，打开 Pixelorama iframe 外部网页）按用户要求**不**做对话框数据持久化（外部编辑器无结构化业务态可恢复）。
+
+### 新节点默认验收项
+
+- 在对话框中编辑后直接关闭，再打开同一节点，数据完整恢复。
+- 刷新页面或切换工作区再回来，数据仍由对应节点恢复。
+- 复制节点后，复制出的节点带独立的对话框数据快照。
+- 更换输入资源后不恢复旧资源的编辑数据。
+- `canvas.json` 中只出现纯 JSON 数据，不包含运行时对象或临时 UI 状态。
+
+除非对话框明确是一次性确认框、没有任何需要恢复的业务编辑态，否则新节点不得偏离此默认模式；确需例外时必须在组件注释和 handoff 中说明原因。
+
 ## 后续可做
 
 - 队列任务失败「重试」按钮、执行中实时进度（node:progress 事件）

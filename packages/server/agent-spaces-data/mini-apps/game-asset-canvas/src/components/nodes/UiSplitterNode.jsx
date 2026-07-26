@@ -8,6 +8,12 @@ import { NODE_TYPES } from '../../utils/constants';
 import { dedupeUrls } from '../../utils/workflow';
 
 /**
+ * 节点对话框数据持久化规范（见 handoff.md「节点对话框数据持久化规范」）：
+ * 对话框的业务数据（每图切片框 / 背景色 / 检测参数 / 每图导出开关）保存到 data.splitData，
+ * 由 useCanvasState 随 canvas.json 统一持久化；关闭对话框/刷新/切工作区后重开仍可恢复。
+ * 输入标识（inputImages）变化时，按仍存在的 URL 逐图恢复，不存在的丢弃。
+
+/**
  * UI 拆分节点：接收上游多图或本地上传图片，节点内展示「拆分」按钮，
  * 点击弹出对话框，用 fabric.js 画布框选 + 连通域检测把每张图拆成多张切片，
  * 保存后所有图的所有切片上传写入 data.output.images，供下游使用。
@@ -28,6 +34,7 @@ export default function UiSplitterNode({ id, data, selected }) {
   const error = data?.error;
   const onUpdate = data?.onUpdate;
   const uploading = data?.uploading;
+  const splitData = data?.splitData || null;
   const [dialogOpen, setDialogOpen] = useState(false);
 
   // FileUpload onChange：多图，对每个新文件调 uploadFile 拿 http URL，已上传的复用 URL（排序不重传）
@@ -60,11 +67,17 @@ export default function UiSplitterNode({ id, data, selected }) {
         return;
       }
     }
-    onUpdate?.({ uploadedImages: urls, uploading: false, error: undefined });
+    // 输入图集合变化 → 清除旧输入下的切片框快照，避免旧坐标套到新图（持久化规范第 5 条）
+    onUpdate?.({ uploadedImages: urls, uploading: false, error: undefined, splitData: null });
   }, [onUpdate]);
 
   const handleSave = useCallback((urls) => {
     onUpdate?.({ status: 'done', output: { images: urls }, error: undefined });
+  }, [onUpdate]);
+
+  // 对话框业务数据变化时写回节点（持久化到 canvas.json，由 useCanvasState 防抖保存）
+  const handleSplitDataChange = useCallback((next) => {
+    onUpdate?.({ splitData: next });
   }, [onUpdate]);
 
   // FileUpload value：把持久化的 uploadedImages URL 转回 FileUploadFile 格式
@@ -125,6 +138,8 @@ export default function UiSplitterNode({ id, data, selected }) {
       <UiSplitterDialog
         open={dialogOpen}
         inputImages={inputImages}
+        initialData={splitData}
+        onDataChange={handleSplitDataChange}
         onSave={handleSave}
         onClose={() => setDialogOpen(false)}
       />

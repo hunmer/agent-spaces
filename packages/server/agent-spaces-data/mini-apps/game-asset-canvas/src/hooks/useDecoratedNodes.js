@@ -19,7 +19,8 @@ import { dedupeTags } from '../utils/canvas-constants';
  * @param {object} deps.settings
  * @param {object} deps.callbacks  注入到节点 data 的回调集合：
  *   { makeOnUpdate, onGenerate, onGenerateMedia, onExportImages, onProcessImage, onProcessLocal,
- *     onCutout, onCutoutCreate, onCancelProcess, onPromptReverse, onEditImages, onAutoSize, onAutoSizeToContent }
+ *     onCutout, onCutoutCreate, onCancelProcess, onPromptReverse, onEditImages, onAutoSize, onAutoSizeToContent,
+ *     onBBoxCutout }
  * @returns {{ decoratedNodes: Array }}
  */
 export default function useDecoratedNodes({ nodes, edges, selectionCount, settings, callbacks }) {
@@ -29,7 +30,7 @@ export default function useDecoratedNodes({ nodes, edges, selectionCount, settin
     const {
       makeOnUpdate, onGenerate, onGenerateMedia, onExportImages,
       onProcessImage, onProcessLocal, onCutout, onCutoutCreate, onCancelProcess,
-      onPromptReverse, onEditImages, onAutoSize, onAutoSizeToContent,
+      onPromptReverse, onEditImages, onAutoSize, onAutoSizeToContent, onBBoxCutout,
     } = callbacks || {};
     return nodes.map((nd) => {
       const up = upstreamMap.get(nd.id);
@@ -68,6 +69,8 @@ export default function useDecoratedNodes({ nodes, edges, selectionCount, settin
             compressThresholdMB: Number(settings.bboxCompressThresholdMB) || 0,
             compressTargetMB: Number(settings.bboxCompressTargetMB) || 0,
           } : undefined,
+          // BBox 查看器元素拆分抠图回调（仅 bboxViewer 用）
+          onCutout: nd.type === NODE_TYPES.bboxViewer ? onBBoxCutout : undefined,
         },
       };
     });

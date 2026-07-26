@@ -22,9 +22,11 @@ export default function BBoxViewerNode({ id, data, selected }) {
   const inputUrl = uploadedImages[0] || upstreamImages[0] || '';
   const inputImages = inputUrl ? [inputUrl] : [];
   const images = data?.output?.images || [];
+  const bboxData = data?.bboxData || null;
   const onUpdate = data?.onUpdate;
   const uploading = data?.uploading;
   const agentConfig = data?.agentConfig;
+  const onCutout = data?.onCutout;
   const [dialogOpen, setDialogOpen] = useState(false);
 
   // FileUpload onChange：单图，对新文件调 uploadFile 拿 http URL
@@ -37,12 +39,12 @@ export default function BBoxViewerNode({ id, data, selected }) {
     const item = (files || [])[0];
     const f = item?.file;
     if (!f) {
-      onUpdate?.({ uploadedImages: [] });
+      onUpdate?.({ uploadedImages: [], bboxData: null });
       return;
     }
     const existing = f.uploadedUrl || f.uploadedHttpPath || f.url || f.httpPath;
     if (existing) {
-      onUpdate?.({ uploadedImages: [existing] });
+      onUpdate?.({ uploadedImages: [existing], bboxData: null });
       return;
     }
     if (!(f instanceof File)) return;
@@ -51,7 +53,7 @@ export default function BBoxViewerNode({ id, data, selected }) {
       const uploaded = await AS.uploadFile(f);
       const httpUrl = uploaded?.url || uploaded?.httpPath;
       if (!httpUrl) throw new Error('上传未返回 URL');
-      onUpdate?.({ uploadedImages: [httpUrl], uploading: false, uploadError: undefined });
+      onUpdate?.({ uploadedImages: [httpUrl], bboxData: null, uploading: false, uploadError: undefined });
     } catch (err) {
       console.error('BBoxViewer upload failed:', err);
       onUpdate?.({ uploading: false, uploadError: err?.message || String(err) });
@@ -62,8 +64,12 @@ export default function BBoxViewerNode({ id, data, selected }) {
     onUpdate?.({ status: 'done', output: { images: urls }, error: undefined });
   }, [onUpdate]);
 
+  const handleBBoxDataChange = useCallback((next) => {
+    onUpdate?.({ bboxData: next });
+  }, [onUpdate]);
+
   const handleClear = useCallback(() => {
-    onUpdate?.({ uploadedImages: [] });
+    onUpdate?.({ uploadedImages: [], bboxData: null });
   }, [onUpdate]);
 
   // FileUpload value
@@ -147,9 +153,12 @@ export default function BBoxViewerNode({ id, data, selected }) {
       <BBoxViewerDialog
         open={dialogOpen}
         inputImages={inputImages}
+        initialData={bboxData}
+        onDataChange={handleBBoxDataChange}
         onSave={handleSave}
         onClose={() => setDialogOpen(false)}
         agentConfig={agentConfig}
+        onCutout={onCutout}
       />
     </NodeShell>
   );

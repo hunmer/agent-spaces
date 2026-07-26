@@ -104,6 +104,23 @@ data.images?: string[];
 data.output = { text: string };   // AI 返回的提示词文本
 ```
 
+#### UI 拆分（bboxViewer）
+```typescript
+data.uploadedImages?: string[];
+data.images?: string[];
+data.bboxData?: {
+  imageUrl: string;               // bbox 所属背景图；恢复时必须与当前输入图一致
+  boxes: Array<{
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    meta?: object;                // id/label/type/depth/color/exportSlice/ocrText/textRole
+  }>;
+};
+data.output = { images: string[] };
+```
+
 #### 便签（note）
 ```typescript
 data.text: string;

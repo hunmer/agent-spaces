@@ -43,6 +43,7 @@ node --input-type=commonjs -e "require('@babel/standalone').transform(require('f
 | 多选 toolbar 干扰 | NodeShell | `isVisible={selected && selectionCount <= 1}`，多选时全隐藏 |
 | dialog Delete 误删节点 | UiSplitter/BBoxViewer Dialog | window capture 阶段拦截 keydown + stopPropagation |
 | fabric 画布坐标错位 | BBoxViewerDialog AI 分析 | 压缩不改尺寸（只 maxSizeMB），坐标 1:1 |
+| BBox hover 高亮错框 | BBoxViewerDialog highlightBox | 列表按 `rects()` 索引关联，hover 时禁止对 bbox 调 `bringToFront` 改变对象顺序 |
 | useCallback deps 引用未初始化 | UiSplitterDialog deleteSelectedRects | 必须声明在被依赖的 pushHistory/renderList 之后 |
 | lucide-react 直接 import | 任意组件 | 不在 allowlist，必须从 `@agent-spaces/ui` 命名导入 |
 

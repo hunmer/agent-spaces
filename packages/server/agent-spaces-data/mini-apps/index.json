@@ -400,6 +400,9 @@
     "version": "1.0.0",
     "type": "react",
     "mainFile": "index.jsx",
+    "enabledPlugins": [
+      "workflow.rembg"
+    ],
     "description": "基于 ReactFlow 的游戏资产生成画布，支持文生图/编辑图片/图片预览节点，节点间连线传图",
     "tags": [
       "asset",
@@ -423,6 +426,6 @@
       }
     ],
     "createdAt": "2026-07-22T00:00:00.000Z",
-    "updatedAt": "2026-07-25T17:54:23.932Z"
+    "updatedAt": "2026-07-26T06:25:54.831Z"
   }
 ]

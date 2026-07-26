@@ -33,6 +33,8 @@ import useSelectionClipboard from '../hooks/useSelectionClipboard';
 import useGroupOperations from '../hooks/useGroupOperations';
 import useNodeCrud from '../hooks/useNodeCrud';
 import useNodeExecutions from '../hooks/useNodeExecutions';
+import { runCutout } from '../utils/cutout';
+import { WORKFLOWS } from '../utils/constants';
 import useCanvasAgentRpc from '../hooks/useCanvasAgentRpc';
 import useDecoratedNodes from '../hooks/useDecoratedNodes';
 
@@ -228,6 +230,21 @@ export default function Canvas() {
     handleProcessLocal, handleCutout, handleCutoutCreate, handleCancelProcess, handlePromptReverse,
   } = executions;
   const { handleAutoSize, handleAutoSizeToContent } = crud;
+
+  // BBox 查看器「元素拆分」抠图回调：直接调 runCutout（不经节点状态机），注入 workflow 依赖。
+  // 签名 (mode, modeParams, urls) => Promise<string[]|null>，与 CutoutDialog.onRun 对齐。
+  const handleBBoxCutout = useCallback(async (mode, modeParams, urls) => {
+    const extraCtx = mode === 'workflow'
+      ? { workflowId: settings.imageEnchanterWorkflowId || WORKFLOWS.image_enchanter, runWorkflowFn: runWorkflow }
+      : {};
+    try {
+      return await runCutout(mode, urls || [], modeParams || {}, extraCtx);
+    } catch (err) {
+      console.error('[canvas] bbox cutout failed:', err);
+      return null;
+    }
+  }, [settings, runWorkflow]);
+
   const nodeCallbacks = useMemo(() => ({
     makeOnUpdate,
     onGenerate: handleGenerate,
@@ -242,10 +259,11 @@ export default function Canvas() {
     onEditImages: (imgs) => setFormState({ nodeType: NODE_TYPES.editImage, initialImages: imgs }),
     onAutoSize: handleAutoSize,
     onAutoSizeToContent: handleAutoSizeToContent,
+    onBBoxCutout: handleBBoxCutout,
   }), [
     makeOnUpdate, handleGenerate, handleGenerateMedia, handleProcessImage,
     handleProcessLocal, handleCutout, handleCutoutCreate, handleCancelProcess, handlePromptReverse,
-    handleExportImages, handleAutoSize, handleAutoSizeToContent,
+    handleExportImages, handleAutoSize, handleAutoSizeToContent, handleBBoxCutout,
   ]);
 
   const { decoratedNodes } = useDecoratedNodes({

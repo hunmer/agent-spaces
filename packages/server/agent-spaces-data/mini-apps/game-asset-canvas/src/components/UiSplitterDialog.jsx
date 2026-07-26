@@ -29,13 +29,22 @@ const BG_PRESETS = ['#ffffff', '#000000', '#f5f5f5', '#1a1a1a', '#00b140', '#ff0
  *
  * 支持多张输入图：顶部横向列表切换，每张图独立保留切片框/撤销重做/背景色。
  *
+ * 节点对话框数据持久化（见 handoff.md「节点对话框数据持久化规范」）：
+ * - 节点把持久化快照作为 initialData 传入；对话框每次有效业务变更后调 onDataChange 写回。
+ * - 持久化内容：每图 rects/pickedColor/exportEnabled + 检测参数 + inputSignature（输入标识）。
+ * - 恢复时机：fabric + 所有图 source 就绪后，仅当 inputSignature 与当前输入一致才灌回；
+ *   输入变化（增删/换序/换 URL）时按仍存在的 URL 逐图恢复，不存在的丢弃。
+ * - 不持久化运行时对象：source/imageData、undo/redo 栈、fabric 对象、activeUrl、loading 等。
+ *
  * @param {object} props
  * @param {boolean} props.open
  * @param {string[]} props.inputImages 输入图 URL（节点传入，多张）
+ * @param {object} [props.initialData] 节点持久化的拆分快照 { inputSignature, method, tolerance, minArea, padding, pickedHex, perImage }
+ * @param {(data:object)=>void} [props.onDataChange] 业务数据变化时写回节点
  * @param {(urls: string[]) => void} props.onSave 切片上传完成回调（保存当前激活图的切片）
  * @param {() => void} props.onClose
  */
-export default function UiSplitterDialog({ open, inputImages, onSave, onClose }) {
+export default function UiSplitterDialog({ open, inputImages, initialData, onDataChange, onSave, onClose }) {
   const stageRef = useRef(null);            // fabric 容器 DOM
   const fcRef = useRef(null);               // fabric.Canvas 实例
   const fabricLibRef = useRef(null);        // fabric 命名空间
@@ -54,12 +63,25 @@ export default function UiSplitterDialog({ open, inputImages, onSave, onClose })
   const applyingHistoryRef = useRef(false);
   const onSaveRef = useRef(onSave);
   onSaveRef.current = onSave;
+  const onDataChangeRef = useRef(onDataChange);
+  onDataChangeRef.current = onDataChange;
+  // 持久化快照 ref：恢复时读、写回时读，规避闭包读旧值
+  const initialDataRef = useRef(initialData);
+  initialDataRef.current = initialData;
   const readyRef = useRef(false);          // fabric + 所有图 source 就绪标记（控制表单变化自动检测的首触发）
   const drawModeRef = useRef(true);        // true=框选绘制模式，false=选择/移动模式（fabric 闭包读最新值）
+  // 持久化表单参数 ref（onDataChange 写回时读最新值，避免 setMethod 异步导致写回旧值）
+  const methodRef = useRef('corner');
+  const toleranceRef = useRef(70);
+  const minAreaRef = useRef(500);
+  const paddingRef = useRef(2);
+  const pickedHexRef = useRef(toHex([239, 26, 239]));
 
   // 受控表单状态（仅驱动 UI 显示，fabric 逻辑直接读 ref/getter）
   const [activeUrl, setActiveUrl] = useState('');
   const [thumbUrls, setThumbUrls] = useState([]);
+  const thumbUrlsRef = useRef([]);
+  useEffect(() => { thumbUrlsRef.current = thumbUrls; }, [thumbUrls]);
   const [method, setMethod] = useState('corner');
   const [tolerance, setTolerance] = useState(70);
   const [minArea, setMinArea] = useState(500);
@@ -79,6 +101,13 @@ export default function UiSplitterDialog({ open, inputImages, onSave, onClose })
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const [savedCount, setSavedCount] = useState(0);
+
+  // 表单参数同步到 ref（onDataChange 写回时读最新值）
+  useEffect(() => { methodRef.current = method; }, [method]);
+  useEffect(() => { toleranceRef.current = tolerance; }, [tolerance]);
+  useEffect(() => { minAreaRef.current = minArea; }, [minArea]);
+  useEffect(() => { paddingRef.current = padding; }, [padding]);
+  useEffect(() => { pickedHexRef.current = pickedHex; }, [pickedHex]);
 
   // 当前激活图的 state 对象（读最新 activeUrlRef）
   const curState = useCallback(() => imageStatesRef.current[activeUrlRef.current], []);
@@ -160,6 +189,45 @@ export default function UiSplitterDialog({ open, inputImages, onSave, onClose })
 
   // 右侧预览列表
   const [previews, setPreviews] = useState([]); // [{ name, url }]
+
+  // ===== 节点对话框数据持久化：统一写回函数 =====
+  // 输入签名 = inputImages 用 '|' 拼接，用于判定恢复时输入是否一致。
+  // 写回内容：每图 rects/pickedColor/exportEnabled + 检测参数 + inputSignature。
+  // 所有增删改入口（AI 检测/手工绘制/表单修改/删除/撤销重做/切换图）都汇总到 renderList → syncSplitData，
+  // 避免某条路径漏写（持久化规范「所有增删改入口必须汇总到统一同步函数」）。
+  const inputSignature = (urls) => (urls || []).filter(Boolean).join('|');
+  const syncSplitData = useCallback(() => {
+    const urls = thumbUrlsRef.current;
+    if (!urls?.length) return;
+    const states = imageStatesRef.current;
+    const perImage = {};
+    for (const url of urls) {
+      const st = states[url];
+      perImage[url] = {
+        rects: (st?.rects || []).map((b) => ({ ...b })),
+        pickedColor: st?.pickedColor ? [...st.pickedColor] : null,
+        exportEnabled: exportEnabledRef.current[url] !== false,
+      };
+    }
+    onDataChangeRef.current?.({
+      inputSignature: inputSignature(urls),
+      method: methodRef.current,
+      tolerance: toleranceRef.current,
+      minArea: minAreaRef.current,
+      padding: paddingRef.current,
+      pickedHex: pickedHexRef.current,
+      perImage,
+    });
+  }, []);
+
+  // 表单参数变化 → 写回节点持久化（detectAll 已会经 renderList 写回，
+  // 此处兜底覆盖「改参数但未触发检测」的路径；syncSplitData 只读不写 state，无循环风险）。
+  // 必须声明在 syncSplitData 之后（useEffect deps 在函数体同步执行时求值，引用未初始化的 const 会 TDZ）。
+  useEffect(() => {
+    if (!open || !readyRef.current) return;
+    syncSplitData();
+  }, [open, method, tolerance, minArea, padding, pickedHex, syncSplitData]);
+
   const renderList = useCallback(() => {
     const source = sourceRef.current;
     // 同步当前图切片框到 state（保证 totalCount 统计最新）
@@ -187,7 +255,9 @@ export default function UiSplitterDialog({ open, inputImages, onSave, onClose })
     }
     setSliceCounts(counts);
     setTotalCount(total);
-  }, [rects, realBox, computeOptions, curState, thumbUrls]);
+    // 切片框变化 → 写回节点持久化（统一同步点）
+    syncSplitData();
+  }, [rects, realBox, computeOptions, curState, thumbUrls, syncSplitData]);
 
   // 删除当前画布上选中的切片框（带历史）
   const deleteSelectedRects = useCallback(() => {
@@ -390,19 +460,41 @@ export default function UiSplitterDialog({ open, inputImages, onSave, onClose })
         const fabric = await getFabric();
         if (disposed) return;
         fabricLibRef.current = fabric;
-        // 预加载所有图 source
+        // 节点对话框数据持久化：判定是否可恢复（输入签名一致才恢复，否则丢弃旧快照）
+        const saved = initialDataRef.current;
+        const canRestore = !!saved
+          && Array.isArray(saved.perImage)
+          ? false // 防御：perImage 必须是对象
+          : !!saved
+            && saved.inputSignature === inputSignature(urls)
+            && saved.perImage && typeof saved.perImage === 'object';
+        const savedPerImage = canRestore ? saved.perImage : null;
+        // 预加载所有图 source；若可恢复则用持久化的 pickedColor 覆盖默认四角色
         for (const url of urls) {
           if (disposed) return;
           const source = await loadImageSource(url);
           if (disposed) return;
           const corner = cornerColor(source.imageData);
+          const savedPi = savedPerImage?.[url];
+          // 持久化的 pickedColor 是 [r,g,b]；防御性校验
+          const pickedColor = savedPi?.pickedColor && Array.isArray(savedPi.pickedColor) && savedPi.pickedColor.length === 3
+            ? [...savedPi.pickedColor]
+            : corner;
           imageStatesRef.current[url] = {
             source,
-            pickedColor: corner,
+            pickedColor,
             undo: [],
             redo: [],
             rects: [],
           };
+        }
+        // 恢复检测参数到表单 + ref（setState 异步，ref 立即生效保证 computeOptions 读到最新值）
+        if (canRestore) {
+          if (typeof saved.method === 'string') { methodRef.current = saved.method; setMethod(saved.method); }
+          if (saved.tolerance != null) { toleranceRef.current = saved.tolerance; setTolerance(saved.tolerance); }
+          if (saved.minArea != null) { minAreaRef.current = saved.minArea; setMinArea(saved.minArea); }
+          if (saved.padding != null) { paddingRef.current = saved.padding; setPadding(saved.padding); }
+          if (typeof saved.pickedHex === 'string') { pickedHexRef.current = saved.pickedHex; setPickedHex(saved.pickedHex); }
         }
         // 初始化 fabric.Canvas（挂到 stage 容器内的 <canvas>）
         const el = stageRef.current?.querySelector('canvas');
@@ -453,28 +545,45 @@ export default function UiSplitterDialog({ open, inputImages, onSave, onClose })
         setLoading(false);
         setStatus('编辑器就绪。滚轮缩放，空格拖拽，Alt 拉框新建切片。');
         updateHistoryButtons();
-        // 默认所有图启用导出
+        // 每图导出开关：优先用持久化值，否则默认全 true
         const enabledMap = {};
-        urls.forEach((u) => { enabledMap[u] = true; });
+        urls.forEach((u) => {
+          const savedPi = savedPerImage?.[u];
+          enabledMap[u] = savedPi && typeof savedPi.exportEnabled === 'boolean' ? savedPi.exportEnabled : true;
+        });
         setExportEnabled(enabledMap);
+        exportEnabledRef.current = enabledMap;
         renderList();
-        // 打开后对所有图自动检测一次（内联遍历 urls，避免 detectAll 闭包此时基于空 thumbUrls）
-        readyRef.current = true;
+        // 打开后对所有图初始化切片框：
+        // - 可恢复且有持久化 rects 的图 → 直接灌回（保留用户上次编辑结果，跳过自动检测）
+        // - 其余图 → 自动检测
+        // 注意：readyRef 延迟到本 setTimeout 末尾才置 true，避免恢复参数（setMethod 等）
+        // 触发「表单变化自动检测」effect 把刚恢复的 rects 又覆盖掉。
         setTimeout(() => {
           if (disposed) return;
           const opts0 = computeOptions();
           let total0 = 0;
+          let detectedCount = 0;
           for (const u of urls) {
             const s0 = imageStatesRef.current[u];
             if (!s0?.source) continue;
-            const o0 = { ...opts0 };
-            if (o0.method === 'picked') o0.backgroundColor = s0.pickedColor;
-            const b0 = detect(s0.source.imageData, o0);
-            s0.rects = b0;
-            total0 += b0.length;
+            const savedPi = savedPerImage?.[u];
+            const savedRects = Array.isArray(savedPi?.rects) ? savedPi.rects.filter((b) => b && Number.isFinite(b.x)) : null;
+            if (savedRects && savedRects.length) {
+              // 恢复持久化切片框（深拷贝防御后续运行时修改污染）
+              s0.rects = savedRects.map((b) => ({ ...b }));
+              total0 += s0.rects.length;
+            } else {
+              const o0 = { ...opts0 };
+              if (o0.method === 'picked') o0.backgroundColor = s0.pickedColor;
+              const b0 = detect(s0.source.imageData, o0);
+              s0.rects = b0;
+              total0 += b0.length;
+              detectedCount += 1;
+            }
             if (u === first) {
               clearRects();
-              b0.forEach(addRect);
+              s0.rects.forEach(addRect);
               // 首次默认绘制模式：切片框不可选，光标十字
               for (const r of fc.getObjects().filter((o) => o.kind === 'slice')) r.selectable = false;
               fc.selection = false;
@@ -484,7 +593,11 @@ export default function UiSplitterDialog({ open, inputImages, onSave, onClose })
             }
           }
           renderList();
-          setStatus(`已对所有图检测，共 ${total0} 个区域`);
+          setStatus(canRestore && detectedCount === 0
+            ? `已恢复上次编辑（共 ${total0} 个切片）`
+            : `已对所有图检测，共 ${total0} 个区域`);
+          // 恢复/检测完成后才标记就绪，允许后续表单变化触发自动检测
+          readyRef.current = true;
         }, 80);
       } catch (err) {
         console.error('[ui-splitter] init failed:', err);

@@ -9,14 +9,20 @@ import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
   InputGroup, InputGroupAddon, InputGroupButton,
   Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription,
+  openMediaGallery,
 } from '@agent-spaces/ui';
 import {
   Undo2, Redo2, Eraser, Trash2, Download, Upload, FileJson, Crosshair, Sparkles,
   SquareMousePointer, Hand, ChevronDown, Copy, Check, Boxes, Square,
+  Scissors, X,
 } from '@agent-spaces/ui';
 import { getFabric, getImageCompression } from '../utils/image-ops/cdn';
 import { loadImageSource, exportBox } from '../utils/image-ops/sprite-splitter';
-import { BUILTIN_PLUGIN } from '../utils/constants';
+import { runCutout } from '../utils/cutout';
+import {
+  BUILTIN_PLUGIN,
+} from '../utils/constants';
+import CutoutDialog from './CutoutDialog';
 
 // 12 色调色板（移植自 bbox_viewer.html）
 const PALETTE = [
@@ -93,15 +99,25 @@ async function compressToDataUrl(url, opts = {}) {
  * @param {object} props
  * @param {boolean} props.open
  * @param {string[]} props.inputImages 输入图（节点传入，取首张）
+ * @param {{imageUrl:string, boxes:Array<object>}} [props.initialData] 节点持久化的 bbox 快照
+ * @param {(data:{imageUrl:string, boxes:Array<object>}) => void} [props.onDataChange] bbox 变化时写回节点
  * @param {(urls: string[]) => void} props.onSave 导出图片上传完成后回调（写 output.images）
  * @param {() => void} props.onClose
  * @param {{id:string, userPrompt:string}} [props.agentConfig] AI 分析配置（Canvas 从 settings 注入；systemPrompt 归 agent preset）
+ * @param {(mode:string, modeParams:object, urls:string[]) => Promise<string[]|null>} [props.onCutout]
+ *   抠图执行回调（Canvas 注入：内部走 runCutout，返回产出 URL 数组，与 urls 顺序对齐，失败项 null）。
+ *   用于「元素拆分」批量/单项抠图。
  */
-export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, agentConfig }) {
+export default function BBoxViewerDialog({ open, inputImages, initialData, onDataChange, onSave, onClose, agentConfig, onCutout }) {
   const stageRef = useRef(null);
   const fcRef = useRef(null);
   const fabricLibRef = useRef(null);
   const sourceRef = useRef(null);          // 当前图 source {image,canvas,ctx,imageData}
+  const imageUrlRef = useRef('');
+  const initialDataRef = useRef(initialData);
+  initialDataRef.current = initialData;
+  const onDataChangeRef = useRef(onDataChange);
+  onDataChangeRef.current = onDataChange;
   const roRef = useRef(null);
   // 撤销/重做栈：存 box 数组（{x,y,width,height,meta:{id,label,depth,color}}）
   const undoRef = useRef([]);
@@ -124,7 +140,6 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
   // 受控 UI 状态
   const [imageUrl, setImageUrl] = useState('');
   const [boxes, setBoxes] = useState([]);          // 同步 fabric 框（驱动图例/计数）
-  const [colorMode, setColorMode] = useState('depth');
   const [lineWidth, setLineWidth] = useState(2);
   const [showChildren, setShowChildren] = useState(true);
   const [showLabel, setShowLabel] = useState(true);
@@ -152,6 +167,13 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
   const [thumbnails, setThumbnails] = useState([]);
   // 元素拆分 tab 的激活类型过滤器（Set，支持多选；空集合=不过滤显示全部）
   const [activeTypes, setActiveTypes] = useState(() => new Set());
+
+  // 抠图对话框：cutoutTarget = { indexes: number[] } 表示对哪些框抠图（批量=筛选集，单项=[i]）
+  const [cutoutTarget, setCutoutTarget] = useState(null);
+  // 每个框的抠图产出 URL（按 boxes 索引对齐）；null 表示该框未抠图。优先用于列表缩略图/导出。
+  const [cutoutUrls, setCutoutUrls] = useState({});
+  const onCutoutRef = useRef(onCutout);
+  onCutoutRef.current = onCutout;
 
   // 右侧面板 Tabs（顺序：选中信息 / 元素拆分 / AI思考）
   const [rightTab, setRightTab] = useState('selected');
@@ -225,9 +247,13 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
 
   const syncBoxesState = useCallback(() => {
     // 立即同步 boxesRef，让紧随其后调用的 syncThumbnails 能读到最新值（setBoxes 是异步的）
-    const next = rects().map((r) => ({ ...realBox(r), meta: r.__meta || null }));
+    const next = rects().map((r) => ({
+      ...realBox(r),
+      meta: r.__meta ? { ...r.__meta } : null,
+    }));
     boxesRef.current = next;
     setBoxes(next);
+    onDataChangeRef.current?.({ imageUrl: imageUrlRef.current, boxes: next });
   }, [rects, realBox]);
 
   // 用 sourceRef.imageData + exportBox 截取每个框对应区域，缩放后转 dataURL 缓存到 thumbnails。
@@ -284,12 +310,19 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
     fc.requestRenderAll();
   }, [rects, lineWidth]);
 
-  // ============ 配色 ============
-  const getColor = useCallback((depth, parentColor, idx) => {
-    if (colorMode === 'depth') return PALETTE[depth % PALETTE.length];
-    if (colorMode === 'parent') return parentColor || PALETTE[0];
-    return PALETTE[idx % PALETTE.length];
-  }, [colorMode]);
+  // ============ 配色：按类型（meta.type）固定分配 PALETTE 色 ============
+  // 同类型同色，空 type 归 '其它'。用类型字符串哈希取色，颜色稳定不随顺序变化。
+  const typeColorCache = useRef({});
+  const colorByType = useCallback((type) => {
+    const key = type || '其它';
+    if (typeColorCache.current[key]) return typeColorCache.current[key];
+    let h = 0;
+    for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) >>> 0;
+    const c = PALETTE[h % PALETTE.length];
+    typeColorCache.current[key] = c;
+    return c;
+  }, []);
+  const getColor = useCallback((_depth, _parentColor, _idx, type) => colorByType(type), [colorByType]);
 
   // ============ JSON 解析：递归 children + 配色 ============
   // 支持：
@@ -316,7 +349,7 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
           if (el?.children) walk(el.children, d, pColor);
           continue;
         }
-        const color = getColor(d, pColor, out.length);
+        const color = getColor(d, pColor, out.length, el.type || '');
         out.push({
           box,
           meta: {
@@ -429,22 +462,22 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
   }, [rects, showLabel, showId]);
 
   // ============ 加载 JSON ============
-  const applyJsonData = useCallback((data) => {
+  // 保存最近一次解析的 flatten 结果 + 坐标系基准，供切 showChildren 开关时复用重新渲染
+  const lastFlatRef = useRef(null);    // { all, basisLabel }
+  // 按 showChildren 过滤渲染已 flatten 的 bbox 列表（清旧框→过滤→加框→刷新标签/缩略图）。
+  // silent=true 时不 pushHistory（避免切开关刷爆撤销栈）；sx/sy 从 sourceRef + basis 实时重算。
+  const renderFlattened = useCallback((all, basisLabel, { silent = false } = {}) => {
     const fc = fcRef.current;
-    if (!fc) return;
-    const els = Array.isArray(data?.elements)
-      ? data.elements
-      : (Array.isArray(data?.ui_elements) ? data.ui_elements : (Array.isArray(data) ? data : []));
-    if (!els.length) {
-      setStatus(data?.title ? `已加载标题「${data.title}」但无 elements/ui_elements` : 'JSON 无 elements/ui_elements');
-      return;
+    if (!fc) return 0;
+    const natW = sourceRef.current?.canvas?.width || 0;
+    const natH = sourceRef.current?.canvas?.height || 0;
+    let sx = 1; let sy = 1;
+    // 1000 坐标系判定与 getBBoxBasis 同源：basisLabel 标记时按 1000 缩放
+    if (basisLabel === '1000坐标系') {
+      sx = natW ? natW / 1000 : 1;
+      sy = natH ? natH / 1000 : 1;
     }
-    const all = flatten(els, 0, null, []);
-    const basis = getBBoxBasis(all);
-    const sx = basis.w ? sourceRef.current?.canvas?.width / basis.w : 1;
-    const sy = basis.h ? sourceRef.current?.canvas?.height / basis.h : 1;
-    pushHistory();
-    // 清掉旧框（applyJsonData 已 push 一次整批历史）
+    if (!silent) pushHistory();
     for (const r of rects()) fc.remove(r);
     let count = 0;
     all.forEach(({ box, meta }) => {
@@ -458,9 +491,27 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
     refreshLabels();
     syncBoxesState();
     syncThumbnails();
+    return count;
+  }, [pushHistory, rects, addBBoxRect, refreshLabels, syncBoxesState, syncThumbnails, showChildren]);
+
+  const applyJsonData = useCallback((data) => {
+    const fc = fcRef.current;
+    if (!fc) return;
+    const els = Array.isArray(data?.elements)
+      ? data.elements
+      : (Array.isArray(data?.ui_elements) ? data.ui_elements : (Array.isArray(data) ? data : []));
+    if (!els.length) {
+      setStatus(data?.title ? `已加载标题「${data.title}」但无 elements/ui_elements` : 'JSON 无 elements/ui_elements');
+      return;
+    }
+    const all = flatten(els, 0, null, []);
+    const basis = getBBoxBasis(all);
+    // 缓存 flatten 结果 + 坐标系标签，供切 showChildren 时复用
+    lastFlatRef.current = { all, basisLabel: basis.label };
+    const count = renderFlattened(all, basis.label);
     const titleSuffix = data?.title ? `「${data.title}」` : '';
     setStatus(`已加载 ${count} 个 bbox${titleSuffix}（${basis.label}）`);
-  }, [flatten, getBBoxBasis, pushHistory, rects, addBBoxRect, refreshLabels, syncBoxesState, showChildren]);
+  }, [flatten, getBBoxBasis, renderFlattened]);
 
   const handleJsonFile = useCallback(async (file) => {
     if (!file) return;
@@ -491,7 +542,8 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
       fc.defaultCursor = 'crosshair';
       fc.hoverCursor = 'move';
       fc.moveCursor = 'move';
-      for (const r of rects()) r.selectable = true;
+      // 隐藏的框（被类型过滤）不可选中
+      for (const r of rects()) r.selectable = r.visible !== false;
     }
     fc.requestRenderAll();
   }, [rects]);
@@ -722,9 +774,9 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
       for (const o of fc.getObjects().filter((x) => x.kind === 'bbox-mask')) {
         o.sendToBack?.();
       }
-      // 装饰标签（label/id）和高亮框置顶，确保不被遮罩盖住
+      // 遮罩已送到底层，只需把装饰标签置顶。不要对 bbox 调 bringToFront：
+      // 列表通过 rects() 的稳定顺序按索引关联，重排会导致后续 hover 高亮到其它框。
       for (const o of fc.getObjects().filter((x) => x.kind === 'bbox-deco')) o.bringToFront?.();
-      target.bringToFront?.();
     } else {
       for (const r of all) r.set({ fill: 'rgba(0,0,0,0)' });
     }
@@ -840,6 +892,8 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
     const r = all[selectedIdx];
     if (!r) return;
     pushHistory();
+    // 记录旧几何，用于判断是否需失效抠图结果（区域变了旧抠图不再匹配）
+    const oldBox = realBox(r);
     r.set({
       left: Number(selForm.x) || 0,
       top: Number(selForm.y) || 0,
@@ -857,6 +911,15 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
     meta.exportSlice = selForm.exportSlice === true;
     if ('ocrText' in selForm) meta.ocrText = selForm.ocrText || '';
     if ('textRole' in selForm) meta.textRole = selForm.textRole || '';
+    // 几何变化 → 失效该框抠图结果
+    const geomChanged = oldBox.x !== r.left || oldBox.y !== r.top
+      || Math.round(oldBox.width) !== Math.round(r.width * (r.scaleX || 1))
+      || Math.round(oldBox.height) !== Math.round(r.height * (r.scaleY || 1));
+    if (geomChanged && meta.cutoutUrl) {
+      delete meta.cutoutUrl;
+      setCutoutUrls((prev) => { if (!prev[selectedIdx]) return prev; const n = { ...prev }; delete n[selectedIdx]; return n; });
+      setStatus(`框 ${meta.id || meta.label || selectedIdx + 1} 区域已变，抠图结果已失效`);
+    }
     r.__meta = meta;
     const isSlice = meta.exportSlice === true;
     r.set({
@@ -923,6 +986,186 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
     });
   }, []);
 
+  // 过滤联动（核心）：activeTypes 非空时，画布里"非匹配类型"的框全部隐藏，
+  // 且 exportSlice 强制为 false（checkbox 取消、不纳入 ZIP/画布导出）。
+  // activeTypes 清空时全部恢复显示。整批改动 pushHistory 可撤销。
+  const applyTypeFilter = useCallback(() => {
+    const fc = fcRef.current;
+    if (!fc) return;
+    const all = rects();
+    if (!all.length) return;
+    const active = activeTypes.size > 0;
+    let changed = false;
+    for (const r of all) {
+      const meta = r.__meta || {};
+      const matched = !active || activeTypes.has(meta.type || '其它');
+      // 非匹配类型：强制 exportSlice=false（取消 checkbox）
+      if (!matched && meta.exportSlice === true) {
+        if (!changed) { pushHistory(); changed = true; }
+        meta.exportSlice = false;
+        r.__meta = meta;
+        r.set({
+          fill: 'rgba(0,0,0,0)',
+          stroke: meta.color || PALETTE[0],
+          strokeDashArray: [4, 3],
+          borderColor: meta.color || PALETTE[0],
+        });
+      }
+      // 画布显示：非匹配类型隐藏
+      if ((!!r.visible) !== matched) {
+        if (!changed) { pushHistory(); changed = true; }
+        r.set({ visible: matched, selectable: matched && modeRef.current === MODE.DRAW });
+      }
+    }
+    if (changed) {
+      refreshLabels();
+      syncBoxesState();
+      syncThumbnails();
+      fc.discardActiveObject?.();
+      fc.requestRenderAll();
+    }
+  }, [rects, activeTypes, pushHistory, refreshLabels, syncBoxesState]);
+
+  // activeTypes 变化时联动画布显示 + checkbox/exportSlice
+  useEffect(() => {
+    if (!open) return;
+    applyTypeFilter();
+  }, [open, activeTypes, applyTypeFilter]);
+
+  // ============ 抠图（元素拆分批量 / 单项）============
+  // 打开抠图对话框前，先把目标框导出成临时图 URL（用 exportBox + uploadFile 上传），
+  // 作为抠图输入。dialog 完成后回填 cutoutUrls[index]。
+  // 导出输入图：复用 sourceRef.imageData + exportBox（与 ZIP/画布导出同源坐标）。
+  const exportBoxesToUrls = useCallback(async (idxList) => {
+    const AS = window.AgentSpaces;
+    const src = sourceRef.current;
+    if (!AS?.uploadFile) throw new Error('宿主 uploadFile 不可用');
+    if (!src) throw new Error('图片未加载');
+    const list = (idxList || []).filter((i) => boxes[i]).map((i) => ({ i, b: boxes[i] }));
+    const out = {};
+    await Promise.all(list.map(async ({ i, b }) => {
+      try {
+        // Text 类型无视觉意义，跳过
+        if (b.meta?.type === 'Text') return;
+        const canvas = exportBox(src.imageData, b, { transparent: false });
+        const blob = await new Promise((res) => canvas.toBlob((bb) => res(bb), 'image/png'));
+        const meta = b.meta || {};
+        const name = `${meta.label || meta.id || `box_${i + 1}`}.png`.replace(/[\\/:*?"<>|]/g, '_');
+        const file = new File([blob], name, { type: 'image/png' });
+        const uploaded = await AS.uploadFile(file);
+        const httpUrl = uploaded?.url || uploaded?.httpPath;
+        if (httpUrl) out[i] = httpUrl;
+      } catch (err) {
+        console.warn('[bbox-viewer] export box for cutout failed:', i, err);
+      }
+    }));
+    return out; // { [boxIndex]: url }
+  }, [boxes]);
+
+  // 批量抠图：对当前可见（过滤后）的框执行
+  const handleBatchCutout = useCallback(async () => {
+    const visibleIdx = boxes
+      .map((b, i) => i)
+      .filter((i) => activeTypes.size === 0 || activeTypes.has(boxes[i].meta?.type || '其它'));
+    if (!visibleIdx.length) { setError('没有可抠图的元素'); return; }
+    try {
+      const inputs = await exportBoxesToUrls(visibleIdx);
+      const idxWithUrl = visibleIdx.filter((i) => inputs[i]);
+      if (!idxWithUrl.length) { setError('导出元素失败'); return; }
+      setCutoutTarget({ indexes: idxWithUrl, inputs });
+    } catch (err) {
+      setError(err?.message || String(err));
+    }
+  }, [boxes, activeTypes, exportBoxesToUrls]);
+
+  // 单项抠图
+  const handleItemCutout = useCallback(async (i) => {
+    const b = boxes[i];
+    if (!b) return;
+    if (b.meta?.type === 'Text') { setError('文本类型不支持抠图'); return; }
+    try {
+      const inputs = await exportBoxesToUrls([i]);
+      if (!inputs[i]) { setError('导出元素失败'); return; }
+      setCutoutTarget({ indexes: [i], inputs });
+    } catch (err) {
+      setError(err?.message || String(err));
+    }
+  }, [boxes, exportBoxesToUrls]);
+
+  // 抠图对话框关闭/完成回调
+  // 完成时把结果写回 fabric Rect 的 meta.cutoutUrl（随 syncBoxesState → onDataChange 持久化到节点 bboxData），
+  // 同时更新 cutoutUrls state 驱动缩略图刷新。
+  const handleCutoutDialogClose = useCallback(async (result) => {
+    const target = cutoutTarget;
+    // result = { ok:true, urls:string[] } 表示完成；undefined = 取消
+    if (result?.ok && target) {
+      const urls = result.urls || [];
+      const indexes = target.indexes || [];
+      // 写回 fabric Rect meta（持久化路径）
+      const fc = fcRef.current;
+      if (fc) {
+        const all = fc.getObjects().filter((o) => o.kind === 'bbox');
+        urls.forEach((u, k) => {
+          const idx = indexes[k];
+          if (u && idx != null && all[idx]) {
+            const r = all[idx];
+            const meta = r.__meta || {};
+            meta.cutoutUrl = u;
+            r.__meta = meta;
+            // 记录本次抠图时的几何快照，后续几何变化据此判断失效
+            r.__cutoutGeom = {
+              x: r.left,
+              y: r.top,
+              w: r.width * (r.scaleX || 1),
+              h: r.height * (r.scaleY || 1),
+            };
+          }
+        });
+      }
+      // 更新 state（驱动缩略图）
+      setCutoutUrls((prev) => {
+        const next = { ...prev };
+        urls.forEach((u, k) => {
+          const idx = indexes[k];
+          if (u && idx != null) next[idx] = u;
+        });
+        return next;
+      });
+      syncBoxesState(); // 触发 onDataChange 持久化
+      setStatus(`✂️ 抠图完成，${urls.filter(Boolean).length} 张已更新`);
+    }
+    setCutoutTarget(null);
+  }, [cutoutTarget, syncBoxesState]);
+
+  // 删除某框的抠图结果（同步清 meta + 持久化）
+  const removeCutoutUrl = useCallback((i) => {
+    const fc = fcRef.current;
+    if (fc) {
+      const all = fc.getObjects().filter((o) => o.kind === 'bbox');
+      if (all[i]) {
+        const meta = all[i].__meta || {};
+        delete meta.cutoutUrl;
+        all[i].__meta = meta;
+        delete all[i].__cutoutGeom;
+      }
+    }
+    setCutoutUrls((prev) => {
+      if (!prev[i]) return prev;
+      const next = { ...prev };
+      delete next[i];
+      return next;
+    });
+    syncBoxesState();
+  }, [syncBoxesState]);
+
+  // 对话框关闭时清空抠图状态（避免下次复用）
+  useEffect(() => {
+    if (!open) {
+      setCutoutTarget(null);
+      setCutoutUrls({});
+    }
+  }, [open]);
+
   // ============ 打开对话框：加载 fabric + 图 ============
   useEffect(() => {
     if (!open) return;
@@ -930,6 +1173,7 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
     if (!urls.length) { setError('没有输入图片'); return; }
     const first = urls[0];
     setImageUrl(first);
+    imageUrlRef.current = first;
     let disposed = false;
     setLoading(true);
     setError('');
@@ -977,6 +1221,37 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
         }
 
         bindFabricEvents(fc, fabric);
+        // 节点数据只在背景图一致时恢复，避免换图后沿用旧图坐标。
+        const saved = initialDataRef.current;
+        const savedBoxes = saved?.imageUrl === first && Array.isArray(saved?.boxes) ? saved.boxes : [];
+        let restoredCount = 0;
+        for (const savedBox of savedBoxes) {
+          const box = {
+            x: Number(savedBox?.x),
+            y: Number(savedBox?.y),
+            width: Number(savedBox?.width),
+            height: Number(savedBox?.height),
+          };
+          if (!Number.isFinite(box.x) || !Number.isFinite(box.y) || box.width <= 0 || box.height <= 0) continue;
+          addBBoxRect(box, savedBox?.meta || null);
+          restoredCount += 1;
+        }
+        // 从持久化的 meta.cutoutUrl 重建抠图结果 state（按 fabric Rect 顺序对齐）
+        // 同时用恢复的几何初始化 __cutoutGeom 快照（用于后续几何变化失效判断）
+        const restoredCutout = {};
+        const allRects = fc.getObjects().filter((o) => o.kind === 'bbox');
+        savedBoxes.forEach((sb, k) => {
+          if (sb?.meta?.cutoutUrl && allRects[k]) {
+            restoredCutout[k] = sb.meta.cutoutUrl;
+            allRects[k].__cutoutGeom = {
+              x: Number(sb.x) || allRects[k].left,
+              y: Number(sb.y) || allRects[k].top,
+              w: Number(sb.width) || allRects[k].width,
+              h: Number(sb.height) || allRects[k].height,
+            };
+          }
+        });
+        if (Object.keys(restoredCutout).length) setCutoutUrls(restoredCutout);
         fabric.Image.fromURL(source.canvas.toDataURL('image/png'), (img) => {
           if (disposed) return;
           img.selectable = false;
@@ -990,8 +1265,11 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
         // 初始应用交互模式（draw）
         applyMode();
         setLoading(false);
-        setStatus('编辑器就绪。选择框选/平移工具，Alt 也可强制拉框。可导入 JSON 或点「AI 分析」。');
+        setStatus(restoredCount > 0
+          ? `已从节点恢复 ${restoredCount} 个 bbox。`
+          : '编辑器就绪。选择框选/平移工具，Alt 也可强制拉框。可导入 JSON 或点「AI 分析」。');
         updateHistoryButtons();
+        refreshLabels();
         syncBoxesState();
         syncThumbnails();
       } catch (err) {
@@ -1011,6 +1289,7 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
       fcRef.current = null;
       fabricLibRef.current = null;
       sourceRef.current = null;
+      imageUrlRef.current = '';
       undoRef.current = [];
       redoRef.current = [];
       spaceDownRef.current = false;
@@ -1137,6 +1416,35 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
     fc.on('object:modified', () => {
       fc.__historyMoveStarted = false;
       fc.__historyScaleStarted = false;
+      // 几何变化（拖拽/缩放）→ 失效受影响框的抠图结果（区域已变，旧抠图不再匹配）
+      const all = fc.getObjects().filter((o) => o.kind === 'bbox');
+      let invalidated = 0;
+      for (const r of all) {
+        const meta = r.__meta || {};
+        if (!meta.cutoutUrl && !r.__cutoutGeom) continue;
+        const cur = {
+          x: r.left,
+          y: r.top,
+          w: r.width * (r.scaleX || 1),
+          h: r.height * (r.scaleY || 1),
+        };
+        const snap = r.__cutoutGeom;
+        if (snap && meta.cutoutUrl && (
+          Math.round(snap.x) !== Math.round(cur.x)
+          || Math.round(snap.y) !== Math.round(cur.y)
+          || Math.round(snap.w) !== Math.round(cur.w)
+          || Math.round(snap.h) !== Math.round(cur.h)
+        )) {
+          delete meta.cutoutUrl;
+          r.__meta = meta;
+          const idx = all.indexOf(r);
+          setCutoutUrls((prev) => { if (!prev[idx]) return prev; const n = { ...prev }; delete n[idx]; return n; });
+          invalidated += 1;
+        }
+        // 更新快照为当前几何（无论是否失效，下次以本次为基准）
+        r.__cutoutGeom = cur;
+      }
+      if (invalidated > 0) setStatus(`区域已变，${invalidated} 个框抠图结果已失效`);
       refreshLabels();
       syncBoxesState();
       syncThumbnails();
@@ -1147,23 +1455,31 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
   }, [pushHistory, refreshLabels, syncBoxesState, syncThumbnails, lineWidth, onFabricSelectionChange, updateSelFormFromRect]);
 
   // ============ 表单变化联动 ============
-  useEffect(() => { if (open) restyleRects(); }, [open, colorMode, lineWidth, restyleRects]);
-  // 配色变化时重新着色所有框（按 meta.depth + 当前 colorMode）
+  useEffect(() => { if (open) restyleRects(); }, [open, lineWidth, restyleRects]);
+  // 按 type 重着色所有框（getColor 现按 meta.type 分配）
   useEffect(() => {
     if (!open) return;
     const fc = fcRef.current;
     if (!fc) return;
     for (const r of rects()) {
       const meta = r.__meta || {};
-      const color = getColor(meta.depth || 0, meta.parentColor, rects().indexOf(r));
+      const color = colorByType(meta.type || '');
       r.set({ stroke: color, borderColor: color });
       if (meta) meta.color = color;
     }
     fc.requestRenderAll();
-  }, [open, colorMode]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [open, boxes]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { if (open) refreshLabels(); }, [open, showLabel, showId, refreshLabels]);
-  useEffect(() => { if (open) { /* 重新应用 children 过滤需重新解析 JSON */ } }, [open, showChildren]);
+  // 切「子元素」开关：用最近一次解析的 flatten 结果实时重新渲染
+  // （depth>0 的子元素框连同其 label 标题一并隐藏/显示，无需重新导入 JSON）。silent 避免刷爆撤销栈。
+  useEffect(() => {
+    if (!open) return;
+    const last = lastFlatRef.current;
+    if (!last?.all?.length) return;
+    const count = renderFlattened(last.all, last.basisLabel, { silent: true });
+    setStatus(`已${showChildren ? '显示' : '隐藏'}子元素，当前 ${count} 个 bbox`);
+  }, [open, showChildren, renderFlattened]);
 
   // ============ 键盘 ============
   useEffect(() => {
@@ -1225,16 +1541,19 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
     if (!AS?.downloadZip) { setError('宿主 downloadZip 不可用'); return; }
     if (!AS?.uploadFile) { setError('宿主 uploadFile 不可用'); return; }
     if (!src) { setError('图片未加载'); return; }
-    const list = onlyExportSlice ? boxes.filter((b) => b.meta?.exportSlice === true) : boxes;
-    if (!list.length) { setError(onlyExportSlice ? '没有 exportSlice=true 的框' : '没有框'); return; }
+    // 导出范围（保留原始 index 以查抠图结果）：仅切片时只取 exportSlice=true；过滤激活时排除隐藏类型。
+    const idxAll = boxes.map((b, i) => i);
+    const idxVisible = idxAll.filter((i) => activeTypes.size === 0 || activeTypes.has(boxes[i].meta?.type || '其它'));
+    const idxList = onlyExportSlice ? idxVisible.filter((i) => boxes[i].meta?.exportSlice === true) : idxVisible;
+    if (!idxList.length) { setError(onlyExportSlice ? '没有 exportSlice=true 的框' : '没有框'); return; }
     setExporting(true);
     setExportedCount(0);
     setError('');
     try {
       const usedNames = new Set();
       const files = [];
-      for (let i = 0; i < list.length; i++) {
-        const b = list[i];
+      for (const i of idxList) {
+        const b = boxes[i];
         const meta = b.meta || {};
         const base = meta.label || meta.id || `box_${i + 1}`;
         // 文件名去非法字符 + 防重
@@ -1242,9 +1561,23 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
         let n = 1;
         while (usedNames.has(name)) { name = `${base}_${n}.png`; n += 1; }
         usedNames.add(name);
-        const canvas = exportBox(src.imageData, b, { transparent: false });
-        const blob = await new Promise((res) => canvas.toBlob((bb) => res(bb), 'image/png'));
-        const file = new File([blob], name, { type: 'image/png' });
+        // 优先用抠图结果（已是透明 PNG，直接抓 URL 转 File）
+        const cutoutUrl = cutoutUrls[i];
+        let file;
+        if (cutoutUrl) {
+          try {
+            const resp = await fetch(cutoutUrl);
+            const blob = await resp.blob();
+            file = new File([blob], name, { type: 'image/png' });
+          } catch {
+            file = null; // 抓取失败跳过，下面 fallback
+          }
+        }
+        if (!file) {
+          const canvas = exportBox(src.imageData, b, { transparent: false });
+          const blob = await new Promise((res) => canvas.toBlob((bb) => res(bb), 'image/png'));
+          file = new File([blob], name, { type: 'image/png' });
+        }
         const uploaded = await AS.uploadFile(file);
         const httpUrl = uploaded?.url || uploaded?.httpPath;
         if (httpUrl) { files.push({ url: httpUrl, filename: name }); setExportedCount(files.length); }
@@ -1258,7 +1591,7 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
     } finally {
       setExporting(false);
     }
-  }, [boxes, onlyExportSlice]);
+  }, [boxes, onlyExportSlice, activeTypes, cutoutUrls]);
 
   // ============ 导出多图到画布 ============
   const handleExportToCanvas = useCallback(async () => {
@@ -1266,20 +1599,35 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
     const src = sourceRef.current;
     if (!AS?.uploadFile) { setError('宿主 uploadFile 不可用'); return; }
     if (!src) { setError('图片未加载'); return; }
-    const list = onlyExportSlice ? boxes.filter((b) => b.meta?.exportSlice === true) : boxes;
-    if (!list.length) { setError(onlyExportSlice ? '没有 exportSlice=true 的框' : '没有框'); return; }
+    // 导出范围（保留原始 index）：仅切片时只取 exportSlice=true；过滤激活时排除隐藏类型。
+    const idxAll = boxes.map((b, i) => i);
+    const idxVisible = idxAll.filter((i) => activeTypes.size === 0 || activeTypes.has(boxes[i].meta?.type || '其它'));
+    const idxList = onlyExportSlice ? idxVisible.filter((i) => boxes[i].meta?.exportSlice === true) : idxVisible;
+    if (!idxList.length) { setError(onlyExportSlice ? '没有 exportSlice=true 的框' : '没有框'); return; }
     setExporting(true);
     setExportedCount(0);
     setError('');
     const urls = [];
     try {
-      for (let i = 0; i < list.length; i++) {
-        const b = list[i];
-        const canvas = exportBox(src.imageData, b, { transparent: false });
-        const blob = await new Promise((res) => canvas.toBlob((bb) => res(bb), 'image/png'));
+      for (const i of idxList) {
+        const b = boxes[i];
         const meta = b.meta || {};
         const name = `${meta.label || meta.id || `box_${i + 1}`}.png`.replace(/[\\/:*?"<>|]/g, '_');
-        const file = new File([blob], name, { type: 'image/png' });
+        // 优先用抠图结果
+        const cutoutUrl = cutoutUrls[i];
+        let file;
+        if (cutoutUrl) {
+          try {
+            const resp = await fetch(cutoutUrl);
+            const blob = await resp.blob();
+            file = new File([blob], name, { type: 'image/png' });
+          } catch { file = null; }
+        }
+        if (!file) {
+          const canvas = exportBox(src.imageData, b, { transparent: false });
+          const blob = await new Promise((res) => canvas.toBlob((bb) => res(bb), 'image/png'));
+          file = new File([blob], name, { type: 'image/png' });
+        }
         const uploaded = await AS.uploadFile(file);
         const httpUrl = uploaded?.url || uploaded?.httpPath;
         if (httpUrl) { urls.push(httpUrl); setExportedCount(urls.length); }
@@ -1293,13 +1641,15 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
     } finally {
       setExporting(false);
     }
-  }, [boxes, onClose]);
+  }, [boxes, onClose, activeTypes]);
 
   const totalBoxes = boxes.length;
+  // 类型过滤激活时，导出范围只算匹配类型的框（被过滤隐藏的不计）
+  const visibleBoxes = activeTypes.size > 0 ? boxes.filter((b) => activeTypes.has(b.meta?.type || '其它')) : boxes;
   // 导出目标数量：开启「仅切片」时只算 exportSlice=true
-  const exportBoxes = onlyExportSlice ? boxes.filter((b) => b.meta?.exportSlice === true) : boxes;
+  const exportBoxes = onlyExportSlice ? visibleBoxes.filter((b) => b.meta?.exportSlice === true) : visibleBoxes;
   const exportCount = exportBoxes.length;
-  const sliceCount = boxes.filter((b) => b.meta?.exportSlice === true).length;
+  const sliceCount = visibleBoxes.filter((b) => b.meta?.exportSlice === true).length;
   const currentMode = modeRef.current;
   const [modeState, setModeState] = useState(MODE.DRAW);
   const switchMode = useCallback((m) => {
@@ -1387,17 +1737,6 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
 
           <div className="mx-1 h-6 w-px self-center bg-border" />
 
-          <Field label="配色">
-            <select
-              value={colorMode}
-              onChange={(e) => setColorMode(e.target.value)}
-              className="h-8 w-full rounded-md border border-border bg-background px-2 text-xs outline-none focus:border-primary"
-            >
-              <option value="depth">按层级</option>
-              <option value="parent">父级同色</option>
-              <option value="random">随机色</option>
-            </select>
-          </Field>
           <Field label={`线宽 ${lineWidth}`}>
             <input type="range" min={1} max={6} value={lineWidth}
               onChange={(e) => setLineWidth(Number(e.target.value))}
@@ -1642,6 +1981,18 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
                         )}
                       </span>
                       <div className="flex items-center gap-1">
+                        <Tooltip>
+                          <TooltipTrigger render={
+                            <Button size="icon" variant="ghost"
+                              className="h-7 w-7 text-primary hover:bg-primary/10"
+                              onClick={handleBatchCutout} disabled={loading || totalBoxes === 0 || !onCutoutRef.current} />
+                          }>
+                            <Scissors className="h-3.5 w-3.5" />
+                          </TooltipTrigger>
+                          <TooltipContent side="bottom">
+                            {activeTypes.size > 0 ? '批量抠图（当前筛选集）' : '批量抠图（全部元素）'}
+                          </TooltipContent>
+                        </Tooltip>
                         <Button size="sm" variant="ghost" className="h-7 text-[11px]" onClick={() => { syncBoxesState(); refreshLabels(); }} disabled={loading}>
                           刷新
                         </Button>
@@ -1735,19 +2086,52 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
                                 title={meta.exportSlice === true ? '已纳入导出（点击取消）' : '未纳入导出（点击勾选）'}
                                 className="h-3.5 w-3.5 shrink-0 cursor-pointer accent-green-600"
                               />
-                              {/* 缩略图：该框对应画布区域的小预览；外层配色边框替代原色块 */}
-                              {/* 文本类型（meta.type==='Text'）不截图，用文字图标占位（区域是纯文字，截图无视觉意义） */}
+                              {/* 缩略图：抠图结果优先，其次画布截图；点击用 gallery 看大图 */}
+                              {/* 文本类型（meta.type==='Text'）不截图，用文字图标占位 */}
                               {meta.type === 'Text' ? (
                                 <span
                                   className="flex h-7 w-7 shrink-0 items-center justify-center rounded-sm border text-[10px] font-medium text-muted-foreground"
                                   style={{ borderColor: meta.color || '#888' }}
                                   title="文本类型"
                                 >T</span>
+                              ) : cutoutUrls[i] ? (
+                                <div
+                                  className="group/thumb relative h-7 w-7 shrink-0"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    openMediaGallery(
+                                      [{ src: cutoutUrls[i], type: 'image' }],
+                                      0,
+                                    );
+                                  }}
+                                >
+                                  <img
+                                    src={cutoutUrls[i]}
+                                    alt=""
+                                    className="h-7 w-7 cursor-zoom-in rounded-sm border border-primary/60 object-cover"
+                                    style={{ background: 'repeating-conic-gradient(#888 0% 25%, #555 0% 50%) 50% / 8px 8px' }}
+                                  />
+                                  <button
+                                    type="button"
+                                    title="删除抠图结果"
+                                    onClick={(e) => { e.stopPropagation(); removeCutoutUrl(i); }}
+                                    className="absolute -right-1 -top-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-destructive text-[8px] text-destructive-foreground opacity-0 transition group-hover/thumb:opacity-100"
+                                  >
+                                    <X className="h-2.5 w-2.5" />
+                                  </button>
+                                </div>
                               ) : thumbnails[i] ? (
                                 <img
                                   src={thumbnails[i]}
                                   alt=""
-                                  className="h-7 w-7 shrink-0 rounded-sm border object-cover"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    openMediaGallery(
+                                      [{ src: thumbnails[i], type: 'image' }],
+                                      0,
+                                    );
+                                  }}
+                                  className="h-7 w-7 shrink-0 cursor-zoom-in rounded-sm border object-cover"
                                   style={{ borderColor: meta.color || '#888' }}
                                 />
                               ) : (
@@ -1758,9 +2142,22 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
                                 {label}
                                 {meta.ocrText && <span className="ml-1 text-[10px] text-primary/80">「{meta.ocrText}」</span>}
                               </span>
+                              {cutoutUrls[i] && (
+                                <span className="shrink-0 rounded bg-primary/20 px-1 text-[9px] text-primary" title="已抠图">✂</span>
+                              )}
                               {meta.exportSlice === true && (
                                 <span className="shrink-0 rounded bg-green-500/20 px-1 text-[9px] text-green-600" title="可导出切片">⬇</span>
                               )}
+                              {/* 单项抠图：打开对话框，目标=当前项 */}
+                              <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); handleItemCutout(i); }}
+                                title="对该元素抠图"
+                                disabled={meta.type === 'Text' || !onCutoutRef.current}
+                                className="shrink-0 rounded p-0.5 text-muted-foreground opacity-0 transition hover:bg-primary/10 hover:text-primary disabled:cursor-not-allowed disabled:opacity-30 group-hover:opacity-100"
+                              >
+                                <Scissors className="h-3 w-3" />
+                              </button>
                               <button
                                 type="button"
                                 onClick={(e) => {
@@ -1865,6 +2262,14 @@ export default function BBoxViewerDialog({ open, inputImages, onSave, onClose, a
           <kbd className="rounded border border-border bg-background px-1">Ctrl+Z</kbd> 撤销 ·
           <Crosshair className="inline h-3 w-3 align-text-bottom" /> 点图例定位
         </div>
+
+        {/* 抠图对话框（批量 / 单项共用） */}
+        <CutoutDialog
+          open={!!cutoutTarget}
+          inputImages={cutoutTarget ? cutoutTarget.indexes.map((i) => cutoutTarget.inputs[i]).filter(Boolean) : []}
+          onRun={onCutout}
+          onClose={handleCutoutDialogClose}
+        />
       </DialogContent>
     </Dialog>
   );
