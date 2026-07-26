@@ -97,6 +97,9 @@
     "type": "react",
     "tags": [],
     "mainFile": "index.jsx",
+    "enabledPlugins": [
+      "@agent-spaces/builtin"
+    ],
     "createdAt": "2026-06-12T10:29:24.362Z",
     "updatedAt": "2026-07-13T02:19:55.356Z",
     "icon": "✍️",
@@ -162,6 +165,7 @@
     "createdAt": "2026-06-12T20:42:23.209Z",
     "updatedAt": "2026-06-16T03:15:11.621Z",
     "enabledPlugins": [
+      "@agent-spaces/builtin",
       "workflow.epub-parser"
     ],
     "icon": "🔈",
@@ -194,6 +198,9 @@
     "type": "react",
     "tags": [],
     "mainFile": "index.jsx",
+    "enabledPlugins": [
+      "@agent-spaces/builtin"
+    ],
     "createdAt": "2026-06-17T15:33:15.562Z",
     "updatedAt": "2026-06-17T17:34:27.007Z"
   },
@@ -427,6 +434,6 @@
       }
     ],
     "createdAt": "2026-07-22T00:00:00.000Z",
-    "updatedAt": "2026-07-26T13:25:01.653Z"
+    "updatedAt": "2026-07-26T13:27:17.203Z"
   }
 ]

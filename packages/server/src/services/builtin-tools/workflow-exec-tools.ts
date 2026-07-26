@@ -403,7 +403,7 @@ async function executeBoundWorkflowPluginTool(input: unknown, boundTools: BoundW
 
   const args = objectInput(record, 'args');
   try {
-    const result = await executePluginTool(pluginId, toolName, args, createBuiltinPluginApi());
+    const result = await executePluginTool(pluginId, toolName, args, createBuiltinPluginApi({ pluginId }));
     return {
       success: true,
       message: `Executed plugin tool: ${pluginId}:${toolName}.`,

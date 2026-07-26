@@ -55,7 +55,7 @@ export function createPluginTestHarness(options: PluginTestHarnessOptions): Load
   const pluginDir = path.resolve(options.pluginDir);
   const config = options.config || {};
   const api = {
-    ...createBuiltinPluginApi(),
+    ...createBuiltinPluginApi({ pluginId: path.basename(pluginDir), pluginName: path.basename(pluginDir) }),
     ...options.api,
     config,
     logger: createLogger(pluginDir),

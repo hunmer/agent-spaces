@@ -1167,7 +1167,7 @@ function getExecutablePluginByNodeType(nodeType: string): ExecutablePlugin | nul
       const { nodes } = createPluginActions(actions).workflow();
       const rawNode = (nodes as Array<NodeTypeDefinition & { handler?: WorkflowNodeHandler }>).find(node => node.type === nodeType);
       const handler = rawNode?.handler;
-      if (handler) return { plugin, handler, api: createBuiltinPluginApi() };
+      if (handler) return { plugin, handler, api: createBuiltinPluginApi({ pluginId: plugin.id, pluginName: (plugin as any).name }) };
     }
 
     const workflowPath = getWorkflowEntryPath(plugin.id);
@@ -1176,7 +1176,7 @@ function getExecutablePluginByNodeType(nodeType: string): ExecutablePlugin | nul
     try {
       const { handlers } = loadCommonJsWorkflowModule(workflowPath);
       const handler = handlers.get(nodeType);
-      if (handler) return { plugin, handler, api: createBuiltinPluginApi() };
+      if (handler) return { plugin, handler, api: createBuiltinPluginApi({ pluginId: plugin.id, pluginName: (plugin as any).name }) };
     } catch (error) {
       const nodes = loadCommonJsWorkflowNodes(workflowPath);
       if (nodes.some(node => node.type === nodeType)) {

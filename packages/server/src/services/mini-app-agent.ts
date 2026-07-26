@@ -150,7 +150,7 @@ export function makeApiCtx(projectId: string): ApiCtx {
     projectId,
     broadcast: (event, data) => broadcastToWorkspace(projectId, event, data),
     callPluginTool: (pluginId, toolName, args) =>
-      executePluginTool(pluginId, toolName, args, createBuiltinPluginApi()),
+      executePluginTool(pluginId, toolName, args, createBuiltinPluginApi({ pluginId })),
     requestClient: (type, payload, timeoutMs) => requestMiniAppClient(projectId, type, payload, timeoutMs),
     readConfig: (path) => miniAppStore.readConfig(projectId, path),
     writeConfig: (path, value) => miniAppStore.writeConfig(projectId, path, value),

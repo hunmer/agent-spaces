@@ -993,7 +993,7 @@ export function createMiniAppFunctionTools(ctx: MiniAppToolContext): AgentFuncti
           }
         }
         try {
-          const result = await executePluginTool(pluginId, toolName, args, createBuiltinPluginApi());
+          const result = await executePluginTool(pluginId, toolName, args, createBuiltinPluginApi({ pluginId }));
           return { success: true, result };
         } catch (error: any) {
           return { success: false, message: error.message };

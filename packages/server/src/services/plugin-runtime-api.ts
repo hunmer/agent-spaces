@@ -6,6 +6,8 @@ import fs from 'node:fs/promises';
 import fsSync from 'node:fs';
 import path from 'node:path';
 import { URL } from 'node:url';
+import { PassThrough, Readable } from 'node:stream';
+import { AsyncLocalStorage } from 'node:async_hooks';
 import { getDataDir } from '../storage/json-store.js';
 
 export type FetchOptions = {
@@ -19,6 +21,15 @@ export type FetchOptions = {
 export type PostOptions = FetchOptions & {
   body?: unknown;
 };
+
+// 插件来源标识，用于在 HTTP 调试日志中标注请求由哪个插件发起。
+export type PluginSource = {
+  pluginId?: string;
+  pluginName?: string;
+};
+
+// 跨 async/await 透传当前调用栈的插件来源，供 httpDebug / wrapFetchWithDebug 读取。
+const pluginSourceStorage = new AsyncLocalStorage<PluginSource>();
 
 function createHttpsTunnel(proxyUrl: string, targetHost: string, targetPort: number): Promise<tls.TLSSocket> {
   const proxy = new URL(proxyUrl);
@@ -132,8 +143,27 @@ function collectBuffer(res: http.IncomingMessage): Promise<Buffer> {
   });
 }
 
+// 将已读取的 body 文本重新封装成类 IncomingMessage 流，使下游 collectBody/collectBuffer 可再次读取。
+// 用于调试日志采样 body 后避免消耗原始响应体。
+function replayResponse(original: http.IncomingMessage, body: string): http.IncomingMessage {
+  const pass = new PassThrough() as unknown as http.IncomingMessage;
+  (pass as any).statusCode = original.statusCode;
+  (pass as any).headers = original.headers;
+  (pass as any).statusMessage = original.statusMessage;
+  Readable.from(Buffer.from(body)).pipe(pass as any);
+  return pass;
+}
+
 // 插件网络请求调试日志，默认开启；如需关闭设环境变量 AGENT_SPACES_PLUGIN_HTTP_DEBUG=0
 const httpDebugEnabled = process.env.AGENT_SPACES_PLUGIN_HTTP_DEBUG !== '0';
+
+// 响应体在调试日志中保留的最大字符数，超过则截断并追加省略标记。
+const HTTP_DEBUG_BODY_LIMIT = Number(process.env.AGENT_SPACES_PLUGIN_HTTP_BODY_LIMIT || 500);
+
+function formatLogValue(v: unknown): string {
+  if (v == null) return '';
+  return typeof v === 'string' && !/\s/.test(v) ? v : JSON.stringify(v);
+}
 
 function httpDebug(
   tag: string,
@@ -142,14 +172,25 @@ function httpDebug(
   fields?: Record<string, unknown>,
 ) {
   if (!httpDebugEnabled) return;
+
+  // 自动从 AsyncLocalStorage 读取当前调用栈的插件来源。
+  const source = pluginSourceStorage.getStore();
+  const merged: Record<string, unknown> = { ...fields };
+  if (source?.pluginId && merged.plugin === undefined) {
+    merged.plugin = source.pluginName ? `${source.pluginId}/${source.pluginName}` : source.pluginId;
+  }
+
   let msg = `[plugin-http] ${tag} ${method} ${url}`;
-  if (fields) {
-    for (const [k, v] of Object.entries(fields)) {
-      const text = v == null ? '' : typeof v === 'string' && !/\s/.test(v) ? v : JSON.stringify(v);
-      msg += ` ${k}=${text}`;
-    }
+  for (const [k, v] of Object.entries(merged)) {
+    msg += ` ${k}=${formatLogValue(v)}`;
   }
   console.debug(msg);
+}
+
+// 统一的响应体裁剪：超过上限截断并标注，供调试日志使用，不影响返回给插件的数据。
+function trimBodyForLog(text: string): string {
+  if (text.length <= HTTP_DEBUG_BODY_LIMIT) return text;
+  return `${text.slice(0, HTTP_DEBUG_BODY_LIMIT)}…(+${text.length - HTTP_DEBUG_BODY_LIMIT} chars)`;
 }
 
 // 包装全局 fetch，使插件里 globalThis.fetch（如 ai-image 图像编辑/下载）也输出调试日志。
@@ -167,7 +208,16 @@ export function wrapFetchWithDebug(next: typeof fetch): typeof fetch {
     httpDebug('REQ', method, url, { via: 'fetch' });
     try {
       const res = await next(input as any, init);
-      httpDebug('RES', method, url, { status: res.status, ms: Date.now() - startedAt });
+      // 克隆一份用于读取 body 摘要，避免消耗原始 body 影响插件逻辑。
+      const contentType = res.headers.get('content-type') || '';
+      const isTextLike = /^(text\/|application\/(json|xml|javascript|x-www-form-urlencoded))/i.test(contentType);
+      const preview = isTextLike ? await res.clone().text().then((t) => trimBodyForLog(t)).catch(() => undefined) : undefined;
+      httpDebug('RES', method, url, {
+        status: res.status,
+        bytes: res.headers.get('content-length') || undefined,
+        body: preview,
+        ms: Date.now() - startedAt,
+      });
       return res;
     } catch (err) {
       httpDebug('ERR', method, url, {
@@ -201,14 +251,37 @@ async function httpGet(url: string, options: FetchOptions & { timeout: number })
       if (res.statusCode && res.statusCode >= 400) {
         collectBody(res).then(
           (text) => {
-            httpDebug('ERR', 'GET', url, { status: res.statusCode, ms: elapsed, body: text.slice(0, 200) });
-            reject(new Error(`HTTP ${res.statusCode}: ${text.slice(0, 200)}`));
+            httpDebug('ERR', 'GET', url, { status: res.statusCode, ms: elapsed, body: trimBodyForLog(text) });
+            reject(new Error(`HTTP ${res.statusCode}: ${trimBodyForLog(text)}`));
           },
           reject,
         );
         return;
       }
-      httpDebug('RES', 'GET', url, { status: res.statusCode, ms: elapsed });
+      const contentType = String(res.headers['content-type'] || '');
+      const isTextLike = /^(text\/|application\/(json|xml|javascript|x-www-form-urlencoded))/i.test(contentType);
+      if (isTextLike) {
+        collectBody(res).then(
+          (text) => {
+            httpDebug('RES', 'GET', url, {
+              status: res.statusCode,
+              bytes: text.length,
+              body: trimBodyForLog(text),
+              ms: elapsed,
+            });
+            // 重新封装响应体，避免被读取后消费导致插件拿不到数据。
+            resolve(replayResponse(res, text));
+          },
+          reject,
+        );
+        return;
+      }
+      httpDebug('RES', 'GET', url, {
+        status: res.statusCode,
+        bytes: res.headers['content-length'],
+        contentType,
+        ms: elapsed,
+      });
       resolve(res);
     });
     req.on('error', (err) => {
@@ -252,14 +325,36 @@ async function httpPost(url: string, options: PostOptions & { timeout: number })
       if (res.statusCode && res.statusCode >= 400) {
         collectBody(res).then(
           (text) => {
-            httpDebug('ERR', 'POST', url, { status: res.statusCode, ms: elapsed, body: text.slice(0, 200) });
-            reject(new Error(`HTTP ${res.statusCode}: ${text.slice(0, 200)}`));
+            httpDebug('ERR', 'POST', url, { status: res.statusCode, ms: elapsed, body: trimBodyForLog(text) });
+            reject(new Error(`HTTP ${res.statusCode}: ${trimBodyForLog(text)}`));
           },
           reject,
         );
         return;
       }
-      httpDebug('RES', 'POST', url, { status: res.statusCode, ms: elapsed });
+      const contentType = String(res.headers['content-type'] || '');
+      const isTextLike = /^(text\/|application\/(json|xml|javascript|x-www-form-urlencoded))/i.test(contentType);
+      if (isTextLike) {
+        collectBody(res).then(
+          (text) => {
+            httpDebug('RES', 'POST', url, {
+              status: res.statusCode,
+              bytes: text.length,
+              body: trimBodyForLog(text),
+              ms: elapsed,
+            });
+            resolve(replayResponse(res, text));
+          },
+          reject,
+        );
+        return;
+      }
+      httpDebug('RES', 'POST', url, {
+        status: res.statusCode,
+        bytes: res.headers['content-length'],
+        contentType,
+        ms: elapsed,
+      });
       resolve(res);
     });
     req.on('error', (err) => {
@@ -282,7 +377,18 @@ function matchPattern(name: string, pattern: string): boolean {
   return re.test(name);
 }
 
-export function createBuiltinPluginApi(): Record<string, any> {
+export function createBuiltinPluginApi(source: PluginSource = {}): Record<string, any> {
+  // 把任意函数包进 pluginSourceStorage 上下文，使其内部发起的 httpDebug 能读到插件来源。
+  // 同一调用栈若已有相同来源则复用，避免无意义嵌套。
+  const withSource = <T extends (...args: any[]) => any>(fn: T): T =>
+    ((...args: any[]) => {
+      const outer = pluginSourceStorage.getStore();
+      const sameSource =
+        outer && outer.pluginId === source.pluginId && outer.pluginName === source.pluginName;
+      if (sameSource) return fn(...args);
+      return pluginSourceStorage.run(source, () => fn(...args));
+    }) as T;
+
   const api = {
     async fetchText(url: string, options: FetchOptions = {}): Promise<string> {
       const res = await httpGet(url, { ...options, timeout: options.timeout || 30000 });
@@ -395,10 +501,13 @@ export function createBuiltinPluginApi(): Record<string, any> {
     },
   };
 
-  return {
-    ...api,
-    getJson: api.fetchJson,
-  };
+  // 用 source 上下文包装所有方法，使插件内部发起的网络请求在日志中带上 plugin 来源。
+  const wrapped: Record<string, any> = {};
+  for (const [key, value] of Object.entries(api)) {
+    wrapped[key] = typeof value === 'function' ? withSource(value) : value;
+  }
+  wrapped.getJson = wrapped.fetchJson;
+  return wrapped;
 }
 
 // 调试开启时，在模块加载阶段包装全局 fetch。包成幂等（防热重载重复包装）。
