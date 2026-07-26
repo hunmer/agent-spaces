@@ -247,7 +247,23 @@ Instead, pass an inline `style` with explicit `width` / `maxWidth` / `height` / 
 
 ## Plugin Tools
 
-Preview code should execute enabled plugin tools with:
+### Declare every plugin id in `manifest.json`
+
+`callPluginTool` enforces a **strict allowlist**: only plugin ids listed in the project's `manifest.json` `enabledPlugins` array can be invoked. A missing or empty `enabledPlugins` blocks **all** plugin calls — both the frontend host API and the backend `POST /api/plugins/:pluginId/tools/execute` route reject unlisted ids. The frontend returns `{ error: 'Plugin "<id>" is not enabled in this mini-app' }` without sending a request; the backend returns HTTP 403 with the same message (so the check cannot be bypassed by calling the API directly).
+
+Whenever you add or change a `callPluginTool(pluginId, ...)` call, add `pluginId` to `enabledPlugins`:
+
+```json
+{
+  "enabledPlugins": ["@agent-spaces/builtin", "workflow.rembg"]
+}
+```
+
+- `@agent-spaces/builtin` covers the built-in tools (`agent_run`, `list_agent_presets`, `list_workflows`, `execute_workflow_sync`, `kb_add_text` / `kb_query` / `kb_delete`, etc.) and must be declared explicitly — it is **not** special-cased.
+- For plugin ids chosen dynamically at runtime (e.g. TTS provider ids read from a config table), list every concrete value the code may pass.
+- After editing `enabledPlugins`, refresh the preview so the host API cache reloads it; the backend re-reads the manifest on every request, so direct API calls take effect immediately.
+
+Preview code executes plugin tools with:
 
 ```js
 const result = await window.AgentSpaces.callPluginTool(pluginId, toolName, args);
@@ -629,6 +645,7 @@ async function runTool() {
 Before finishing, inspect the changed files for these invariants:
 
 - `manifest.json` still points to the intended entry file.
+- Every `pluginId` passed to `callPluginTool` (including `@agent-spaces/builtin` for built-in tools) is listed in `manifest.json` `enabledPlugins`. Missing or unlisted ids are rejected by both the host API and the backend `execute` route (403).
 - The entry file exports a default React component in React mode.
 - Large code was split into focused files under `components/`, `hooks/`, or `utils/`.
 - Local imports are relative and resolve inside `src/`.

@@ -633,11 +633,11 @@ export function MiniAppPreview({ type, sourceCode, error, onError, projectId, pr
   }, [enabledPlugins, allPlugins]);
 
   // 未安装的启用插件 ID：仅在插件清单加载完成后（allPlugins 非空）才判断，
-  // 避免清单尚未返回时误报。
+  // 避免清单尚未返回时误报。排除内置插件（@agent-spaces/builtin，不走商店安装）。
   const missingPlugins = useMemo(() => {
     if (!enabledPlugins?.length || allPlugins.length === 0) return [];
     const installedSet = new Set(allPlugins.map(p => p.id));
-    return enabledPlugins.filter(id => !installedSet.has(id));
+    return enabledPlugins.filter(id => id !== '@agent-spaces/builtin' && !installedSet.has(id));
   }, [enabledPlugins, allPlugins]);
 
   const enabledPluginAvatars = useMemo(() => {
@@ -654,6 +654,24 @@ export function MiniAppPreview({ type, sourceCode, error, onError, projectId, pr
     if (!plugin?.config?.length) return;
     setConfigPlugin({ id: plugin.id, name: plugin.name, config: plugin.config });
   }, [allPlugins]);
+
+  // 插件商店弹窗（未安装插件警示标签触发）：安装完成后重载本地清单，警示自动消失
+  const [storeOpen, setStoreOpen] = useState(false);
+  const reloadPlugins = useCallback(() => {
+    if (!projectId) return;
+    pluginApi.list().then(setAllPlugins).catch(() => {});
+  }, [projectId]);
+  // mini-app 预览场景下 manifest 只读，安装流程不回写 enabledPlugins
+  const adapterWorkflow = useMemo<Workflow>(() => ({
+    id: projectId ?? '',
+    name: projectName ?? '',
+    folderId: null,
+    nodes: [],
+    edges: [],
+    createdAt: 0,
+    updatedAt: 0,
+    enabledPlugins: enabledPlugins ?? [],
+  }), [projectId, projectName, enabledPlugins]);
 
   // 加载 mini-app 后同步 document.title，卸载还原
   useEffect(() => {
@@ -738,13 +756,15 @@ export function MiniAppPreview({ type, sourceCode, error, onError, projectId, pr
               />
             )}
             {missingPlugins.length > 0 && (
-              <span
-                className="inline-flex items-center gap-1 rounded-md border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 text-[11px] font-medium text-amber-600 dark:text-amber-400"
+              <button
+                type="button"
+                onClick={() => setStoreOpen(true)}
+                className="inline-flex items-center gap-1 rounded-md border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 text-[11px] font-medium text-amber-600 transition-colors hover:bg-amber-500/20 dark:text-amber-400"
                 title={t('preview.pluginsMissingTip', { ids: missingPlugins.join(', ') })}
               >
                 <AlertTriangle className="h-3 w-3" />
                 {t('preview.pluginsMissing', { count: missingPlugins.length })}
-              </span>
+              </button>
             )}
           </div>
           <span className="text-sm font-medium truncate max-w-[60%] text-center">
@@ -887,6 +907,17 @@ export function MiniAppPreview({ type, sourceCode, error, onError, projectId, pr
         pluginId={configPlugin?.id || null}
         pluginName={configPlugin?.name || ''}
         config={configPlugin?.config || []}
+      />
+      <WorkflowPluginsDialog
+        open={storeOpen}
+        onOpenChange={(o) => {
+          setStoreOpen(o);
+          if (!o) reloadPlugins();
+        }}
+        workflow={adapterWorkflow}
+        onWorkflowChange={() => { /* mini-app manifest 只读，安装完靠 reloadPlugins 刷新警示 */ }}
+        missingPluginIds={missingPlugins}
+        initialSearch={missingPlugins[0] ?? ''}
       />
     </div>
   );

@@ -3,6 +3,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
   Button, Label, ScrollArea, Loader, Switch,
   Tooltip, TooltipTrigger, TooltipContent,
+  HoverCard, HoverCardTrigger, HoverCardContent,
   ResizablePanelGroup, ResizablePanel, ResizableHandle,
   Tabs, TabsList, TabsTrigger, TabsContent,
   Markdown,
@@ -2086,7 +2087,7 @@ export default function BBoxViewerDialog({ open, inputImages, initialData, onDat
                                 title={meta.exportSlice === true ? '已纳入导出（点击取消）' : '未纳入导出（点击勾选）'}
                                 className="h-3.5 w-3.5 shrink-0 cursor-pointer accent-green-600"
                               />
-                              {/* 缩略图：抠图结果优先，其次画布截图；点击用 gallery 看大图 */}
+                              {/* 缩略图：抠图结果优先，其次画布截图；hover 弹卡片预览，点击 openMediaGallery 看大图 */}
                               {/* 文本类型（meta.type==='Text'）不截图，用文字图标占位 */}
                               {meta.type === 'Text' ? (
                                 <span
@@ -2095,44 +2096,15 @@ export default function BBoxViewerDialog({ open, inputImages, initialData, onDat
                                   title="文本类型"
                                 >T</span>
                               ) : cutoutUrls[i] ? (
-                                <div
-                                  className="group/thumb relative h-7 w-7 shrink-0"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    openMediaGallery(
-                                      [{ src: cutoutUrls[i], type: 'image' }],
-                                      0,
-                                    );
-                                  }}
-                                >
-                                  <img
-                                    src={cutoutUrls[i]}
-                                    alt=""
-                                    className="h-7 w-7 cursor-zoom-in rounded-sm border border-primary/60 object-cover"
-                                    style={{ background: 'repeating-conic-gradient(#888 0% 25%, #555 0% 50%) 50% / 8px 8px' }}
-                                  />
-                                  <button
-                                    type="button"
-                                    title="删除抠图结果"
-                                    onClick={(e) => { e.stopPropagation(); removeCutoutUrl(i); }}
-                                    className="absolute -right-1 -top-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-destructive text-[8px] text-destructive-foreground opacity-0 transition group-hover/thumb:opacity-100"
-                                  >
-                                    <X className="h-2.5 w-2.5" />
-                                  </button>
-                                </div>
+                                <Thumb
+                                  src={cutoutUrls[i]}
+                                  isCutout
+                                  onRemove={() => removeCutoutUrl(i)}
+                                />
                               ) : thumbnails[i] ? (
-                                <img
+                                <Thumb
                                   src={thumbnails[i]}
-                                  alt=""
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    openMediaGallery(
-                                      [{ src: thumbnails[i], type: 'image' }],
-                                      0,
-                                    );
-                                  }}
-                                  className="h-7 w-7 shrink-0 cursor-zoom-in rounded-sm border object-cover"
-                                  style={{ borderColor: meta.color || '#888' }}
+                                  borderColor={meta.color}
                                 />
                               ) : (
                                 <span className="h-7 w-7 shrink-0 rounded-sm border border-dashed border-white/20 bg-muted/40" />
@@ -2290,5 +2262,60 @@ function FormField({ label, children }) {
       <span className="text-[11px] font-medium text-muted-foreground">{label}</span>
       {children}
     </Label>
+  );
+}
+
+/**
+ * 列表项缩略图：hover 弹卡片预览大图，点击 openMediaGallery 看大图（可翻页）。
+ * @param {object} props
+ * @param {string} props.src 图片 URL
+ * @param {boolean} [props.isCutout] 是否为抠图结果（边框用 primary，加透明棋盘背景）
+ * @param {string} [props.borderColor] 非抠图时的边框色
+ * @param {() => void} [props.onRemove] 抠图结果删除回调（显示右上角 X）
+ */
+function Thumb({ src, isCutout, borderColor, onRemove }) {
+  return (
+    <HoverCard>
+      <HoverCardTrigger
+        render={
+          <div
+            className={'group/thumb relative h-7 w-7 shrink-0 cursor-zoom-in'}
+            onClick={(e) => { e.stopPropagation(); openMediaGallery([{ src, type: 'image' }], 0); }}
+          >
+            <img
+              src={src}
+              alt=""
+              className={
+                'h-7 w-7 rounded-sm border object-cover ' +
+                (isCutout ? 'border-primary/60' : '')
+              }
+              style={isCutout
+                ? { background: 'repeating-conic-gradient(#888 0% 25%, #555 0% 50%) 50% / 8px 8px' }
+                : { borderColor: borderColor || '#888' }}
+            />
+            {isCutout && onRemove && (
+              <button
+                type="button"
+                title="删除抠图结果"
+                onClick={(e) => { e.stopPropagation(); onRemove(); }}
+                className="absolute -right-1 -top-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-destructive text-destructive-foreground opacity-0 transition group-hover/thumb:opacity-100"
+              >
+                <X className="h-2.5 w-2.5" />
+              </button>
+            )}
+          </div>
+        }
+      />
+      <HoverCardContent side="left" className="w-auto p-1">
+        <img
+          src={src}
+          alt=""
+          className="max-h-[320px] max-w-[320px] rounded object-contain"
+          style={isCutout
+            ? { background: 'repeating-conic-gradient(#888 0% 25%, #555 0% 50%) 50% / 12px 12px' }
+            : {}}
+        />
+      </HoverCardContent>
+    </HoverCard>
   );
 }
