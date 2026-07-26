@@ -84,7 +84,12 @@ export default function useSelectionClipboard({ nodes, edges, setNodes, setEdges
     setEdges((prev) => [...prev, ...result.edges]);
   }, [setNodes, setEdges]);
 
-  // keydown：Ctrl/Cmd+C/V，跳过 input/textarea/contenteditable。
+  // 全选节点（Ctrl/Cmd+A）：selected 由 ReactFlow 自管，直接置 true。
+  const handleSelectAll = useCallback(() => {
+    setNodes((prev) => prev.map((n) => ({ ...n, selected: true })));
+  }, [setNodes]);
+
+  // keydown：Ctrl/Cmd+A/C/V，跳过 input/textarea/contenteditable。
   // 用 nodesRef 读最新值，deps 不含 nodes → effect 只订阅一次（避免每次 nodes 变重新绑监听）。
   useEffect(() => {
     const onKeyDown = (e) => {
@@ -94,7 +99,10 @@ export default function useSelectionClipboard({ nodes, edges, setNodes, setEdges
         || t?.isContentEditable;
       const mod = e.ctrlKey || e.metaKey;
       if (!mod || isEditable) return;
-      if (e.key === 'c' || e.key === 'C') {
+      if (e.key === 'a' || e.key === 'A') {
+        e.preventDefault();
+        handleSelectAll();
+      } else if (e.key === 'c' || e.key === 'C') {
         const selected = nodesRef.current.filter((n) => n.selected);
         if (selected.length) { e.preventDefault(); handleCopy(); }
       } else if (e.key === 'v' || e.key === 'V') {
@@ -103,7 +111,7 @@ export default function useSelectionClipboard({ nodes, edges, setNodes, setEdges
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [handleCopy, handlePaste]);
+  }, [handleCopy, handlePaste, handleSelectAll]);
 
   return {
     selectionCount, setSelectionCount,

@@ -208,6 +208,11 @@ src/
   - Ctrl/Cmd+V：hasClipboard 时 preventDefault + pasteNodes + setNodes/setEdges 追加
   - 焦点在 input/textarea/select/contenteditable 时**不拦截**（让浏览器走原生复制/粘贴）
 - **多选**：用 `nodes.filter(n => n.selected)` 取选中集（ReactFlow 框选 / Shift 点选均支持，selected 由 ReactFlow 自管）
+- **全选（Ctrl/Cmd+A）**：与 C/V 同处 keydown 监听，跳过 input/textarea/select/contenteditable（让浏览器走原生全选文本）。命中时 preventDefault + `setNodes((prev) => prev.map((n) => ({ ...n, selected: true })))`（selected 由 ReactFlow 自管，置 true 即可，底部多选 toolbar 自动出现）。
+
+## Menubar 移除图标（本轮新增）
+
+`Toolbar.jsx` 顶部 Menubar 的 `MenubarItem` 文案去掉 emoji 前缀（⬇/🗑/⊕/⚙/🎞），保留纯文字标题，避免与其它工具栏视觉冲突。无逻辑变化。
 
 ## 验收/调试速查
 

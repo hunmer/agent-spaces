@@ -30,23 +30,23 @@ export default function Toolbar({ onClear, onAutoLayout, onExport, onOpenSetting
         <MenubarMenu>
           <MenubarTrigger>文件</MenubarTrigger>
           <MenubarContent>
-            <MenubarItem onClick={onExport}>⬇ 导出 JSON</MenubarItem>
-            <MenubarItem onClick={onClear} variant="destructive">🗑 清空画布</MenubarItem>
+            <MenubarItem onClick={onExport}>导出 JSON</MenubarItem>
+            <MenubarItem onClick={onClear} variant="destructive">清空画布</MenubarItem>
           </MenubarContent>
         </MenubarMenu>
 
         <MenubarMenu>
           <MenubarTrigger>工具</MenubarTrigger>
           <MenubarContent>
-            <MenubarItem onClick={onAutoLayout}>⊕ 自动布局</MenubarItem>
-            <MenubarItem onClick={onOpenSettings}>⚙ 设置</MenubarItem>
+            <MenubarItem onClick={onAutoLayout}>自动布局</MenubarItem>
+            <MenubarItem onClick={onOpenSettings}>设置</MenubarItem>
           </MenubarContent>
         </MenubarMenu>
 
         <MenubarMenu>
           <MenubarTrigger>编辑器</MenubarTrigger>
           <MenubarContent>
-            <MenubarItem onClick={openAnimationEditor}>🎞 动画编辑器</MenubarItem>
+            <MenubarItem onClick={openAnimationEditor}>动画编辑器</MenubarItem>
           </MenubarContent>
         </MenubarMenu>
       </Menubar>
