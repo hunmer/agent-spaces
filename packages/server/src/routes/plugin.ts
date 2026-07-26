@@ -7,6 +7,7 @@ import { createBuiltinPluginApi } from '../services/plugin-runtime-api.js';
 import { BUILTIN_PLUGIN_ID, executeMiniAppBuiltinTool } from '../services/builtin-tools/mini-app-tools.js';
 import { broadcastToWorkspace } from '../ws/connection-manager.js';
 import { startTask, finishTask, failTask, stopTask } from '../services/mini-app-tasks.js';
+import { getProject as getMiniAppProject } from '../services/mini-apps.js';
 
 const router = Router();
 
@@ -137,6 +138,22 @@ router.post('/:pluginId/tools/execute', async (req: Request<{ pluginId: string }
     const pluginId = req.params.pluginId;
     const { name, args, workspaceId, executorId, taskId, meta } = req.body ?? {};
     if (!name) { res.status(400).json({ error: 'name is required' }); return; }
+
+    // enabledPlugins 白名单权威校验：workspaceId 命中 mini-app 时强制 pluginId ∈ enabledPlugins，
+    // 严格模式（未声明/空数组 = 全拒）。非 mini-app 的 workspaceId（getProject 抛 not found）跳过校验，向后兼容。
+    if (typeof workspaceId === 'string' && workspaceId.length > 0) {
+      try {
+        const project = getMiniAppProject(workspaceId);
+        const allowed = Array.isArray(project.enabledPlugins) ? project.enabledPlugins : [];
+        if (!allowed.includes(pluginId)) {
+          res.status(403).json({ error: `Plugin "${pluginId}" is not enabled for mini-app "${workspaceId}"` });
+          return;
+        }
+      } catch (err: any) {
+        if (!String(err?.message || '').includes('not found')) throw err;
+        // 非 mini-app 场景：跳过校验
+      }
+    }
 
     // WS 频道编排：仅当调用方提供 workspaceId（= projectId）时启用，向后兼容普通 execute
     const track = typeof workspaceId === 'string' && workspaceId.length > 0;

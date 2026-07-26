@@ -257,6 +257,9 @@ export function useMiniAppHostApi(projectId: string, runtimeContext?: MiniAppRun
   const configReadyCallbacksRef = useRef<Set<(configs: Record<string, unknown>) => void>>(new Set());
   // 最近一次 agent_run 的 taskId（executePluginTool 调用方未显式传 taskId 时自动生成并记录，作 stopAgentRun() 兜底）
   const lastAgentTaskIdRef = useRef<string | null>(null);
+  // 当前 mini-app 的 enabledPlugins 白名单缓存。加载前为 null（executePluginTool 调用时兜底补拉一次）。
+  // 改动 manifest 后需刷新页面生效；后端路由另有权威校验兜底。
+  const enabledPluginsRef = useRef<string[] | null>(null);
 
   useEffect(() => {
     runtimeContextRef.current = runtimeContext ?? { route: '/', params: {} };
@@ -300,12 +303,40 @@ export function useMiniAppHostApi(projectId: string, runtimeContext?: MiniAppRun
     }
     const executorId = executorIdRef.current;
 
+    // 预加载 enabledPlugins 白名单（executePluginTool 调用前若未就绪会兜底补拉）
+    enabledPluginsRef.current = null;
+    sdk.miniApp.get(projectId)
+      .then((project) => {
+        enabledPluginsRef.current = Array.isArray(project?.enabledPlugins) ? project.enabledPlugins.slice() : [];
+      })
+      .catch(() => { enabledPluginsRef.current = []; });
+
+    const ensureEnabledPlugins = async (): Promise<string[]> => {
+      if (enabledPluginsRef.current) return enabledPluginsRef.current;
+      try {
+        const project = await sdk.miniApp.get(projectId);
+        const list = Array.isArray(project?.enabledPlugins) ? project.enabledPlugins.slice() : [];
+        enabledPluginsRef.current = list;
+        return list;
+      } catch {
+        enabledPluginsRef.current = [];
+        return [];
+      }
+    };
+
     const executePluginTool = async (
       pluginId: string,
       toolName: string,
       args: Record<string, any>,
       options?: { taskId?: string; meta?: Record<string, unknown>; signal?: AbortSignal },
     ) => {
+      // enabledPlugins 白名单校验（严格模式：manifest 未声明/为空 = 全拒）。
+      // 后端 /api/plugins/:pluginId/tools/execute 另有权威校验，这里只做用户友好的前置拦截。
+      const allowed = await ensureEnabledPlugins();
+      if (!allowed.includes(pluginId)) {
+        return { error: `Plugin "${pluginId}" is not enabled in this mini-app` };
+      }
+
       const body: Record<string, unknown> = { name: toolName, args, workspaceId: projectId, executorId };
       // agent_run 的 taskId：
       // - 调用方显式传 options.taskId → 用它（调用方自管，多调用方并发互不覆盖）
@@ -996,6 +1027,7 @@ export function useMiniAppHostApi(projectId: string, runtimeContext?: MiniAppRun
     return () => {
       configCacheRef.current = new Map();
       configReadyRef.current = false;
+      enabledPluginsRef.current = null;
       configReadyCallbacks.clear();
       offConfigSnapshot();
       offConfigChanged();

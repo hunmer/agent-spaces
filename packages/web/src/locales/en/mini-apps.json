@@ -132,7 +132,9 @@
     "infoCreatedAt": "Created",
     "infoUpdatedAt": "Updated",
     "infoLoading": "Loading…",
-    "infoEmpty": "No info available"
+    "infoEmpty": "No info available",
+    "pluginsMissing": "{count} not installed",
+    "pluginsMissingTip": "The following plugins are not installed: {ids}"
   },
   "chat": {
     "assistantPrompt": "Please act as the development assistant for Workflow UI project \"{name}\".",

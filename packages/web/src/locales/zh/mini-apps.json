@@ -132,7 +132,9 @@
     "infoCreatedAt": "创建时间",
     "infoUpdatedAt": "更新时间",
     "infoLoading": "加载中…",
-    "infoEmpty": "暂无信息"
+    "infoEmpty": "暂无信息",
+    "pluginsMissing": "未安装 {count} 个",
+    "pluginsMissingTip": "以下插件未安装：{ids}"
   },
   "chat": {
     "assistantPrompt": "请作为 Workflow UI 项目 \"{name}\" 的开发助手。",

@@ -19,7 +19,7 @@ import { AvatarGroup } from '@/components/ui/avatar-group';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ChatPanel, type ChatMessage } from '@/components/ui/chat-panel';
-import { PanelRightOpen, Loader2, Search, Sparkles, Settings2, Settings, Eraser, Smartphone, Monitor, Tablet, Info, X } from 'lucide-react';
+import { PanelRightOpen, Loader2, Search, Sparkles, Settings2, Settings, Eraser, Smartphone, Monitor, Tablet, Info, X, AlertTriangle } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { AgentEditor } from '@/components/sidebar/agent-editor';
@@ -28,6 +28,8 @@ import { miniAppConfigToAgentPreset, agentPresetToMiniAppConfig } from './mini-a
 import { MiniAppRenderer, type MiniAppTaskEvent } from './mini-app-renderer';
 import { PluginIcon } from '@/components/workflow/workflow-plugin-icon';
 import { WorkflowPluginConfigDialog } from '@/components/workflow/workflow-plugin-config-dialog';
+import { WorkflowPluginsDialog } from '@/components/workflow/workflow-plugins-dialog';
+import type { Workflow } from '@agent-spaces/shared';
 
 interface MiniAppPreviewProps {
   type: 'react' | 'html';
@@ -630,6 +632,14 @@ export function MiniAppPreview({ type, sourceCode, error, onError, projectId, pr
     return allPlugins.filter(p => enabledSet.has(p.id));
   }, [enabledPlugins, allPlugins]);
 
+  // 未安装的启用插件 ID：仅在插件清单加载完成后（allPlugins 非空）才判断，
+  // 避免清单尚未返回时误报。
+  const missingPlugins = useMemo(() => {
+    if (!enabledPlugins?.length || allPlugins.length === 0) return [];
+    const installedSet = new Set(allPlugins.map(p => p.id));
+    return enabledPlugins.filter(id => !installedSet.has(id));
+  }, [enabledPlugins, allPlugins]);
+
   const enabledPluginAvatars = useMemo(() => {
     return enabledPluginsList.map(p => ({
       imageUrl: p.iconPath ? resolveServerAssetUrl(`/api/plugins/${p.id}/icon`) : '',
@@ -681,7 +691,7 @@ export function MiniAppPreview({ type, sourceCode, error, onError, projectId, pr
     <div className={cn('relative flex flex-col h-full', allowScroll ? 'overflow-auto' : 'overflow-hidden')}>
       {showToolbar && (
         <div className="relative isolate z-40 flex items-center shrink-0 px-3 py-1.5 border-b bg-background/80 backdrop-blur-sm">
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 flex items-center gap-2">
             {enabledPluginAvatars.length > 0 && (
               <AvatarGroup
                 avatarUrls={enabledPluginAvatars}
@@ -726,6 +736,15 @@ export function MiniAppPreview({ type, sourceCode, error, onError, projectId, pr
                   );
                 }}
               />
+            )}
+            {missingPlugins.length > 0 && (
+              <span
+                className="inline-flex items-center gap-1 rounded-md border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 text-[11px] font-medium text-amber-600 dark:text-amber-400"
+                title={t('preview.pluginsMissingTip', { ids: missingPlugins.join(', ') })}
+              >
+                <AlertTriangle className="h-3 w-3" />
+                {t('preview.pluginsMissing', { count: missingPlugins.length })}
+              </span>
             )}
           </div>
           <span className="text-sm font-medium truncate max-w-[60%] text-center">

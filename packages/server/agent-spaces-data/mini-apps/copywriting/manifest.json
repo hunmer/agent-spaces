@@ -6,6 +6,9 @@
   "type": "react",
   "tags": [],
   "mainFile": "index.jsx",
+  "enabledPlugins": [
+    "@agent-spaces/builtin"
+  ],
   "createdAt": "2026-06-12T10:29:24.362Z",
   "updatedAt": "2026-07-13T02:19:55.356Z",
   "icon": "✍️",
