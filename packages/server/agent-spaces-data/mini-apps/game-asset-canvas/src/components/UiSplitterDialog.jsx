@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
-  Button, Input, Label, ScrollArea, Loader, ColorPicker, Switch,
+  Button, Input, NumberInput, Label, ScrollArea, Loader, ColorPicker, Switch,
   Tooltip, TooltipTrigger, TooltipContent,
   ResizablePanelGroup, ResizablePanel, ResizableHandle,
 } from '@agent-spaces/ui';
@@ -957,18 +957,18 @@ export default function UiSplitterDialog({ open, inputImages, initialData, onDat
             </select>
           </Field>
           <Field label={`容差 ${tolerance}`}>
-            <Input type="number" min={0} max={765} value={tolerance}
-              onChange={(e) => setTolerance(e.target.value)}
+            <NumberInput min={0} max={765} value={tolerance}
+              onChange={(v) => setTolerance(v ?? 0)}
               className="h-8 w-24" />
           </Field>
           <Field label={`最小面积 ${minArea}`}>
-            <Input type="number" min={1} value={minArea}
-              onChange={(e) => setMinArea(e.target.value)}
+            <NumberInput min={1} value={minArea}
+              onChange={(v) => setMinArea(v ?? 1)}
               className="h-8 w-28" />
           </Field>
           <Field label={`边距 ${padding}`}>
-            <Input type="number" min={0} value={padding}
-              onChange={(e) => setPadding(e.target.value)}
+            <NumberInput min={0} value={padding}
+              onChange={(v) => setPadding(v ?? 0)}
               className="h-8 w-24" />
           </Field>
           <Field label="背景色">

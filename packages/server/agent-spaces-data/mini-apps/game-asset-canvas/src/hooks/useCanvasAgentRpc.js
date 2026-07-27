@@ -229,7 +229,26 @@ export default function useCanvasAgentRpc({ nodes, edges, createNodeAt, updateNo
           }
           case 'canvas.updateNodeData': {
             if (!payload.nodeId) throw new Error('nodeId 必填');
-            updateFn(payload.nodeId, payload.data || {});
+            const incoming = payload.data || {};
+            // agent 调 update_node 通常只传「要改的字段」（如 {params:{model}}），
+            // 期望的是深合并：保留原 params.prompt/aspect/size，只改 model。
+            // 但 useCanvasState.updateNodeData 对 data 做浅合并，data.params 整个替换会丢其他字段。
+            // 这里读当前节点 data，对「对象型字段」做一层合并，其余字段保持浅合并语义。
+            const node = curNodes.find((n) => n.id === payload.nodeId);
+            if (node?.data) {
+              const merged = { ...incoming };
+              for (const k of Object.keys(incoming)) {
+                if (
+                  incoming[k] && typeof incoming[k] === 'object' && !Array.isArray(incoming[k])
+                  && node.data[k] && typeof node.data[k] === 'object' && !Array.isArray(node.data[k])
+                ) {
+                  merged[k] = { ...node.data[k], ...incoming[k] };
+                }
+              }
+              updateFn(payload.nodeId, merged);
+            } else {
+              updateFn(payload.nodeId, incoming);
+            }
             result = { ok: true };
             break;
           }

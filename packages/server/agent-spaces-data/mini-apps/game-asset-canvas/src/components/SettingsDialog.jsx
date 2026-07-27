@@ -9,7 +9,7 @@ import { BBOX_AGENT_INIT_NAME, BBOX_AI_SYSTEM_PROMPT, BBOX_AI_USER_PROMPT, PROMP
 
 const {
   Dialog, DialogContent, DialogHeader, DialogTitle,
-  Button, Label, Textarea, WorkflowListDialog, Workflow, RotateCcw, Bot, Sparkles, Search,
+  Button, Label, Input, NumberInput, Textarea, WorkflowListDialog, Workflow, RotateCcw, Bot, Sparkles, Search,
 } = window.AgentSpacesUI;
 
 // 工作流列表归一化（兼容 workflow_id/id、title/name）
@@ -251,24 +251,22 @@ export default function SettingsDialog({ open, value, onClose, onSave }) {
               <div className="flex flex-wrap items-end gap-3">
                 <Label className="flex flex-col gap-1">
                   <span className="text-xs font-medium">压缩阈值 (MB)</span>
-                  <input
-                    type="number"
+                  <NumberInput
                     min={0}
                     step={0.1}
                     value={cfg.bboxCompressThresholdMB ?? 2}
-                    onChange={(e) => setCfg((prev) => ({ ...prev, bboxCompressThresholdMB: Number(e.target.value) }))}
-                    className="h-8 w-24 rounded-md border border-border bg-background px-2 text-xs outline-none focus:border-primary"
+                    onChange={(v) => setCfg((prev) => ({ ...prev, bboxCompressThresholdMB: v ?? 2 }))}
+                    className="h-8 w-28 text-xs"
                   />
                 </Label>
                 <Label className="flex flex-col gap-1">
                   <span className="text-xs font-medium">压缩目标 (MB)</span>
-                  <input
-                    type="number"
+                  <NumberInput
                     min={0.01}
                     step={0.1}
                     value={cfg.bboxCompressTargetMB ?? 1}
-                    onChange={(e) => setCfg((prev) => ({ ...prev, bboxCompressTargetMB: Number(e.target.value) }))}
-                    className="h-8 w-24 rounded-md border border-border bg-background px-2 text-xs outline-none focus:border-primary"
+                    onChange={(v) => setCfg((prev) => ({ ...prev, bboxCompressTargetMB: v ?? 1 }))}
+                    className="h-8 w-28 text-xs"
                   />
                 </Label>
               </div>

@@ -57,6 +57,8 @@ export { ImageCropper } from '@/components/ui/image-cropper';
 export { AvatarGroup } from '@/components/ui/avatar-group';
 export { ColorPicker } from '@/components/ui/color-picker';
 export { InputGroup, InputGroupAddon, InputGroupButton, InputGroupText, InputGroupInput, InputGroupTextarea } from '@/components/ui/input-group';
+export { NumberInput } from '@/components/ui/number-input';
+export type { NumberInputProps } from '@/components/ui/number-input';
 export { SearchSelect } from '@/components/ui/search-select';
 export type { SearchSelectOption, SearchSelectProps } from '@/components/ui/search-select';
 export { FolderPicker } from '@/components/ui/folder-picker';

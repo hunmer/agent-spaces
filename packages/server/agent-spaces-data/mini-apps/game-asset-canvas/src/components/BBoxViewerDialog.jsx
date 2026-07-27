@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
-  Button, Label, ScrollArea, Loader, Switch,
+  Button, Label, ScrollArea, Loader, Switch, Input, NumberInput,
   Tooltip, TooltipTrigger, TooltipContent,
   HoverCard, HoverCardTrigger, HoverCardContent,
   ResizablePanelGroup, ResizablePanel, ResizableHandle,
@@ -1905,30 +1905,30 @@ export default function BBoxViewerDialog({ open, inputImages, initialData, onDat
                             </FormField>
                             <div className="grid grid-cols-2 gap-2">
                               <FormField label="X">
-                                <input type="number" value={selForm.x}
-                                  onChange={(e) => setSelForm({ ...selForm, x: Number(e.target.value) })}
-                                  className="h-8 w-full rounded-md border border-border bg-background px-2 text-xs outline-none focus:border-primary" />
+                                <NumberInput value={selForm.x}
+                                  onChange={(v) => setSelForm({ ...selForm, x: v ?? 0 })}
+                                  className="h-8 w-full text-xs" />
                               </FormField>
                               <FormField label="Y">
-                                <input type="number" value={selForm.y}
-                                  onChange={(e) => setSelForm({ ...selForm, y: Number(e.target.value) })}
-                                  className="h-8 w-full rounded-md border border-border bg-background px-2 text-xs outline-none focus:border-primary" />
+                                <NumberInput value={selForm.y}
+                                  onChange={(v) => setSelForm({ ...selForm, y: v ?? 0 })}
+                                  className="h-8 w-full text-xs" />
                               </FormField>
                               <FormField label="宽 W">
-                                <input type="number" min={1} value={selForm.w}
-                                  onChange={(e) => setSelForm({ ...selForm, w: Number(e.target.value) })}
-                                  className="h-8 w-full rounded-md border border-border bg-background px-2 text-xs outline-none focus:border-primary" />
+                                <NumberInput min={1} value={selForm.w}
+                                  onChange={(v) => setSelForm({ ...selForm, w: v ?? 1 })}
+                                  className="h-8 w-full text-xs" />
                               </FormField>
                               <FormField label="高 H">
-                                <input type="number" min={1} value={selForm.h}
-                                  onChange={(e) => setSelForm({ ...selForm, h: Number(e.target.value) })}
-                                  className="h-8 w-full rounded-md border border-border bg-background px-2 text-xs outline-none focus:border-primary" />
+                                <NumberInput min={1} value={selForm.h}
+                                  onChange={(v) => setSelForm({ ...selForm, h: v ?? 1 })}
+                                  className="h-8 w-full text-xs" />
                               </FormField>
                             </div>
                             <FormField label="层级 depth">
-                              <input type="number" min={0} value={selForm.depth}
-                                onChange={(e) => setSelForm({ ...selForm, depth: Number(e.target.value) })}
-                                className="h-8 w-full rounded-md border border-border bg-background px-2 text-xs outline-none focus:border-primary" />
+                              <NumberInput min={0} value={selForm.depth}
+                                onChange={(v) => setSelForm({ ...selForm, depth: v ?? 0 })}
+                                className="h-8 w-full text-xs" />
                             </FormField>
                             <label className="flex items-center justify-between gap-2 rounded-md border border-border bg-background px-2 py-1.5 text-[11px]">
                               <span>可导出切片 (exportSlice)</span>

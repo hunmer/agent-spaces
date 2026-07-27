@@ -6,7 +6,7 @@
 // 1. count 减小到 < 当前 concurrency 时，自动把 concurrency 收敛到 count（避免出现 concurrency > count 的非法态）
 // 2. props.onChange(patch) 由调用方在 set() 里合并到 params，与其他参数一致
 // 3. concurrency 默认 1（保守）；用户主动调高时才并发提交
-import { Slider } from '@agent-spaces/ui';
+import { NumberInput, Slider } from '@agent-spaces/ui';
 
 export default function CountAndConcurrency({
   count,
@@ -29,13 +29,13 @@ export default function CountAndConcurrency({
     <div className="flex flex-col gap-1.5">
       <label className="flex items-center justify-between gap-2">
         <span className="text-xs font-medium text-muted-foreground">生成数量</span>
-        <input
-          type="number"
+        <NumberInput
+          value={n}
           min={1}
           max={maxCount}
-          value={n}
-          onChange={(e) => handleCountChange(e.target.value)}
-          className="w-20 rounded-md border border-border bg-background px-2 py-1 text-right text-xs outline-none focus:border-primary"
+          step={1}
+          onChange={(v) => handleCountChange(v)}
+          className="h-7 w-24"
         />
       </label>
       {showConcurrency && (
