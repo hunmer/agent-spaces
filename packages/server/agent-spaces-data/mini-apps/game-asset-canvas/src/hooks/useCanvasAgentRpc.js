@@ -170,7 +170,7 @@ export default function useCanvasAgentRpc({ nodes, edges, createNodeAt, updateNo
       catch (e) { console.error('respondClientRequest failed:', e); }
     };
 
-    const unsubscribe = AS.onTaskEvent((event, data) => {
+    const unsubscribe = AS.onTaskEvent(async (event, data) => {
       if (event !== 'miniApp.clientRequest') return;
       const requestId = data?.requestId;
       const type = data?.type;
@@ -365,6 +365,49 @@ export default function useCanvasAgentRpc({ nodes, edges, createNodeAt, updateNo
               nodeType: node.type,
               message: `已触发「${label}」节点 ${nodeId} 执行，生成中…产出会异步写入节点产出区与生成记录`,
             };
+            break;
+          }
+          case 'canvas.waitNodeResult': {
+            // 等待节点执行完成：轮询 ctxRef.current.nodes 读最新 status。
+            // 用于 execute_node(waitForResult:true) 的等待阶段。
+            // status: idle/running/done/error/cancelled；done→resolve 成功+产出，error/cancelled→resolve 失败，超时→resolve timeout。
+            const { nodeId, timeoutMs: waitTimeout } = payload;
+            if (!nodeId) throw new Error('nodeId 必填');
+            const totalMs = Math.max(1000, Number(waitTimeout) || 180000);
+            const deadline = Date.now() + totalMs;
+            result = await new Promise((resolve) => {
+              const poll = () => {
+                const cur = ctxRef.current.nodes;
+                const node = cur.find((n) => n.id === nodeId);
+                if (!node) {
+                  resolve({ ok: false, status: 'not_found', error: `节点不存在：${nodeId}` });
+                  return;
+                }
+                const status = node.data?.status || 'idle';
+                if (status === 'done') {
+                  const outs = node.data?.output || {};
+                  const outputs = [
+                    ...(outs.images || []),
+                    ...(outs.audios || []),
+                    ...(outs.videos || []),
+                    ...(outs.audio ? [outs.audio] : []),
+                    ...(outs.video ? [outs.video] : []),
+                  ].filter(Boolean);
+                  resolve({ ok: true, status: 'done', outputs });
+                  return;
+                }
+                if (status === 'error' || status === 'cancelled') {
+                  resolve({ ok: false, status, error: node.data?.error || (status === 'cancelled' ? '已取消' : '执行失败') });
+                  return;
+                }
+                if (Date.now() >= deadline) {
+                  resolve({ ok: false, status: 'timeout', error: `等待超时（${Math.round(totalMs / 1000)}s 仍在运行）` });
+                  return;
+                }
+                setTimeout(poll, 400);
+              };
+              poll();
+            });
             break;
           }
           default:

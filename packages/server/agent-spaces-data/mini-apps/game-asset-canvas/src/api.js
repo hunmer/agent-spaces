@@ -133,23 +133,106 @@ export default {
    * 仅支持生成类节点：textToImage / editImage / textToVoice / videoGenerator。
    * 其他节点类型（imageDisplay/note/图像处理等）调用返回 ok:false 提示不支持。
    *
-   * 注意：执行是异步的，本调用仅「触发」即返回（status:running），
-   * 实际产出会异步写入节点 data.output，可在生成记录或节点产出区查看。
-   *
    * @param {object} input
    * @param {string} input.nodeId 要执行的节点 id（必填）
+   * @param {boolean} [input.waitForResult=false] 是否等到生成完成再返回。
+   *   - false（默认）：仅触发即返回，status=running，产出异步写入节点。
+   *   - true：阻塞等待节点 status 变为 done/error，返回时带产出 URL 列表；最长等待 waitForResultTimeoutMs（默认 180000ms=3 分钟，覆盖视频生成）。
+   * @param {number} [input.waitForResultTimeoutMs=180000] waitForResult=true 时的最长等待毫秒数。
    */
   execute_node: async (input, ctx) => {
     const nodeId = asString(input?.nodeId);
     if (!nodeId) return { ok: false, message: 'nodeId 必填（先 list_nodes / get_canvas 拿节点 id）' };
-    const result = await rpc(ctx, 'canvas.executeNode', { nodeId }, 10000);
-    if (result?.ok === false) return result;
+    const waitForResult = input?.waitForResult === true;
+    const timeoutMs = Math.max(1000, Math.min(600000, Number(input?.waitForResultTimeoutMs) || 180000));
+    // 触发阶段 RPC（浏览器端 fire-and-forget 触发执行回调）超时 10s 足够
+    const triggerResult = await rpc(ctx, 'canvas.executeNode', { nodeId }, 10000);
+    if (triggerResult?.ok === false) return triggerResult;
+    if (!waitForResult) {
+      return {
+        ok: true,
+        nodeId,
+        nodeType: triggerResult?.nodeType,
+        typeLabel: triggerResult?.nodeType ? (NODE_LABELS[triggerResult.nodeType] || triggerResult.nodeType) : undefined,
+        message: triggerResult?.message || `已触发节点 ${nodeId} 执行`,
+      };
+    }
+    // 等待阶段：浏览器端轮询节点 status，超时由 timeoutMs 控制（向上取整到秒防精度问题）
+    const waitResult = await rpc(ctx, 'canvas.waitNodeResult', { nodeId, timeoutMs: Math.min(600000, timeoutMs + 5000) }, timeoutMs + 10000);
+    if (waitResult?.ok === false) return waitResult;
+    const nodeType = triggerResult?.nodeType;
     return {
-      ok: true,
+      ok: waitResult.status === 'done',
       nodeId,
-      nodeType: result?.nodeType,
-      typeLabel: result?.nodeType ? (NODE_LABELS[result.nodeType] || result.nodeType) : undefined,
-      message: result?.message || `已触发节点 ${nodeId} 的执行`,
+      nodeType,
+      typeLabel: nodeType ? (NODE_LABELS[nodeType] || nodeType) : undefined,
+      status: waitResult.status,
+      outputs: waitResult.outputs || [],
+      error: waitResult.error,
+      message: waitResult.status === 'done'
+        ? `节点 ${nodeId} 执行完成，产出 ${waitResult.outputs?.length || 0} 项`
+        : waitResult.status === 'timeout'
+          ? `节点 ${nodeId} 执行超过 ${timeoutMs}ms 仍在运行，请稍后在画布查看结果`
+          : `节点 ${nodeId} 执行失败：${waitResult.error || '未知错误'}`,
+    };
+  },
+
+  /**
+   * 批量执行多个生成类节点（一次调用触发多个，可选等待全部完成）。
+   * @param {object} input
+   * @param {string[]} input.nodeIds 要执行的节点 id 数组（必填，非空）
+   * @param {boolean} [input.waitForResult=false] 是否等待全部完成。true 时返回每个节点的最终状态与产出。
+   * @param {number} [input.waitForResultTimeoutMs=180000] waitForResult=true 时的最长等待毫秒数（所有节点共享）。
+   */
+  execute_nodes: async (input, ctx) => {
+    const ids = Array.isArray(input?.nodeIds) ? input.nodeIds.map((s) => asString(s)).filter(Boolean) : [];
+    if (!ids.length) return { ok: false, message: 'nodeIds 必须是非空字符串数组' };
+    const waitForResult = input?.waitForResult === true;
+    const timeoutMs = Math.max(1000, Math.min(600000, Number(input?.waitForResultTimeoutMs) || 180000));
+    // 逐个触发（浏览器端 executeNode 是 fire-and-forget，串行触发不影响并发执行）
+    const triggered = [];
+    const failed = [];
+    for (const nodeId of ids) {
+      try {
+        const r = await rpc(ctx, 'canvas.executeNode', { nodeId }, 10000);
+        if (r?.ok === false) failed.push({ nodeId, message: r.message });
+        else triggered.push({ nodeId, nodeType: r.nodeType });
+      } catch (e) {
+        failed.push({ nodeId, message: e?.message || String(e) });
+      }
+    }
+    if (!waitForResult) {
+      return {
+        ok: triggered.length > 0,
+        triggered: triggered.length,
+        failed,
+        message: `已触发 ${triggered.length}/${ids.length} 个节点执行${failed.length ? `（${failed.length} 个失败）` : ''}`,
+      };
+    }
+    // 等待全部完成：逐个等待（共享同一超时窗口，从首个触发时刻起算）
+    const results = [];
+    for (const { nodeId, nodeType } of triggered) {
+      try {
+        const wr = await rpc(ctx, 'canvas.waitNodeResult', { nodeId, timeoutMs: Math.min(600000, timeoutMs + 5000) }, timeoutMs + 10000);
+        results.push({
+          nodeId, nodeType,
+          status: wr?.status || 'unknown',
+          outputs: wr?.outputs || [],
+          error: wr?.error,
+        });
+      } catch (e) {
+        results.push({ nodeId, nodeType, status: 'error', error: e?.message || String(e), outputs: [] });
+      }
+    }
+    const doneCount = results.filter((r) => r.status === 'done').length;
+    return {
+      ok: doneCount > 0,
+      total: ids.length,
+      triggered: triggered.length,
+      doneCount,
+      results,
+      failed,
+      message: `批量执行完成：${doneCount}/${triggered.length} 成功${failed.length ? `（${failed.length} 个触发失败）` : ''}`,
     };
   },
 

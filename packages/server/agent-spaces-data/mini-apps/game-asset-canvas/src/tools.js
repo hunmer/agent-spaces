@@ -224,13 +224,32 @@ export default [
   },
   {
     name: 'execute_node',
-    description: '执行（生成）一个已存在于画布上的节点，等价于用户点节点上的「生成图片/编辑图片/生成配音/生成视频」按钮。用户说「帮我生成」「执行这个节点」「跑一下」时调用。仅支持生成类节点：textToImage（文字生成图片）/ editImage（编辑图片）/ textToVoice（生成配音）/ videoGenerator（生成视频）。其他类型（imageDisplay/note/图像处理/抠图等）调用会返回 ok:false。注意：本调用是异步触发，调用返回时节点处于 running 状态，产出会异步写入节点产出区与生成记录，可在画布上观察进度。',
+    description: '执行（生成）一个已存在于画布上的节点，等价于用户点节点上的「生成图片/编辑图片/生成配音/生成视频」按钮。用户说「帮我生成」「执行这个节点」「跑一下」时调用。仅支持生成类节点：textToImage（文字生成图片）/ editImage（编辑图片）/ textToVoice（生成配音）/ videoGenerator（生成视频）。其他类型（imageDisplay/note/图像处理/抠图等）调用会返回 ok:false 提示。默认是「触发即返回」（status:running），如需拿到产出结果用于后续操作（如把产出连到展示节点），传 waitForResult=true 阻塞等待完成，返回时带 outputs 产出 URL 列表。',
     inputSchema: {
       type: 'object',
       properties: {
         nodeId: { type: 'string', description: '要执行的节点 id（来自 list_nodes / get_canvas / add_node 返回值）' },
+        waitForResult: { type: 'boolean', description: '是否等到生成完成再返回。默认 false（触发即返回）。true 时阻塞等待，返回带 outputs 产出 URL 列表与 status(done/error/timeout)。视频生成较慢，建议 timeout 设大些。' },
+        waitForResultTimeoutMs: { type: 'number', description: 'waitForResult=true 时的最长等待毫秒数，默认 180000（3 分钟），上限 600000（10 分钟）。图片生成通常 30-60s 够，视频建议 300000+。' },
       },
       required: ['nodeId'],
+    },
+  },
+  {
+    name: 'execute_nodes',
+    description: '批量执行多个生成类节点（一次调用触发多个）。用户说「把这些都生成」「一起执行这几个」时调用，避免循环调 execute_node。仅 textToImage/editImage/textToVoice/videoGenerator 可执行。默认触发即返回，传 waitForResult=true 等全部完成并返回每个节点的产出。',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        nodeIds: {
+          type: 'array',
+          description: '要执行的节点 id 数组',
+          items: { type: 'string' },
+        },
+        waitForResult: { type: 'boolean', description: '是否等待全部完成。默认 false（触发即返回）。true 时返回 results 数组，每项含 {nodeId, nodeType, status, outputs, error}。' },
+        waitForResultTimeoutMs: { type: 'number', description: 'waitForResult=true 时的最长等待毫秒数（所有节点共享同一时间窗口），默认 180000，上限 600000。' },
+      },
+      required: ['nodeIds'],
     },
   },
 ];
