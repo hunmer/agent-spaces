@@ -362,13 +362,13 @@ export async function runMiniAppAgent(input: MiniAppAgentRunInput): Promise<Mini
   }
   if (hasAgentFilePermission) {
     functionTools.push(...createWorkspaceFileFunctionTools(
-      `mini-app:${projectId}:agent_files`,
+      `mini-app:${projectId}:agent_files:preview`,
       MINI_APP_FILE_TOOLS,
       () => miniAppStore.getProject(projectId) ? {
-        id: `mini-app:${projectId}:agent_files`,
-        name: `${projectId} agent files`,
-        boundDirs: [miniAppStore.resolveDataPath(projectId, 'agent_files')],
-        agentspaceDir: miniAppStore.resolveDataPath(projectId, 'agent_files'),
+        id: `mini-app:${projectId}:agent_files:preview`,
+        name: `${projectId} agent files (preview)`,
+        boundDirs: [miniAppStore.resolveDataPath(projectId, 'agent_files/preview')],
+        agentspaceDir: miniAppStore.resolveDataPath(projectId, 'agent_files/preview'),
         createdAt: '',
         updatedAt: '',
         activeChannels: [],
@@ -393,7 +393,7 @@ export async function runMiniAppAgent(input: MiniAppAgentRunInput): Promise<Mini
   sections.push(`Current mini-app route: ${route ?? '/'}`);
   sections.push(`Current mini-app id: ${projectId}`);
   if (hasAgentFilePermission) {
-    sections.push('Mini-app agent files are available through workspace file tools. Use relative paths under data/agent_files only.');
+    sections.push('Mini-app agent files are available through workspace file tools. Use relative paths under data/agent_files/preview only.');
   }
   if (apiMethodNames.length) {
     sections.push([

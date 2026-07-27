@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { useTranslations } from 'next-intl';
 import { useRouter, useSearchParams } from 'next/navigation';
 import type { MiniAppProject, MiniAppAgentConfig } from '@agent-spaces/sdk';
-import type { WorkflowAgentTimelineItem, PluginConfigField } from '@agent-spaces/shared';
+import type { FileNode, WorkflowAgentTimelineItem, PluginConfigField } from '@agent-spaces/shared';
 import { sdk } from '@/lib/sdk';
 import { pluginApi, type WorkflowPlugin } from '@/lib/workflow-plugin-api';
 import { resolveServerAssetUrl } from '@/lib/server';
@@ -20,13 +20,14 @@ import { AvatarGroup } from '@/components/ui/avatar-group';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ChatPanel, type ChatMessage } from '@/components/ui/chat-panel';
-import { PanelRightOpen, Loader2, Search, Sparkles, Settings2, Settings, Eraser, Smartphone, Monitor, Tablet, Info, AlertTriangle, MessageSquareText } from 'lucide-react';
+import { PanelRightOpen, FilesIcon, Loader2, Search, Sparkles, Settings2, Settings, Eraser, Smartphone, Monitor, Tablet, Info, AlertTriangle, MessageSquareText, UploadIcon } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { AgentEditor } from '@/components/sidebar/agent-editor';
 import { MINI_APP_HIDDEN_FIELDS, type AgentPreset } from '@/components/sidebar/agent-shared';
 import { miniAppConfigToAgentPreset, agentPresetToMiniAppConfig } from './mini-app-agent-adapter';
 import { MiniAppRenderer, type MiniAppTaskEvent } from './mini-app-renderer';
+import { CommonEditorPanel } from '@/components/editor/editor-panel';
 import { PluginIcon } from '@/components/workflow/workflow-plugin-icon';
 import { WorkflowPluginConfigDialog } from '@/components/workflow/workflow-plugin-config-dialog';
 import { WorkflowPluginsDialog } from '@/components/workflow/workflow-plugins-dialog';
@@ -252,6 +253,7 @@ function useMiniAppAgentChat(projectId: string) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
+  const [agentFilesEnabled, setAgentFilesEnabled] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
 
   // session-id：sessionStorage，同 tab reload 复用
@@ -271,6 +273,13 @@ function useMiniAppAgentChat(projectId: string) {
       if (r.agents.length && !agentId) setAgentId(r.agents[0].id);
     }).catch(() => {});
   }, [projectId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!projectId) return;
+    sdk.miniApp.get(projectId)
+      .then((project) => setAgentFilesEnabled(project.agentPermissions?.includes('Files') === true))
+      .catch(() => setAgentFilesEnabled(false));
+  }, [projectId]);
 
   // agent 变化 → 拉历史
   const loadHistory = useCallback(async () => {
@@ -395,6 +404,8 @@ function useMiniAppAgentChat(projectId: string) {
     settingsOpen, setSettingsOpen, settingsLoading, settingsDraft, originalConfig,
     openSettings, handleSettingsSaved,
     current, suggestions,
+    projectId,
+    agentFilesEnabled,
     loadHistory,
   };
 }
@@ -452,10 +463,109 @@ function MiniAppAgentDialogs({ projectId, chat }: { projectId: string; chat: Ret
   );
 }
 
+function MiniAppAgentFilesPopover({ projectId }: { projectId: string }) {
+  const [tree, setTree] = useState<FileNode[]>([]);
+  const [loading, setLoading] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const reloadTree = useCallback(async () => {
+    setLoading(true);
+    try {
+      setTree(await sdk.miniApp.getAgentFilesTree(projectId, '', 10, 'preview'));
+    } finally {
+      setLoading(false);
+    }
+  }, [projectId]);
+
+  const uploadFiles = useCallback(async (targetPath: string, files: File[]) => {
+    const formData = new FormData();
+    for (const file of files) formData.append('files', file);
+    if (targetPath) formData.append('folder', targetPath);
+    formData.append('scope', 'preview');
+    await sdk.miniApp.uploadAgentFiles(projectId, formData);
+    await reloadTree();
+  }, [projectId, reloadTree]);
+
+  const api = useMemo(() => ({
+    tree,
+    treeLoading: loading,
+    loadingDirs: new Set<string>(),
+    openFiles: [],
+    loadTree: reloadTree,
+    loadDirectory: reloadTree,
+    openFile: async (_path: string) => {},
+    searchFiles: async (query: string) => {
+      const lower = query.toLowerCase();
+      const results: FileNode[] = [];
+      const walk = (nodes: FileNode[]) => {
+        for (const node of nodes) {
+          if (node.name.toLowerCase().includes(lower)) results.push(node);
+          if (node.children) walk(node.children);
+        }
+      };
+      walk(tree);
+      return results;
+    },
+    saveEmptyFile: async (path: string) => {
+      await sdk.miniApp.writeAgentFile(projectId, path, '', 'preview');
+      await reloadTree();
+    },
+    deletePath: async (path: string) => {
+      await sdk.miniApp.deleteAgentFile(projectId, path, 'preview');
+      await reloadTree();
+    },
+    renamePath: async (oldPath: string, newPath: string) => {
+      await sdk.miniApp.renameAgentFile(projectId, oldPath, newPath, 'preview');
+      await reloadTree();
+    },
+    copyPath: async (_srcPath: string, _destPath: string) => {},
+    uploadFiles,
+  }), [loading, projectId, reloadTree, tree, uploadFiles]);
+
+  return (
+    <Popover onOpenChange={(open) => { if (open) void reloadTree(); }}>
+      <PopoverTrigger render={<Button type="button" variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-background/50" title="agent_files/preview" aria-label="agent_files/preview" />}>
+        <FilesIcon className="h-4 w-4" />
+      </PopoverTrigger>
+      <PopoverContent align="end" className="h-[420px] w-80 p-0">
+        <div className="flex h-full min-h-0 flex-col">
+          <div className="flex h-8 shrink-0 items-center gap-2 border-b px-2">
+            <div className="min-w-0 flex-1 truncate text-xs font-medium text-muted-foreground">agent_files/preview</div>
+            <input
+              ref={inputRef}
+              type="file"
+              multiple
+              className="hidden"
+              onChange={(event) => {
+                const files = Array.from(event.target.files ?? []);
+                event.currentTarget.value = '';
+                if (files.length) void uploadFiles('', files);
+              }}
+            />
+            <Button type="button" variant="ghost" size="icon" className="size-7" onClick={() => inputRef.current?.click()}>
+              <UploadIcon className="size-3.5" />
+            </Button>
+          </div>
+          <CommonEditorPanel
+            storageKey={`mini-app-preview-agent-files:${projectId}`}
+            variant="project"
+            api={api}
+            hideSidebarTabs
+            hideBottomTabs
+            showImport={false}
+            showSearchPanel={false}
+            allowDragUpload
+          />
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 /** ChatPanel 顶部工具区（切换 agent / 设置 / 清空），popover 与 dock 共用。 */
 function MiniAppAgentHeaderActions({ chat }: { chat: ReturnType<typeof useMiniAppAgentChat> }) {
   const t = useTranslations('mini-apps');
-  const { agents, agentId, setAgentId, openSettings, sending, messages } = chat;
+  const { agents, agentId, setAgentId, openSettings, sending, messages, projectId, agentFilesEnabled } = chat;
   return (
     <>
       {agents.length > 1 && (
@@ -468,6 +578,7 @@ function MiniAppAgentHeaderActions({ chat }: { chat: ReturnType<typeof useMiniAp
           </SelectContent>
         </Select>
       )}
+      {agentFilesEnabled ? <MiniAppAgentFilesPopover projectId={projectId} /> : null}
       <Button
         type="button"
         variant="ghost"

@@ -183,19 +183,19 @@ router.put('/:id/data/content', (req: Request<{ id: string }>, res: Response) =>
   } catch (error: any) { res.status(500).json({ error: error.message }); }
 });
 
-router.get('/:id/agent-files/tree', async (req: Request<{ id: string }, any, any, { path?: string; depth?: string }>, res: Response) => {
+router.get('/:id/agent-files/tree', async (req: Request<{ id: string }, any, any, { path?: string; depth?: string; scope?: string }>, res: Response) => {
   try {
     const path = typeof req.query.path === 'string' ? req.query.path : '';
     const depth = Math.min(10, Math.max(1, Number(req.query.depth) || 1));
-    res.json(await svc.getAgentFilesTree(req.params.id, path, depth));
+    res.json(await svc.getAgentFilesTree(req.params.id, path, depth, req.query.scope));
   } catch (error: any) { res.status(error.message.includes('not found') ? 404 : 500).json({ error: error.message }); }
 });
 
-router.get('/:id/agent-files/content', async (req: Request<{ id: string }, any, any, { path?: string }>, res: Response) => {
+router.get('/:id/agent-files/content', async (req: Request<{ id: string }, any, any, { path?: string; scope?: string }>, res: Response) => {
   try {
     const path = req.query.path;
     if (!path) { res.status(400).json({ error: 'path is required' }); return; }
-    const data = await svc.readAgentFile(req.params.id, path);
+    const data = await svc.readAgentFile(req.params.id, path, req.query.scope);
     if (!data) { res.status(404).json({ error: 'File not found' }); return; }
     res.json(data);
   } catch (error: any) { res.status(500).json({ error: error.message }); }
@@ -203,9 +203,9 @@ router.get('/:id/agent-files/content', async (req: Request<{ id: string }, any, 
 
 router.put('/:id/agent-files/content', async (req: Request<{ id: string }>, res: Response) => {
   try {
-    const { path, content } = req.body ?? {};
+    const { path, content, scope } = req.body ?? {};
     if (!path || content === undefined) { res.status(400).json({ error: 'path and content are required' }); return; }
-    const ok = await svc.writeAgentFile(req.params.id, path, String(content));
+    const ok = await svc.writeAgentFile(req.params.id, path, String(content), scope);
     if (!ok) { res.status(500).json({ error: 'Failed to write file' }); return; }
     res.json({ ok: true });
   } catch (error: any) { res.status(500).json({ error: error.message }); }
@@ -214,8 +214,9 @@ router.put('/:id/agent-files/content', async (req: Request<{ id: string }>, res:
 router.delete('/:id/agent-files', async (req: Request<{ id: string }>, res: Response) => {
   try {
     const path = typeof req.body?.path === 'string' ? req.body.path : req.query.path as string;
+    const scope = typeof req.body?.scope === 'string' ? req.body.scope : req.query.scope as string | undefined;
     if (!path) { res.status(400).json({ error: 'path is required' }); return; }
-    const ok = await svc.deleteAgentFile(req.params.id, path);
+    const ok = await svc.deleteAgentFile(req.params.id, path, scope);
     if (!ok) { res.status(500).json({ error: 'Failed to delete path' }); return; }
     res.json({ ok: true });
   } catch (error: any) { res.status(500).json({ error: error.message }); }
@@ -223,9 +224,9 @@ router.delete('/:id/agent-files', async (req: Request<{ id: string }>, res: Resp
 
 router.post('/:id/agent-files/rename', async (req: Request<{ id: string }>, res: Response) => {
   try {
-    const { from, to } = req.body ?? {};
+    const { from, to, scope } = req.body ?? {};
     if (!from || !to) { res.status(400).json({ error: 'from and to are required' }); return; }
-    const ok = await svc.renameAgentFile(req.params.id, from, to);
+    const ok = await svc.renameAgentFile(req.params.id, from, to, scope);
     if (!ok) { res.status(500).json({ error: 'Failed to rename path' }); return; }
     res.json({ ok: true });
   } catch (error: any) { res.status(500).json({ error: error.message }); }
@@ -236,10 +237,11 @@ router.post('/:id/agent-files/upload', upload.array('files'), async (req: Reques
     const files = req.files as Express.Multer.File[] | undefined;
     if (!files?.length) { res.status(400).json({ error: 'files is required' }); return; }
     const folder = typeof req.body.folder === 'string' ? req.body.folder : '';
+    const scope = typeof req.body.scope === 'string' ? req.body.scope : undefined;
     const written = await svc.uploadAgentFiles(req.params.id, folder, files.map((file) => ({
       name: basename(file.originalname),
       buffer: file.buffer,
-    })));
+    })), scope);
     res.json({ ok: true, files: written });
   } catch (error: any) { res.status(500).json({ error: error.message }); }
 });

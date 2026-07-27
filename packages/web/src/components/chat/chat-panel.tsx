@@ -109,7 +109,7 @@ interface ChatPanelProps {
   workspaceId: string;
   channelId?: string;
   miniAppContext?: MiniAppMessageContext;
-  agentFilesDirectory?: { projectId: string; label?: string };
+  agentFilesDirectory?: { projectId: string; scope: 'preview' | 'editor'; label?: string };
   onAgentActivated?: (agent: MentionedAgent) => void;
 }
 
@@ -527,7 +527,7 @@ function findPendingQuestion(messages: Message[]): PendingQuestion | null {
   return null;
 }
 
-function MiniAppAgentFilesPopover({ directory }: { directory: { projectId: string; label?: string } }) {
+function MiniAppAgentFilesPopover({ directory }: { directory: { projectId: string; scope: 'preview' | 'editor'; label?: string } }) {
   const [tree, setTree] = useState<FileNode[]>([]);
   const [loading, setLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -535,19 +535,20 @@ function MiniAppAgentFilesPopover({ directory }: { directory: { projectId: strin
   const reloadTree = useCallback(async () => {
     setLoading(true);
     try {
-      setTree(await sdk.miniApp.getAgentFilesTree(directory.projectId, '', 10));
+      setTree(await sdk.miniApp.getAgentFilesTree(directory.projectId, '', 10, directory.scope));
     } finally {
       setLoading(false);
     }
-  }, [directory.projectId]);
+  }, [directory.projectId, directory.scope]);
 
   const uploadFiles = useCallback(async (targetPath: string, files: File[]) => {
     const formData = new FormData();
     for (const file of files) formData.append('files', file);
     if (targetPath) formData.append('folder', targetPath);
+    formData.append('scope', directory.scope);
     await sdk.miniApp.uploadAgentFiles(directory.projectId, formData);
     await reloadTree();
-  }, [directory.projectId, reloadTree]);
+  }, [directory.projectId, directory.scope, reloadTree]);
 
   const api = useMemo(() => ({
     tree,
@@ -570,20 +571,20 @@ function MiniAppAgentFilesPopover({ directory }: { directory: { projectId: strin
       return results;
     },
     saveEmptyFile: async (path: string) => {
-      await sdk.miniApp.writeAgentFile(directory.projectId, path, '');
+      await sdk.miniApp.writeAgentFile(directory.projectId, path, '', directory.scope);
       await reloadTree();
     },
     deletePath: async (path: string) => {
-      await sdk.miniApp.deleteAgentFile(directory.projectId, path);
+      await sdk.miniApp.deleteAgentFile(directory.projectId, path, directory.scope);
       await reloadTree();
     },
     renamePath: async (oldPath: string, newPath: string) => {
-      await sdk.miniApp.renameAgentFile(directory.projectId, oldPath, newPath);
+      await sdk.miniApp.renameAgentFile(directory.projectId, oldPath, newPath, directory.scope);
       await reloadTree();
     },
     copyPath: async (_srcPath: string, _destPath: string) => {},
     uploadFiles,
-  }), [directory.projectId, loading, reloadTree, tree, uploadFiles]);
+  }), [directory.projectId, directory.scope, loading, reloadTree, tree, uploadFiles]);
 
   return (
     <Popover onOpenChange={(open) => { if (open) void reloadTree(); }}>

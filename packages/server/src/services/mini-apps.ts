@@ -29,18 +29,25 @@ export function hasMiniAppAgentFilesPermission(project: MiniAppProject | null | 
   return Array.isArray(project?.agentPermissions) && project.agentPermissions.includes('Files');
 }
 
-export function getAgentFilesDir(projectId: string): string {
-  return store.resolveDataPath(projectId, 'agent_files');
+export type AgentFilesScope = 'preview' | 'editor';
+
+function normalizeAgentFilesScope(scope?: string): AgentFilesScope {
+  return scope === 'editor' ? 'editor' : 'preview';
 }
 
-export function getAgentFilesWorkspace(projectId: string): Workspace {
+export function getAgentFilesDir(projectId: string, scope?: string): string {
+  return store.resolveDataPath(projectId, `agent_files/${normalizeAgentFilesScope(scope)}`);
+}
+
+export function getAgentFilesWorkspace(projectId: string, scope?: string): Workspace {
   const project = getProject(projectId);
   if (!hasMiniAppAgentFilesPermission(project)) throw new Error('Mini-app agent file permission is not enabled');
-  const root = getAgentFilesDir(projectId);
+  const normalizedScope = normalizeAgentFilesScope(scope);
+  const root = getAgentFilesDir(projectId, normalizedScope);
   mkdirSync(root, { recursive: true });
   return {
-    id: `mini-app:${projectId}:agent_files`,
-    name: `${projectId} agent files`,
+    id: `mini-app:${projectId}:agent_files:${normalizedScope}`,
+    name: `${projectId} agent files (${normalizedScope})`,
     boundDirs: [root],
     agentspaceDir: root,
     createdAt: '',
@@ -50,34 +57,34 @@ export function getAgentFilesWorkspace(projectId: string): Workspace {
   };
 }
 
-export async function getAgentFilesTree(projectId: string, path = '', depth = 1): Promise<FileNode[]> {
+export async function getAgentFilesTree(projectId: string, path = '', depth = 1, scope?: string): Promise<FileNode[]> {
   getProject(projectId);
-  return fileService.readTree(getAgentFilesWorkspace(projectId), path, depth);
+  return fileService.readTree(getAgentFilesWorkspace(projectId, scope), path, depth);
 }
 
-export async function readAgentFile(projectId: string, path: string): Promise<{ content: string; encoding: string } | null> {
+export async function readAgentFile(projectId: string, path: string, scope?: string): Promise<{ content: string; encoding: string } | null> {
   getProject(projectId);
-  return fileService.readFileContent(getAgentFilesWorkspace(projectId), path);
+  return fileService.readFileContent(getAgentFilesWorkspace(projectId, scope), path);
 }
 
-export async function writeAgentFile(projectId: string, path: string, content: string): Promise<boolean> {
+export async function writeAgentFile(projectId: string, path: string, content: string, scope?: string): Promise<boolean> {
   getProject(projectId);
-  return fileService.writeFileContent(getAgentFilesWorkspace(projectId), path, content);
+  return fileService.writeFileContent(getAgentFilesWorkspace(projectId, scope), path, content);
 }
 
-export async function deleteAgentFile(projectId: string, path: string): Promise<boolean> {
+export async function deleteAgentFile(projectId: string, path: string, scope?: string): Promise<boolean> {
   getProject(projectId);
-  return fileService.deletePath(getAgentFilesWorkspace(projectId), path);
+  return fileService.deletePath(getAgentFilesWorkspace(projectId, scope), path);
 }
 
-export async function renameAgentFile(projectId: string, from: string, to: string): Promise<boolean> {
+export async function renameAgentFile(projectId: string, from: string, to: string, scope?: string): Promise<boolean> {
   getProject(projectId);
-  return fileService.renamePath(getAgentFilesWorkspace(projectId), from, to);
+  return fileService.renamePath(getAgentFilesWorkspace(projectId, scope), from, to);
 }
 
-export async function uploadAgentFiles(projectId: string, targetDir: string, files: Array<{ name: string; buffer: Buffer }>): Promise<Array<{ path: string; size: number }>> {
+export async function uploadAgentFiles(projectId: string, targetDir: string, files: Array<{ name: string; buffer: Buffer }>, scope?: string): Promise<Array<{ path: string; size: number }>> {
   getProject(projectId);
-  const workspace = getAgentFilesWorkspace(projectId);
+  const workspace = getAgentFilesWorkspace(projectId, scope);
   const written: Array<{ path: string; size: number }> = [];
   for (const file of files) {
     const safeName = file.name.replace(/[<>:"\\|?*\x00-\x1F]/g, '_') || 'file';

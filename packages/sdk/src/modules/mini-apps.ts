@@ -109,20 +109,20 @@ export function createMiniAppApi(http: HttpClient) {
     writeDataFile: (id: string, filePath: string, content: string, encoding?: 'base64'): Promise<{ ok: true; path: string; size: number }> =>
       http.put(`/api/mini-apps/${encodeURIComponent(id)}/data/content`, { path: filePath, content, encoding }),
 
-    getAgentFilesTree: (id: string, path = '', depth = 1): Promise<FileNode[]> =>
-      http.get(`/api/mini-apps/${encodeURIComponent(id)}/agent-files/tree?path=${encodeURIComponent(path)}&depth=${depth}`),
+    getAgentFilesTree: (id: string, path = '', depth = 1, scope: 'preview' | 'editor' = 'preview'): Promise<FileNode[]> =>
+      http.get(`/api/mini-apps/${encodeURIComponent(id)}/agent-files/tree?path=${encodeURIComponent(path)}&depth=${depth}&scope=${encodeURIComponent(scope)}`),
 
-    readAgentFile: (id: string, filePath: string): Promise<{ content: string; encoding: string }> =>
-      http.get(`/api/mini-apps/${encodeURIComponent(id)}/agent-files/content?path=${encodeURIComponent(filePath)}`),
+    readAgentFile: (id: string, filePath: string, scope: 'preview' | 'editor' = 'preview'): Promise<{ content: string; encoding: string }> =>
+      http.get(`/api/mini-apps/${encodeURIComponent(id)}/agent-files/content?path=${encodeURIComponent(filePath)}&scope=${encodeURIComponent(scope)}`),
 
-    writeAgentFile: (id: string, filePath: string, content: string): Promise<void> =>
-      http.putVoid(`/api/mini-apps/${encodeURIComponent(id)}/agent-files/content`, { path: filePath, content }),
+    writeAgentFile: (id: string, filePath: string, content: string, scope: 'preview' | 'editor' = 'preview'): Promise<void> =>
+      http.putVoid(`/api/mini-apps/${encodeURIComponent(id)}/agent-files/content`, { path: filePath, content, scope }),
 
-    deleteAgentFile: (id: string, filePath: string): Promise<void> =>
-      http.delete(`/api/mini-apps/${encodeURIComponent(id)}/agent-files?path=${encodeURIComponent(filePath)}`),
+    deleteAgentFile: (id: string, filePath: string, scope: 'preview' | 'editor' = 'preview'): Promise<void> =>
+      http.delete(`/api/mini-apps/${encodeURIComponent(id)}/agent-files?path=${encodeURIComponent(filePath)}&scope=${encodeURIComponent(scope)}`),
 
-    renameAgentFile: (id: string, from: string, to: string): Promise<void> =>
-      http.postVoid(`/api/mini-apps/${encodeURIComponent(id)}/agent-files/rename`, { from, to }),
+    renameAgentFile: (id: string, from: string, to: string, scope: 'preview' | 'editor' = 'preview'): Promise<void> =>
+      http.postVoid(`/api/mini-apps/${encodeURIComponent(id)}/agent-files/rename`, { from, to, scope }),
 
     uploadAgentFiles: (id: string, formData: FormData): Promise<{ ok: true; files: { path: string; size: number }[] }> =>
       http.upload(`/api/mini-apps/${encodeURIComponent(id)}/agent-files/upload`, formData),

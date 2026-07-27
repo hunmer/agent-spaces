@@ -769,7 +769,7 @@ function resolveMiniAppRuntimeContext(context: MiniAppMessageContext | undefined
       projectDir,
       projectType: project.type,
       enabledPlugins: project.enabledPlugins ?? [],
-      ...(miniAppService.hasMiniAppAgentFilesPermission(project) ? { agentFilesWorkspace: miniAppService.getAgentFilesWorkspace(project.id) } : {}),
+      ...(miniAppService.hasMiniAppAgentFilesPermission(project) ? { agentFilesWorkspace: miniAppService.getAgentFilesWorkspace(project.id, 'editor') } : {}),
     };
   } catch {
     return null;
