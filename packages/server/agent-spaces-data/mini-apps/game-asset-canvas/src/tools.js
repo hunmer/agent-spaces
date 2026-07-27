@@ -275,4 +275,141 @@ export default [
       required: ['nodeIds'],
     },
   },
+
+  // —— 素材库：查询 ——
+  // 素材库按工作区隔离（configs/workspaces/<id>/asset-library.json），
+  // 结构 { categories: [{ id, name, assets: [{ id, url, name, size, uploadedAt }] }] }。
+  // 每个分类 = 一个分组；agent 改动后会广播，前端 useAssetLibrary 自动刷新。
+
+  {
+    name: 'list_asset_categories',
+    description: '查询素材库的所有分组（分类）。用户问「素材库有哪些分组/分类」「素材库分了哪几类」「角色/UI/场景分组都有没有」时调用。仅返回分组摘要（id/name/资产数），要看具体图片用 list_assets。',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        workspaceId: { type: 'string', description: '工作区 id（可选，不传则用当前激活工作区）' },
+      },
+    },
+  },
+  {
+    name: 'list_assets',
+    description: '查看素材库（可按分组过滤）。用户说「看一下角色分组里有什么」「素材库都有哪些图」「分类 xxx 里的图」时调用。不传过滤条件返回全部分组及其图片；传 categoryId（精确 id）或 categoryName（分组名，模糊匹配）只看该分组。',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        categoryId: { type: 'string', description: '按分组 id 精确过滤（可选，来自 list_asset_categories）' },
+        categoryName: { type: 'string', description: '按分组名过滤（可选，模糊匹配；与 categoryId 二选一）' },
+        workspaceId: { type: 'string', description: '工作区 id（可选）' },
+      },
+    },
+  },
+  {
+    name: 'find_asset_by_name',
+    description: '按文件名查询素材（跨全库搜索）。用户说「找一下 berserker.png」「有没有叫 xxx 的图」「这张图在哪个分组」时调用。默认模糊包含匹配，传 exact=true 走精确匹配。返回的 assetId/categoryId 可用于 update_asset / remove_asset。',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        fileName: { type: 'string', description: '要查的图片文件名（关键字）' },
+        exact: { type: 'boolean', description: '是否精确匹配文件名（默认 false 模糊包含）' },
+        workspaceId: { type: 'string', description: '工作区 id（可选）' },
+      },
+      required: ['fileName'],
+    },
+  },
+
+  // —— 素材库：编辑 ——
+
+  {
+    name: 'add_asset',
+    description: '往素材库的指定分组插入一张新图片。用户说「把这张图加到角色分组」「往素材库加张图」时调用。url 必填（已上传图片的 http 路径）；目标分组用 categoryId（精确）或 categoryName（分组名，模糊）二选一，找不到分组会提示先建分组。返回新 assetId。',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        url: { type: 'string', description: '图片 http 路径（必填，如 http://.../xxx.png；通常来自节点产出或上传）' },
+        categoryId: { type: 'string', description: '目标分组 id（来自 list_asset_categories）' },
+        categoryName: { type: 'string', description: '目标分组名（categoryId 缺省时模糊匹配此名）' },
+        fileName: { type: 'string', description: '图片文件名（可选，默认 untitled）' },
+        assetId: { type: 'string', description: '自定义资产 id（可选，默认自动生成）' },
+        size: { type: 'number', description: '文件字节数（可选）' },
+        workspaceId: { type: 'string', description: '工作区 id（可选）' },
+      },
+      required: ['url'],
+    },
+  },
+  {
+    name: 'update_asset',
+    description: '更新素材库里的图片（换 url 换图、改文件名、改 size 等）。用户说「把这张图换掉」「改一下 xxx.png 的名字」时调用。assetId 必填；data 里至少传一个要改的字段。可选 categoryId 限定分组（不传则全库按 assetId 定位）。',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        assetId: { type: 'string', description: '要改的图片 id（来自 find_asset_by_name / list_assets）' },
+        data: {
+          type: 'object',
+          description: '要改的字段，支持 { url }（换图）、{ name }（改文件名）、{ size }。可组合。',
+          properties: {
+            url: { type: 'string', description: '新的图片 http 路径' },
+            name: { type: 'string', description: '新的文件名' },
+            size: { type: 'number', description: '新的文件字节数' },
+          },
+        },
+        categoryId: { type: 'string', description: '限定在哪个分组内查找（可选，不传则全库搜）' },
+        workspaceId: { type: 'string', description: '工作区 id（可选）' },
+      },
+      required: ['assetId', 'data'],
+    },
+  },
+  {
+    name: 'remove_asset',
+    description: '删除素材库里的图片。用户说「删掉这张图」「移除 xxx.png」「这张不要了」时调用。assetId 必填；categoryId 可选（不传则全库按 assetId 删除）。',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        assetId: { type: 'string', description: '要删除的图片 id（来自 find_asset_by_name / list_assets）' },
+        categoryId: { type: 'string', description: '限定在哪个分组内删除（可选）' },
+        workspaceId: { type: 'string', description: '工作区 id（可选）' },
+      },
+      required: ['assetId'],
+    },
+  },
+
+  // —— 素材库：分组管理 ——
+  // 让 agent 能完整管理分组生命周期（建/改名/删），对应前端 useAssetLibrary 的同名能力。
+
+  {
+    name: 'create_asset_category',
+    description: '在素材库新建一个分组（分类）。用户说「建个 UI 分组」「加一个新分类叫场景」「素材库分组里加一项」时调用。name 可选（不传则自动命名「新建分类 N」）。返回新分组 categoryId。',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        name: { type: 'string', description: '新分组名（可选，不传则自动命名「新建分类 N」）' },
+        workspaceId: { type: 'string', description: '工作区 id（可选）' },
+      },
+    },
+  },
+  {
+    name: 'rename_asset_category',
+    description: '重命名素材库的分组。用户说「把角色分组改名成主角」「这个分类名不对」时调用。目标分组用 categoryId（精确）或 categoryName（模糊）定位，newName 指定新名字。',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        categoryId: { type: 'string', description: '目标分组 id（来自 list_asset_categories）' },
+        categoryName: { type: 'string', description: '目标分组名（categoryId 缺省时模糊匹配此名）' },
+        newName: { type: 'string', description: '新分组名（必填）' },
+        workspaceId: { type: 'string', description: '工作区 id（可选）' },
+      },
+      required: ['newName'],
+    },
+  },
+  {
+    name: 'delete_asset_category',
+    description: '删除素材库的分组（连同分组内所有图片）。用户说「删掉这个分组」「不要 UI 分类了」时调用。目标分组用 categoryId（精确）或 categoryName（模糊）定位。',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        categoryId: { type: 'string', description: '目标分组 id（来自 list_asset_categories）' },
+        categoryName: { type: 'string', description: '目标分组名（categoryId 缺省时模糊匹配此名）' },
+        workspaceId: { type: 'string', description: '工作区 id（可选）' },
+      },
+    },
+  },
 ];

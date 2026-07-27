@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import NodeShell from './NodeShell';
 import ImageResult from './ImageResult';
 import PromptPickerDialog from '../PromptPickerDialog';
@@ -59,6 +59,15 @@ export default function TextToImageNode({ id, data, selected }) {
   const onUpdate = data?.onUpdate;
   const onGenerate = data?.onGenerate;
   const [pickerOpen, setPickerOpen] = useState(false);
+  const promptRef = useRef(null);
+
+  // textarea 自动调整高度：重置为 auto 后按 scrollHeight 撑开，上限 500px 后出现滚动条。
+  useEffect(() => {
+    const el = promptRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${Math.min(el.scrollHeight, 500)}px`;
+  }, [params.prompt]);
 
   const set = useCallback((patch) => {
     onUpdate?.({ params: { ...params, ...patch } });
@@ -98,7 +107,9 @@ export default function TextToImageNode({ id, data, selected }) {
           </button>
         </div>
         <textarea
-          className="min-h-[64px] w-full resize-y rounded-md border border-border bg-background px-2 py-1.5 text-sm outline-none focus:border-primary"
+          ref={promptRef}
+          className="min-h-[64px] w-full resize-none overflow-auto rounded-md border border-border bg-background px-2 py-1.5 text-sm outline-none focus:border-primary"
+          style={{ maxHeight: 500 }}
           placeholder="描述要生成的游戏资产，如：像素风宝箱，俯视角，无背景"
           value={params.prompt || ''}
           onChange={(e) => set({ prompt: e.target.value })}

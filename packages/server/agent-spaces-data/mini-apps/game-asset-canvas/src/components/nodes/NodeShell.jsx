@@ -122,36 +122,32 @@ export default function NodeShell({
     return () => window.removeEventListener('pointermove', handlePointerMove);
   }, [outputPreviewEnabled, hovered, data?.onOutputPreviewHover]);
 
-  // 首次内容高度自适应：测量「标题栏 + 内容区」真实高度，仅上报一次后 disconnect。
-  // 这样插入节点后高度贴合表单；用户之后用 NodeResizer 手动改的尺寸永不被覆盖。
-  // 回调由 Canvas 通过 data.onAutoSizeToContent 注入；未注入（如持久化旧节点）则不测量。
+  // 首次内容高度自适应 + 内容变化时持续跟随：测量「标题栏 + 内容区」真实高度并上报。
+  // 内层测量 div（contentInnerRef）自然撑开，offsetHeight 恒等于内容真实高度（不受 overflow/flex 影响），
+  // 故 observe 它能捕获 textarea 等子元素的高度变化；observe root 无效（root 高度恒 = node.height）。
+  // 用户手动 NodeResizer 拖拽后置 userResizedRef=true，停止自动跟随，尊重手动尺寸（原 disconnect 约定的等价实现）。
   const viewportActivated = useViewportActivation(rootRef);
-  const measuredRef = useRef(false);
+  const contentInnerRef = useRef(null);
+  const userResizedRef = useRef(false);
   useLayoutEffect(() => {
-    measuredRef.current = false; // 重置：data.onAutoSizeToContent 变化（节点换工作区重挂载）时允许再测一次
+    userResizedRef.current = false; // 重置：节点重挂载时恢复自动跟随
     const onAutoSizeToContent = data?.onAutoSizeToContent;
     const root = rootRef.current;
-    if (!viewportActivated || !onAutoSizeToContent || !root || !id) return;
+    const inner = contentInnerRef.current;
+    if (!viewportActivated || !onAutoSizeToContent || !root || !id || !inner) return;
 
     const measure = () => {
-      if (measuredRef.current) return;
+      if (userResizedRef.current) return;
       const header = root.querySelector('[data-node-header]');
-      const content = root.querySelector('[data-node-content]');
-      if (!header || !content) return;
-      // scrollHeight 为内容真实高度（含 padding，不含 border）；+2 兜边框
-      const h = header.offsetHeight + content.scrollHeight + 2;
-      if (h > 0) {
-        measuredRef.current = true;
-        ro.disconnect();
-        onAutoSizeToContent(id, h);
-      }
+      if (!header) return;
+      const h = header.offsetHeight + inner.offsetHeight + 2;
+      if (h > 0) onAutoSizeToContent(id, h);
     };
     const ro = new ResizeObserver(measure);
-    ro.observe(root);
-    // 同步量一次（多数情况下 children 已渲染，无需等回调）
+    ro.observe(inner);
     measure();
     return () => ro.disconnect();
-  }, [viewportActivated, data?.onAutoSizeToContent, id]);
+  }, [viewportActivated, data?.onAutoSizeToContent, id, outputPreviewEnabled]);
 
   if (outputPreviewEnabled && !hovered) {
     return (
@@ -176,6 +172,7 @@ export default function NodeShell({
             color="#6366f1"
             handleClassName="!w-2.5 !h-2.5 !rounded-sm !border-2 !border-background"
             lineClassName="!border-primary/40"
+            onResizeEnd={() => { userResizedRef.current = true; }}
           />
         )}
         {targetHandle && (
@@ -265,6 +262,7 @@ export default function NodeShell({
           color="#6366f1"
           handleClassName="!w-2.5 !h-2.5 !rounded-sm !border-2 !border-background"
           lineClassName="!border-primary/40"
+          onResizeEnd={() => { userResizedRef.current = true; }}
         />
       )}
       {targetHandle && (
@@ -308,8 +306,10 @@ export default function NodeShell({
       </div>
       {/* nodrag/nopan/nowheel：ReactFlow 约定，带这些 class 的元素不触发节点拖拽、画布平移、滚轮缩放，
           避免在节点内滚动/选文本/操作输入框时误触画布 */}
-      <div data-node-content className="scrollbar-none nodrag nopan nowheel flex min-h-0 flex-1 flex-col gap-2 overflow-auto p-3">
-        {viewportActivated ? children : null}
+      <div data-node-content className="scrollbar-none nodrag nopan nowheel flex min-h-0 flex-1 flex-col overflow-auto">
+        <div ref={contentInnerRef} className="flex flex-col gap-2 p-3">
+          {viewportActivated ? children : null}
+        </div>
       </div>
       {sourceHandle && (
         <Handle

@@ -312,7 +312,11 @@ function useMiniAppAgentChat(projectId: string) {
   const route = searchParams.get('route') ?? '/';
 
   const [agents, setAgents] = useState<Array<{ id: string; name: string; avatar?: string; introduction?: string; suggestions?: string[] }>>([]);
-  const [agentId, setAgentId] = useState<string>('');
+  // 持久化恢复：记住该项目上次选中的 agent
+  const [agentId, setAgentId] = useState<string>(() => {
+    if (typeof window === 'undefined' || !projectId) return '';
+    try { return window.localStorage.getItem(`mini-app-agent:${projectId}`) ?? ''; } catch { return ''; }
+  });
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
@@ -322,7 +326,11 @@ function useMiniAppAgentChat(projectId: string) {
 
   // 多会话：sessions 列表 + 当前 sessionId（'' 表示新建草稿，尚未落盘）
   const [sessions, setSessions] = useState<Array<{ id: string; agentId: string; title: string; updatedAt: string }>>([]);
-  const [sessionId, setSessionId] = useState<string>('');
+  // 持久化恢复：记住该 (项目, agent) 上次选中的会话
+  const [sessionId, setSessionId] = useState<string>(() => {
+    if (typeof window === 'undefined' || !projectId || !agentId) return '';
+    try { return window.localStorage.getItem(`mini-app-agent-session:${projectId}:${agentId}`) ?? ''; } catch { return ''; }
+  });
   // sessionId 的 ref：让 loadHistory 不依赖 sessionId state，避免 sessionId 变化触发覆盖性重载
   const sessionIdRef = useRef(sessionId);
   useEffect(() => { sessionIdRef.current = sessionId; }, [sessionId]);
@@ -332,9 +340,30 @@ function useMiniAppAgentChat(projectId: string) {
     if (!projectId) return;
     sdk.miniApp.listAgents(projectId).then((r) => {
       setAgents(r.agents);
-      if (r.agents.length && !agentId) setAgentId(r.agents[0].id);
+      // 恢复的 agentId 可能已失效（被删除），不在列表里则回退到第一个
+      if (r.agents.length && (!agentId || !r.agents.some((a) => a.id === agentId))) {
+        setAgentId(r.agents[0].id);
+      }
     }).catch(() => {});
   }, [projectId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // 持久化 agentId：记录该项目上次选中的 agent
+  useEffect(() => {
+    if (!projectId || typeof window === 'undefined') return;
+    try {
+      if (agentId) window.localStorage.setItem(`mini-app-agent:${projectId}`, agentId);
+      else window.localStorage.removeItem(`mini-app-agent:${projectId}`);
+    } catch { /* ignore */ }
+  }, [projectId, agentId]);
+
+  // 持久化 sessionId：记录该 (项目, agent) 上次选中的会话
+  useEffect(() => {
+    if (!projectId || !agentId || typeof window === 'undefined') return;
+    try {
+      if (sessionId) window.localStorage.setItem(`mini-app-agent-session:${projectId}:${agentId}`, sessionId);
+      else window.localStorage.removeItem(`mini-app-agent-session:${projectId}:${agentId}`);
+    } catch { /* ignore */ }
+  }, [projectId, agentId, sessionId]);
 
   useEffect(() => {
     if (!projectId) return;
