@@ -10,9 +10,11 @@
 - 设置页面（Agent/Provider/MCP/Skill/Tool/Prompt/OutputStyle 等）
 - Workspace/Worktree 文件管理
 - 终端（xterm.js）
+- 多 CLI 会话面板（`components/cli/`，每会话 flex-layout 独立持久化）
+- SkyOffice 可视化办公空间（`features/skyoffice/`，Phaser + React）
 - i18n 国际化
 - 命令面板（cmdk）
-- Zustand 状态管理（30+ stores）
+- Zustand 状态管理（27+ stores）
 
 ## packages/server (`@agent-spaces/server`)
 

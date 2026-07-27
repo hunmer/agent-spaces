@@ -143,19 +143,27 @@ export default function PromptPickerDialog({ open, scene = 'text', onClose, onPi
                     {refImages.length > 0 && (
                       <div className="flex flex-wrap gap-1">
                         {refImages.map((src, i) => (
-                          <button
+                          <div
                             key={i}
-                            type="button"
+                            role="button"
+                            tabIndex={0}
                             title="点击查看大图"
                             onClick={(e) => {
                               // 阻止冒泡到卡片选中按钮，避免选中提示词并关闭弹窗
                               e.stopPropagation();
                               openMediaGallery(refImages.map((url) => ({ src: url, type: 'image' })), i);
                             }}
-                            className="h-12 w-12 shrink-0 overflow-hidden rounded border border-border bg-muted transition hover:border-primary"
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                openMediaGallery(refImages.map((url) => ({ src: url, type: 'image' })), i);
+                              }
+                            }}
+                            className="h-12 w-12 shrink-0 cursor-pointer overflow-hidden rounded border border-border bg-muted transition hover:border-primary"
                           >
                             <img src={src} alt={`参考图 ${i + 1}`} className="h-full w-full object-cover" />
-                          </button>
+                          </div>
                         ))}
                       </div>
                     )}

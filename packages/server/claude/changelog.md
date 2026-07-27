@@ -2,6 +2,15 @@
 
 > 本文件只记录 Server 模块 AI 上下文的更新历史，最近 5 条倒序排列。
 
+## 2026-07-27 — Gemini CLI 运行时 + TS LSP WS 下线 + mini-app 迭代
+
+- **Gemini CLI 运行时** (`adapters/gemini-cli-runtime.ts`，422 行): 新增 `GeminiCliRuntime`，spawn `gemini-cli` 子进程 + stdout JSON 事件解析、附件上下文、权限模式、resume 会话；`AgentRuntimeKind` 新增 `'gemini-cli'`；测试 `adapters/gemini-cli-runtime.test.ts`。新建 `claude/gemini-cli-runtime.md` 详情文件。
+- **RUNTIME_DESCRIPTORS 扩张**: 从 9 个扩至 **20 个 id**（9 独立 runtimeKind + 11 别名复用：openclaw/omp/opencode/qwen/cursor/kimi/kiro/kilocode/antigravity/xiaomimimo/githubcopilot）。更新 `claude/ai-adapters.md`（descriptor 列表 + Gemini CLI 章节）。
+- **TypeScript LSP WS 下线**: `/ws/lsp/typescript` 端点从 `app.ts` 移除，`ws/typescript-lsp.ts` 删除；upgrade dispatcher 五路 → 四路。更新 `CLAUDE.md`（SkyOffice 约定）、`claude/public-interfaces.md`（WS 表移除 LSP 行）、`claude/module-responsibilities.md`（ws 表移除 typescript-lsp）。
+- **mini-app 子系统迭代**: 新增 `ws/mini-app-channels.ts`（`miniApp.taskStop` 事件，前端凭 taskId 中断 mini-app agent）；`services/mini-app-services.ts` 新增 `startServicesWatcher`（app.ts 启动调用）；`services/builtin-tools/mini-app-tools.ts` 本期改动 6 次（全仓库最高）。更新 `claude/public-interfaces.md`（WS 表 +mini-app-channels）、`claude/module-responsibilities.md`（ws 表 +mini-app-channels/+html-utils）。
+- **文档修正**: `claude/public-interfaces.md` 移除 2 个虚构路由（`routes/code-favorites.ts`、`routes/task.ts` 实际不存在）；`claude/module-responsibilities.md` 修正 SkyOffice mapRoutes 描述（`packages/skyoffice-web/` 已删除）。
+- 更新文件：`CLAUDE.md`（功能描述/约定/文件索引 +gemini-cli-runtime/扫描状态）+ `claude/ai-adapters.md` + `claude/public-interfaces.md` + `claude/module-responsibilities.md` + `claude/changelog.md`；新建 `claude/gemini-cli-runtime.md`
+
 ## 2026-07-18 — 深挖 SkyOffice 房间 + Grok 协议（新增 2 个详情文件）
 
 - 精读 `skyoffice/rooms/SkyOffice.ts`（135 行，房间生命周期 + 5 类 message handler + Dispatcher 命令模式）、`rooms/schema/OfficeState.ts`（Player/Agent/ChatMessage schema）、`broadcast/Bridge.ts`（Agent 广播 → 房间状态的核心枢纽：dispatch 路由 7 种 AgentBroadcastType + 椅子占用机制 + bizRoomId↔colyseusRoomId 映射）
@@ -40,5 +49,4 @@
 - `services/chat-run.ts` + `routes/chat-run.ts`：聊天运行模块
 - 路由总数 40+ → 42；services 总数 90+ → 99
 - 更新 `CLAUDE.md`（功能描述/约定补 Team/扫描状态）、`claude/public-interfaces.md`（team/chat-run 路由）、`claude/module-responsibilities.md`（Team 子域 + chat-run）
-
 

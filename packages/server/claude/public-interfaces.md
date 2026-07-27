@@ -22,14 +22,12 @@
 | Issue | `/api/workspaces/:id/issues` | `routes/issue.ts` |
 | Command | `/api/workspaces/:id/commands` | `routes/command.ts` |
 | Agent | `/api/workspaces/:id/agents`, `/api/agents`（含 `GET /api/agents/sessions/:agentSessionId/detail` 会话详情下钻） | `routes/agent.ts` |
-| Task | `/api/workspaces/:id/tasks` | `routes/task.ts` |
 | Git | `/api/workspaces/:id/git` | `routes/git.ts` |
 | Search | `/api/workspaces/:id/search` | `routes/search.ts` |
 | Knowledge Base | `/api/workspaces/:id/knowledge-bases` | `routes/knowledge-base.ts` |
 | Worktree | `/api/workspaces/:id/worktrees` | `routes/worktree.ts` |
 | Notification | `/api/workspaces/:id/notifications` | `routes/notification.ts` |
 | Hook | `/api/workspaces/:id/hooks` | `routes/hooks.ts` |
-| Code Favorites | `/api/workspaces/:id/code-favorites` | `routes/code-favorites.ts` |
 | Workflow | `/api/workflows` | `routes/workflow.ts` |
 | Plugin | `/api/plugins` | `routes/plugin.ts` |
 | Mini App | `/api/mini-apps` | `routes/mini-apps.ts` |
@@ -73,9 +71,11 @@
 |---|---|---|
 | `/ws` | `ws/handler.ts` → handleConnection | workspaceId, token |
 | `/ws/speech` | `routes/speech-recognition.ts` → handleSpeechStream | token, configId |
-| `/ws/lsp/typescript` | `ws/typescript-lsp.ts` → handleTypeScriptLspConnection | workspaceId, token |
 | `/agent-ws` | `skyoffice/broadcast/BroadcastServer.ts` → handleUpgrade | roomId, token（SkyOffice Agent 推送：spawn/move/talk/action） |
 | `/<colyseusRoomId>` | Colyseus transport（委托自主 dispatcher） | roomId（Viewer 连接，无 token） |
+| `miniApp.taskStop` 事件 | `ws/mini-app-channels.ts` → registerMiniAppChannels | taskId（前端凭 taskId 主动中断 mini-app agent 执行） |
+
+> 注：原 `/ws/lsp/typescript`（TypeScript LSP）端点已于本期下线，`ws/typescript-lsp.ts` 文件已删除。
 
 ## 静态文件
 

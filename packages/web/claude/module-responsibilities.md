@@ -11,6 +11,7 @@
 | `workflow/` | Workflow 可视化编辑器（ReactFlow 节点） |
 | `workflows/` | Workflow 列表管理 |
 | `terminal/` | xterm.js 终端组件 |
+| `cli/` | 多 CLI 会话面板（cli-panel / cli-launcher / cli-session-list，每会话 flex-layout 独立持久化到 localStorage） |
 | `settings/` | 设置页面各子模块 |
 | `sidebar/` | 侧边栏导航 |
 | `layout/` | 布局组件（面板、分割） |
@@ -35,7 +36,7 @@
 
 44 个文件（含子目录），分三层：
 
-**顶层 store（25 个）**：
+**顶层 store（26 个）**：
 
 | Store | 职责 |
 |---|---|
@@ -59,6 +60,7 @@
 | `custom-shortcuts.ts` | 自定义快捷键 |
 | `hooks.ts` | Hook 状态 |
 | `inspector-history.ts` | Inspector 历史 |
+| `cli-sessions.ts` | 多 CLI 会话清单 + 激活项（配合 `components/cli/` 面板） |
 
 **`workflow-editor/` 子目录（12 文件）**：crud / edit / execution / execution-logs / groups / interaction / staging / types / undo-redo / validation / versions / index
 
@@ -76,3 +78,7 @@
 | `commands.ts` | 命令注册 |
 | `terminal-registry.ts` | 终端注册 |
 | `layout-templates.ts` | 布局模板 |
+| `cli-panel-layout.ts` | CLI 面板 flex-layout 持久化（每会话存 localStorage `agent-spaces:cli-panel:<id>:layout`） |
+| `runtime-cli-settings.ts` | CLI 运行时设置 |
+| `cli-icons.ts` | CLI 图标 |
+| `ui-exports.ts` | UI 组件集中导出（本期高频重构） |

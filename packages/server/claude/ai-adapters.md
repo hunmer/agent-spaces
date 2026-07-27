@@ -14,7 +14,11 @@ Server 采用**策略模式**适配多种 AI Agent SDK。`agent-runtime.ts` 定�
 | `/api/runtime/install-cli` | POST | 触发 npm/github 安装指定运行时包 |
 | `/api/runtime/check-sdk-updates` | POST | 查询 SDK 包是否有新版本 |
 
-支持的 `RuntimeDescriptor`（共 9 个）：`claude-code`、`codex`、`grok`、`gemini-cli`、`hermes`（CLI 类）；`pi`、`claude-code-sdk`、`codex-sdk`、`open-agent-sdk`（SDK 类）。`grok` 含 Windows 路径探测（`%USERPROFILE%/.grok/bin/grok.exe`）。版本来源支持 npm 包名或 GitHub repo。前端管理入口在 `web/src/components/sidebar/settings/runtime-tab.tsx`。
+支持的 `RuntimeDescriptor`（共 **20 个 id**）：
+- **9 个有独立 runtimeKind 适配器**：`claude-code`、`codex`、`grok`、`gemini-cli`、`hermes`（CLI 类）；`pi`、`claude-code-sdk`、`codex-sdk`、`open-agent-sdk`（SDK 类）。
+- **11 个别名复用既有 runtimeKind**：`openclaw`、`omp`、`opencode`、`qwen`、`cursor`、`kimi`、`kiro`、`kilocode`、`antigravity`、`xiaomimimo`、`githubcopilot`（在 descriptor 中登记命令/安装路径，但执行时映射到上述 9 个 runtimeKind 之一）。
+
+`grok` 含 Windows 路径探测（`%USERPROFILE%/.grok/bin/grok.exe`）；`gemini-cli` 版本来源 `npm:@google/gemini-cli`。版本来源支持 npm 包名或 GitHub repo。前端管理入口在 `web/src/components/sidebar/settings/runtime-tab.tsx`。
 
 ## 适配器列表
 
@@ -66,6 +70,15 @@ Server 采用**策略模式**适配多种 AI Agent SDK。`agent-runtime.ts` 定�
 - 日志前缀 `[grok:<runId>]`
 - 已在 `routes/runtime.ts` 的 `RUNTIME_DESCRIPTORS` 登记（id `'grok'`，label `'Grok CLI'`，runtimeKind `'grok'`，含 Windows `.grok/bin/grok.exe` 路径探测 + 两处 `descriptor.id === 'grok'` 特殊处理分支）
 - 测试：`src/adapters/grok-runtime.test.ts`（位于 adapters 目录，非 `test/`）
+
+### Gemini CLI Runtime (`adapters/gemini-cli-runtime.ts`)
+
+- 422 行，`GeminiCliRuntime` 实现 `AgentRuntime` 接口
+- spawn `gemini-cli` 子进程，解析 stdout JSON 事件流（含 text/thought/end/error 等事件类型，与 grok 协议风格类似）
+- 支持附件上下文准备（图片/文件作为输入上下文）
+- 支持权限模式（permissionMode）、resume 会话、maxTurns 等通用运行时参数
+- `AgentRuntimeKind` 新增 `'gemini-cli'`；已在 `RUNTIME_DESCRIPTORS` 登记（id `'gemini-cli'`，label `'Gemini CLI'`，命令 `gemini`，runtimeKind `'gemini-cli'`，版本来源 `npm:@google/gemini-cli`）
+- 测试：`src/adapters/gemini-cli-runtime.test.ts`
 
 ## 新增适配器指南
 

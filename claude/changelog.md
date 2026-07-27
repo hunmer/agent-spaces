@@ -2,6 +2,19 @@
 
 > 本文件只记录"AI 上下文索引"的生成/更新历史，最近 5 条倒序排列。
 
+## 2026-07-27 — Gemini CLI 运行时 + 多 CLI 会话面板 + TS LSP WS 下线
+
+- **背景**: 自 2026-07-18 以来共 107 个 "fix" commit，message 无信息量，需通过实际代码内容判断语义。本期结构性新增极少，集中在三个方向。
+- **Gemini CLI 运行时** (`packages/server/src/adapters/gemini-cli-runtime.ts`，422 行): 新增 `GeminiCliRuntime` 实现 `AgentRuntime` 接口，spawn `gemini-cli` 子进程 + stdout JSON 事件解析、附件上下文准备、权限模式、resume 会话；`AgentRuntimeKind` 新增 `'gemini-cli'`；测试 `adapters/gemini-cli-runtime.test.ts`。至此 CLI 适配器覆盖 claude-code/codex/grok/hermes/pi/gemini-cli。
+- **`RUNTIME_DESCRIPTORS` 扩张** (`routes/runtime.ts`): 从原 9 个 descriptor 扩至 **20 个 id**——9 个有独立 `runtimeKind` 适配器（claude-code/codex/grok/gemini-cli/hermes/pi/claude-code-sdk/codex-sdk/open-agent-sdk）+ **11 个别名复用既有 runtimeKind**（openclaw/omp/opencode/qwen/cursor/kimi/kiro/kilocode/antigravity/xiaomimimo/githubcopilot）。
+- **多 CLI 会话面板** (`packages/web/src/components/cli/`): 全新功能。`cli-panel.tsx` + `cli-launcher.tsx` + `cli-session-list.tsx` + `stores/cli-sessions.ts` + `lib/cli-panel-layout.ts` + `lib/runtime-cli-settings.ts` + `lib/cli-icons.ts` + `locales/{en,zh}/cli.json`。每会话的 flex-layout 独立持久化到 localStorage（`agent-spaces:cli-panel:<id>:layout`）。
+- **TypeScript LSP WebSocket 下线**: `/ws/lsp/typescript` 端点已从 `app.ts` 移除，`ws/typescript-lsp.ts` 文件已删除。原五路 upgrade dispatcher 变为四路（`/ws`、`/ws/speech`、`/agent-ws` + Colyseus 委托）。
+- **Mini-app 子系统迭代**: `ws/mini-app-channels.ts`（新增 `miniApp.taskStop` 事件，前端凭 taskId 主动中断 mini-app agent 执行）；`services/mini-app-services.ts` 新增 `startServicesWatcher`（app.ts 启动调用，服务文件热监听）；`services/builtin-tools/mini-app-tools.ts` 本期改动 6 次（全仓库最高）。
+- **已清理模块**: `packages/tauri`（原疑似废弃，本期确认已删除）、`packages/skyoffice-web`（原空壳占位，本期确认已删除）。
+- **文档修正**: server `claude/public-interfaces.md` 移除过期 `/ws/lsp/typescript` 行 + 2 个虚构路由（`routes/code-favorites.ts` `routes/task.ts` 实际不存在）。
+- 更新文件：根 `CLAUDE.md`（模块索引移除 skyoffice-web、扫描状态）+ `claude/changelog.md` + `claude/overview.md` + `claude/module-responsibilities.md`；server `CLAUDE.md` + `claude/ai-adapters.md` + `claude/public-interfaces.md` + `claude/module-responsibilities.md` + `claude/changelog.md`；web `CLAUDE.md` + `claude/module-responsibilities.md` + `claude/changelog.md`
+- **未改源码**: 本次仅同步文档，无源码变更。
+
 ## 2026-07-18 — SkyOffice 模块合并 + Grok 运行时
 
 - **背景**: 自 2026-07-16 以来，SkyOffice（多 Agent 可视化办公空间，Colyseus 房间服务）从独立仓库迁移并深度合并进主后端单进程；新增 Grok 运行时适配器
@@ -40,15 +53,4 @@
 - **sdk**: 新增 `modules/team.ts`（`createTeamApi`，团队/成员/消息/收件箱/运行时）；模块 39 → 40
 - **web**: 新增 `app/teams/page.tsx` + `components/teams/`（8 文件）；`components/chat/`（61 文件）与 `components/sidebar/`（55 文件）大幅重构；locales 新增 teams.json
 - 更新文件：根 `CLAUDE.md`（功能描述/扫描状态）、`claude/changelog.md`；server `CLAUDE.md` + `claude/public-interfaces.md` + `claude/module-responsibilities.md` + `claude/changelog.md`；web `CLAUDE.md` + `claude/public-interfaces.md` + `claude/module-responsibilities.md` + `claude/changelog.md`；sdk `CLAUDE.md` + `claude/overview.md` + `claude/changelog.md`；shared `CLAUDE.md` + `claude/overview.md` + `claude/changelog.md`
-
-## 2026-07-06 — 增量更新（Runtime 管理 + Issue 系统 + Notification Hub）
-
-- **server**: 新增 `routes/runtime.ts`（CLI 发现 / SDK 安装 / 版本检测，挂载于 `/api/runtime`，定义 8 个 `RuntimeDescriptor`：claude-code/codex/gemini-cli/hermes/pi/claude-code-sdk/codex-sdk/open-agent-sdk）
-- **server**: `adapters/claude-code-runtime/` 成熟为独立子模块（adapter-pool / anthropic-bridge / protocol-converter / message-format / sdk-config）
-- **server**: `services/notification-hub/` 多通道推送成型（wechat-adapter / lark-adapter / bot-agent / bot-commands）
-- **server**: Issue 系统闭环（`services/issue.ts` + `issue-comment.ts` + `issue-retry.ts` + `agents/issue-agent-runner.ts` + `storage/issue-store.ts`）
-- **web**: 新增 `components/issue/`（10 文件：列表/详情/评论/工作流面板）、`components/home/usage-dashboard*`（用量仪表盘 + 会话详情对话框）
-- **shared**: `types/issue.ts` 定型（IssueStatus / Issue / IssueComment / CreateIssueInput）
-- **sdk**: `issue` 模块扩至 11 方法（CRUD + start/resume/continue/interrupt + 评论管理）
-- 更新文件：根 `CLAUDE.md` 扫描状态、`claude/changelog.md`、`claude/module-responsibilities.md`、`claude/public-interfaces.md`；server `CLAUDE.md`、`claude/ai-adapters.md`、`claude/changelog.md`、`claude/public-interfaces.md`；web `CLAUDE.md`、`claude/public-interfaces.md`、`claude/changelog.md`；shared/sdk/templates 各 `claude/changelog.md`
 

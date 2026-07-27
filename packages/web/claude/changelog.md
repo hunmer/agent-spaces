@@ -2,6 +2,15 @@
 
 > 本文件只记录 Web 模块 AI 上下文的更新历史，最近 5 条倒序排列。
 
+## 2026-07-27 — 多 CLI 会话面板 + 增量核对
+
+- **多 CLI 会话面板**（全新功能）: 新增 `components/cli/`（cli-panel / cli-launcher / cli-session-list）+ `stores/cli-sessions.ts`（会话清单 + 激活项）+ `lib/cli-panel-layout.ts`（每会话 flex-layout 持久化到 localStorage `agent-spaces:cli-panel:<id>:layout`）+ `lib/runtime-cli-settings.ts` + `lib/cli-icons.ts` + `locales/{en,zh}/cli.json`。
+- **组件目录核对**: 确认 28 个子域（含本期新增 `cli/`，及既有的 forgeui/reui/shadcn-space/viewers/timeline/composer/workflow vs workflows 单复数并存）。
+- **Store 核对**: 顶层 25 → 26（新增 `cli-sessions.ts`）；workflow-editor/ 12 + search-commands/ 7 不变；总计 44 → 45 文件。
+- **lib 高频变更**: `lib/ui-exports.ts` 本期改动 8 次（web 端最高），疑似集中导出整理。
+- **features/**: 当前仅 `skyoffice/`（Phaser+React），无新增 feature 目录；`features/skyoffice/utils/dom.ts` 为新增小工具。
+- 更新文件：`CLAUDE.md`（功能描述/约定/扫描状态）+ `claude/module-responsibilities.md`（+cli 组件目录/+cli-sessions store/+cli-* lib/+ui-exports）+ `claude/changelog.md`
+
 ## 2026-07-13 — 深挖 chat/ 架构 + 增量核对
 
 - 新增 `claude/chat-architecture.md`：`components/chat/` 43 文件全量梳理，覆盖主面板链路（ChatPanel → MessageNavigator → MessageItem → MessageParts）、消息渲染子系统（按 part.type 分发的 9 种渲染）、泛型 ChatMessageList、频道管理、Agent 管理、InlineChatPanel 内联聊天、Team 消息卡片、数据流与 Store 依赖
@@ -34,9 +43,3 @@
 - 新增 `app/notifications/page.tsx` 全局通知中心路由
 - locales en/zh 持续扩充（agent/issue/projectSettings 等近 5 次迭代高频改动）
 - 更新 `CLAUDE.md`（功能描述/约定/扫描状态）、`claude/public-interfaces.md`（补 notifications 路由）
-
-## 2026-06-27 — 初始化 Web 模块上下文
-
-- 首次生成 `CLAUDE.md` + `claude/*.md`（7 个详情文件）
-- 扫描范围：package.json、入口文件、路由、组件目录、Store 列表、lib 工具
-- 跳过：node_modules, .next, public/monaco

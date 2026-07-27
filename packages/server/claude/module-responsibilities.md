@@ -35,11 +35,12 @@
 | Claude Code | `claude-code-runtime/` (6 文件) | @anthropic-ai/claude-agent-sdk |
 | OpenAI Codex | `codex-runtime.ts`, `codex-function-tool-bridge.ts` | @openai/codex-sdk |
 | Grok | `grok-runtime.ts` | Grok CLI（spawn 子进程） |
+| Gemini CLI | `gemini-cli-runtime.ts` | Google Gemini CLI（spawn 子进程） |
 | LangChain | `langchain-runtime.ts` | @langchain/* |
 | Hermes | `hermes-runtime.ts` | 自研 |
 | Pi | `pi-runtime.ts` | @earendil-works/pi-coding-agent |
 | Open Agent SDK | `open-agent-sdk-runtime.ts` | @codeany/open-agent-sdk |
-| Agent Runtime | `agent-runtime.ts`, `agent-runtime-types.ts` | 统一接口 |
+| Agent Runtime | `agent-runtime.ts`, `agent-runtime-types.ts` | 统一接口（`AgentRuntimeKind` 8 种） |
 | Git | `git.ts` | simple-git |
 
 ## SkyOffice (skyoffice/)
@@ -50,7 +51,7 @@ Colyseus 0.15 房间服务，多 Agent 可视化办公空间。独立 tsconfig +
 |---|---|
 | `index.ts` | 入口：`mountSkyOfficeRoutes(app)` 挂 HTTP 路由、`attachSkyOffice({app,server})` 接入实时、`getColyseusUpgradeHandler()` 摘出 transport upgrade handler 供主 dispatcher 委托 |
 | `api/roomRoutes.ts` | 房间 CRUD（`/api/skyoffice/rooms`），自管 per-room token 鉴权 |
-| `api/mapRoutes.ts` | 地图数据（`/api/skyoffice/map`），跨包定位 `packages/skyoffice-web/public/assets/map/map.json` |
+| `api/mapRoutes.ts` | 地图数据（`/api/skyoffice/map`），定位地图资源（原 `packages/skyoffice-web/` 已删除，地图数据现由内置/数据目录提供） |
 | `api/auth.ts` | per-room token 签发/校验 |
 | `broadcast/BroadcastServer.ts` | Agent 广播 WS（`/agent-ws`），被动 `handleUpgrade`，不劫持 removeAllListeners |
 | `broadcast/Bridge.ts` | 广播消息桥接到 Colyseus 房间 |
@@ -83,9 +84,12 @@ Colyseus 0.15 房间服务，多 Agent 可视化办公空间。独立 tsconfig +
 | `terminal-handler.ts` | 终端 IO 转发 |
 | `agent-runner.ts` | Agent 执行流 |
 | `agent-prompt.ts` | Agent Prompt 处理 |
-| `typescript-lsp.ts` | TypeScript LSP 代理 |
+| `mini-app-channels.ts` | mini-app 任务中断通道（`miniApp.taskStop` 事件，前端凭 taskId 主动中断 mini-app agent 执行） |
 | `execution-channels.ts` | Workflow 执行通道 |
 | `message-parts.ts` | 消息分片处理 |
+| `html-utils.ts` | HTML 工具 |
+
+> 注：原 `typescript-lsp.ts`（TypeScript LSP WS 代理）已于本期删除，对应 `/ws/lsp/typescript` 端点下线。
 
 ## 存储层 (storage/)
 
