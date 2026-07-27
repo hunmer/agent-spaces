@@ -103,9 +103,9 @@ function NumberInput({
   )
 
   const handleWheel = React.useCallback(
-    (e: React.WheelEvent<HTMLInputElement>) => {
+    (e: WheelEvent) => {
       if (!wheel || disabled) return
-      e.preventDefault()
+      e.preventDefault() // 必须 non-passive 才生效，见下方 useEffect 注册
       stepBy(e.deltaY < 0 ? 1 : -1)
     },
     [wheel, disabled, stepBy],
@@ -147,11 +147,26 @@ function NumberInput({
     [commit, stepBy, onKeyDown],
   )
 
+  // 滚轮调值：React 的 onWheel 是 passive listener，preventDefault 会被忽略 →
+  // 滚轮会冒泡触发祖先容器滚动（节点表单/ReactFlow pane 出滚动条）。
+  // 改用 useEffect 注册原生 non-passive wheel listener（{ passive: false }）才能真正阻止。
+  const containerRef = React.useRef<HTMLDivElement>(null)
+  React.useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+    el.addEventListener("wheel", handleWheel, { passive: false })
+    return () => el.removeEventListener("wheel", handleWheel)
+  }, [handleWheel])
+
+  // 宽度策略：让宽度与内容解耦，避免数字位数变化撑开容器。
+  // - 外层 div 由 className 定宽（默认 w-24），去掉 w-fit。
+  // - Input 用 size={1} + min-w-0 + w-full，消除原生 input intrinsic 宽度膨胀，稳定填满容器。
   const inputEl = (
     <Input
       type="text"
       inputMode="decimal"
       role="spinbutton"
+      size={1}
       aria-valuenow={typeof value === "number" ? value : undefined}
       aria-valuemin={min}
       aria-valuemax={max}
@@ -159,25 +174,29 @@ function NumberInput({
       value={display}
       disabled={disabled}
       className={cn(
-        // 右侧留位给 + 按钮（默认有按钮时），无按钮时正常
-        hideButtons ? "h-8 text-sm" : "h-8 pr-7 text-sm",
-        className,
+        "h-full w-full min-w-0 text-sm",
+        // 有按钮时右侧留位给叠层
+        hideButtons ? "" : "pr-7",
       )}
       onBeforeInput={handleBeforeInput}
       onChange={(e) => emit(e.target.value === "" ? undefined : Number(e.target.value))}
+      onFocus={onFocus}
       onBlur={handleBlur}
       onKeyDown={handleKeyDown}
-      onWheel={handleWheel}
       {...props}
     />
   )
 
   if (hideButtons) {
-    return inputEl
+    return (
+      <div ref={containerRef} className={cn("flex h-8 w-24 items-center", className)}>
+        {inputEl}
+      </div>
+    )
   }
 
   return (
-    <div className={cn("relative inline-flex w-fit items-center", className)}>
+    <div ref={containerRef} className={cn("relative flex h-8 w-24 items-center", className)}>
       {inputEl}
       {/* 步进按钮叠在右侧，类似原生 spinner 但可点 */}
       <div className="pointer-events-none absolute inset-y-0 right-0 flex flex-col">
@@ -187,7 +206,7 @@ function NumberInput({
           aria-label="增加"
           disabled={disabled || atMax}
           onClick={() => stepBy(1)}
-          className="pointer-events-auto flex h-1/2 w-7 items-center justify-center border-l border-b border-input text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+          className="pointer-events-auto flex min-h-0 flex-1 basis-0 items-center justify-center border-l border-b border-input text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
         >
           <PlusIcon className="size-3" />
         </button>
@@ -197,7 +216,7 @@ function NumberInput({
           aria-label="减少"
           disabled={disabled || atMin}
           onClick={() => stepBy(-1)}
-          className="pointer-events-auto flex h-1/2 w-7 items-center justify-center border-l border-input text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+          className="pointer-events-auto flex min-h-0 flex-1 basis-0 items-center justify-center border-l border-input text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
         >
           <MinusIcon className="size-3" />
         </button>

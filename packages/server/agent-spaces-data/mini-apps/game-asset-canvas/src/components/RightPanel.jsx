@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   openMediaGallery, ScrollArea, Tabs, TabsList, TabsTrigger, TabsContent,
-  Crosshair, Trash2, Plus, Boxes, History, Images, Zap,
+  Crosshair, Trash2, Plus, Boxes, History, Images, Zap, CopyPlus,
 } from '@agent-spaces/ui';
 import { NODE_META, NODE_TYPES, NODE_TYPE_TO_PROCESSOR } from '../utils/constants';
 import AssetLibrary from './AssetLibrary';
@@ -63,6 +63,7 @@ export default function RightPanel({
   nodes, onSelectNode, onLocateNode, onDeleteNode,
   onAdd, onDragStartNode, onExecute,
   history, onRemoveHistory, onClearHistory, onUseImage,
+  onInsertHistory, onDragStartHistory,
   workspaceId,
 }) {
   return (
@@ -102,6 +103,8 @@ export default function RightPanel({
             onRemoveHistory={onRemoveHistory}
             onClearHistory={onClearHistory}
             onUseImage={onUseImage}
+            onInsertHistory={onInsertHistory}
+            onDragStartHistory={onDragStartHistory}
           />
         </TabsContent>
 
@@ -296,7 +299,7 @@ function NodeList({ nodes, onSelectNode, onLocateNode, onDeleteNode }) {
 }
 
 // ============ 生成记录 ============
-function HistoryList({ history, onRemoveHistory, onClearHistory, onUseImage }) {
+function HistoryList({ history, onRemoveHistory, onClearHistory, onUseImage, onInsertHistory, onDragStartHistory }) {
   return (
     <div className="flex h-full flex-col">
       {history.length > 0 && (
@@ -321,6 +324,8 @@ function HistoryList({ history, onRemoveHistory, onClearHistory, onUseImage }) {
               item={it}
               onRemove={onRemoveHistory}
               onUseImage={onUseImage}
+              onInsert={onInsertHistory}
+              onDragStart={onDragStartHistory}
             />
           ))}
         </div>
@@ -329,7 +334,7 @@ function HistoryList({ history, onRemoveHistory, onClearHistory, onUseImage }) {
   );
 }
 
-function HistoryCard({ item, onRemove, onUseImage }) {
+function HistoryCard({ item, onRemove, onUseImage, onInsert, onDragStart }) {
   const images = item.images || [];
   const cover = images[0];
   // 媒体产出（音频/视频）：渲染播放器而非图片网格，避免 broken img。
@@ -338,8 +343,13 @@ function HistoryCard({ item, onRemove, onUseImage }) {
   const isAudio = mediaType === 'audio';
   const isVideo = mediaType === 'video';
   const mediaUrls = (isAudio || isVideo) && images.length ? images : (cover ? [cover] : []);
+  const hasNodeType = !!item.nodeType && !!NODE_META[item.nodeType];
   return (
-    <div className="rounded-md border border-border p-2">
+    <div
+      className="rounded-md border border-border p-2"
+      draggable={hasNodeType}
+      onDragStart={(e) => hasNodeType && onDragStart?.(item, e)}
+    >
       <div className="mb-1 flex items-center justify-between gap-2">
         <span className="flex items-center gap-1 text-xs font-medium">
           {NODE_META[item.nodeType]?.icon} {NODE_META[item.nodeType]?.label || item.nodeType}
@@ -385,6 +395,17 @@ function HistoryCard({ item, onRemove, onUseImage }) {
             className="text-[10px] text-muted-foreground transition hover:text-primary"
           >
             用作输入
+          </button>
+        )}
+        {hasNodeType && (
+          <button
+            type="button"
+            onClick={() => onInsert?.(item)}
+            title="插入到画布（新建节点并预填历史参数）"
+            className="flex items-center gap-1 text-[10px] text-muted-foreground transition hover:text-primary"
+          >
+            <CopyPlus className="h-3 w-3" />
+            插入到画布
           </button>
         )}
         <button

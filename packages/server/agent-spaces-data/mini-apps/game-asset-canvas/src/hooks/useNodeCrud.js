@@ -6,6 +6,27 @@ import { genId, autoPosition } from '../utils/canvas-id';
 import { autoLayout } from '../utils/layout';
 import { downloadJson, serializeCanvas } from '../utils/export';
 
+// 历史记录项 → 新节点 dataPatch：
+// - 生成类节点（params 含 prompt/model 字段）预填 prompt/model
+// - 接收上游图的节点（initialData 含 uploadedImages）把历史产出图作为输入
+// - 媒体产出（audio/video）的 images 不作为图片输入（语义不符）
+export function historyToNodePatch(item) {
+  if (!item || !item.nodeType) return {};
+  const base = initialData(item.nodeType);
+  if (!base) return {};
+  const patch = {};
+  if (base.params && typeof base.params === 'object') {
+    patch.params = { ...base.params };
+    if (item.prompt && 'prompt' in base.params) patch.params.prompt = item.prompt;
+    if (item.model && 'model' in base.params) patch.params.model = item.model;
+  }
+  const isMedia = item.mediaType === 'audio' || item.mediaType === 'video';
+  if (!isMedia && item.images?.length && 'uploadedImages' in base) {
+    patch.uploadedImages = [...item.images];
+  }
+  return patch;
+}
+
 /**
  * 节点 CRUD + 定位/布局/导出 + 尺寸自适应 + 表单提交。
  * 从 Canvas.jsx 抽出（原 B5 创建/拖拽/右键 + B6 删除/定位/布局/导出 + B12 尺寸自适应/表单提交）。
@@ -121,6 +142,28 @@ export default function useNodeCrud({
     event.dataTransfer.effectAllowed = 'move';
   }, []);
 
+  // 历史记录「插入到画布」：在视口中心创建新节点，预填历史参数 + 产出图作输入
+  const handleInsertHistory = useCallback((item) => {
+    const patch = historyToNodePatch(item);
+    let position = null;
+    if (getViewportCenter && reactFlow.screenToFlowPosition) {
+      const center = getViewportCenter();
+      if (center) position = reactFlow.screenToFlowPosition(center);
+    }
+    createNodeAt(item.nodeType, position, patch);
+  }, [createNodeAt, reactFlow, getViewportCenter]);
+
+  // 历史项拖拽起始：dataTransfer 写 patch JSON，drop 时 createNodeAt(type, position, patch)
+  const handleDragStartHistory = useCallback((item, event) => {
+    const patch = historyToNodePatch(item);
+    dragTypeRef.current = item.nodeType;
+    try {
+      event.dataTransfer.setData('application/x-history-patch', JSON.stringify({ type: item.nodeType, patch }));
+    } catch {}
+    event.dataTransfer.setData('application/reactflow', item.nodeType);
+    event.dataTransfer.effectAllowed = 'move';
+  }, []);
+
   // 拖拽经过画布：必须 preventDefault 才能触发 drop
   const handleDragOver = useCallback((event) => {
     event.preventDefault();
@@ -174,7 +217,7 @@ export default function useNodeCrud({
     });
   }, [setNodes, updateNodeData]);
 
-  // 放下：区分节点类型（application/reactflow）和系统图片文件
+  // 放下：区分系统图片文件 / 历史项 / 节点类型
   const handleDrop = useCallback((event) => {
     event.preventDefault();
     if (event.dataTransfer.files?.length) {
@@ -182,10 +225,18 @@ export default function useNodeCrud({
       handleDropFiles(event.dataTransfer.files, position);
       return;
     }
+    const position = reactFlow.screenToFlowPosition({ x: event.clientX, y: event.clientY });
+    // 历史项拖拽：携带预填 patch
+    const histRaw = event.dataTransfer.getData('application/x-history-patch');
+    if (histRaw) {
+      try {
+        const { type, patch } = JSON.parse(histRaw);
+        if (type) { createNodeAt(type, position, patch); return; }
+      } catch {}
+    }
     const type = event.dataTransfer.getData('application/reactflow') || dragTypeRef.current;
     dragTypeRef.current = null;
     if (!type) return;
-    const position = reactFlow.screenToFlowPosition({ x: event.clientX, y: event.clientY });
     createNodeAt(type, position);
   }, [reactFlow, createNodeAt, handleDropFiles]);
 
@@ -302,6 +353,7 @@ export default function useNodeCrud({
     createNodeAt,
     handleAdd, handleAddAtDrop, handleAddAtMenu,
     handleDragStartNode, handleDragOver, handleDrop, handleDropFiles,
+    handleInsertHistory, handleDragStartHistory,
     handleContextMenu, handleClear,
     handleDeleteNode, focusNode, handleSelectNode, handleLocateNode,
     handleAutoLayout, handleExport,

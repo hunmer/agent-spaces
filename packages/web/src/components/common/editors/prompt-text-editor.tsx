@@ -182,7 +182,7 @@ export function PromptTextEditor({
             const list = referencesRef.current || [];
             return list
               .filter((r) => r.label.toLowerCase().includes(kw) || (r.key || '').toLowerCase().includes(kw))
-              .slice(0, 8);
+              .slice(0, 30);
           },
           command: ({ editor, range, props }) => {
             editor

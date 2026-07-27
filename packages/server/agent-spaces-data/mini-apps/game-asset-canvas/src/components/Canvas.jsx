@@ -466,6 +466,8 @@ export default function Canvas() {
           onRemoveHistory={removeHistory}
           onClearHistory={clearHistory}
           onUseImage={selection.handleUseImage}
+          onInsertHistory={crud.handleInsertHistory}
+          onDragStartHistory={crud.handleDragStartHistory}
           workspaceId={activeId}
         />
       </ResizablePanel>

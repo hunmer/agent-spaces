@@ -157,7 +157,7 @@ export function ChatPanel({
         const keyword = query.toLowerCase();
         return (mentionFiles ?? [])
           .filter((file) => `${file.path} ${file.name ?? ''}`.toLowerCase().includes(keyword))
-          .slice(0, 8)
+          .slice(0, 30)
           .map((file) => ({
             id: file.path,
             label: file.path,

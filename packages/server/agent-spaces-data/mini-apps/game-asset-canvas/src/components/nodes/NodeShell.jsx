@@ -308,7 +308,7 @@ export default function NodeShell({
       </div>
       {/* nodrag/nopan/nowheel：ReactFlow 约定，带这些 class 的元素不触发节点拖拽、画布平移、滚轮缩放，
           避免在节点内滚动/选文本/操作输入框时误触画布 */}
-      <div data-node-content className="nodrag nopan nowheel flex min-h-0 flex-1 flex-col gap-2 overflow-auto p-3">
+      <div data-node-content className="scrollbar-none nodrag nopan nowheel flex min-h-0 flex-1 flex-col gap-2 overflow-auto p-3">
         {viewportActivated ? children : null}
       </div>
       {sourceHandle && (
