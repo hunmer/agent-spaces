@@ -160,14 +160,6 @@ export default function Canvas() {
   // —— 分组操作 + overlay 移动/连线 ——
   const groupOps = useGroupOperations({ groups, nodes, edges, setGroups, setNodes, setEdges, reactFlow });
 
-  // —— Agent RPC（WS message 监听，ref 持有最新值只订阅一次）——
-  useCanvasAgentRpc({
-    nodes, edges,
-    createNodeAt: crud.createNodeAt,
-    updateNodeData, handleDeleteNode: crud.handleDeleteNode, focusNode: crud.focusNode,
-    setNodes, setEdges,
-  });
-
   // —— ReactFlow 变更回调（逻辑简单，留在编排层）——
   const onNodesChange = useCallback((changes) => {
     setNodes((prev) => applyNodeChanges(changes, prev));
@@ -293,6 +285,16 @@ export default function Canvas() {
     handleProcessLocal, handleCutout, handleCutoutCreate, handleCancelProcess, handlePromptReverse,
     handleExportImages, handleAutoSize, handleAutoSizeToContent, handleBBoxCutout, handleResetParams,
   ]);
+
+  // —— Agent RPC（WS message 监听，ref 持有最新值只订阅一次）——
+  // 放在 handleGenerate/handleGenerateMedia 解构之后（TDZ：执行回调需先声明）。
+  useCanvasAgentRpc({
+    nodes, edges,
+    createNodeAt: crud.createNodeAt,
+    updateNodeData, handleDeleteNode: crud.handleDeleteNode, focusNode: crud.focusNode,
+    setNodes, setEdges, setGroups,
+    onGenerate: handleGenerate, onGenerateMedia: handleGenerateMedia,
+  });
 
   const { decoratedNodes } = useDecoratedNodes({
     nodes, edges,

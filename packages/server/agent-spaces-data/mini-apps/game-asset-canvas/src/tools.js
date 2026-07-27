@@ -88,6 +88,7 @@ export default [
           type: 'object',
           description: '节点初始 data 字段（可选，合并到默认 data）。如 note 传 {text:"备注内容"}；textToImage 传 {params:{prompt:"...",model:"gpt-image-1",aspect:"1:1",size:"1k"}}；图像处理节点（ip*）可传 {params:{processorParams:{...}}} 覆盖处理器参数（processor 由节点类型固定，无需传）。',
         },
+        groupName: { type: 'string', description: '可选。把新建的节点归入此名称的分组（画布上的可视化 group）：同名分组不存在则自动创建，已存在则直接加入。用于把同一项目/同一角色的多个节点归类管理。' },
         focus: { type: 'boolean', description: '创建后是否聚焦/居中到该节点（默认 true）' },
       },
       required: ['type'],
@@ -117,6 +118,7 @@ export default [
           },
         },
         focusFirst: { type: 'boolean', description: '是否聚焦到首个新增节点（默认 true）' },
+        groupName: { type: 'string', description: '可选。把这批节点一起归入此名称的分组（同名分组不存在则自动创建）。用于一次性建一组相关节点并归类。' },
       },
       required: ['nodes'],
     },
@@ -218,6 +220,17 @@ export default [
     inputSchema: {
       type: 'object',
       properties: {},
+    },
+  },
+  {
+    name: 'execute_node',
+    description: '执行（生成）一个已存在于画布上的节点，等价于用户点节点上的「生成图片/编辑图片/生成配音/生成视频」按钮。用户说「帮我生成」「执行这个节点」「跑一下」时调用。仅支持生成类节点：textToImage（文字生成图片）/ editImage（编辑图片）/ textToVoice（生成配音）/ videoGenerator（生成视频）。其他类型（imageDisplay/note/图像处理/抠图等）调用会返回 ok:false。注意：本调用是异步触发，调用返回时节点处于 running 状态，产出会异步写入节点产出区与生成记录，可在画布上观察进度。',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        nodeId: { type: 'string', description: '要执行的节点 id（来自 list_nodes / get_canvas / add_node 返回值）' },
+      },
+      required: ['nodeId'],
     },
   },
 ];

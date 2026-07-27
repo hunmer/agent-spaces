@@ -1,8 +1,140 @@
 import { useEffect, useRef } from 'react';
 import { addEdge, MarkerType } from '@xyflow/react';
-import { NODE_META } from '../utils/constants';
+import { NODE_META, NODE_TYPES, WORKFLOWS, VOICE_PROVIDER_OPTIONS, DEFAULT_VIDEO_MODEL, VIDEO_ASPECT_OPTIONS, VIDEO_QUALITY_OPTIONS, VIDEO_DURATION_OPTIONS, DEFAULT_MODEL } from '../utils/constants';
 import { DEFAULT_SIZE, initialData } from '../utils/canvas-constants';
 import { genId, autoPosition } from '../utils/canvas-id';
+
+/**
+ * 把新建的节点 id 列表归入指定名称的分组。
+ * 同名分组已存在 → 追加 childNodeIds（去重）；不存在 → 创建新分组。
+ * @param {Function} setGroups
+ * @param {string} groupName 分组名（非空才生效）
+ * @param {string[]} nodeIds 要归入的节点 id
+ */
+function ensureGroupByName(setGroups, groupName, nodeIds) {
+  if (!groupName || !nodeIds?.length) return;
+  setGroups((prev) => {
+    const idx = prev.findIndex((g) => g.name === groupName);
+    if (idx >= 0) {
+      const existing = new Set(prev[idx].childNodeIds);
+      for (const id of nodeIds) existing.add(id);
+      const next = [...prev];
+      next[idx] = { ...next[idx], childNodeIds: [...existing] };
+      return next;
+    }
+    return [...prev, {
+      id: genId('group'),
+      name: groupName,
+      childNodeIds: [...nodeIds],
+      childGroupIds: [],
+      locked: false,
+      disabled: false,
+      savedNodeStates: {},
+    }];
+  });
+}
+
+/**
+ * 生成类节点的「最低可执行条件」检查 + input 组装。
+ * 复刻各节点 handleRun 的合并/默认逻辑（提示词合并、count/concurrency 兜底）。
+ * 返回 null 表示不满足执行条件（如缺提示词/缺输入图），调用方据此返回 ok:false。
+ *
+ * @param {object} node 节点对象（含 data.params / data.uploadedImages / data.images）
+ * @returns {{kind:'image'|'audio'|'video', workflowId:string, input:object} | null}
+ */
+function buildNodeExecution(node) {
+  if (!node || !node.data) return null;
+  const type = node.type;
+  const params = node.data.params || {};
+  const pickedPrompt = (params.pickedPrompt || '').toString().trim();
+  const userPrompt = (params.prompt || '').toString().trim();
+  // EditImage 用 promptHtml 富文本，但 agent 通过 update_node 写入通常走 prompt 字段；
+  // 这里只看 pickedPrompt + prompt，不强依赖 promptHtml（agent 创建的节点一般没有 promptHtml）。
+  const mergedPrompt = [pickedPrompt, userPrompt].filter(Boolean).join('\n');
+  const count = Math.max(1, Number(params.count) || 1);
+  const concurrency = Math.max(1, Math.min(count, Number(params.concurrency) || 1));
+
+  if (type === NODE_TYPES.textToImage) {
+    if (!mergedPrompt) return null;
+    return {
+      kind: 'image',
+      workflowId: WORKFLOWS.text_to_image,
+      input: {
+        prompt: mergedPrompt,
+        model: params.model || DEFAULT_MODEL,
+        aspect: params.aspect || '1:1',
+        size: params.size || '1k',
+        count, concurrency,
+      },
+    };
+  }
+  if (type === NODE_TYPES.editImage) {
+    if (!mergedPrompt) return null;
+    // 输入图：uploadedImages + 上游连线 images（合并去重，与 EditImageNode 一致）
+    const uploaded = Array.isArray(node.data.uploadedImages) ? node.data.uploadedImages : [];
+    const upstream = Array.isArray(node.data.images) ? node.data.images : [];
+    const refImages = Array.isArray(params.referenceImages) ? params.referenceImages : [];
+    const seen = new Set();
+    const allInput = [];
+    for (const url of [...refImages, ...uploaded, ...upstream]) {
+      if (!url || seen.has(url)) continue;
+      seen.add(url);
+      allInput.push(url);
+    }
+    if (!allInput.length) return null; // editImage 必须有输入图
+    return {
+      kind: 'image',
+      workflowId: WORKFLOWS.edit_image,
+      input: {
+        images: allInput.map((u) => (typeof u === 'string' && u.startsWith('http') ? u : `${window.location.origin}${u.startsWith('/') ? '' : '/'}${u}`)),
+        prompt: mergedPrompt,
+        model: params.model || DEFAULT_MODEL,
+        aspect: params.aspect || '1:1',
+        size: params.size || '1k',
+        count, concurrency,
+      },
+    };
+  }
+  if (type === NODE_TYPES.textToVoice) {
+    if (!mergedPrompt) return null;
+    return {
+      kind: 'audio',
+      workflowId: WORKFLOWS.text_to_voice,
+      input: {
+        prompt: mergedPrompt,
+        model: params.model || VOICE_PROVIDER_OPTIONS[0]?.value || 'fish-audio',
+        ...(params.voiceId ? { voiceId: params.voiceId } : {}),
+        count, concurrency,
+      },
+    };
+  }
+  if (type === NODE_TYPES.videoGenerator) {
+    if (!mergedPrompt) return null;
+    const uploaded = Array.isArray(node.data.uploadedImages) ? node.data.uploadedImages : [];
+    const upstream = Array.isArray(node.data.images) ? node.data.images : [];
+    const seen = new Set();
+    const images = [];
+    for (const url of [...uploaded, ...upstream]) {
+      if (!url || seen.has(url)) continue;
+      seen.add(url);
+      images.push(url.startsWith('http') ? url : `${window.location.origin}${url.startsWith('/') ? '' : '/'}${url}`);
+    }
+    return {
+      kind: 'video',
+      workflowId: WORKFLOWS.video_generator,
+      input: {
+        prompt: mergedPrompt,
+        model: params.model || DEFAULT_VIDEO_MODEL,
+        aspect: params.aspect || VIDEO_ASPECT_OPTIONS[0],
+        quality: params.quality || VIDEO_QUALITY_OPTIONS[0],
+        duration: params.duration || VIDEO_DURATION_OPTIONS[0],
+        images,
+        count, concurrency,
+      },
+    };
+  }
+  return null; // 非生成类节点
+}
 
 /**
  * Agent RPC 入口：服务端 src/api.js 的画布操作 tool 通过 ctx.requestClient 发来
@@ -21,11 +153,14 @@ import { genId, autoPosition } from '../utils/canvas-id';
  * @param {Function} deps.focusNode
  * @param {Function} deps.setNodes
  * @param {Function} deps.setEdges
+ * @param {Function} deps.setGroups                    分组数据 setState（用于 groupName 归组）
+ * @param {Function} deps.onGenerate                   文生图/编辑图片执行回调（handleGenerate）
+ * @param {Function} deps.onGenerateMedia              配音/视频执行回调（handleGenerateMedia）
  */
-export default function useCanvasAgentRpc({ nodes, edges, createNodeAt, updateNodeData, handleDeleteNode, focusNode, setNodes, setEdges }) {
+export default function useCanvasAgentRpc({ nodes, edges, createNodeAt, updateNodeData, handleDeleteNode, focusNode, setNodes, setEdges, setGroups, onGenerate, onGenerateMedia }) {
   // ref 持有最新值，effect 只订阅一次
-  const ctxRef = useRef({ nodes, edges, createNodeAt, updateNodeData, handleDeleteNode, focusNode, setNodes, setEdges });
-  ctxRef.current = { nodes, edges, createNodeAt, updateNodeData, handleDeleteNode, focusNode, setNodes, setEdges };
+  const ctxRef = useRef({ nodes, edges, createNodeAt, updateNodeData, handleDeleteNode, focusNode, setNodes, setEdges, setGroups, onGenerate, onGenerateMedia });
+  ctxRef.current = { nodes, edges, createNodeAt, updateNodeData, handleDeleteNode, focusNode, setNodes, setEdges, setGroups, onGenerate, onGenerateMedia };
 
   useEffect(() => {
     const AS = window.AgentSpaces;
@@ -43,7 +178,7 @@ export default function useCanvasAgentRpc({ nodes, edges, createNodeAt, updateNo
       if (!requestId || !type) return;
 
       // 每次回调读最新闭包（ref）
-      const { nodes: curNodes, edges: curEdges, createNodeAt: createFn, updateNodeData: updateFn, handleDeleteNode: deleteFn, focusNode: focusFn, setNodes: setNodesFn, setEdges: setEdgesFn } = ctxRef.current;
+      const { nodes: curNodes, edges: curEdges, createNodeAt: createFn, updateNodeData: updateFn, handleDeleteNode: deleteFn, focusNode: focusFn, setNodes: setNodesFn, setEdges: setEdgesFn, setGroups: setGroupsFn, onGenerate, onGenerateMedia } = ctxRef.current;
 
       try {
         let result;
@@ -52,6 +187,10 @@ export default function useCanvasAgentRpc({ nodes, edges, createNodeAt, updateNo
             const id = createFn(payload.type, payload.position || null, payload.data);
             if (payload.focus !== false) {
               setTimeout(() => focusFn(id), 0);
+            }
+            // 可选：归入同名分组
+            if (payload.groupName && typeof payload.groupName === 'string') {
+              ensureGroupByName(setGroupsFn, payload.groupName, [id]);
             }
             result = { ok: true, nodeId: id, position: payload.position || null };
             break;
@@ -80,6 +219,10 @@ export default function useCanvasAgentRpc({ nodes, edges, createNodeAt, updateNo
             });
             if (payload.focusFirst !== false && ids.length) {
               setTimeout(() => focusFn(ids[0]), 0);
+            }
+            // 可选：本批节点一起归入同名分组
+            if (payload.groupName && typeof payload.groupName === 'string') {
+              ensureGroupByName(setGroupsFn, payload.groupName, ids);
             }
             result = { ok: true, nodeIds: ids };
             break;
@@ -169,6 +312,58 @@ export default function useCanvasAgentRpc({ nodes, edges, createNodeAt, updateNo
               ok: true,
               nodes: curNodes.map((n) => ({ id: n.id, type: n.type, label: n.data?.label || '', position: n.position })),
               edges: curEdges.map((e) => ({ source: e.source, target: e.target })),
+            };
+            break;
+          }
+          case 'canvas.executeNode': {
+            const { nodeId } = payload;
+            if (!nodeId) throw new Error('nodeId 必填');
+            const node = curNodes.find((n) => n.id === nodeId);
+            if (!node) {
+              result = { ok: false, message: `节点不存在：${nodeId}` };
+              break;
+            }
+            // 仅生成类节点可执行（textToImage/editImage/textToVoice/videoGenerator）
+            const GENERATABLE = new Set([
+              NODE_TYPES.textToImage, NODE_TYPES.editImage,
+              NODE_TYPES.textToVoice, NODE_TYPES.videoGenerator,
+            ]);
+            if (!GENERATABLE.has(node.type)) {
+              const label = (NODE_META[node.type] && NODE_META[node.type].label) || node.type;
+              result = {
+                ok: false,
+                message: `节点 ${nodeId}（${label}）不支持执行：仅生成类节点（文字生成图片/编辑图片/生成配音/生成视频）可执行`,
+              };
+              break;
+            }
+            // 组装 input + 校验最低执行条件（缺提示词/缺输入图返回 ok:false）
+            const spec = buildNodeExecution(node);
+            if (!spec) {
+              const label = (NODE_META[node.type] && NODE_META[node.type].label) || node.type;
+              const reason = node.type === NODE_TYPES.editImage
+                ? '节点缺少输入图或提示词（编辑图片需要至少一张输入图 + 编辑指令）'
+                : '节点缺少提示词（请先用 update_node 写入 data.params.prompt）';
+              result = { ok: false, message: `节点 ${nodeId}（${label}）${reason}` };
+              break;
+            }
+            // 分流到对应执行回调（与节点 handleRun 完全等价的入口）
+            const execFn = spec.kind === 'image' ? onGenerate : onGenerateMedia;
+            if (typeof execFn !== 'function') {
+              result = { ok: false, message: '执行回调未注入（画布初始化中）' };
+              break;
+            }
+            if (spec.kind === 'image') {
+              execFn(nodeId, node.type, { workflowId: spec.workflowId, input: spec.input });
+            } else {
+              // onGenerateMedia(nodeId, nodeType, kind, {workflowId, input})
+              execFn(nodeId, node.type, spec.kind, { workflowId: spec.workflowId, input: spec.input });
+            }
+            const label = (NODE_META[node.type] && NODE_META[node.type].label) || node.type;
+            result = {
+              ok: true,
+              nodeId,
+              nodeType: node.type,
+              message: `已触发「${label}」节点 ${nodeId} 执行，生成中…产出会异步写入节点产出区与生成记录`,
             };
             break;
           }

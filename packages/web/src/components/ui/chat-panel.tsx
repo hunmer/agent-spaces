@@ -3,12 +3,19 @@
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { ChatMessageList } from '@/components/chat/chat-message-list';
+import { ComposerShell } from '@/components/composer/composer-shell';
+import { createSuggestionRenderer } from '@/components/composer/create-suggestion-renderer';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import type { WorkflowAgentTimelineItem, WorkflowAgentToolCall } from '@agent-spaces/shared';
+import type { Editor, Range } from '@tiptap/core';
+import Mention, { type MentionNodeAttrs } from '@tiptap/extension-mention';
+import Placeholder from '@tiptap/extension-placeholder';
+import StarterKit from '@tiptap/starter-kit';
+import { useEditor, useEditorState } from '@tiptap/react';
 import { motion, type Variants } from 'framer-motion';
-import { Send, X, Square, ArrowDown, Lightbulb, Pencil } from 'lucide-react';
-import { useId, useRef, useEffect, useState, type ReactNode } from 'react';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { ArrowDown, Lightbulb, Pencil, Send, X } from 'lucide-react';
+import { useEffect, useId, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 
 export interface ChatMessage {
   id: string;
@@ -26,85 +33,49 @@ export interface ChatAgentInfo {
   status?: 'online' | 'busy' | 'offline';
 }
 
+export interface ChatPanelMentionFile {
+  path: string;
+  name?: string;
+}
+
 export interface ChatPanelProps {
-  /** Close button in header */
   onClose: () => void;
-
-  /** Agent info displayed in header */
   agent: ChatAgentInfo;
-
-  /** Messages */
   messages: ChatMessage[];
-  /** Show typing indicator */
   sending?: boolean;
-
-  /** Input */
   input: string;
   onInputChange: (value: string) => void;
-  /**
-   * 发送当前输入。可传入 text 直接发送指定内容（用于消息建议的「发送」），
-   * 不传则发送当前 input。
-   */
   onSend: (text?: string) => void;
   onStop?: () => void;
   inputPlaceholder?: string;
-  /** 预设消息建议：输入框左侧展示 popover，提供「编辑（填入输入框）/发送」快捷操作 */
   suggestions?: string[];
-  /** Optional content rendered above the input row. */
+  mentionFiles?: ChatPanelMentionFile[];
   inputContext?: ReactNode;
-
-  /** Whether to render agent messages as Markdown */
   markdown?: boolean;
-  /** workspaceId passed to Markdown component */
   workspaceId?: string;
-
-  /** Extra header actions (settings, etc.) */
   headerActions?: ReactNode;
-  /** Optional custom renderer for message body */
   renderMessageContent?: (message: ChatMessage) => ReactNode;
-  /** Optional custom renderer for content below each message bubble */
   renderMessageExtras?: (message: ChatMessage) => ReactNode;
-  /** Optional delete handler. When provided, each message shows a delete action on hover. */
   onDeleteMessage?: (messageId: string) => void;
-  /** Optional custom serializer for copy action. Defaults to `message.content`. */
   serializeForCopy?: (message: ChatMessage) => string;
-  /** Optional handler for rerunning a timeline tool call. */
   onRerunTool?: (message: ChatMessage, item: Extract<WorkflowAgentTimelineItem, { type: 'tool' }>) => void;
-
-  /** Panel size */
   width?: number;
   height?: number;
   className?: string;
   messageListClassName?: string;
-  style?: React.CSSProperties;
-  /** 填充父容器：根元素 h-full、消息区 flex-1 自适应（用于侧栏 dock 场景）。 */
+  style?: CSSProperties;
   fillContainer?: boolean;
 }
 
 const containerVariants: Variants = {
-  hidden: {
-    opacity: 0,
-    y: 20,
-    scale: 0.95,
-    transformOrigin: 'bottom right',
-  },
+  hidden: { opacity: 0, y: 20, scale: 0.95, transformOrigin: 'bottom right' },
   visible: {
     opacity: 1,
     y: 0,
     scale: 1,
-    transition: {
-      type: 'spring' as const,
-      damping: 25,
-      stiffness: 300,
-      staggerChildren: 0.05,
-    },
+    transition: { type: 'spring' as const, damping: 25, stiffness: 300, staggerChildren: 0.05 },
   },
-  exit: {
-    opacity: 0,
-    y: 20,
-    scale: 0.95,
-    transition: { duration: 0.2 },
-  },
+  exit: { opacity: 0, y: 20, scale: 0.95, transition: { duration: 0.2 } },
 };
 
 function StatusDot({ status }: { status?: string }) {
@@ -112,7 +83,7 @@ function StatusDot({ status }: { status?: string }) {
     <span
       className={cn(
         'absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-background',
-        status === 'online' ? 'bg-emerald-500' : status === 'busy' ? 'bg-amber-500' : 'bg-slate-400'
+        status === 'online' ? 'bg-emerald-500' : status === 'busy' ? 'bg-amber-500' : 'bg-slate-400',
       )}
     />
   );
@@ -129,6 +100,7 @@ export function ChatPanel({
   onStop,
   inputPlaceholder,
   suggestions,
+  mentionFiles,
   inputContext,
   markdown = true,
   workspaceId,
@@ -147,50 +119,168 @@ export function ChatPanel({
 }: ChatPanelProps) {
   const widgetId = useId();
   const listRef = useRef<HTMLDivElement>(null);
+  const editorRef = useRef<Editor | null>(null);
+  const inputRef = useRef(input);
+  const submittingRef = useRef(false);
   const [showScrollBtn, setShowScrollBtn] = useState(false);
   const [suggestionsOpen, setSuggestionsOpen] = useState(false);
 
-  const isNearBottom = () => {
-    const el = listRef.current;
-    if (!el) return true;
-    return el.scrollHeight - el.scrollTop - el.clientHeight < 40;
+  const mentionExtension = useMemo(() => Mention.configure({
+    HTMLAttributes: { class: 'mention' },
+    suggestion: {
+      char: '@',
+      items: ({ query }: { query: string }) => {
+        const keyword = query.toLowerCase();
+        return (mentionFiles ?? [])
+          .filter((file) => `${file.path} ${file.name ?? ''}`.toLowerCase().includes(keyword))
+          .slice(0, 8)
+          .map((file) => ({
+            id: file.path,
+            label: file.path,
+            description: file.name ?? file.path.split('/').pop() ?? file.path,
+          }));
+      },
+      command: ({ editor, range, props }: { editor: Editor; range: Range; props: MentionNodeAttrs }) => {
+        editor.chain().focus().insertContentAt(range, [
+          { type: 'mention', attrs: props },
+          { type: 'text', text: ' ' },
+        ]).run();
+      },
+      render: () => createSuggestionRenderer(),
+    },
+  }), [mentionFiles]);
+
+  const submitInput = () => {
+    const text = inputRef.current.trim();
+    if (!text || submittingRef.current) return;
+    submittingRef.current = true;
+    onSend(text);
+    editorRef.current?.commands.clearContent();
+    onInputChange('');
+    queueMicrotask(() => { submittingRef.current = false; });
   };
+
+  const submitRef = useRef(submitInput);
+  useEffect(() => {
+    submitRef.current = submitInput;
+  });
+
+  const editor = useEditor({
+    immediatelyRender: false,
+    extensions: [
+      StarterKit,
+      Placeholder.configure({ placeholder: inputPlaceholder || `Message ${agent.name}...` }),
+      mentionExtension,
+    ],
+    editorProps: {
+      attributes: { class: 'tiptap tiptap-chat min-h-10 pr-8 outline-none' },
+      handleKeyDown: (_view, event) => {
+        if (event.key !== 'Enter' || event.shiftKey) return false;
+        if (document.querySelector('.suggestion-menu')) return false;
+        event.preventDefault();
+        submitRef.current();
+        return true;
+      },
+    },
+    content: input,
+    onUpdate: ({ editor }) => {
+      const text = editor.getText();
+      inputRef.current = text;
+      onInputChange(text);
+    },
+  }, [agent.name, inputPlaceholder, mentionExtension]);
+
+  const hasText = useEditorState({
+    editor,
+    selector: (ctx) => !!ctx.editor?.getText().trim(),
+  });
+
+  useEffect(() => {
+    editorRef.current = editor;
+  }, [editor]);
+
+  useEffect(() => {
+    inputRef.current = input;
+    if (!editor || editor.getText() === input) return;
+    editor.commands.setContent(input, { emitUpdate: false });
+  }, [editor, input]);
 
   useEffect(() => {
     const el = listRef.current;
     if (!el) return;
-    const onScroll = () => setShowScrollBtn(!isNearBottom());
+    const onScroll = () => setShowScrollBtn(el.scrollHeight - el.scrollTop - el.clientHeight >= 40);
     el.addEventListener('scroll', onScroll, { passive: true });
     return () => el.removeEventListener('scroll', onScroll);
   }, []);
 
   useEffect(() => {
-    if (!listRef.current) return;
-    listRef.current.scrollTop = listRef.current.scrollHeight;
+    if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight;
   }, []);
 
-  const scrollToBottom = () => {
-    listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: 'smooth' });
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
-      e.preventDefault();
-      onSend();
-    }
-  };
-
-  /** 将建议填入输入框（编辑模式：不发送） */
   const applySuggestion = (suggestion: string) => {
+    inputRef.current = suggestion;
     onInputChange(suggestion);
+    editor?.commands.setContent(suggestion, { emitUpdate: false });
+    editor?.commands.focus('end');
     setSuggestionsOpen(false);
   };
 
-  /** 直接发送该建议 */
   const sendSuggestion = (suggestion: string) => {
     setSuggestionsOpen(false);
     onSend(suggestion);
   };
+
+  const suggestionAction = suggestions?.length ? (
+    <Popover open={suggestionsOpen} onOpenChange={setSuggestionsOpen}>
+      <PopoverTrigger
+        render={
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-7 w-7 shrink-0 rounded-full p-0 text-muted-foreground hover:bg-background/60 hover:text-foreground"
+            aria-label="消息建议"
+          />
+        }
+      >
+        <Lightbulb className="h-4 w-4" />
+      </PopoverTrigger>
+      <PopoverContent side="top" align="start" className="w-72 p-1.5">
+        <div className="flex flex-col gap-0.5">
+          {suggestions.map((suggestion, index) => (
+            <div key={`${index}-${suggestion}`} className="group flex items-center gap-1 rounded-md px-1.5 py-1 hover:bg-accent">
+              <button
+                type="button"
+                onClick={() => applySuggestion(suggestion)}
+                className="min-w-0 flex-1 truncate text-left text-sm text-foreground"
+                title={suggestion}
+              >
+                {suggestion}
+              </button>
+              <button
+                type="button"
+                onClick={() => applySuggestion(suggestion)}
+                title="填入输入框"
+                aria-label="填入输入框"
+                className="flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-opacity hover:bg-background hover:text-foreground group-hover:opacity-100"
+              >
+                <Pencil className="size-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => sendSuggestion(suggestion)}
+                title="发送"
+                aria-label="发送"
+                className="flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-opacity hover:bg-background hover:text-primary group-hover:opacity-100"
+              >
+                <Send className="size-3.5" />
+              </button>
+            </div>
+          ))}
+        </div>
+      </PopoverContent>
+    </Popover>
+  ) : null;
 
   return (
     <motion.div
@@ -200,20 +290,19 @@ export function ChatPanel({
       animate="visible"
       exit="exit"
       className={cn(
-        "relative overflow-hidden rounded-2xl border border-border/40 bg-background/60 shadow-2xl backdrop-blur-xl ring-1 ring-white/10",
-        fillContainer && "flex h-full flex-col",
-        className
+        'relative overflow-hidden rounded-2xl border border-border/40 bg-background/60 shadow-2xl backdrop-blur-xl ring-1 ring-white/10',
+        fillContainer && 'flex h-full flex-col',
+        className,
       )}
       style={fillContainer ? { width: '100%', height: '100%', maxHeight: 'none', ...style } : { width, maxHeight: height + 220, ...style }}
     >
-      {/* Header */}
-      <div className="relative border-b border-border/40 bg-muted/30 p-4 overflow-hidden">
-        <div className="relative flex items-center justify-between z-10">
+      <div className="relative overflow-hidden border-b border-border/40 bg-muted/30 p-4">
+        <div className="relative z-10 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="relative">
               <Avatar className="h-10 w-10 border-2 border-background shadow-sm">
                 {agent.avatar && <AvatarImage src={agent.avatar} alt={agent.name} />}
-                <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
+                <AvatarFallback className="bg-primary/10 text-xs font-semibold text-primary">
                   {agent.name.slice(0, 2).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
@@ -222,33 +311,25 @@ export function ChatPanel({
             <div>
               <h3 className="text-sm font-semibold text-foreground">{agent.name}</h3>
               <div className="flex items-center gap-1.5">
-                <span className="text-xs text-muted-foreground">
-                  {agent.role || (sending ? 'typing…' : 'online')}
-                </span>
+                <span className="text-xs text-muted-foreground">{agent.role || (sending ? 'typing...' : 'online')}</span>
               </div>
             </div>
           </div>
           <div className="flex items-center gap-1">
             {headerActions}
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 rounded-full hover:bg-background/50"
-              onClick={onClose}
-            >
+            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-background/50" onClick={onClose}>
               <X className="h-4 w-4" />
             </Button>
           </div>
         </div>
       </div>
 
-      {/* Messages */}
       <div
         ref={listRef}
         className={cn(
-          "flex flex-col gap-3 overflow-y-auto p-4 bg-gradient-to-b from-background/20 to-background/40",
-          fillContainer && "min-h-0 flex-1",
-          messageListClassName
+          'flex flex-col gap-3 overflow-y-auto bg-gradient-to-b from-background/20 to-background/40 p-4',
+          fillContainer && 'min-h-0 flex-1',
+          messageListClassName,
         )}
         style={fillContainer ? undefined : { height }}
       >
@@ -258,11 +339,7 @@ export function ChatPanel({
           markdown={markdown}
           workspaceId={workspaceId}
           animated
-          renderEmpty={
-            <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
-              暂无消息
-            </div>
-          }
+          renderEmpty={<div className="flex h-full items-center justify-center text-xs text-muted-foreground">暂无消息</div>}
           renderMessageContent={renderMessageContent}
           renderMessageExtras={renderMessageExtras}
           onDeleteMessage={onDeleteMessage}
@@ -271,114 +348,28 @@ export function ChatPanel({
         />
       </div>
 
-      {/* Scroll to bottom */}
       {showScrollBtn && (
         <button
           type="button"
-          onClick={scrollToBottom}
-          className="absolute bottom-20 right-4 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-background/80 shadow-lg border border-border/40 backdrop-blur-sm hover:bg-background transition-colors"
+          onClick={() => listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: 'smooth' })}
+          className="absolute bottom-20 right-4 z-10 flex h-8 w-8 items-center justify-center rounded-full border border-border/40 bg-background/80 shadow-lg backdrop-blur-sm transition-colors hover:bg-background"
         >
           <ArrowDown className="h-4 w-4 text-muted-foreground" />
         </button>
       )}
 
-      {/* Input */}
       <div className="border-t border-border/40 bg-background/60 p-3 backdrop-blur-md">
         {inputContext ? <div className="mb-2">{inputContext}</div> : null}
-        <form
-          className="relative flex items-center gap-2"
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (sending) {
-              onStop?.();
-              return;
-            }
-            onSend();
-          }}
-        >
-          {suggestions && suggestions.length > 0 && (
-            <Popover open={suggestionsOpen} onOpenChange={setSuggestionsOpen}>
-              <PopoverTrigger
-                render={
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="h-10 w-10 shrink-0 rounded-full text-muted-foreground hover:bg-background/60 hover:text-foreground"
-                    aria-label="消息建议"
-                  />
-                }
-              >
-                <Lightbulb className="h-5 w-5" />
-              </PopoverTrigger>
-              <PopoverContent side="top" align="start" className="w-72 p-1.5">
-                <div className="flex flex-col gap-0.5">
-                  {suggestions.map((suggestion, index) => (
-                    <div
-                      key={`${index}-${suggestion}`}
-                      className="group flex items-center gap-1 rounded-md px-1.5 py-1 hover:bg-accent"
-                    >
-                      <button
-                        type="button"
-                        onClick={() => applySuggestion(suggestion)}
-                        className="min-w-0 flex-1 truncate text-left text-sm text-foreground"
-                        title={suggestion}
-                      >
-                        {suggestion}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => applySuggestion(suggestion)}
-                        title="填入输入框"
-                        aria-label="填入输入框"
-                        className="flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-opacity hover:bg-background hover:text-foreground group-hover:opacity-100"
-                      >
-                        <Pencil className="size-3.5" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => sendSuggestion(suggestion)}
-                        title="发送"
-                        aria-label="发送"
-                        className="flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-opacity hover:bg-background hover:text-primary group-hover:opacity-100"
-                      >
-                        <Send className="size-3.5" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </PopoverContent>
-            </Popover>
-          )}
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => onInputChange(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder={inputPlaceholder || `Message ${agent.name}...`}
-            className="flex-1 rounded-full border border-border/40 bg-background/50 px-4 py-2.5 text-sm outline-none transition-all placeholder:text-muted-foreground focus:border-primary/50 focus:bg-background focus:ring-2 focus:ring-primary/10"
-          />
-          <Button
-            type="submit"
-            size={sending ? 'sm' : 'icon'}
-            className={cn(
-              'h-10 rounded-full text-primary-foreground shadow-lg transition-transform hover:scale-105 cursor-pointer',
-              sending
-                ? 'w-auto gap-1.5 bg-destructive px-4 hover:bg-destructive/90'
-                : 'w-10 bg-primary hover:shadow-primary/25'
-            )}
-            disabled={!sending && !input.trim()}
-          >
-            {sending ? (
-              <>
-                <Square className="h-3.5 w-3.5 fill-current" />
-                <span className="text-xs font-medium">停止</span>
-              </>
-            ) : (
-              <Send className="h-4 w-4" />
-            )}
-          </Button>
-        </form>
+        <ComposerShell
+          editor={editor}
+          canSubmit={Boolean(hasText)}
+          contextLength={0}
+          onSubmit={submitInput}
+          onStop={onStop}
+          isProcessing={sending}
+          actions={suggestionAction}
+          className="[&_.mention]:rounded [&_.mention]:bg-primary/10 [&_.mention]:px-1 [&_.mention]:text-primary [&_.tiptap-chat]:text-sm [&_.tiptap-chat]:leading-6 [&_.tiptap-chat_p]:my-0"
+        />
       </div>
     </motion.div>
   );

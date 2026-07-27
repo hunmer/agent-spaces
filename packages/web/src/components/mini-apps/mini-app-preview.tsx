@@ -19,7 +19,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { AvatarGroup } from '@/components/ui/avatar-group';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ChatPanel, type ChatMessage } from '@/components/ui/chat-panel';
+import { ChatPanel, type ChatMessage, type ChatPanelMentionFile } from '@/components/ui/chat-panel';
 import { PanelRightOpen, FilesIcon, Loader2, Search, Sparkles, Settings2, Settings, Eraser, Smartphone, Monitor, Tablet, Info, AlertTriangle, MessageSquareText, UploadIcon } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
@@ -28,6 +28,9 @@ import { MINI_APP_HIDDEN_FIELDS, type AgentPreset } from '@/components/sidebar/a
 import { miniAppConfigToAgentPreset, agentPresetToMiniAppConfig } from './mini-app-agent-adapter';
 import { MiniAppRenderer, type MiniAppTaskEvent } from './mini-app-renderer';
 import { CommonEditorPanel } from '@/components/editor/editor-panel';
+import { CommonCodeEditor } from '@/components/editor/common-code-editor';
+import { type OpenFile } from '@/stores/editor';
+import { getModel, getModelUri, getOrCreateModel } from '@/lib/monaco-models';
 import { PluginIcon } from '@/components/workflow/workflow-plugin-icon';
 import { WorkflowPluginConfigDialog } from '@/components/workflow/workflow-plugin-config-dialog';
 import { WorkflowPluginsDialog } from '@/components/workflow/workflow-plugins-dialog';
@@ -243,6 +246,18 @@ function miniAppToolCallsToTimeline(toolCalls?: Array<{ name: string; input: unk
   })) ?? [];
 }
 
+function flattenAgentFiles(nodes: FileNode[]): ChatPanelMentionFile[] {
+  const files: ChatPanelMentionFile[] = [];
+  const walk = (items: FileNode[]) => {
+    for (const item of items) {
+      if (item.type === 'file') files.push({ path: item.path, name: item.name });
+      if (item.children) walk(item.children);
+    }
+  };
+  walk(nodes);
+  return files;
+}
+
 /** Mini-app Agent 对话逻辑（popover 与 dock 共享同一份会话状态）。 */
 function useMiniAppAgentChat(projectId: string) {
   const searchParams = useSearchParams();
@@ -254,6 +269,7 @@ function useMiniAppAgentChat(projectId: string) {
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const [agentFilesEnabled, setAgentFilesEnabled] = useState(false);
+  const [agentFileMentions, setAgentFileMentions] = useState<ChatPanelMentionFile[]>([]);
   const abortRef = useRef<AbortController | null>(null);
 
   // session-id：sessionStorage，同 tab reload 复用
@@ -280,6 +296,22 @@ function useMiniAppAgentChat(projectId: string) {
       .then((project) => setAgentFilesEnabled(project.agentPermissions?.includes('Files') === true))
       .catch(() => setAgentFilesEnabled(false));
   }, [projectId]);
+
+  useEffect(() => {
+    if (!projectId || !agentFilesEnabled) {
+      setAgentFileMentions([]);
+      return;
+    }
+    let cancelled = false;
+    sdk.miniApp.getAgentFilesTree(projectId, '', 10, 'preview')
+      .then((tree) => {
+        if (!cancelled) setAgentFileMentions(flattenAgentFiles(tree));
+      })
+      .catch(() => {
+        if (!cancelled) setAgentFileMentions([]);
+      });
+    return () => { cancelled = true; };
+  }, [projectId, agentFilesEnabled]);
 
   // agent 变化 → 拉历史
   const loadHistory = useCallback(async () => {
@@ -406,6 +438,7 @@ function useMiniAppAgentChat(projectId: string) {
     current, suggestions,
     projectId,
     agentFilesEnabled,
+    agentFileMentions,
     loadHistory,
   };
 }
@@ -463,9 +496,13 @@ function MiniAppAgentDialogs({ projectId, chat }: { projectId: string; chat: Ret
   );
 }
 
-function MiniAppAgentFilesPopover({ projectId }: { projectId: string }) {
+function MiniAppAgentFilesDialog({ projectId }: { projectId: string }) {
   const [tree, setTree] = useState<FileNode[]>([]);
   const [loading, setLoading] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [openFiles, setOpenFiles] = useState<OpenFile[]>([]);
+  const [modifiedFileContents, setModifiedFileContents] = useState<Record<string, string>>({});
+  const [activeFilePath, setActiveFilePath] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const reloadTree = useCallback(async () => {
@@ -486,14 +523,72 @@ function MiniAppAgentFilesPopover({ projectId }: { projectId: string }) {
     await reloadTree();
   }, [projectId, reloadTree]);
 
+  const openFile = useCallback(async (path: string) => {
+    const existing = openFiles.find((file) => file.path === path);
+    if (existing) {
+      setActiveFilePath(path);
+      return;
+    }
+
+    const { content } = await sdk.miniApp.readAgentFile(projectId, path, 'preview');
+    setOpenFiles((prev) => [...prev, { path, name: path.split('/').pop() || path, content, modified: false }]);
+    setActiveFilePath(path);
+  }, [openFiles, projectId]);
+
+  const activeFile = useMemo(
+    () => openFiles.find((file) => file.path === activeFilePath),
+    [activeFilePath, openFiles],
+  );
+  const activeContent = activeFile ? modifiedFileContents[activeFile.path] ?? activeFile.content : '';
+  const modelPath = activeFilePath
+    ? getModelUri(`mini-app-preview-agent-files:${projectId}`, activeFilePath).toString()
+    : undefined;
+
+  const handleChange = useCallback((path: string, content: string) => {
+    setOpenFiles((prev) => prev.map((file) => (
+      file.path === path ? { ...file, modified: file.content.replace(/\r\n?/g, '\n') !== content.replace(/\r\n?/g, '\n') } : file
+    )));
+    setModifiedFileContents((prev) => {
+      const file = openFiles.find((item) => item.path === path);
+      if (!file) return prev;
+      const next = { ...prev };
+      if (file.content.replace(/\r\n?/g, '\n') === content.replace(/\r\n?/g, '\n')) delete next[path];
+      else next[path] = content;
+      return next;
+    });
+  }, [openFiles]);
+
+  const handleSave = useCallback(async () => {
+    if (!activeFilePath || !activeFile) return;
+    const content = modifiedFileContents[activeFilePath] ?? activeFile.content;
+    await sdk.miniApp.writeAgentFile(projectId, activeFilePath, content, 'preview');
+    setOpenFiles((prev) => prev.map((file) => (
+      file.path === activeFilePath ? { ...file, content, modified: false } : file
+    )));
+    setModifiedFileContents((prev) => {
+      const next = { ...prev };
+      delete next[activeFilePath];
+      return next;
+    });
+    await reloadTree();
+  }, [activeFile, activeFilePath, modifiedFileContents, projectId, reloadTree]);
+
+  const handleRefreshActiveFile = useCallback(async () => {
+    if (!activeFilePath || activeFile?.modified) return;
+    const { content } = await sdk.miniApp.readAgentFile(projectId, activeFilePath, 'preview');
+    setOpenFiles((prev) => prev.map((file) => (
+      file.path === activeFilePath ? { ...file, content } : file
+    )));
+  }, [activeFile?.modified, activeFilePath, projectId]);
+
   const api = useMemo(() => ({
     tree,
     treeLoading: loading,
     loadingDirs: new Set<string>(),
-    openFiles: [],
+    openFiles,
     loadTree: reloadTree,
     loadDirectory: reloadTree,
-    openFile: async (_path: string) => {},
+    openFile,
     searchFiles: async (query: string) => {
       const lower = query.toLowerCase();
       const results: FileNode[] = [];
@@ -520,17 +615,28 @@ function MiniAppAgentFilesPopover({ projectId }: { projectId: string }) {
     },
     copyPath: async (_srcPath: string, _destPath: string) => {},
     uploadFiles,
-  }), [loading, projectId, reloadTree, tree, uploadFiles]);
+  }), [loading, openFile, openFiles, projectId, reloadTree, tree, uploadFiles]);
 
   return (
-    <Popover onOpenChange={(open) => { if (open) void reloadTree(); }}>
-      <PopoverTrigger render={<Button type="button" variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-background/50" title="agent_files/preview" aria-label="agent_files/preview" />}>
+    <>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        className="h-8 w-8 rounded-full hover:bg-background/50"
+        title="agent_files/preview"
+        aria-label="agent_files/preview"
+        onClick={() => setOpen(true)}
+      >
         <FilesIcon className="h-4 w-4" />
-      </PopoverTrigger>
-      <PopoverContent align="end" className="h-[420px] w-80 p-0">
-        <div className="flex h-full min-h-0 flex-col">
-          <div className="flex h-8 shrink-0 items-center gap-2 border-b px-2">
-            <div className="min-w-0 flex-1 truncate text-xs font-medium text-muted-foreground">agent_files/preview</div>
+      </Button>
+      <Dialog open={open} onOpenChange={(nextOpen) => {
+        setOpen(nextOpen);
+        if (nextOpen) void reloadTree();
+      }}>
+        <DialogContent className="flex h-[80vh] !w-[80vw] !max-w-[80vw] flex-col overflow-hidden p-0">
+          <DialogHeader className="flex h-12 shrink-0 flex-row items-center gap-2 border-b px-5 py-0">
+            <DialogTitle className="min-w-0 flex-1 truncate">agent_files/preview</DialogTitle>
             <input
               ref={inputRef}
               type="file"
@@ -545,20 +651,41 @@ function MiniAppAgentFilesPopover({ projectId }: { projectId: string }) {
             <Button type="button" variant="ghost" size="icon" className="size-7" onClick={() => inputRef.current?.click()}>
               <UploadIcon className="size-3.5" />
             </Button>
+          </DialogHeader>
+          <div className="flex min-h-0 flex-1">
+            <aside className="w-80 shrink-0 border-r">
+              <CommonEditorPanel
+                storageKey={`mini-app-preview-agent-files:${projectId}`}
+                variant="project"
+                api={api}
+                allowDragUpload
+              />
+            </aside>
+            <main className="min-w-0 flex-1">
+              <CommonCodeEditor
+                activeFile={activeFile}
+                activeFilePath={activeFilePath}
+                activeContent={activeContent}
+                modelPath={modelPath}
+                mediaType={null}
+                mediaUrl={null}
+                isCommitDiff={false}
+                commitDiffData={null}
+                pendingJump={null}
+                onChange={handleChange}
+                onSave={handleSave}
+                onRefreshActiveFile={handleRefreshActiveFile}
+                onClearPendingJump={() => undefined}
+                onGetExpectedModelPath={(path) => getModelUri(`mini-app-preview-agent-files:${projectId}`, path).path}
+                onGetModel={(path) => getModel(`mini-app-preview-agent-files:${projectId}`, path)}
+                onEnsureModel={(path, content) => getOrCreateModel(`mini-app-preview-agent-files:${projectId}`, path, content)}
+                onRegisterNavigation={() => undefined}
+              />
+            </main>
           </div>
-          <CommonEditorPanel
-            storageKey={`mini-app-preview-agent-files:${projectId}`}
-            variant="project"
-            api={api}
-            hideSidebarTabs
-            hideBottomTabs
-            showImport={false}
-            showSearchPanel={false}
-            allowDragUpload
-          />
-        </div>
-      </PopoverContent>
-    </Popover>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 
@@ -570,7 +697,9 @@ function MiniAppAgentHeaderActions({ chat }: { chat: ReturnType<typeof useMiniAp
     <>
       {agents.length > 1 && (
         <Select value={agentId} onValueChange={(v) => setAgentId(v ?? '')}>
-          <SelectTrigger className="h-7 w-[120px] text-xs"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="h-7 w-[120px] text-xs">
+            <SelectValue>{agents.find((a) => a.id === agentId)?.name ?? agentId}</SelectValue>
+          </SelectTrigger>
           <SelectContent>
             {agents.map((a) => (
               <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
@@ -578,7 +707,7 @@ function MiniAppAgentHeaderActions({ chat }: { chat: ReturnType<typeof useMiniAp
           </SelectContent>
         </Select>
       )}
-      {agentFilesEnabled ? <MiniAppAgentFilesPopover projectId={projectId} /> : null}
+      {agentFilesEnabled ? <MiniAppAgentFilesDialog projectId={projectId} /> : null}
       <Button
         type="button"
         variant="ghost"
@@ -616,7 +745,7 @@ function MiniAppAgentPopover({ projectId }: { projectId: string }) {
   // 打开时拉取一次历史
   useEffect(() => { if (open) chat.loadHistory(); }, [open, chat.loadHistory]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const { messages, input, setInput, sending, handleSend, handleStop, current, suggestions } = chat;
+  const { messages, input, setInput, sending, handleSend, handleStop, current, suggestions, agentFileMentions } = chat;
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -639,6 +768,7 @@ function MiniAppAgentPopover({ projectId }: { projectId: string }) {
           onStop={handleStop}
           inputPlaceholder={t('agent.inputPlaceholder')}
           suggestions={suggestions}
+          mentionFiles={agentFileMentions}
           headerActions={<MiniAppAgentHeaderActions chat={chat} />}
         />
       </PopoverContent>
@@ -655,7 +785,7 @@ function MiniAppAgentDock({ projectId, onClose }: { projectId: string; onClose: 
   // dock 常驻时，agent 切换即拉历史
   useEffect(() => { chat.loadHistory(); }, [chat.loadHistory]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const { messages, input, setInput, sending, handleSend, handleStop, current, suggestions } = chat;
+  const { messages, input, setInput, sending, handleSend, handleStop, current, suggestions, agentFileMentions } = chat;
 
   return (
     <div className="flex h-full w-full flex-col border-l bg-background">
@@ -676,6 +806,7 @@ function MiniAppAgentDock({ projectId, onClose }: { projectId: string; onClose: 
         onStop={handleStop}
         inputPlaceholder={t('agent.inputPlaceholder')}
         suggestions={suggestions}
+        mentionFiles={agentFileMentions}
         headerActions={<MiniAppAgentHeaderActions chat={chat} />}
       />
       <MiniAppAgentDialogs projectId={projectId} chat={chat} />

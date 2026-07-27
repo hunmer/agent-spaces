@@ -109,6 +109,9 @@ export default {
       payload.data = input.data;
     }
     payload.focus = input?.focus !== false; // 默认聚焦
+    // 可选 groupName：建完节点后归入同名分组（不存在则创建）
+    const groupName = asString(input?.groupName);
+    if (groupName) payload.groupName = groupName;
     const result = await rpc(ctx, 'canvas.addNode', payload);
     return {
       ok: true,
@@ -116,7 +119,37 @@ export default {
       type,
       typeLabel: NODE_LABELS[type] || type,
       position: result?.position,
-      message: `已新增「${NODE_LABELS[type] || type}」节点${result?.nodeId ? `（id=${result.nodeId}）` : ''}`,
+      groupName: groupName || undefined,
+      message: `已新增「${NODE_LABELS[type] || type}」节点${result?.nodeId ? `（id=${result.nodeId}）` : ''}${groupName ? `并归入分组「${groupName}」` : ''}`,
+    };
+  },
+
+  /**
+   * 执行（生成）一个画布节点。
+   *
+   * 触发节点内置的「生成」逻辑，等价于用户在节点上点「生成图片 / 编辑图片 / 生成配音 / 生成视频」按钮。
+   * 节点必须已存在，且参数（params）满足该节点的最低执行条件（如文生图必须有 prompt）。
+   *
+   * 仅支持生成类节点：textToImage / editImage / textToVoice / videoGenerator。
+   * 其他节点类型（imageDisplay/note/图像处理等）调用返回 ok:false 提示不支持。
+   *
+   * 注意：执行是异步的，本调用仅「触发」即返回（status:running），
+   * 实际产出会异步写入节点 data.output，可在生成记录或节点产出区查看。
+   *
+   * @param {object} input
+   * @param {string} input.nodeId 要执行的节点 id（必填）
+   */
+  execute_node: async (input, ctx) => {
+    const nodeId = asString(input?.nodeId);
+    if (!nodeId) return { ok: false, message: 'nodeId 必填（先 list_nodes / get_canvas 拿节点 id）' };
+    const result = await rpc(ctx, 'canvas.executeNode', { nodeId }, 10000);
+    if (result?.ok === false) return result;
+    return {
+      ok: true,
+      nodeId,
+      nodeType: result?.nodeType,
+      typeLabel: result?.nodeType ? (NODE_LABELS[result.nodeType] || result.nodeType) : undefined,
+      message: result?.message || `已触发节点 ${nodeId} 的执行`,
     };
   },
 
@@ -152,13 +185,17 @@ export default {
     const result = await rpc(ctx, 'canvas.addNodes', {
       nodes: cleaned,
       focusFirst: input?.focusFirst !== false,
+      // 可选 groupName：本次批量建的节点一起归入同名分组（不存在则创建）
+      groupName: asString(input?.groupName) || undefined,
     });
     const ids = Array.isArray(result?.nodeIds) ? result.nodeIds : [];
+    const groupName = asString(input?.groupName);
     return {
       ok: true,
       count: ids.length,
       nodeIds: ids,
-      message: `已新增 ${ids.length} 个节点：${ids.map((id) => id).join(', ')}`,
+      groupName: groupName || undefined,
+      message: `已新增 ${ids.length} 个节点：${ids.map((id) => id).join(', ')}${groupName ? `，并归入分组「${groupName}」` : ''}`,
     };
   },
 
