@@ -38,6 +38,7 @@ export default function useDecoratedNodes({
       makeOnUpdate, onGenerate, onGenerateMedia, onExportImages,
       onProcessImage, onProcessLocal, onCutout, onCutoutCreate, onCancelProcess,
       onPromptReverse, onEditImages, onAutoSize, onAutoSizeToContent, onBBoxCutout, onResetParams,
+      onAddToAssets,
     } = callbacks || {};
     return nodes.map((nd) => {
       const up = upstreamMap.get(nd.id);
@@ -93,6 +94,8 @@ export default function useDecoratedNodes({
           onResetParams: (data?.params != null && typeof data.params === 'object')
             ? () => onResetParams?.(nd.id, nd.type)
             : undefined,
+          // 添加到素材库：节点产出图右上角按钮用（节点 ImageResult 通过 data.onAddToAssets 取）
+          onAddToAssets,
         },
       };
     });

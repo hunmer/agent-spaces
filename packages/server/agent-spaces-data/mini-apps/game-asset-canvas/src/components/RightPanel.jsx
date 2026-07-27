@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   openMediaGallery, ScrollArea, Tabs, TabsList, TabsTrigger, TabsContent,
-  Crosshair, Trash2, Plus, Boxes, History, Images, Zap, CopyPlus,
+  Crosshair, Trash2, Plus, Boxes, History, Images, Zap, CopyPlus, FolderPlus,
 } from '@agent-spaces/ui';
 import { NODE_META, NODE_TYPES, NODE_TYPE_TO_PROCESSOR } from '../utils/constants';
 import AssetLibrary from './AssetLibrary';
@@ -64,6 +64,7 @@ export default function RightPanel({
   onAdd, onDragStartNode, onExecute,
   history, onRemoveHistory, onClearHistory, onUseImage,
   onInsertHistory, onDragStartHistory,
+  onAddToAssets,
   workspaceId,
 }) {
   return (
@@ -105,6 +106,7 @@ export default function RightPanel({
             onUseImage={onUseImage}
             onInsertHistory={onInsertHistory}
             onDragStartHistory={onDragStartHistory}
+            onAddToAssets={onAddToAssets}
           />
         </TabsContent>
 
@@ -299,7 +301,7 @@ function NodeList({ nodes, onSelectNode, onLocateNode, onDeleteNode }) {
 }
 
 // ============ 生成记录 ============
-function HistoryList({ history, onRemoveHistory, onClearHistory, onUseImage, onInsertHistory, onDragStartHistory }) {
+function HistoryList({ history, onRemoveHistory, onClearHistory, onUseImage, onInsertHistory, onDragStartHistory, onAddToAssets }) {
   return (
     <div className="flex h-full flex-col">
       {history.length > 0 && (
@@ -326,6 +328,7 @@ function HistoryList({ history, onRemoveHistory, onClearHistory, onUseImage, onI
               onUseImage={onUseImage}
               onInsert={onInsertHistory}
               onDragStart={onDragStartHistory}
+              onAddToAssets={onAddToAssets}
             />
           ))}
         </div>
@@ -334,7 +337,7 @@ function HistoryList({ history, onRemoveHistory, onClearHistory, onUseImage, onI
   );
 }
 
-function HistoryCard({ item, onRemove, onUseImage, onInsert, onDragStart }) {
+function HistoryCard({ item, onRemove, onUseImage, onInsert, onDragStart, onAddToAssets }) {
   const images = item.images || [];
   const cover = images[0];
   // 媒体产出（音频/视频）：渲染播放器而非图片网格，避免 broken img。
@@ -376,14 +379,24 @@ function HistoryCard({ item, onRemove, onUseImage, onInsert, onDragStart }) {
           style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(56px, 1fr))' }}
         >
           {images.map((url, i) => (
-            <button
-              type="button"
-              key={i}
-              onClick={() => openMediaGallery(images.map((src) => ({ src, type: 'image' })), i)}
-              className="block aspect-square overflow-hidden rounded border border-border"
-            >
-              <img src={url} alt="" className="h-full w-full object-cover transition hover:opacity-80" />
-            </button>
+            <div key={i} className="relative block aspect-square overflow-visible rounded border border-border">
+              <button
+                type="button"
+                onClick={() => openMediaGallery(images.map((src) => ({ src, type: 'image' })), i)}
+                className="block h-full w-full overflow-hidden rounded"
+              >
+                <img src={url} alt="" className="h-full w-full object-cover transition hover:opacity-80" />
+              </button>
+              {/* 右上角：把该单张图片添加到素材库分组 */}
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); onAddToAssets?.([url]); }}
+                title="添加到素材库"
+                className="absolute -right-1 -top-1 z-20 flex size-5 items-center justify-center rounded-full border border-border bg-background text-muted-foreground shadow-sm transition hover:bg-primary hover:text-primary-foreground"
+              >
+                <FolderPlus className="h-3 w-3" />
+              </button>
+            </div>
           ))}
         </div>
       )}
@@ -395,6 +408,17 @@ function HistoryCard({ item, onRemove, onUseImage, onInsert, onDragStart }) {
             className="text-[10px] text-muted-foreground transition hover:text-primary"
           >
             用作输入
+          </button>
+        )}
+        {images.length > 0 && (
+          <button
+            type="button"
+            onClick={() => onAddToAssets?.(images)}
+            title="把本条记录的所有输出图片添加到素材库分组"
+            className="flex items-center gap-1 text-[10px] text-muted-foreground transition hover:text-primary"
+          >
+            <FolderPlus className="h-3 w-3" />
+            添加到素材库
           </button>
         )}
         {hasNodeType && (

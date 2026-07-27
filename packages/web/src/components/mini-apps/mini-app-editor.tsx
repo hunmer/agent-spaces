@@ -20,7 +20,7 @@ import { FileIconImg, FolderIconImg } from '@/components/editor/file-icon';
 import { MonacoCodeEditor as MonacoEditor } from '@/components/editor/monaco-code-editor';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { copyToClipboard } from '@/lib/utils';
+import { copyToClipboard, isSkippableAsset } from '@/lib/utils';
 
 const FILE_POLL_INTERVAL_MS = 2000;
 
@@ -95,6 +95,9 @@ function areFileListsEqual(left: string[], right: string[]) {
 async function readFiles(projectId: string, files: string[]): Promise<Record<string, string>> {
     const contents: Record<string, string> = {};
     for (const file of files) {
+        // 跳过二进制/资源文件：utf-8 读取无意义且会触发大体积 fetch（wasm 38MB、pck 12MB、glb 等），
+        // 这些运行时资源不会被源码 import 解析，按需懒加载即可。
+        if (isSkippableAsset(file)) continue;
         try {
             const { content } = await sdk.miniApp.readFile(projectId, file);
             contents[file] = content;

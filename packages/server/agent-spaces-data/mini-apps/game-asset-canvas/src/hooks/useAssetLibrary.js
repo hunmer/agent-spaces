@@ -89,6 +89,16 @@ export default function useAssetLibrary(workspaceId) {
     });
   }, [workspaceId]);
 
+  // 移动资产到另一分类（原子操作：源删除 + 目标追加，服务端按 url 去重）
+  const moveAsset = useCallback(async (fromCategoryId, assetId, toCategoryId) => {
+    return window.AgentSpaces?.invokeService?.('move_asset', {
+      workspaceId,
+      fromCategoryId,
+      assetId,
+      toCategoryId,
+    });
+  }, [workspaceId]);
+
   // 上传文件并 addAsset：对每个 File 调 window.AgentSpaces.uploadFile 拿 http URL，
   // 上传成功后写入对应分类。串行执行（性能足够，并发优化见 handoff 后续）。
   // 抛错不中断后续文件，单个失败仅跳过。
@@ -128,6 +138,7 @@ export default function useAssetLibrary(workspaceId) {
     deleteCategory,
     addAsset,
     removeAsset,
+    moveAsset,
     uploadFiles,
     uploadingCount,
   };

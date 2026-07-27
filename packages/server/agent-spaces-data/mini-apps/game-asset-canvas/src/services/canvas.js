@@ -230,15 +230,17 @@ export default {
   },
 
   // 新增资产到指定分类（原子追加到分类 assets 头部，限制单分类上限）
+  // 去重：同分类下 url 已存在则跳过，返回 { ok:false, duplicated:true }
   add_asset: ({ workspaceId, categoryId, asset }, ctx) => {
     if (!asset || !asset.url) return { ok: false };
     const lib = readAssetLibrary(ctx, workspaceId);
     const next = {
-      categories: lib.categories.map((c) =>
-        c.id === categoryId
-          ? { ...c, assets: [asset, ...(c.assets || [])].slice(0, ASSET_MAX_PER_CATEGORY) }
-          : c,
-      ),
+      categories: lib.categories.map((c) => {
+        if (c.id !== categoryId) return c;
+        const assets = c.assets || [];
+        if (assets.some((a) => a.url === asset.url)) return c; // url 已存在，跳过
+        return { ...c, assets: [asset, ...assets].slice(0, ASSET_MAX_PER_CATEGORY) };
+      }),
     };
     ctx.writeConfig(assetLibPath(workspaceId), next);
     return next;
@@ -253,6 +255,33 @@ export default {
           ? { ...c, assets: (c.assets || []).filter((a) => a.id !== assetId) }
           : c,
       ),
+    };
+    ctx.writeConfig(assetLibPath(workspaceId), next);
+    return next;
+  },
+
+  // 移动资产到另一分类（原子：源分类删除 + 目标分类追加，目标已存在同 url 则仅删源）
+  move_asset: ({ workspaceId, fromCategoryId, assetId, toCategoryId }, ctx) => {
+    if (!fromCategoryId || !toCategoryId || fromCategoryId === toCategoryId) return readAssetLibrary(ctx, workspaceId);
+    const lib = readAssetLibrary(ctx, workspaceId);
+    let moved = null;
+    const without = lib.categories.map((c) => {
+      if (c.id !== fromCategoryId) return c;
+      const assets = c.assets || [];
+      moved = assets.find((a) => a.id === assetId) || null;
+      return { ...c, assets: assets.filter((a) => a.id !== assetId) };
+    });
+    if (!moved) {
+      ctx.writeConfig(assetLibPath(workspaceId), { categories: without });
+      return { categories: without };
+    }
+    const next = {
+      categories: without.map((c) => {
+        if (c.id !== toCategoryId) return c;
+        const assets = c.assets || [];
+        if (assets.some((a) => a.url === moved.url)) return c; // 目标已存在同 url，跳过
+        return { ...c, assets: [moved, ...assets].slice(0, ASSET_MAX_PER_CATEGORY) };
+      }),
     };
     ctx.writeConfig(assetLibPath(workspaceId), next);
     return next;

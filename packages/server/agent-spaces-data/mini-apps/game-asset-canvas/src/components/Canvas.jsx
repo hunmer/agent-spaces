@@ -20,6 +20,8 @@ import CanvasContextMenu from './canvas/CanvasContextMenu';
 import DropNodeMenu from './canvas/DropNodeMenu';
 import MultiSelectToolbar from './canvas/MultiSelectToolbar';
 import GroupOverlays from './canvas/GroupOverlays';
+import AssetLibraryPickerDialog from './AssetLibraryPickerDialog';
+import useAssetLibrary from '../hooks/useAssetLibrary';
 
 import useCanvasState from '../hooks/useCanvasState';
 import useWorkflow from '../hooks/useWorkflow';
@@ -264,6 +266,39 @@ export default function Canvas() {
     }
   }, [settings, runWorkflow]);
 
+  // —— 添加到素材库：节点产出图 / 生成记录图 共用的分组选择器 ——
+  const { addAsset } = useAssetLibrary(activeId);
+  const [assetsPickerOpen, setAssetsPickerOpen] = useState(false);
+  const [assetsPickerImages, setAssetsPickerImages] = useState([]);
+
+  // 入口：传入一张或多张图 url，打开分组选择器
+  const handleAddToAssets = useCallback((urls) => {
+    const list = (Array.isArray(urls) ? urls : [urls]).filter(Boolean);
+    if (!list.length) return;
+    setAssetsPickerImages(list);
+    setAssetsPickerOpen(true);
+  }, []);
+
+  // 确认：把待加图片逐张写入所有选中分组（add_asset 服务端已按 url 去重）
+  const handleAssetsPickerConfirm = useCallback(async (pickedGroups) => {
+    if (!pickedGroups?.length) return;
+    for (const grp of pickedGroups) {
+      for (const url of assetsPickerImages) {
+        try {
+          await addAsset(grp.id, {
+            id: `ast-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+            url,
+            name: url.split('/').pop() || 'untitled',
+            size: 0,
+            uploadedAt: Date.now(),
+          });
+        } catch (err) {
+          console.error('addAsset failed:', err);
+        }
+      }
+    }
+  }, [addAsset, assetsPickerImages]);
+
   const nodeCallbacks = useMemo(() => ({
     makeOnUpdate,
     onGenerate: handleGenerate,
@@ -280,10 +315,12 @@ export default function Canvas() {
     onAutoSizeToContent: handleAutoSizeToContent,
     onBBoxCutout: handleBBoxCutout,
     onResetParams: handleResetParams,
+    onAddToAssets: handleAddToAssets,
   }), [
     makeOnUpdate, handleGenerate, handleGenerateMedia, handleProcessImage,
     handleProcessLocal, handleCutout, handleCutoutCreate, handleCancelProcess, handlePromptReverse,
     handleExportImages, handleAutoSize, handleAutoSizeToContent, handleBBoxCutout, handleResetParams,
+    handleAddToAssets,
   ]);
 
   // —— Agent RPC（WS message 监听，ref 持有最新值只订阅一次）——
@@ -468,6 +505,7 @@ export default function Canvas() {
           onUseImage={selection.handleUseImage}
           onInsertHistory={crud.handleInsertHistory}
           onDragStartHistory={crud.handleDragStartHistory}
+          onAddToAssets={handleAddToAssets}
           workspaceId={activeId}
         />
       </ResizablePanel>
@@ -480,6 +518,17 @@ export default function Canvas() {
           await saveSettings(cfg);
           setSettingsOpen(false);
         }}
+      />
+
+      <AssetLibraryPickerDialog
+        open={assetsPickerOpen}
+        onClose={() => setAssetsPickerOpen(false)}
+        workspaceId={activeId}
+        mode="group"
+        multi
+        title="添加到素材库（选择目标分组）"
+        confirmLabel={`添加 ${assetsPickerImages.length} 张图`}
+        onConfirm={handleAssetsPickerConfirm}
       />
 
       <NodeFormDialog

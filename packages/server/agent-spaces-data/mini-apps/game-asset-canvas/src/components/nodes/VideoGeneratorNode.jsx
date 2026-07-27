@@ -83,6 +83,7 @@ export default function VideoGeneratorNode({ id, data, selected }) {
   const running = status === 'running';
   const onUpdate = data?.onUpdate;
   const onGenerate = data?.onGenerateMedia;
+  const onCancelProcess = data?.onCancelProcess;
   const uploading = data?.uploading;
   const [pickerOpen, setPickerOpen] = useState(false);
 
@@ -237,14 +238,24 @@ export default function VideoGeneratorNode({ id, data, selected }) {
         </p>
       )}
 
-      <button
-        type="button"
-        disabled={!canRun}
-        onClick={handleRun}
-        className="w-full rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        {running ? '生成中…' : '生成视频'}
-      </button>
+      {running ? (
+        <button
+          type="button"
+          onClick={() => onCancelProcess?.(id)}
+          className="w-full rounded-md border border-destructive bg-background px-3 py-1.5 text-sm font-medium text-destructive transition hover:bg-destructive hover:text-destructive-foreground"
+        >
+          取消生成
+        </button>
+      ) : (
+        <button
+          type="button"
+          disabled={!canRun}
+          onClick={handleRun}
+          className="w-full rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          生成视频
+        </button>
+      )}
 
       {error && (
         <p className="rounded-md bg-red-500/10 px-2 py-1 text-xs text-red-500">{error}</p>

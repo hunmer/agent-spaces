@@ -4,7 +4,9 @@ import { generateAudio, generateVideo, normalizeImageUrls, runAgentVisionText, r
 import { runProcessor } from '../utils/image-ops';
 import { runCutout } from '../utils/cutout';
 import { genId } from '../utils/canvas-id';
-import { registerController, clearController, abortController } from '../utils/processing-controllers';
+import { registerController, clearController, abortController,
+  registerWorkflowHandle, setWorkflowExecutionId, getWorkflowHandle,
+  markWorkflowAborted, clearWorkflowHandle } from '../utils/processing-controllers';
 
 /**
  * 节点执行类回调（工作流生成 / 媒体 / 本地算法 / 抠图 / 反推提示词）。
@@ -28,6 +30,7 @@ export default function useNodeExecutions({ runWorkflow, updateNodeData, addHist
 
   // 节点点击"生成"：优先用设置页配置的工作流 ID，fallback 到节点传的 workflowId
   // input.count > 1 时按 count 重复调用工作流（runWithConcurrency 限并发），图片合并。
+  // 支持取消：并行订阅 workflow:started 拿 executionId，取消时 stopWorkflow 真中断引擎。
   const handleGenerate = useCallback(async (nodeId, nodeType, { workflowId, input }) => {
     // 记忆上次提交参数（剥离图片，按工作区+nodeType 隔离）—— 失败不阻塞执行
     try {
@@ -46,15 +49,28 @@ export default function useNodeExecutions({ runWorkflow, updateNodeData, addHist
     const wfInput = { ...input };
     delete wfInput.count;
     delete wfInput.concurrency;
+    // 注册工作流句柄 + 订阅 started 事件回填 executionId（供中断）
+    const wfHandle = registerWorkflowHandle(nodeId);
+    const AS = window.AgentSpaces;
+    const unsubStarted = AS?.subscribeWorkflowEvents?.((event, data) => {
+      if (event === 'workflow:started' && data?.executionId) {
+        setWorkflowExecutionId(nodeId, data.executionId);
+      }
+    });
     updateNodeData(nodeId, { status: 'running', error: undefined });
     try {
-      const batches = await runWithConcurrency(count, concurrency, () =>
-        runWorkflow(finalWorkflowId, wfInput, nodeId).then((r) => r.urls || []).catch((e) => {
+      const batches = await runWithConcurrency(count, concurrency, () => {
+        if (wfHandle.aborted) return [];
+        return runWorkflow(finalWorkflowId, wfInput, nodeId).then((r) => r.urls || []).catch((e) => {
           // 部分失败不阻塞：返回空数组让成功的合并；全部失败由最终 length 校验抛错
           console.warn('generate one batch failed:', e);
           return [];
-        }),
-      );
+        });
+      });
+      if (wfHandle.aborted) {
+        updateNodeData(nodeId, { status: 'cancelled', error: undefined });
+        return;
+      }
       const urls = batches.flat().filter(Boolean);
       if (!urls.length) throw new Error('未返回图片');
       updateNodeData(nodeId, { status: 'done', output: { images: urls } });
@@ -68,13 +84,21 @@ export default function useNodeExecutions({ runWorkflow, updateNodeData, addHist
         createdAt: Date.now(),
       }).catch((e) => console.error('addHistory failed:', e));
     } catch (err) {
+      if (wfHandle.aborted) {
+        updateNodeData(nodeId, { status: 'cancelled', error: undefined });
+        return;
+      }
       console.error('generate failed:', err);
       updateNodeData(nodeId, { status: 'error', error: err?.message || String(err) });
+    } finally {
+      try { unsubStarted?.(); } catch {}
+      clearWorkflowHandle(nodeId);
     }
   }, [runWorkflow, updateNodeData, addHistory, settings, saveLastParams]);
 
   // 媒体节点（音频/视频）生成：与 handleGenerate 同款，但产出写 output.audio(s) / output.video(s)。
   // count > 1 时按 count 并发调用，产出合并为 audios/videos 数组（媒体单值 audio/video 保留兼容：取首项）。
+  // 支持取消：并行订阅 workflow:started 拿 executionId，取消时 stopWorkflow 真中断引擎。
   const handleGenerateMedia = useCallback(async (nodeId, nodeType, kind, { workflowId, input }) => {
     // 记忆上次提交参数（按 nodeType 存对应字段，剥离图片）—— 失败不阻塞
     try {
@@ -100,14 +124,26 @@ export default function useNodeExecutions({ runWorkflow, updateNodeData, addHist
     const wfInput = { ...input };
     delete wfInput.count;
     delete wfInput.concurrency;
+    const wfHandle = registerWorkflowHandle(nodeId);
+    const AS = window.AgentSpaces;
+    const unsubStarted = AS?.subscribeWorkflowEvents?.((event, data) => {
+      if (event === 'workflow:started' && data?.executionId) {
+        setWorkflowExecutionId(nodeId, data.executionId);
+      }
+    });
     updateNodeData(nodeId, { status: 'running', error: undefined });
     try {
-      const batches = await runWithConcurrency(count, concurrency, () =>
-        runMedia(finalWorkflowId, wfInput).then((r) => r.url || '').catch((e) => {
+      const batches = await runWithConcurrency(count, concurrency, () => {
+        if (wfHandle.aborted) return '';
+        return runMedia(finalWorkflowId, wfInput).then((r) => r.url || '').catch((e) => {
           console.warn('generateMedia one batch failed:', e);
           return '';
-        }),
-      );
+        });
+      });
+      if (wfHandle.aborted) {
+        updateNodeData(nodeId, { status: 'cancelled', error: undefined });
+        return;
+      }
       const urls = batches.filter(Boolean);
       if (!urls.length) throw new Error(isAudio ? '未返回音频' : '未返回视频');
       // 单值字段保留兼容（旧渲染逻辑用 output.audio / output.video），多值用 audios / videos 数组
@@ -129,8 +165,15 @@ export default function useNodeExecutions({ runWorkflow, updateNodeData, addHist
         createdAt: Date.now(),
       }).catch((e) => console.error('addHistory(media) failed:', e));
     } catch (err) {
+      if (wfHandle.aborted) {
+        updateNodeData(nodeId, { status: 'cancelled', error: undefined });
+        return;
+      }
       console.error('generateMedia failed:', err);
       updateNodeData(nodeId, { status: 'error', error: err?.message || String(err) });
+    } finally {
+      try { unsubStarted?.(); } catch {}
+      clearWorkflowHandle(nodeId);
     }
   }, [generateAudio, generateVideo, updateNodeData, addHistory, settings, saveLastParams]);
 
@@ -336,8 +379,23 @@ export default function useNodeExecutions({ runWorkflow, updateNodeData, addHist
     });
   }, [createNodeAt]);
 
-  // 取消图像处理：abort signal + 置 status='cancelled'
+  // 统一取消入口（节点【取消生成】按钮调用）：
+  // - 工作流类（文生图/编辑图/配音/视频）：标记 aborted + stopWorkflow(executionId) 真中断引擎
+  // - 本地算法类（图像处理/抠图/反推）：abort AbortController 中断本地任务
+  // 执行返回后各自检查 aborted/cancelled 置 status='cancelled'。
   const handleCancelProcess = useCallback((nodeId) => {
+    const wfHandle = getWorkflowHandle(nodeId);
+    if (wfHandle) {
+      markWorkflowAborted(nodeId);
+      const execId = wfHandle.executionId;
+      if (execId && window.AgentSpaces?.stopWorkflow) {
+        try { window.AgentSpaces.stopWorkflow(execId); } catch {}
+      }
+      // 工作流可能已发出但 executionId 尚未回填（started 事件未到）：
+      // 标记 aborted 后，执行返回时自行判 cancelled；这里也立即置态，UI 即时反馈
+      updateNodeData(nodeId, { status: 'cancelled', error: undefined });
+      return;
+    }
     abortController(nodeId); // abort + 从 Map 删除
     updateNodeData(nodeId, { status: 'cancelled', error: undefined });
   }, [updateNodeData]);

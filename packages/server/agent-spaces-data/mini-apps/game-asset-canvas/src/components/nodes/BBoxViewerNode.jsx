@@ -148,7 +148,7 @@ export default function BBoxViewerNode({ id, data, selected }) {
       )}
 
       {/* 产出（导出到画布的图） */}
-      {images.length > 0 && <ImageResult images={images} />}
+      {images.length > 0 && <ImageResult images={images} onAddToAssets={data?.onAddToAssets} />}
 
       <BBoxViewerDialog
         open={dialogOpen}

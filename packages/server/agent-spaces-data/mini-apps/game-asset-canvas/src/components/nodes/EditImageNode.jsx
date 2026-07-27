@@ -61,6 +61,7 @@ export default function EditImageNode({ id, data, selected }) {
   const running = status === 'running';
   const onUpdate = data?.onUpdate;
   const onGenerate = data?.onGenerate;
+  const onCancelProcess = data?.onCancelProcess;
   const [pickerOpen, setPickerOpen] = useState(false);
 
   const set = useCallback((patch) => {
@@ -174,20 +175,30 @@ export default function EditImageNode({ id, data, selected }) {
         onChange={(patch) => set(patch)}
       />
 
-      <button
-        type="button"
-        disabled={running || allInputImages.length === 0 || !((params.pickedPrompt || '').trim() || promptHtmlToText(promptHtml))}
-        onClick={handleRun}
-        className="w-full rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        {running ? '编辑中…' : '编辑图片'}
-      </button>
+      {running ? (
+        <button
+          type="button"
+          onClick={() => onCancelProcess?.(id)}
+          className="w-full rounded-md border border-destructive bg-background px-3 py-1.5 text-sm font-medium text-destructive transition hover:bg-destructive hover:text-destructive-foreground"
+        >
+          取消生成
+        </button>
+      ) : (
+        <button
+          type="button"
+          disabled={allInputImages.length === 0 || !((params.pickedPrompt || '').trim() || promptHtmlToText(promptHtml))}
+          onClick={handleRun}
+          className="w-full rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          编辑图片
+        </button>
+      )}
 
       {error && (
         <p className="rounded-md bg-red-500/10 px-2 py-1 text-xs text-red-500">{error}</p>
       )}
 
-      {images.length > 0 && <ImageResult images={images} />}
+      {images.length > 0 && <ImageResult images={images} onAddToAssets={data?.onAddToAssets} />}
 
       <PromptPickerDialog
         open={pickerOpen}

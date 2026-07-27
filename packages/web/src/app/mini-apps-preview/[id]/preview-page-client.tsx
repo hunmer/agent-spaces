@@ -6,6 +6,7 @@ import { sdk } from '@/lib/sdk';
 import type { MiniAppProject } from '@agent-spaces/sdk';
 import { MiniAppPreview } from '@/components/mini-apps/mini-app-preview';
 import { useMiniAppHostApi } from '@/components/mini-apps/use-mini-app-host-api';
+import { isSkippableAsset } from '@/lib/utils';
 import { Loader2 } from 'lucide-react';
 
 const MINI_APP_RUNTIME_INIT_SOURCE = 'agent-spaces:mini-app-runtime:init';
@@ -65,10 +66,14 @@ export default function MiniAppPreviewPageClient() {
       const p = await sdk.miniApp.get(projectId);
       setProject(p);
 
-      // Load ALL files for multi-file import resolution
+      // Load ALL files for multi-file import resolution.
+      // 跳过二进制/资源文件：这些不会被源码 import 解析，utf-8 读取无意义，
+      // 且会在初始化时触发大体积 fetch（如 vendor/pixelorama-web/index.wasm 38MB、index.pck 12MB）。
+      // 运行时资源（iframe 加载的 wasm/glb、fetch+eval 的 vendor js）按需懒加载，无需预读。
       const tree = await sdk.miniApp.getFileTree(projectId);
       const files: Record<string, string> = {};
       for (const file of tree) {
+        if (isSkippableAsset(file)) continue;
         try {
           const { content } = await sdk.miniApp.readFile(projectId, file);
           files[file] = content;

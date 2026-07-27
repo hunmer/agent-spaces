@@ -146,7 +146,7 @@ export default function PixelEditorNode({ id, data, selected }) {
       )}
 
       {/* 产出 */}
-      {images.length > 0 && <ImageResult images={images} />}
+      {images.length > 0 && <ImageResult images={images} onAddToAssets={data?.onAddToAssets} />}
 
       <PixelEditorDialog
         open={editorOpen}

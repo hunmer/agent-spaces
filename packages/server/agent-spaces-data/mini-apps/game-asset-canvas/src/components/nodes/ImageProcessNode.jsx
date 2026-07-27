@@ -183,10 +183,10 @@ export default function ImageProcessNode({ id, type, data, selected }) {
           <button
             type="button"
             onClick={() => onCancelProcess?.(id)}
-            title="取消处理"
+            title="取消生成"
             className="shrink-0 rounded-md border border-destructive bg-background px-3 py-1.5 text-xs font-medium text-destructive transition hover:bg-destructive hover:text-destructive-foreground"
           >
-            取消
+            取消生成
           </button>
         </div>
       ) : (
@@ -210,7 +210,7 @@ export default function ImageProcessNode({ id, type, data, selected }) {
 
       {/* 产出 */}
       {images.length > 0 && (
-        <ImageResult images={images} />
+        <ImageResult images={images} onAddToAssets={data?.onAddToAssets} />
       )}
     </NodeShell>
   );
