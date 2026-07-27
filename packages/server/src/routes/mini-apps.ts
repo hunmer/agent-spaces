@@ -7,7 +7,7 @@ import { randomUUID } from 'crypto';
 import { exec } from 'node:child_process';
 import * as svc from '../services/mini-apps.js';
 import { invokeService } from '../services/mini-app-services.js';
-import { getProject, readAgentsConfig, readAgentConfig, upsertAgentConfig, listAgentChats, clearAgentChats, DuplicateNameError } from '../storage/mini-app-store.js';
+import { getProject, readAgentsConfig, readAgentConfig, upsertAgentConfig, listAgentChats, clearAgentChats, listChatSessions, renameChatSession, DuplicateNameError } from '../storage/mini-app-store.js';
 import { answerMiniAppAgentQuestion, getRegisteredMiniAppTools, runMiniAppAgent } from '../services/mini-app-agent.js';
 
 const router = Router();
@@ -577,6 +577,31 @@ router.get('/:id/agents/chat', (req: Request<{ id: string }, any, any, { session
     let messages = listAgentChats(req.params.id, sessionId);
     if (typeof agentId === 'string') messages = messages.filter((m) => m.agentId === agentId);
     res.json({ messages });
+  } catch (error: any) {
+    res.status(error.message === 'Invalid sessionId' ? 400 : 500).json({ error: error.message });
+  }
+});
+
+// GET /:id/agents/sessions?agentId= — 列出所有会话摘要
+router.get('/:id/agents/sessions', (req: Request<{ id: string }, any, any, { agentId?: string }>, res: Response) => {
+  try {
+    const { agentId } = req.query;
+    let sessions = listChatSessions(req.params.id);
+    if (typeof agentId === 'string') sessions = sessions.filter((s) => s.agentId === agentId);
+    res.json({ sessions });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// PATCH /:id/agents/sessions/:sessionId — 重命名会话标题
+router.patch('/:id/agents/sessions/:sessionId', (req: Request<{ id: string; sessionId: string }, any, { title?: string }>, res: Response) => {
+  try {
+    const title = typeof req.body?.title === 'string' ? req.body.title.trim() : '';
+    if (!title) { res.status(400).json({ error: 'title is required' }); return; }
+    const session = renameChatSession(req.params.id, req.params.sessionId, title);
+    if (!session) { res.status(404).json({ error: 'Session not found' }); return; }
+    res.json({ session });
   } catch (error: any) {
     res.status(error.message === 'Invalid sessionId' ? 400 : 500).json({ error: error.message });
   }

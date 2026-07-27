@@ -56,6 +56,15 @@ export interface MiniAppChatMessage {
   timestamp: string;
 }
 
+/** 会话摘要（不含消息体） */
+export interface MiniAppChatSessionSummary {
+  id: string;
+  agentId: string;
+  title: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export function createMiniAppApi(http: HttpClient) {
   return {
     list: (): Promise<MiniAppProject[]> =>
@@ -164,6 +173,14 @@ export function createMiniAppApi(http: HttpClient) {
 
     agentHistory: (id: string, sessionId: string, agentId?: string): Promise<{ messages: MiniAppChatMessage[] }> =>
       http.get(`/api/mini-apps/${encodeURIComponent(id)}/agents/chat?sessionId=${encodeURIComponent(sessionId)}${agentId ? `&agentId=${encodeURIComponent(agentId)}` : ''}`),
+
+    /** 列出所有会话摘要（可选按 agentId 过滤） */
+    listAgentSessions: (id: string, agentId?: string): Promise<{ sessions: MiniAppChatSessionSummary[] }> =>
+      http.get(`/api/mini-apps/${encodeURIComponent(id)}/agents/sessions${agentId ? `?agentId=${encodeURIComponent(agentId)}` : ''}`),
+
+    /** 重命名会话标题 */
+    renameAgentSession: (id: string, sessionId: string, title: string): Promise<{ session: MiniAppChatSessionSummary & { messages?: MiniAppChatMessage[] } }> =>
+      http.patch(`/api/mini-apps/${encodeURIComponent(id)}/agents/sessions/${encodeURIComponent(sessionId)}`, { title }),
 
     /** 清空某 session 的历史（可选按 agentId 过滤）。 */
     clearAgentHistory: (id: string, sessionId: string, agentId?: string): Promise<void> =>

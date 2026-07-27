@@ -180,6 +180,10 @@
     "clearTitle": "Clear messages",
     "clearConfirm": "Clear all messages for this assistant? This action cannot be undone.",
     "clearCancel": "Cancel",
-    "clearAction": "Clear"
+    "clearAction": "Clear",
+    "sessionNew": "New session",
+    "sessionUntitled": "Untitled session",
+    "sessionEmpty": "No sessions yet",
+    "delete": "Delete session"
   }
 }

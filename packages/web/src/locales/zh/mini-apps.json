@@ -178,8 +178,12 @@
     "loading": "加载中…",
     "clear": "清空消息",
     "clearTitle": "清空消息",
-    "clearConfirm": "确定要清空当前助手的所有消息吗？此操作不可撤销。",
+    "clearConfirm": "确定要清空当前助手的所有消息吗？此动作不可撤销。",
     "clearCancel": "取消",
-    "clearAction": "清空"
+    "clearAction": "清空",
+    "sessionNew": "新建会话",
+    "sessionUntitled": "未命名会话",
+    "sessionEmpty": "暂无会话",
+    "delete": "删除会话"
   }
 }

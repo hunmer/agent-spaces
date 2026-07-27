@@ -20,7 +20,7 @@ import { AvatarGroup } from '@/components/ui/avatar-group';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ChatPanel, type ChatMessage, type ChatPanelMentionFile } from '@/components/ui/chat-panel';
-import { PanelRightOpen, FilesIcon, Loader2, Search, Sparkles, Settings2, Settings, Eraser, Smartphone, Monitor, Tablet, Info, AlertTriangle, MessageSquareText, UploadIcon } from 'lucide-react';
+import { PanelRightOpen, FilesIcon, Loader2, Search, Sparkles, Settings2, Settings, Eraser, Smartphone, Monitor, Tablet, Info, AlertTriangle, MessageSquareText, UploadIcon, Trash2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { AgentEditor } from '@/components/sidebar/agent-editor';
@@ -284,14 +284,9 @@ function useMiniAppAgentChat(projectId: string) {
   const [agentFileMentions, setAgentFileMentions] = useState<ChatPanelMentionFile[]>([]);
   const abortRef = useRef<AbortController | null>(null);
 
-  // session-id：sessionStorage，同 tab reload 复用
-  const [sessionId] = useState(() => {
-    const key = `mini-app-agent-session:${projectId}`;
-    if (typeof window === 'undefined') return '';
-    let sid = sessionStorage.getItem(key);
-    if (!sid) { sid = crypto.randomUUID(); sessionStorage.setItem(key, sid); }
-    return sid;
-  });
+  // 多会话：sessions 列表 + 当前 sessionId（'' 表示新建草稿，尚未落盘）
+  const [sessions, setSessions] = useState<Array<{ id: string; agentId: string; title: string; updatedAt: string }>>([]);
+  const [sessionId, setSessionId] = useState<string>('');
 
   // 加载 agents 清单
   useEffect(() => {
@@ -325,9 +320,31 @@ function useMiniAppAgentChat(projectId: string) {
     return () => { cancelled = true; };
   }, [projectId, agentFilesEnabled]);
 
-  // agent 变化 → 拉历史
+  // 拉取会话列表；agentId 变化时重拉，并自动选中最近一条
+  const loadSessions = useCallback(async (currentAgentId?: string) => {
+    const aid = currentAgentId ?? agentId;
+    if (!projectId || !aid) return;
+    try {
+      const { sessions: list } = await sdk.miniApp.listAgentSessions(projectId, aid);
+      setSessions(list);
+      // 若当前 session 不在新列表中（agent 切换），自动选最近一条或新建草稿
+      setSessionId((cur) => {
+        if (cur && list.some((s) => s.id === cur)) return cur;
+        return list[0]?.id ?? '';
+      });
+    } catch { /* ignore */ }
+  }, [projectId, agentId]);
+
+  // agent 切换：重拉 sessions + 清空消息
+  useEffect(() => {
+    if (!agentId) return;
+    setMessages([]);
+    loadSessions(agentId);
+  }, [agentId, loadSessions]);
+
+  // sessionId 变化 → 拉历史
   const loadHistory = useCallback(async () => {
-    if (!projectId || !agentId) return;
+    if (!projectId || !agentId || !sessionId) { setMessages([]); return; }
     try {
       const { messages: hist } = await sdk.miniApp.agentHistory(projectId, sessionId, agentId);
       setMessages(hist.map((m) => ({
@@ -340,9 +357,50 @@ function useMiniAppAgentChat(projectId: string) {
     } catch { /* ignore */ }
   }, [projectId, agentId, sessionId]);
 
+  useEffect(() => {
+    if (!sessionId) { setMessages([]); return; }
+    loadHistory();
+  }, [sessionId, loadHistory]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleSwitchSession = useCallback((id: string) => {
+    setSessionId(id);
+  }, []);
+
+  const handleNewSession = useCallback(() => {
+    setSessionId('');
+    setMessages([]);
+    setInput('');
+  }, []);
+
+  const handleDeleteSession = useCallback(async (id: string) => {
+    if (!projectId || !agentId) return;
+    try {
+      await sdk.miniApp.clearAgentHistory(projectId, id, agentId);
+      setSessions((prev) => prev.filter((s) => s.id !== id));
+      if (sessionId === id) {
+        setSessionId('');
+        setMessages([]);
+      }
+    } catch { /* ignore */ }
+  }, [projectId, agentId, sessionId]);
+
+  const handleRenameSession = useCallback(async (id: string, title: string) => {
+    if (!projectId) return;
+    try {
+      const { session } = await sdk.miniApp.renameAgentSession(projectId, id, title);
+      setSessions((prev) => prev.map((s) => (s.id === id ? { ...s, title: session.title, updatedAt: session.updatedAt } : s)));
+    } catch { /* ignore */ }
+  }, [projectId]);
+
   const handleSend = useCallback(async (overrideText?: string) => {
     const text = (overrideText ?? input).trim();
     if (!text || !agentId || sending) return;
+    // 首条消息：分配新 sessionId 并加入列表（draft → 落盘）
+    let activeSessionId = sessionId;
+    if (!activeSessionId) {
+      activeSessionId = crypto.randomUUID();
+      setSessionId(activeSessionId);
+    }
     const userMsg: ChatMessage = { id: crypto.randomUUID(), role: 'user', content: text, timestamp: new Date() };
     const agentMsgId = crypto.randomUUID();
     setMessages((prev) => [...prev, userMsg, { id: agentMsgId, role: 'agent', content: '', timestamp: new Date() }]);
@@ -351,7 +409,7 @@ function useMiniAppAgentChat(projectId: string) {
     const ac = new AbortController();
     abortRef.current = ac;
     try {
-      const res = await sdk.miniApp.agentChat(projectId, agentId, { sessionId, message: text, route }, { signal: ac.signal });
+      const res = await sdk.miniApp.agentChat(projectId, agentId, { sessionId: activeSessionId, message: text, route }, { signal: ac.signal });
       await consumeSse(res, (event, data) => {
         const d = data as Record<string, unknown>;
         if (event === 'text' && typeof d.line === 'string') {
@@ -386,7 +444,8 @@ function useMiniAppAgentChat(projectId: string) {
             return { ...m, timeline };
           }));
         } else if (event === 'message_saved') {
-          // 服务端已落盘
+          // 服务端落盘后，刷新会话列表（拿到最新 title / updatedAt）
+          loadSessions(agentId);
         }
       });
     } catch { /* aborted or error */ }
@@ -394,7 +453,7 @@ function useMiniAppAgentChat(projectId: string) {
       setSending(false);
       abortRef.current = null;
     }
-  }, [input, agentId, sending, projectId, sessionId, route]);
+  }, [input, agentId, sending, projectId, sessionId, route, loadSessions]);
 
   const handleStop = useCallback(() => {
     abortRef.current?.abort();
@@ -415,9 +474,11 @@ function useMiniAppAgentChat(projectId: string) {
 
   const [clearOpen, setClearOpen] = useState(false);
   const handleClear = useCallback(async () => {
-    if (!projectId || !agentId) return;
+    if (!projectId || !agentId || !sessionId) return;
     try {
       await sdk.miniApp.clearAgentHistory(projectId, sessionId, agentId);
+      setSessions((prev) => prev.filter((s) => s.id !== sessionId));
+      setSessionId('');
       setMessages([]);
     } catch { /* ignore */ }
     finally { setClearOpen(false); }
@@ -465,6 +526,9 @@ function useMiniAppAgentChat(projectId: string) {
     agentFileMentions,
     loadHistory,
     handleAnswerAskUserQuestion,
+    // 多会话
+    sessions, sessionId,
+    handleSwitchSession, handleNewSession, handleDeleteSession, handleRenameSession,
   };
 }
 
@@ -714,12 +778,48 @@ function MiniAppAgentFilesDialog({ projectId }: { projectId: string }) {
   );
 }
 
-/** ChatPanel 顶部工具区（切换 agent / 设置 / 清空），popover 与 dock 共用。 */
+/** ChatPanel 顶部工具区（切换会话 / agent / 设置 / 清空），popover 与 dock 共用。 */
 function MiniAppAgentHeaderActions({ chat }: { chat: ReturnType<typeof useMiniAppAgentChat> }) {
   const t = useTranslations('mini-apps');
-  const { agents, agentId, setAgentId, openSettings, sending, messages, projectId, agentFilesEnabled } = chat;
+  const { agents, agentId, setAgentId, openSettings, sending, messages, projectId, agentFilesEnabled,
+    sessions, sessionId, handleSwitchSession, handleNewSession, handleDeleteSession } = chat;
   return (
     <>
+      {/* 会话切换 */}
+      {agentId && (
+        <Select value={sessionId} onValueChange={(v) => v === '__new__' ? handleNewSession() : handleSwitchSession(v ?? '')}>
+          <SelectTrigger className="h-7 w-[140px] text-xs">
+            <SelectValue>
+              {sessionId
+                ? (sessions.find((s) => s.id === sessionId)?.title ?? t('agent.sessionUntitled'))
+                : t('agent.sessionNew')}
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__new__">{t('agent.sessionNew')}</SelectItem>
+            {sessions.map((s) => (
+              <SelectItem key={s.id} value={s.id}>
+                <span className="flex w-full items-center justify-between gap-2">
+                  <span className="truncate">{s.title}</span>
+                  <button
+                    type="button"
+                    className="ml-auto inline-flex shrink-0 rounded p-0.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                    title={t('agent.delete')}
+                    aria-label={t('agent.delete')}
+                    // 阻止 Select 关闭并触发删除
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteSession(s.id); }}
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </button>
+                </span>
+              </SelectItem>
+            ))}
+            {sessions.length === 0 && (
+              <div className="px-2 py-1.5 text-[11px] text-muted-foreground">{t('agent.sessionEmpty')}</div>
+            )}
+          </SelectContent>
+        </Select>
+      )}
       {agents.length > 1 && (
         <Select value={agentId} onValueChange={(v) => setAgentId(v ?? '')}>
           <SelectTrigger className="h-7 w-[120px] text-xs">

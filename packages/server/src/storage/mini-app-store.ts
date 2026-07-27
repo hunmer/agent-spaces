@@ -571,8 +571,22 @@ export interface MiniAppChatMessage {
   timestamp: string;
 }
 
-function chatDir(projectId: string, sessionId: string): string {
-  return join(projectDir(projectId), 'chat', sessionId);
+/** 单会话文件结构：chat/{sessionId}.json */
+export interface MiniAppChatSession {
+  id: string;
+  agentId: string;
+  title: string;
+  messages: MiniAppChatMessage[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+function chatRootDir(projectId: string): string {
+  return join(projectDir(projectId), 'chat');
+}
+
+function chatSessionFile(projectId: string, sessionId: string): string {
+  return join(chatRootDir(projectId), `${sessionId}.json`);
 }
 
 function safeSessionId(sessionId: string): string {
@@ -582,61 +596,105 @@ function safeSessionId(sessionId: string): string {
   return sessionId;
 }
 
-function safeMessageId(id: string): string {
-  if (!/^[a-zA-Z0-9_-]{1,128}$/.test(id)) {
-    throw new Error('Invalid messageId');
-  }
-  return id;
+/** 标题：首条 user 消息截断 30 字。 */
+function deriveTitle(messages: MiniAppChatMessage[]): string {
+  const first = messages.find((m) => m.role === 'user');
+  if (!first) return 'New session';
+  const text = first.content.trim().replace(/\s+/g, ' ');
+  return text.length > 30 ? `${text.slice(0, 30)}…` : text;
 }
 
-/** 保存一条聊天消息到 chat/{sessionId}/{messageId}.json */
-export function saveAgentChat(projectId: string, message: MiniAppChatMessage): void {
-  safeSessionId(message.sessionId);
-  safeMessageId(message.id);
-  const dir = chatDir(projectId, message.sessionId);
-  ensureDir(dir);
-  writeFileSync(join(dir, `${message.id}.json`), JSON.stringify(message, null, 2), 'utf-8');
-}
-
-/** 列出某 session 的全部消息，按 timestamp 升序。 */
-export function listAgentChats(projectId: string, sessionId: string): MiniAppChatMessage[] {
+/** 读取整个会话文件；不存在返回 null。 */
+export function readChatSession(projectId: string, sessionId: string): MiniAppChatSession | null {
   safeSessionId(sessionId);
-  const dir = chatDir(projectId, sessionId);
+  const file = chatSessionFile(projectId, sessionId);
+  if (!existsSync(file)) return null;
+  try {
+    const data = JSON.parse(readFileSync(file, 'utf-8'));
+    if (!data || typeof data !== 'object' || !Array.isArray(data.messages)) return null;
+    return data as MiniAppChatSession;
+  } catch { return null; }
+}
+
+/** 列出所有会话摘要（不含消息体），按 updatedAt 降序。 */
+export function listChatSessions(projectId: string): Array<Omit<MiniAppChatSession, 'messages'>> {
+  const dir = chatRootDir(projectId);
   if (!existsSync(dir)) return [];
-  const messages: MiniAppChatMessage[] = [];
+  const sessions: Array<Omit<MiniAppChatSession, 'messages'>> = [];
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     if (entry.isDirectory() || !entry.name.endsWith('.json')) continue;
     try {
-      const msg = JSON.parse(readFileSync(join(dir, entry.name), 'utf-8'));
-      if (msg && typeof msg === 'object' && typeof msg.timestamp === 'string') {
-        messages.push(msg as MiniAppChatMessage);
-      }
+      const data = JSON.parse(readFileSync(join(dir, entry.name), 'utf-8'));
+      if (!data || typeof data !== 'object' || typeof data.id !== 'string') continue;
+      sessions.push({
+        id: data.id,
+        agentId: data.agentId,
+        title: typeof data.title === 'string' ? data.title : 'New session',
+        createdAt: data.createdAt,
+        updatedAt: data.updatedAt,
+      });
     } catch { /* skip malformed */ }
   }
-  // 按 timestamp 升序；时间戳相同（同毫秒落盘的 user/agent 对）时以 role 兜底，
-  // 保证 user 排在 agent 之前，避免重载后历史消息顺序错乱。
-  messages.sort((a, b) => {
+  sessions.sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1));
+  return sessions;
+}
+
+/** 保存一条消息：读取会话 → 追加 → 整体写回。会话不存在则新建。 */
+export function saveAgentChat(projectId: string, message: MiniAppChatMessage): void {
+  safeSessionId(message.sessionId);
+  ensureDir(chatRootDir(projectId));
+  let session = readChatSession(projectId, message.sessionId);
+  if (!session) {
+    const now = new Date().toISOString();
+    session = {
+      id: message.sessionId,
+      agentId: message.agentId,
+      title: 'New session',
+      messages: [],
+      createdAt: now,
+      updatedAt: now,
+    };
+  }
+  // 同 id 幂等替换，避免重复落盘
+  const idx = session.messages.findIndex((m) => m.id === message.id);
+  if (idx >= 0) session.messages[idx] = message;
+  else session.messages.push(message);
+
+  session.messages.sort((a, b) => {
     if (a.timestamp !== b.timestamp) return a.timestamp < b.timestamp ? -1 : 1;
     if (a.role !== b.role) return a.role === 'user' ? -1 : 1;
     return 0;
   });
-  return messages;
+  session.title = deriveTitle(session.messages);
+  session.updatedAt = new Date().toISOString();
+  writeFileSync(chatSessionFile(projectId, message.sessionId), JSON.stringify(session, null, 2), 'utf-8');
 }
 
-/** 清空某 session 的聊天消息。提供 agentId 时仅删该 agent 的消息，否则删整个 session。 */
+/** 列出某 session 的全部消息，按 timestamp 升序。 */
+export function listAgentChats(projectId: string, sessionId: string): MiniAppChatMessage[] {
+  const session = readChatSession(projectId, sessionId);
+  return session ? session.messages : [];
+}
+
+/** 清空整个 session（删除文件）。agentId 仅用于校验归属，不再支持部分删除。 */
 export function clearAgentChats(projectId: string, sessionId: string, agentId?: string): void {
   safeSessionId(sessionId);
-  const dir = chatDir(projectId, sessionId);
-  if (!existsSync(dir)) return;
-  for (const entry of readdirSync(dir, { withFileTypes: true })) {
-    if (entry.isDirectory() || !entry.name.endsWith('.json')) continue;
-    const file = join(dir, entry.name);
-    if (agentId) {
-      try {
-        const msg = JSON.parse(readFileSync(file, 'utf-8'));
-        if (!msg || typeof msg !== 'object' || (msg as MiniAppChatMessage).agentId !== agentId) continue;
-      } catch { continue; }
-    }
-    rmSync(file, { force: true });
+  const file = chatSessionFile(projectId, sessionId);
+  if (!existsSync(file)) return;
+  if (agentId) {
+    const session = readChatSession(projectId, sessionId);
+    if (!session || session.agentId !== agentId) return;
   }
+  rmSync(file, { force: true });
+}
+
+/** 重命名会话（手动改标题）。 */
+export function renameChatSession(projectId: string, sessionId: string, title: string): MiniAppChatSession | null {
+  safeSessionId(sessionId);
+  const session = readChatSession(projectId, sessionId);
+  if (!session) return null;
+  session.title = title.trim().slice(0, 60) || session.title;
+  session.updatedAt = new Date().toISOString();
+  writeFileSync(chatSessionFile(projectId, sessionId), JSON.stringify(session, null, 2), 'utf-8');
+  return session;
 }
