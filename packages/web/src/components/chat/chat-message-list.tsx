@@ -244,9 +244,9 @@ export function ChatMessageList<TMessage extends DisplayChatMessage>({
     const showStreamingPlaceholder = streaming && !thinking && !message;
     const timeline = msg.role === "agent" ? normalizeChatTimeline(getMessageTimeline(msg)) : [];
     const hasTimelineMessage = timeline.some((item) => item.type === "message");
-    const showTimelineMessages = streaming && hasTimelineMessage;
-    const visibleTimeline = showTimelineMessages ? timeline : timeline.filter((item) => item.type !== "message");
     const hasToolTimeline = timeline.some((item) => item.type === "tool");
+    const showTimelineMessages = hasTimelineMessage && hasToolTimeline;
+    const visibleTimeline = showTimelineMessages ? timeline : timeline.filter((item) => item.type !== "message");
     const showTools = streaming || visibleToolTimelineMessageIds[msg.id] !== false;
     const showTimeline = visibleTimeline.some((item) => item.type !== "tool" || showTools);
     const askUserQuestionItems = visibleTimeline.filter((item): item is Extract<WorkflowAgentTimelineItem, { type: "tool" }> =>

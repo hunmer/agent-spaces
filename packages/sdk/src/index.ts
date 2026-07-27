@@ -62,7 +62,7 @@ export { createAgentCommandsApi } from './modules/agent-commands';
 export { createExternalImportApi, type ExternalImportKind, type ExternalImportMode, type ExternalImportSource, type ExternalImportResult } from './modules/external-import';
 export { createChatApi } from './modules/chat';
 export type { ChatAgent, ChatMessage, ChatWorkspace, ChatSession } from './modules/chat';
-export { createMiniAppApi, type MiniAppProject, type MiniAppAgentConfig } from './modules/mini-apps';
+export { createMiniAppApi, type MiniAppProject, type MiniAppAgentConfig, type MiniAppChatMessage } from './modules/mini-apps';
 export { createSqliteApi } from './modules/sqlite';
 export { createTeamApi } from './modules/team';
 export type {

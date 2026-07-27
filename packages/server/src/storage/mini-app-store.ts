@@ -1,5 +1,6 @@
 import { readFileSync, writeFileSync, existsSync, rmSync, readdirSync, renameSync, statSync } from 'node:fs';
 import { join, dirname, resolve, sep } from 'node:path';
+import type { WorkflowAgentTimelineItem } from '@agent-spaces/shared';
 import { readJsonFile, writeJsonFile, ensureDir, getDataDir } from './json-store.js';
 
 export interface MiniAppProject {
@@ -609,6 +610,7 @@ export interface MiniAppChatMessage {
   content: string;
   route?: string;
   toolCalls?: Array<{ name: string; input: unknown; result: unknown }>;
+  timeline?: WorkflowAgentTimelineItem[];
   timestamp: string;
 }
 

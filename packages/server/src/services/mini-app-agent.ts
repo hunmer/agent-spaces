@@ -13,7 +13,7 @@ import { createWorkspaceFileFunctionTools } from './builtin-tools/workspace-file
 import { listPresets } from './agent.js';
 import { listProviders } from '../storage/llm-store.js';
 import { requestMiniAppClient } from './mini-app-client-rpc.js';
-import type { BuiltInAgentToolName } from '@agent-spaces/shared';
+import type { BuiltInAgentToolName, WorkflowAgentTimelineItem } from '@agent-spaces/shared';
 import { formatSimpleConversationHistory } from '../ws/agent-prompt.js';
 
 export interface ApiCtx {
@@ -502,20 +502,41 @@ export async function runMiniAppAgent(input: MiniAppAgentRunInput): Promise<Mini
   const userTimestamp = new Date().toISOString();
   const output: string[] = [];
   const toolCalls = new Map<string, { name: string; input: unknown; result: unknown }>();
+  const timeline: WorkflowAgentTimelineItem[] = [];
   const result = await runtime.execute(message, getProjectDir(projectId), {
     systemPrompt,
     functionTools,
     maxTurns: 20,
     onEvent: (event) => {
       onEvent(event);
-      if (event.type === 'output') output.push(event.line);
+      if (event.type === 'output') {
+        output.push(event.line);
+        const latest = timeline.at(-1);
+        if (latest?.type === 'message') {
+          latest.content += event.line;
+        } else {
+          timeline.push({ id: `message-${timeline.length}-${Date.now()}`, type: 'message', content: event.line });
+        }
+      }
       if (event.type === 'tool_use') {
         toolCalls.set(event.id, { name: event.name, input: event.input, result: undefined });
+        timeline.push({
+          id: event.id,
+          type: 'tool',
+          name: event.name,
+          input: event.input,
+          status: 'running',
+        });
       }
       if (event.type === 'tool_result' && event.toolUseId) {
         const existing = toolCalls.get(event.toolUseId);
         if (existing) {
           toolCalls.set(event.toolUseId, { ...existing, result: event.result });
+        }
+        const index = findLastIndex(timeline, (item) => item.type === 'tool' && item.id === event.toolUseId);
+        const item = index >= 0 ? timeline[index] : undefined;
+        if (item?.type === 'tool') {
+          timeline[index] = { ...item, result: event.result, status: isErrorToolResult(event.result) ? 'error' : 'success' };
         }
       }
     },
@@ -532,6 +553,7 @@ export async function runMiniAppAgent(input: MiniAppAgentRunInput): Promise<Mini
     id: randomUUID(), sessionId, agentId, role: 'agent',
     content: agentContent, route, timestamp: new Date().toISOString(),
     ...(toolCalls.size ? { toolCalls: Array.from(toolCalls.values()) } : {}),
+    ...(timeline.length ? { timeline: completeTimeline(timeline) } : {}),
   };
   miniAppStore.saveAgentChat(projectId, userMessage);
   miniAppStore.saveAgentChat(projectId, agentMessage);
@@ -540,4 +562,28 @@ export async function runMiniAppAgent(input: MiniAppAgentRunInput): Promise<Mini
   } finally {
     if (stopSignal) stopSignal.removeEventListener('abort', onAbort);
   }
+}
+
+function completeTimeline(timeline: WorkflowAgentTimelineItem[]): WorkflowAgentTimelineItem[] {
+  return timeline.map((item) => (
+    item.type === 'tool' && item.status === 'running'
+      ? { ...item, status: 'error' as const, result: { success: false, error: 'Tool did not return a result.' } }
+      : item
+  ));
+}
+
+function isErrorToolResult(result: unknown): boolean {
+  return Boolean(
+    result
+    && typeof result === 'object'
+    && 'success' in result
+    && (result as { success?: unknown }).success === false
+  );
+}
+
+function findLastIndex<T>(items: T[], predicate: (item: T) => boolean): number {
+  for (let index = items.length - 1; index >= 0; index -= 1) {
+    if (predicate(items[index])) return index;
+  }
+  return -1;
 }

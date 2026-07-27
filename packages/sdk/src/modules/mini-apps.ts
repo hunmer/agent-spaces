@@ -1,6 +1,6 @@
 import type { HttpClient } from '../client';
 import type { RequestOptions } from '../types';
-import type { FileNode } from '@agent-spaces/shared';
+import type { FileNode, WorkflowAgentTimelineItem } from '@agent-spaces/shared';
 
 export interface MiniAppProject {
   id: string;
@@ -55,6 +55,7 @@ export interface MiniAppChatMessage {
   content: string;
   route?: string;
   toolCalls?: Array<{ name: string; input: unknown; result: unknown }>;
+  timeline?: WorkflowAgentTimelineItem[];
   timestamp: string;
 }
 

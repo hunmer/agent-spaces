@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useTranslations } from 'next-intl';
 import { useRouter, useSearchParams } from 'next/navigation';
-import type { MiniAppProject, MiniAppAgentConfig } from '@agent-spaces/sdk';
+import type { MiniAppProject, MiniAppAgentConfig, MiniAppChatMessage } from '@agent-spaces/sdk';
 import type { FileNode, WorkflowAgentTimelineItem, PluginConfigField } from '@agent-spaces/shared';
 import { sdk } from '@/lib/sdk';
 import { pluginApi, type WorkflowPlugin } from '@/lib/workflow-plugin-api';
@@ -243,8 +243,28 @@ function miniAppToolCallsToTimeline(toolCalls?: Array<{ name: string; input: unk
     name: toolCall.name,
     input: toolCall.input,
     result: toolCall.result,
-    status: toolCall.result === undefined ? 'error' as const : 'success' as const,
+    status: toolCall.result === undefined || isMiniAppErrorToolResult(toolCall.result) ? 'error' as const : 'success' as const,
   })) ?? [];
+}
+
+function isMiniAppErrorToolResult(result: unknown): boolean {
+  return Boolean(
+    result
+    && typeof result === 'object'
+    && 'success' in result
+    && (result as { success?: unknown }).success === false
+  );
+}
+
+function miniAppMessageToChatMessage(message: MiniAppChatMessage, sessionId: string): ChatMessage {
+  return {
+    id: message.id,
+    role: message.role,
+    content: message.content,
+    timestamp: new Date(message.timestamp),
+    timeline: message.timeline?.length ? message.timeline : miniAppToolCallsToTimeline(message.toolCalls),
+    metadata: { agentSessionId: sessionId, agentId: message.agentId },
+  };
 }
 
 function markAskUserQuestionAnswered(
@@ -342,12 +362,7 @@ function useMiniAppAgentChat(projectId: string) {
       // 自动选中后拉历史（若选中了已有会话）
       if (nextId) {
         const { messages: hist } = await sdk.miniApp.agentHistory(projectId, nextId, aid);
-        setMessages(hist.map((m) => ({
-          id: m.id, role: m.role, content: m.content,
-          timestamp: new Date(m.timestamp),
-          timeline: miniAppToolCallsToTimeline(m.toolCalls),
-          metadata: { agentSessionId: nextId, agentId: m.agentId },
-        })));
+        setMessages(hist.map((m) => miniAppMessageToChatMessage(m, nextId)));
       }
     } catch { /* ignore */ }
   }, [projectId, agentId]);
@@ -365,14 +380,7 @@ function useMiniAppAgentChat(projectId: string) {
     if (!projectId || !agentId || !sid) { setMessages([]); return; }
     try {
       const { messages: hist } = await sdk.miniApp.agentHistory(projectId, sid, agentId);
-      setMessages(hist.map((m) => ({
-        id: m.id,
-        role: m.role,
-        content: m.content,
-        timestamp: new Date(m.timestamp),
-        timeline: miniAppToolCallsToTimeline(m.toolCalls),
-        metadata: { agentSessionId: sid, agentId: m.agentId },
-      })));
+      setMessages(hist.map((m) => miniAppMessageToChatMessage(m, sid)));
     } catch { /* ignore */ }
   }, [projectId, agentId]);
 
@@ -384,12 +392,7 @@ function useMiniAppAgentChat(projectId: string) {
     // 切换后异步拉历史
     sdk.miniApp.agentHistory(projectId, id, agentId)
       .then(({ messages: hist }) => {
-        setMessages(hist.map((m) => ({
-          id: m.id, role: m.role, content: m.content,
-          timestamp: new Date(m.timestamp),
-          timeline: miniAppToolCallsToTimeline(m.toolCalls),
-          metadata: { agentSessionId: id, agentId: m.agentId },
-        })));
+        setMessages(hist.map((m) => miniAppMessageToChatMessage(m, id)));
       })
       .catch(() => {});
   }, [projectId, agentId]);
@@ -444,12 +447,28 @@ function useMiniAppAgentChat(projectId: string) {
       await consumeSse(res, (event, data) => {
         const d = data as Record<string, unknown>;
         if (event === 'text' && typeof d.line === 'string') {
-          setMessages((prev) => prev.map((m) => m.id === agentMsgId ? { ...m, content: m.content + d.line } : m));
+          const line = d.line;
+          setMessages((prev) => prev.map((m) => {
+            if (m.id !== agentMsgId) return m;
+            const timeline = [...(m.timeline ?? [])];
+            const latest = timeline.at(-1);
+            if (latest?.type === 'message') {
+              timeline[timeline.length - 1] = { ...latest, content: latest.content + line };
+            } else {
+              timeline.push({
+                id: `message-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+                type: 'message',
+                content: line,
+              });
+            }
+            return { ...m, content: m.content + line, timeline };
+          }));
         } else if (event === 'tool_use' && typeof d.name === 'string') {
+          const toolName = d.name;
           const item: WorkflowAgentTimelineItem = {
             id: typeof d.id === 'string' ? d.id : crypto.randomUUID(),
             type: 'tool',
-            name: d.name,
+            name: toolName,
             input: d.input,
             status: 'running',
           };
@@ -470,7 +489,7 @@ function useMiniAppAgentChat(projectId: string) {
             timeline[index] = {
               ...item,
               result: d.result,
-              status: 'success',
+              status: isMiniAppErrorToolResult(d.result) ? 'error' : 'success',
             };
             return { ...m, timeline };
           }));

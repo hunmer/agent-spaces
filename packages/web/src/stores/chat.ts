@@ -904,9 +904,12 @@ function appendStreamingTimelineMessage(
 }
 
 function withStreamingTimeline(message: ChatMessage, streamingTimeline?: WorkflowAgentTimelineItem[]): ChatMessage {
-  if (message.timeline?.length || !streamingTimeline?.length) return message;
-  const timeline = streamingTimeline.filter((item) => item.type !== 'message');
-  return timeline.length ? { ...message, timeline } : message;
+  if (!streamingTimeline?.length) return message;
+  if (streamingTimeline.some((item) => item.type === 'message')) {
+    return { ...message, timeline: streamingTimeline };
+  }
+  if (message.timeline?.length) return message;
+  return { ...message, timeline: streamingTimeline };
 }
 
 function createAbortedStreamingMessage(
@@ -917,7 +920,7 @@ function createAbortedStreamingMessage(
 ): ChatMessage | null {
   const content = streamingContent?.trim() ?? '';
   const thinking = streamingThinking?.trim() || undefined;
-  const timeline = streamingTimeline?.filter((item) => item.type !== 'message') ?? [];
+  const timeline = streamingTimeline ?? [];
 
   if (!content && !thinking && timeline.length === 0) {
     return null;
