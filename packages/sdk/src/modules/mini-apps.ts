@@ -30,6 +30,8 @@ export interface MiniAppAgentConfig {
   id: string;
   name: string;
   avatar?: string;
+  /** 空态展示的介绍文本（agent 对话无消息时显示） */
+  introduction?: string;
   /** 引用全局 Agent Preset id，复用其密钥（可选） */
   agentId?: string;
   runtimeKind?: 'open-agent-sdk' | 'claude-code' | 'codex' | 'grok' | 'gemini-cli' | 'langchain' | 'hermes' | 'pi';

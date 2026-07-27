@@ -843,7 +843,7 @@ function MiniAppAgentFilesDialog({ projectId, open, onOpenChange }: { projectId:
                 if (files.length) void uploadFiles('', files);
               }}
             />
-            <Button type="button" variant="ghost" size="icon" className="size-7" onClick={() => inputRef.current?.click()}>
+            <Button type="button" variant="ghost" size="icon" className="size-7 mr-8" onClick={() => inputRef.current?.click()}>
               <UploadIcon className="size-3.5" />
             </Button>
           </DialogHeader>

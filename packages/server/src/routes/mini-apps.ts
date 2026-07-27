@@ -741,6 +741,7 @@ router.put('/:id/agents/:agentId', (req: Request<{ id: string; agentId: string }
       id: body.id,
       name: String(body.name).trim(),
       avatar: typeof body.avatar === 'string' ? body.avatar : undefined,
+      introduction: typeof body.introduction === 'string' ? body.introduction : undefined,
       agentId: typeof body.agentId === 'string' ? body.agentId : undefined,
       runtimeKind: isMiniAppRuntimeKind(body.runtimeKind) ? body.runtimeKind : undefined,
       modelProvider: typeof body.modelProvider === 'string' ? body.modelProvider : undefined,
