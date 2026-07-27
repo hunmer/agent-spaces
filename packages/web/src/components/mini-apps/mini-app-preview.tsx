@@ -287,6 +287,9 @@ function useMiniAppAgentChat(projectId: string) {
   // 多会话：sessions 列表 + 当前 sessionId（'' 表示新建草稿，尚未落盘）
   const [sessions, setSessions] = useState<Array<{ id: string; agentId: string; title: string; updatedAt: string }>>([]);
   const [sessionId, setSessionId] = useState<string>('');
+  // sessionId 的 ref：让 loadHistory 不依赖 sessionId state，避免 sessionId 变化触发覆盖性重载
+  const sessionIdRef = useRef(sessionId);
+  useEffect(() => { sessionIdRef.current = sessionId; }, [sessionId]);
 
   // 加载 agents 清单
   useEffect(() => {
@@ -328,10 +331,22 @@ function useMiniAppAgentChat(projectId: string) {
       const { sessions: list } = await sdk.miniApp.listAgentSessions(projectId, aid);
       setSessions(list);
       // 若当前 session 不在新列表中（agent 切换），自动选最近一条或新建草稿
+      let nextId = '';
       setSessionId((cur) => {
-        if (cur && list.some((s) => s.id === cur)) return cur;
-        return list[0]?.id ?? '';
+        if (cur && list.some((s) => s.id === cur)) { nextId = cur; return cur; }
+        nextId = list[0]?.id ?? '';
+        sessionIdRef.current = nextId; // 同步 ref，与 setSessionId 一致
+        return nextId;
       });
+      // 自动选中后拉历史（若选中了已有会话）
+      if (nextId) {
+        const { messages: hist } = await sdk.miniApp.agentHistory(projectId, nextId, aid);
+        setMessages(hist.map((m) => ({
+          id: m.id, role: m.role, content: m.content,
+          timestamp: new Date(m.timestamp),
+          timeline: miniAppToolCallsToTimeline(m.toolCalls),
+        })));
+      }
     } catch { /* ignore */ }
   }, [projectId, agentId]);
 
@@ -342,11 +357,12 @@ function useMiniAppAgentChat(projectId: string) {
     loadSessions(agentId);
   }, [agentId, loadSessions]);
 
-  // sessionId 变化 → 拉历史
+  // 拉取当前会话历史（用 ref 读最新 sessionId，不依赖 state，避免覆盖流式输出）
   const loadHistory = useCallback(async () => {
-    if (!projectId || !agentId || !sessionId) { setMessages([]); return; }
+    const sid = sessionIdRef.current;
+    if (!projectId || !agentId || !sid) { setMessages([]); return; }
     try {
-      const { messages: hist } = await sdk.miniApp.agentHistory(projectId, sessionId, agentId);
+      const { messages: hist } = await sdk.miniApp.agentHistory(projectId, sid, agentId);
       setMessages(hist.map((m) => ({
         id: m.id,
         role: m.role,
@@ -355,18 +371,27 @@ function useMiniAppAgentChat(projectId: string) {
         timeline: miniAppToolCallsToTimeline(m.toolCalls),
       })));
     } catch { /* ignore */ }
-  }, [projectId, agentId, sessionId]);
+  }, [projectId, agentId]);
 
-  useEffect(() => {
-    if (!sessionId) { setMessages([]); return; }
-    loadHistory();
-  }, [sessionId, loadHistory]); // eslint-disable-line react-hooks/exhaustive-deps
-
+  // 切换会话：更新 sessionId 后拉历史（用户显式动作，不会和发送冲突）
   const handleSwitchSession = useCallback((id: string) => {
+    sessionIdRef.current = id; // 立即同步，避免 loadHistory 读到旧值
     setSessionId(id);
-  }, []);
+    setMessages([]);
+    // 切换后异步拉历史
+    sdk.miniApp.agentHistory(projectId, id, agentId)
+      .then(({ messages: hist }) => {
+        setMessages(hist.map((m) => ({
+          id: m.id, role: m.role, content: m.content,
+          timestamp: new Date(m.timestamp),
+          timeline: miniAppToolCallsToTimeline(m.toolCalls),
+        })));
+      })
+      .catch(() => {});
+  }, [projectId, agentId]);
 
   const handleNewSession = useCallback(() => {
+    sessionIdRef.current = '';
     setSessionId('');
     setMessages([]);
     setInput('');
@@ -377,12 +402,13 @@ function useMiniAppAgentChat(projectId: string) {
     try {
       await sdk.miniApp.clearAgentHistory(projectId, id, agentId);
       setSessions((prev) => prev.filter((s) => s.id !== id));
-      if (sessionId === id) {
+      if (sessionIdRef.current === id) {
+        sessionIdRef.current = '';
         setSessionId('');
         setMessages([]);
       }
     } catch { /* ignore */ }
-  }, [projectId, agentId, sessionId]);
+  }, [projectId, agentId]);
 
   const handleRenameSession = useCallback(async (id: string, title: string) => {
     if (!projectId) return;
@@ -399,6 +425,7 @@ function useMiniAppAgentChat(projectId: string) {
     let activeSessionId = sessionId;
     if (!activeSessionId) {
       activeSessionId = crypto.randomUUID();
+      sessionIdRef.current = activeSessionId; // 立即同步 ref，避免 loadHistory 读到空串覆盖消息
       setSessionId(activeSessionId);
     }
     const userMsg: ChatMessage = { id: crypto.randomUUID(), role: 'user', content: text, timestamp: new Date() };
@@ -867,8 +894,10 @@ function MiniAppAgentPopover({ projectId }: { projectId: string }) {
   const chat = useMiniAppAgentChat(projectId);
   const [open, setOpen] = useState(false);
 
-  // 打开时拉取一次历史
-  useEffect(() => { if (open) chat.loadHistory(); }, [open, chat.loadHistory]); // eslint-disable-line react-hooks/exhaustive-deps
+  // 打开时拉取一次历史（用 ref 持有函数，避免其引用变化触发重跑覆盖流式输出）
+  const loadHistoryRef = useRef(chat.loadHistory);
+  loadHistoryRef.current = chat.loadHistory;
+  useEffect(() => { if (open) loadHistoryRef.current(); }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const { messages, input, setInput, sending, handleSend, handleStop, current, suggestions, agentFileMentions, handleAnswerAskUserQuestion } = chat;
 
@@ -908,8 +937,10 @@ function MiniAppAgentDock({ projectId, onClose }: { projectId: string; onClose: 
   const t = useTranslations('mini-apps');
   const chat = useMiniAppAgentChat(projectId);
 
-  // dock 常驻时，agent 切换即拉历史
-  useEffect(() => { chat.loadHistory(); }, [chat.loadHistory]); // eslint-disable-line react-hooks/exhaustive-deps
+  // dock 常驻：仅在 mount 时拉一次历史（agent 切换由 hook 内部 effect 处理）
+  const loadHistoryRef = useRef(chat.loadHistory);
+  loadHistoryRef.current = chat.loadHistory;
+  useEffect(() => { loadHistoryRef.current(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const { messages, input, setInput, sending, handleSend, handleStop, current, suggestions, agentFileMentions, handleAnswerAskUserQuestion } = chat;
 

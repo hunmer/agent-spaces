@@ -119,6 +119,26 @@ function formatConversationHistory(history: Message[]): string[] {
   return historyLines;
 }
 
+/**
+ * 将简单的 {role, content} 对话历史格式化为 "Conversation history:" 文本块。
+ * 与 formatConversationHistory 共用 [User]/[Agent] 前缀和预算截断逻辑，
+ * 供 mini-app agent 等无 Message 结构的场景复用。返回空字符串表示无历史。
+ */
+export function formatSimpleConversationHistory(history: Array<{ role: 'user' | 'agent'; content: string }>): string {
+  if (!history.length) return '';
+  const historyLines: string[] = [];
+  let remainingBudget = 24_000;
+  for (const msg of history) {
+    const role = msg.role === 'user' ? 'User' : 'Agent';
+    const text = msg.role === 'user' ? stripHtml(msg.content) : stripToolLikeHistoryLines(stripHtml(msg.content));
+    appendHistoryLine(historyLines, `[${role}]`, text, remainingBudget);
+    remainingBudget -= text.length;
+    if (remainingBudget <= 0) break;
+  }
+  if (!historyLines.length) return '';
+  return ['Conversation history:', ...historyLines].join('\n');
+}
+
 function getAgentFinalMessage(message: Message): string {
   const finalTextParts = message.parts
     ?.filter((part) => part.type === 'text')

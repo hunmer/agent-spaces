@@ -14,6 +14,7 @@ import { listPresets } from './agent.js';
 import { listProviders } from '../storage/llm-store.js';
 import { requestMiniAppClient } from './mini-app-client-rpc.js';
 import type { BuiltInAgentToolName } from '@agent-spaces/shared';
+import { formatSimpleConversationHistory } from '../ws/agent-prompt.js';
 
 export interface ApiCtx {
   projectId: string;
@@ -486,6 +487,13 @@ export async function runMiniAppAgent(input: MiniAppAgentRunInput): Promise<Mini
     sections.push(`Enabled plugins: ${project.enabledPlugins.join(', ')}. ` +
       `Use list_plugin_tools / get_plugin_tool_detail / execute_plugin_tool.`);
   }
+  // 读取本 session 已落盘的历史消息作为上下文（不含当前轮，按时间升序），
+  // 用与 chat agent 一致的 "Conversation history:" 文本块拼进 systemPrompt。
+  const history = miniAppStore.listAgentChats(projectId, sessionId)
+    .filter((m) => m.agentId === agentId)
+    .map((m) => ({ role: m.role, content: m.content }));
+  const historyBlock = formatSimpleConversationHistory(history);
+  if (historyBlock) sections.push(historyBlock);
   const systemPrompt = sections.join('\n\n');
 
   // 执行
