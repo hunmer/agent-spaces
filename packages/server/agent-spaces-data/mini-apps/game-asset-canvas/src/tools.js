@@ -1,6 +1,11 @@
 // Agent 工具元数据（与 src/api.js 一一对应）。
 // 运行时启动时读此文件注入到 function tool 的 description/inputSchema；
 // Agent 可先调 get_mini_app_tools 看这些描述再决策。
+//
+// 节点参数的 required/default/options 等元信息**不在本文件维护**，
+// 而是定义在各节点组件（src/components/nodes/*.jsx）的 PARAMS_SCHEMA 里，
+// agent 调 get_node_params(type) 实时读取（单一数据源：节点即文档）。
+
 
 const NODE_TYPE_ENUM = [
   'textToImage',
@@ -86,7 +91,7 @@ export default [
         },
         data: {
           type: 'object',
-          description: '节点初始 data 字段（可选，合并到默认 data）。如 note 传 {text:"备注内容"}；textToImage 传 {params:{prompt:"...",model:"gpt-image-1",aspect:"1:1",size:"1k"}}；图像处理节点（ip*）可传 {params:{processorParams:{...}}} 覆盖处理器参数（processor 由节点类型固定，无需传）。',
+          description: '节点初始 data 字段（可选，合并到默认 data）。生成类节点（textToImage/editImage/textToVoice/videoGenerator）的 params 含枚举字段（如 model/aspect），改前先调 get_node_params(type) 查合法值。note 传 {text:"备注内容"}；图像处理节点（ip*）传 {params:{processorParams:{...}}}。',
         },
         groupName: { type: 'string', description: '可选。把新建的节点归入此名称的分组（画布上的可视化 group）：同名分组不存在则自动创建，已存在则直接加入。用于把同一项目/同一角色的多个节点归类管理。' },
         focus: { type: 'boolean', description: '创建后是否聚焦/居中到该节点（默认 true）' },
@@ -204,12 +209,15 @@ export default [
   },
   {
     name: 'update_node',
-    description: '更新节点 data 的部分字段（patch 合并，不会清空其他字段）。用户说「把便签内容改成 xxx」「修改文生图的提示词」时调用。常见 data 字段：note 用 {text}；textToImage/editImage 用 {params:{prompt,model,aspect,size}}。',
+    description: '更新节点 data 的部分字段（patch 合并，不会清空其他字段）。用户说「把便签内容改成 xxx」「修改文生图的提示词」「换成即梦模型」时调用。常见 data 字段：note 用 {text}；生成类节点用 {params:{...}}。**改枚举型参数（model/aspect/size 等）先调 get_node_params(type) 查合法值**，不要盲填。',
     inputSchema: {
       type: 'object',
       properties: {
         nodeId: { type: 'string', description: '目标节点 id' },
-        data: { type: 'object', description: '要合并的字段（如 {text:"新内容"} 或 {params:{prompt:"..."}}）' },
+        data: {
+          type: 'object',
+          description: '要合并的字段。如 {text:"新内容"} 或 {params:{prompt:"...",model:"jimeng-5.0"}}。生成类节点的 params 合法枚举值由 get_node_params 返回。',
+        },
       },
       required: ['nodeId', 'data'],
     },
@@ -220,6 +228,21 @@ export default [
     inputSchema: {
       type: 'object',
       properties: {},
+    },
+  },
+  {
+    name: 'get_node_params',
+    description: '查询某类节点支持的参数清单（含 required/default/options/description 等元信息）。**改枚举型参数前必查**——例如要把 textToImage 的 model 改为「即梦」，先调此工具拿到 model 的合法 value 列表，再 update_node 写入选中的 value。用户说「支持哪些模型」「有哪些比例可选」时调用。',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        type: {
+          type: 'string',
+          description: '节点类型（与 add_node 的 type 同枚举）',
+          enum: NODE_TYPE_ENUM,
+        },
+      },
+      required: ['type'],
     },
   },
   {

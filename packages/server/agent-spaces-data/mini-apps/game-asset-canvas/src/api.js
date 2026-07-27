@@ -178,6 +178,29 @@ export default {
   },
 
   /**
+   * 查询某类节点支持的参数 schema（含 required/default/options/description）。
+   * 用于改枚举型参数前查合法值，避免盲填。schema 定义在各节点组件的 PARAMS_SCHEMA。
+   *
+   * @param {object} input
+   * @param {string} input.type 节点类型（必填，见 VALID_NODE_TYPES）
+   */
+  get_node_params: async (input, ctx) => {
+    const type = asString(input?.type);
+    if (!VALID_NODE_TYPES.includes(type)) {
+      return { ok: false, message: `未知节点类型：${type || '(空)'}。可用：${VALID_NODE_TYPES.join(', ')}` };
+    }
+    const result = await rpc(ctx, 'canvas.getNodeParams', { type }, 5000);
+    if (result?.ok === false) return result;
+    return {
+      ok: true,
+      type,
+      typeLabel: NODE_LABELS[type] || type,
+      params: result?.params || [],
+      message: result?.message,
+    };
+  },
+
+  /**
    * 批量执行多个生成类节点（一次调用触发多个，可选等待全部完成）。
    * @param {object} input
    * @param {string[]} input.nodeIds 要执行的节点 id 数组（必填，非空）

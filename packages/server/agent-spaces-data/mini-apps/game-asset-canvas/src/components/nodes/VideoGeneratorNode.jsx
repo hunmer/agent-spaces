@@ -22,6 +22,50 @@ import { hasPrompt } from '../../utils/prompts';
  * data.params: { prompt, pickedPrompt, model, aspect, quality, duration }
  * data.output: { video: string|null }  产出视频 http URL
  */
+
+// 参数 schema（agent 通过 get_node_params 读取）。
+// VIDEO_MODEL_OPTIONS 是分组结构（[{group,options}]），拍平成单层 options 并带 group 前缀便于 agent 选择。
+export const PARAMS_SCHEMA = [
+  {
+    key: 'prompt',
+    label: '提示词',
+    type: 'text',
+    required: true,
+    description: '视频内容描述。',
+  },
+  {
+    key: 'model',
+    label: '视频模型',
+    type: 'select',
+    options: VIDEO_MODEL_OPTIONS.flatMap((g) =>
+      g.options.map((o) => ({ value: o.value, label: `${g.group} · ${o.label}` })),
+    ),
+    default: DEFAULT_VIDEO_MODEL,
+    description: '即梦(jimeng)/MiniMax(海螺)纯文生视频可用；阿里云(万相)分支需参考图（无图会失败）。',
+  },
+  {
+    key: 'aspect',
+    label: '画面比例',
+    type: 'select',
+    options: VIDEO_ASPECT_OPTIONS.map((v) => ({ value: v, label: v })),
+    default: VIDEO_ASPECT_OPTIONS[0],
+  },
+  {
+    key: 'quality',
+    label: '质量',
+    type: 'select',
+    options: VIDEO_QUALITY_OPTIONS.map((v) => ({ value: v, label: v })),
+    default: VIDEO_QUALITY_OPTIONS[0],
+    description: '分辨率，数字越大越清晰越贵。',
+  },
+  {
+    key: 'duration',
+    label: '时长(秒)',
+    type: 'select',
+    options: VIDEO_DURATION_OPTIONS.map((v) => ({ value: v, label: v })),
+    default: VIDEO_DURATION_OPTIONS[0],
+  },
+];
 export default function VideoGeneratorNode({ id, data, selected }) {
   const params = data?.params || {};
   const uploadedImages = Array.isArray(data?.uploadedImages) ? data.uploadedImages : [];

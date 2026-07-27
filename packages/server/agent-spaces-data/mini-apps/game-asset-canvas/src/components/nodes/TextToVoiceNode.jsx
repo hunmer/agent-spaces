@@ -15,6 +15,31 @@ import { hasPrompt } from '../../utils/prompts';
  *   - voiceId:      发音人 ID（fish-audio→referenceId / minimax→voiceId / qianyin→speakerId）
  * data.output: { audio: string|null }  产出音频 http URL
  */
+
+// 参数 schema（agent 通过 get_node_params 读取）。
+export const PARAMS_SCHEMA = [
+  {
+    key: 'prompt',
+    label: '文本',
+    type: 'text',
+    required: true,
+    description: '要合成语音的文本内容。',
+  },
+  {
+    key: 'model',
+    label: '语音服务',
+    type: 'select',
+    options: VOICE_PROVIDER_OPTIONS,
+    default: VOICE_PROVIDER_OPTIONS[0]?.value || 'fish-audio',
+  },
+  {
+    key: 'voiceId',
+    label: '发音人 ID',
+    type: 'text',
+    required: false,
+    description: '可选。各服务字段名不同：fish-audio→referenceId / minimax→voiceId / qianyin→speakerId。不填用默认发音人。',
+  },
+];
 export default function TextToVoiceNode({ id, data, selected }) {
   const params = data?.params || {};
   // 产出优先取 audios 数组（count>1 时由后端写入），降级旧单 audio 字段

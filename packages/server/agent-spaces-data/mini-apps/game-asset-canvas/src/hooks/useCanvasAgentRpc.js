@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { addEdge, MarkerType } from '@xyflow/react';
 import { NODE_META, NODE_TYPES, WORKFLOWS, VOICE_PROVIDER_OPTIONS, DEFAULT_VIDEO_MODEL, VIDEO_ASPECT_OPTIONS, VIDEO_QUALITY_OPTIONS, VIDEO_DURATION_OPTIONS, DEFAULT_MODEL } from '../utils/constants';
-import { DEFAULT_SIZE, initialData } from '../utils/canvas-constants';
+import { DEFAULT_SIZE, initialData, NODE_PARAMS_SCHEMA } from '../utils/canvas-constants';
 import { genId, autoPosition } from '../utils/canvas-id';
 
 /**
@@ -365,6 +365,26 @@ export default function useCanvasAgentRpc({ nodes, edges, createNodeAt, updateNo
               nodeType: node.type,
               message: `已触发「${label}」节点 ${nodeId} 执行，生成中…产出会异步写入节点产出区与生成记录`,
             };
+            break;
+          }
+          case 'canvas.getNodeParams': {
+            // 返回某类节点支持的参数 schema（含 required/default/options/description）。
+            // schema 定义在各节点组件的 PARAMS_SCHEMA，经 canvas-constants 聚合为 NODE_PARAMS_SCHEMA。
+            // 单一数据源：节点即文档，options 直接引用 constants 的 OPTIONS。
+            const { type } = payload;
+            if (!type) throw new Error('type 必填');
+            const schema = NODE_PARAMS_SCHEMA[type];
+            if (!schema) {
+              const label = (NODE_META[type] && NODE_META[type].label) || type;
+              result = {
+                ok: true,
+                type,
+                params: [],
+                message: `「${label}」没有 agent 可调的枚举参数（这类节点的输入由画布交互设置，如上传图/拉框等）`,
+              };
+              break;
+            }
+            result = { ok: true, type, params: schema };
             break;
           }
           case 'canvas.waitNodeResult': {

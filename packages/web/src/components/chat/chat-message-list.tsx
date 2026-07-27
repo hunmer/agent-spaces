@@ -253,7 +253,7 @@ export function ChatMessageList<TMessage extends DisplayChatMessage>({
     const streaming = isStreamingMessage?.(msg) ?? false;
     const showStreamingPlaceholder = streaming && !thinking && !message;
     const timeline = msg.role === "agent" ? normalizeChatTimeline(getMessageTimeline(msg)) : [];
-    const hasTimelineMessage = timeline.some((item) => item.type === "message");
+    const hasTimelineMessage = timeline.some((item) => item.type === "message" && item.content.trim().length > 0);
     const hasInlineTimeline = hasTimelineMessage && timeline.some((item) => item.type !== "message");
     const hasToolTimeline = timeline.some((item) => item.type === "tool");
     const showTimelineMessages = hasInlineTimeline;

@@ -923,18 +923,20 @@ function MiniAppAgentHeaderActions({ chat }: { chat: ReturnType<typeof useMiniAp
       {agentId && (
         <Select value={sessionId} onValueChange={(v) => v === '__new__' ? handleNewSession() : handleSwitchSession(v ?? '')}>
           <SelectTrigger className="h-7 w-[140px] text-xs">
-            <SelectValue>
-              {sessionId
-                ? (sessions.find((s) => s.id === sessionId)?.title ?? t('agent.sessionUntitled'))
-                : t('agent.sessionNew')}
+            <SelectValue className="min-w-0">
+              <span className="truncate">
+                {sessionId
+                  ? (sessions.find((s) => s.id === sessionId)?.title ?? t('agent.sessionUntitled'))
+                  : t('agent.sessionNew')}
+              </span>
             </SelectValue>
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent className="w-auto max-w-[220px]">
             <SelectItem value="__new__">{t('agent.sessionNew')}</SelectItem>
             {sessions.map((s) => (
-              <SelectItem key={s.id} value={s.id}>
-                <span className="flex w-full items-center justify-between gap-2">
-                  <span className="truncate">{s.title}</span>
+              <SelectItem key={s.id} value={s.id} className="min-w-0">
+                <span className="flex w-full min-w-0 items-center justify-between gap-2">
+                  <span className="min-w-0 truncate">{s.title}</span>
                   <button
                     type="button"
                     className="ml-auto inline-flex shrink-0 rounded p-0.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
@@ -957,7 +959,9 @@ function MiniAppAgentHeaderActions({ chat }: { chat: ReturnType<typeof useMiniAp
       {agents.length > 1 && (
         <Select value={agentId} onValueChange={(v) => setAgentId(v ?? '')}>
           <SelectTrigger className="h-7 w-[120px] text-xs">
-            <SelectValue>{agents.find((a) => a.id === agentId)?.name ?? agentId}</SelectValue>
+            <SelectValue className="min-w-0">
+              <span className="truncate">{agents.find((a) => a.id === agentId)?.name ?? agentId}</span>
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
             {agents.map((a) => (

@@ -15,6 +15,40 @@ import { normalizeImageUrls, resolveReferenceImages, promptHtmlToText, dedupeUrl
  * data.images: string[]  上游通过连线推入的待编辑图片 URL（或手动粘贴）
  * data.output: { images: string[] }  编辑后的产出
  */
+
+// 参数 schema（agent 通过 get_node_params 读取）。与 TextToImageNode 同构，
+// 但 prompt 语义是「编辑指令」，且执行需输入图（由节点上传/连线提供，非 params）。
+export const PARAMS_SCHEMA = [
+  {
+    key: 'prompt',
+    label: '编辑指令',
+    type: 'text',
+    required: true,
+    description: '描述要怎么改输入图，如「把背景换成星空，保持主体不变」。会与 pickedPrompt 合并后提交。',
+  },
+  {
+    key: 'model',
+    label: '模型',
+    type: 'select',
+    options: MODEL_OPTIONS,
+    default: DEFAULT_MODEL,
+    description: '图像编辑模型。value 是要填进 data.params.model 的值。',
+  },
+  {
+    key: 'aspect',
+    label: '画面比例',
+    type: 'select',
+    options: ASPECT_OPTIONS.map((v) => ({ value: v, label: v })),
+    default: '1:1',
+  },
+  {
+    key: 'size',
+    label: '输出尺寸',
+    type: 'select',
+    options: SIZE_OPTIONS.map((v) => ({ value: v, label: v })),
+    default: '1k',
+  },
+];
 export default function EditImageNode({ id, data, selected }) {
   const params = data?.params || {};
   // 连线图（由 computeInputImages 派生到 data.images）+ 用户上传图（data.uploadedImages，持久化不被覆盖）

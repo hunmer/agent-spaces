@@ -14,6 +14,42 @@ import { hasPrompt } from '../../utils/prompts';
  *   - pickedPrompt: 从提示词库选中的提示词（可选，展示为标签，提交时与 prompt 合并）
  * data.output: { images: string[] }
  */
+
+// 参数 schema（agent 通过 get_node_params 读取）。
+// options 直接引用 constants 的 OPTIONS 常量，单一数据源，改 constants 自动同步。
+export const PARAMS_SCHEMA = [
+  {
+    key: 'prompt',
+    label: '提示词',
+    type: 'text',
+    required: true,
+    description: '正向提示词，描述要生成的游戏资产。英文效果通常更好，会与 pickedPrompt 合并后提交。',
+  },
+  {
+    key: 'model',
+    label: '模型',
+    type: 'select',
+    options: MODEL_OPTIONS,            // [{value,label}]
+    default: DEFAULT_MODEL,
+    description: '图像生成模型。value 是要填进 data.params.model 的值。',
+  },
+  {
+    key: 'aspect',
+    label: '画面比例',
+    type: 'select',
+    options: ASPECT_OPTIONS.map((v) => ({ value: v, label: v })),
+    default: '1:1',
+    description: '角色立绘用 3:4/9:16；场景背景用 16:9/21:9；道具图标用 1:1。',
+  },
+  {
+    key: 'size',
+    label: '输出尺寸',
+    type: 'select',
+    options: SIZE_OPTIONS.map((v) => ({ value: v, label: v })),
+    default: '1k',
+    description: '1k=1024 便宜快；2k/4k 更清晰更贵。',
+  },
+];
 export default function TextToImageNode({ id, data, selected }) {
   const params = data?.params || {};
   const images = data?.output?.images || [];

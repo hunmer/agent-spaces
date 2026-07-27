@@ -1070,6 +1070,72 @@ cp -R dist/. <miniapp>/src/vendor/director-desk-web/
 - 并发=1 时串行执行（count=3 时一个一个跑）；并发=count 时全部同时跑
 - count=1 时行为与改动前完全一致（无并发、单份产出）
 
+## 游戏策划 Agent + Agent 执行节点能力（本轮新增）
+
+给 mini-app 新增「游戏策划」（id=`game-planner`，头像🎨，名「美术总监」）agent，并给所有 agent 加「执行画布节点」「按名称归组」能力，参数 schema 改为「节点即文档」模式。
+
+### 关键决策与已踩坑（务必遵守）
+
+1. **agent 在 manifest.json 的 `agents[]` 数组定义**（id/name/avatar/systemPrompt/suggestions），新增 agent 只追加一项，**零宿主改动、零源码改动，刷新即生效**。
+2. **「执行节点」走 RPC fire-and-forget + 可选等待**：
+   - `api.js` 的 `execute_node` → RPC `canvas.executeNode`（触发阶段，10s 超时）→ 浏览器端调注入的 `onGenerate`/`onGenerateMedia`（与用户点「生成」按钮完全等价）。
+   - `waitForResult:true` 时再发 `canvas.waitNodeResult`（等待阶段），浏览器端用 `setTimeout` 每 400ms 轮询 `ctxRef.current.nodes` 找节点 `data.status`，done 收集 images/audios/videos 产出，error/cancelled/timeout 分别 resolve。
+   - **回调必须 async**：onTaskEvent 回调原本不是 async，新增 `await new Promise`（waitNodeResult 用）会语法报错，必须改为 `async (event, data) =>`。
+   - **TDZ 规避**：`useCanvasAgentRpc` 的调用必须放在 Canvas.jsx 里 `handleGenerate/handleGenerateMedia` 解构**之后**（line ~290 nodeCallbacks useMemo 之后），否则引用未初始化变量报错。
+3. **execute_node 仅支持生成类节点**：textToImage/editImage/textToVoice/videoGenerator。其他类型（imageDisplay/note/图像处理/抠图等）返回 ok:false。`buildNodeExecution` 辅助函数复刻各节点 handleRun 的 input 组装（提示词合并、count/concurrency 兜底、editImage 输入图合并去重 + URL 补全、videoGenerator 同款）。
+4. **groupName 参数（add_node/add_nodes）**：RPC handler 收到后调 `ensureGroupByName(setGroups, name, ids)` —— 同名 group 已存在则追加 childNodeIds（去重），不存在则建新 group（结构与 `createGroupFromSelection` 一致）。Canvas.jsx 需把 `setGroups` 传给 useCanvasAgentRpc。
+5. **参数 schema = 节点即文档（重要架构）**：
+   - **不要**在 tools.js 内联枚举值、**不要**写 NODE_PARAMS_SPEC 注入提示词、**不要**为每个节点单独写辅助描述。
+   - 各生成类节点组件 export `PARAMS_SCHEMA = [{key, label, type, required?, default?, options?, description?}]`，**options 直接引用 constants 的 OPTIONS 常量**（MODEL_OPTIONS/ASPECT_OPTIONS 等），单一数据源，改 constants 自动同步。
+   - `canvas-constants.js` 聚合为 `NODE_PARAMS_SCHEMA = { textToImage: [...], editImage: [...], textToVoice: [...], videoGenerator: [...] }`（只列有 agent 可调枚举参数的节点）。
+   - `useCanvasAgentRpc` 的 `canvas.getNodeParams` case 直接返回 `NODE_PARAMS_SCHEMA[type]`，无则空数组 + 说明。
+   - agent 通过 `get_node_params(type)` 工具实时查合法值，**改枚举参数前必查**（systemPrompt 与 tools.js 描述都强调）。
+6. **agent 工具描述引导而非内联**：add_node/update_node 的 `data` 字段描述只说「改枚举参数先调 get_node_params 查」，不内联枚举值清单（避免与 constants 漂移）。
+
+### 改动文件（mini-app 内，刷新即生效，无宿主改动）
+
+- `manifest.json`：`agents[]` 加 `game-planner`（美术总监，完整 15 节专业 systemPrompt：身份/对话原则/首次流程/美术定位维度/角色设计流程/提示词规范/风格一致性/参考作品处理/行为约束/会话末尾提示执行）。两个 agent systemPrompt 都补了 execute_node/execute_nodes/groupName 说明。
+- `src/api.js`：
+  - `add_node`/`add_nodes` 加 `groupName` 透传
+  - 新增 `execute_node`（waitForResult/waitForResultTimeoutMs 选项）
+  - 新增 `execute_nodes`（批量，nodeIds 数组 + waitForResult）
+  - 新增 `get_node_params`（type → 返回参数 schema）
+- `src/tools.js`：新增 execute_node/execute_nodes/get_node_params 元数据；add_node/add_nodes 加 groupName 字段；add_node/update_node 的 data 描述引导「先查 get_node_params」。**删除** NODE_PARAMS_SPEC（曾注入提示词，已废弃）。
+- `src/hooks/useCanvasAgentRpc.js`：
+  - 签名加 `setGroups, onGenerate, onGenerateMedia`
+  - 新增 `ensureGroupByName`（按名归组）+ `buildNodeExecution`（节点 input 组装）辅助函数
+  - 新增 case：`canvas.executeNode` / `canvas.waitNodeResult`（轮询）/ `canvas.getNodeParams`
+  - addNode/addNodes case 接 groupName
+  - onTaskEvent 回调改 async
+- `src/components/Canvas.jsx`：useCanvasAgentRpc 调用挪到 nodeCallbacks useMemo 之后（TDZ），传入 setGroups/handleGenerate/handleGenerateMedia
+- `src/utils/canvas-constants.js`：import 各节点 PARAMS_SCHEMA，聚合为 `NODE_PARAMS_SCHEMA` 映射
+- `src/components/nodes/TextToImageNode.jsx` / `EditImageNode.jsx` / `TextToVoiceNode.jsx` / `VideoGeneratorNode.jsx`：各 export `PARAMS_SCHEMA`（options 引用 constants OPTIONS，不重复枚举）
+
+### 新增节点必要规范（必读）
+
+新增节点时除遵守 handoff 既有约定（NodeResizer 带 width/height、nodrag nopan nowheel、computeInputImages 纳入 receiver 等），还**必须**：
+
+1. **在 `src/api.js` 的 `VALID_NODE_TYPES` + `NODE_LABELS` 加新类型**（agent add_node 校验 + 返回中文名）。**改 api.js 立即生效**（loadApiJs 每次重读文件，无需热重载）。
+2. **在 `src/tools.js` 的 `NODE_TYPE_ENUM` + `NODE_TYPE_DESC` 加新类型**（agent 工具 schema 的 type 枚举 + 中文描述）。
+3. **如果新节点有 agent 可调的枚举参数**（如模型/比例/质量下拉）：
+   - 在节点组件 `export const PARAMS_SCHEMA = [...]`，options **直接引用** constants 的 OPTIONS 常量（不要手写枚举值，避免漂移）。
+   - 在 `canvas-constants.js` 的 `NODE_PARAMS_SCHEMA` 映射加 `[NODE_TYPES.xxx]: XXX_PARAMS`。
+   - 这样 agent 调 `get_node_params("xxx")` 自动拿到合法值，无需改 api.js/tools.js 的描述文本。
+4. **如果新节点是生成类**（有 onGenerate/onGenerateMedia）且希望 agent 能执行：
+   - 在 `useCanvasAgentRpc.js` 的 `buildNodeExecution` 加分支（组装 input + 校验最低执行条件）。
+   - 在 `canvas.executeNode` case 的 `GENERATABLE` Set 加新 type。
+5. **节点对话框数据持久化**仍遵守「节点对话框数据持久化规范」章节（data.<featureData> 经 onUpdate 写回节点）。
+
+### 验收要点
+
+- agent 选择器出现「🎨 美术总监」，开场白引导三问（整体感觉/参考作品/优先资产）
+- 美术总监建文生图节点后，回复**最后一行**自动出现「需要我帮你执行节点吗？」
+- 回「执行」→ agent 调 execute_node(waitForResult:true) → 节点 running → done → 返回产出 URL
+- `add_node({type:'textToImage', groupName:'主角一套', data:{...}})` → 节点被同名分组框包裹；再建同 groupName → 进同一分组
+- agent 改模型前调 get_node_params("textToImage") → 返回 model 的 options（含 jimeng-5.0 等，来自 MODEL_OPTIONS）→ 据此 update_node
+- 对非生成类节点（imageDisplay）调 execute_node → ok:false 提示
+- F12 看 add_node 工具 schema：data 描述**不应**有大段枚举值文本（已移除），只引导「先查 get_node_params」
+
 ## 后续可做
 
 - 队列任务失败「重试」按钮、执行中实时进度（node:progress 事件）

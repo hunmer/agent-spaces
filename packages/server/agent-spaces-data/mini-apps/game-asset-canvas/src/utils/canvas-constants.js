@@ -11,8 +11,8 @@ import {
   DEFAULT_CUTOUT_MODE, defaultCutoutParams,
 } from './constants';
 
-import TextToImageNode from '../components/nodes/TextToImageNode';
-import EditImageNode from '../components/nodes/EditImageNode';
+import TextToImageNode, { PARAMS_SCHEMA as TEXT_TO_IMAGE_PARAMS } from '../components/nodes/TextToImageNode';
+import EditImageNode, { PARAMS_SCHEMA as EDIT_IMAGE_PARAMS } from '../components/nodes/EditImageNode';
 import ImageDisplayNode from '../components/nodes/ImageDisplayNode';
 import ImageProcessNode from '../components/nodes/ImageProcessNode';
 import ImageEditorNode from '../components/nodes/ImageEditorNode';
@@ -20,8 +20,8 @@ import PixelEditorNode from '../components/nodes/PixelEditorNode';
 import UiSplitterNode from '../components/nodes/UiSplitterNode';
 import BBoxViewerNode from '../components/nodes/BBoxViewerNode';
 import PromptReverseNode from '../components/nodes/PromptReverseNode';
-import TextToVoiceNode from '../components/nodes/TextToVoiceNode';
-import VideoGeneratorNode from '../components/nodes/VideoGeneratorNode';
+import TextToVoiceNode, { PARAMS_SCHEMA as TEXT_TO_VOICE_PARAMS } from '../components/nodes/TextToVoiceNode';
+import VideoGeneratorNode, { PARAMS_SCHEMA as VIDEO_GENERATOR_PARAMS } from '../components/nodes/VideoGeneratorNode';
 import ImageCompareNode from '../components/nodes/ImageCompareNode';
 import CutoutNode from '../components/nodes/CutoutNode';
 import DirectorDeskNode from '../components/nodes/DirectorDeskNode';
@@ -57,6 +57,16 @@ export const NODE_COMPONENTS = {
   [NODE_TYPES.cutout]: CutoutNode,
   [NODE_TYPES.directorDesk]: DirectorDeskNode,
   [NODE_TYPES.note]: NoteNode,
+};
+
+// 节点类型 -> 参数 schema 映射（agent 通过 get_node_params 读取）。
+// 只列「有 agent 可调枚举参数」的生成类节点；其余节点不在此映射，get_node_params 返回空 + 说明。
+// schema 定义在各节点组件的 PARAMS_SCHEMA export，options 直接引用 constants 的 OPTIONS（单一数据源）。
+export const NODE_PARAMS_SCHEMA = {
+  [NODE_TYPES.textToImage]: TEXT_TO_IMAGE_PARAMS,
+  [NODE_TYPES.editImage]: EDIT_IMAGE_PARAMS,
+  [NODE_TYPES.textToVoice]: TEXT_TO_VOICE_PARAMS,
+  [NODE_TYPES.videoGenerator]: VIDEO_GENERATOR_PARAMS,
 };
 
 // 右键菜单 / 落空菜单的节点类型列表（与 RightPanel 新增节点 tab 保持一致）

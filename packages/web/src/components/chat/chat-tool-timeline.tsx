@@ -142,6 +142,7 @@ function MessageTimelineCard({
   item: Extract<WorkflowAgentTimelineItem, { type: "message" }>;
   workspaceId?: string;
 }) {
+  if (!item.content.trim()) return null;
   return (
     <div className="rounded-lg border bg-muted/50 px-2.5 py-2 text-xs leading-relaxed shadow-sm">
       <Markdown content={item.content} workspaceId={workspaceId} />
