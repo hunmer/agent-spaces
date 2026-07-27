@@ -9,9 +9,11 @@ import { createBuiltinPluginApi, runWithPluginSource } from './plugin-runtime-ap
 import { createAgentRuntime } from '../adapters/agent-runtime.js';
 import type { AgentRuntimeConfig, AgentRuntimeEvent, AgentFunctionTool, AgentRuntimeKind } from '../adapters/agent-runtime-types.js';
 import { createMiniAppFunctionTools } from './builtin-tools/mini-app-tools.js';
+import { createWorkspaceFileFunctionTools } from './builtin-tools/workspace-file-tools.js';
 import { listPresets } from './agent.js';
 import { listProviders } from '../storage/llm-store.js';
 import { requestMiniAppClient } from './mini-app-client-rpc.js';
+import type { BuiltInAgentToolName } from '@agent-spaces/shared';
 
 export interface ApiCtx {
   projectId: string;
@@ -32,6 +34,7 @@ export interface MiniAppToolSpec {
 
 const miniAppToolRegistry = new Map<string, Record<string, MiniAppToolSpec>>();
 const VALID_RUNTIME_KINDS = new Set<AgentRuntimeKind>(['open-agent-sdk', 'claude-code', 'codex', 'grok', 'gemini-cli', 'langchain', 'hermes', 'pi']);
+const MINI_APP_FILE_TOOLS: BuiltInAgentToolName[] = ['ListWorkspaceFiles', 'SearchWorkspaceFiles', 'ReadWorkspaceFile', 'WriteWorkspaceFile', 'DeleteWorkspacePath', 'MoveWorkspacePath'];
 
 /**
  * 编译 src/api.js：剥离 import 行（api.js 不依赖外部模块），把 ESM `export default`
@@ -349,11 +352,29 @@ export async function runMiniAppAgent(input: MiniAppAgentRunInput): Promise<Mini
   try {
   // 组装 functionTools
   const functionTools: AgentFunctionTool[] = [];
+  const sections: string[] = [];
   const toolsCfg = entry.tools ?? { api: true, plugin: true };
+  const hasAgentFilePermission = miniAppStore.getProject(projectId)?.agentPermissions?.includes('Files') === true;
   if (toolsCfg.plugin) {
     functionTools.push(...createMiniAppFunctionTools({
       enabledPlugins: project.enabledPlugins ?? [],
     }));
+  }
+  if (hasAgentFilePermission) {
+    functionTools.push(...createWorkspaceFileFunctionTools(
+      `mini-app:${projectId}:agent_files`,
+      MINI_APP_FILE_TOOLS,
+      () => miniAppStore.getProject(projectId) ? {
+        id: `mini-app:${projectId}:agent_files`,
+        name: `${projectId} agent files`,
+        boundDirs: [miniAppStore.resolveDataPath(projectId, 'agent_files')],
+        agentspaceDir: miniAppStore.resolveDataPath(projectId, 'agent_files'),
+        createdAt: '',
+        updatedAt: '',
+        activeChannels: [],
+        activeIssues: [],
+      } : null,
+    ));
   }
   let apiMethodNames: string[] = [];
   if (toolsCfg.api) {
@@ -368,10 +389,12 @@ export async function runMiniAppAgent(input: MiniAppAgentRunInput): Promise<Mini
   }
 
   // 拼 systemPrompt
-  const sections: string[] = [];
   if (creds.systemPrompt) sections.push(creds.systemPrompt);
   sections.push(`Current mini-app route: ${route ?? '/'}`);
   sections.push(`Current mini-app id: ${projectId}`);
+  if (hasAgentFilePermission) {
+    sections.push('Mini-app agent files are available through workspace file tools. Use relative paths under data/agent_files only.');
+  }
   if (apiMethodNames.length) {
     sections.push([
       `Available project api.js methods: ${apiMethodNames.join(', ')}.`,

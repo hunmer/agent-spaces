@@ -11,6 +11,7 @@ export interface MiniAppProject {
   tags?: string[];
   extensions?: 'workspace'[];
   enabledPlugins?: string[];
+  agentPermissions?: string[];
   agentConfigId?: string;
   enableAgents?: boolean;
   /** agents.json 的种子配置：服务器启动时若 agents.json 不存在，则用它落地初始化。 */
@@ -209,7 +210,7 @@ export function createProject(input: {
   return project;
 }
 
-export function updateProject(projectId: string, updates: Partial<Pick<MiniAppProject, 'name' | 'description' | 'tags' | 'enabledPlugins' | 'agentConfigId' | 'enableAgents' | 'mainFile' | 'icon' | 'avatarUrl' | 'backgroundUrl' | 'devices'>>): MiniAppProject {
+export function updateProject(projectId: string, updates: Partial<Pick<MiniAppProject, 'name' | 'description' | 'tags' | 'enabledPlugins' | 'agentPermissions' | 'agentConfigId' | 'enableAgents' | 'mainFile' | 'icon' | 'avatarUrl' | 'backgroundUrl' | 'devices'>>): MiniAppProject {
   if (updates.name !== undefined) assertNameUnique(updates.name, projectId);
   const projects = listProjects();
   const index = projects.findIndex(p => p.id === projectId);
@@ -389,6 +390,7 @@ export function importFromDir(extractDir: string, manifest: Partial<MiniAppProje
       type: manifest.type ?? existing.type,
       mainFile: manifest.mainFile ?? existing.mainFile,
       icon: manifest.icon ?? existing.icon,
+      agentPermissions: manifest.agentPermissions ?? existing.agentPermissions,
       storeUrl: manifest.storeUrl ?? existing.storeUrl,
       storeChecksum: manifest.storeChecksum ?? existing.storeChecksum,
       updatedAt: new Date().toISOString(),
@@ -424,6 +426,7 @@ export function importFromDir(extractDir: string, manifest: Partial<MiniAppProje
     type: manifest.type,
     tags: manifest.tags ?? [],
     enabledPlugins: manifest.enabledPlugins,
+    agentPermissions: manifest.agentPermissions,
     agentConfigId: manifest.agentConfigId,
     agents: manifest.agents,
     mainFile: manifest.mainFile,

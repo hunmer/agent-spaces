@@ -1,12 +1,12 @@
 import type { WebSocket } from 'ws';
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
-import type { AgentConfig, Channel, Message, MessageAgentOutputItem } from '@agent-spaces/shared';
+import type { AgentConfig, BuiltInAgentToolName, Channel, Message, MessageAgentOutputItem } from '@agent-spaces/shared';
 import { broadcastToWorkspace } from './connection-manager.js';
 import { createMessage, updateMessage, listMessages } from '../services/message.js';
 import { getChannel, updateChannel } from '../services/channel.js';
 import * as issueService from '../services/issue.js';
-import { createAgentFunctionTools, createIssueFunctionTools, createTeamFunctionTools, createCommandFunctionTools, createDatabaseFunctionTools, createWorkflowExecutionFunctionTools, createMiniAppFunctionTools, createWorkspaceMiniAppFunctionTools } from '../services/builtin-tools/index.js';
+import { createAgentFunctionTools, createIssueFunctionTools, createTeamFunctionTools, createCommandFunctionTools, createDatabaseFunctionTools, createWorkspaceFileFunctionTools, createWorkflowExecutionFunctionTools, createMiniAppFunctionTools, createWorkspaceMiniAppFunctionTools } from '../services/builtin-tools/index.js';
 import { startScheduler } from '../agents/scheduler-agent.js';
 import * as agentService from '../services/agent.js';
 import * as wsService from '../services/workspace.js';
@@ -72,6 +72,7 @@ interface RunMentionedAgentOptions {
 const activeSchedulers = new Set<string>();
 const activeChannelRuns = new Map<string, Map<string, ActiveChannelRun>>();
 const pendingQuestionRuns = new Map<string, PendingQuestionRun>();
+const MINI_APP_FILE_TOOLS: BuiltInAgentToolName[] = ['ListWorkspaceFiles', 'SearchWorkspaceFiles', 'ReadWorkspaceFile', 'WriteWorkspaceFile', 'DeleteWorkspacePath', 'MoveWorkspacePath'];
 
 // --- Public API ---
 
@@ -266,6 +267,11 @@ export async function runMentionedAgent(
     ...(miniAppRuntimeContext ? createMiniAppFunctionTools({
       enabledPlugins: miniAppRuntimeContext.enabledPlugins,
     }) : []),
+    ...(miniAppRuntimeContext?.agentFilesWorkspace ? createWorkspaceFileFunctionTools(
+      miniAppRuntimeContext.agentFilesWorkspace.id,
+      MINI_APP_FILE_TOOLS,
+      () => miniAppRuntimeContext.agentFilesWorkspace ?? null,
+    ) : []),
   ];
   const workingDir = miniAppRuntimeContext?.projectDir ?? agentService.resolveWorkingDir(workspaceId, preset);
   const boundDirs = miniAppRuntimeContext ? [miniAppRuntimeContext.projectDir] : workspace?.boundDirs;
@@ -749,6 +755,7 @@ function resolveMiniAppRuntimeContext(context: MiniAppMessageContext | undefined
   projectDir: string;
   projectType?: 'react' | 'html';
   enabledPlugins: string[];
+  agentFilesWorkspace?: ReturnType<typeof miniAppService.getAgentFilesWorkspace>;
 } | null {
   const projectId = context?.projectId?.trim();
   if (!projectId) return null;
@@ -762,6 +769,7 @@ function resolveMiniAppRuntimeContext(context: MiniAppMessageContext | undefined
       projectDir,
       projectType: project.type,
       enabledPlugins: project.enabledPlugins ?? [],
+      ...(miniAppService.hasMiniAppAgentFilesPermission(project) ? { agentFilesWorkspace: miniAppService.getAgentFilesWorkspace(project.id) } : {}),
     };
   } catch {
     return null;

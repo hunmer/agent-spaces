@@ -1,5 +1,6 @@
 import type { HttpClient } from '../client';
 import type { RequestOptions } from '../types';
+import type { FileNode } from '@agent-spaces/shared';
 
 export interface MiniAppProject {
   id: string;
@@ -10,6 +11,7 @@ export interface MiniAppProject {
   tags?: string[];
   extensions?: 'workspace'[];
   enabledPlugins?: string[];
+  agentPermissions?: string[];
   agentConfigId?: string;
   enableAgents?: boolean;
   mainFile: string;
@@ -68,7 +70,7 @@ export function createMiniAppApi(http: HttpClient) {
     create: (data: { name: string; type: 'react' | 'html'; description?: string; tags?: string[] }): Promise<MiniAppProject> =>
       http.post('/api/mini-apps', data),
 
-    update: (id: string, data: Partial<Pick<MiniAppProject, 'name' | 'description' | 'tags' | 'enabledPlugins' | 'agentConfigId' | 'mainFile' | 'icon' | 'avatarUrl' | 'backgroundUrl' | 'devices'>>): Promise<MiniAppProject> =>
+    update: (id: string, data: Partial<Pick<MiniAppProject, 'name' | 'description' | 'tags' | 'enabledPlugins' | 'agentPermissions' | 'agentConfigId' | 'mainFile' | 'icon' | 'avatarUrl' | 'backgroundUrl' | 'devices'>>): Promise<MiniAppProject> =>
       http.put(`/api/mini-apps/${encodeURIComponent(id)}`, data),
 
     delete_: (id: string): Promise<void> =>
@@ -106,6 +108,24 @@ export function createMiniAppApi(http: HttpClient) {
 
     writeDataFile: (id: string, filePath: string, content: string, encoding?: 'base64'): Promise<{ ok: true; path: string; size: number }> =>
       http.put(`/api/mini-apps/${encodeURIComponent(id)}/data/content`, { path: filePath, content, encoding }),
+
+    getAgentFilesTree: (id: string, path = '', depth = 1): Promise<FileNode[]> =>
+      http.get(`/api/mini-apps/${encodeURIComponent(id)}/agent-files/tree?path=${encodeURIComponent(path)}&depth=${depth}`),
+
+    readAgentFile: (id: string, filePath: string): Promise<{ content: string; encoding: string }> =>
+      http.get(`/api/mini-apps/${encodeURIComponent(id)}/agent-files/content?path=${encodeURIComponent(filePath)}`),
+
+    writeAgentFile: (id: string, filePath: string, content: string): Promise<void> =>
+      http.putVoid(`/api/mini-apps/${encodeURIComponent(id)}/agent-files/content`, { path: filePath, content }),
+
+    deleteAgentFile: (id: string, filePath: string): Promise<void> =>
+      http.delete(`/api/mini-apps/${encodeURIComponent(id)}/agent-files?path=${encodeURIComponent(filePath)}`),
+
+    renameAgentFile: (id: string, from: string, to: string): Promise<void> =>
+      http.postVoid(`/api/mini-apps/${encodeURIComponent(id)}/agent-files/rename`, { from, to }),
+
+    uploadAgentFiles: (id: string, formData: FormData): Promise<{ ok: true; files: { path: string; size: number }[] }> =>
+      http.upload(`/api/mini-apps/${encodeURIComponent(id)}/agent-files/upload`, formData),
 
     importZip: (data: { zip: string; name?: string; type?: 'react' | 'html'; description?: string; id?: string; storeUrl?: string; storeChecksum?: string }): Promise<MiniAppProject> =>
       http.post('/api/mini-apps/import', data),

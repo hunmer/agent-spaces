@@ -651,7 +651,7 @@ export function CommonEditorPanel({
           <div className="flex items-center gap-1 px-2 py-1 border-b shrink-0">
             <div className="flex items-center flex-1 gap-1 px-1.5 py-0.5 rounded bg-muted/50">
               <Search className="size-3 text-muted-foreground shrink-0" />
-              <Input
+              <Input  
                 type="text"
                 value={fileSearch}
                 onChange={(e) => setFileSearch(e.target.value)}

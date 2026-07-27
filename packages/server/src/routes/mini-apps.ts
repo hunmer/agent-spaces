@@ -183,6 +183,67 @@ router.put('/:id/data/content', (req: Request<{ id: string }>, res: Response) =>
   } catch (error: any) { res.status(500).json({ error: error.message }); }
 });
 
+router.get('/:id/agent-files/tree', async (req: Request<{ id: string }, any, any, { path?: string; depth?: string }>, res: Response) => {
+  try {
+    const path = typeof req.query.path === 'string' ? req.query.path : '';
+    const depth = Math.min(10, Math.max(1, Number(req.query.depth) || 1));
+    res.json(await svc.getAgentFilesTree(req.params.id, path, depth));
+  } catch (error: any) { res.status(error.message.includes('not found') ? 404 : 500).json({ error: error.message }); }
+});
+
+router.get('/:id/agent-files/content', async (req: Request<{ id: string }, any, any, { path?: string }>, res: Response) => {
+  try {
+    const path = req.query.path;
+    if (!path) { res.status(400).json({ error: 'path is required' }); return; }
+    const data = await svc.readAgentFile(req.params.id, path);
+    if (!data) { res.status(404).json({ error: 'File not found' }); return; }
+    res.json(data);
+  } catch (error: any) { res.status(500).json({ error: error.message }); }
+});
+
+router.put('/:id/agent-files/content', async (req: Request<{ id: string }>, res: Response) => {
+  try {
+    const { path, content } = req.body ?? {};
+    if (!path || content === undefined) { res.status(400).json({ error: 'path and content are required' }); return; }
+    const ok = await svc.writeAgentFile(req.params.id, path, String(content));
+    if (!ok) { res.status(500).json({ error: 'Failed to write file' }); return; }
+    res.json({ ok: true });
+  } catch (error: any) { res.status(500).json({ error: error.message }); }
+});
+
+router.delete('/:id/agent-files', async (req: Request<{ id: string }>, res: Response) => {
+  try {
+    const path = typeof req.body?.path === 'string' ? req.body.path : req.query.path as string;
+    if (!path) { res.status(400).json({ error: 'path is required' }); return; }
+    const ok = await svc.deleteAgentFile(req.params.id, path);
+    if (!ok) { res.status(500).json({ error: 'Failed to delete path' }); return; }
+    res.json({ ok: true });
+  } catch (error: any) { res.status(500).json({ error: error.message }); }
+});
+
+router.post('/:id/agent-files/rename', async (req: Request<{ id: string }>, res: Response) => {
+  try {
+    const { from, to } = req.body ?? {};
+    if (!from || !to) { res.status(400).json({ error: 'from and to are required' }); return; }
+    const ok = await svc.renameAgentFile(req.params.id, from, to);
+    if (!ok) { res.status(500).json({ error: 'Failed to rename path' }); return; }
+    res.json({ ok: true });
+  } catch (error: any) { res.status(500).json({ error: error.message }); }
+});
+
+router.post('/:id/agent-files/upload', upload.array('files'), async (req: Request<{ id: string }>, res: Response) => {
+  try {
+    const files = req.files as Express.Multer.File[] | undefined;
+    if (!files?.length) { res.status(400).json({ error: 'files is required' }); return; }
+    const folder = typeof req.body.folder === 'string' ? req.body.folder : '';
+    const written = await svc.uploadAgentFiles(req.params.id, folder, files.map((file) => ({
+      name: basename(file.originalname),
+      buffer: file.buffer,
+    })));
+    res.json({ ok: true, files: written });
+  } catch (error: any) { res.status(500).json({ error: error.message }); }
+});
+
 // 生成缩略图（服务端 sharp）。源图来自 data 目录本地文件或远程 URL；结果写到 data 目录。
 // Body: { source?, url?, target, width?, height?, quality?, fit? }
 //   - source: 相对 data 目录的源图路径（优先于 url）

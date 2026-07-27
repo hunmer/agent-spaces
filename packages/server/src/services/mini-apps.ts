@@ -5,8 +5,10 @@ import yauzl from 'yauzl';
 import { v4 as uuid } from 'uuid';
 import * as store from '../storage/mini-app-store.js';
 import type { MiniAppProject } from '../storage/mini-app-store.js';
+import type { FileNode, Workspace } from '@agent-spaces/shared';
 import { unloadServices } from './mini-app-services.js';
 import { executeDb as dbExecuteDb, executeDbTransaction as dbExecuteDbTransaction, closeProjectDbs } from '../storage/mini-app-db.js';
+import * as fileService from './file.js';
 
 export { store };
 export type { MiniAppProject };
@@ -21,6 +23,71 @@ export function getProject(projectId: string): MiniAppProject {
   const project = store.getProject(projectId);
   if (!project) throw new Error(`Project not found: ${projectId}`);
   return project;
+}
+
+export function hasMiniAppAgentFilesPermission(project: MiniAppProject | null | undefined): boolean {
+  return Array.isArray(project?.agentPermissions) && project.agentPermissions.includes('Files');
+}
+
+export function getAgentFilesDir(projectId: string): string {
+  return store.resolveDataPath(projectId, 'agent_files');
+}
+
+export function getAgentFilesWorkspace(projectId: string): Workspace {
+  const project = getProject(projectId);
+  if (!hasMiniAppAgentFilesPermission(project)) throw new Error('Mini-app agent file permission is not enabled');
+  const root = getAgentFilesDir(projectId);
+  mkdirSync(root, { recursive: true });
+  return {
+    id: `mini-app:${projectId}:agent_files`,
+    name: `${projectId} agent files`,
+    boundDirs: [root],
+    agentspaceDir: root,
+    createdAt: '',
+    updatedAt: '',
+    activeChannels: [],
+    activeIssues: [],
+  };
+}
+
+export async function getAgentFilesTree(projectId: string, path = '', depth = 1): Promise<FileNode[]> {
+  getProject(projectId);
+  return fileService.readTree(getAgentFilesWorkspace(projectId), path, depth);
+}
+
+export async function readAgentFile(projectId: string, path: string): Promise<{ content: string; encoding: string } | null> {
+  getProject(projectId);
+  return fileService.readFileContent(getAgentFilesWorkspace(projectId), path);
+}
+
+export async function writeAgentFile(projectId: string, path: string, content: string): Promise<boolean> {
+  getProject(projectId);
+  return fileService.writeFileContent(getAgentFilesWorkspace(projectId), path, content);
+}
+
+export async function deleteAgentFile(projectId: string, path: string): Promise<boolean> {
+  getProject(projectId);
+  return fileService.deletePath(getAgentFilesWorkspace(projectId), path);
+}
+
+export async function renameAgentFile(projectId: string, from: string, to: string): Promise<boolean> {
+  getProject(projectId);
+  return fileService.renamePath(getAgentFilesWorkspace(projectId), from, to);
+}
+
+export async function uploadAgentFiles(projectId: string, targetDir: string, files: Array<{ name: string; buffer: Buffer }>): Promise<Array<{ path: string; size: number }>> {
+  getProject(projectId);
+  const workspace = getAgentFilesWorkspace(projectId);
+  const written: Array<{ path: string; size: number }> = [];
+  for (const file of files) {
+    const safeName = file.name.replace(/[<>:"\\|?*\x00-\x1F]/g, '_') || 'file';
+    const relPath = [targetDir.replace(/^\/+|\/+$/g, ''), safeName].filter(Boolean).join('/');
+    const ok = await fileService.writeFileBinary(workspace, relPath, file.buffer);
+    if (!ok) throw new Error(`Failed to upload ${safeName}`);
+    written.push({ path: relPath, size: file.buffer.byteLength });
+  }
+  store.touchProject(projectId);
+  return written;
 }
 
 export function createProject(input: {

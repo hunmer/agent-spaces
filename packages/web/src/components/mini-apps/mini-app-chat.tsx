@@ -106,6 +106,10 @@ export function MiniAppChat({
                     projectType: project.type,
                     fileContent,
                   }}
+                  agentFilesDirectory={project.agentPermissions?.includes('Files') ? {
+                    projectId: project.id,
+                    label: 'agent_files',
+                  } : undefined}
                   onAgentActivated={(agent: MentionedAgent) => {
                     onUpdateProject({ agentConfigId: agent.id });
                   }}
