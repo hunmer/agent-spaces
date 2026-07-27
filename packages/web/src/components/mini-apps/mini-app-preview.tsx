@@ -34,7 +34,7 @@ import { getModel, getModelUri, getOrCreateModel } from '@/lib/monaco-models';
 import { PluginIcon } from '@/components/workflow/workflow-plugin-icon';
 import { WorkflowPluginConfigDialog } from '@/components/workflow/workflow-plugin-config-dialog';
 import { WorkflowPluginsDialog } from '@/components/workflow/workflow-plugins-dialog';
-import type { Workflow } from '@agent-spaces/shared';
+import type { Workflow, AgentUsageRecord, AgentUsageSessionDetail, AgentUsageSessionMessage } from '@agent-spaces/shared';
 
 interface MiniAppPreviewProps {
   type: 'react' | 'html';
@@ -345,6 +345,7 @@ function useMiniAppAgentChat(projectId: string) {
           id: m.id, role: m.role, content: m.content,
           timestamp: new Date(m.timestamp),
           timeline: miniAppToolCallsToTimeline(m.toolCalls),
+          metadata: { agentSessionId: nextId, agentId: m.agentId },
         })));
       }
     } catch { /* ignore */ }
@@ -369,6 +370,7 @@ function useMiniAppAgentChat(projectId: string) {
         content: m.content,
         timestamp: new Date(m.timestamp),
         timeline: miniAppToolCallsToTimeline(m.toolCalls),
+        metadata: { agentSessionId: sid, agentId: m.agentId },
       })));
     } catch { /* ignore */ }
   }, [projectId, agentId]);
@@ -385,6 +387,7 @@ function useMiniAppAgentChat(projectId: string) {
           id: m.id, role: m.role, content: m.content,
           timestamp: new Date(m.timestamp),
           timeline: miniAppToolCallsToTimeline(m.toolCalls),
+          metadata: { agentSessionId: id, agentId: m.agentId },
         })));
       })
       .catch(() => {});
@@ -428,9 +431,9 @@ function useMiniAppAgentChat(projectId: string) {
       sessionIdRef.current = activeSessionId; // 立即同步 ref，避免 loadHistory 读到空串覆盖消息
       setSessionId(activeSessionId);
     }
-    const userMsg: ChatMessage = { id: crypto.randomUUID(), role: 'user', content: text, timestamp: new Date() };
+    const userMsg: ChatMessage = { id: crypto.randomUUID(), role: 'user', content: text, timestamp: new Date(), metadata: { agentSessionId: activeSessionId, agentId } };
     const agentMsgId = crypto.randomUUID();
-    setMessages((prev) => [...prev, userMsg, { id: agentMsgId, role: 'agent', content: '', timestamp: new Date() }]);
+    setMessages((prev) => [...prev, userMsg, { id: agentMsgId, role: 'agent', content: '', timestamp: new Date(), metadata: { agentSessionId: activeSessionId, agentId } }]);
     setInput('');
     setSending(true);
     const ac = new AbortController();
@@ -499,6 +502,77 @@ function useMiniAppAgentChat(projectId: string) {
     )));
   }, [projectId, agentId]);
 
+  // 删除单条消息：调后端删除，同步移除本地 messages
+  const handleDeleteMessage = useCallback(async (messageId: string) => {
+    const sid = sessionIdRef.current;
+    if (!projectId || !sid) return;
+    try {
+      await sdk.miniApp.deleteAgentMessage(projectId, sid, messageId);
+      setMessages((prev) => prev.filter((m) => m.id !== messageId));
+      // 同步刷新会话列表（标题可能因首条 user 消息变化）
+      loadSessions(agentId);
+    } catch { /* ignore */ }
+  }, [projectId, agentId, loadSessions]);
+
+  // 重新生成 agent 消息：删该条 + 找到上一条 user 消息重发
+  const handleRegenerateMessage = useCallback(async (message: ChatMessage) => {
+    if (!projectId || !agentId || message.role !== 'agent') return;
+    const sid = sessionIdRef.current;
+    if (!sid) return;
+    try {
+      await sdk.miniApp.deleteAgentMessage(projectId, sid, message.id);
+      setMessages((prev) => {
+        const idx = prev.findIndex((m) => m.id === message.id);
+        if (idx < 0) return prev;
+        // 找该 agent 消息之前的最近一条 user 消息
+        let userIdx = idx - 1;
+        while (userIdx >= 0 && prev[userIdx].role !== 'user') userIdx -= 1;
+        const userMsg = userIdx >= 0 ? prev[userIdx] : null;
+        // 删除 agent 消息 + 已重发的 user 消息（避免重复），重发会重新追加
+        const filtered = prev.filter((m, i) => i !== idx && (userMsg ? m.id !== userMsg.id : true));
+        // 异步重发
+        if (userMsg) { void handleSend(userMsg.content); }
+        return filtered;
+      });
+    } catch { /* ignore */ }
+  }, [projectId, agentId, handleSend]);
+
+  // 「查看上下文」对话框数据：构造轻量 detail（用当前已加载的历史消息）
+  const sessionDetailForMessage = useCallback((message: ChatMessage): { record: AgentUsageRecord; detail: AgentUsageSessionDetail } | null => {
+    const sid = message.metadata?.agentSessionId;
+    if (!sid) return null;
+    const ts = message.timestamp instanceof Date ? message.timestamp.toISOString() : message.timestamp;
+    const record: AgentUsageRecord = {
+      id: message.id,
+      workspaceId: projectId ?? '',
+      agentSessionId: sid,
+      agentConfigId: message.metadata?.agentId ?? agentId ?? '',
+      role: 'assistant',
+      status: 'completed',
+      runtime: message.metadata?.runtime,
+      model: message.metadata?.model,
+      summary: message.metadata?.summary,
+      inputTokens: 0, outputTokens: 0, cachedInputTokens: 0, reasoningTokens: 0, totalTokens: 0,
+      inputCostUsd: 0, outputCostUsd: 0, totalCostUsd: 0,
+      startedAt: ts, completedAt: ts,
+      durationMs: message.metadata?.duration ?? 0,
+    } as AgentUsageRecord;
+    const sessionMessages: AgentUsageSessionMessage[] = messages.map((m) => ({
+      id: m.id,
+      role: m.role,
+      content: m.content,
+      createdAt: m.timestamp instanceof Date ? m.timestamp.toISOString() : m.timestamp,
+      timeline: m.timeline,
+    }));
+    const detail: AgentUsageSessionDetail = {
+      session: null,
+      usage: record,
+      messages: sessionMessages,
+      source: 'none',
+    };
+    return { record, detail };
+  }, [projectId, agentId, messages]);
+
   const [clearOpen, setClearOpen] = useState(false);
   const handleClear = useCallback(async () => {
     if (!projectId || !agentId || !sessionId) return;
@@ -553,6 +627,7 @@ function useMiniAppAgentChat(projectId: string) {
     agentFileMentions,
     loadHistory,
     handleAnswerAskUserQuestion,
+    handleDeleteMessage, handleRegenerateMessage, sessionDetailForMessage,
     // 多会话
     sessions, sessionId,
     handleSwitchSession, handleNewSession, handleDeleteSession, handleRenameSession,
@@ -899,7 +974,8 @@ function MiniAppAgentPopover({ projectId }: { projectId: string }) {
   loadHistoryRef.current = chat.loadHistory;
   useEffect(() => { if (open) loadHistoryRef.current(); }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const { messages, input, setInput, sending, handleSend, handleStop, current, suggestions, agentFileMentions, handleAnswerAskUserQuestion } = chat;
+  const { messages, input, setInput, sending, handleSend, handleStop, current, suggestions, agentFileMentions,
+    handleAnswerAskUserQuestion, handleDeleteMessage, handleRegenerateMessage, sessionDetailForMessage } = chat;
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -921,6 +997,9 @@ function MiniAppAgentPopover({ projectId }: { projectId: string }) {
           onSend={handleSend}
           onStop={handleStop}
           onAnswerAskUserQuestion={handleAnswerAskUserQuestion}
+          onDeleteMessage={handleDeleteMessage}
+          onRegenerateMessage={handleRegenerateMessage}
+          sessionDetailForMessage={sessionDetailForMessage}
           inputPlaceholder={t('agent.inputPlaceholder')}
           suggestions={suggestions}
           mentionFiles={agentFileMentions}
@@ -942,7 +1021,8 @@ function MiniAppAgentDock({ projectId, onClose }: { projectId: string; onClose: 
   loadHistoryRef.current = chat.loadHistory;
   useEffect(() => { loadHistoryRef.current(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const { messages, input, setInput, sending, handleSend, handleStop, current, suggestions, agentFileMentions, handleAnswerAskUserQuestion } = chat;
+  const { messages, input, setInput, sending, handleSend, handleStop, current, suggestions, agentFileMentions,
+    handleAnswerAskUserQuestion, handleDeleteMessage, handleRegenerateMessage, sessionDetailForMessage } = chat;
 
   return (
     <div className="flex h-full w-full flex-col border-l bg-background">
@@ -962,6 +1042,9 @@ function MiniAppAgentDock({ projectId, onClose }: { projectId: string; onClose: 
         onSend={handleSend}
         onStop={handleStop}
         onAnswerAskUserQuestion={handleAnswerAskUserQuestion}
+        onDeleteMessage={handleDeleteMessage}
+        onRegenerateMessage={handleRegenerateMessage}
+        sessionDetailForMessage={sessionDetailForMessage}
         inputPlaceholder={t('agent.inputPlaceholder')}
         suggestions={suggestions}
         mentionFiles={agentFileMentions}

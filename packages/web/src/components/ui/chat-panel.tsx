@@ -7,7 +7,7 @@ import { ComposerShell } from '@/components/composer/composer-shell';
 import { createSuggestionRenderer } from '@/components/composer/create-suggestion-renderer';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-import type { WorkflowAgentTimelineItem, WorkflowAgentToolCall } from '@agent-spaces/shared';
+import type { WorkflowAgentTimelineItem, WorkflowAgentToolCall, AgentUsageRecord, AgentUsageSessionDetail } from '@agent-spaces/shared';
 import type { Editor, Range } from '@tiptap/core';
 import Mention, { type MentionNodeAttrs } from '@tiptap/extension-mention';
 import Placeholder from '@tiptap/extension-placeholder';
@@ -24,6 +24,15 @@ export interface ChatMessage {
   timestamp: Date;
   toolCalls?: WorkflowAgentToolCall[];
   timeline?: WorkflowAgentTimelineItem[];
+  /** 控制消息级按钮的元数据（如 agentSessionId 触发"查看上下文"按钮） */
+  metadata?: {
+    agentSessionId?: string;
+    agentId?: string;
+    runtime?: string;
+    model?: string;
+    duration?: number;
+    summary?: string;
+  };
 }
 
 export interface ChatAgentInfo {
@@ -60,6 +69,10 @@ export interface ChatPanelProps {
   serializeForCopy?: (message: ChatMessage) => string;
   onRerunTool?: (message: ChatMessage, item: Extract<WorkflowAgentTimelineItem, { type: 'tool' }>) => void;
   onAnswerAskUserQuestion?: (message: ChatMessage, item: Extract<WorkflowAgentTimelineItem, { type: 'tool' }>, answer: string) => void | Promise<void>;
+  /** 重新生成 agent 消息（删除该消息后基于上一条 user 消息重跑） */
+  onRegenerateMessage?: (message: ChatMessage) => void;
+  /** 提供"查看上下文"对话框数据；返回非 null 时显示按钮 */
+  sessionDetailForMessage?: (message: ChatMessage) => { record: AgentUsageRecord; detail: AgentUsageSessionDetail } | null | undefined;
   width?: number;
   height?: number;
   className?: string;
@@ -112,6 +125,8 @@ export function ChatPanel({
   serializeForCopy,
   onRerunTool,
   onAnswerAskUserQuestion,
+  onRegenerateMessage,
+  sessionDetailForMessage,
   width = 400,
   height = 360,
   className,
@@ -348,6 +363,9 @@ export function ChatPanel({
           serializeForCopy={serializeForCopy}
           onRerunTool={onRerunTool}
           onAnswerAskUserQuestion={onAnswerAskUserQuestion}
+          onRegenerateMessage={onRegenerateMessage}
+          sessionRecordForMessage={sessionDetailForMessage ? (msg) => sessionDetailForMessage(msg)?.record ?? null : undefined}
+          sessionDetailForMessage={sessionDetailForMessage ? (msg) => sessionDetailForMessage(msg)?.detail ?? null : undefined}
         />
       </div>
 

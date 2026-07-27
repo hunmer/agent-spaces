@@ -698,3 +698,17 @@ export function renameChatSession(projectId: string, sessionId: string, title: s
   writeFileSync(chatSessionFile(projectId, sessionId), JSON.stringify(session, null, 2), 'utf-8');
   return session;
 }
+
+/** 删除单条消息。返回更新后的会话（null 表示 session 或消息不存在）。 */
+export function deleteChatMessage(projectId: string, sessionId: string, messageId: string): MiniAppChatSession | null {
+  safeSessionId(sessionId);
+  const session = readChatSession(projectId, sessionId);
+  if (!session) return null;
+  const idx = session.messages.findIndex((m) => m.id === messageId);
+  if (idx < 0) return null;
+  session.messages.splice(idx, 1);
+  session.title = deriveTitle(session.messages);
+  session.updatedAt = new Date().toISOString();
+  writeFileSync(chatSessionFile(projectId, sessionId), JSON.stringify(session, null, 2), 'utf-8');
+  return session;
+}

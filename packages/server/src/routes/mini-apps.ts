@@ -7,7 +7,7 @@ import { randomUUID } from 'crypto';
 import { exec } from 'node:child_process';
 import * as svc from '../services/mini-apps.js';
 import { invokeService } from '../services/mini-app-services.js';
-import { getProject, readAgentsConfig, readAgentConfig, upsertAgentConfig, listAgentChats, clearAgentChats, listChatSessions, renameChatSession, DuplicateNameError } from '../storage/mini-app-store.js';
+import { getProject, readAgentsConfig, readAgentConfig, upsertAgentConfig, listAgentChats, clearAgentChats, listChatSessions, renameChatSession, deleteChatMessage, DuplicateNameError } from '../storage/mini-app-store.js';
 import { answerMiniAppAgentQuestion, getRegisteredMiniAppTools, runMiniAppAgent } from '../services/mini-app-agent.js';
 
 const router = Router();
@@ -602,6 +602,17 @@ router.patch('/:id/agents/sessions/:sessionId', (req: Request<{ id: string; sess
     const session = renameChatSession(req.params.id, req.params.sessionId, title);
     if (!session) { res.status(404).json({ error: 'Session not found' }); return; }
     res.json({ session });
+  } catch (error: any) {
+    res.status(error.message === 'Invalid sessionId' ? 400 : 500).json({ error: error.message });
+  }
+});
+
+// DELETE /:id/agents/sessions/:sessionId/messages/:messageId — 删除单条消息
+router.delete('/:id/agents/sessions/:sessionId/messages/:messageId', (req: Request<{ id: string; sessionId: string; messageId: string }>, res: Response) => {
+  try {
+    const session = deleteChatMessage(req.params.id, req.params.sessionId, req.params.messageId);
+    if (!session) { res.status(404).json({ error: 'Session or message not found' }); return; }
+    res.json({ ok: true });
   } catch (error: any) {
     res.status(error.message === 'Invalid sessionId' ? 400 : 500).json({ error: error.message });
   }

@@ -186,6 +186,10 @@ export function createMiniAppApi(http: HttpClient) {
     clearAgentHistory: (id: string, sessionId: string, agentId?: string): Promise<void> =>
       http.delete(`/api/mini-apps/${encodeURIComponent(id)}/agents/chat?sessionId=${encodeURIComponent(sessionId)}${agentId ? `&agentId=${encodeURIComponent(agentId)}` : ''}`),
 
+    /** 删除单条消息 */
+    deleteAgentMessage: (id: string, sessionId: string, messageId: string): Promise<void> =>
+      http.delete(`/api/mini-apps/${encodeURIComponent(id)}/agents/sessions/${encodeURIComponent(sessionId)}/messages/${encodeURIComponent(messageId)}`),
+
     /**
      * SSE 流式聊天。返回原始 Response，调用方用 reader 解析 `event:` / `data:` 行。
      * body: { sessionId, message, route? }
