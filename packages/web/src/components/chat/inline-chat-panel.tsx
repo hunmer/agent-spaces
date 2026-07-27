@@ -179,7 +179,7 @@ export function InlineChatPanel({
     id: `${agentId}:regenerating:${key}`,
     agentId,
     role: "agent",
-    content: streamingThinking ? `<think>${streamingThinking}</think>${streamingContent}` : streamingContent,
+    content: streamingContent,
     timestamp: regenerationStartedAt ?? new Date().toISOString(),
     timeline,
   });

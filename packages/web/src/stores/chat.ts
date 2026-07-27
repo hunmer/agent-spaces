@@ -818,6 +818,7 @@ function handleChatRunEvent(
     case 'thinking': {
       const data = payload.data as { chunk?: string };
       appendStreamingText(set, 'streamingThinking', agentId, data.chunk);
+      appendStreamingTimelineText(set, agentId, 'thinking', data.chunk);
       break;
     }
     case 'completed': {
@@ -876,21 +877,22 @@ function appendStreamingText(
   }));
 }
 
-function appendStreamingTimelineMessage(
+function appendStreamingTimelineText(
   set: ChatSet,
   agentId: string,
+  type: 'message' | 'thinking',
   chunk?: string,
 ): void {
   if (!chunk) return;
   set((s) => {
     const timeline = [...(s.streamingTimeline[agentId] ?? [])];
     const latest = timeline.at(-1);
-    if (latest?.type === 'message') {
+    if (latest?.type === type) {
       timeline[timeline.length - 1] = { ...latest, content: `${latest.content}${chunk}` };
     } else {
       timeline.push({
-        id: `message-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-        type: 'message',
+        id: `${type}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        type,
         content: chunk,
       });
     }
@@ -901,6 +903,14 @@ function appendStreamingTimelineMessage(
       },
     };
   });
+}
+
+function appendStreamingTimelineMessage(
+  set: ChatSet,
+  agentId: string,
+  chunk?: string,
+): void {
+  appendStreamingTimelineText(set, agentId, 'message', chunk);
 }
 
 function withStreamingTimeline(message: ChatMessage, streamingTimeline?: WorkflowAgentTimelineItem[]): ChatMessage {

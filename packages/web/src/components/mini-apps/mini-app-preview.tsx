@@ -256,6 +256,21 @@ function isMiniAppErrorToolResult(result: unknown): boolean {
   );
 }
 
+function appendMiniAppTimelineText(
+  timeline: WorkflowAgentTimelineItem[] | undefined,
+  type: 'message' | 'thinking',
+  content: string,
+): WorkflowAgentTimelineItem[] {
+  const next = [...(timeline ?? [])];
+  const latest = next.at(-1);
+  if (latest?.type === type) {
+    next[next.length - 1] = { ...latest, content: latest.content + content };
+  } else {
+    next.push({ id: `${type}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`, type, content });
+  }
+  return next;
+}
+
 function miniAppMessageToChatMessage(message: MiniAppChatMessage, sessionId: string): ChatMessage {
   return {
     id: message.id,
@@ -450,19 +465,14 @@ function useMiniAppAgentChat(projectId: string) {
           const line = d.line;
           setMessages((prev) => prev.map((m) => {
             if (m.id !== agentMsgId) return m;
-            const timeline = [...(m.timeline ?? [])];
-            const latest = timeline.at(-1);
-            if (latest?.type === 'message') {
-              timeline[timeline.length - 1] = { ...latest, content: latest.content + line };
-            } else {
-              timeline.push({
-                id: `message-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-                type: 'message',
-                content: line,
-              });
-            }
+            const timeline = appendMiniAppTimelineText(m.timeline, 'message', line);
             return { ...m, content: m.content + line, timeline };
           }));
+        } else if (event === 'reasoning' && typeof d.text === 'string') {
+          const text = d.text;
+          setMessages((prev) => prev.map((m) => (
+            m.id === agentMsgId ? { ...m, timeline: appendMiniAppTimelineText(m.timeline, 'thinking', text) } : m
+          )));
         } else if (event === 'tool_use' && typeof d.name === 'string') {
           const toolName = d.name;
           const item: WorkflowAgentTimelineItem = {

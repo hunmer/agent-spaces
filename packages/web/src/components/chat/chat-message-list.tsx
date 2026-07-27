@@ -198,6 +198,16 @@ function TypingIndicator({ animated }: { animated: boolean }) {
   );
 }
 
+function InlineLoadingDots() {
+  return (
+    <div className="flex items-center gap-1 py-1">
+      <span className="size-1.5 animate-bounce rounded-full bg-foreground/40 [animation-delay:-0.3s]" />
+      <span className="size-1.5 animate-bounce rounded-full bg-foreground/40 [animation-delay:-0.15s]" />
+      <span className="size-1.5 animate-bounce rounded-full bg-foreground/40" />
+    </div>
+  );
+}
+
 export function ChatMessageList<TMessage extends DisplayChatMessage>({
   messages,
   sending = false,
@@ -244,8 +254,9 @@ export function ChatMessageList<TMessage extends DisplayChatMessage>({
     const showStreamingPlaceholder = streaming && !thinking && !message;
     const timeline = msg.role === "agent" ? normalizeChatTimeline(getMessageTimeline(msg)) : [];
     const hasTimelineMessage = timeline.some((item) => item.type === "message");
+    const hasInlineTimeline = hasTimelineMessage && timeline.some((item) => item.type !== "message");
     const hasToolTimeline = timeline.some((item) => item.type === "tool");
-    const showTimelineMessages = hasTimelineMessage && hasToolTimeline;
+    const showTimelineMessages = hasInlineTimeline;
     const visibleTimeline = showTimelineMessages ? timeline : timeline.filter((item) => item.type !== "message");
     const showTools = streaming || visibleToolTimelineMessageIds[msg.id] !== false;
     const showTimeline = visibleTimeline.some((item) => item.type !== "tool" || showTools);
@@ -289,13 +300,9 @@ export function ChatMessageList<TMessage extends DisplayChatMessage>({
                 <p className="whitespace-pre-wrap break-words">{msg.content}</p>
               ) : (
                 <>
-                  {thinking !== null && <ThinkingBlock content={thinking} />}
+                  {thinking !== null && !streaming && <ThinkingBlock content={thinking} />}
                   {showStreamingPlaceholder ? (
-                    <div className="flex items-center gap-1 py-1">
-                      <span className="size-1.5 animate-bounce rounded-full bg-foreground/40 [animation-delay:-0.3s]" />
-                      <span className="size-1.5 animate-bounce rounded-full bg-foreground/40 [animation-delay:-0.15s]" />
-                      <span className="size-1.5 animate-bounce rounded-full bg-foreground/40" />
-                    </div>
+                    <InlineLoadingDots />
                   ) : bodyMessage.trim().length > 0 ? (
                     renderMessageContent ? (
                       renderMessageContent({ ...msg, content: bodyMessage })
@@ -336,6 +343,7 @@ export function ChatMessageList<TMessage extends DisplayChatMessage>({
             );
           })}
           {renderMessageExtras?.(msg)}
+          {streaming && !showStreamingPlaceholder ? <InlineLoadingDots /> : null}
           <div className={cn("flex items-center gap-1", msg.role === "user" && "flex-row-reverse")}>
             <span
               className={cn(

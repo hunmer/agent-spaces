@@ -6,6 +6,7 @@ import { generateChatSessionTitle } from '../services/generated-title.js';
 import { LangChainRuntime } from '../adapters/langchain-runtime.js';
 import type { AgentRuntimeConfig, AgentRuntimeEvent } from '../adapters/agent-runtime-types.js';
 import { buildAgentPrompt } from '../ws/agent-prompt.js';
+import { createThinkTagSplitter } from '../services/think-tags.js';
 import {
   createAgentFunctionTools,
   createCommandFunctionTools,
@@ -105,6 +106,8 @@ router.post('/sessions/:sessionId/run', async (req, res) => {
   const runtime = new LangChainRuntime(config);
   let completed = false;
   const timeline: WorkflowAgentTimelineItem[] = [];
+  const output: string[] = [];
+  const splitter = createRuntimeOutputSplitter(res, timeline, output);
 
   res.on('close', () => {
     if (!completed && !res.writableEnded) runtime.stop();
@@ -116,7 +119,8 @@ router.post('/sessions/:sessionId/run', async (req, res) => {
     const workingDir = chatService.getAgentWorkingDir(agentId) || process.cwd();
     const configDir = chatService.getAgentConfigDir(agentId) || undefined;
     const tools = normalizeToolNames(agent.tools);
-    const fileWorkspace = getSessionFileWorkspace(workspaceId, session) ?? chatService.getAgentWorkspace(agentId);
+    const agentWorkspace = chatService.getAgentWorkspace(agentId);
+    const fileWorkspace = resolveSessionFileWorkspace(agentWorkspace, session);
     const functionTools = [
       ...createTeamFunctionTools(workspaceId, tools),
       ...createAgentFunctionTools(workspaceId, tools),
@@ -149,10 +153,10 @@ router.post('/sessions/:sessionId/run', async (req, res) => {
       configDir,
       outputStyle: agent.outputStyle,
       onEvent: (event: AgentRuntimeEvent) => {
-        collectRuntimeTimeline(timeline, event);
-        writeRuntimeEvent(res, event);
+        handleRuntimeEvent(res, timeline, splitter, event);
       },
     });
+    splitter.flush();
 
     if (!result.success) {
       completed = true;
@@ -160,10 +164,7 @@ router.post('/sessions/:sessionId/run', async (req, res) => {
       return;
     }
 
-    const agentContent = result.output
-      .filter((line) => !line.startsWith('Tool:') && !line.startsWith('[Usage]'))
-      .join('\n')
-      || result.summary;
+    const agentContent = output.join('').trim() || result.summary;
     const agentMsg = chatService.saveSessionMessage(workspaceId, sessionId, {
       agentId,
       role: 'agent',
@@ -209,17 +210,16 @@ function resolveSessionRegenerateContext(
   return null;
 }
 
-function getSessionFileWorkspace(
-  workspaceId: string,
+export function resolveSessionFileWorkspace(
+  agentWorkspace: Workspace | null,
   session: { editorDirectoryTabs?: Array<{ path: string }> },
 ): Workspace | null {
+  if (!agentWorkspace) return null;
   const dirs = session.editorDirectoryTabs?.map((tab) => tab.path).filter(Boolean) ?? [];
-  if (dirs.length === 0) return chatService.getChatWorkspaceRoot(workspaceId);
-  const root = chatService.getChatWorkspaceRoot(workspaceId);
-  if (!root) return null;
+  if (dirs.length === 0) return agentWorkspace;
   return {
-    ...root,
-    boundDirs: [...root.boundDirs, ...dirs],
+    ...agentWorkspace,
+    boundDirs: [...agentWorkspace.boundDirs, ...dirs],
   };
 }
 
@@ -273,6 +273,8 @@ router.post('/agents/:id/run', async (req, res) => {
   const runtime = new LangChainRuntime(config);
   let completed = false;
   const timeline: WorkflowAgentTimelineItem[] = [];
+  const output: string[] = [];
+  const splitter = createRuntimeOutputSplitter(res, timeline, output);
 
   res.on('close', () => {
     if (!completed && !res.writableEnded) runtime.stop();
@@ -314,10 +316,10 @@ router.post('/agents/:id/run', async (req, res) => {
       configDir,
       outputStyle: agent.outputStyle,
       onEvent: (event: AgentRuntimeEvent) => {
-        collectRuntimeTimeline(timeline, event);
-        writeRuntimeEvent(res, event);
+        handleRuntimeEvent(res, timeline, splitter, event);
       },
     });
+    splitter.flush();
 
     if (!result.success) {
       completed = true;
@@ -325,10 +327,7 @@ router.post('/agents/:id/run', async (req, res) => {
       return;
     }
 
-    const agentContent = result.output
-      .filter((line) => !line.startsWith('Tool:') && !line.startsWith('[Usage]'))
-      .join('\n')
-      || result.summary;
+    const agentContent = output.join('').trim() || result.summary;
     const agentMsg = chatService.saveMessage({
       agentId: id,
       role: 'agent',
@@ -384,7 +383,60 @@ function writeRuntimeEvent(res: Response, event: AgentRuntimeEvent): void {
   }
 }
 
+function handleRuntimeEvent(
+  res: Response,
+  timeline: WorkflowAgentTimelineItem[],
+  splitter: ReturnType<typeof createRuntimeOutputSplitter>,
+  event: AgentRuntimeEvent,
+): void {
+  if (event.type === 'output') {
+    if (event.line.startsWith('[Usage]')) return;
+    if (event.line.startsWith('Tool:')) {
+      writeSse(res, 'output', { chunk: event.line });
+      return;
+    }
+    splitter.push(event.line);
+    return;
+  }
+  collectRuntimeTimeline(timeline, event);
+  writeRuntimeEvent(res, event);
+}
+
+function createRuntimeOutputSplitter(
+  res: Response,
+  timeline: WorkflowAgentTimelineItem[],
+  output: string[],
+) {
+  return createThinkTagSplitter((part) => {
+    appendTimelineText(timeline, part.type, part.content);
+    if (part.type === 'message') {
+      output.push(part.content);
+      writeSse(res, 'output', { chunk: part.content });
+    } else {
+      writeSse(res, 'thinking', { chunk: part.content, status: 'streaming' });
+    }
+  });
+}
+
+function appendTimelineText(
+  timeline: WorkflowAgentTimelineItem[],
+  type: 'message' | 'thinking',
+  content: string,
+): void {
+  const latest = timeline.at(-1);
+  if (latest?.type === type) {
+    latest.content += content;
+  } else {
+    timeline.push({ id: `${type}-${timeline.length}-${Date.now()}`, type, content });
+  }
+}
+
 function collectRuntimeTimeline(timeline: WorkflowAgentTimelineItem[], event: AgentRuntimeEvent): void {
+  if (event.type === 'reasoning') {
+    appendTimelineText(timeline, 'thinking', event.text);
+    return;
+  }
+
   if (event.type === 'tool_use') {
     timeline.push({
       id: `${event.name}-${timeline.length}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,

@@ -15,6 +15,7 @@ import { listProviders } from '../storage/llm-store.js';
 import { requestMiniAppClient } from './mini-app-client-rpc.js';
 import type { BuiltInAgentToolName, WorkflowAgentTimelineItem } from '@agent-spaces/shared';
 import { formatSimpleConversationHistory } from '../ws/agent-prompt.js';
+import { createThinkTagSplitter } from './think-tags.js';
 
 export interface ApiCtx {
   projectId: string;
@@ -503,20 +504,35 @@ export async function runMiniAppAgent(input: MiniAppAgentRunInput): Promise<Mini
   const output: string[] = [];
   const toolCalls = new Map<string, { name: string; input: unknown; result: unknown }>();
   const timeline: WorkflowAgentTimelineItem[] = [];
+  const appendTimelineText = (type: 'message' | 'thinking', content: string) => {
+    const latest = timeline.at(-1);
+    if (latest?.type === type) {
+      latest.content += content;
+    } else {
+      timeline.push({ id: `${type}-${timeline.length}-${Date.now()}`, type, content });
+    }
+  };
+  const splitter = createThinkTagSplitter((part) => {
+    appendTimelineText(part.type, part.content);
+    if (part.type === 'message') {
+      output.push(part.content);
+      onEvent({ type: 'output', line: part.content });
+    } else {
+      onEvent({ type: 'reasoning', text: part.content, status: 'streaming' });
+    }
+  });
   const result = await runtime.execute(message, getProjectDir(projectId), {
     systemPrompt,
     functionTools,
     maxTurns: 20,
     onEvent: (event) => {
-      onEvent(event);
       if (event.type === 'output') {
-        output.push(event.line);
-        const latest = timeline.at(-1);
-        if (latest?.type === 'message') {
-          latest.content += event.line;
-        } else {
-          timeline.push({ id: `message-${timeline.length}-${Date.now()}`, type: 'message', content: event.line });
-        }
+        splitter.push(event.line);
+        return;
+      }
+      onEvent(event);
+      if (event.type === 'reasoning') {
+        appendTimelineText('thinking', event.text);
       }
       if (event.type === 'tool_use') {
         toolCalls.set(event.id, { name: event.name, input: event.input, result: undefined });
@@ -541,13 +557,14 @@ export async function runMiniAppAgent(input: MiniAppAgentRunInput): Promise<Mini
       }
     },
   });
+  splitter.flush();
 
   const userMessage: miniAppStore.MiniAppChatMessage = {
     id: randomUUID(), sessionId, agentId, role: 'user',
     content: message, route, timestamp: userTimestamp,
   };
   const agentContent = result.success
-    ? (result.output.join('\n').trim() || result.summary)
+    ? (output.join('').trim() || result.summary)
     : `Error: ${result.error ?? result.summary}`;
   const agentMessage: miniAppStore.MiniAppChatMessage = {
     id: randomUUID(), sessionId, agentId, role: 'agent',

@@ -10,10 +10,7 @@ import { useState } from "react";
 export function normalizeChatTimeline(
   timeline?: WorkflowAgentTimelineItem[],
 ): WorkflowAgentTimelineItem[] {
-  if (!timeline?.length) return [];
-  const thinking = timeline.find((item) => item.type === "thinking");
-  if (!thinking) return timeline;
-  return [thinking, ...timeline.filter((item) => item.id !== thinking.id)];
+  return timeline ?? [];
 }
 
 export function ChatToolTimeline({
