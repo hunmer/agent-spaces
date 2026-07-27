@@ -19,8 +19,9 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { AvatarGroup } from '@/components/ui/avatar-group';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { DropdownMenuItem, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { ChatPanel, type ChatMessage, type ChatPanelMentionFile } from '@/components/ui/chat-panel';
-import { PanelRightOpen, FilesIcon, Loader2, Search, Sparkles, Settings2, Settings, Eraser, Smartphone, Monitor, Tablet, Info, AlertTriangle, MessageSquareText, UploadIcon, Trash2 } from 'lucide-react';
+import { PanelRightOpen, FilesIcon, Loader2, Search, Sparkles, Settings2, Settings, Eraser, Smartphone, Monitor, Tablet, Info, AlertTriangle, MessageSquareText, UploadIcon, Trash2, RotateCcw } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { AgentEditor } from '@/components/sidebar/agent-editor';
@@ -275,7 +276,7 @@ function useMiniAppAgentChat(projectId: string) {
   const searchParams = useSearchParams();
   const route = searchParams.get('route') ?? '/';
 
-  const [agents, setAgents] = useState<Array<{ id: string; name: string; avatar?: string; suggestions?: string[] }>>([]);
+  const [agents, setAgents] = useState<Array<{ id: string; name: string; avatar?: string; introduction?: string; suggestions?: string[] }>>([]);
   const [agentId, setAgentId] = useState<string>('');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
@@ -300,14 +301,10 @@ function useMiniAppAgentChat(projectId: string) {
     }).catch(() => {});
   }, [projectId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const [introduction, setIntroduction] = useState<string>('');
   useEffect(() => {
     if (!projectId) return;
     sdk.miniApp.get(projectId)
-      .then((project) => {
-        setAgentFilesEnabled(project.agentPermissions?.includes('Files') === true);
-        setIntroduction(project.introduction ?? '');
-      })
+      .then((project) => setAgentFilesEnabled(project.agentPermissions?.includes('Files') === true))
       .catch(() => setAgentFilesEnabled(false));
   }, [projectId]);
 
@@ -589,6 +586,19 @@ function useMiniAppAgentChat(projectId: string) {
     finally { setClearOpen(false); }
   }, [projectId, agentId, sessionId]);
 
+  // ---- 重置 agents.json（保留 provider/model/runtimeKind） ----
+  const [resetOpen, setResetOpen] = useState(false);
+  const handleResetAgents = useCallback(async () => {
+    if (!projectId) return;
+    try {
+      await sdk.miniApp.resetAgents(projectId);
+      // 刷新 agents 清单（suggestions/introduction 等已恢复种子值）
+      const r = await sdk.miniApp.listAgents(projectId);
+      setAgents(r.agents);
+    } catch { /* ignore */ }
+    finally { setResetOpen(false); }
+  }, [projectId]);
+
   // ---- Agent 设置弹窗 ----
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsLoading, setSettingsLoading] = useState(false);
@@ -617,12 +627,14 @@ function useMiniAppAgentChat(projectId: string) {
 
   const current = agents.find((a) => a.id === agentId);
   const suggestions = current?.suggestions ?? [];
+  const introduction = current?.introduction ?? '';
 
   return {
     agents, agentId, setAgentId,
     messages, input, setInput, sending,
     handleSend, handleStop,
     clearOpen, setClearOpen, handleClear,
+    resetOpen, setResetOpen, handleResetAgents,
     settingsOpen, setSettingsOpen, settingsLoading, settingsDraft, originalConfig,
     openSettings, handleSettingsSaved,
     current, suggestions,
@@ -692,10 +704,9 @@ function MiniAppAgentDialogs({ projectId, chat }: { projectId: string; chat: Ret
   );
 }
 
-function MiniAppAgentFilesDialog({ projectId }: { projectId: string }) {
+function MiniAppAgentFilesDialog({ projectId, open, onOpenChange }: { projectId: string; open: boolean; onOpenChange: (o: boolean) => void }) {
   const [tree, setTree] = useState<FileNode[]>([]);
   const [loading, setLoading] = useState(false);
-  const [open, setOpen] = useState(false);
   const [openFiles, setOpenFiles] = useState<OpenFile[]>([]);
   const [modifiedFileContents, setModifiedFileContents] = useState<Record<string, string>>({});
   const [activeFilePath, setActiveFilePath] = useState<string | null>(null);
@@ -814,20 +825,8 @@ function MiniAppAgentFilesDialog({ projectId }: { projectId: string }) {
   }), [loading, openFile, openFiles, projectId, reloadTree, tree, uploadFiles]);
 
   return (
-    <>
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon"
-        className="h-8 w-8 rounded-full hover:bg-background/50"
-        title="agent_files/preview"
-        aria-label="agent_files/preview"
-        onClick={() => setOpen(true)}
-      >
-        <FilesIcon className="h-4 w-4" />
-      </Button>
-      <Dialog open={open} onOpenChange={(nextOpen) => {
-        setOpen(nextOpen);
+    <Dialog open={open} onOpenChange={(nextOpen) => {
+        onOpenChange(nextOpen);
         if (nextOpen) void reloadTree();
       }}>
         <DialogContent className="flex h-[80vh] !w-[80vw] !max-w-[80vw] flex-col overflow-hidden p-0">
@@ -881,14 +880,13 @@ function MiniAppAgentFilesDialog({ projectId }: { projectId: string }) {
           </div>
         </DialogContent>
       </Dialog>
-    </>
   );
 }
 
-/** ChatPanel 顶部工具区（切换会话 / agent / 设置 / 清空），popover 与 dock 共用。 */
+/** ChatPanel 顶部工具区（切换会话 / agent / 设置），popover 与 dock 共用。 */
 function MiniAppAgentHeaderActions({ chat }: { chat: ReturnType<typeof useMiniAppAgentChat> }) {
   const t = useTranslations('mini-apps');
-  const { agents, agentId, setAgentId, openSettings, sending, messages, projectId, agentFilesEnabled,
+  const { agents, agentId, setAgentId, openSettings,
     sessions, sessionId, handleSwitchSession, handleNewSession, handleDeleteSession } = chat;
   return (
     <>
@@ -939,7 +937,6 @@ function MiniAppAgentHeaderActions({ chat }: { chat: ReturnType<typeof useMiniAp
           </SelectContent>
         </Select>
       )}
-      {agentFilesEnabled ? <MiniAppAgentFilesDialog projectId={projectId} /> : null}
       <Button
         type="button"
         variant="ghost"
@@ -952,18 +949,61 @@ function MiniAppAgentHeaderActions({ chat }: { chat: ReturnType<typeof useMiniAp
       >
         <Settings2 className="h-4 w-4" />
       </Button>
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon"
-        className="h-8 w-8 rounded-full hover:bg-background/50"
-        onClick={() => chat.setClearOpen(true)}
-        disabled={!agentId || sending || messages.length === 0}
-        title={t('agent.clear')}
-        aria-label={t('agent.clear')}
+    </>
+  );
+}
+
+/**
+ * ChatPanel 头部菜单 dropdown 内容（清空消息 / 查看文件列表 / 重置 agents.json）。
+ * 自管理 FilesDialog 与 Reset 确认框的开关状态。
+ */
+function MiniAppAgentMenu({ chat }: { chat: ReturnType<typeof useMiniAppAgentChat> }) {
+  const t = useTranslations('mini-apps');
+  const { projectId, agentFilesEnabled, agentId, sending, messages, setClearOpen, resetOpen, setResetOpen, handleResetAgents } = chat;
+  const [filesOpen, setFilesOpen] = useState(false);
+  const clearDisabled = !agentId || sending || messages.length === 0;
+  return (
+    <>
+      <DropdownMenuItem
+        disabled={clearDisabled}
+        onSelect={(e) => { e.preventDefault(); setClearOpen(true); }}
       >
-        <Eraser className="h-4 w-4" />
-      </Button>
+        <Eraser className="mr-2 h-4 w-4" />
+        {t('agent.clear')}
+      </DropdownMenuItem>
+      {agentFilesEnabled ? (
+        <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setFilesOpen(true); }}>
+          <FilesIcon className="mr-2 h-4 w-4" />
+          {t('agent.files')}
+        </DropdownMenuItem>
+      ) : null}
+      <DropdownMenuSeparator />
+      <DropdownMenuItem
+        className="text-amber-600 focus:text-amber-600 dark:text-amber-400"
+        onSelect={(e) => { e.preventDefault(); setResetOpen(true); }}
+      >
+        <RotateCcw className="mr-2 h-4 w-4" />
+        {t('agent.resetAgents')}
+      </DropdownMenuItem>
+
+      {/* 文件列表弹窗 */}
+      {agentFilesEnabled ? (
+        <MiniAppAgentFilesDialog projectId={projectId} open={filesOpen} onOpenChange={setFilesOpen} />
+      ) : null}
+
+      {/* 重置确认框 */}
+      <AlertDialog open={resetOpen} onOpenChange={setResetOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('agent.resetAgents')}</AlertDialogTitle>
+            <AlertDialogDescription>{t('agent.resetAgentsConfirm')}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t('agent.resetAgentsCancel')}</AlertDialogCancel>
+            <AlertDialogAction variant="destructive" onClick={handleResetAgents}>{t('agent.resetAgentsAction')}</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
@@ -1010,6 +1050,7 @@ function MiniAppAgentPopover({ projectId }: { projectId: string }) {
           introduction={introduction}
           mentionFiles={agentFileMentions}
           headerActions={<MiniAppAgentHeaderActions chat={chat} />}
+          menuItems={<MiniAppAgentMenu chat={chat} />}
         />
       </PopoverContent>
       <MiniAppAgentDialogs projectId={projectId} chat={chat} />
@@ -1056,6 +1097,7 @@ function MiniAppAgentDock({ projectId, onClose }: { projectId: string; onClose: 
         suggestions={suggestions}
         mentionFiles={agentFileMentions}
         headerActions={<MiniAppAgentHeaderActions chat={chat} />}
+        menuItems={<MiniAppAgentMenu chat={chat} />}
       />
       <MiniAppAgentDialogs projectId={projectId} chat={chat} />
     </div>

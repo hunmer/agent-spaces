@@ -2,6 +2,7 @@
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { ChatMessageList } from '@/components/chat/chat-message-list';
 import { ComposerShell } from '@/components/composer/composer-shell';
 import { createSuggestionRenderer } from '@/components/composer/create-suggestion-renderer';
@@ -14,7 +15,7 @@ import Placeholder from '@tiptap/extension-placeholder';
 import StarterKit from '@tiptap/starter-kit';
 import { useEditor, useEditorState } from '@tiptap/react';
 import { motion, type Variants } from 'framer-motion';
-import { ArrowDown, Lightbulb, MessageCircle, Pencil, Send, Sparkles, X } from 'lucide-react';
+import { ArrowDown, Lightbulb, MessageCircle, MoreVertical, Pencil, Send, Sparkles } from 'lucide-react';
 import { useEffect, useId, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 
 export interface ChatMessage {
@@ -48,7 +49,7 @@ export interface ChatPanelMentionFile {
 }
 
 export interface ChatPanelProps {
-  onClose: () => void;
+  onClose?: () => void;
   agent: ChatAgentInfo;
   messages: ChatMessage[];
   sending?: boolean;
@@ -65,6 +66,8 @@ export interface ChatPanelProps {
   markdown?: boolean;
   workspaceId?: string;
   headerActions?: ReactNode;
+  /** 头部右侧菜单 dropdown 的内容（每项建议是 DropdownMenuItem） */
+  menuItems?: ReactNode;
   renderMessageContent?: (message: ChatMessage) => ReactNode;
   renderMessageExtras?: (message: ChatMessage) => ReactNode;
   onDeleteMessage?: (messageId: string) => void;
@@ -122,6 +125,7 @@ export function ChatPanel({
   markdown = true,
   workspaceId,
   headerActions,
+  menuItems,
   renderMessageContent,
   renderMessageExtras,
   onDeleteMessage,
@@ -337,9 +341,18 @@ export function ChatPanel({
           </div>
           <div className="flex items-center gap-1">
             {headerActions}
-            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-background/50" onClick={onClose}>
-              <X className="h-4 w-4" />
-            </Button>
+            {menuItems ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger render={
+                  <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-background/50" aria-label="Menu" />
+                }>
+                  <MoreVertical className="h-4 w-4" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  {menuItems}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : null}
           </div>
         </div>
       </div>

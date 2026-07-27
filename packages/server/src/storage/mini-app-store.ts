@@ -6,8 +6,6 @@ export interface MiniAppProject {
   id: string;
   name: string;
   description?: string;
-  /** 空态展示的介绍文本（agent 对话无消息时显示） */
-  introduction?: string;
   version: string;
   type: 'react' | 'html';
   tags?: string[];
@@ -520,6 +518,47 @@ export function agentsConfigExists(projectId: string): boolean {
  */
 export function writeAgentsConfig(projectId: string, configs: unknown[]): void {
   writeJsonFile(join(projectDir(projectId), 'agents.json'), configs);
+}
+
+/**
+ * 用 manifest.agents 种子重置 agents.json，但保留每个 agent 已配置的 provider 相关字段：
+ * providerId / modelProvider / modelId / runtimeKind（用户密钥配置不丢失）。
+ * 其余字段（systemPrompt/suggestions/introduction/tools/avatar/name 等）用种子值覆盖。
+ * 返回重置后的配置数量；无种子抛错。
+ */
+export function resetAgentsConfig(projectId: string): number {
+  const project = getProject(projectId);
+  if (!project) throw new Error(`Project not found: ${projectId}`);
+  const seed = project.agents;
+  if (!Array.isArray(seed) || seed.length === 0) {
+    throw new Error('No agents seed in manifest');
+  }
+  const existing = readAgentsConfig(projectId) ?? [];
+  const existingById = new Map<string, Record<string, unknown>>();
+  for (const e of existing) {
+    if (e && typeof e === 'object' && !Array.isArray(e)) {
+      const rec = e as Record<string, unknown>;
+      if (typeof rec.id === 'string') existingById.set(rec.id, rec);
+    }
+  }
+  // 保留的 provider 相关字段
+  const PRESERVE_KEYS = ['providerId', 'modelProvider', 'modelId', 'runtimeKind'] as const;
+  const merged = seed.map((raw) => {
+    const seedRec = (raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {}) as Record<string, unknown>;
+    const id = typeof seedRec.id === 'string' ? seedRec.id : '';
+    const cur = id ? existingById.get(id) : undefined;
+    const next: Record<string, unknown> = { ...seedRec };
+    if (cur) {
+      for (const key of PRESERVE_KEYS) {
+        const v = cur[key];
+        // 仅当现有值非空时保留（否则保留种子原值或 undefined）
+        if (v !== undefined && v !== '' && v !== null) next[key] = v;
+      }
+    }
+    return next;
+  });
+  writeAgentsConfig(projectId, merged);
+  return merged.length;
 }
 
 /** 读取单条 agent 的完整配置（含 apiKey，仅供编辑器加载）。缺失返回 null。 */

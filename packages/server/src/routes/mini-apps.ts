@@ -7,7 +7,7 @@ import { randomUUID } from 'crypto';
 import { exec } from 'node:child_process';
 import * as svc from '../services/mini-apps.js';
 import { invokeService } from '../services/mini-app-services.js';
-import { getProject, readAgentsConfig, readAgentConfig, upsertAgentConfig, listAgentChats, clearAgentChats, listChatSessions, renameChatSession, deleteChatMessage, DuplicateNameError } from '../storage/mini-app-store.js';
+import { getProject, readAgentsConfig, readAgentConfig, upsertAgentConfig, listAgentChats, clearAgentChats, listChatSessions, renameChatSession, deleteChatMessage, resetAgentsConfig, DuplicateNameError } from '../storage/mini-app-store.js';
 import { answerMiniAppAgentQuestion, getRegisteredMiniAppTools, runMiniAppAgent } from '../services/mini-app-agent.js';
 
 const router = Router();
@@ -561,12 +561,23 @@ router.get('/:id/agents', (req: Request<{ id: string }>, res: Response) => {
         id: String(c.id),
         name: String(c.name ?? c.id),
         avatar: typeof c.avatar === 'string' ? c.avatar : undefined,
+        introduction: typeof c.introduction === 'string' ? c.introduction : undefined,
         suggestions: Array.isArray(c.suggestions)
           ? c.suggestions.filter((s): s is string => typeof s === 'string')
           : [],
       }));
     res.json({ enableAgents: project.enableAgents === true, agents });
   } catch (error: any) { res.status(500).json({ error: error.message }); }
+});
+
+// POST /:id/agents/reset — 用 manifest.agents 种子重置 agents.json（保留 provider/model/runtimeKind）
+router.post('/:id/agents/reset', (req: Request<{ id: string }>, res: Response) => {
+  try {
+    const count = resetAgentsConfig(req.params.id);
+    res.json({ ok: true, count });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
 // GET /:id/agents/chat?sessionId=&agentId= — 历史

@@ -184,6 +184,11 @@
     "sessionNew": "New session",
     "sessionUntitled": "Untitled session",
     "sessionEmpty": "No sessions yet",
-    "delete": "Delete session"
+    "delete": "Delete session",
+    "files": "View agent files",
+    "resetAgents": "Reset agents.json",
+    "resetAgentsConfirm": "Reset all agents to manifest seed values? Provider, model and runtime kind already configured will be kept; other fields (system prompt, suggestions, introduction, tools, etc.) will be overwritten.",
+    "resetAgentsCancel": "Cancel",
+    "resetAgentsAction": "Reset"
   }
 }

@@ -6,8 +6,6 @@ export interface MiniAppProject {
   id: string;
   name: string;
   description?: string;
-  /** 空态展示的介绍文本（agent 对话无消息时显示） */
-  introduction?: string;
   version: string;
   type: 'react' | 'html';
   tags?: string[];
@@ -162,8 +160,12 @@ export function createMiniAppApi(http: HttpClient) {
 
     // ---- Agents (preview chat) ----
 
-    listAgents: (id: string): Promise<{ enableAgents: boolean; agents: Array<{ id: string; name: string; avatar?: string; suggestions?: string[] }> }> =>
+    listAgents: (id: string): Promise<{ enableAgents: boolean; agents: Array<{ id: string; name: string; avatar?: string; introduction?: string; suggestions?: string[] }> }> =>
       http.get(`/api/mini-apps/${encodeURIComponent(id)}/agents`),
+
+    /** 用 manifest.agents 种子重置 agents.json（保留 provider/model/runtimeKind 配置） */
+    resetAgents: (id: string): Promise<{ ok: true; count: number }> =>
+      http.post(`/api/mini-apps/${encodeURIComponent(id)}/agents/reset`),
 
     /** 读取单条 agent 的完整配置（含 apiKey，供编辑器加载） */
     getAgent: (id: string, agentId: string): Promise<MiniAppAgentConfig> =>

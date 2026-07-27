@@ -184,6 +184,11 @@
     "sessionNew": "新建会话",
     "sessionUntitled": "未命名会话",
     "sessionEmpty": "暂无会话",
-    "delete": "删除会话"
+    "delete": "删除会话",
+    "files": "查看 agent 文件",
+    "resetAgents": "重置 agents.json",
+    "resetAgentsConfirm": "将所有 agent 重置为 manifest 种子配置？已配置的 provider、model、runtimeKind 会保留，其余字段（系统提示词、建议、介绍、工具等）将被覆盖。",
+    "resetAgentsCancel": "取消",
+    "resetAgentsAction": "重置"
   }
 }

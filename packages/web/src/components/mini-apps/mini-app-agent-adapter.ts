@@ -15,6 +15,7 @@ import type { MiniAppAgentConfig } from "@agent-spaces/sdk";
 type MiniAppAgentRecord = MiniAppAgentConfig & {
   runtimeKind?: AgentConfig["runtimeKind"];
   suggestions?: string[];
+  introduction?: string;
 };
 
 /** 规整为 string[]；非数组或空集返回 undefined，避免落盘空数组。 */
@@ -85,6 +86,8 @@ export function agentPresetToMiniAppConfig(
     tools: original.tools,
     suggestions: normalizeSuggestions(preset.suggestions),
     hideInAgentList: preset.hideInAgentList,
+    // mini-app 专属字段，不在编辑器内编辑，原值回填避免保存时丢失
+    introduction: (original as MiniAppAgentRecord).introduction,
   };
   return config;
 }
