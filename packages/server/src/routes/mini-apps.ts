@@ -8,7 +8,7 @@ import { exec } from 'node:child_process';
 import * as svc from '../services/mini-apps.js';
 import { invokeService } from '../services/mini-app-services.js';
 import { getProject, readAgentsConfig, readAgentConfig, upsertAgentConfig, listAgentChats, clearAgentChats, DuplicateNameError } from '../storage/mini-app-store.js';
-import { getRegisteredMiniAppTools, runMiniAppAgent } from '../services/mini-app-agent.js';
+import { answerMiniAppAgentQuestion, getRegisteredMiniAppTools, runMiniAppAgent } from '../services/mini-app-agent.js';
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 500 * 1024 * 1024 } });
@@ -651,6 +651,17 @@ router.post('/:id/agents/:agentId/chat', (req: Request<{ id: string; agentId: st
       write('error', { message: error?.message ?? String(error) });
       if (!closed && !res.writableEnded) res.end();
     });
+});
+
+router.post('/:id/agents/:agentId/questions/:questionId/answer', (req: Request<{ id: string; agentId: string; questionId: string }>, res: Response) => {
+  const answer = typeof req.body?.answer === 'string' ? req.body.answer.trim() : '';
+  if (!answer) {
+    res.status(400).json({ error: 'answer is required' }); return;
+  }
+  if (!answerMiniAppAgentQuestion(req.params.id, req.params.questionId, answer)) {
+    res.status(404).json({ error: 'question not found' }); return;
+  }
+  res.json({ ok: true });
 });
 
 // GET /:id/agents/:agentId — 返回完整 agent config（含 apiKey，敏感字段，仅供编辑器加载）

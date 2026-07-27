@@ -59,6 +59,7 @@ export interface ChatPanelProps {
   onDeleteMessage?: (messageId: string) => void;
   serializeForCopy?: (message: ChatMessage) => string;
   onRerunTool?: (message: ChatMessage, item: Extract<WorkflowAgentTimelineItem, { type: 'tool' }>) => void;
+  onAnswerAskUserQuestion?: (message: ChatMessage, item: Extract<WorkflowAgentTimelineItem, { type: 'tool' }>, answer: string) => void | Promise<void>;
   width?: number;
   height?: number;
   className?: string;
@@ -110,6 +111,7 @@ export function ChatPanel({
   onDeleteMessage,
   serializeForCopy,
   onRerunTool,
+  onAnswerAskUserQuestion,
   width = 400,
   height = 360,
   className,
@@ -345,6 +347,7 @@ export function ChatPanel({
           onDeleteMessage={onDeleteMessage}
           serializeForCopy={serializeForCopy}
           onRerunTool={onRerunTool}
+          onAnswerAskUserQuestion={onAnswerAskUserQuestion}
         />
       </div>
 

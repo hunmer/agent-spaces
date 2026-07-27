@@ -54,6 +54,7 @@ export interface AgentFunctionTool {
     openWorld?: boolean;
   };
   execute: (input: unknown) => Promise<unknown>;
+  executeWithToolUseId?: (input: unknown, toolUseId: string) => Promise<unknown>;
 }
 
 export type AgentRuntimeKind = 'open-agent-sdk' | 'claude-code' | 'codex' | 'grok' | 'gemini-cli' | 'langchain' | 'hermes' | 'pi';

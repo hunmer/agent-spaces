@@ -20,6 +20,7 @@ import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { UsageDashboardSessionDialog } from "@/components/home/usage-dashboard-session-dialog";
 import { ChatToolTimeline, normalizeChatTimeline } from "./chat-tool-timeline";
+import { AskUserQuestion } from "./ask-user-question";
 
 export interface DisplayChatMessage {
   id: string;
@@ -62,6 +63,7 @@ export interface ChatMessageListProps<TMessage extends DisplayChatMessage> {
   onRegenerateMessage?: (message: TMessage) => void;
   isStreamingMessage?: (message: TMessage) => boolean;
   onRerunTool?: (message: TMessage, item: Extract<WorkflowAgentTimelineItem, { type: "tool" }>) => void;
+  onAnswerAskUserQuestion?: (message: TMessage, item: Extract<WorkflowAgentTimelineItem, { type: "tool" }>, answer: string) => void | Promise<void>;
   sessionRecordForMessage?: (message: TMessage) => AgentUsageRecord | null | undefined;
   sessionDetailForMessage?: (message: TMessage) => AgentUsageSessionDetail | null | undefined;
 }
@@ -119,6 +121,36 @@ function buildSessionRecord(message: DisplayChatMessage, workspaceId?: string): 
     completedAt: timestamp,
     durationMs: message.metadata?.duration ?? 0,
   } as AgentUsageRecord;
+}
+
+function parseAskUserQuestionInput(input: unknown): { question: string; choices: string[] } | null {
+  if (!input || typeof input !== "object") return null;
+  const questions = Array.isArray((input as { questions?: unknown }).questions)
+    ? (input as { questions: unknown[] }).questions
+    : [];
+  const first = questions.find((item) => item && typeof item === "object") as Record<string, unknown> | undefined;
+  const question = typeof first?.question === "string" && first.question.trim()
+    ? first.question.trim()
+    : typeof first?.header === "string" && first.header.trim()
+      ? first.header.trim()
+      : "";
+  if (!question) return null;
+  const options = Array.isArray(first?.options) ? first.options : [];
+  const choices = options
+    .map((option) => {
+      if (typeof option === "string") return option;
+      if (!option || typeof option !== "object") return "";
+      const record = option as Record<string, unknown>;
+      return typeof record.label === "string" ? record.label : "";
+    })
+    .filter(Boolean);
+  return { question, choices };
+}
+
+function getAskUserQuestionAnswer(result: unknown): string | undefined {
+  if (!result || typeof result !== "object") return undefined;
+  const answer = (result as { answer?: unknown }).answer;
+  return typeof answer === "string" && answer.trim() ? answer : undefined;
 }
 
 function ThinkingBlock({ content }: { content: string }) {
@@ -184,6 +216,7 @@ export function ChatMessageList<TMessage extends DisplayChatMessage>({
   onRegenerateMessage,
   isStreamingMessage,
   onRerunTool,
+  onAnswerAskUserQuestion,
   sessionRecordForMessage,
   sessionDetailForMessage,
 }: ChatMessageListProps<TMessage>) {
@@ -216,6 +249,9 @@ export function ChatMessageList<TMessage extends DisplayChatMessage>({
     const hasToolTimeline = timeline.some((item) => item.type === "tool");
     const showTools = streaming || visibleToolTimelineMessageIds[msg.id] !== false;
     const showTimeline = visibleTimeline.some((item) => item.type !== "tool" || showTools);
+    const askUserQuestionItems = visibleTimeline.filter((item): item is Extract<WorkflowAgentTimelineItem, { type: "tool" }> =>
+      item.type === "tool" && item.name === "askUserQuestions" && Boolean(parseAskUserQuestionInput(item.input))
+    );
     const canToggleTimeline = msg.role === "agent" && hasToolTimeline && !streaming;
     const bodyMessage = showTimelineMessages ? "" : message;
     const hasMessageBody =
@@ -282,6 +318,23 @@ export function ChatMessageList<TMessage extends DisplayChatMessage>({
               streaming={streaming}
             />
           ) : null}
+          {askUserQuestionItems.map((item) => {
+            const parsed = parseAskUserQuestionInput(item.input);
+            if (!parsed) return null;
+            const answer = getAskUserQuestionAnswer(item.result);
+            return (
+              <AskUserQuestion
+                key={`ask-user-${item.id}`}
+                question={parsed.question}
+                choices={parsed.choices}
+                answer={answer}
+                status={answer ? "answered" : "requested"}
+                onAnswer={onAnswerAskUserQuestion ? (value) => {
+                  void Promise.resolve(onAnswerAskUserQuestion(msg, item, value)).catch(() => {});
+                } : undefined}
+              />
+            );
+          })}
           {renderMessageExtras?.(msg)}
           <div className={cn("flex items-center gap-1", msg.role === "user" && "flex-row-reverse")}>
             <span

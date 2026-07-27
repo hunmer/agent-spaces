@@ -35,6 +35,11 @@ export interface MiniAppToolSpec {
 const miniAppToolRegistry = new Map<string, Record<string, MiniAppToolSpec>>();
 const VALID_RUNTIME_KINDS = new Set<AgentRuntimeKind>(['open-agent-sdk', 'claude-code', 'codex', 'grok', 'gemini-cli', 'langchain', 'hermes', 'pi']);
 const MINI_APP_FILE_TOOLS: BuiltInAgentToolName[] = ['ListWorkspaceFiles', 'SearchWorkspaceFiles', 'ReadWorkspaceFile', 'ReadWorkspaceFileLines', 'WriteWorkspaceFile', 'ReplaceWorkspaceFileLine', 'DeleteWorkspacePath', 'MoveWorkspacePath'];
+const askUserQuestionRuns = new Map<string, {
+  projectId: string;
+  resolve: (answer: string) => void;
+  timeout: ReturnType<typeof setTimeout>;
+}>();
 
 /**
  * 编译 src/api.js：剥离 import 行（api.js 不依赖外部模块），把 ESM `export default`
@@ -216,6 +221,81 @@ export function createMiniAppToolsCatalogTool(currentProjectId: string): AgentFu
   };
 }
 
+export function answerMiniAppAgentQuestion(projectId: string, questionId: string, answer: string): boolean {
+  const pending = askUserQuestionRuns.get(questionId);
+  if (!pending || pending.projectId !== projectId) return false;
+  clearTimeout(pending.timeout);
+  askUserQuestionRuns.delete(questionId);
+  pending.resolve(answer);
+  return true;
+}
+
+function createAskUserQuestionsTool(projectId: string, stopSignal?: AbortSignal): AgentFunctionTool {
+  return {
+    name: 'askUserQuestions',
+    description: 'Ask the user one question and wait for their answer before continuing.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        questions: {
+          type: 'array',
+          minItems: 1,
+          maxItems: 1,
+          items: {
+            type: 'object',
+            properties: {
+              question: { type: 'string' },
+              header: { type: 'string' },
+              options: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: {
+                    label: { type: 'string' },
+                    description: { type: 'string' },
+                  },
+                },
+              },
+            },
+            required: ['question'],
+          },
+        },
+      },
+      required: ['questions'],
+    },
+    execute: async () => {
+      throw new Error('askUserQuestions requires a tool call id');
+    },
+    executeWithToolUseId: async (input, toolUseId) => {
+      const answer = await new Promise<string>((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          askUserQuestionRuns.delete(toolUseId);
+          reject(new Error('Timed out waiting for user answer.'));
+        }, 10 * 60 * 1000);
+        const onAbort = () => {
+          clearTimeout(timeout);
+          askUserQuestionRuns.delete(toolUseId);
+          reject(new Error('Stopped while waiting for user answer.'));
+        };
+        if (stopSignal?.aborted) {
+          onAbort();
+          return;
+        }
+        stopSignal?.addEventListener('abort', onAbort, { once: true });
+        askUserQuestionRuns.set(toolUseId, {
+          projectId,
+          resolve: (answer) => {
+            stopSignal?.removeEventListener('abort', onAbort);
+            resolve(answer);
+          },
+          timeout,
+        });
+      });
+      return { answer, input };
+    },
+  };
+}
+
 export interface ResolvedAgentCredentials {
   runtimeKind: AgentRuntimeKind;
   modelProvider?: string;
@@ -354,6 +434,7 @@ export async function runMiniAppAgent(input: MiniAppAgentRunInput): Promise<Mini
   const functionTools: AgentFunctionTool[] = [];
   const sections: string[] = [];
   const toolsCfg = entry.tools ?? { api: true, plugin: true };
+  functionTools.push(createAskUserQuestionsTool(projectId, stopSignal));
   const hasAgentFilePermission = miniAppStore.getProject(projectId)?.agentPermissions?.includes('Files') === true;
   if (toolsCfg.plugin) {
     functionTools.push(...createMiniAppFunctionTools({

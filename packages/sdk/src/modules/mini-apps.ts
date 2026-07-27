@@ -175,5 +175,8 @@ export function createMiniAppApi(http: HttpClient) {
      */
     agentChat: (id: string, agentId: string, body: { sessionId: string; message: string; route?: string }, opts?: RequestOptions): Promise<Response> =>
       http.sse(`/api/mini-apps/${encodeURIComponent(id)}/agents/${encodeURIComponent(agentId)}/chat`, body, opts),
+
+    answerAgentQuestion: (id: string, agentId: string, questionId: string, answer: string): Promise<void> =>
+      http.postVoid(`/api/mini-apps/${encodeURIComponent(id)}/agents/${encodeURIComponent(agentId)}/questions/${encodeURIComponent(questionId)}/answer`, { answer }),
   };
 }

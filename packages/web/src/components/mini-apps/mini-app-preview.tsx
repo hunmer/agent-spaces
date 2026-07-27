@@ -246,6 +246,18 @@ function miniAppToolCallsToTimeline(toolCalls?: Array<{ name: string; input: unk
   })) ?? [];
 }
 
+function markAskUserQuestionAnswered(
+  timeline: WorkflowAgentTimelineItem[] | undefined,
+  questionId: string,
+  answer: string,
+): WorkflowAgentTimelineItem[] | undefined {
+  if (!timeline?.length) return timeline;
+  return timeline.map((item) => {
+    if (item.type !== 'tool' || item.id !== questionId || item.name !== 'askUserQuestions') return item;
+    return { ...item, result: { answer, input: item.input }, status: 'success' as const };
+  });
+}
+
 function flattenAgentFiles(nodes: FileNode[]): ChatPanelMentionFile[] {
   const files: ChatPanelMentionFile[] = [];
   const walk = (items: FileNode[]) => {
@@ -389,6 +401,18 @@ function useMiniAppAgentChat(projectId: string) {
     setSending(false);
   }, []);
 
+  const handleAnswerAskUserQuestion = useCallback(async (
+    message: ChatMessage,
+    item: Extract<WorkflowAgentTimelineItem, { type: 'tool' }>,
+    answer: string,
+  ) => {
+    if (!projectId || !agentId || item.name !== 'askUserQuestions') return;
+    await sdk.miniApp.answerAgentQuestion(projectId, agentId, item.id, answer);
+    setMessages((prev) => prev.map((m) => (
+      m.id === message.id ? { ...m, timeline: markAskUserQuestionAnswered(m.timeline, item.id, answer) } : m
+    )));
+  }, [projectId, agentId]);
+
   const [clearOpen, setClearOpen] = useState(false);
   const handleClear = useCallback(async () => {
     if (!projectId || !agentId) return;
@@ -440,6 +464,7 @@ function useMiniAppAgentChat(projectId: string) {
     agentFilesEnabled,
     agentFileMentions,
     loadHistory,
+    handleAnswerAskUserQuestion,
   };
 }
 
@@ -745,7 +770,7 @@ function MiniAppAgentPopover({ projectId }: { projectId: string }) {
   // 打开时拉取一次历史
   useEffect(() => { if (open) chat.loadHistory(); }, [open, chat.loadHistory]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const { messages, input, setInput, sending, handleSend, handleStop, current, suggestions, agentFileMentions } = chat;
+  const { messages, input, setInput, sending, handleSend, handleStop, current, suggestions, agentFileMentions, handleAnswerAskUserQuestion } = chat;
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -766,6 +791,7 @@ function MiniAppAgentPopover({ projectId }: { projectId: string }) {
           onInputChange={setInput}
           onSend={handleSend}
           onStop={handleStop}
+          onAnswerAskUserQuestion={handleAnswerAskUserQuestion}
           inputPlaceholder={t('agent.inputPlaceholder')}
           suggestions={suggestions}
           mentionFiles={agentFileMentions}
@@ -785,7 +811,7 @@ function MiniAppAgentDock({ projectId, onClose }: { projectId: string; onClose: 
   // dock 常驻时，agent 切换即拉历史
   useEffect(() => { chat.loadHistory(); }, [chat.loadHistory]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const { messages, input, setInput, sending, handleSend, handleStop, current, suggestions, agentFileMentions } = chat;
+  const { messages, input, setInput, sending, handleSend, handleStop, current, suggestions, agentFileMentions, handleAnswerAskUserQuestion } = chat;
 
   return (
     <div className="flex h-full w-full flex-col border-l bg-background">
@@ -804,6 +830,7 @@ function MiniAppAgentDock({ projectId, onClose }: { projectId: string; onClose: 
         onInputChange={setInput}
         onSend={handleSend}
         onStop={handleStop}
+        onAnswerAskUserQuestion={handleAnswerAskUserQuestion}
         inputPlaceholder={t('agent.inputPlaceholder')}
         suggestions={suggestions}
         mentionFiles={agentFileMentions}

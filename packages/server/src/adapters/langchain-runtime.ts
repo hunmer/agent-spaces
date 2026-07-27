@@ -496,7 +496,9 @@ function buildLangChainTools(
       // output.push(line);
       options?.onEvent?.({ type: 'tool_use', id: toolUseId, name: runtimeTool.name, input, line });
       try {
-        const result = await runtimeTool.execute(input);
+        const result = await (runtimeTool.executeWithToolUseId
+          ? runtimeTool.executeWithToolUseId(input, toolUseId)
+          : runtimeTool.execute(input));
         progress.recordToolResult(result);
         log(`tool result | source=function id=${toolUseId} name=${runtimeTool.name} elapsedMs=${Date.now() - startedAt} output=${summarizeForLog(result, 1000)}`);
         options?.onEvent?.({ type: 'tool_result', toolUseId, result });
