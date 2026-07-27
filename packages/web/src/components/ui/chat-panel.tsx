@@ -14,7 +14,7 @@ import Placeholder from '@tiptap/extension-placeholder';
 import StarterKit from '@tiptap/starter-kit';
 import { useEditor, useEditorState } from '@tiptap/react';
 import { motion, type Variants } from 'framer-motion';
-import { ArrowDown, Lightbulb, Pencil, Send, X } from 'lucide-react';
+import { ArrowDown, Lightbulb, MessageCircle, Pencil, Send, Sparkles, X } from 'lucide-react';
 import { useEffect, useId, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 
 export interface ChatMessage {
@@ -58,6 +58,8 @@ export interface ChatPanelProps {
   onStop?: () => void;
   inputPlaceholder?: string;
   suggestions?: string[];
+  /** 空态展示的介绍文本（无消息时显示在 suggestions 上方） */
+  introduction?: string;
   mentionFiles?: ChatPanelMentionFile[];
   inputContext?: ReactNode;
   markdown?: boolean;
@@ -114,6 +116,7 @@ export function ChatPanel({
   onStop,
   inputPlaceholder,
   suggestions,
+  introduction,
   mentionFiles,
   inputContext,
   markdown = true,
@@ -356,7 +359,33 @@ export function ChatPanel({
           markdown={markdown}
           workspaceId={workspaceId}
           animated
-          renderEmpty={<div className="flex h-full items-center justify-center text-xs text-muted-foreground">暂无消息</div>}
+          renderEmpty={
+            <div className="flex h-full flex-col items-center justify-center gap-4 px-4 py-6 text-center">
+              {introduction?.trim() ? (
+                <div className="flex w-full max-w-md items-start gap-2 rounded-xl border border-border bg-background px-4 py-3 text-left">
+                  <Sparkles className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                  <div className="whitespace-pre-wrap break-words text-sm text-foreground">{introduction}</div>
+                </div>
+              ) : (
+                <div className="text-xs text-muted-foreground">暂无消息</div>
+              )}
+              {(suggestions ?? []).filter((s) => s.trim()).length > 0 && (
+                <div className="flex w-full max-w-md flex-col items-stretch gap-2">
+                  {suggestions!.filter((s) => s.trim()).map((suggestion, index) => (
+                    <button
+                      key={`${suggestion}-${index}`}
+                      type="button"
+                      onClick={() => onInputChange(suggestion)}
+                      className="flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-2 text-left text-xs text-foreground transition-colors hover:bg-accent hover:border-foreground/30 cursor-pointer"
+                    >
+                      <MessageCircle className="size-3.5 shrink-0 text-muted-foreground" />
+                      <span>{suggestion}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          }
           renderMessageContent={renderMessageContent}
           renderMessageExtras={renderMessageExtras}
           onDeleteMessage={onDeleteMessage}

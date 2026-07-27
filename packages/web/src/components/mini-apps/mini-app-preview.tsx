@@ -300,10 +300,14 @@ function useMiniAppAgentChat(projectId: string) {
     }).catch(() => {});
   }, [projectId]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const [introduction, setIntroduction] = useState<string>('');
   useEffect(() => {
     if (!projectId) return;
     sdk.miniApp.get(projectId)
-      .then((project) => setAgentFilesEnabled(project.agentPermissions?.includes('Files') === true))
+      .then((project) => {
+        setAgentFilesEnabled(project.agentPermissions?.includes('Files') === true);
+        setIntroduction(project.introduction ?? '');
+      })
       .catch(() => setAgentFilesEnabled(false));
   }, [projectId]);
 
@@ -628,6 +632,7 @@ function useMiniAppAgentChat(projectId: string) {
     loadHistory,
     handleAnswerAskUserQuestion,
     handleDeleteMessage, handleRegenerateMessage, sessionDetailForMessage,
+    introduction,
     // 多会话
     sessions, sessionId,
     handleSwitchSession, handleNewSession, handleDeleteSession, handleRenameSession,
@@ -975,7 +980,7 @@ function MiniAppAgentPopover({ projectId }: { projectId: string }) {
   useEffect(() => { if (open) loadHistoryRef.current(); }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const { messages, input, setInput, sending, handleSend, handleStop, current, suggestions, agentFileMentions,
-    handleAnswerAskUserQuestion, handleDeleteMessage, handleRegenerateMessage, sessionDetailForMessage } = chat;
+    handleAnswerAskUserQuestion, handleDeleteMessage, handleRegenerateMessage, sessionDetailForMessage, introduction } = chat;
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -1002,6 +1007,7 @@ function MiniAppAgentPopover({ projectId }: { projectId: string }) {
           sessionDetailForMessage={sessionDetailForMessage}
           inputPlaceholder={t('agent.inputPlaceholder')}
           suggestions={suggestions}
+          introduction={introduction}
           mentionFiles={agentFileMentions}
           headerActions={<MiniAppAgentHeaderActions chat={chat} />}
         />
@@ -1022,7 +1028,7 @@ function MiniAppAgentDock({ projectId, onClose }: { projectId: string; onClose: 
   useEffect(() => { loadHistoryRef.current(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const { messages, input, setInput, sending, handleSend, handleStop, current, suggestions, agentFileMentions,
-    handleAnswerAskUserQuestion, handleDeleteMessage, handleRegenerateMessage, sessionDetailForMessage } = chat;
+    handleAnswerAskUserQuestion, handleDeleteMessage, handleRegenerateMessage, sessionDetailForMessage, introduction } = chat;
 
   return (
     <div className="flex h-full w-full flex-col border-l bg-background">
@@ -1044,6 +1050,7 @@ function MiniAppAgentDock({ projectId, onClose }: { projectId: string; onClose: 
         onAnswerAskUserQuestion={handleAnswerAskUserQuestion}
         onDeleteMessage={handleDeleteMessage}
         onRegenerateMessage={handleRegenerateMessage}
+        introduction={introduction}
         sessionDetailForMessage={sessionDetailForMessage}
         inputPlaceholder={t('agent.inputPlaceholder')}
         suggestions={suggestions}

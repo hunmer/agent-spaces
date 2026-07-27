@@ -6,6 +6,8 @@ export interface MiniAppProject {
   id: string;
   name: string;
   description?: string;
+  /** 空态展示的介绍文本（agent 对话无消息时显示） */
+  introduction?: string;
   version: string;
   type: 'react' | 'html';
   tags?: string[];
