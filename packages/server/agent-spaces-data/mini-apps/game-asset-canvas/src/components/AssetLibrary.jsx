@@ -387,7 +387,7 @@ const ASSET_MOVE_MIME = 'application/x-asset-move';
 // ============ 单张资产缩略图 ============
 function AssetThumb({ asset, categoryId, picker, selected, onToggle, onRemove }) {
   const isPickerImage = picker === 'image';
-  // HoverCard 拖拽时隐藏（避免大图浮层遮挡目标分类）
+  // HoverCard：受控 + delay=500ms 延迟显示；拖拽时立即关闭避免遮挡
   const [hoverOpen, setHoverOpen] = useState(false);
   const handleClick = () => {
     if (isPickerImage) {
@@ -439,6 +439,7 @@ function AssetThumb({ asset, categoryId, picker, selected, onToggle, onRemove })
   return (
     <HoverCard open={hoverOpen} onOpenChange={setHoverOpen}>
       <HoverCardTrigger
+        delay={500}
         render={
           <div className="group/asset relative aspect-square cursor-pointer overflow-hidden rounded border border-border">
             <button type="button" onClick={handleClick} className="block h-full w-full">
