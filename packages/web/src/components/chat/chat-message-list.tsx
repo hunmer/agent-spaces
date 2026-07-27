@@ -251,17 +251,18 @@ export function ChatMessageList<TMessage extends DisplayChatMessage>({
     const { thinking, message } =
       msg.role === "agent" ? extractThinkingContent(msg.content) : { thinking: null, message: msg.content };
     const streaming = isStreamingMessage?.(msg) ?? false;
-    const showStreamingPlaceholder = streaming && !thinking && !message;
     const timeline = msg.role === "agent" ? normalizeChatTimeline(getMessageTimeline(msg)) : [];
     const hasTimelineMessage = timeline.some((item) => item.type === "message" && item.content.trim().length > 0);
-    const hasInlineTimeline = hasTimelineMessage && timeline.some((item) => item.type !== "message");
+    const hasVisibleTimeline = timeline.some(
+      (item) => item.type === "tool" || item.type === "thinking" || (item.type === "message" && item.content.trim().length > 0),
+    );
+    const showStreamingPlaceholder = streaming && !thinking && !message && !hasVisibleTimeline;
     const hasToolTimeline = timeline.some((item) => item.type === "tool");
-    const showTimelineMessages = hasInlineTimeline;
+    const showTimelineMessages = hasVisibleTimeline && (streaming || hasTimelineMessage);
     const visibleTimeline = showTimelineMessages ? timeline : timeline.filter((item) => item.type !== "message");
     const showTools = streaming || visibleToolTimelineMessageIds[msg.id] !== false;
-    const showTimeline = visibleTimeline.some((item) => item.type !== "tool" || showTools);
-    const askUserQuestionItems = visibleTimeline.filter((item): item is Extract<WorkflowAgentTimelineItem, { type: "tool" }> =>
-      item.type === "tool" && item.name === "askUserQuestions" && Boolean(parseAskUserQuestionInput(item.input))
+    const showTimeline = visibleTimeline.some(
+      (item) => item.type !== "tool" || showTools || (item.name === "askUserQuestions" && Boolean(parseAskUserQuestionInput(item.input))),
     );
     const canToggleTimeline = msg.role === "agent" && hasToolTimeline && !streaming;
     const bodyMessage = showTimelineMessages ? "" : message;
@@ -321,27 +322,27 @@ export function ChatMessageList<TMessage extends DisplayChatMessage>({
               timeline={visibleTimeline}
               workspaceId={workspaceId}
               onRerunTool={onRerunTool ? (item) => onRerunTool(msg, item) : undefined}
+              renderToolItem={(item) => {
+                if (item.name !== "askUserQuestions") return null;
+                const parsed = parseAskUserQuestionInput(item.input);
+                if (!parsed) return null;
+                const answer = getAskUserQuestionAnswer(item.result);
+                return (
+                  <AskUserQuestion
+                    question={parsed.question}
+                    choices={parsed.choices}
+                    answer={answer}
+                    status={answer ? "answered" : "requested"}
+                    onAnswer={onAnswerAskUserQuestion ? (value) => {
+                      void Promise.resolve(onAnswerAskUserQuestion(msg, item, value)).catch(() => {});
+                    } : undefined}
+                  />
+                );
+              }}
               showTools={showTools}
               streaming={streaming}
             />
           ) : null}
-          {askUserQuestionItems.map((item) => {
-            const parsed = parseAskUserQuestionInput(item.input);
-            if (!parsed) return null;
-            const answer = getAskUserQuestionAnswer(item.result);
-            return (
-              <AskUserQuestion
-                key={`ask-user-${item.id}`}
-                question={parsed.question}
-                choices={parsed.choices}
-                answer={answer}
-                status={answer ? "answered" : "requested"}
-                onAnswer={onAnswerAskUserQuestion ? (value) => {
-                  void Promise.resolve(onAnswerAskUserQuestion(msg, item, value)).catch(() => {});
-                } : undefined}
-              />
-            );
-          })}
           {renderMessageExtras?.(msg)}
           {streaming && !showStreamingPlaceholder ? <InlineLoadingDots /> : null}
           <div className={cn("flex items-center gap-1", msg.role === "user" && "flex-row-reverse")}>

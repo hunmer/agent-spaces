@@ -17,12 +17,14 @@ export function ChatToolTimeline({
   timeline,
   workspaceId,
   onRerunTool,
+  renderToolItem,
   showTools = true,
   streaming = false,
 }: {
   timeline?: WorkflowAgentTimelineItem[];
   workspaceId?: string;
   onRerunTool?: (item: Extract<WorkflowAgentTimelineItem, { type: "tool" }>) => void;
+  renderToolItem?: (item: Extract<WorkflowAgentTimelineItem, { type: "tool" }>) => React.ReactNode;
   showTools?: boolean;
   streaming?: boolean;
 }) {
@@ -52,7 +54,7 @@ export function ChatToolTimeline({
             <ThinkingTimelineCard
               key={`${item.id}-${index}`}
               item={item}
-              expanded={Boolean(expanded[item.id])}
+              expanded={streaming || Boolean(expanded[item.id])}
               onToggle={() => setExpanded((state) => ({ ...state, [item.id]: !state[item.id] }))}
             />
           );
@@ -60,6 +62,11 @@ export function ChatToolTimeline({
 
         if (item.type === "message") {
           return <MessageTimelineCard key={`${item.id}-${index}`} item={item} workspaceId={workspaceId} />;
+        }
+
+        const customToolItem = renderToolItem?.(item);
+        if (customToolItem !== undefined && customToolItem !== null) {
+          return <div key={`${item.id}-${index}`}>{customToolItem}</div>;
         }
 
         if (!showTools) return null;
