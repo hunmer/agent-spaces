@@ -19,7 +19,7 @@
 后端服务。Express 5 + WebSocket，提供：
 - REST API（40+ 路由模块）
 - WebSocket 实时通信（聊天、终端、TypeScript LSP、Agent 执行流）
-- 多 AI Agent 运行时适配器（Claude Code/Codex/Grok/LangChain/Hermes/Pi/Open Agent SDK），`claude-code-runtime` 已独立为子模块
+- 多 AI Agent 运行时适配器（Claude Code/Codex/Grok/**Gemini CLI**/LangChain/Hermes/Pi/Open Agent SDK），`claude-code-runtime` 已独立为子模块；`RUNTIME_DESCRIPTORS` 登记 20 个 runtime id（含 openclaw/omp/opencode/qwen/cursor/kimi/kiro/kilocode/antigravity/xiaomimimo/githubcopilot 11 个别名复用既有 runtimeKind）
 - **SkyOffice 可视化办公空间**（`src/skyoffice/`，Colyseus 0.15 房间服务）：多 Agent 在 2D 地图中以虚拟形象实时呈现，外部 Agent 通过 HTTP + `/agent-ws` 推送 spawn/move/talk/action，浏览器 Viewer 用 Phaser 渲染并支持 WASD 人类操控；状态纯内存（重启即丢）。详见 `packages/server/CLAUDE.md`
 - Runtime 管理（`routes/runtime.ts`：CLI 发现 / SDK 安装 / 版本检测）
 - Workflow 执行引擎（可视化节点编排 + HTTP 回调 + Webhook + 定时调度）

@@ -46,8 +46,8 @@ graph TD
 
 | 模块 | 路径 | 职责 |
 |---|---|---|
-| Web | [packages/web](packages/web/CLAUDE.md) | Next.js 16 前端 SPA（含 SkyOffice Phaser 集成 `src/features/skyoffice/`） |
-| Server | [packages/server](packages/server/CLAUDE.md) | Express 5 后端 + AI Agent 运行时 + SkyOffice（Colyseus 房间服务 `src/skyoffice/`） |
+| Web | [packages/web](packages/web/CLAUDE.md) | Next.js 16 前端 SPA（含 SkyOffice Phaser 集成 `src/features/skyoffice/`、多 CLI 会话面板 `src/components/cli/`） |
+| Server | [packages/server](packages/server/CLAUDE.md) | Express 5 后端 + AI Agent 运行时（20 个 runtime descriptor）+ SkyOffice（Colyseus 房间服务 `src/skyoffice/`） |
 | Electron | [packages/electron](packages/electron/CLAUDE.md) | 桌面壳（窗口/协议/快捷键） |
 | SDK | [packages/sdk](packages/sdk/CLAUDE.md) | 前端统一 API 层 |
 | MCP | [packages/mcp](packages/mcp/CLAUDE.md) | SDK → MCP 服务（stdio/http） |
@@ -56,14 +56,15 @@ graph TD
 | DOM Inspector | [packages/dom-inspector-hook](packages/dom-inspector-hook/CLAUDE.md) | 开发工具 Hook |
 | Flutter | [packages/flutter](packages/flutter/CLAUDE.md) | 移动端 WebView 壳 |
 | Documents | [documents](documents/CLAUDE.md) | Docusaurus 文档站 |
-| SkyOffice-Web | `packages/skyoffice-web/` | ⚠️ **空壳占位**（仅 `.gitignore` + 空 `src/`，无 package.json），原 Vite 前端未迁入；真正集成在 `packages/web/src/features/skyoffice/` |
 
 ## 扫描状态
 
-- **更新时间**: 2026-07-18
-- **已扫描**: 根目录结构、所有 package.json、主要入口文件、路由/服务/存储/API 层、最近 9 个迭代（runtime 管理 / issue 系统 / notification-hub / usage dashboard / mini-apps / team 协作 / mcp 拆分 / oh-my-pi → pi 迁移核对 / **SkyOffice 合并 + Grok 运行时**）
+- **更新时间**: 2026-07-27
+- **已扫描**: 根目录结构、所有 package.json、主要入口文件、路由/服务/存储/API 层、最近 10 个迭代（runtime 管理 / issue 系统 / notification-hub / usage dashboard / mini-apps / team 协作 / mcp 拆分 / oh-my-pi → pi 迁移核对 / SkyOffice 合并 + Grok 运行时 / **Gemini CLI 运行时 + 多 CLI 会话面板 + TS LSP WS 下线**）
 - **已覆盖模块**: 10/10（web, server, electron, sdk, mcp, shared, templates, dom-inspector-hook, flutter, documents）
-- **跳过**: node_modules, .next, dist, out, release, agent-spaces-data 运行时数据, build 缓存, `packages/tauri`（无 package.json/Cargo.toml，仅 src-tauri/target 构建缓存 + 旧 web 副本，疑似废弃）, `packages/logs`（运行时日志，无 package.json）, `packages/skyoffice-web`（空壳占位，仅 `.gitignore` + 空 `src/`）
-- **SkyOffice 合并要点**: 后端 `packages/server/src/skyoffice/`（Colyseus 0.15，CJS 隔离编译，主后端 `createRequire` 桥接 + 五路 upgrade dispatcher）；前端集成在 `packages/web/src/features/skyoffice/`（Phaser+React）；`packages/skyoffice-web/` 为空壳；API `/api/skyoffice/*`（自管 per-room token）+ `/agent-ws`；`SKYOFFICE_ENABLED=false` 可关闭
-- **Grok 运行时**: `adapters/grok-runtime.ts`，`AgentRuntimeKind` 新增 `'grok'`；测试 `src/adapters/grok-runtime.test.ts`
-- **下一步建议**: 深挖 `packages/server/src/skyoffice/rooms/SkyOffice.ts`（房间状态机 + 命令模式）、`packages/web/src/features/skyoffice/`（Phaser 场景与 React 状态桥接）、`packages/server/src/adapters/grok-runtime.ts`（Grok 子进程协议细节）；确认 `packages/tauri` 是否应清理或重新启用；确认 `packages/skyoffice-web` 空壳是否应删除或补全
+- **跳过**: node_modules, .next, dist, out, release, agent-spaces-data 运行时数据, build 缓存, `packages/logs`（运行时日志，无 package.json）
+- **已清理模块**: `packages/tauri`（原疑似废弃，现已删除）、`packages/skyoffice-web`（原空壳占位，现已删除）
+- **Gemini CLI 运行时**: `adapters/gemini-cli-runtime.ts`（422 行，spawn `gemini-cli` 子进程 + stdout JSON 事件解析），`AgentRuntimeKind` 新增 `'gemini-cli'`；`RUNTIME_DESCRIPTORS` 扩至 20 个 id（CLI 类 6 + SDK 类 3 + 多对一别名 11：openclaw/omp/opencode/qwen/cursor/kimi/kiro/kilocode/antigravity/xiaomimimo/githubcopilot）
+- **多 CLI 会话面板**: `web/src/components/cli/`（cli-panel/cli-launcher/cli-session-list）+ `stores/cli-sessions.ts` + `lib/cli-panel-layout.ts` + `lib/runtime-cli-settings.ts`，每会话 flex-layout 独立持久化到 localStorage
+- **TypeScript LSP WS 下线**: `/ws/lsp/typescript` 端点已从 `app.ts` 移除，`ws/typescript-lsp.ts` 文件已删除
+- **下一步建议**: 深挖 `packages/server/src/adapters/gemini-cli-runtime.ts`（gemini 子进程协议细节）、`packages/server/src/services/builtin-tools/mini-app-tools.ts`（mini-app 工具迭代）、`packages/web/src/components/cli/`（CLI 会话面板与 FlexLayout 集成）、`packages/web/src/lib/ui-exports.ts`（本期高频重构）

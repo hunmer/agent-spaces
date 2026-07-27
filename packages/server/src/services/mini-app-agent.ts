@@ -34,7 +34,7 @@ export interface MiniAppToolSpec {
 
 const miniAppToolRegistry = new Map<string, Record<string, MiniAppToolSpec>>();
 const VALID_RUNTIME_KINDS = new Set<AgentRuntimeKind>(['open-agent-sdk', 'claude-code', 'codex', 'grok', 'gemini-cli', 'langchain', 'hermes', 'pi']);
-const MINI_APP_FILE_TOOLS: BuiltInAgentToolName[] = ['ListWorkspaceFiles', 'SearchWorkspaceFiles', 'ReadWorkspaceFile', 'WriteWorkspaceFile', 'DeleteWorkspacePath', 'MoveWorkspacePath'];
+const MINI_APP_FILE_TOOLS: BuiltInAgentToolName[] = ['ListWorkspaceFiles', 'SearchWorkspaceFiles', 'ReadWorkspaceFile', 'ReadWorkspaceFileLines', 'WriteWorkspaceFile', 'ReplaceWorkspaceFileLine', 'DeleteWorkspacePath', 'MoveWorkspacePath'];
 
 /**
  * 编译 src/api.js：剥离 import 行（api.js 不依赖外部模块），把 ESM `export default`

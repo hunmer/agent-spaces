@@ -221,9 +221,21 @@ export const BUILT_IN_AGENT_TOOLS = [
     category: 'files',
   },
   {
+    name: 'ReadWorkspaceFileLines',
+    label: 'Read Workspace File Lines',
+    description: 'Read UTF-8 workspace file lines from a start line.',
+    category: 'files',
+  },
+  {
     name: 'WriteWorkspaceFile',
     label: 'Write Workspace File',
     description: 'Write UTF-8 text content to a workspace file.',
+    category: 'files',
+  },
+  {
+    name: 'ReplaceWorkspaceFileLine',
+    label: 'Replace Workspace File Line',
+    description: 'Replace one line in a UTF-8 workspace file.',
     category: 'files',
   },
   {

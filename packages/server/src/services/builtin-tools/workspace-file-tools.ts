@@ -66,6 +66,29 @@ const searchWorkspaceFilesInputSchema = {
   additionalProperties: false,
 };
 
+const readWorkspaceFileLinesInputSchema = {
+  type: 'object',
+  properties: {
+    path: {
+      type: 'string',
+      description: 'Workspace-relative file path to read.',
+    },
+    startLine: {
+      type: 'number',
+      minimum: 1,
+      description: '1-based line number to start reading from.',
+    },
+    count: {
+      type: 'number',
+      minimum: 1,
+      maximum: 500,
+      description: 'Maximum lines to return. Defaults to 50, capped at 500.',
+    },
+  },
+  required: ['path', 'startLine'],
+  additionalProperties: false,
+};
+
 const writeWorkspaceFileInputSchema = {
   type: 'object',
   properties: {
@@ -84,6 +107,31 @@ const writeWorkspaceFileInputSchema = {
     },
   },
   required: ['path', 'content'],
+  additionalProperties: false,
+};
+
+const replaceWorkspaceFileLineInputSchema = {
+  type: 'object',
+  properties: {
+    path: {
+      type: 'string',
+      description: 'Workspace-relative file path to edit.',
+    },
+    line: {
+      type: 'number',
+      minimum: 1,
+      description: '1-based line number to replace.',
+    },
+    content: {
+      type: 'string',
+      description: 'Replacement UTF-8 text for the line, without a line break.',
+    },
+    expected: {
+      type: 'string',
+      description: 'Optional exact current line text. Replacement fails when it does not match.',
+    },
+  },
+  required: ['path', 'line', 'content'],
   additionalProperties: false,
 };
 
@@ -132,11 +180,25 @@ export function createWorkspaceFileFunctionTools(
       execute: async (input) => readWorkspaceFile(workspaceId, input, resolveWorkspace),
     },
     {
+      name: 'ReadWorkspaceFileLines',
+      description: `Read lines from a UTF-8 workspace file starting at a 1-based line number. Files larger than ${MAX_READ_BYTES} bytes are rejected.`,
+      inputSchema: readWorkspaceFileLinesInputSchema,
+      annotations: { readOnly: true, openWorld: false },
+      execute: async (input) => readWorkspaceFileLines(workspaceId, input, resolveWorkspace),
+    },
+    {
       name: 'WriteWorkspaceFile',
       description: 'Write UTF-8 text content to a workspace file. Creates parent directories when needed.',
       inputSchema: writeWorkspaceFileInputSchema,
       annotations: { destructive: false, openWorld: false },
       execute: async (input) => writeWorkspaceFile(workspaceId, input, resolveWorkspace),
+    },
+    {
+      name: 'ReplaceWorkspaceFileLine',
+      description: `Replace a single 1-based line in a UTF-8 workspace file. Files larger than ${MAX_READ_BYTES} bytes are rejected.`,
+      inputSchema: replaceWorkspaceFileLineInputSchema,
+      annotations: { destructive: false, openWorld: false },
+      execute: async (input) => replaceWorkspaceFileLine(workspaceId, input, resolveWorkspace),
     },
     {
       name: 'DeleteWorkspacePath',
@@ -181,6 +243,36 @@ async function readWorkspaceFile(workspaceId: string, input: unknown, resolveWor
   return { path: relPath, content: result.content, encoding: result.encoding, size: fileStat.size };
 }
 
+async function readWorkspaceFileLines(
+  workspaceId: string,
+  input: unknown,
+  resolveWorkspace?: () => Workspace | null,
+): Promise<{ path: string; startLine: number; endLine: number; totalLines: number; lines: Array<{ line: number; content: string }> }> {
+  const workspace = getWorkspaceOrThrow(workspaceId, resolveWorkspace);
+  const data = readInputRecord(input);
+  const relPath = readWorkspacePath(readRequiredString(data.path, 'path'));
+  const startLine = readLineNumber(data.startLine);
+  const count = clampNumber(data.count, 50, 1, 500);
+  const { workspace: targetWorkspace, path: targetPath } = resolveWorkspaceTarget(workspace, relPath);
+  const abs = fileService.resolvePath(targetWorkspace, targetPath);
+  if (!abs) throw new Error('Invalid workspace path.');
+  const fileStat = await stat(abs).catch(() => null);
+  if (!fileStat || !fileStat.isFile()) throw new Error('Workspace file not found.');
+  if (fileStat.size > MAX_READ_BYTES) throw new Error(`File is too large to read. Maximum size is ${MAX_READ_BYTES} bytes.`);
+  const result = await fileService.readFileContent(targetWorkspace, targetPath);
+  if (!result) throw new Error('Failed to read workspace file as UTF-8 text.');
+  const lines = splitContentLines(result.content);
+  if (startLine > lines.length) throw new Error(`Line ${startLine} is out of range.`);
+  const selected = lines.slice(startLine - 1, startLine - 1 + count);
+  return {
+    path: relPath,
+    startLine,
+    endLine: startLine + selected.length - 1,
+    totalLines: lines.length,
+    lines: selected.map((content, index) => ({ line: startLine + index, content })),
+  };
+}
+
 async function writeWorkspaceFile(workspaceId: string, input: unknown, resolveWorkspace?: () => Workspace | null): Promise<{ ok: true; path: string; mode: 'overwrite' | 'append' }> {
   const workspace = getWorkspaceOrThrow(workspaceId, resolveWorkspace);
   const data = readInputRecord(input);
@@ -194,6 +286,42 @@ async function writeWorkspaceFile(workspaceId: string, input: unknown, resolveWo
   const ok = await fileService.writeFileContent(targetWorkspace, targetPath, nextContent);
   if (!ok) throw new Error('Failed to write workspace file.');
   return { ok: true, path: relPath, mode };
+}
+
+async function replaceWorkspaceFileLine(
+  workspaceId: string,
+  input: unknown,
+  resolveWorkspace?: () => Workspace | null,
+): Promise<{ ok: true; path: string; line: number }> {
+  const workspace = getWorkspaceOrThrow(workspaceId, resolveWorkspace);
+  const data = readInputRecord(input);
+  const relPath = readWorkspacePath(readRequiredString(data.path, 'path'));
+  const line = readLineNumber(data.line);
+  const content = readStringOrDefault(data.content, '');
+  if (/\r|\n/.test(content)) throw new Error('content must not contain line breaks.');
+  if (Object.hasOwn(data, 'expected') && typeof data.expected !== 'string') throw new Error('expected must be a string.');
+  const expected = Object.hasOwn(data, 'expected') ? data.expected as string : undefined;
+  const { workspace: targetWorkspace, path: targetPath } = resolveWorkspaceTarget(workspace, relPath);
+  const abs = fileService.resolvePath(targetWorkspace, targetPath);
+  if (!abs) throw new Error('Invalid workspace path.');
+  const fileStat = await stat(abs).catch(() => null);
+  if (!fileStat || !fileStat.isFile()) throw new Error('Workspace file not found.');
+  if (fileStat.size > MAX_READ_BYTES) throw new Error(`File is too large to edit. Maximum size is ${MAX_READ_BYTES} bytes.`);
+  const result = await fileService.readFileContent(targetWorkspace, targetPath);
+  if (!result) throw new Error('Failed to read workspace file as UTF-8 text.');
+  const newline = result.content.match(/\r\n|\n|\r/)?.[0] ?? '\n';
+  const lines = result.content.split(/\r\n|\n|\r/);
+  const index = line - 1;
+  if (!result.content || index < 0 || index >= lines.length || (index === lines.length - 1 && lines[index] === '')) {
+    throw new Error(`Line ${line} is out of range.`);
+  }
+  if (expected !== undefined && lines[index] !== expected) {
+    throw new Error(`Line ${line} does not match expected content.`);
+  }
+  lines[index] = content;
+  const ok = await fileService.writeFileContent(targetWorkspace, targetPath, lines.join(newline));
+  if (!ok) throw new Error('Failed to write workspace file.');
+  return { ok: true, path: relPath, line };
 }
 
 async function deleteWorkspacePath(workspaceId: string, input: unknown, resolveWorkspace?: () => Workspace | null): Promise<{ ok: true; path: string }> {
@@ -333,6 +461,16 @@ function clampNumber(value: unknown, fallback: number, min: number, max: number)
   return Math.max(min, Math.min(max, typeof value === 'number' && Number.isFinite(value) ? Math.floor(value) : fallback));
 }
 
+function readLineNumber(value: unknown): number {
+  if (typeof value !== 'number' || !Number.isInteger(value) || value < 1) throw new Error('line must be a positive integer.');
+  return value;
+}
+
+function splitContentLines(content: string): string[] {
+  const lines = content.split(/\r\n|\n|\r/);
+  return lines.at(-1) === '' ? lines.slice(0, -1) : lines;
+}
+
 function flattenFiles(nodes: FileNode[]): Array<FileNode & { type: 'file' }> {
   const result: Array<FileNode & { type: 'file' }> = [];
   for (const node of nodes) {
@@ -349,6 +487,7 @@ function getAllowedWorkspaceFileToolNames(allowedTools?: BuiltInAgentToolName[])
     names.add('ListWorkspaceFiles');
     names.add('SearchWorkspaceFiles');
     names.add('ReadWorkspaceFile');
+    names.add('ReadWorkspaceFileLines');
   }
   return names;
 }
@@ -357,7 +496,9 @@ function isWorkspaceFileToolName(name: BuiltInAgentToolName): boolean {
   return name === 'ListWorkspaceFiles'
     || name === 'SearchWorkspaceFiles'
     || name === 'ReadWorkspaceFile'
+    || name === 'ReadWorkspaceFileLines'
     || name === 'WriteWorkspaceFile'
+    || name === 'ReplaceWorkspaceFileLine'
     || name === 'DeleteWorkspacePath'
     || name === 'MoveWorkspacePath';
 }
