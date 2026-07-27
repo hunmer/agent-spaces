@@ -966,13 +966,14 @@ function MiniAppAgentMenu({ chat }: { chat: ReturnType<typeof useMiniAppAgentCha
     <>
       <DropdownMenuItem
         disabled={clearDisabled}
-        onSelect={(e) => { e.preventDefault(); setClearOpen(true); }}
+        closeOnClick={false}
+        onClick={() => setClearOpen(true)}
       >
         <Eraser className="mr-2 h-4 w-4" />
         {t('agent.clear')}
       </DropdownMenuItem>
       {agentFilesEnabled ? (
-        <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setFilesOpen(true); }}>
+        <DropdownMenuItem closeOnClick={false} onClick={() => setFilesOpen(true)}>
           <FilesIcon className="mr-2 h-4 w-4" />
           {t('agent.files')}
         </DropdownMenuItem>
@@ -980,7 +981,8 @@ function MiniAppAgentMenu({ chat }: { chat: ReturnType<typeof useMiniAppAgentCha
       <DropdownMenuSeparator />
       <DropdownMenuItem
         className="text-amber-600 focus:text-amber-600 dark:text-amber-400"
-        onSelect={(e) => { e.preventDefault(); setResetOpen(true); }}
+        closeOnClick={false}
+        onClick={() => setResetOpen(true)}
       >
         <RotateCcw className="mr-2 h-4 w-4" />
         {t('agent.resetAgents')}
