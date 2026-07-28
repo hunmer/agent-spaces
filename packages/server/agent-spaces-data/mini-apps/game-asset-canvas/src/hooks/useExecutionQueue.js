@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { generateImages } from '../utils/workflow';
+import { genId as genHistId } from '../utils/canvas-id';
 
 let seq = 0;
 function genId() {
@@ -11,9 +12,14 @@ function genId() {
  * 执行队列：管理通过表单提交的生成任务。
  * - submit: 入队，异步执行，监听 workflow:started 拿 executionId（供中断）
  * - cancel: 用 stopWorkflow 中断引擎，标记 stopped
- * - 完成后回调 onComplete(job, images) 让上层把结果加到画布
+ * - 完成后回调 onComplete(job, images, histId) 让上层把结果加到画布
+ *   histId：落地子目录名（与 generateImages 落地共用），上层 addHistory 应复用该 id
  *
- * @param {{ onComplete?: (job, images:string[])=>void }} [opts]
+ * @param {{
+ *   directory?: string,
+ *   onComplete?: (job, images:string[], histId?:string)=>void,
+ *   onError?: (job, err:unknown)=>void,
+ * }} [opts]
  */
 export default function useExecutionQueue(opts = {}) {
   const [jobs, setJobs] = useState([]);
@@ -21,6 +27,8 @@ export default function useExecutionQueue(opts = {}) {
   onCompleteRef.current = opts.onComplete;
   const onErrorRef = useRef(opts.onError);
   onErrorRef.current = opts.onError;
+  const directoryRef = useRef(opts.directory);
+  directoryRef.current = opts.directory;
 
   const updateJob = useCallback((jobId, patch) => {
     setJobs((prev) => prev.map((j) => (j.id === jobId ? { ...j, ...patch } : j)));
@@ -34,6 +42,8 @@ export default function useExecutionQueue(opts = {}) {
    */
   const submit = useCallback(async (task) => {
     const jobId = genId();
+    // 提前生成 histId：作为落地子目录名，与 history 记录共用
+    const histId = genHistId('hist');
     const job = {
       id: jobId,
       label: task.label || '生成任务',
@@ -63,9 +73,9 @@ export default function useExecutionQueue(opts = {}) {
     }
 
     try {
-      const images = await generateImages(task.workflowId, task.input);
+      const images = await generateImages(task.workflowId, task.input, { directory: directoryRef.current, historyId: histId });
       updateJob(jobId, { status: 'done', images });
-      onCompleteRef.current?.(job, images);
+      onCompleteRef.current?.(job, images, histId);
     } catch (err) {
       const msg = err?.message || String(err);
       // 中断导致的报错归为 stopped

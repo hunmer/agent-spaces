@@ -104,6 +104,7 @@ Agent → api.js handler → ctx.requestClient(type, payload, timeoutMs)
 | 改设置项 | `utils/settings.js` DEFAULT_SETTINGS + `SettingsDialog.jsx` | 加字段 + 加 UI |
 | 改图像处理算法 | `utils/image-ops/` | 统一 (ImageData, params) => ImageData |
 | 改抠图 | `utils/cutout.js` + `CutoutNode.jsx` | runCutout 分流（本地/工作流/rembg） |
+| 工作区数据目录（产图落本地） | `utils/workflow.js`（persistImagesToBackend/generateImages）+ `useWorkflow.js` + `useExecutionQueue.js` + Canvas `activeWorkspace?.directory` | 见下「工作区数据目录」 |
 | 暴露新第三方库到 mini-app | `react-renderer.tsx` + `ui-exports.ts` | allowlist + 顶部 import（两处都改，需重启 web） |
 | 加 host 能力 | `use-mini-app-host-api.tsx` | window.AgentSpaces 上挂方法（需重启 web） |
 | 改 vendor 资源 | `vendor/` + 对应 Dialog/Node | 见下「Vendor 资源」 |
@@ -128,6 +129,35 @@ Agent → api.js handler → ctx.requestClient(type, payload, timeoutMs)
 16. **输出预览模式是节点级状态**：开关持久化在 `node.data.outputPreviewMode`；画布 Controls 入口只批量把所有节点设为开启。是否有产出只看 `data.output.images`，不能把 `data.images`（上游输入）误判为输出。
 17. **vendor 库加载**：fabric/browser-image-compression 走 `(0,eval)` 全局求值；painterro 走 loadVendor + esmSuffix 转 ESM；pixelorama/director-desk 走 iframe + postMessage。
 18. **API 参数 schema = 节点即文档**：不要在 tools.js 内联枚举值/写 NODE_PARAMS_SPEC 注入提示词。枚举参数的 options 在节点组件 PARAMS_SCHEMA 里**直接引用 constants 的 OPTIONS**（单一数据源）。
+19. **工作区数据目录落地是「单写非双写」**：产图只产生**一份**文件。directory 设了 → 落工作区目录 `{historyId}/{index}.ext` + 返回指向该文件的 `localFileUrl`（走 `/local-file` 路由，被 `isBackendUrl` 识别为后端地址，下游/编辑不二次下载、不怕外链过期）；directory 没设 → 回退落 data 目录。**historyId 必须在调用 generateImages 前生成**（作落地子目录名，与 addHistory 共用同一 id）。改这套逻辑同时改两处调用点：`useWorkflow`（节点内生成）+ `useExecutionQueue.submit`（表单生成）。宿主能力 `saveImageToDir`/`localFileUrl`/`revealAbsolutePath` + 服务端 `write-absolute` 路由已具备，纯 mini-app 改动刷新即生效。
+
+## 工作区数据目录（产图落本地）
+
+用户可在新建/重命名工作区时用 FolderPicker 选一个宿主机绝对路径作为「数据保存目录」。设了之后，该工作区产出的图片**只产生一份文件**，落在 `<目录>/<historyId>/<index>.<ext>`，画布/历史/编辑节点共享指向该文件的 http URL。
+
+**数据流（directory 驱动落地）**：
+```
+generateImages(workflowId, input, {directory, historyId})   ← utils/workflow.js
+  └─ persistImagesToBackend(urls, {directory, historyId})
+       ├─ directory 有值 → saveImageToDir(url, dir, '{historyId}/{index}') → localFileUrl(绝对路径)
+       └─ directory 无值 → downloadImage(url) → data httpUrl（原行为）
+```
+
+**historyId 前置**（关键时序）：两个调用点都在调用前 `genId('hist')`，落地子目录与 addHistory 复用同一 id：
+- `useNodeExecutions.handleGenerate`：histId 在 runWithConcurrency 前生成，作 runWorkflow 第三参（多次调用同批落到同一子目录）。
+- `useExecutionQueue.submit`：histId 在入队时生成，传给 generateImages，onComplete 第三参传出给 Canvas addHistory。
+
+**directory 来源链**：`Canvas.activeWorkspace?.directory`（来自 workspaces.json，create/rename_workspace 写入）→ `useWorkflow(directory)` / `useExecutionQueue({directory})`。
+
+**依赖的宿主/服务端能力**（均已具备，无需重启）：
+- `window.AgentSpaces.saveImageToDir(url, dir, filename)` — fetch 图→base64→写绝对路径，filename 无扩展名时按 content-type 自动补全。
+- `window.AgentSpaces.localFileUrl(absPath)` — 绝对路径→`/api/mini-apps/:id/local-file?path=...` http URL。
+- `window.AgentSpaces.revealAbsolutePath(absPath)` — 在文件管理器定位（重命名对话框「打开文件夹」按钮用）。
+- 服务端 `POST /api/mini-apps/:id/data/write-absolute` — 写任意绝对路径，filename 支持子路径（拒绝 `..`/逃逸）。
+
+**workspace 字段**：`workspaces.json` 的 `workspaces[]` 增加 `directory?`（可选，留空不存键）。`CreateWorkspaceDialog` 复用为创建/重命名双模式（mode 区分，重命名模式可改 directory + 打开文件夹）。
+
+**未覆盖**：媒体节点（音频/视频）仍走 data 落地，未接工作区目录。
 
 ## 新增节点 Checklist
 

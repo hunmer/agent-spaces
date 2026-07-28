@@ -27,6 +27,7 @@ import ImageCompareNode from '../components/nodes/ImageCompareNode';
 import CutoutNode from '../components/nodes/CutoutNode';
 import DirectorDeskNode from '../components/nodes/DirectorDeskNode';
 import PhotopeaNode from '../components/nodes/PhotopeaNode';
+import WorkflowRunnerNode, { PARAMS_SCHEMA as WORKFLOW_RUNNER_PARAMS } from '../components/nodes/WorkflowRunnerNode';
 import NoteNode from '../components/nodes/NoteNode';
 
 // 节点类型 -> 渲染组件
@@ -59,6 +60,7 @@ export const NODE_COMPONENTS = {
   [NODE_TYPES.cutout]: CutoutNode,
   [NODE_TYPES.directorDesk]: DirectorDeskNode,
   [NODE_TYPES.photopea]: PhotopeaNode,
+  [NODE_TYPES.workflowRunner]: WorkflowRunnerNode,
   [NODE_TYPES.note]: NoteNode,
 };
 
@@ -70,6 +72,7 @@ export const NODE_PARAMS_SCHEMA = {
   [NODE_TYPES.editImage]: EDIT_IMAGE_PARAMS,
   [NODE_TYPES.textToVoice]: TEXT_TO_VOICE_PARAMS,
   [NODE_TYPES.videoGenerator]: VIDEO_GENERATOR_PARAMS,
+  [NODE_TYPES.workflowRunner]: WORKFLOW_RUNNER_PARAMS,
 };
 
 // 右键菜单 / 落空菜单的节点类型列表（与 RightPanel 新增节点 tab 保持一致）
@@ -99,6 +102,7 @@ export const ADD_NODE_ITEMS = [
   { type: NODE_TYPES.cutout },
   { type: NODE_TYPES.directorDesk },
   { type: NODE_TYPES.photopea },
+  { type: NODE_TYPES.workflowRunner },
   { type: NODE_TYPES.note },
 ];
 
@@ -114,6 +118,7 @@ export const DEFAULT_SIZE = {
   [NODE_TYPES.cutout]: { w: 290, h: 260 },
   [NODE_TYPES.directorDesk]: { w: 300, h: 260 },
   [NODE_TYPES.photopea]: { w: 300, h: 260 },
+  [NODE_TYPES.workflowRunner]: { w: 320, h: 340 },
   default: { w: 290, h: 240 },
 };
 
@@ -208,6 +213,21 @@ export function initialData(type) {
   if (type === NODE_TYPES.photopea) {
     // 在线PS（Photopea）：可选图输入 + 导出图产出
     return { status: 'idle', output: { images: [] }, uploadedImages: [], upstreamOrder: [] };
+  }
+  if (type === NODE_TYPES.workflowRunner) {
+    // 执行工作流（通用）：选工作流 + JSON 参数 → 执行 → 提取 URL 展示
+    return {
+      status: 'idle',
+      output: { images: [] },
+      params: {
+        workflowId: '',
+        workflowName: '',
+        inputText: '{}',
+        urlFieldPath: '',
+        count: 1,
+        concurrency: 1,
+      },
+    };
   }
   if (type === NODE_TYPES.videoGenerator) {
     return {

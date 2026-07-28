@@ -38,6 +38,7 @@ const VALID_NODE_TYPES = [
   'cutout',        // 抠图（统一节点：白底/色度键/工作流/rembg）
   'directorDesk',  // 3D导演台
   'photopea',      // 在线PS（Photopea）
+  'workflowRunner',// 执行工作流（通用）
   'note',          // 便签
 ];
 
@@ -69,6 +70,7 @@ const NODE_LABELS = {
   cutout: '抠图',
   directorDesk: '3D导演台',
   photopea: '在线PS',
+  workflowRunner: '执行工作流',
   note: '便签',
 };
 

@@ -36,6 +36,7 @@ const NODE_TYPE_ENUM = [
   'cutout',
   'directorDesk',
   'photopea',
+  'workflowRunner',
   'note',
 ];
 
@@ -67,6 +68,7 @@ const NODE_TYPE_DESC = [
   'cutout=抠图（白底/色度键/工作流/rembg 四合一）',
   'directorDesk=3D导演台（3D摆位+多视角截图）',
   'photopea=在线PS（Photopea云端，完整图层/蒙版/滤镜编辑）',
+  'workflowRunner=执行工作流（选工作流+JSON参数→执行→提取URL展示，通用节点）',
   'note=便签（纯文本备注）',
 ].join(' / ');
 

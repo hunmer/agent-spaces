@@ -73,6 +73,22 @@ function blobToBase64(blob: Blob): Promise<string> {
   });
 }
 
+// mime type → 扩展名（覆盖常见图片格式）；未知返回空串。
+function mimeToExt(mime: string): string {
+  const m = (mime || '').toLowerCase().split(';')[0].trim();
+  switch (m) {
+    case 'image/png': return 'png';
+    case 'image/jpeg': return 'jpg';
+    case 'image/jpg': return 'jpg';
+    case 'image/webp': return 'webp';
+    case 'image/gif': return 'gif';
+    case 'image/bmp': return 'bmp';
+    case 'image/svg+xml': return 'svg';
+    case 'image/avif': return 'avif';
+    default: return '';
+  }
+}
+
 async function uploadWorkflowFile(
   file: File,
   onProgress?: (progress: number) => void,
@@ -555,28 +571,37 @@ export function useMiniAppHostApi(projectId: string, runtimeContext?: MiniAppRun
 
     // 把图片复制写入宿主机任意绝对路径目录（供 mini-app 工作区目录自动保存）。
     // 与 downloadImage 不同：这里不写 data 沙箱，而是写用户在 FolderPicker 选择的目录。
-    // filename 不传则从 URL 推断。失败抛错，调用方自行 try/catch（不阻塞主流程）。
+    // filename 支持子路径（如 historyId/index）；若无扩展名则从响应 content-type 推断补全。
+    // 失败抛错，调用方自行 try/catch（不阻塞主流程）。
     const saveImageToDir = async (
       url: string,
       directory: string,
       filename?: string,
     ): Promise<{ ok: boolean; path: string }> => {
       if (!directory) throw new Error('directory is required');
-      const name = (filename && String(filename).trim()) || inferDownloadFileName(url);
+      const baseName = (filename && String(filename).trim()) || inferDownloadFileName(url);
       const response = await fetch(url);
       if (!response.ok) throw new Error(`fetch image failed: ${response.status} ${response.statusText}`);
-      const base64 = await blobToBase64(await response.blob());
+      const blob = await response.blob();
+      // 若传入文件名无扩展名，按响应 content-type 推断补全（避免多图同名覆盖、无扩展名）
+      const hasExt = /\.[A-Za-z0-9]{2,5}$/.test(baseName.split('/').pop() || '');
+      let finalName = baseName;
+      if (!hasExt) {
+        const ext = mimeToExt(blob.type || response.headers.get('content-type') || '');
+        if (ext) finalName = `${baseName}.${ext}`;
+      }
+      const base64 = await blobToBase64(blob);
       const resp = await fetchWithAuth(`/api/mini-apps/${encodedProjectId}/data/write-absolute`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ directory, filename: name, content: base64, encoding: 'base64' }),
+        body: JSON.stringify({ directory, filename: finalName, content: base64, encoding: 'base64' }),
       });
       if (!resp.ok) {
         const errText = await resp.text().catch(() => '');
         throw new Error(`saveImageToDir failed: ${resp.status} ${resp.statusText} ${errText}`);
       }
       const payload = await resp.json();
-      return { ok: true, path: payload?.path || `${directory}/${name}` };
+      return { ok: true, path: payload?.path || `${directory}/${finalName}` };
     };
 
     // 生成缩略图（服务端 sharp）。源图来自 data 目录本地文件或远程 URL，结果写到 data 目录。

@@ -53,6 +53,8 @@ export const NODE_TYPES = {
   directorDesk: 'directorDesk',
   // 在线PS节点：iframe 加载 Photopea（云端），加载上游/上传图，导出经 saveToOE 回传
   photopea: 'photopea',
+  // 执行工作流节点：选工作流 + 自定义 JSON 参数 → 执行 → 提取 URL 字段展示到 gallery
+  workflowRunner: 'workflowRunner',
   // 注：分组不是节点，是 WorkflowGroupOverlay（由 groups 数据驱动，复用 workflow-editor 同源组件）
 };
 
@@ -216,6 +218,7 @@ export const NODE_META = {
   [NODE_TYPES.cutout]: { label: '抠图', icon: '✂️', color: '#14b8a6' },
   [NODE_TYPES.directorDesk]: { label: '3D导演台', icon: '🎥', color: '#7c3aed' },
   [NODE_TYPES.photopea]: { label: '在线PS', icon: '🖌️', color: '#0ea5e9' },
+  [NODE_TYPES.workflowRunner]: { label: '执行工作流', icon: '⚙️', color: '#0ea5e9' },
 };
 
 // 图片展示节点的来源标签（不同来源传不同 tag 做区分）

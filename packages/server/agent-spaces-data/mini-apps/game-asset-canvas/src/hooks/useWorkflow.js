@@ -4,14 +4,18 @@ import { generateImages } from '../utils/workflow';
 /**
  * 执行一次图片生成工作流：调用 generateImages 取 URL。
  *
- * generateImages 内部已对非后端地址的外链图统一调用 downloadImage 落地到后端 data 目录
- * 并替换为后端 httpUrl（失败保留原地址），因此这里无需再做额外的下载。
+ * 落地策略由 directory 决定：
+ * - directory 有值（工作区数据目录）：产出图落到该目录下 `{histId}/{index}` 子路径，返回指向本地文件的 httpUrl。
+ * - directory 无值：维持原行为，落到后端 data 目录。
  *
- * @returns {(workflowId: string, input: object) => Promise<{ urls: string[] }>}
+ * histId 由调用方传入（与 history 记录共用，作为落地子目录名）。
+ *
+ * @param {string} [directory] 当前工作区数据目录（宿主机绝对路径），可选
+ * @returns {(workflowId: string, input: object, histId?: string) => Promise<{ urls: string[] }>}
  */
-export default function useWorkflow() {
-  return useCallback(async (workflowId, input) => {
-    const urls = await generateImages(workflowId, input);
+export default function useWorkflow(directory) {
+  return useCallback(async (workflowId, input, histId) => {
+    const urls = await generateImages(workflowId, input, { directory, historyId: histId });
     return { urls };
-  }, []);
+  }, [directory]);
 }

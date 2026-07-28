@@ -79,6 +79,8 @@ export { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLe
 export type { ChartConfig } from '@/components/ui/chart';
 export { MermaidPreview } from '@/components/ui/mermaid-preview';
 export { DiffViewer } from '@/components/viewers/diff-viewer';
+export { MonacoCodeEditor } from '@/components/editor/monaco-code-editor';
+export type { MonacoCodeEditorProps } from '@/components/editor/monaco-code-editor';
 export { ImagesBadge } from '@/components/ui/images-badge';
 export { ImagePickerDialog } from '@/components/ui/image-picker-dialog';
 export { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarInset, SidebarInput, SidebarSeparator, SidebarGroup, SidebarGroupAction, SidebarGroupContent, SidebarGroupLabel, SidebarMenu, SidebarMenuAction, SidebarMenuBadge, SidebarMenuButton, SidebarMenuItem, SidebarMenuSkeleton, SidebarMenuSub, SidebarMenuSubButton, SidebarMenuSubItem, SidebarRail, SidebarTrigger, SidebarProvider, useSidebar } from '@/components/ui/sidebar';

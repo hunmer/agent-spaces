@@ -63,24 +63,12 @@ export default function Canvas() {
   // —— 工作区 + 画布状态 + 设置 + 历史（基础数据源）——
   const { workspaces, activeId, createWorkspace, renameWorkspace, switchWorkspace, deleteWorkspace } = useWorkspaces();
   const activeWorkspace = workspaces.find((ws) => ws.id === activeId);
-  // 把产出图片复制到当前工作区的数据目录（FolderPicker 选的宿主机绝对路径）。
-  // directory 留空 → 直接返回（零行为变化）；单张失败 warn 不阻塞（与 persistImagesToBackend 风格一致）。
-  const persistToWorkspaceDir = useCallback(async (urls) => {
-    const dir = activeWorkspace?.directory;
-    if (!dir || !Array.isArray(urls) || !urls.length) return;
-    const save = window.AgentSpaces?.saveImageToDir;
-    if (typeof save !== 'function') return;
-    await Promise.all(urls.map(async (url) => {
-      if (!url) return;
-      try { await save(url, dir); }
-      catch (e) { console.warn('saveImageToDir failed:', url, e); }
-    }));
-  }, [activeWorkspace?.directory]);
   const {
     nodes, edges, groups, loaded,
     setNodes, setEdges, setGroups, updateNodeData,
   } = useCanvasState(activeId);
-  const runWorkflow = useWorkflow();
+  // 落地策略由 directory 驱动：设了则产图落到工作区目录，否则落 data（详见 useWorkflow/generateImages）
+  const runWorkflow = useWorkflow(activeWorkspace?.directory);
   const { history, addHistory, removeHistory, clearHistory } = useGenerationHistory(activeId);
   const { settings, saveSettings } = useSettings();
   // 上次提交参数（按工作区+nodeType 隔离）：saveLastParams 给执行回调用，getLastParams 给 createNodeAt 预填用
@@ -133,7 +121,8 @@ export default function Canvas() {
 
   // —— 执行队列（onComplete/onError 用 imageOutputs + updateNodeData + addHistory）——
   const { jobs, submit, cancel, clearFinished, runningCount } = useExecutionQueue({
-    onComplete: (job, images) => {
+    directory: activeWorkspace?.directory,
+    onComplete: (job, images, histId) => {
       const tag = job.nodeType === NODE_TYPES.editImage ? IMAGE_TAGS.editImage : IMAGE_TAGS.textToImage;
       if (job.placeholderNodeId) {
         updateNodeData(job.placeholderNodeId, {
@@ -146,10 +135,9 @@ export default function Canvas() {
       } else {
         addImageNodesFromUrls(images, { tags: [tag] });
       }
-      // 复制到工作区数据目录（留空目录则不调用；失败仅 warn，不阻塞）
-      Promise.resolve(persistToWorkspaceDir(images)).catch((e) => console.warn('queue persist to workspace dir failed:', e));
+      // 落地已在 generateImages 内完成（按 directory 决定走工作区目录或 data），这里只记录历史
       addHistory({
-        id: genId('hist'),
+        id: histId,
         nodeId: job.placeholderNodeId || null,
         nodeType: job.nodeType,
         prompt: job.input?.prompt || '',
@@ -187,7 +175,6 @@ export default function Canvas() {
   // —— 节点执行回调（工作流/媒体/本地算法/抠图/反推提示词）——
   const executions = useNodeExecutions({
     runWorkflow, updateNodeData, addHistory, settings, createNodeAt: crud.createNodeAt, saveLastParams,
-    onImagesPersisted: persistToWorkspaceDir,
   });
 
   // —— 选中 + 复制粘贴 + 对齐分布 + 批量删除 ——

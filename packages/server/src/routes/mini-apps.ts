@@ -2,7 +2,7 @@ import { Router } from 'express';
 import type { Request, Response } from 'express';
 import multer from 'multer';
 import { existsSync, mkdirSync, writeFileSync, rmSync, createReadStream, statSync } from 'node:fs';
-import { join, basename, resolve, extname } from 'node:path';
+import { join, basename, resolve, extname, dirname, sep } from 'node:path';
 import { randomUUID } from 'crypto';
 import { exec } from 'node:child_process';
 import * as svc from '../services/mini-apps.js';
@@ -185,6 +185,7 @@ router.put('/:id/data/content', (req: Request<{ id: string }>, res: Response) =>
 
 // 写文件到宿主机任意绝对路径（供 mini-app 把产出图片复制到用户在 FolderPicker 选择的工作区目录）。
 // 与 local-file 路由同款绝对路径校验；directory 不存在则递归创建。信任用户主动选择的目录。
+// filename 支持子路径（如 historyId/index），但拒绝 .. 与绝对化逃逸。
 router.post('/:id/data/write-absolute', (req: Request<{ id: string }>, res: Response) => {
   try {
     const { directory, filename, content, encoding } = req.body;
@@ -197,15 +198,20 @@ router.post('/:id/data/write-absolute', (req: Request<{ id: string }>, res: Resp
       res.status(400).json({ error: 'directory must be absolute' });
       return;
     }
-    // 拒绝 filename 含路径分隔符，避免逃逸 directory
-    const safeName = String(filename).replace(/[\\/]/g, '');
-    if (!safeName || safeName === '.' || safeName === '..') {
+    // 规范化 filename：统一分隔符为 /，拒绝 .. 段，剔除空段
+    const rawName = String(filename).replace(/\\/g, '/').split('/').map((s) => s.trim()).filter((s) => s && s !== '.' && s !== '..').join('/');
+    if (!rawName) {
       res.status(400).json({ error: 'invalid filename' });
       return;
     }
     const buf = encoding === 'base64' ? Buffer.from(String(content), 'base64') : Buffer.from(String(content));
-    mkdirSync(dirAbs, { recursive: true });
-    const fullPath = join(dirAbs, safeName);
+    const fullPath = join(dirAbs, rawName);
+    // 二次校验：解析后必须仍在 directory 内（防 ../ 逃逸）
+    if (!fullPath.startsWith(dirAbs + sep) && fullPath !== dirAbs) {
+      res.status(400).json({ error: 'filename escapes directory' });
+      return;
+    }
+    mkdirSync(dirname(fullPath), { recursive: true });
     writeFileSync(fullPath, buf);
     res.json({ ok: true, path: fullPath, size: buf.length });
   } catch (error: any) { res.status(500).json({ error: error.message }); }

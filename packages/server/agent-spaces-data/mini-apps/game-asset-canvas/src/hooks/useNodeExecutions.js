@@ -21,9 +21,8 @@ import { registerController, clearController, abortController,
  * @param {object} deps.settings
  * @param {Function} deps.createNodeAt
  * @param {Function} deps.saveLastParams  useLastParams().saveLastParams —— 提交时存参数子集（按工作区+nodeType）
- * @param {Function} [deps.onImagesPersisted] 可选：产图后把 URL 复制到工作区数据目录（留空目录则不调用）
  */
-export default function useNodeExecutions({ runWorkflow, updateNodeData, addHistory, settings, createNodeAt, saveLastParams, onImagesPersisted }) {
+export default function useNodeExecutions({ runWorkflow, updateNodeData, addHistory, settings, createNodeAt, saveLastParams }) {
   // 节点内部更新 data 的回调（注入到 data.onUpdate）—— 留在 Canvas 也可，但与执行强相关放这里
   const makeOnUpdate = useCallback((nodeId) => (patch) => {
     updateNodeData(nodeId, patch);
@@ -70,10 +69,12 @@ export default function useNodeExecutions({ runWorkflow, updateNodeData, addHist
       }
     });
     updateNodeData(nodeId, { status: 'running', error: undefined });
+    // 提前生成 histId：作为落地子目录名，与 history 记录共用（count 多次调用工作流落到同一子目录）
+    const histId = genId('hist');
     try {
       const batches = await runWithConcurrency(count, concurrency, () => {
         if (wfHandle.aborted) return [];
-        return runWorkflow(finalWorkflowId, wfInput, nodeId).then((r) => r.urls || []).catch((e) => {
+        return runWorkflow(finalWorkflowId, wfInput, histId).then((r) => r.urls || []).catch((e) => {
           // 部分失败不阻塞：返回空数组让成功的合并；全部失败由最终 length 校验抛错
           console.warn('generate one batch failed:', e);
           return [];
@@ -86,12 +87,9 @@ export default function useNodeExecutions({ runWorkflow, updateNodeData, addHist
       const urls = batches.flat().filter(Boolean);
       if (!urls.length) throw new Error('未返回图片');
       updateNodeData(nodeId, { status: 'done', output: { images: urls } });
-      // 复制到工作区数据目录（留空则不调用；失败仅 warn，不阻塞画布展示与 history）
-      if (onImagesPersisted) {
-        Promise.resolve(onImagesPersisted(urls)).catch((e) => console.warn('persist to workspace dir failed:', e));
-      }
+      // 落地已在 generateImages 内完成（按 directory 决定走工作区目录或 data），这里只记录历史
       addHistory({
-        id: genId('hist'),
+        id: histId,
         nodeId,
         nodeType,
         prompt: input?.prompt || '',
@@ -111,7 +109,7 @@ export default function useNodeExecutions({ runWorkflow, updateNodeData, addHist
       try { unsubStarted?.(); } catch {}
       clearWorkflowHandle(nodeId);
     }
-  }, [runWorkflow, updateNodeData, addHistory, settings, saveLastParams, onImagesPersisted]);
+  }, [runWorkflow, updateNodeData, addHistory, settings, saveLastParams]);
 
   // 媒体节点（音频/视频）生成：与 handleGenerate 同款，但产出写 output.audio(s) / output.video(s)。
   // count > 1 时按 count 并发调用，产出合并为 audios/videos 数组（媒体单值 audio/video 保留兼容：取首项）。

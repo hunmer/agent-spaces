@@ -47,6 +47,7 @@ const ADD_ITEMS = [
   { type: NODE_TYPES.uiSplitter, label: '雪碧图拆分', category: 'util' },
   { type: NODE_TYPES.bboxViewer, label: 'UI拆分', category: 'util' },
   { type: NODE_TYPES.imageCompare, label: '图片对比', category: 'util' },
+  { type: NODE_TYPES.workflowRunner, label: '执行工作流', category: 'util' },
   { type: NODE_TYPES.note, label: '便签', category: 'util' },
   // 媒体
   { type: NODE_TYPES.textToVoice, label: '生成配音', category: 'media' },

@@ -46,26 +46,42 @@ export function isBackendUrl(url) {
 }
 
 /**
- * 把非后端图片 URL 下载到后端 data 目录并替换为后端 httpUrl。
+ * 把非后端图片 URL 下载落地并替换为可展示的 httpUrl。
  * 单张失败保留原地址（不阻塞整体展示）。
  * @param {string[]} urls 已规范化的完整 http URL 数组
+ * @param {{directory?:string, historyId?:string}} [opts]
+ *   - directory：工作区数据目录（宿主机绝对路径）。设了则落到该目录下的 `{historyId}/{index}` 子路径，
+ *     返回的 httpUrl 指向该本地文件（走 /local-file 路由），单一文件、无外链过期问题。
+ *   - 未设 directory：维持原行为，落到后端 data 目录。
  * @returns {Promise<string[]>} 后端化后的 URL 数组（顺序保持）
  */
-export async function persistImagesToBackend(urls) {
+export async function persistImagesToBackend(urls, opts = {}) {
+  const { directory, historyId } = opts;
+  const saveImageToDir = directory ? window.AgentSpaces?.saveImageToDir : null;
+  const localFileUrl = window.AgentSpaces?.localFileUrl;
   const out = [];
+  let idx = 0;
   for (const url of Array.isArray(urls) ? urls : []) {
     if (!url) continue;
     if (isBackendUrl(url)) { out.push(url); continue; }
     try {
-      const downloadImage = window.AgentSpaces?.downloadImage;
-      if (typeof downloadImage !== 'function') throw new Error('宿主 downloadImage 不可用');
-      const res = await downloadImage(url);
-      out.push(res?.httpUrl || url);
+      if (directory && typeof saveImageToDir === 'function' && typeof localFileUrl === 'function') {
+        // 落到工作区目录：文件名 {historyId}/{index}（扩展名由宿主按 content-type 自动补全）
+        const subDir = historyId ? `${historyId}/${idx}` : `image-${idx}`;
+        const res = await saveImageToDir(url, directory, subDir);
+        out.push(res?.path ? localFileUrl(res.path) : url);
+      } else {
+        const downloadImage = window.AgentSpaces?.downloadImage;
+        if (typeof downloadImage !== 'function') throw new Error('宿主 downloadImage 不可用');
+        const res = await downloadImage(url);
+        out.push(res?.httpUrl || url);
+      }
     } catch (err) {
       // 下载失败保留原始外链，至少能展示
       console.warn('persistImagesToBackend failed:', url, err);
       out.push(url);
     }
+    idx++;
   }
   return out;
 }
@@ -273,9 +289,10 @@ function hasImages(out) {
  * 兼容多种 output 字段名：result / images / image_urls（image_enchanter 工作流 end 节点用 image_urls）。
  * @param {string} workflowId
  * @param {object} input
+ * @param {{directory?:string, historyId?:string}} [opts] directory 设了则落到工作区目录，historyId 作为子目录名
  * @returns {Promise<string[]>}
  */
-export async function generateImages(workflowId, input) {
+export async function generateImages(workflowId, input, opts = {}) {
   const output = await runWorkflow(workflowId, input, { meta: { mode: workflowId } });
   const result = output?.result;
   let urls;
@@ -287,9 +304,9 @@ export async function generateImages(workflowId, input) {
   else urls = [];
   // 规范化：相对路径补全为完整 http URL
   const normalized = normalizeImageUrls(urls);
-  // 非后端地址的外链图统一下载到后端 data 目录并替换为后端 httpUrl，
-  // 避免外链失效（防盗链/CORS/过期）导致节点图片丢失。失败保留原地址。
-  return persistImagesToBackend(normalized);
+  // 非后端地址的外链图统一落地：directory 设了则落到工作区目录（返回指向本地文件的 httpUrl），
+  // 否则落到后端 data 目录。避免外链失效（防盗链/CORS/过期）。失败保留原地址。
+  return persistImagesToBackend(normalized, { directory: opts.directory, historyId: opts.historyId });
 }
 
 /**
