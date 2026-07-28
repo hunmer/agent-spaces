@@ -4,7 +4,7 @@ import { NODE_TYPES, NODE_META, IMAGE_TAGS, WORKFLOWS } from '../utils/constants
 import { DEFAULT_SIZE, initialData, CANVAS_DROP_MIME } from '../utils/canvas-constants';
 import { genId, autoPosition } from '../utils/canvas-id';
 import { autoLayout } from '../utils/layout';
-import { downloadJson, serializeCanvas } from '../utils/export';
+import { downloadJson, serializeCanvas, pickAndParseCanvasFile } from '../utils/export';
 
 // 历史记录项 → 新节点 dataPatch：
 // - 生成类节点（params 含 prompt/model 字段）预填 prompt/model
@@ -336,6 +336,26 @@ export default function useNodeCrud({
     downloadJson(serializeCanvas(nodesRef.current, edgesRef.current));
   }, []);
 
+  // 导入画布 JSON：选文件 → 解析 → 二次确认（清空当前画布）→ 替换。
+  // 解析失败弹原生 alert，用户取消选文件静默无操作。
+  const handleImport = useCallback(async () => {
+    let parsed;
+    try {
+      parsed = await pickAndParseCanvasFile();
+    } catch (e) {
+      window.alert(`导入失败：${e.message || e}`);
+      return;
+    }
+    if (!parsed) return; // 用户取消
+    const { nodes: inNodes, edges: inEdges } = parsed;
+    if (inNodes.length > 0 && !window.confirm(`导入将清空当前画布（${nodesRef.current.length} 个节点）并用文件中的 ${inNodes.length} 个节点替换，确定？`)) {
+      return;
+    }
+    setNodes(inNodes);
+    setEdges(inEdges);
+    setGroups([]);
+  }, [setNodes, setEdges, setGroups]);
+
   // 图片加载完成后自动调整节点尺寸（图片展示节点 <img onLoad> 触发）
   const handleAutoSize = useCallback((nodeId, naturalWidth, naturalHeight) => {
     if (!naturalWidth || !naturalHeight) return;
@@ -397,7 +417,7 @@ export default function useNodeCrud({
     handleInsertHistory, handleDragStartHistory,
     handleContextMenu, handleClear,
     handleDeleteNode, focusNode, handleSelectNode, handleLocateNode,
-    handleAutoLayout, handleExport,
+    handleAutoLayout, handleExport, handleImport,
     handleAutoSize, handleAutoSizeToContent, handleFormSubmit, handleResetParams,
   };
 }

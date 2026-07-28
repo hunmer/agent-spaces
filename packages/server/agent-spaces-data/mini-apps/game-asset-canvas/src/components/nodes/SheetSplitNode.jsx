@@ -132,6 +132,7 @@ export default function SheetSplitNode({ id, data, selected }) {
       <UiSplitterDialog
         open={dialogOpen}
         mode="grid-only"
+        defaultMethod="none"
         inputImages={inputImages}
         initialData={splitData}
         onDataChange={handleSplitDataChange}

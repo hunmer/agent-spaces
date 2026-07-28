@@ -7,16 +7,19 @@ import { PROMPT_CATEGORIES } from '../utils/prompts';
 import { ASPECT_OPTIONS } from '../utils/constants';
 import { resolveReferenceImages } from '../utils/workflow';
 import usePromptLibrary from '../hooks/usePromptLibrary';
+import ImageHoverCard from './ImageHoverCard';
 
 /**
- * 提示词选择器：内置库 + 用户自定义库合并展示，点选即填充。
+ * 提示词选择器：内置库 + 用户自定义库合并展示。
  *
  * - 自定义提示词持久化到 configs/prompt-library.json（usePromptLibrary），内置库不可删。
+ * - pickerMode=true（默认，节点表单入口）：点选卡片 → onPick(item) 填充并关闭。
+ * - pickerMode=false（顶部菜单「提示词管理」入口）：纯管理，点卡片不填充不关闭，仅展示/编辑/删除。
  * - onPick 传整个 item（含可选 aspect）：调用方据此联动设置比例下拉。
  *
- * @param {{ open:boolean, scene:'text'|'edit', onClose:()=>void, onPick:(item:object)=>void }} props
+ * @param {{ open:boolean, scene?:'text'|'edit', pickerMode?:boolean, onClose:()=>void, onPick?:(item:object)=>void }} props
  */
-export default function PromptPickerDialog({ open, scene = 'text', onClose, onPick }) {
+export default function PromptPickerDialog({ open, scene = 'text', pickerMode = true, onClose, onPick }) {
   const { mergedPrompts, savePrompt, deletePrompt, resetPrompts } = usePromptLibrary();
   const [activeCat, setActiveCat] = useState(null); // null = 全部
   const [keyword, setKeyword] = useState('');
@@ -45,6 +48,7 @@ export default function PromptPickerDialog({ open, scene = 'text', onClose, onPi
   }, [merged, activeCat, keyword]);
 
   const handlePick = (item) => {
+    if (!pickerMode) return; // 管理模式：点卡片不填充、不关闭
     onPick?.(item);
     onClose?.();
   };
@@ -73,7 +77,7 @@ export default function PromptPickerDialog({ open, scene = 'text', onClose, onPi
     <Dialog open={open} onOpenChange={(next) => { if (!next) { setEditing(null); onClose?.(); } }}>
       <DialogContent className="flex h-[80vh] max-h-[640px] !w-[80vw] !max-w-[80vw] flex-col gap-0 p-0">
         <DialogHeader className="shrink-0 border-b border-border px-4 py-3">
-          <DialogTitle>📋 提示词库</DialogTitle>
+          <DialogTitle>📋 提示词库{pickerMode ? '' : ' · 管理'}</DialogTitle>
         </DialogHeader>
 
         {/* 搜索 + 分类 + 新建 */}
@@ -162,27 +166,26 @@ export default function PromptPickerDialog({ open, scene = 'text', onClose, onPi
                     {refImages.length > 0 && (
                       <div className="flex flex-wrap gap-1">
                         {refImages.map((src, i) => (
-                          <div
+                          <ImageHoverCard
                             key={i}
-                            role="button"
-                            tabIndex={0}
-                            title="点击查看大图"
-                            onClick={(e) => {
-                              // 阻止冒泡到卡片选中按钮，避免选中提示词并关闭弹窗
-                              e.stopPropagation();
-                              openMediaGallery(refImages.map((url) => ({ src: url, type: 'image' })), i);
-                            }}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter' || e.key === ' ') {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                openMediaGallery(refImages.map((url) => ({ src: url, type: 'image' })), i);
-                              }
-                            }}
-                            className="h-12 w-12 shrink-0 cursor-pointer overflow-hidden rounded border border-border bg-muted transition hover:border-primary"
-                          >
-                            <img src={src} alt={`参考图 ${i + 1}`} className="h-full w-full object-cover" />
-                          </div>
+                            url={src}
+                            triggerShape="fixed"
+                            className="h-12 w-12 shrink-0 bg-muted"
+                            renderTrigger={() => (
+                              <button
+                                type="button"
+                                title="点击查看大图"
+                                onClick={(e) => {
+                                  // 阻止冒泡到卡片选中按钮，避免选中提示词并关闭弹窗
+                                  e.stopPropagation();
+                                  openMediaGallery(refImages.map((url) => ({ src: url, type: 'image' })), i);
+                                }}
+                                className="block h-full w-full cursor-pointer overflow-hidden rounded transition hover:border-primary"
+                              >
+                                <img src={src} alt={`参考图 ${i + 1}`} className="h-full w-full object-cover" />
+                              </button>
+                            )}
+                          />
                         ))}
                       </div>
                     )}

@@ -29,7 +29,8 @@ function wsPath(workspaceId, file) {
 }
 
 // —— 工作区清单 CRUD ——
-// workspaces.json 结构：{ activeId, workspaces: [{id,name,createdAt}] }
+// workspaces.json 结构：{ activeId, workspaces: [{id,name,createdAt,directory?}] }
+// directory（可选）：宿主机绝对路径，节点产图会额外复制一份到该目录；留空则不保存到本地。
 
 // 读取工作区清单（兜底返回默认工作区，保证调用方总有数据）
 function readWorkspaceList(ctx) {
@@ -154,23 +155,34 @@ export default {
   // 列出全部工作区 + 当前激活 id
   list_workspaces: (_payload, ctx) => readWorkspaceList(ctx),
 
-  // 创建工作区（name 可选，默认「新建工作区 N」）。返回新清单（activeId 不变）。
-  create_workspace: ({ name }, ctx) => {
+  // 创建工作区（name/directory 可选，默认「新建工作区 N」）。directory 留空则不存该键。返回新清单（activeId 不变）。
+  create_workspace: ({ name, directory }, ctx) => {
     const cur = readWorkspaceList(ctx);
     const id = `ws-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+    const trimmedDir = (directory || '').trim();
     const ws = { id, name: (name || '').trim() || `新建工作区 ${cur.workspaces.length + 1}`, createdAt: Date.now() };
+    if (trimmedDir) ws.directory = trimmedDir;
     const next = { ...cur, workspaces: [...cur.workspaces, ws] };
     ctx.writeConfig(WORKSPACES_CONFIG, next);
     return next;
   },
 
-  // 重命名工作区
-  rename_workspace: ({ id, name }, ctx) => {
+  // 重命名工作区（name 必填；directory 可选，传则更新/清空，不传则保留原值）
+  rename_workspace: ({ id, name, directory }, ctx) => {
     const cur = readWorkspaceList(ctx);
     const trimmed = (name || '').trim() || '未命名工作区';
     const next = {
       ...cur,
-      workspaces: cur.workspaces.map((ws) => (ws.id === id ? { ...ws, name: trimmed } : ws)),
+      workspaces: cur.workspaces.map((ws) => {
+        if (ws.id !== id) return ws;
+        const updated = { ...ws, name: trimmed };
+        if (directory !== undefined) {
+          const trimmedDir = (directory || '').trim();
+          if (trimmedDir) updated.directory = trimmedDir;
+          else delete updated.directory;
+        }
+        return updated;
+      }),
     };
     ctx.writeConfig(WORKSPACES_CONFIG, next);
     return next;

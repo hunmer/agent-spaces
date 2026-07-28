@@ -87,8 +87,12 @@ const gridBoxesFromGuides = (width, height, vertical, horizontal) => {
  * @param {() => void} props.onClose
  * @param {'full'|'grid-only'} [props.mode='full'] full=全功能（默认，UI 拆分用）；grid-only=锁定网格模式，
  *   禁用绘制/吸色/裁切/检测，右侧面板换成动画预览（Sheet 拆分用）
+ * @param {string} [props.defaultMethod='corner'] 无持久化数据时的默认抠图方式
  */
-export default function UiSplitterDialog({ open, inputImages, initialData, onDataChange, onSave, onClose, onReplaceImage, mode = 'full' }) {
+export default function UiSplitterDialog({
+  open, inputImages, initialData, onDataChange, onSave, onClose, onReplaceImage,
+  mode = 'full', defaultMethod = 'corner',
+}) {
   const gridOnly = mode === 'grid-only';
   const stageRef = useRef(null);            // fabric 容器 DOM
   const fcRef = useRef(null);               // fabric.Canvas 实例
@@ -131,7 +135,7 @@ export default function UiSplitterDialog({ open, inputImages, initialData, onDat
   const gridSplitTimerRef = useRef(null);   // 实时拆分节流尾调用
   const lastGridSplitAtRef = useRef(0);
   // 持久化表单参数 ref（onDataChange 写回时读最新值，避免 setMethod 异步导致写回旧值）
-  const methodRef = useRef('corner');
+  const methodRef = useRef(defaultMethod);
   const toleranceRef = useRef(70);
   const minAreaRef = useRef(500);
   const paddingRef = useRef(2);
@@ -142,7 +146,7 @@ export default function UiSplitterDialog({ open, inputImages, initialData, onDat
   const [thumbUrls, setThumbUrls] = useState([]);
   const thumbUrlsRef = useRef([]);
   useEffect(() => { thumbUrlsRef.current = thumbUrls; }, [thumbUrls]);
-  const [method, setMethod] = useState('corner');
+  const [method, setMethod] = useState(defaultMethod);
   const [tolerance, setTolerance] = useState(70);
   const [minArea, setMinArea] = useState(500);
   const [padding, setPadding] = useState(2);
@@ -286,6 +290,7 @@ export default function UiSplitterDialog({ open, inputImages, initialData, onDat
     }
     onDataChangeRef.current?.({
       inputSignature: inputSignature(urls),
+      cutoutMethodVersion: 1,
       method: methodRef.current,
       tolerance: toleranceRef.current,
       minArea: minAreaRef.current,
@@ -608,11 +613,18 @@ export default function UiSplitterDialog({ open, inputImages, initialData, onDat
         }
         // 恢复检测参数到表单 + ref（setState 异步，ref 立即生效保证 computeOptions 读到最新值）
         if (canRestore) {
-          if (typeof saved.method === 'string') { methodRef.current = saved.method; setMethod(saved.method); }
+          // 旧 grid-only 快照里的 corner 是隐藏控件自动写入的默认值，不视为用户选择。
+          const restoredMethod = gridOnly && saved.cutoutMethodVersion !== 1
+            ? defaultMethod
+            : saved.method;
+          if (typeof restoredMethod === 'string') { methodRef.current = restoredMethod; setMethod(restoredMethod); }
           if (saved.tolerance != null) { toleranceRef.current = saved.tolerance; setTolerance(saved.tolerance); }
           if (saved.minArea != null) { minAreaRef.current = saved.minArea; setMinArea(saved.minArea); }
           if (saved.padding != null) { paddingRef.current = saved.padding; setPadding(saved.padding); }
           if (typeof saved.pickedHex === 'string') { pickedHexRef.current = saved.pickedHex; setPickedHex(saved.pickedHex); }
+        } else {
+          methodRef.current = defaultMethod;
+          setMethod(defaultMethod);
         }
         // grid-only：强制网格模式，忽略持久化的 gridMode=false
         const effectiveGridMode = gridOnly ? true : restoreGridMode;
@@ -1524,6 +1536,19 @@ export default function UiSplitterDialog({ open, inputImages, initialData, onDat
               <Field label="行数">
                 <NumberInput min={1} max={20} value={gridRows}
                   onChange={(v) => applyGridSize(gridCols, v ?? 1)} className="h-8 w-20" />
+              </Field>
+              <Field label="抠图方式">
+                <select
+                  value={method}
+                  onChange={(e) => setMethod(e.target.value)}
+                  className="h-8 w-full rounded-md border border-border bg-background px-2 text-xs outline-none focus:border-primary"
+                >
+                  <option value="none">不处理</option>
+                  <option value="corner">四角背景色</option>
+                  <option value="picked">吸取背景色</option>
+                  <option value="alpha">Alpha 非透明</option>
+                  <option value="brightness">暗色前景</option>
+                </select>
               </Field>
               <span className="pb-2 text-[11px] text-muted-foreground">实时切片 {count}</span>
             </>

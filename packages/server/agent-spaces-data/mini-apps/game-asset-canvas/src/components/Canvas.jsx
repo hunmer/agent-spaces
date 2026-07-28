@@ -15,6 +15,7 @@ import SettingsDialog from './SettingsDialog';
 import ExecutionQueuePopover from './ExecutionQueuePopover';
 import NodeFormDialog from './NodeFormDialog';
 import NodeExecuteDialog from './NodeExecuteDialog';
+import PromptPickerDialog from './PromptPickerDialog';
 import WorkspaceSwitcher from './WorkspaceSwitcher';
 import CanvasContextMenu from './canvas/CanvasContextMenu';
 import DropNodeMenu from './canvas/DropNodeMenu';
@@ -61,6 +62,20 @@ const DEFAULT_EDGE_OPTIONS = { type: 'floating' };
 export default function Canvas() {
   // —— 工作区 + 画布状态 + 设置 + 历史（基础数据源）——
   const { workspaces, activeId, createWorkspace, renameWorkspace, switchWorkspace, deleteWorkspace } = useWorkspaces();
+  const activeWorkspace = workspaces.find((ws) => ws.id === activeId);
+  // 把产出图片复制到当前工作区的数据目录（FolderPicker 选的宿主机绝对路径）。
+  // directory 留空 → 直接返回（零行为变化）；单张失败 warn 不阻塞（与 persistImagesToBackend 风格一致）。
+  const persistToWorkspaceDir = useCallback(async (urls) => {
+    const dir = activeWorkspace?.directory;
+    if (!dir || !Array.isArray(urls) || !urls.length) return;
+    const save = window.AgentSpaces?.saveImageToDir;
+    if (typeof save !== 'function') return;
+    await Promise.all(urls.map(async (url) => {
+      if (!url) return;
+      try { await save(url, dir); }
+      catch (e) { console.warn('saveImageToDir failed:', url, e); }
+    }));
+  }, [activeWorkspace?.directory]);
   const {
     nodes, edges, groups, loaded,
     setNodes, setEdges, setGroups, updateNodeData,
@@ -74,6 +89,8 @@ export default function Canvas() {
   // —— 本组件局部 state ——
   const [selectedId, setSelectedId] = useState(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  // 顶部菜单「提示词管理」入口：pickerMode=false 纯管理（不填充、不关闭）
+  const [promptManagerOpen, setPromptManagerOpen] = useState(false);
   // 预览高度仅影响当前展示；预览模式由各节点 data.outputPreviewMode 独立持久化。
   const [outputPreviewState, setOutputPreviewState] = useState({});
   // 节点表单弹窗（右侧新增节点 tab 触发，或节点工具栏【编辑】按钮触发）：{ nodeType, initialImages } | null
@@ -129,6 +146,8 @@ export default function Canvas() {
       } else {
         addImageNodesFromUrls(images, { tags: [tag] });
       }
+      // 复制到工作区数据目录（留空目录则不调用；失败仅 warn，不阻塞）
+      Promise.resolve(persistToWorkspaceDir(images)).catch((e) => console.warn('queue persist to workspace dir failed:', e));
       addHistory({
         id: genId('hist'),
         nodeId: job.placeholderNodeId || null,
@@ -168,6 +187,7 @@ export default function Canvas() {
   // —— 节点执行回调（工作流/媒体/本地算法/抠图/反推提示词）——
   const executions = useNodeExecutions({
     runWorkflow, updateNodeData, addHistory, settings, createNodeAt: crud.createNodeAt, saveLastParams,
+    onImagesPersisted: persistToWorkspaceDir,
   });
 
   // —— 选中 + 复制粘贴 + 对齐分布 + 批量删除 ——
@@ -496,18 +516,14 @@ export default function Canvas() {
 
   // —— 工作区操作（切换/创建/删除）——
   const handleSwitch = (id) => { if (id !== activeId) switchWorkspace(id); };
-  const handleCreate = async (name) => {
-    const res = await createWorkspace(name);
+  const handleCreate = async ({ name, directory }) => {
+    const res = await createWorkspace(name, directory);
     const newWs = res?.workspaces?.slice(-1)?.[0];
     if (newWs) switchWorkspace(newWs.id);
   };
-  const handleDelete = async (ids) => {
-    const list = Array.isArray(ids) ? ids : [ids];
-    let last = null;
-    for (const id of list) {
-      if (id === activeId) continue;
-      last = await deleteWorkspace(id);
-    }
+  const handleDelete = async (id) => {
+    const last = await deleteWorkspace(id);
+    // 服务端会保证至少留一个工作区；若删的是激活项，activeId 已回退，这里同步切换
     if (last?.activeId && last.activeId !== activeId) switchWorkspace(last.activeId);
   };
 
@@ -529,7 +545,9 @@ export default function Canvas() {
             onClear={crud.handleClear}
             onAutoLayout={crud.handleAutoLayout}
             onExport={crud.handleExport}
+            onImport={crud.handleImport}
             onOpenSettings={() => setSettingsOpen(true)}
+            onOpenPromptManager={() => setPromptManagerOpen(true)}
             onSelectAll={selection.handleSelectAll}
             onInvertSelect={selection.handleInvertSelect}
             onClearSelection={selection.handleClearSelection}
@@ -673,6 +691,13 @@ export default function Canvas() {
         onSave={async (cfg) => {
           await saveSettings(cfg);
         }}
+      />
+
+      {/* 顶部菜单「提示词管理」入口：pickerMode=false 纯管理（不填充、不关闭） */}
+      <PromptPickerDialog
+        open={promptManagerOpen}
+        pickerMode={false}
+        onClose={() => setPromptManagerOpen(false)}
       />
 
       <AssetLibraryPickerDialog

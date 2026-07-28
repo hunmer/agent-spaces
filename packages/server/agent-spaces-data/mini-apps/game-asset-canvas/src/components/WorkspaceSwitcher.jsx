@@ -4,60 +4,55 @@ import DeleteWorkspacesDialog from './DeleteWorkspacesDialog';
 import CreateWorkspaceDialog from './CreateWorkspaceDialog';
 
 /**
- * 顶部工作区切换 popover：展示工作区列表，支持【切换/重命名/删除】，底部【创建】【批量删除】。
- * 创建/批量删除用独立 Dialog（避免 Radix Popover focus trap 与内联 input 竞争）。
+ * 顶部工作区切换 popover：展示工作区列表，支持【切换/重命名/删除】，底部【创建】。
+ * 创建/重命名复用同一个 CreateWorkspaceDialog（mode 区分），删除用独立确认框。
  * 当前激活工作区高亮。每个工作区隔离节点和生成记录。
  *
  * @param {{
- *   workspaces: Array<{id,name,createdAt}>,
+ *   workspaces: Array<{id,name,createdAt,directory?}>,
  *   activeId: string,
  *   onSwitch:(id)=>void,
- *   onCreate:(name)=>void,
- *   onDelete:(id|id[])=>void,
- *   onRename:(id,name)=>void,
+ *   onCreate:(payload:{name:string, directory?:string})=>void,
+ *   onDelete:(id:string)=>void,
+ *   onRename:(id:string, name:string, directory?:string)=>void,
  * }} props
  */
 export default function WorkspaceSwitcher({ workspaces, activeId, onSwitch, onCreate, onDelete, onRename }) {
   const [open, setOpen] = useState(false);
-  const [renamingId, setRenamingId] = useState(null);
-  const [renameValue, setRenameValue] = useState('');
-  const [deleteTarget, setDeleteTarget] = useState(null); // null | [ids]
-  const [createOpen, setCreateOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null); // null | {id,name}
+  // 编辑器状态：null 关闭；{mode:'create'} 创建；{mode:'rename', target:{id,name}} 重命名
+  const [editor, setEditor] = useState(null);
 
   const active = workspaces.find((ws) => ws.id === activeId) || workspaces[0];
 
-  const commitRename = (id) => {
-    const name = renameValue.trim();
-    if (name) onRename(id, name);
-    setRenamingId(null);
-    setRenameValue('');
-  };
-
-  const startRename = (ws) => {
-    setRenamingId(ws.id);
-    setRenameValue(ws.name);
-  };
-
-  // 单个删除：打开弹窗预选该项
-  const requestDelete = (ws) => {
-    setDeleteTarget([ws.id]);
+  const requestRename = (ws) => {
+    setEditor({ mode: 'rename', target: { id: ws.id, name: ws.name, directory: ws.directory || '' } });
     setOpen(false);
-  };
-
-  // 批量删除：打开弹窗空选
-  const requestBatchDelete = () => {
-    setDeleteTarget([]);
-    setOpen(false);
-  };
-
-  const confirmDelete = (ids) => {
-    onDelete(ids);
-    setDeleteTarget(null);
   };
 
   const requestCreate = () => {
-    setCreateOpen(true);
+    setEditor({ mode: 'create' });
     setOpen(false);
+  };
+
+  const confirmEditor = (payload) => {
+    if (editor?.mode === 'rename') {
+      onRename(editor.target.id, payload.name, payload.directory);
+    } else {
+      onCreate(payload);
+    }
+    setEditor(null);
+  };
+
+  // 单个删除：打开确认弹窗，预选该项
+  const requestDelete = (ws) => {
+    setDeleteTarget({ id: ws.id, name: ws.name });
+    setOpen(false);
+  };
+
+  const confirmDelete = (id) => {
+    onDelete(id);
+    setDeleteTarget(null);
   };
 
   return (
@@ -86,7 +81,6 @@ export default function WorkspaceSwitcher({ workspaces, activeId, onSwitch, onCr
             <div className="flex flex-col gap-0.5 p-1.5">
               {workspaces.map((ws) => {
                 const isActive = ws.id === activeId;
-                const isRenaming = renamingId === ws.id;
                 return (
                   <div
                     key={ws.id}
@@ -94,51 +88,35 @@ export default function WorkspaceSwitcher({ workspaces, activeId, onSwitch, onCr
                       isActive ? 'bg-primary/10 text-primary' : 'hover:bg-muted'
                     }`}
                   >
-                    {isRenaming ? (
-                      <input
-                        autoFocus
-                        value={renameValue}
-                        onChange={(e) => setRenameValue(e.target.value)}
-                        onBlur={() => commitRename(ws.id)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') commitRename(ws.id);
-                          if (e.key === 'Escape') { setRenamingId(null); setRenameValue(''); }
-                        }}
-                        className="min-w-0 flex-1 rounded border border-primary bg-background px-1.5 py-0.5 text-xs outline-none"
-                      />
-                    ) : (
+                    <button
+                      type="button"
+                      onClick={() => { onSwitch(ws.id); setOpen(false); }}
+                      className="flex min-w-0 flex-1 items-center gap-1.5 text-left"
+                      title={isActive ? '当前工作区' : '点击切换'}
+                    >
+                      <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${isActive ? 'bg-primary' : 'bg-transparent'}`} />
+                      <span className="truncate">{ws.name}</span>
+                    </button>
+
+                    <div className="flex shrink-0 items-center opacity-0 transition group-hover:opacity-100">
                       <button
                         type="button"
-                        onClick={() => { onSwitch(ws.id); setOpen(false); }}
-                        className="flex min-w-0 flex-1 items-center gap-1.5 text-left"
-                        title={isActive ? '当前工作区' : '点击切换'}
+                        onClick={(e) => { e.stopPropagation(); requestRename(ws); }}
+                        className="rounded px-1 py-0.5 text-[10px] text-muted-foreground hover:bg-background hover:text-primary"
+                        title="重命名"
                       >
-                        <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${isActive ? 'bg-primary' : 'bg-transparent'}`} />
-                        <span className="truncate">{ws.name}</span>
+                        ✎
                       </button>
-                    )}
-
-                    {!isRenaming && (
-                      <div className="flex shrink-0 items-center opacity-0 transition group-hover:opacity-100">
-                        <button
-                          type="button"
-                          onClick={(e) => { e.stopPropagation(); startRename(ws); }}
-                          className="rounded px-1 py-0.5 text-[10px] text-muted-foreground hover:bg-background hover:text-primary"
-                          title="重命名"
-                        >
-                          ✎
-                        </button>
-                        <button
-                          type="button"
-                          onClick={(e) => { e.stopPropagation(); requestDelete(ws); }}
-                          disabled={workspaces.length <= 1}
-                          className="rounded px-1 py-0.5 text-[10px] text-muted-foreground hover:bg-red-500/10 hover:text-red-500 disabled:opacity-30"
-                          title={workspaces.length <= 1 ? '至少保留一个工作区' : '删除'}
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    )}
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); requestDelete(ws); }}
+                        disabled={workspaces.length <= 1}
+                        className="rounded px-1 py-0.5 text-[10px] text-muted-foreground hover:bg-red-500/10 hover:text-red-500 disabled:opacity-30"
+                        title={workspaces.length <= 1 ? '至少保留一个工作区' : '删除'}
+                      >
+                        ✕
+                      </button>
+                    </div>
                   </div>
                 );
               })}
@@ -154,30 +132,23 @@ export default function WorkspaceSwitcher({ workspaces, activeId, onSwitch, onCr
               <span>＋</span>
               <span>新建工作区</span>
             </button>
-            {workspaces.length > 1 && (
-              <button
-                type="button"
-                onClick={requestBatchDelete}
-                className="flex w-full items-center justify-center gap-1 rounded-md px-2 py-1 text-[11px] text-muted-foreground transition hover:bg-red-500/10 hover:text-red-500"
-              >
-                批量删除工作区
-              </button>
-            )}
           </div>
         </PopoverContent>
       </Popover>
 
       <CreateWorkspaceDialog
-        open={createOpen}
-        defaultName={`新建工作区 ${workspaces.length + 1}`}
-        onClose={() => setCreateOpen(false)}
-        onConfirm={onCreate}
+        open={!!editor}
+        mode={editor?.mode || 'create'}
+        defaultName={editor?.mode === 'create' ? `新建工作区 ${workspaces.length + 1}` : undefined}
+        initialName={editor?.mode === 'rename' ? editor.target.name : undefined}
+        initialDirectory={editor?.mode === 'rename' ? editor.target.directory : undefined}
+        onClose={() => setEditor(null)}
+        onConfirm={confirmEditor}
       />
 
       <DeleteWorkspacesDialog
         open={!!deleteTarget}
-        workspaces={workspaces}
-        activeId={activeId}
+        target={deleteTarget}
         onClose={() => setDeleteTarget(null)}
         onConfirm={confirmDelete}
       />

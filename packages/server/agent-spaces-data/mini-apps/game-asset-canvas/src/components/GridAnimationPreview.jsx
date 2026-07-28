@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Button, NumberInput, ScrollArea, Loader } from '@agent-spaces/ui';
+import { Button, Checkbox, NumberInput, ScrollArea, Loader } from '@agent-spaces/ui';
 import { Play, Pause, Repeat, Repeat1, Download, Save } from '@agent-spaces/ui';
 
 /**
@@ -88,10 +88,29 @@ export default function GridAnimationPreview({ previews, cols, rows, initialDire
     return result;
   }, [previews, cols, rows, direction]);
 
-  // 合成所有动画组为多张 sheet canvas（每组一张横向帧序列长图）
+  const [selectedGroups, setSelectedGroups] = useState(
+    () => new Set(groups.map((_, index) => index)),
+  );
+
+  // 分组方向或动画组数量变化后，新分组默认全部选中。
+  useEffect(() => {
+    setSelectedGroups(new Set(Array.from({ length: groups.length }, (_, index) => index)));
+  }, [direction, groups.length]);
+
+  const toggleGroup = (index, checked) => {
+    setSelectedGroups((prev) => {
+      const next = new Set(prev);
+      if (checked) next.add(index);
+      else next.delete(index);
+      return next;
+    });
+  };
+
+  // 合成选中的动画组为多张 sheet canvas（每组一张横向帧序列长图）
   const composeAllSheets = async () => {
     const sheets = [];
     for (let i = 0; i < groups.length; i++) {
+      if (!selectedGroups.has(i)) continue;
       const canvas = await composeSheet(groups[i]);
       if (canvas) sheets.push({ index: i, canvas });
     }
@@ -183,26 +202,6 @@ export default function GridAnimationPreview({ previews, cols, rows, initialDire
         >
           {loop ? <Repeat className="h-4 w-4" /> : <Repeat1 className="h-4 w-4" />}
         </Button>
-        <div className="ml-auto flex items-end gap-1.5">
-          <Button
-            size="sm" variant="outline" className="h-8"
-            disabled={composing}
-            onClick={handleDownloadSheets}
-            title="把每个动画组的帧拼接成一张横向长图，浏览器逐张下载"
-          >
-            {composing ? <Loader className="mr-1 h-4 w-4" /> : <Download className="mr-1 h-4 w-4" />}
-            下载为多张 sheet
-          </Button>
-          <Button
-            size="sm" className="h-8"
-            disabled={composing}
-            onClick={handleSaveSheets}
-            title="把每个动画组合成 sheet 图并上传，写入节点产出"
-          >
-            <Save className="mr-1 h-4 w-4" />
-            保存为多张 sheet
-          </Button>
-        </div>
         <span className="pb-2 text-[11px] text-muted-foreground">
           {groups.length} 个动画 · 每个 {direction === 'row' ? cols : rows} 帧
         </span>
@@ -219,16 +218,45 @@ export default function GridAnimationPreview({ previews, cols, rows, initialDire
               fps={fps}
               loop={loop}
               playing={globalPlaying}
+              checked={selectedGroups.has(gi)}
+              onCheckedChange={(checked) => toggleGroup(gi, checked)}
             />
           ))}
         </div>
       </ScrollArea>
+
+      {/* 底部导出操作栏 */}
+      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border px-3 py-2">
+        <span className="text-[11px] text-muted-foreground">
+          已选 {selectedGroups.size}/{groups.length} 个动画
+        </span>
+        <div className="flex items-center gap-1.5">
+          <Button
+            size="sm" variant="outline" className="h-8"
+            disabled={composing || selectedGroups.size === 0}
+            onClick={handleDownloadSheets}
+            title="把选中动画组的帧拼接成横向长图，浏览器逐张下载"
+          >
+            {composing ? <Loader className="mr-1 h-4 w-4" /> : <Download className="mr-1 h-4 w-4" />}
+            下载为多张 sheet
+          </Button>
+          <Button
+            size="sm" className="h-8"
+            disabled={composing || selectedGroups.size === 0}
+            onClick={handleSaveSheets}
+            title="把选中动画组合成 sheet 图并上传，写入节点产出"
+          >
+            <Save className="mr-1 h-4 w-4" />
+            保存为多张 sheet
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }
 
 /** 单个动画卡片：循环播放帧序列 */
-function AnimCard({ index, frames, fps, loop, playing }) {
+function AnimCard({ index, frames, fps, loop, playing, checked, onCheckedChange }) {
   const [frameIdx, setFrameIdx] = useState(0);
   const timerRef = useRef(null);
 
@@ -259,7 +287,10 @@ function AnimCard({ index, frames, fps, loop, playing }) {
         )}
       </div>
       <div className="flex items-center justify-between px-2 py-1.5 text-[11px]">
-        <span className="text-muted-foreground">动画 {index + 1}</span>
+        <label className="flex cursor-pointer items-center gap-2 text-muted-foreground">
+          <Checkbox checked={checked} onCheckedChange={(value) => onCheckedChange?.(Boolean(value))} />
+          <span>动画 {index + 1}</span>
+        </label>
         <span className="text-muted-foreground">{frameIdx + 1}/{frames.length}</span>
       </div>
     </div>

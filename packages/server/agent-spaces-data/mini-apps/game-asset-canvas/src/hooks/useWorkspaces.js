@@ -38,13 +38,13 @@ export default function useWorkspaces() {
     };
   }, []);
 
-  const createWorkspace = useCallback(async (name) => {
-    const res = await window.AgentSpaces?.invokeService?.('create_workspace', { name });
+  const createWorkspace = useCallback(async (name, directory) => {
+    const res = await window.AgentSpaces?.invokeService?.('create_workspace', { name, directory });
     return res;
   }, []);
 
-  const renameWorkspace = useCallback(async (id, name) => {
-    const res = await window.AgentSpaces?.invokeService?.('rename_workspace', { id, name });
+  const renameWorkspace = useCallback(async (id, name, directory) => {
+    const res = await window.AgentSpaces?.invokeService?.('rename_workspace', { id, name, directory });
     return res;
   }, []);
 

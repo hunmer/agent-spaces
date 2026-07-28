@@ -183,6 +183,34 @@ router.put('/:id/data/content', (req: Request<{ id: string }>, res: Response) =>
   } catch (error: any) { res.status(500).json({ error: error.message }); }
 });
 
+// 写文件到宿主机任意绝对路径（供 mini-app 把产出图片复制到用户在 FolderPicker 选择的工作区目录）。
+// 与 local-file 路由同款绝对路径校验；directory 不存在则递归创建。信任用户主动选择的目录。
+router.post('/:id/data/write-absolute', (req: Request<{ id: string }>, res: Response) => {
+  try {
+    const { directory, filename, content, encoding } = req.body;
+    if (!directory || !filename || content === undefined) {
+      res.status(400).json({ error: 'directory, filename and content are required' });
+      return;
+    }
+    const dirAbs = resolve(String(directory));
+    if (!dirAbs.match(/^[A-Za-z]:[\\/]|^\/|^\\\\/)) {
+      res.status(400).json({ error: 'directory must be absolute' });
+      return;
+    }
+    // 拒绝 filename 含路径分隔符，避免逃逸 directory
+    const safeName = String(filename).replace(/[\\/]/g, '');
+    if (!safeName || safeName === '.' || safeName === '..') {
+      res.status(400).json({ error: 'invalid filename' });
+      return;
+    }
+    const buf = encoding === 'base64' ? Buffer.from(String(content), 'base64') : Buffer.from(String(content));
+    mkdirSync(dirAbs, { recursive: true });
+    const fullPath = join(dirAbs, safeName);
+    writeFileSync(fullPath, buf);
+    res.json({ ok: true, path: fullPath, size: buf.length });
+  } catch (error: any) { res.status(500).json({ error: error.message }); }
+});
+
 router.get('/:id/agent-files/tree', async (req: Request<{ id: string }, any, any, { path?: string; depth?: string; scope?: string }>, res: Response) => {
   try {
     const path = typeof req.query.path === 'string' ? req.query.path : '';

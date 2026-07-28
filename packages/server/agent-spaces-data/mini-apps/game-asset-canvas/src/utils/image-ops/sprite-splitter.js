@@ -100,12 +100,13 @@ export function detect(imageData, options = {}) {
  * @param {[number,number,number]} [options.backgroundColor]
  * @param {number} [options.tolerance=70]
  * @param {boolean} [options.transparent=true]  背景色像素是否置透明
+ * @param {string} [options.method]              none 时保留原像素，不做抠图
  * @returns {HTMLCanvasElement}
  */
 export function exportBox(imageData, box, options = {}) {
   const bg = options.backgroundColor || cornerColor(imageData);
   const tolerance = options.tolerance ?? 70;
-  const transparent = options.transparent !== false;
+  const transparent = options.method !== 'none' && options.transparent !== false;
   const x = Math.max(0, Math.round(box.x));
   const y = Math.max(0, Math.round(box.y));
   const width = Math.max(1, Math.round(box.width));

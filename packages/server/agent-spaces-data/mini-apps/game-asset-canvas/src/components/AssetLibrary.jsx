@@ -1,12 +1,12 @@
 import { useCallback, useState } from 'react';
 import {
   Dropzone, FileUpload, ScrollArea, openMediaGallery,
-  HoverCard, HoverCardTrigger, HoverCardContent,
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
   Plus, Trash2, Loader2, Pencil, Check, CopyPlus,
 } from '@agent-spaces/ui';
 import useAssetLibrary from '../hooks/useAssetLibrary';
 import { CANVAS_DROP_MIME } from '../utils/canvas-constants';
+import ImageHoverCard from './ImageHoverCard';
 
 /**
  * 素材库 tab：与当前工作区绑定。支持创建/重命名/删除分类，每个分类可上传图片。
@@ -471,8 +471,6 @@ const ASSET_MOVE_MIME = 'application/x-asset-move';
 // ============ 单张资产缩略图 ============
 function AssetThumb({ asset, categoryId, picker, selected, onToggle, onRemove, onUpdateTitle, insertSelect, insertChecked, onInsertCheck }) {
   const isPickerImage = picker === 'image';
-  // HoverCard：受控 + delay=500ms 延迟显示；拖拽时立即关闭避免遮挡
-  const [hoverOpen, setHoverOpen] = useState(false);
   // 标题 inline 编辑态
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState('');
@@ -486,7 +484,7 @@ function AssetThumb({ asset, categoryId, picker, selected, onToggle, onRemove, o
     }
   };
 
-  const startEditTitle = (e) => {
+  const startEditTitle = (setHoverOpen) => (e) => {
     e.stopPropagation();
     setTitleDraft(asset.title || '');
     setEditingTitle(true);
@@ -501,7 +499,7 @@ function AssetThumb({ asset, categoryId, picker, selected, onToggle, onRemove, o
   // 默认模式：img 可拖拽，拖起时把移动协议写入 dataTransfer 并关闭 HoverCard
   // 同时写入画布图片拖拽协议（CANVAS_DROP_MIME）：拖到画布时按 url 建 imageDisplay 节点。
   // 拖到库内其他分类时由 handleMoveDrop 优先识别 ASSET_MOVE_MIME 处理为移动，两者互不干扰。
-  const handleDragStart = (e) => {
+  const handleDragStart = (setHoverOpen) => (e) => {
     const payload = JSON.stringify({ assetId: asset.id, fromCategoryId: categoryId });
     e.dataTransfer.setData(ASSET_MOVE_MIME, payload);
     e.dataTransfer.setData('text/plain', payload); // 兜底
@@ -568,75 +566,65 @@ function AssetThumb({ asset, categoryId, picker, selected, onToggle, onRemove, o
     );
   }
 
-  // 默认：预览 + 删除 + 改标题
+  // 默认：预览 + 删除 + 改标题（复用 ImageHoverCard）
   return (
-    <HoverCard open={hoverOpen} onOpenChange={setHoverOpen}>
-      <HoverCardTrigger
-        delay={500}
-        render={
-          <div className="group relative aspect-square cursor-pointer overflow-visible rounded border border-border">
-            {editingTitle ? (
-              // 标题编辑态：覆盖一个 input，回车/失焦提交，Esc 取消
-              <div className="absolute inset-0 z-30 flex items-center bg-background/90 p-1" onClick={(e) => e.stopPropagation()}>
-                <input
-                  autoFocus
-                  value={titleDraft}
-                  onChange={(e) => setTitleDraft(e.target.value)}
-                  onClick={(e) => e.stopPropagation()}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') commitTitle();
-                    if (e.key === 'Escape') setEditingTitle(false);
-                  }}
-                  onBlur={commitTitle}
-                  placeholder="标题"
-                  className="w-full rounded border border-border bg-background px-1 py-0.5 text-[10px] outline-none focus:border-primary nodrag nopan nowheel"
-                />
-              </div>
-            ) : (
-              <button type="button" onClick={handleClick} className="block h-full w-full overflow-hidden rounded">
-                <img
-                  src={asset.url}
-                  alt={displayName || ''}
-                  className="h-full w-full cursor-grab object-cover transition hover:opacity-80 active:cursor-grabbing"
-                  loading="lazy"
-                  draggable
-                  onDragStart={handleDragStart}
-                />
-              </button>
-            )}
-            {onUpdateTitle && !editingTitle && (
-              <button
-                type="button"
-                onClick={startEditTitle}
-                className="absolute left-0.5 top-0.5 z-20 flex size-4 items-center justify-center rounded bg-background/80 text-muted-foreground opacity-0 transition hover:bg-primary hover:text-primary-foreground group-hover:opacity-100"
-                title="编辑标题"
-              >
-                <Pencil className="h-2.5 w-2.5" />
-              </button>
-            )}
-            {onRemove && !editingTitle && (
-              <button
-                type="button"
-                onClick={(e) => { e.stopPropagation(); onRemove(); }}
-                className="absolute right-0.5 top-0.5 z-20 flex size-4 items-center justify-center rounded bg-background/80 text-muted-foreground opacity-0 transition hover:bg-destructive hover:text-destructive-foreground group-hover:opacity-100"
-                title="删除图片"
-              >
-                <Trash2 className="h-2.5 w-2.5" />
-              </button>
-            )}
-          </div>
-        }
-      />
-      <HoverCardContent className="flex max-w-[500px] w-auto flex-col items-center p-1">
-        <img
-          src={asset.url}
-          alt={asset.title || asset.name || ''}
-          className="max-h-[320px] max-w-[320px] rounded object-contain"
-        />
-        {(asset.title || asset.name) && (
-          <p className="mt-1 max-w-[320px] truncate text-[11px] text-muted-foreground">{asset.title || asset.name}</p>
-        )}
-      </HoverCardContent>
-    </HoverCard>
+    <ImageHoverCard
+      url={asset.url}
+      title={displayName}
+      className="cursor-pointer"
+      renderTrigger={({ setHoverOpen }) => (
+        <>
+          {editingTitle ? (
+            // 标题编辑态：覆盖一个 input，回车/失焦提交，Esc 取消
+            <div className="absolute inset-0 z-30 flex items-center bg-background/90 p-1" onClick={(e) => e.stopPropagation()}>
+              <input
+                autoFocus
+                value={titleDraft}
+                onChange={(e) => setTitleDraft(e.target.value)}
+                onClick={(e) => e.stopPropagation()}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') commitTitle();
+                  if (e.key === 'Escape') setEditingTitle(false);
+                }}
+                onBlur={commitTitle}
+                placeholder="标题"
+                className="w-full rounded border border-border bg-background px-1 py-0.5 text-[10px] outline-none focus:border-primary nodrag nopan nowheel"
+              />
+            </div>
+          ) : (
+            <button type="button" onClick={handleClick} className="block h-full w-full overflow-hidden rounded">
+              <img
+                src={asset.url}
+                alt={displayName || ''}
+                className="h-full w-full cursor-grab object-cover transition hover:opacity-80 active:cursor-grabbing"
+                loading="lazy"
+                draggable
+                onDragStart={handleDragStart(setHoverOpen)}
+              />
+            </button>
+          )}
+          {onUpdateTitle && !editingTitle && (
+            <button
+              type="button"
+              onClick={startEditTitle(setHoverOpen)}
+              className="absolute left-0.5 top-0.5 z-20 flex size-4 items-center justify-center rounded bg-background/80 text-muted-foreground opacity-0 transition hover:bg-primary hover:text-primary-foreground group-hover:opacity-100"
+              title="编辑标题"
+            >
+              <Pencil className="h-2.5 w-2.5" />
+            </button>
+          )}
+          {onRemove && !editingTitle && (
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onRemove(); }}
+              className="absolute right-0.5 top-0.5 z-20 flex size-4 items-center justify-center rounded bg-background/80 text-muted-foreground opacity-0 transition hover:bg-destructive hover:text-destructive-foreground group-hover:opacity-100"
+              title="删除图片"
+            >
+              <Trash2 className="h-2.5 w-2.5" />
+            </button>
+          )}
+        </>
+      )}
+    />
   );
 }

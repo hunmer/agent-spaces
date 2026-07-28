@@ -2,12 +2,12 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   openMediaGallery, ScrollArea, Tabs, TabsList, TabsTrigger, TabsContent,
   Crosshair, Trash2, Plus, Boxes, History, Images, Zap, CopyPlus, FolderPlus,
-  HoverCard, HoverCardTrigger, HoverCardContent,
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
 } from '@agent-spaces/ui';
 import { NODE_META, NODE_TYPES, NODE_TYPE_TO_PROCESSOR } from '../utils/constants';
 import { CANVAS_DROP_MIME } from '../utils/canvas-constants';
 import AssetLibrary from './AssetLibrary';
+import ImageHoverCard from './ImageHoverCard';
 
 // 节点分类（顶部 chips 筛选用）。category 字段同步打到 ADD_ITEMS 每项。
 const NODE_CATEGORIES = [
@@ -520,57 +520,48 @@ function formatTime(ts) {
   return `${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-// 生成记录单张图片缩略图：HoverCard 预览（参考素材库 AssetThumb 实现）
+// 生成记录单张图片缩略图：HoverCard 预览（复用 ImageHoverCard 通用组件）
 // delay=500ms 延迟显示；点击打开 mediaGallery 大图查看；右上角按钮把单张图加到素材库。
 function HistoryImageThumb({ url, images, index, onAddToAssets }) {
-  const [hoverOpen, setHoverOpen] = useState(false);
   // 拖拽缩略图到画布：写入画布图片协议，落点建 imageDisplay 节点（拖图片，区别于拖卡片建 nodeType 节点）。
   // stopPropagation 防止冒泡到 HistoryCard 的 onDragStart（否则会被当作「拖节点」处理）。
-  const handleImgDragStart = (e) => {
+  const handleImgDragStart = (setHoverOpen) => (e) => {
     e.stopPropagation();
     e.dataTransfer.setData(CANVAS_DROP_MIME, JSON.stringify({ urls: [url] }));
     e.dataTransfer.effectAllowed = 'move';
-    setHoverOpen(false);
+    setHoverOpen(false); // 拖起时立即关闭 HoverCard 避免遮挡
   };
   return (
-    <HoverCard open={hoverOpen} onOpenChange={setHoverOpen}>
-      <HoverCardTrigger
-        delay={500}
-        render={
-          <div className="group relative block aspect-square overflow-visible rounded border border-border">
-            <button
-              type="button"
-              onClick={() => openMediaGallery(images.map((src) => ({ src, type: 'image' })), index)}
-              className="block h-full w-full overflow-hidden rounded"
-            >
-              <img
-                src={url}
-                alt=""
-                className="h-full w-full cursor-grab object-cover transition hover:opacity-80 active:cursor-grabbing"
-                loading="lazy"
-                draggable
-                onDragStart={handleImgDragStart}
-              />
-            </button>
-            {/* 右上角：把该单张图片添加到素材库分组（仅 hover 显示） */}
-            <button
-              type="button"
-              onClick={(e) => { e.stopPropagation(); onAddToAssets?.([url]); }}
-              title="添加到素材库"
-              className="absolute -right-1 -top-1 z-20 flex size-5 items-center justify-center rounded-full border border-border bg-background text-muted-foreground opacity-0 shadow-sm transition hover:bg-primary hover:text-primary-foreground group-hover:opacity-100"
-            >
-              <FolderPlus className="h-3 w-3" />
-            </button>
-          </div>
-        }
-      />
-      <HoverCardContent className="flex max-w-[500px] w-auto flex-col items-center p-1">
-        <img
-          src={url}
-          alt=""
-          className="max-h-[320px] max-w-[320px] rounded object-contain"
-        />
-      </HoverCardContent>
-    </HoverCard>
+    <ImageHoverCard
+      url={url}
+      className="block"
+      renderTrigger={({ setHoverOpen }) => (
+        <>
+          <button
+            type="button"
+            onClick={() => openMediaGallery(images.map((src) => ({ src, type: 'image' })), index)}
+            className="block h-full w-full overflow-hidden rounded"
+          >
+            <img
+              src={url}
+              alt=""
+              className="h-full w-full cursor-grab object-cover transition hover:opacity-80 active:cursor-grabbing"
+              loading="lazy"
+              draggable
+              onDragStart={handleImgDragStart(setHoverOpen)}
+            />
+          </button>
+          {/* 右上角：把该单张图片添加到素材库分组（仅 hover 显示） */}
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onAddToAssets?.([url]); }}
+            title="添加到素材库"
+            className="absolute -right-1 -top-1 z-20 flex size-5 items-center justify-center rounded-full border border-border bg-background text-muted-foreground opacity-0 shadow-sm transition hover:bg-primary hover:text-primary-foreground group-hover:opacity-100"
+          >
+            <FolderPlus className="h-3 w-3" />
+          </button>
+        </>
+      )}
+    />
   );
 }

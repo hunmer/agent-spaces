@@ -553,6 +553,32 @@ export function useMiniAppHostApi(projectId: string, runtimeContext?: MiniAppRun
       };
     };
 
+    // 把图片复制写入宿主机任意绝对路径目录（供 mini-app 工作区目录自动保存）。
+    // 与 downloadImage 不同：这里不写 data 沙箱，而是写用户在 FolderPicker 选择的目录。
+    // filename 不传则从 URL 推断。失败抛错，调用方自行 try/catch（不阻塞主流程）。
+    const saveImageToDir = async (
+      url: string,
+      directory: string,
+      filename?: string,
+    ): Promise<{ ok: boolean; path: string }> => {
+      if (!directory) throw new Error('directory is required');
+      const name = (filename && String(filename).trim()) || inferDownloadFileName(url);
+      const response = await fetch(url);
+      if (!response.ok) throw new Error(`fetch image failed: ${response.status} ${response.statusText}`);
+      const base64 = await blobToBase64(await response.blob());
+      const resp = await fetchWithAuth(`/api/mini-apps/${encodedProjectId}/data/write-absolute`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ directory, filename: name, content: base64, encoding: 'base64' }),
+      });
+      if (!resp.ok) {
+        const errText = await resp.text().catch(() => '');
+        throw new Error(`saveImageToDir failed: ${resp.status} ${resp.statusText} ${errText}`);
+      }
+      const payload = await resp.json();
+      return { ok: true, path: payload?.path || `${directory}/${name}` };
+    };
+
     // 生成缩略图（服务端 sharp）。源图来自 data 目录本地文件或远程 URL，结果写到 data 目录。
     // 返回 { ok, path, httpUrl, width, height, size }。
     const generateThumbnail = async (opts: {
@@ -679,6 +705,17 @@ export function useMiniAppHostApi(projectId: string, runtimeContext?: MiniAppRun
     const revealFolder = async (folderPath?: string) => {
       const query = folderPath ? `?path=${encodeURIComponent(folderPath)}` : '';
       const resp = await fetchWithAuth(`/api/workspaces/${projectId}/files/reveal${query}`, {
+        method: 'POST',
+      });
+      if (!resp.ok) throw new Error(`Failed to reveal folder: ${resp.status}`);
+      return resp.json();
+    };
+
+    // 在系统文件管理器中定位到任意绝对路径目录（供 mini-app 工作区数据目录定位）。
+    // 走 /api/folder/reveal，支持宿主机绝对路径与 ~ 前缀。失败抛错。
+    const revealAbsolutePath = async (absPath: string) => {
+      if (!absPath) throw new Error('path is required');
+      const resp = await fetchWithAuth(`/api/folder/reveal?path=${encodeURIComponent(absPath)}`, {
         method: 'POST',
       });
       if (!resp.ok) throw new Error(`Failed to reveal folder: ${resp.status}`);
@@ -985,6 +1022,8 @@ export function useMiniAppHostApi(projectId: string, runtimeContext?: MiniAppRun
       downloadFile,
       downloadZip,
       downloadImage,
+      saveImageToDir,
+      revealAbsolutePath,
       generateThumbnail,
       dataFileUrl,
       srcFileUrl,
@@ -1005,6 +1044,8 @@ export function useMiniAppHostApi(projectId: string, runtimeContext?: MiniAppRun
       downloadFile,
       downloadZip,
       downloadImage,
+      saveImageToDir,
+      revealAbsolutePath,
       generateThumbnail,
       dataFileUrl,
       srcFileUrl,
