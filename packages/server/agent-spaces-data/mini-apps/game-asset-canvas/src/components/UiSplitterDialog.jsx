@@ -217,7 +217,7 @@ export default function UiSplitterDialog({ open, inputImages, initialData, onDat
 
   // ===== 节点对话框数据持久化：统一写回函数 =====
   // 输入签名 = inputImages 用 '|' 拼接，用于判定恢复时输入是否一致。
-  // 写回内容：每图 rects/pickedColor/exportEnabled + 检测参数 + inputSignature。
+  // 写回内容：每图 rects/pickedColor/exportEnabled + 检测参数 + 网格模式 + inputSignature。
   // 所有增删改入口（AI 检测/手工绘制/表单修改/删除/撤销重做/切换图）都汇总到 renderList → syncSplitData，
   // 避免某条路径漏写（持久化规范「所有增删改入口必须汇总到统一同步函数」）。
   const inputSignature = (urls) => (urls || []).filter(Boolean).join('|');
@@ -241,6 +241,9 @@ export default function UiSplitterDialog({ open, inputImages, initialData, onDat
       minArea: minAreaRef.current,
       padding: paddingRef.current,
       pickedHex: pickedHexRef.current,
+      gridMode: gridModeRef.current,
+      gridCols: gridColsRef.current,
+      gridRows: gridRowsRef.current,
       perImage,
     });
   }, []);
@@ -495,6 +498,9 @@ export default function UiSplitterDialog({ open, inputImages, initialData, onDat
             && saved.inputSignature === inputSignature(urls)
             && saved.perImage && typeof saved.perImage === 'object';
         const savedPerImage = canRestore ? saved.perImage : null;
+        const restoreGridMode = canRestore && saved.gridMode === true;
+        const restoreGridCols = canRestore ? Math.max(1, Math.min(20, Math.round(saved.gridCols) || 2)) : 2;
+        const restoreGridRows = canRestore ? Math.max(1, Math.min(20, Math.round(saved.gridRows) || 2)) : 2;
         // 预加载所有图 source；若可恢复则用持久化的 pickedColor 覆盖默认四角色
         for (const url of urls) {
           if (disposed) return;
@@ -522,6 +528,12 @@ export default function UiSplitterDialog({ open, inputImages, initialData, onDat
           if (saved.padding != null) { paddingRef.current = saved.padding; setPadding(saved.padding); }
           if (typeof saved.pickedHex === 'string') { pickedHexRef.current = saved.pickedHex; setPickedHex(saved.pickedHex); }
         }
+        gridModeRef.current = restoreGridMode;
+        gridColsRef.current = restoreGridCols;
+        gridRowsRef.current = restoreGridRows;
+        setGridMode(restoreGridMode);
+        setGridCols(restoreGridCols);
+        setGridRows(restoreGridRows);
         // 初始化 fabric.Canvas（挂到 stage 容器内的 <canvas>）
         const el = stageRef.current?.querySelector('canvas');
         if (!el) throw new Error('画布 DOM 未就绪');
@@ -595,7 +607,10 @@ export default function UiSplitterDialog({ open, inputImages, initialData, onDat
             if (!s0?.source) continue;
             const savedPi = savedPerImage?.[u];
             const savedRects = Array.isArray(savedPi?.rects) ? savedPi.rects.filter((b) => b && Number.isFinite(b.x)) : null;
-            if (savedRects && savedRects.length) {
+            if (u === first && restoreGridMode) {
+              // 网格模式独占当前图片，不恢复/检测切片框。
+              s0.rects = [];
+            } else if (savedRects && savedRects.length) {
               // 恢复持久化切片框（深拷贝防御后续运行时修改污染）
               s0.rects = savedRects.map((b) => ({ ...b }));
               total0 += s0.rects.length;
@@ -609,19 +624,27 @@ export default function UiSplitterDialog({ open, inputImages, initialData, onDat
             }
             if (u === first) {
               clearRects();
-              s0.rects.forEach(addRect);
-              // 首次默认绘制模式：切片框不可选，光标十字
-              for (const r of fc.getObjects().filter((o) => o.kind === 'slice')) r.selectable = false;
-              fc.selection = false;
-              fc.defaultCursor = 'crosshair';
-              fc.hoverCursor = 'crosshair';
+              if (restoreGridMode) {
+                fc.selection = false;
+                fc.defaultCursor = 'default';
+                fc.hoverCursor = 'default';
+              } else {
+                s0.rects.forEach(addRect);
+                // 首次默认绘制模式：切片框不可选，光标十字
+                for (const r of fc.getObjects().filter((o) => o.kind === 'slice')) r.selectable = false;
+                fc.selection = false;
+                fc.defaultCursor = 'crosshair';
+                fc.hoverCursor = 'crosshair';
+              }
               fc.renderAll();
             }
           }
           renderList();
-          setStatus(canRestore && detectedCount === 0
-            ? `已恢复上次编辑（共 ${total0} 个切片）`
-            : `已对所有图检测，共 ${total0} 个区域`);
+          setStatus(restoreGridMode
+            ? `已恢复网格模式：${restoreGridCols} 列 × ${restoreGridRows} 行`
+            : canRestore && detectedCount === 0
+              ? `已恢复上次编辑（共 ${total0} 个切片）`
+              : `已对所有图检测，共 ${total0} 个区域`);
           // 恢复/检测完成后才标记就绪，允许后续表单变化触发自动检测
           readyRef.current = true;
         }, 80);
@@ -645,6 +668,8 @@ export default function UiSplitterDialog({ open, inputImages, initialData, onDat
       sourceRef.current = null;
       imageStatesRef.current = {};
       activeUrlRef.current = '';
+      gridModeRef.current = false;
+      setGridMode(false);
       spaceDownRef.current = false;
       panningRef.current = false;
       drawingRef.current = false;
@@ -682,24 +707,34 @@ export default function UiSplitterDialog({ open, inputImages, initialData, onDat
     hGuidesRef.current = hs.sort((a, b) => a - b);
   }, []);
 
-  // 清除画布上所有参考线（不动切片框）
-  const clearGuides = useCallback(() => {
+  // 清除画布上的网格覆盖层（不动切片框）；重绘时保留参考线坐标。
+  const clearGuides = useCallback((resetPositions = true) => {
     const fc = fcRef.current;
     if (!fc) return;
-    for (const o of fc.getObjects().filter((g) => g.kind === 'guide')) fc.remove(o);
-    vGuidesRef.current = [];
-    hGuidesRef.current = [];
+    for (const o of fc.getObjects().filter((g) => g.kind === 'guide' || g.kind === 'grid-boundary')) fc.remove(o);
+    if (resetPositions) {
+      vGuidesRef.current = [];
+      hGuidesRef.current = [];
+    }
   }, []);
 
-  // 按 vGuidesRef/hGuidesRef 在画布上渲染参考线（先清后画）
+  // 在当前图片上渲染网格边界，并按 vGuidesRef/hGuidesRef 绘制内部参考线。
   const renderGuides = useCallback(() => {
     const fc = fcRef.current;
     const fabric = fabricLibRef.current;
     const src = sourceRef.current;
     if (!fc || !fabric || !src) return;
-    clearGuides();
+    clearGuides(false);
     const iw = src.canvas.width;
     const ih = src.canvas.height;
+    const boundary = new fabric.Rect({
+      left: 0, top: 0, width: iw, height: ih,
+      fill: 'rgba(234,179,8,0.04)', stroke: '#eab308', strokeWidth: 2,
+      strokeDashArray: [6, 4], selectable: false, evented: false,
+      objectCaching: false,
+    });
+    boundary.kind = 'grid-boundary';
+    fc.add(boundary);
     const mkLine = (x1, y1, x2, y2, axis) => {
       // fabric.Line 的 left/top 是包围盒左上角，构造时 x1==x2 的垂直线 left 即为 x1
       const line = new fabric.Line([x1, y1, x2, y2], {
@@ -721,6 +756,19 @@ export default function UiSplitterDialog({ open, inputImages, initialData, onDat
     for (const y of hGuidesRef.current) mkLine(0, y, iw, y, 'h');
     fc.renderAll();
   }, [clearGuides]);
+
+  // 网格态切换图片后，按当前图片尺寸重建矩形和均分参考线。
+  useEffect(() => {
+    const src = sourceRef.current;
+    if (!gridMode || !src) return;
+    const cols = gridColsRef.current;
+    const rows = gridRowsRef.current;
+    vGuidesRef.current = [];
+    hGuidesRef.current = [];
+    for (let i = 1; i < cols; i++) vGuidesRef.current.push(Math.round((src.canvas.width * i) / cols));
+    for (let j = 1; j < rows; j++) hGuidesRef.current.push(Math.round((src.canvas.height * j) / rows));
+    renderGuides();
+  }, [activeUrl, gridMode, renderGuides]);
 
   // 进入网格模式：清切片框 + 均分参考线 + 切换右面板
   const enterGridMode = useCallback(() => {
@@ -754,8 +802,9 @@ export default function UiSplitterDialog({ open, inputImages, initialData, onDat
     setCropBox(null);
     gridModeRef.current = true;
     setGridMode(true);
+    renderList();
     setStatus(`网格模式：${cols} 列 × ${rows} 行，拖动参考线调整位置，点【网格拆分】生成切片`);
-  }, [pushHistory, clearRects, clearGuides, renderGuides]);
+  }, [pushHistory, clearRects, clearGuides, renderGuides, renderList]);
 
   // 退出网格模式：清参考线 + 恢复右面板
   const exitGridMode = useCallback(() => {
@@ -771,7 +820,8 @@ export default function UiSplitterDialog({ open, inputImages, initialData, onDat
     fc.renderAll();
     gridModeRef.current = false;
     setGridMode(false);
-  }, [clearGuides]);
+    syncSplitData();
+  }, [clearGuides, syncSplitData]);
 
   // 网格拆分：按参考线坐标生成切片框并退出网格
   const splitByGrid = useCallback(() => {
@@ -1028,10 +1078,12 @@ export default function UiSplitterDialog({ open, inputImages, initialData, onDat
         const ih = sourceRef.current.canvas.height;
         if (t.axis === 'v') {
           // 垂直线，只能左右移：left 是线中心，fabric.Line 用 [x1,y1,x2,y2] 构造，移动后 left 表征中心
-          const clamped = Math.max(0, Math.min(iw, t.left));
+          const inset = iw > 2 ? 1 : 0;
+          const clamped = Math.max(inset, Math.min(iw - inset, t.left));
           t.set({ left: clamped });
         } else if (t.axis === 'h') {
-          const clamped = Math.max(0, Math.min(ih, t.top));
+          const inset = ih > 2 ? 1 : 0;
+          const clamped = Math.max(inset, Math.min(ih - inset, t.top));
           t.set({ top: clamped });
         }
         return;
@@ -1276,8 +1328,9 @@ export default function UiSplitterDialog({ open, inputImages, initialData, onDat
     hGuidesRef.current = [];
     for (let j = 1; j < r; j++) hGuidesRef.current.push(Math.round((src.canvas.height * j) / r));
     renderGuides();
+    renderList();
     setStatus(`网格：${c} 列 × ${r} 行，拖动参考线后点【网格拆分】`);
-  }, [renderGuides, pushHistory, clearRects, clearGuides]);
+  }, [renderGuides, renderList, pushHistory, clearRects, clearGuides]);
 
   // 取消裁切（确认条 ✖）
   const cancelCrop = useCallback(() => {
@@ -1358,91 +1411,96 @@ export default function UiSplitterDialog({ open, inputImages, initialData, onDat
 
         {/* 工具条（单行 flex，宽度不够自动换行） */}
         <div className="flex flex-wrap items-end gap-2 border-b border-border bg-muted/30 px-4 py-2">
-          <Field label="检测方法">
-            <select
-              value={method}
-              onChange={(e) => setMethod(e.target.value)}
-              className="h-8 w-full rounded-md border border-border bg-background px-2 text-xs outline-none focus:border-primary"
-            >
-              <option value="corner">四角背景色</option>
-              <option value="picked">吸取背景色</option>
-              <option value="alpha">Alpha 非透明</option>
-              <option value="brightness">暗色前景</option>
-            </select>
-          </Field>
-          <Field label={`容差 ${tolerance}`}>
-            <NumberInput min={0} max={765} value={tolerance}
-              onChange={(v) => setTolerance(v ?? 0)}
-              className="h-8 w-24" />
-          </Field>
-          <Field label={`最小面积 ${minArea}`}>
-            <NumberInput min={1} value={minArea}
-              onChange={(v) => setMinArea(v ?? 1)}
-              className="h-8 w-28" />
-          </Field>
-          <Field label={`边距 ${padding}`}>
-            <NumberInput min={0} value={padding}
-              onChange={(v) => setPadding(v ?? 0)}
-              className="h-8 w-24" />
-          </Field>
-          <Field label="背景色">
-            <div className="flex h-8 items-center rounded-md border border-border bg-background px-2">
-              <ColorPicker colors={BG_PRESETS} value={pickedHex} onChange={handlePickColor} />
-            </div>
-          </Field>
-          <div className="flex items-end gap-1.5">
-            <Tooltip>
-              <TooltipTrigger render={
-                <Button size="icon" variant={drawMode ? 'default' : 'outline'}
-                  className={`h-8 w-8 ${drawMode ? 'ring-2 ring-primary/40' : ''}`}
-                  disabled={gridMode || cropMode}
-                  onClick={toggleDrawMode} />
-              }>
-                {drawMode ? <SquarePen className="h-4 w-4" /> : <MousePointer2 className="h-4 w-4" />}
-              </TooltipTrigger>
-              <TooltipContent side="bottom">{drawMode ? '框选模式：左键拉框新建切片（当前）' : '选择模式：左键点选/移动切片框（当前）'}（Alt 强制拉框）</TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger render={
-                <Button size="icon" variant={pickingRef.current ? 'default' : 'outline'}
-                  className={`h-8 w-8 ${pickingRef.current ? 'ring-2 ring-primary/40' : ''}`}
-                  disabled={gridMode || cropMode}
-                  onClick={togglePicking} />
-              }>
-                <Pipette className="h-4 w-4" />
-              </TooltipTrigger>
-              <TooltipContent side="bottom">💧 吸取背景色</TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger render={
-                <Button size="icon" variant="outline" className="h-8 w-8" disabled={canUndo === false || gridMode} onClick={undo} />
-              }>
-                <Undo2 className="h-4 w-4" />
-              </TooltipTrigger>
-              <TooltipContent side="bottom">撤销 (Ctrl+Z)</TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger render={
-                <Button size="icon" variant="outline" className="h-8 w-8" disabled={canRedo === false || gridMode} onClick={redo} />
-              }>
-                <Redo2 className="h-4 w-4" />
-              </TooltipTrigger>
-              <TooltipContent side="bottom">重做 (Ctrl+Y)</TooltipContent>
-            </Tooltip>
-          </div>
+          {!gridMode && (
+            <>
+              <Field label="检测方法">
+                <select
+                  value={method}
+                  onChange={(e) => setMethod(e.target.value)}
+                  className="h-8 w-full rounded-md border border-border bg-background px-2 text-xs outline-none focus:border-primary"
+                >
+                  <option value="corner">四角背景色</option>
+                  <option value="picked">吸取背景色</option>
+                  <option value="alpha">Alpha 非透明</option>
+                  <option value="brightness">暗色前景</option>
+                </select>
+              </Field>
+              <Field label={`容差 ${tolerance}`}>
+                <NumberInput min={0} max={765} value={tolerance}
+                  onChange={(v) => setTolerance(v ?? 0)}
+                  className="h-8 w-24" />
+              </Field>
+              <Field label={`最小面积 ${minArea}`}>
+                <NumberInput min={1} value={minArea}
+                  onChange={(v) => setMinArea(v ?? 1)}
+                  className="h-8 w-28" />
+              </Field>
+              <Field label={`边距 ${padding}`}>
+                <NumberInput min={0} value={padding}
+                  onChange={(v) => setPadding(v ?? 0)}
+                  className="h-8 w-24" />
+              </Field>
+              <Field label="背景色">
+                <div className="flex h-8 items-center rounded-md border border-border bg-background px-2">
+                  <ColorPicker colors={BG_PRESETS} value={pickedHex} onChange={handlePickColor} />
+                </div>
+              </Field>
+              <div className="flex items-end gap-1.5">
+                <Tooltip>
+                  <TooltipTrigger render={
+                    <Button size="icon" variant={drawMode ? 'default' : 'outline'}
+                      className={`h-8 w-8 ${drawMode ? 'ring-2 ring-primary/40' : ''}`}
+                      disabled={cropMode}
+                      onClick={toggleDrawMode} />
+                  }>
+                    {drawMode ? <SquarePen className="h-4 w-4" /> : <MousePointer2 className="h-4 w-4" />}
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">{drawMode ? '框选模式：左键拉框新建切片（当前）' : '选择模式：左键点选/移动切片框（当前）'}（Alt 强制拉框）</TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger render={
+                    <Button size="icon" variant={pickingRef.current ? 'default' : 'outline'}
+                      className={`h-8 w-8 ${pickingRef.current ? 'ring-2 ring-primary/40' : ''}`}
+                      disabled={cropMode}
+                      onClick={togglePicking} />
+                  }>
+                    <Pipette className="h-4 w-4" />
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">💧 吸取背景色</TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger render={
+                    <Button size="icon" variant="outline" className="h-8 w-8" disabled={canUndo === false} onClick={undo} />
+                  }>
+                    <Undo2 className="h-4 w-4" />
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">撤销 (Ctrl+Z)</TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger render={
+                    <Button size="icon" variant="outline" className="h-8 w-8" disabled={canRedo === false} onClick={redo} />
+                  }>
+                    <Redo2 className="h-4 w-4" />
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">重做 (Ctrl+Y)</TooltipContent>
+                </Tooltip>
+              </div>
+            </>
+          )}
           {/* 裁切 / 网格 模式组（与绘制模式互斥） */}
-          <div className="flex items-end gap-1.5 border-l border-border pl-2">
-            <Tooltip>
-              <TooltipTrigger render={
-                <Button size="icon" variant={cropMode ? 'default' : 'outline'}
-                  className={`h-8 w-8 ${cropMode ? 'ring-2 ring-primary/40' : ''}`}
-                  disabled={gridMode}
-                  onClick={toggleCropMode} />
-              }>
-                <Scissors className="h-4 w-4" />
-              </TooltipTrigger>
-              <TooltipContent side="bottom">裁切：拉框选范围，替换原图</TooltipContent>
-            </Tooltip>
+          <div className={`flex items-end gap-1.5 ${gridMode ? '' : 'border-l border-border pl-2'}`}>
+            {!gridMode && (
+              <Tooltip>
+                <TooltipTrigger render={
+                  <Button size="icon" variant={cropMode ? 'default' : 'outline'}
+                    className={`h-8 w-8 ${cropMode ? 'ring-2 ring-primary/40' : ''}`}
+                    onClick={toggleCropMode} />
+                }>
+                  <Scissors className="h-4 w-4" />
+                </TooltipTrigger>
+                <TooltipContent side="bottom">裁切：拉框选范围，替换原图</TooltipContent>
+              </Tooltip>
+            )}
             {/* 网格：单按钮，点击弹 popover（含开关 + 行列参数） */}
             <Popover open={showGridPopover} onOpenChange={setShowGridPopover}>
               <PopoverTrigger render={

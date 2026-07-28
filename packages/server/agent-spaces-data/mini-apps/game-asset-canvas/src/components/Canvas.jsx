@@ -92,6 +92,18 @@ export default function Canvas() {
   nodesRef.current = nodes;
   edgesRef.current = edges;
 
+  // 画布中「运行中」的节点（data.status==='running'）：在执行队列 popover 一并展示，支持中断。
+  const runningNodes = useMemo(
+    () => nodes
+      .filter((n) => n.data?.status === 'running')
+      .map((n) => ({
+        id: n.id,
+        nodeType: n.type,
+        label: NODE_META[n.type]?.label || n.data?.label || n.type,
+      })),
+    [nodes],
+  );
+
   // —— 面板布局持久化 ——
   const { panelLayout, showMinimap, handlePanelLayoutChange, toggleMinimap } = usePanelLayout();
 
@@ -520,8 +532,10 @@ export default function Canvas() {
             queueSlot={(
               <ExecutionQueuePopover
                 jobs={jobs}
-                runningCount={runningCount}
+                runningNodes={runningNodes}
+                runningCount={runningCount + runningNodes.length}
                 onCancel={cancel}
+                onCancelNode={handleCancelProcess}
                 onClearFinished={clearFinished}
               />
             )}

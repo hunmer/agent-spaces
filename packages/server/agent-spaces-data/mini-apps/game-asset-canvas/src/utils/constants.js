@@ -519,6 +519,39 @@ Details: <关键词1>, <关键词2>, ...
 // 默认用户提示词（图片以 base64 附件形式传给 AI，不嵌 prompt 文本）
 export const PROMPT_REVERSE_USER_PROMPT = `请对附带的每张图片分别反推一段可直接用于文生图的提示词，按系统提示词的格式输出。`;
 
+// ============ 提示词优化（agent_run，纯文本，无图）============
+// 与 BBox / 反推提示词同款：systemPrompt 在 agent preset 内配置，settings 只存 id + userPrompt 模板。
+// 供文生图/编辑图片节点提示词框右下角「优化」图标调用，弹框输入优化方向后调 agent，diff 展示新旧差异。
+export const PROMPT_OPTIMIZE_AGENT_INIT_NAME = '提示词优化师';
+
+// 默认系统提示词（作为 openAgentEditor 的 initialPrompt，用户可在 preset 弹窗里改）
+export const PROMPT_OPTIMIZE_SYSTEM_PROMPT = `# Role
+你是一名资深的 AI 绘画提示词工程师，专精 Stable Diffusion / Midjourney / 即梦 / DALL·E / GPT Image 等文生图与图生图模型的提示词优化。
+
+# Task
+用户会给你一段原始提示词（中文或英文）和一个「优化方向」（自然语言描述，如「更写实一点」「增加光影细节」「改成赛博朋克风」）。你需要输出一段优化后的提示词，并说明改了什么。
+
+# Rules
+1. 保留原始提示词的核心主体和意图，不要凭空更换主题。
+2. 严格按「优化方向」调整，方向里没要求的部分不要擅自大改。
+3. 输出语言：原始提示词是英文就输出英文，是中文就输出中文；方向用哪种语言不影响输出语言。一般文生图推荐英文。
+4. 优化后的提示词应结构清晰：主体描述 → 风格关键词 → 细节关键词（材质/光影/镜头/质量），关键词用英文逗号分隔便于复用。
+5. 长度控制在 30-80 个英文单词（或等量中文），不要太短也不要堆砌。
+
+# Output Format
+第一行直接输出优化后的提示词正文（纯文本，不要 markdown 代码块包裹，不要前后缀解释）。
+然后空一行。
+然后用简短一两句中文说明本次主要改了什么（如「补充了体积光和材质质感关键词，去掉了模糊表述」）。
+
+不要输出 JSON，不要输出多个版本，不要重复原始提示词。`;
+
+// 默认用户提示词模板（{prompt}=原始提示词，{direction}=优化方向，由调用方替换）
+export const PROMPT_OPTIMIZE_USER_PROMPT = `原始提示词：
+{prompt}
+
+优化方向：
+{direction}`;
+
 // ============ 统一抠图节点（cutout）============
 // 合并「白底抠图」「色度键抠图」「工作流抠图」「Rembg 插件」四种能力，
 // 节点内 select 切换 mode，参数表随 mode 切换（ParamField 的 showWhen 联动）。

@@ -57,6 +57,7 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import dagre, { graphlib } from '@dagrejs/dagre';
+import * as diffPkg from 'diff';
 import * as AgentSpacesUI from '@/lib/ui-exports';
 import { LocaleIntlProvider, useLocale } from '@/components/layout/locale-provider';
 
@@ -238,6 +239,9 @@ function resolveExternalModule(id: string) {
   }
   if (id === '@agent-spaces/ui') {
     return { __esModule: true, ...AgentSpacesUI };
+  }
+  if (id === 'diff') {
+    return { __esModule: true, ...diffPkg };
   }
   return undefined;
 }

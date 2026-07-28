@@ -1,8 +1,9 @@
 import { useCallback, useMemo, useState } from 'react';
-import { PromptTextEditor, SearchSelect } from '@agent-spaces/ui';
+import { PromptTextEditor, SearchSelect, Wand2 } from '@agent-spaces/ui';
 import NodeShell from './NodeShell';
 import ImageResult from './ImageResult';
 import PromptPickerDialog from '../PromptPickerDialog';
+import PromptOptimizeDialog from '../PromptOptimizeDialog';
 import PickedPromptBadge from './PickedPromptBadge';
 import FileUpload from '../FileUpload';
 import CountAndConcurrency from './CountAndConcurrency';
@@ -69,6 +70,7 @@ export default function EditImageNode({ id, data, selected }) {
   const onGenerate = data?.onGenerate;
   const onCancelProcess = data?.onCancelProcess;
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [optimizeOpen, setOptimizeOpen] = useState(false);
 
   const set = useCallback((patch) => {
     onUpdate?.({ params: { ...params, ...patch } });
@@ -159,13 +161,22 @@ export default function EditImageNode({ id, data, selected }) {
             📋 提示词库
           </button>
         </div>
-        <div className="nodrag nopan nowheel min-h-[56px] resize-y rounded-md border border-border bg-background px-2 py-1.5 text-sm focus-within:border-primary">
+        <div className="nodrag nopan nowheel relative min-h-[56px] resize-y rounded-md border border-border bg-background px-2 py-1.5 pr-8 text-sm focus-within:border-primary">
           <PromptTextEditor
             value={promptHtml}
             onChange={(html) => set({ promptHtml: html })}
             references={editorReferences}
             placeholder="如：将背景改为星空，保持宝箱主体不变（输入 @ 插入参考图）"
           />
+          <button
+            type="button"
+            onClick={() => setOptimizeOpen(true)}
+            title="优化提示词"
+            disabled={!data?.promptOptimizeAgent?.id}
+            className="nopan nowheel absolute bottom-1.5 right-1.5 flex h-6 w-6 items-center justify-center rounded text-muted-foreground opacity-60 transition hover:bg-primary/10 hover:text-primary hover:opacity-100 disabled:cursor-not-allowed disabled:opacity-30"
+          >
+            <Wand2 className="h-3.5 w-3.5" />
+          </button>
         </div>
       </div>
 
@@ -237,6 +248,25 @@ export default function EditImageNode({ id, data, selected }) {
           referenceImages: resolveReferenceImages(item.references),
           ...(item.aspect ? { aspect: item.aspect } : {}),
         })}
+      />
+
+      <PromptOptimizeDialog
+        open={optimizeOpen}
+        prompt={promptHtmlToText(promptHtml)}
+        agentConfig={data?.promptOptimizeAgent}
+        onClose={() => setOptimizeOpen(false)}
+        onApply={(newPrompt) => {
+          // 纯文本 → PromptTextEditor 可用的 HTML（段落用 <p>，换行用 <br>）
+          const escape = (s) => s
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+          const html = newPrompt
+            .split(/\n{2,}/)
+            .map((para) => `<p>${escape(para).replace(/\n/g, '<br>')}</p>`)
+            .join('');
+          set({ promptHtml: html });
+        }}
       />
     </NodeShell>
   );

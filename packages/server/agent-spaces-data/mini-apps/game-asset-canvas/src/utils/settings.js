@@ -1,5 +1,5 @@
 // 设置默认值 + 工作流槽位 + 模型选项
-import { WORKFLOWS, BUILTIN_PLUGIN, MODEL_OPTIONS, BBOX_AI_SYSTEM_PROMPT, BBOX_AI_USER_PROMPT, PROMPT_REVERSE_SYSTEM_PROMPT, PROMPT_REVERSE_USER_PROMPT } from './constants';
+import { WORKFLOWS, BUILTIN_PLUGIN, MODEL_OPTIONS, BBOX_AI_SYSTEM_PROMPT, BBOX_AI_USER_PROMPT, PROMPT_REVERSE_SYSTEM_PROMPT, PROMPT_REVERSE_USER_PROMPT, PROMPT_OPTIMIZE_SYSTEM_PROMPT, PROMPT_OPTIMIZE_USER_PROMPT } from './constants';
 
 // re-export 供 SettingsDialog 使用
 export { BUILTIN_PLUGIN };
@@ -51,6 +51,10 @@ export const DEFAULT_SETTINGS = {
   promptReverseAgentConfigId: '',
   promptReverseAgentName: '',
   promptReverseUserPrompt: PROMPT_REVERSE_USER_PROMPT,
+  // 提示词优化（agent_run 纯文本；systemPrompt 归 agent preset 自带，不在此重复配置）
+  promptOptimizeAgentConfigId: '',
+  promptOptimizeAgentName: '',
+  promptOptimizeUserPrompt: PROMPT_OPTIMIZE_USER_PROMPT,
   // 完成后通知：节点生成成功后调 sendNotification 推送通知（默认关闭）
   notifyOnComplete: false,
 };

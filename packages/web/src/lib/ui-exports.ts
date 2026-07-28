@@ -78,6 +78,7 @@ export type { ShinyBadgeProps } from '@/components/ui/shiny-badge';
 export { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent, ChartStyle } from '@/components/ui/chart';
 export type { ChartConfig } from '@/components/ui/chart';
 export { MermaidPreview } from '@/components/ui/mermaid-preview';
+export { DiffViewer } from '@/components/viewers/diff-viewer';
 export { ImagesBadge } from '@/components/ui/images-badge';
 export { ImagePickerDialog } from '@/components/ui/image-picker-dialog';
 export { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarInset, SidebarInput, SidebarSeparator, SidebarGroup, SidebarGroupAction, SidebarGroupContent, SidebarGroupLabel, SidebarMenu, SidebarMenuAction, SidebarMenuBadge, SidebarMenuButton, SidebarMenuItem, SidebarMenuSkeleton, SidebarMenuSub, SidebarMenuSubButton, SidebarMenuSubItem, SidebarRail, SidebarTrigger, SidebarProvider, useSidebar } from '@/components/ui/sidebar';

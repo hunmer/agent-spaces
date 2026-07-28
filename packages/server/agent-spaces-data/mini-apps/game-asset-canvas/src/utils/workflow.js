@@ -516,3 +516,38 @@ export async function runAgentVisionText(agentConfig, imageUrls, opts = {}) {
   const text = typeof raw === 'string' ? raw : JSON.stringify(raw);
   return opts?.stripThink ? stripThinkTags(text) : text;
 }
+
+/**
+ * 调用提示词优化 agent（纯文本 agent_run，无图）。
+ *
+ * agentConfig: { id, userPrompt } —— 来自 settings.promptOptimizeAgentConfigId / promptOptimizeUserPrompt
+ *   userPrompt 模板里的 {prompt} / {direction} 占位符会被替换为实际入参。
+ * originalPrompt: 原始提示词
+ * direction: 优化方向（自然语言）
+ *
+ * 返回：AI 输出的纯文本（已 stripThink）。systemPrompt 归 agent preset 自带。
+ */
+export async function runPromptOptimizeAgent(agentConfig, originalPrompt, direction, opts = {}) {
+  const AS = window.AgentSpaces;
+  if (!AS?.callPluginTool) throw new Error('宿主 callPluginTool 不可用');
+  if (!agentConfig?.id) throw new Error('未配置提示词优化 AI 模型');
+  const tpl = agentConfig.userPrompt || '';
+  const prompt = tpl
+    .replace(/\{prompt\}/g, originalPrompt || '')
+    .replace(/\{direction\}/g, direction || '');
+  if (!prompt.trim()) throw new Error('用户提示词模板为空');
+  const signal = opts?.signal;
+  const ret = await AS.callPluginTool(
+    BUILTIN_PLUGIN,
+    'agent_run',
+    {
+      prompt,
+      agentConfigId: agentConfig.id,
+      permissionMode: 'bypassPermissions',
+    },
+    signal ? { signal } : undefined,
+  );
+  const raw = ret?.result ?? ret?.output ?? '';
+  const text = typeof raw === 'string' ? raw : JSON.stringify(raw);
+  return stripThinkTags(text);
+}

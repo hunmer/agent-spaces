@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { SearchSelect } from '@agent-spaces/ui';
+import { SearchSelect, Wand2 } from '@agent-spaces/ui';
 import NodeShell from './NodeShell';
 import ImageResult from './ImageResult';
 import PromptPickerDialog from '../PromptPickerDialog';
+import PromptOptimizeDialog from '../PromptOptimizeDialog';
 import PickedPromptBadge from './PickedPromptBadge';
 import CountAndConcurrency from './CountAndConcurrency';
 import { ASPECT_OPTIONS, DEFAULT_MODEL, MODEL_OPTIONS, NODE_TYPES, SIZE_OPTIONS, WORKFLOWS } from '../../utils/constants';
@@ -67,6 +68,7 @@ export default function TextToImageNode({ id, data, selected }) {
   const onGenerate = data?.onGenerate;
   const onCancelProcess = data?.onCancelProcess;
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [optimizeOpen, setOptimizeOpen] = useState(false);
   const promptRef = useRef(null);
 
   // textarea 自动调整高度：重置为 auto 后按 scrollHeight 撑开，上限 500px 后出现滚动条。
@@ -114,14 +116,25 @@ export default function TextToImageNode({ id, data, selected }) {
             📋 提示词库
           </button>
         </div>
-        <textarea
-          ref={promptRef}
-          className="min-h-[64px] w-full resize-none overflow-auto rounded-md border border-border bg-background px-2 py-1.5 text-sm outline-none focus:border-primary"
-          style={{ maxHeight: 500 }}
-          placeholder="描述要生成的游戏资产，如：像素风宝箱，俯视角，无背景"
-          value={params.prompt || ''}
-          onChange={(e) => set({ prompt: e.target.value })}
-        />
+        <div className="relative">
+          <textarea
+            ref={promptRef}
+            className="min-h-[64px] w-full resize-none overflow-auto rounded-md border border-border bg-background px-2 py-1.5 pr-8 text-sm outline-none focus:border-primary"
+            style={{ maxHeight: 500 }}
+            placeholder="描述要生成的游戏资产，如：像素风宝箱，俯视角，无背景"
+            value={params.prompt || ''}
+            onChange={(e) => set({ prompt: e.target.value })}
+          />
+          <button
+            type="button"
+            onClick={() => setOptimizeOpen(true)}
+            title="优化提示词"
+            disabled={!data?.promptOptimizeAgent?.id}
+            className="nopan nowheel absolute bottom-1.5 right-1.5 flex h-6 w-6 items-center justify-center rounded text-muted-foreground opacity-60 transition hover:bg-primary/10 hover:text-primary hover:opacity-100 disabled:cursor-not-allowed disabled:opacity-30"
+          >
+            <Wand2 className="h-3.5 w-3.5" />
+          </button>
+        </div>
       </label>
 
       {/* 模型：优先用设置页自定义列表，回退内置 MODEL_OPTIONS；支持临时输入列表外的值 */}
@@ -188,6 +201,14 @@ export default function TextToImageNode({ id, data, selected }) {
         scene="text"
         onClose={() => setPickerOpen(false)}
         onPick={(item) => set({ pickedPrompt: item.prompt, ...(item.aspect ? { aspect: item.aspect } : {}) })}
+      />
+
+      <PromptOptimizeDialog
+        open={optimizeOpen}
+        prompt={params.prompt || ''}
+        agentConfig={data?.promptOptimizeAgent}
+        onClose={() => setOptimizeOpen(false)}
+        onApply={(newPrompt) => set({ prompt: newPrompt })}
       />
     </NodeShell>
   );

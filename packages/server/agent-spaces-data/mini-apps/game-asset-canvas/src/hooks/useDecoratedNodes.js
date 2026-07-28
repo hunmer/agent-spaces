@@ -96,6 +96,11 @@ export default function useDecoratedNodes({
             : nd.type === NODE_TYPES.editImage
               ? (Array.isArray(settings.editImageModels) ? settings.editImageModels.map((v) => ({ value: v, label: v })) : undefined)
               : undefined,
+          // 提示词优化 AI 配置（从 settings 注入，仅 textToImage/editImage 节点用；systemPrompt 归 agent preset）
+          promptOptimizeAgent: (nd.type === NODE_TYPES.textToImage || nd.type === NODE_TYPES.editImage) ? {
+            id: settings.promptOptimizeAgentConfigId || '',
+            userPrompt: settings.promptOptimizeUserPrompt || '',
+          } : undefined,
           // BBox 查看器元素拆分抠图回调（仅 bboxViewer 用）
           onCutout: nd.type === NODE_TYPES.bboxViewer ? onBBoxCutout : undefined,
           // 重置参数回调：仅对有 params 的节点注入（imageDisplay/note/uiSplitter 等无 params 不注入）

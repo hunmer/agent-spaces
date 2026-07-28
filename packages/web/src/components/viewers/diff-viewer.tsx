@@ -32,6 +32,10 @@ type DiffViewerProps = DiffInput & Omit<React.ComponentProps<"div">, "children">
   language?: string
   oldTitle?: string
   newTitle?: string
+  /** 强制隐藏左侧旧内容列（split 布局只显示右侧新内容）。默认自动：仅当无旧内容时隐藏。 */
+  hideOld?: boolean
+  /** 长行自动换行（whitespace-pre-wrap）。默认 false（whitespace-pre，长行横向滚动）。 */
+  wrap?: boolean
 }
 
 function computeLines(input: DiffInput): DiffLine[] {
@@ -131,7 +135,7 @@ function linePrefix(type: DiffLine["type"]) {
   return " "
 }
 
-function UnifiedView({ lines, numWidth, hideOld }: { lines: DiffLine[]; numWidth: number; hideOld?: boolean }) {
+function UnifiedView({ lines, numWidth, hideOld, wrap }: { lines: DiffLine[]; numWidth: number; hideOld?: boolean; wrap?: boolean }) {
   return (
     <table className="w-full border-collapse font-mono text-[13px] leading-relaxed">
       <tbody>
@@ -165,7 +169,7 @@ function UnifiedView({ lines, numWidth, hideOld }: { lines: DiffLine[]; numWidth
             >
               {linePrefix(line.type)}
             </td>
-            <td className={cn("whitespace-pre px-3 align-top", lineColor(line.type, "text"))}>
+            <td className={cn(wrap ? "whitespace-pre-wrap break-words" : "whitespace-pre", "px-3 align-top", lineColor(line.type, "text"))}>
               {line.content || "\u00A0"}
             </td>
           </tr>
@@ -175,7 +179,7 @@ function UnifiedView({ lines, numWidth, hideOld }: { lines: DiffLine[]; numWidth
   )
 }
 
-function SplitView({ lines, numWidth, hideOld }: { lines: DiffLine[]; numWidth: number; hideOld?: boolean }) {
+function SplitView({ lines, numWidth, hideOld, wrap }: { lines: DiffLine[]; numWidth: number; hideOld?: boolean; wrap?: boolean }) {
   const leftLines: (DiffLine | null)[] = []
   const rightLines: (DiffLine | null)[] = []
 
@@ -231,7 +235,8 @@ function SplitView({ lines, numWidth, hideOld }: { lines: DiffLine[]; numWidth: 
                 </td>
                 <td
                   className={cn(
-                    "whitespace-pre px-3 align-top",
+                    wrap ? "whitespace-pre-wrap break-words" : "whitespace-pre",
+                    "px-3 align-top",
                     line ? lineColor(line.type, "text") : ""
                   )}
                 >
@@ -263,7 +268,8 @@ function SplitView({ lines, numWidth, hideOld }: { lines: DiffLine[]; numWidth: 
                 </td>
                 <td
                   className={cn(
-                    "whitespace-pre px-3 align-top",
+                    wrap ? "whitespace-pre-wrap break-words" : "whitespace-pre",
+                    "px-3 align-top",
                     line ? lineColor(line.type, "text") : ""
                   )}
                 >
@@ -290,7 +296,8 @@ function SplitView({ lines, numWidth, hideOld }: { lines: DiffLine[]; numWidth: 
                 </td>
                 <td
                   className={cn(
-                    "whitespace-pre px-3 align-top",
+                    wrap ? "whitespace-pre-wrap break-words" : "whitespace-pre",
+                    "px-3 align-top",
                     line ? lineColor(line.type, "text") : ""
                   )}
                 >
@@ -310,6 +317,8 @@ export function DiffViewer({
   oldTitle,
   newTitle,
   className,
+  hideOld: hideOldProp,
+  wrap = false,
   ...allProps
 }: DiffViewerProps) {
   // Separate DiffInput keys from remaining DOM props
@@ -331,7 +340,10 @@ export function DiffViewer({
 
   const fullCode = lines.map((l) => l.content).join("\n")
   const showHeader = oldTitle || newTitle
-  const hideOld = lines.length > 0 && !hasOldContent(input, lines)
+  // 外部 hideOld prop 优先；未传时自动：仅当无旧内容时隐藏
+  const hideOld = hideOldProp !== undefined
+    ? hideOldProp
+    : (lines.length > 0 && !hasOldContent(input, lines))
 
   return (
     <div
@@ -381,9 +393,9 @@ export function DiffViewer({
 
       <div className="overflow-x-auto">
         {layout === "split" ? (
-          <SplitView lines={lines} numWidth={numWidth} hideOld={hideOld} />
+          <SplitView lines={lines} numWidth={numWidth} hideOld={hideOld} wrap={wrap} />
         ) : (
-          <UnifiedView lines={lines} numWidth={numWidth} hideOld={hideOld} />
+          <UnifiedView lines={lines} numWidth={numWidth} hideOld={hideOld} wrap={wrap} />
         )}
       </div>
     </div>

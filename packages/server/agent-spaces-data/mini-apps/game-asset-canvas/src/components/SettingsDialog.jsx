@@ -6,11 +6,11 @@ import {
   WORKFLOW_SLOTS, BUILTIN_PLUGIN,
   DEFAULT_TEXT_TO_IMAGE_MODELS, DEFAULT_EDIT_IMAGE_MODELS,
 } from '../utils/settings';
-import { BBOX_AGENT_INIT_NAME, BBOX_AI_SYSTEM_PROMPT, BBOX_AI_USER_PROMPT, PROMPT_REVERSE_AGENT_INIT_NAME, PROMPT_REVERSE_SYSTEM_PROMPT, PROMPT_REVERSE_USER_PROMPT } from '../utils/constants';
+import { BBOX_AGENT_INIT_NAME, BBOX_AI_SYSTEM_PROMPT, BBOX_AI_USER_PROMPT, PROMPT_REVERSE_AGENT_INIT_NAME, PROMPT_REVERSE_SYSTEM_PROMPT, PROMPT_REVERSE_USER_PROMPT, PROMPT_OPTIMIZE_AGENT_INIT_NAME, PROMPT_OPTIMIZE_SYSTEM_PROMPT, PROMPT_OPTIMIZE_USER_PROMPT } from '../utils/constants';
 
 const {
   Dialog, DialogContent, DialogHeader, DialogTitle,
-  Button, Label, Input, NumberInput, Textarea, WorkflowListDialog, Workflow, RotateCcw, Bot, Sparkles, Search, TagInput, Switch,
+  Button, Label, Input, NumberInput, Textarea, WorkflowListDialog, Workflow, RotateCcw, Bot, Sparkles, Search, TagInput, Switch, Wand2,
 } = window.AgentSpacesUI;
 
 // 工作流列表归一化（兼容 workflow_id/id、title/name）
@@ -154,6 +154,39 @@ export default function SettingsDialog({ open, value, onClose, onSave }) {
       promptReverseAgentConfigId: '',
       promptReverseAgentName: '',
       promptReverseUserPrompt: PROMPT_REVERSE_USER_PROMPT,
+    }));
+  };
+
+  // —— 配置 提示词优化 AI 模型（与反推同款：openAgentEditor 弹窗，systemPrompt 在 preset 内配置） ——
+  const configurePromptOptimizeAgent = async () => {
+    if (!AS?.openAgentEditor) { setError('宿主未提供 openAgentEditor'); return; }
+    setAgentBusy(true);
+    setError('');
+    try {
+      const saved = await AS.openAgentEditor({
+        initialName: PROMPT_OPTIMIZE_AGENT_INIT_NAME,
+        initialPrompt: PROMPT_OPTIMIZE_SYSTEM_PROMPT,
+        agentId: cfg.promptOptimizeAgentConfigId || undefined,
+      });
+      if (!saved) { setAgentBusy(false); return; }
+      setCfg((prev) => ({
+        ...prev,
+        promptOptimizeAgentConfigId: saved.id,
+        promptOptimizeAgentName: saved.name || PROMPT_OPTIMIZE_AGENT_INIT_NAME,
+      }));
+    } catch (e) {
+      setError('打开模型配置失败：' + (e?.message || e));
+    } finally {
+      setAgentBusy(false);
+    }
+  };
+
+  const resetPromptOptimizeAgent = () => {
+    setCfg((prev) => ({
+      ...prev,
+      promptOptimizeAgentConfigId: '',
+      promptOptimizeAgentName: '',
+      promptOptimizeUserPrompt: PROMPT_OPTIMIZE_USER_PROMPT,
     }));
   };
 
@@ -381,6 +414,51 @@ export default function SettingsDialog({ open, value, onClose, onSave }) {
               </div>
               <p className="text-xs text-muted-foreground">
                 反推提示词节点支持上传/连线多张图，AI 按顺序为每张图生成一段提示词文本。图片以 base64 附件形式传给视觉模型（需 agent runtime 支持）。「配置 AI 模型」弹窗里设置系统提示词（输出格式）。
+              </p>
+            </div>
+          </div>
+
+          {/* 提示词优化 AI 配置 */}
+          <div className="mt-1 border-t border-border pt-4 sm:col-span-2">
+            <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-muted-foreground">
+              <Wand2 className="h-4 w-4" /> 提示词优化 AI
+            </div>
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  className="flex flex-1 items-center gap-2 rounded-md border border-border bg-background px-3 py-2 text-sm transition hover:border-primary disabled:opacity-60"
+                  onClick={configurePromptOptimizeAgent}
+                  disabled={agentBusy}
+                  title={cfg.promptOptimizeAgentConfigId || '未配置'}
+                >
+                  <Bot className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <span className="flex-1 truncate text-left">
+                    {cfg.promptOptimizeAgentName || cfg.promptOptimizeAgentConfigId || '点击配置 AI 模型'}
+                  </span>
+                  {agentBusy && <span className="shrink-0 text-[10px] text-muted-foreground">打开中…</span>}
+                </button>
+                {cfg.promptOptimizeAgentConfigId && (
+                  <Button size="sm" variant="ghost" className="shrink-0" onClick={resetPromptOptimizeAgent}>
+                    <RotateCcw className="h-3.5 w-3.5" />
+                  </Button>
+                )}
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label className="flex items-center gap-1 text-xs font-medium">
+                  用户提示词模板
+                  <span className="text-[10px] text-muted-foreground">（{`{prompt}`}=原始提示词，{`{direction}`}=优化方向）</span>
+                </Label>
+                <Textarea
+                  value={cfg.promptOptimizeUserPrompt ?? ''}
+                  onChange={(e) => setCfg((prev) => ({ ...prev, promptOptimizeUserPrompt: e.target.value }))}
+                  rows={3}
+                  className="text-xs"
+                  placeholder={PROMPT_OPTIMIZE_USER_PROMPT}
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                文生图/编辑图片节点提示词框右下角的「优化」图标会调用此模型：输入优化方向后，AI 返回优化结果并以 diff 形式展示新旧差异，确认后应用。纯文本调用（无图），「配置 AI 模型」弹窗里设置系统提示词（输出格式）。
               </p>
             </div>
           </div>
