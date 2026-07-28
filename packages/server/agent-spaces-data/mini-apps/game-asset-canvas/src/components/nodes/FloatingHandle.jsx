@@ -11,8 +11,15 @@ export default function FloatingHandle({ style, ...props }) {
   return (
     <Handle
       {...props}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
+      data-floating-handle
+      onMouseEnter={(event) => {
+        event.stopPropagation();
+        setHovered(true);
+      }}
+      onMouseLeave={(event) => {
+        event.stopPropagation();
+        setHovered(false);
+      }}
       style={{
         ...style,
         width: size,

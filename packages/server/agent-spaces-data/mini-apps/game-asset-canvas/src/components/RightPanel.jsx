@@ -537,7 +537,7 @@ function HistoryImageThumb({ url, images, index, onAddToAssets }) {
       <HoverCardTrigger
         delay={500}
         render={
-          <div className="relative block aspect-square overflow-visible rounded border border-border">
+          <div className="group/thumb relative block aspect-square overflow-visible rounded border border-border">
             <button
               type="button"
               onClick={() => openMediaGallery(images.map((src) => ({ src, type: 'image' })), index)}
@@ -552,12 +552,12 @@ function HistoryImageThumb({ url, images, index, onAddToAssets }) {
                 onDragStart={handleImgDragStart}
               />
             </button>
-            {/* 右上角：把该单张图片添加到素材库分组 */}
+            {/* 右上角：把该单张图片添加到素材库分组（仅 hover 显示） */}
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); onAddToAssets?.([url]); }}
               title="添加到素材库"
-              className="absolute -right-1 -top-1 z-20 flex size-5 items-center justify-center rounded-full border border-border bg-background text-muted-foreground shadow-sm transition hover:bg-primary hover:text-primary-foreground"
+              className="absolute -right-1 -top-1 z-20 flex size-5 items-center justify-center rounded-full border border-border bg-background text-muted-foreground opacity-0 shadow-sm transition hover:bg-primary hover:text-primary-foreground group-hover/thumb:opacity-100"
             >
               <FolderPlus className="h-3 w-3" />
             </button>

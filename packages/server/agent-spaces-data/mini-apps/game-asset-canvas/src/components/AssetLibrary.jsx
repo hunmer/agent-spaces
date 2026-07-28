@@ -618,7 +618,7 @@ function AssetThumb({ asset, categoryId, picker, selected, onToggle, onRemove, o
               <button
                 type="button"
                 onClick={(e) => { e.stopPropagation(); onRemove(); }}
-                className="absolute right-0.5 top-0.5 z-20 flex size-4 items-center justify-center rounded bg-background/80 text-muted-foreground transition hover:bg-destructive hover:text-destructive-foreground"
+                className="absolute right-0.5 top-0.5 z-20 flex size-4 items-center justify-center rounded bg-background/80 text-muted-foreground opacity-0 transition hover:bg-destructive hover:text-destructive-foreground group-hover/asset:opacity-100"
                 title="删除图片"
               >
                 <Trash2 className="h-2.5 w-2.5" />

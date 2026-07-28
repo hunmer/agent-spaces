@@ -171,12 +171,11 @@ interface CanvasFile {
   nodes: Node[];
   edges: Edge[];
   groups: WorkflowGroup[];
-  outputPreviewMode: boolean;    // 节点图片输出预览模式，缺省 false
   savedAt: number;
 }
 ```
 
-`outputPreviewMode` 只持久化开关；节点预览高度和 hover 状态是运行时派生数据，不写入文件。
+输出预览是节点级状态，持久化在 `nodes[].data.outputPreviewMode`（缺省 false）。画布 Controls 入口只负责批量把所有节点设为 true；节点预览高度是运行时派生数据，不写入文件。读取旧文件时，若顶层 `outputPreviewMode` 为 true，会迁移到尚未设置该字段的节点。
 
 ## 生成记录（HistoryItem）
 

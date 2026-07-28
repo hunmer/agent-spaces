@@ -53,7 +53,7 @@ mini-app 根: packages/server/agent-spaces-data/mini-apps/game-asset-canvas/
 ## 数据流（单一数据源）
 
 ```
-useCanvasState(workspaceId)  ← nodes/edges/groups/outputPreviewMode 的唯一 state
+useCanvasState(workspaceId)  ← nodes/edges/groups 的唯一 state
   ├─ 持久化到 configs/workspaces/<id>/{canvas,generation-history}.json
   ├─ settings/prompt-library/panel-layout 存顶层（用户级，不隔离）
   └─ 多端同步经 onAnyConfigChanged 广播
@@ -125,7 +125,7 @@ Agent → api.js handler → ctx.requestClient(type, payload, timeoutMs)
 13. **config 初始读取要三重读取**：`getConfig + onConfigReady + onAnyConfigChanged`（挂载时快照可能未 ready）。
 14. **生成记录必须双路径都写 history**：节点内「生成」走 handleGenerate，表单「⚡生成」走 useExecutionQueue.submit → onComplete。onComplete 必须也调 addHistory。
 15. **节点对话框数据持久化**：业务数据存节点 `data.<featureData>`（经 onUpdate 写回），不要只放 Dialog useState。换输入资源时清旧数据。详见原 handoff 同名章节（git 历史可查）。
-16. **输出预览模式**：只看 `data.output.images` 判断有无产出，不能把 `data.images`（上游输入）误判为输出。
+16. **输出预览模式是节点级状态**：开关持久化在 `node.data.outputPreviewMode`；画布 Controls 入口只批量把所有节点设为开启。是否有产出只看 `data.output.images`，不能把 `data.images`（上游输入）误判为输出。
 17. **vendor 库加载**：fabric/browser-image-compression 走 `(0,eval)` 全局求值；painterro 走 loadVendor + esmSuffix 转 ESM；pixelorama/director-desk 走 iframe + postMessage。
 18. **API 参数 schema = 节点即文档**：不要在 tools.js 内联枚举值/写 NODE_PARAMS_SPEC 注入提示词。枚举参数的 options 在节点组件 PARAMS_SCHEMA 里**直接引用 constants 的 OPTIONS**（单一数据源）。
 

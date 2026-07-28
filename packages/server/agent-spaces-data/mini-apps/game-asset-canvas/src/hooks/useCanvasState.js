@@ -10,7 +10,6 @@ export default function useCanvasState(workspaceId) {
   const [nodes, setNodes] = useState([]);
   const [edges, setEdges] = useState([]);
   const [groups, setGroups] = useState([]);
-  const [outputPreviewMode, setOutputPreviewMode] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
   const remoteRef = useRef(false);
@@ -23,16 +22,14 @@ export default function useCanvasState(workspaceId) {
     remoteRef.current = true;
     lastSavedRef.current = state;
     if (state && Array.isArray(state.nodes)) {
-      setNodes(state.nodes);
+      setNodes(migrateLegacyPreviewMode(state));
       setEdges(state.edges || []);
       setGroups(Array.isArray(state.groups) ? state.groups : []);
-      setOutputPreviewMode(state.outputPreviewMode === true);
     } else {
       // 新工作区：清空，避免上个工作区的节点残留
       setNodes([]);
       setEdges([]);
       setGroups([]);
-      setOutputPreviewMode(false);
     }
     setLoaded(true);
   }, [workspaceId]);
@@ -46,18 +43,17 @@ export default function useCanvasState(workspaceId) {
       if (dirtyRef.current) return;
       remoteRef.current = true;
       lastSavedRef.current = value;
-      setNodes(value.nodes);
+      setNodes(migrateLegacyPreviewMode(value));
       setEdges(value.edges || []);
       setGroups(Array.isArray(value.groups) ? value.groups : []);
-      setOutputPreviewMode(value.outputPreviewMode === true);
     });
     return () => { try { unsub(); } catch {} };
   }, [workspaceId]);
 
   // 防抖保存（本地改动触发）—— 带上 workspaceId 写到对应隔离目录
   const debouncedSave = useMemo(
-    () => debounce((n, e, g, previewMode) => {
-      const state = { nodes: n, edges: e, groups: g, outputPreviewMode: previewMode };
+    () => debounce((n, e, g) => {
+      const state = { nodes: n, edges: e, groups: g };
       lastSavedRef.current = state;
       dirtyRef.current = false;
       saveCanvas(workspaceId, state).catch((err) => console.warn('saveCanvas failed:', err));
@@ -72,8 +68,8 @@ export default function useCanvasState(workspaceId) {
       return;
     }
     dirtyRef.current = true;
-    debouncedSave(nodes, edges, groups, outputPreviewMode);
-  }, [nodes, edges, groups, outputPreviewMode, loaded, debouncedSave]);
+    debouncedSave(nodes, edges, groups);
+  }, [nodes, edges, groups, loaded, debouncedSave]);
 
   useEffect(() => () => debouncedSave.cancel(), [debouncedSave]);
 
@@ -91,12 +87,6 @@ export default function useCanvasState(workspaceId) {
       const hasOutputImages = Array.isArray(merged?.output?.images) && merged.output.images.length > 0;
       const isSwitch = merged?.__switchVersion === true;
       if (isDone && wasNotDone && hasOutputImages && !isSwitch && !merged.__versionSkip) {
-        console.log('[DEBUG][version-archive] archiving version for node', nodeId, {
-          oldStatus: oldData?.status,
-          newStatus: merged?.status,
-          imgCount: merged.output.images.length,
-          existingVersions: (oldData.versions || []).length,
-        });
         const versions = Array.isArray(oldData.versions) ? [...oldData.versions] : [];
         versions.push({
           params: merged.params ? { ...merged.params } : undefined,
@@ -114,9 +104,17 @@ export default function useCanvasState(workspaceId) {
   }, []);
 
   return {
-    nodes, edges, groups, outputPreviewMode, loaded,
+    nodes, edges, groups, loaded,
     setNodes, setEdges, setGroups,
-    setOutputPreviewMode,
     updateNodeData,
   };
+}
+
+function migrateLegacyPreviewMode(state) {
+  if (state?.outputPreviewMode !== true) return state.nodes;
+  return state.nodes.map((node) => (
+    node.data?.outputPreviewMode != null
+      ? node
+      : { ...node, data: { ...(node.data || {}), outputPreviewMode: true } }
+  ));
 }

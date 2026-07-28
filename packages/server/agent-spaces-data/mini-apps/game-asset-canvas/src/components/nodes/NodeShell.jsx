@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { NodeResizer, NodeToolbar, Position } from '@xyflow/react';
-import { Badge, Loader, RotateCcw } from '@agent-spaces/ui';
+import { Badge, FilePenLine, Images, Loader, RotateCcw } from '@agent-spaces/ui';
 import { NODE_META } from '../../utils/constants';
 import useViewportActivation from '../../hooks/useViewportActivation';
 import ImageResult from './ImageResult';
@@ -46,7 +46,8 @@ export default function NodeShell({
   // 产出图片：文生图/编辑节点存在 data.output.images；图片展示节点存在 data.images
   const outputImages = data?.output?.images?.length ? data.output.images : (data?.images || []);
   const previewImages = data?.output?.images || [];
-  const outputPreviewEnabled = !!data?.outputPreviewMode && (previewImages.length > 0 || status === 'running');
+  const canPreviewOutput = previewImages.length > 0 || status === 'running';
+  const outputPreviewEnabled = data?.outputPreviewMode === true && canPreviewOutput;
   // 产出卡片 props（预览分支与正常分支共用）：图片/回调/版本/状态
   const outputProps = {
     status,
@@ -61,7 +62,6 @@ export default function NodeShell({
     activeVersion: data?.activeVersion,
     onSwitchVersion: data?.onSwitchVersion,
   };
-  const [hovered, setHovered] = useState(false);
   const onExportImages = data?.onExportImages;
   const onProcessImage = data?.onProcessImage;
   const onCutoutCreate = data?.onCutoutCreate;
@@ -69,8 +69,21 @@ export default function NodeShell({
   const onResetParams = data?.onResetParams;
   // 多选（选中数 > 1）时隐藏节点 toolbar：避免每个被选节点都冒出一排按钮，干扰多选操作
   const selectionCount = data?.selectionCount ?? 1;
+  const [toolbarHovered, setToolbarHovered] = useState(false);
+  const toolbarVisible = (!!selected || toolbarHovered) && selectionCount <= 1;
+  const toolbarLeaveTimerRef = useRef(null);
+  const showToolbar = () => {
+    if (toolbarLeaveTimerRef.current) clearTimeout(toolbarLeaveTimerRef.current);
+    setToolbarHovered(true);
+  };
+  const hideToolbar = () => {
+    if (toolbarLeaveTimerRef.current) clearTimeout(toolbarLeaveTimerRef.current);
+    toolbarLeaveTimerRef.current = setTimeout(() => setToolbarHovered(false), 120);
+  };
+  useEffect(() => () => {
+    if (toolbarLeaveTimerRef.current) clearTimeout(toolbarLeaveTimerRef.current);
+  }, []);
   const rootRef = useRef(null);
-  const pointerInsideRef = useRef(false);
   // 跟踪节点主体宽度，让产出卡片与节点同宽（产出卡片在 fragment 第二根，不在节点 height 钳制内）
   const [nodeWidth, setNodeWidth] = useState(0);
   useLayoutEffect(() => {
@@ -84,16 +97,17 @@ export default function NodeShell({
   }, []);
 
   const reportOutputPreviewHeight = useCallback(() => {
-    if (!outputPreviewEnabled || hovered) return;
+    if (!outputPreviewEnabled) return;
     const root = rootRef.current;
     if (!root?.hasAttribute('data-output-preview')) return;
     const card = root.querySelector('[data-node-card]');
-    const height = Math.ceil(card?.scrollHeight || root.clientHeight);
+    // 用 offsetHeight（受 maxHeight 限制的可视高度），避免多图时节点被撑得过长
+    const height = Math.ceil(card?.offsetHeight || root.clientHeight);
     data?.onOutputPreviewHeight?.(height);
-  }, [outputPreviewEnabled, hovered, data?.onOutputPreviewHeight]);
+  }, [outputPreviewEnabled, data?.onOutputPreviewHeight]);
 
   useLayoutEffect(() => {
-    if (!outputPreviewEnabled || hovered || !rootRef.current) return;
+    if (!outputPreviewEnabled || !rootRef.current) return;
     const root = rootRef.current;
     const observer = new ResizeObserver(reportOutputPreviewHeight);
     observer.observe(root);
@@ -107,70 +121,6 @@ export default function NodeShell({
   const showCutoutButton = outputImages.length > 0 && onCutoutCreate;
   // 是否显示编辑按钮：节点有产出图且有编辑回调
   const showEditButton = outputImages.length > 0 && onEditImages;
-
-  const handleMouseEnter = () => {
-    pointerInsideRef.current = true;
-    if (!outputPreviewEnabled) return;
-    setHovered(true);
-    data?.onOutputPreviewHover?.(true);
-  };
-  const handleMouseLeave = (event) => {
-    pointerInsideRef.current = false;
-    if (rootRef.current?.contains(document.activeElement)) return;
-    // 鼠标移到产出卡片（兄弟元素）或 Portal 弹层时，视为仍在节点内，不切换预览
-    const related = event.relatedTarget;
-    if (related instanceof Element) {
-      if (related.closest?.('[data-node-output]')) {
-        pointerInsideRef.current = true;
-        return;
-      }
-      if (related.closest?.('[role="dialog"], [role="popover"], [data-radix-popper-content-wrapper]')) return;
-    }
-    setHovered(false);
-    if (outputPreviewEnabled) data?.onOutputPreviewHover?.(false);
-  };
-  const handleFocusCapture = () => {
-    if (!outputPreviewEnabled) return;
-    setHovered(true);
-    data?.onOutputPreviewHover?.(true);
-  };
-  const handleBlurCapture = (event) => {
-    if (!outputPreviewEnabled) return;
-    if (event.currentTarget.contains(event.relatedTarget) || pointerInsideRef.current) return;
-    // 焦点移到 Portal 弹层（Dialog/Popover 等，渲染在 body 下）时保持 hover，
-    // 避免打开提示词库等对话框后节点切回预览态导致表单消失
-    const related = event.relatedTarget;
-    if (related instanceof Element && related.closest('[role="dialog"], [role="popover"], [data-radix-popper-content-wrapper]')) return;
-    setHovered(false);
-    data?.onOutputPreviewHover?.(false);
-  };
-
-  // 预览高度可能大于原表单高度。切回表单后节点会立即缩短，鼠标可能已在新边界外，
-  // 此时节点自身收不到 mouseleave，需从 window 的指针移动重新判断实际边界。
-  useEffect(() => {
-    if (!outputPreviewEnabled || !hovered) return;
-    const handlePointerMove = (event) => {
-      const root = rootRef.current;
-      if (!root || root.contains(document.activeElement)) return;
-      if (event.target instanceof Node && root.contains(event.target)) {
-        pointerInsideRef.current = true;
-        return;
-      }
-      const rect = root.getBoundingClientRect();
-      const inside = event.clientX >= rect.left && event.clientX <= rect.right
-        && event.clientY >= rect.top && event.clientY <= rect.bottom;
-      pointerInsideRef.current = inside;
-      if (inside) return;
-      // 鼠标在 Portal 弹层（Dialog/Popover，渲染在 body）上时保持 hover
-      const overPortal = event.target instanceof Element
-        && event.target.closest?.('[role="dialog"], [role="popover"], [data-radix-popper-content-wrapper]');
-      if (overPortal) return;
-      setHovered(false);
-      data?.onOutputPreviewHover?.(false);
-    };
-    window.addEventListener('pointermove', handlePointerMove);
-    return () => window.removeEventListener('pointermove', handlePointerMove);
-  }, [outputPreviewEnabled, hovered, data?.onOutputPreviewHover]);
 
   // 首次内容高度自适应 + 内容变化时持续跟随：测量「标题栏 + 内容区」真实高度并上报。
   // 内层测量 div（contentInnerRef）自然撑开，offsetHeight 恒等于内容真实高度（不受 overflow/flex 影响），
@@ -199,11 +149,10 @@ export default function NodeShell({
     return () => ro.disconnect();
   }, [viewportActivated, data?.onAutoSizeToContent, id, outputPreviewEnabled]);
 
-  if (outputPreviewEnabled && !hovered) {
+  if (outputPreviewEnabled) {
     return (
       <>
-      {/* 顶部行：版本数字按钮（可滚动）+ 类型 Badge。放在主 div 之外，
-          避免鼠标进入按钮时触发节点 hover→切换预览模式 */}
+      {/* 顶部行：版本数字按钮（可滚动）+ 类型 Badge。 */}
       <div className="nodrag nopan relative z-20 mb-1 flex items-center gap-1.5 px-1" style={{ width: nodeWidth || undefined }}>
         {Array.isArray(data?.versions) && data.versions.length > 1 && data?.onSwitchVersion && (
           <div
@@ -244,9 +193,29 @@ export default function NodeShell({
         ref={rootRef}
         data-output-preview
         className="relative w-full overflow-visible"
-        onMouseEnter={handleMouseEnter}
-        onMouseLeave={handleMouseLeave}
+        onMouseEnter={showToolbar}
+        onMouseLeave={hideToolbar}
       >
+        <NodeToolbar isVisible={toolbarVisible} position={Position.Top} align="center" offset={8}>
+          <div
+            className="flex items-center justify-center"
+            onMouseEnter={showToolbar}
+            onMouseLeave={hideToolbar}
+          >
+            <button
+              type="button"
+              title="切换到表单"
+              onClick={(event) => {
+                event.stopPropagation();
+                data?.onOutputPreviewModeChange?.(false);
+              }}
+              className="nodrag nopan flex items-center justify-center gap-1.5 rounded-md border border-border bg-background px-2.5 py-1.5 text-xs font-medium text-foreground shadow-sm transition hover:border-primary hover:text-primary"
+            >
+              <FilePenLine className="h-3.5 w-3.5" />
+              表单
+            </button>
+          </div>
+        </NodeToolbar>
         {resizable && (
           <NodeResizer
             isVisible={!!selected}
@@ -265,8 +234,8 @@ export default function NodeShell({
             style={{ top: -FLOATING_HANDLE_OFFSET, zIndex: 50 }}
           />
         )}
-        <div data-node-card className="w-full overflow-hidden rounded-lg bg-card shadow-sm">
-          <div className="nodrag nopan nowheel w-full">
+        <div data-node-card className="mx-auto w-full overflow-hidden rounded-lg bg-card shadow-sm" style={{ maxWidth: '640px' }}>
+          <div className="scrollbar-none nodrag nopan nowheel w-full" style={{ maxHeight: '60vh', overflowY: 'auto' }}>
             {status === 'running' ? (
               <div className="flex min-h-[160px] w-full flex-col items-center justify-center gap-2 text-muted-foreground">
                 <Loader className="h-6 w-6" />
@@ -294,14 +263,30 @@ export default function NodeShell({
     <div
       ref={rootRef}
       className="relative h-full w-full overflow-visible"
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
-      onFocusCapture={handleFocusCapture}
-      onBlurCapture={handleBlurCapture}
+      onMouseEnter={showToolbar}
+      onMouseLeave={hideToolbar}
     >
-      {(outputImages.length > 0 && onExportImages) || showProcessButtons || showEditButton || showCutoutButton ? (
-        <NodeToolbar isVisible={selected && selectionCount <= 1} position={Position.Top} align="end" offset={8}>
-          <div className="flex items-center gap-1">
+      {canPreviewOutput || (outputImages.length > 0 && onExportImages) || showProcessButtons || showEditButton || showCutoutButton ? (
+        <NodeToolbar isVisible={toolbarVisible} position={Position.Top} align="center" offset={8}>
+          <div
+            className="flex items-center justify-center gap-1"
+            onMouseEnter={showToolbar}
+            onMouseLeave={hideToolbar}
+          >
+            {canPreviewOutput && (
+              <button
+                type="button"
+                title="查看节点输出"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  data?.onOutputPreviewModeChange?.(true);
+                }}
+                className="flex items-center gap-1.5 rounded-md border border-border bg-background px-2.5 py-1 text-xs font-medium text-foreground shadow-sm transition hover:border-primary hover:text-primary"
+              >
+                <Images className="h-3.5 w-3.5" />
+                查看输出
+              </button>
+            )}
             {showEditButton && (
               <button
                 type="button"
@@ -331,13 +316,15 @@ export default function NodeShell({
                 放大
               </button>
             )}
-            <button
-              type="button"
-              onClick={(e) => { e.stopPropagation(); onExportImages(outputImages); }}
-              className="rounded-md border border-border bg-background px-2.5 py-1 text-xs font-medium text-foreground shadow-sm transition hover:border-primary hover:text-primary"
-            >
-              导出图片
-            </button>
+            {outputImages.length > 0 && onExportImages && (
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); onExportImages(outputImages); }}
+                className="rounded-md border border-border bg-background px-2.5 py-1 text-xs font-medium text-foreground shadow-sm transition hover:border-primary hover:text-primary"
+              >
+                导出图片
+              </button>
+            )}
           </div>
         </NodeToolbar>
       ) : null}
@@ -408,16 +395,11 @@ export default function NodeShell({
         />
       )}
     </div>
-    {/* 产出卡片：节点外部下方独立卡片，不随表单滚动，不受 resize 钳制。
-        统一渲染所有节点的产出，替代各节点 children 内手写的 <ImageResult>。
-        onMouseEnter/Leave 复用主 div 逻辑：鼠标在产出卡片上时视为仍在节点内，
-        避免预览模式下移到底部产出误触发切回大图预览。 */}
+    {/* 产出卡片：节点外部下方独立卡片，不随表单滚动，不受 resize 钳制。 */}
     <NodeOutput
       {...outputProps}
       width={nodeWidth || undefined}
       hasExternalSourceHandle={!!sourceHandle}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
     />
     </>
   );

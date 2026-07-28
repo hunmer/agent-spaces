@@ -16,10 +16,9 @@ import { dedupeTags } from '../utils/canvas-constants';
  * @param {Array} deps.nodes
  * @param {Array} deps.edges
  * @param {number} deps.selectionCount
- * @param {boolean} deps.outputPreviewMode 是否优先展示节点图片输出
- * @param {object} deps.outputPreviewState 节点预览高度与 hover 临时状态
+ * @param {object} deps.outputPreviewState 节点预览高度临时状态
  * @param {Function} deps.onOutputPreviewHeight 上报节点预览高度
- * @param {Function} deps.onOutputPreviewHover 上报节点 hover 状态
+ * @param {Function} deps.onOutputPreviewModeChange 设置单节点输出预览模式
  * @param {object} deps.settings
  * @param {object} deps.callbacks  注入到节点 data 的回调集合：
  *   { makeOnUpdate, onGenerate, onGenerateMedia, onExportImages, onProcessImage, onProcessLocal,
@@ -28,8 +27,8 @@ import { dedupeTags } from '../utils/canvas-constants';
  * @returns {{ decoratedNodes: Array }}
  */
 export default function useDecoratedNodes({
-  nodes, edges, selectionCount, outputPreviewMode, outputPreviewState,
-  onOutputPreviewHeight, onOutputPreviewHover, settings, callbacks,
+  nodes, edges, selectionCount, outputPreviewState,
+  onOutputPreviewHeight, onOutputPreviewModeChange, settings, callbacks,
 }) {
   const upstreamMap = useMemo(() => computeInputImages(nodes, edges), [nodes, edges]);
 
@@ -53,9 +52,9 @@ export default function useDecoratedNodes({
         }
       }
       const preview = outputPreviewState?.[nd.id];
-      const previewEnabled = outputPreviewMode
+      const previewEnabled = data?.outputPreviewMode === true
         && (data?.output?.images?.length > 0 || data?.status === 'running');
-      const previewHeight = previewEnabled && !preview?.hovered ? preview?.height : null;
+      const previewHeight = previewEnabled ? preview?.height : null;
       return {
         ...nd,
         ...(previewHeight ? {
@@ -67,9 +66,8 @@ export default function useDecoratedNodes({
         data: {
           ...data,
           selectionCount,
-          outputPreviewMode,
           onOutputPreviewHeight: (height) => onOutputPreviewHeight?.(nd.id, height),
-          onOutputPreviewHover: (hovered) => onOutputPreviewHover?.(nd.id, hovered),
+          onOutputPreviewModeChange: (enabled) => onOutputPreviewModeChange?.(nd.id, enabled),
           onUpdate: makeOnUpdate?.(nd.id),
           onGenerate,
           onGenerateMedia,
@@ -119,8 +117,8 @@ export default function useDecoratedNodes({
       };
     });
   }, [
-    nodes, upstreamMap, selectionCount, outputPreviewMode, outputPreviewState,
-    onOutputPreviewHeight, onOutputPreviewHover, settings, callbacks,
+    nodes, upstreamMap, selectionCount, outputPreviewState,
+    onOutputPreviewHeight, onOutputPreviewModeChange, settings, callbacks,
   ]);
 
   return { decoratedNodes };

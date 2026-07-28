@@ -18,6 +18,7 @@ import ImageProcessNode from '../components/nodes/ImageProcessNode';
 import ImageEditorNode from '../components/nodes/ImageEditorNode';
 import PixelEditorNode from '../components/nodes/PixelEditorNode';
 import UiSplitterNode from '../components/nodes/UiSplitterNode';
+import SheetSplitNode from '../components/nodes/SheetSplitNode';
 import BBoxViewerNode from '../components/nodes/BBoxViewerNode';
 import PromptReverseNode from '../components/nodes/PromptReverseNode';
 import TextToVoiceNode, { PARAMS_SCHEMA as TEXT_TO_VOICE_PARAMS } from '../components/nodes/TextToVoiceNode';
@@ -37,7 +38,7 @@ export const NODE_COMPONENTS = {
   // 拆分后的 12 个图像处理节点全部复用 ImageProcessNode（按 nodeType 反查 processorId）
   [NODE_TYPES.ipGifSplit]: ImageProcessNode,
   [NODE_TYPES.ipGifMerge]: ImageProcessNode,
-  [NODE_TYPES.ipSpriteSplit]: ImageProcessNode,
+  [NODE_TYPES.ipSpriteSplit]: SheetSplitNode,
   [NODE_TYPES.ipSpriteMerge]: ImageProcessNode,
   [NODE_TYPES.ipPixelate]: ImageProcessNode,
   [NODE_TYPES.ipResizeNearest]: ImageProcessNode,

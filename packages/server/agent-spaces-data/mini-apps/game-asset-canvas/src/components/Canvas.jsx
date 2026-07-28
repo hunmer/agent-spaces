@@ -62,8 +62,8 @@ export default function Canvas() {
   // —— 工作区 + 画布状态 + 设置 + 历史（基础数据源）——
   const { workspaces, activeId, createWorkspace, renameWorkspace, switchWorkspace, deleteWorkspace } = useWorkspaces();
   const {
-    nodes, edges, groups, outputPreviewMode, loaded,
-    setNodes, setEdges, setGroups, setOutputPreviewMode, updateNodeData,
+    nodes, edges, groups, loaded,
+    setNodes, setEdges, setGroups, updateNodeData,
   } = useCanvasState(activeId);
   const runWorkflow = useWorkflow();
   const { history, addHistory, removeHistory, clearHistory } = useGenerationHistory(activeId);
@@ -74,7 +74,7 @@ export default function Canvas() {
   // —— 本组件局部 state ——
   const [selectedId, setSelectedId] = useState(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  // 预览高度/hover 仅影响当前展示；模式开关由 useCanvasState 按工作区持久化。
+  // 预览高度仅影响当前展示；预览模式由各节点 data.outputPreviewMode 独立持久化。
   const [outputPreviewState, setOutputPreviewState] = useState({});
   // 节点表单弹窗（右侧新增节点 tab 触发，或节点工具栏【编辑】按钮触发）：{ nodeType, initialImages } | null
   const [formState, setFormState] = useState(null);
@@ -253,14 +253,21 @@ export default function Canvas() {
     });
   }, []);
 
-  const handleOutputPreviewHover = useCallback((id, hovered) => {
+  const handleOutputPreviewModeChange = useCallback((id, enabled) => {
     if (!id) return;
-    setOutputPreviewState((prev) => {
-      const current = prev[id];
-      if (!!current?.hovered === hovered) return prev;
-      return { ...prev, [id]: { ...current, hovered } };
-    });
-  }, []);
+    updateNodeData(id, { outputPreviewMode: enabled === true });
+  }, [updateNodeData]);
+
+  const enableAllNodePreviews = useCallback(() => {
+    setNodes((prev) => prev.map((node) => (
+      node.data?.outputPreviewMode === true
+        ? node
+        : { ...node, data: { ...(node.data || {}), outputPreviewMode: true } }
+    )));
+  }, [setNodes]);
+
+  const allNodePreviewsEnabled = nodes.length > 0
+    && nodes.every((node) => node.data?.outputPreviewMode === true);
 
   // —— 注入到节点 data 的回调集合 ——
   // deps 逐个解构具体 callback（而非整个 executions/crud 对象），任一稳定则 nodeCallbacks 稳定，
@@ -416,8 +423,9 @@ export default function Canvas() {
     handleOutputImagesChange(nodeId, (prev) => prev.filter((_, i) => i !== index));
   }, [handleOutputImagesChange]);
   const handleClearOutputImages = useCallback((nodeId) => {
-    handleOutputImagesChange(nodeId, () => []);
-  }, [handleOutputImagesChange]);
+    // 清空产出同时清空版本历史：避免清空后 versions 残留，刷新页面版本按钮又出现
+    updateNodeData(nodeId, { __versionSkip: true, output: { images: [] }, versions: [], activeVersion: undefined, status: 'idle' });
+  }, [updateNodeData]);
 
   // 版本切换：把节点 params/output/status 还原到指定历史版本。加 __switchVersion 标记，
   // updateNodeData 不会把这次写入当作新版本存档，仅更新 activeVersion。
@@ -480,10 +488,9 @@ export default function Canvas() {
   const { decoratedNodes } = useDecoratedNodes({
     nodes, edges,
     selectionCount: selection.selectionCount,
-    outputPreviewMode,
     outputPreviewState,
     onOutputPreviewHeight: handleOutputPreviewHeight,
-    onOutputPreviewHover: handleOutputPreviewHover,
+    onOutputPreviewModeChange: handleOutputPreviewModeChange,
     settings, callbacks: nodeCallbacks,
   });
 
@@ -581,11 +588,11 @@ export default function Canvas() {
               <Background variant={BackgroundVariant.Dots} gap={16} size={1} />
               <Controls>
                 <ControlButton
-                  title={outputPreviewMode ? '关闭节点输出预览' : '开启节点输出预览'}
-                  aria-label={outputPreviewMode ? '关闭节点输出预览' : '开启节点输出预览'}
-                  aria-pressed={outputPreviewMode}
-                  onClick={() => setOutputPreviewMode((enabled) => !enabled)}
-                  style={{ background: outputPreviewMode ? 'var(--accent)' : undefined }}
+                  title="设置画布的每个节点的预览模式为开"
+                  aria-label="设置画布的每个节点的预览模式为开"
+                  aria-pressed={allNodePreviewsEnabled}
+                  onClick={enableAllNodePreviews}
+                  style={{ background: allNodePreviewsEnabled ? 'var(--accent)' : undefined }}
                 >
                   <Images className="h-4 w-4" />
                 </ControlButton>
