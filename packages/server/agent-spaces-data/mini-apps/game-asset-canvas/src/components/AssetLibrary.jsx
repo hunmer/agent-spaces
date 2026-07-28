@@ -520,7 +520,7 @@ function AssetThumb({ asset, categoryId, picker, selected, onToggle, onRemove, o
         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onToggle?.(); } }}
         title={displayName || '点击选中'}
         className={
-          'group/asset relative aspect-square cursor-pointer overflow-hidden rounded border transition '
+          'group relative aspect-square cursor-pointer overflow-hidden rounded border transition '
           + (selected ? 'border-primary ring-2 ring-primary' : 'border-border hover:border-primary/50')
         }
       >
@@ -549,7 +549,7 @@ function AssetThumb({ asset, categoryId, picker, selected, onToggle, onRemove, o
         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onInsertCheck?.(); } }}
         title={displayName || '点击选中'}
         className={
-          'group/asset relative aspect-square cursor-pointer overflow-hidden rounded border transition '
+          'group relative aspect-square cursor-pointer overflow-hidden rounded border transition '
           + (insertChecked ? 'border-primary ring-2 ring-primary' : 'border-border hover:border-primary/50')
         }
       >
@@ -574,7 +574,7 @@ function AssetThumb({ asset, categoryId, picker, selected, onToggle, onRemove, o
       <HoverCardTrigger
         delay={500}
         render={
-          <div className="group/asset relative aspect-square cursor-pointer overflow-visible rounded border border-border">
+          <div className="group relative aspect-square cursor-pointer overflow-visible rounded border border-border">
             {editingTitle ? (
               // 标题编辑态：覆盖一个 input，回车/失焦提交，Esc 取消
               <div className="absolute inset-0 z-30 flex items-center bg-background/90 p-1" onClick={(e) => e.stopPropagation()}>
@@ -608,7 +608,7 @@ function AssetThumb({ asset, categoryId, picker, selected, onToggle, onRemove, o
               <button
                 type="button"
                 onClick={startEditTitle}
-                className="absolute left-0.5 top-0.5 z-20 flex size-4 items-center justify-center rounded bg-background/80 text-muted-foreground opacity-0 transition hover:bg-primary hover:text-primary-foreground group-hover/asset:opacity-100"
+                className="absolute left-0.5 top-0.5 z-20 flex size-4 items-center justify-center rounded bg-background/80 text-muted-foreground opacity-0 transition hover:bg-primary hover:text-primary-foreground group-hover:opacity-100"
                 title="编辑标题"
               >
                 <Pencil className="h-2.5 w-2.5" />
@@ -618,7 +618,7 @@ function AssetThumb({ asset, categoryId, picker, selected, onToggle, onRemove, o
               <button
                 type="button"
                 onClick={(e) => { e.stopPropagation(); onRemove(); }}
-                className="absolute right-0.5 top-0.5 z-20 flex size-4 items-center justify-center rounded bg-background/80 text-muted-foreground opacity-0 transition hover:bg-destructive hover:text-destructive-foreground group-hover/asset:opacity-100"
+                className="absolute right-0.5 top-0.5 z-20 flex size-4 items-center justify-center rounded bg-background/80 text-muted-foreground opacity-0 transition hover:bg-destructive hover:text-destructive-foreground group-hover:opacity-100"
                 title="删除图片"
               >
                 <Trash2 className="h-2.5 w-2.5" />

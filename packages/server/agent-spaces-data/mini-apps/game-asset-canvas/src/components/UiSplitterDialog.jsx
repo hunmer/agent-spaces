@@ -695,8 +695,8 @@ export default function UiSplitterDialog({ open, inputImages, initialData, onDat
             if (!s0?.source) continue;
             const savedPi = savedPerImage?.[u];
             const savedRects = Array.isArray(savedPi?.rects) ? savedPi.rects.filter((b) => b && Number.isFinite(b.x)) : null;
-            if (u === first && effectiveGridMode) {
-              // 网格参考线是恢复真源，切片由实时拆分重新计算。
+            if (effectiveGridMode) {
+              // 网格模式（含 grid-only）：所有图都走网格参考线，切片由实时拆分计算，跳过检测
             } else if (savedRects && savedRects.length) {
               // 恢复持久化切片框（深拷贝防御后续运行时修改污染）
               s0.rects = savedRects.map((b) => ({ ...b }));

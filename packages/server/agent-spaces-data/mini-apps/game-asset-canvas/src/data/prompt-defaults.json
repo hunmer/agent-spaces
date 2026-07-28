@@ -1,0 +1,539 @@
+{
+  "categories": [
+    {
+      "id": "character",
+      "label": "角色生成",
+      "icon": "🧙"
+    },
+    {
+      "id": "icon",
+      "label": "画风 Icon",
+      "icon": "🎨"
+    },
+    {
+      "id": "portrait",
+      "label": "画风人物立绘",
+      "icon": "🖼️"
+    },
+    {
+      "id": "sprite",
+      "label": "精灵图动画",
+      "icon": "🎞️"
+    },
+    {
+      "id": "background",
+      "label": "背景场景",
+      "icon": "🏞️"
+    },
+    {
+      "id": "convert",
+      "label": "图像转换",
+      "icon": "🔄"
+    }
+  ],
+  "prompts": [
+    {
+      "id": "char-pixel-character",
+      "category": "character",
+      "title": "像素角色立绘",
+      "desc": "生成单个游戏角色，32 位像素风，正面/3/4 视角站姿",
+      "scene": "text",
+      "prompt": "Generate a single character only, centered in the frame on a plain white background.\nThe character should be rendered in detailed 32-bit pixel art style (like PlayStation 1 / SNES era games).\nInclude proper shading, highlights, and anti-aliased edges for a polished look.\nThe character should have well-defined features, expressive details, and rich colors.\nShow in a front-facing or 3/4 view pose, standing idle, suitable for sprite sheet animation."
+    },
+    {
+      "id": "icon-minimal-pet",
+      "category": "icon",
+      "title": "简约萌宠 icon",
+      "desc": "简约风格的萌宠 icon 预设，干净线条+柔和配色，1:1",
+      "scene": "both",
+      "references": [
+        "assets/references/icon-minimal-pet/ref1.png"
+      ],
+      "aspect": "1:1",
+      "prompt": "请严格参考参考图的画风生成一张简约风格的萌宠 icon。\n要求：线条干净、配色柔和、主体居中、留白充足，整体风格与参考图一致。"
+    },
+    {
+      "id": "icon-ancient-watercolor",
+      "category": "icon",
+      "title": "古风水彩 icon",
+      "desc": "古风水彩风格 icon 预设，淡雅水墨水彩质感，1:1",
+      "scene": "both",
+      "references": [
+        "assets/references/icon-ancient-watercolor/ref1.png"
+      ],
+      "aspect": "1:1",
+      "prompt": "请严格参考参考图的画风生成一张古风水彩风格的 icon。\n要求：水彩晕染质感、淡雅配色、留白意境，整体风格与参考图一致。"
+    },
+    {
+      "id": "icon-ancient-minimal",
+      "category": "icon",
+      "title": "古风简约 icon",
+      "desc": "古风简约风格 icon 预设，极简线条+中式元素，1:1",
+      "scene": "both",
+      "references": [
+        "assets/references/icon-ancient-minimal/ref1.png"
+      ],
+      "aspect": "1:1",
+      "prompt": "请严格参考参考图的画风生成一张古风简约风格的 icon。\n要求：极简线条、中式元素、留白构图，整体风格与参考图一致。"
+    },
+    {
+      "id": "icon-modern-minimal",
+      "category": "icon",
+      "title": "现代简约 icon",
+      "desc": "现代简约风格 icon 预设，几何化+扁平配色，1:1",
+      "scene": "both",
+      "references": [
+        "assets/references/icon-modern-minimal/ref1.png"
+      ],
+      "aspect": "1:1",
+      "prompt": "请严格参考参考图的画风生成一张现代简约风格的 icon。\n要求：几何化造型、扁平配色、构图克制，整体风格与参考图一致。"
+    },
+    {
+      "id": "icon-ink-wash",
+      "category": "icon",
+      "title": "水墨 icon",
+      "desc": "水墨国风 icon 预设，传统水墨晕染笔触，1:1",
+      "scene": "both",
+      "references": [
+        "assets/references/icon-ink-wash/ref1.png"
+      ],
+      "aspect": "1:1",
+      "prompt": "请严格参考参考图的画风生成一张水墨国风风格的 icon。\n要求：水墨晕染笔触、黑白灰层次、写意留白，整体风格与参考图一致。"
+    },
+    {
+      "id": "icon-warm-healing-watercolor",
+      "category": "icon",
+      "title": "温暖治愈水彩 icon",
+      "desc": "温暖治愈水彩风格 icon 预设，暖色调+柔和水彩，1:1",
+      "scene": "both",
+      "references": [
+        "assets/references/icon-warm-healing-watercolor/ref1.png"
+      ],
+      "aspect": "1:1",
+      "prompt": "请严格参考参考图的画风生成一张温暖治愈水彩风格的 icon。\n要求：暖色调、柔和水彩笔触、治愈氛围，整体风格与参考图一致。"
+    },
+    {
+      "id": "icon-storybook-watercolor",
+      "category": "icon",
+      "title": "童话治愈水彩 icon",
+      "desc": "童话绘本水彩风格 icon 预设，梦幻水彩+童话感，1:1",
+      "scene": "both",
+      "references": [
+        "assets/references/icon-storybook-watercolor/ref1.png"
+      ],
+      "aspect": "1:1",
+      "prompt": "请严格参考参考图的画风生成一张童话治愈水彩风格的 icon。\n要求：梦幻水彩质感、童话氛围、柔和光影，整体风格与参考图一致。"
+    },
+    {
+      "id": "icon-cute-cartoon",
+      "category": "icon",
+      "title": "可爱卡通 icon",
+      "desc": "可爱卡通风格 icon 预设，圆润造型+鲜艳配色，1:1",
+      "scene": "both",
+      "references": [
+        "assets/references/icon-cute-cartoon/ref1.png"
+      ],
+      "aspect": "1:1",
+      "prompt": "请严格参考参考图的画风生成一张可爱卡通风格的 icon。\n要求：圆润造型、鲜艳配色、活泼表情，整体风格与参考图一致。"
+    },
+    {
+      "id": "char-warm-healing-watercolor",
+      "category": "portrait",
+      "title": "温暖治愈水彩人物",
+      "desc": "温暖治愈水彩风格人物立绘预设，暖色调+柔和水彩质感，3:4",
+      "scene": "both",
+      "references": [
+        "assets/references/char-warm-healing-watercolor/ref1.png"
+      ],
+      "aspect": "3:4",
+      "prompt": "请严格参考参考图的画风生成一张温暖治愈水彩风格的人物立绘。\n要求：暖色调、柔和水彩笔触、治愈氛围，人物姿态自然，整体风格与参考图一致。"
+    },
+    {
+      "id": "char-anime-chibi",
+      "category": "portrait",
+      "title": "二次元Q版人物",
+      "desc": "二次元 Q 版人物立绘预设，大头小身+鲜艳配色，3:4",
+      "scene": "both",
+      "references": [
+        "assets/references/char-anime-chibi/ref1.png"
+      ],
+      "aspect": "3:4",
+      "prompt": "请严格参考参考图的画风生成一张二次元 Q 版人物立绘。\n要求：头身比夸张（大头小身）、线条精致、配色鲜艳，整体风格与参考图一致。"
+    },
+    {
+      "id": "char-storybook-chibi",
+      "category": "portrait",
+      "title": "儿童绘本Q版人物",
+      "desc": "儿童绘本 Q 版人物立绘预设，柔和笔触+童趣感，3:4",
+      "scene": "both",
+      "references": [
+        "assets/references/char-storybook-chibi/ref1.png"
+      ],
+      "aspect": "3:4",
+      "prompt": "请严格参考参考图的画风生成一张儿童绘本 Q 版人物立绘。\n要求：柔和笔触、童趣造型、温暖配色，整体风格与参考图一致。"
+    },
+    {
+      "id": "char-ancient-watercolor-portrait",
+      "category": "portrait",
+      "title": "古风水彩人物立绘",
+      "desc": "古风水彩人物立绘预设，淡雅水彩+中式服饰，3:4",
+      "scene": "both",
+      "references": [
+        "assets/references/char-ancient-watercolor-portrait/ref1.png"
+      ],
+      "aspect": "3:4",
+      "prompt": "请严格参考参考图的画风生成一张古风水彩人物立绘。\n要求：淡雅水彩晕染、中式服饰与配饰、写意留白，整体风格与参考图一致。"
+    },
+    {
+      "id": "char-ink-chinese-portrait",
+      "category": "portrait",
+      "title": "水墨国风人物立绘",
+      "desc": "水墨国风人物立绘预设，传统水墨笔触+留白意境，3:4",
+      "scene": "both",
+      "references": [
+        "assets/references/char-ink-chinese-portrait/ref1.png"
+      ],
+      "aspect": "3:4",
+      "prompt": "请严格参考参考图的画风生成一张水墨国风人物立绘。\n要求：传统水墨笔触、黑白灰层次、留白意境，整体风格与参考图一致。"
+    },
+    {
+      "id": "char-elegant-chinese-portrait",
+      "category": "portrait",
+      "title": "淡雅国风人物立绘",
+      "desc": "淡雅国风人物立绘预设，低饱和配色+工笔质感，3:4",
+      "scene": "both",
+      "references": [
+        "assets/references/char-elegant-chinese-portrait/ref1.png"
+      ],
+      "aspect": "3:4",
+      "prompt": "请严格参考参考图的画风生成一张淡雅国风人物立绘。\n要求：低饱和配色、工笔质感、中式美学，整体风格与参考图一致。"
+    },
+    {
+      "id": "char-storybook-watercolor",
+      "category": "portrait",
+      "title": "童话治愈水彩人物",
+      "desc": "童话治愈水彩人物立绘预设，梦幻水彩+童话氛围，3:4",
+      "scene": "both",
+      "references": [
+        "assets/references/char-storybook-watercolor/ref1.png"
+      ],
+      "aspect": "3:4",
+      "prompt": "请严格参考参考图的画风生成一张童话治愈水彩人物立绘。\n要求：梦幻水彩质感、童话氛围、柔和光影，人物姿态自然，整体风格与参考图一致。"
+    },
+    {
+      "id": "char-rpgmaker-v3",
+      "category": "character",
+      "title": "RpgMaker角色生成 V3（R0/R1）",
+      "desc": "按 R0/R1 关键字切换参考图生成角色 spritesheet，网格布局，白/绿底，1:1",
+      "scene": "edit",
+      "references": [
+        "assets/references/char-rpgmaker-v3/ref1.png",
+        "assets/references/char-rpgmaker-v3/ref2.png"
+      ],
+      "prompt": "你是一个自身的像素动画师，专门用来设计像素角色动画。\n你将严格按照网格布局生成像素角色的spritesheet。\n你会默认把背景设置为白色或绿色。\n图片中不出现任何文字，不出现任何网格线和数字。\n画面比例1:1\n生成的角色朝向与参考图一致\n如果用户提示词中有R0就参考第一张图生成：\n如果用户提示词中有R1就参考第二张图生成："
+    },
+    {
+      "id": "sprite-walk",
+      "category": "sprite",
+      "title": "行走动画（2x2 横版）",
+      "desc": "4 帧行走循环，2x2 网格，白底，面向右侧",
+      "scene": "edit",
+      "prompt": "Create a 4-frame pixel art walk cycle sprite sheet of this character.\n\nArrange the 4 frames in a 2x2 grid on white background. The character is walking to the right.\n\nTop row (frames 1-2):\nFrame 1 (top-left): Right leg forward, left leg back - stride position\nFrame 2 (top-right): Legs close together, passing/crossing - transition\n\nBottom row (frames 3-4):\nFrame 3 (bottom-left): Left leg forward, right leg back - opposite stride\nFrame 4 (bottom-right): Legs close together, passing/crossing - transition back\n\nEach frame shows a different phase of the walking motion. This creates a smooth looping walk cycle.\n\nUse detailed 32-bit pixel art style with proper shading and highlights. Same character design in all frames. Character facing right."
+    },
+    {
+      "id": "sprite-walk-gpt2",
+      "category": "sprite",
+      "title": "行走动画-GPT Image2 增强（2x2 横版）",
+      "desc": "GPT Image 2 专用：强化侧脸朝右方向，4 帧行走循环，2x2 白底",
+      "scene": "edit",
+      "prompt": "Create a 4-frame pixel art walk cycle sprite sheet of this character.\n\nCharacter orientation (critical): The character is shown in SIDE PROFILE, with their face, chest, and front foot pointing toward the RIGHT edge of the image. The character's back is on the LEFT side of the image. This is the same side-profile orientation used in classic 2D platformers like Super Mario Bros or Mega Man moving rightward across the screen.\n\nArrange the 4 frames in a 2x2 grid on white background.\n\nTop row (frames 1-2):\nFrame 1 (top-left): Front leg (right leg) extended forward toward the right edge of the image, back leg extended behind toward the left edge\nFrame 2 (top-right): Legs close together, passing pose\n\nBottom row (frames 3-4):\nFrame 3 (bottom-left): Opposite stride — back leg (left leg) now forward toward the right edge\nFrame 4 (bottom-right): Legs close together, passing pose\n\nUse detailed 32-bit pixel art style with proper shading and highlights. Same character design in all frames. All 4 frames must show the character from the SAME side profile angle, facing the RIGHT edge of the image."
+    },
+    {
+      "id": "sprite-jump",
+      "category": "sprite",
+      "title": "跳跃动画（2x2 横版）",
+      "desc": "4 帧跳跃：蓄力/上升/顶点/落地",
+      "scene": "edit",
+      "prompt": "Create a 4-frame pixel art jump animation sprite sheet of this character.\n\nArrange the 4 frames in a 2x2 grid on white background. The character is jumping.\n\nTop row (frames 1-2):\nFrame 1 (top-left): Crouch/anticipation - character slightly crouched, knees bent, preparing to jump\nFrame 2 (top-right): Rising - character in air, legs tucked up, arms up, ascending\n\nBottom row (frames 3-4):\nFrame 3 (bottom-left): Apex/peak - character at highest point of jump, body stretched or tucked\nFrame 4 (bottom-right): Landing - character landing, slight crouch to absorb impact\n\nUse detailed 32-bit pixel art style with proper shading and highlights. Same character design in all frames. Character facing right."
+    },
+    {
+      "id": "sprite-attack",
+      "category": "sprite",
+      "title": "攻击动画（2x2 横版）",
+      "desc": "4 帧攻击：蓄力/挥击/命中/收招",
+      "scene": "edit",
+      "aspect": "21:9",
+      "prompt": "Create a 4-frame pixel art attack animation sprite sheet of this character.\n\nArrange the 4 frames in a 2x2 grid on white background. The character is performing an attack that fits their design - could be a sword slash, magic spell, punch, kick, or energy blast depending on what suits the character best.\n\nTop row (frames 1-2):\nFrame 1 (top-left): Wind-up/anticipation - character preparing to attack, pulling back weapon or gathering energy\nFrame 2 (top-right): Attack in motion - the strike or spell being unleashed\n\nBottom row (frames 3-4):\nFrame 3 (bottom-left): Impact/peak - maximum extension of attack, weapon fully swung or spell at full power\nFrame 4 (bottom-right): Recovery - returning to ready stance\n\nUse detailed 32-bit pixel art style with proper shading and highlights. Same character design in all frames. Character facing right. Make the attack visually dynamic and exciting."
+    },
+    {
+      "id": "sprite-idle",
+      "category": "sprite",
+      "title": "待机/呼吸动画（2x2 横版）",
+      "desc": "4 帧微幅待机呼吸循环",
+      "scene": "edit",
+      "prompt": "Create a 4-frame pixel art idle/breathing animation sprite sheet of this character.\n\nArrange the 4 frames in a 2x2 grid on white background. The character is standing still but with subtle idle animation.\n\nTop row (frames 1-2):\nFrame 1 (top-left): Neutral standing pose - relaxed stance\nFrame 2 (top-right): Slight inhale - chest/body rises subtly, maybe slight arm movement\n\nBottom row (frames 3-4):\nFrame 3 (bottom-left): Full breath - slight upward posture\nFrame 4 (bottom-right): Exhale - returning to neutral, slight settle\n\nKeep movements SUBTLE - this is a gentle breathing/idle loop, not dramatic motion. Character should look alive but relaxed.\n\nUse detailed 32-bit pixel art style with proper shading and highlights. Same character design in all frames. Character facing right."
+    },
+    {
+      "id": "sprite-walk-iso-down",
+      "category": "sprite",
+      "title": "等距行走-向下（俯视 RPG）",
+      "desc": "4 帧行走，3/4 俯视，朝向镜头（南）",
+      "scene": "edit",
+      "prompt": "Create a 4-frame pixel art walk cycle sprite sheet of this character walking DOWNWARD (toward the camera) in a top-down isometric RPG perspective (3/4 overhead view, like a classic top-down RPG).\n\nArrange the 4 frames in a 2x2 grid on white background. The character is walking toward the viewer (south/down).\n\nTop row (frames 1-2):\nFrame 1 (top-left): Left foot forward stride, arms swinging naturally\nFrame 2 (top-right): Feet together, passing/transition pose\n\nBottom row (frames 3-4):\nFrame 3 (bottom-left): Right foot forward stride, arms swinging naturally\nFrame 4 (bottom-right): Feet together, passing/transition back\n\nWe see the character's front/face. Top-down 3/4 view - we see the top of their head slightly. This creates a smooth looping walk cycle.\n\nUse detailed 32-bit pixel art style with proper shading and highlights. Same character design in all frames."
+    },
+    {
+      "id": "sprite-walk-iso-up",
+      "category": "sprite",
+      "title": "等距行走-向上（俯视 RPG）",
+      "desc": "4 帧行走，3/4 俯视，背向镜头（北）",
+      "scene": "edit",
+      "prompt": "Create a 4-frame pixel art walk cycle sprite sheet of this character walking UPWARD (away from the camera) in a top-down isometric RPG perspective (3/4 overhead view, like a classic top-down RPG).\n\nArrange the 4 frames in a 2x2 grid on white background. The character is walking away from the viewer (north/up).\n\nTop row (frames 1-2):\nFrame 1 (top-left): Left foot forward stride, arms swinging naturally — BACK VIEW\nFrame 2 (top-right): Feet together, passing/transition pose — BACK VIEW\n\nBottom row (frames 3-4):\nFrame 3 (bottom-left): Right foot forward stride, arms swinging naturally — BACK VIEW\nFrame 4 (bottom-right): Feet together, passing/transition back — BACK VIEW\n\nCRITICAL: ALL 4 frames must show the character from EXACTLY the same angle — their BACK, facing directly away from the camera. Do NOT rotate or twist the character between frames. The ONLY difference between frames should be the leg and arm positions for the walk cycle. The character's body angle, head direction, and facing must be IDENTICAL in every frame — always showing the back of the character. A simple back view with only legs alternating.\n\nUse detailed 32-bit pixel art style with proper shading and highlights. Same character design in all frames."
+    },
+    {
+      "id": "sprite-walk-iso-side",
+      "category": "sprite",
+      "title": "等距行走-侧向（俯视 RPG）",
+      "desc": "4 帧行走，3/4 俯视，面向右侧",
+      "scene": "edit",
+      "prompt": "Create a 4-frame pixel art walk cycle sprite sheet of this character WALKING TO THE RIGHT in a top-down isometric RPG perspective (3/4 overhead view, like a classic top-down RPG).\n\nArrange the 4 frames in a 2x2 grid on white background. The character is FACING RIGHT and WALKING RIGHT.\n\nTop row (frames 1-2):\nFrame 1 (top-left): Right leg forward, left leg back - stride position, arms swinging\nFrame 2 (top-right): Legs close together, passing/crossing - transition pose\n\nBottom row (frames 3-4):\nFrame 3 (bottom-left): Left leg forward, right leg back - opposite stride, arms swinging\nFrame 4 (bottom-right): Legs close together, passing/crossing - transition back\n\nWe see the character's RIGHT-facing side profile from a top-down 3/4 overhead angle. This creates a smooth looping walk cycle.\n\nUse detailed 32-bit pixel art style with proper shading and highlights. Same character design in all frames. Character facing RIGHT."
+    },
+    {
+      "id": "sprite-attack-iso-down",
+      "category": "sprite",
+      "title": "等距攻击-向下（俯视 RPG）",
+      "desc": "4 帧攻击：蓄力/挥击/命中/收招，3/4 俯视，朝向镜头（南）",
+      "scene": "edit",
+      "prompt": "Create a 4-frame pixel art ATTACK animation sprite sheet of this character attacking DOWNWARD (toward the camera) in a top-down isometric RPG perspective (3/4 overhead view, like a classic top-down RPG).\n\nArrange the 4 frames in a 2x2 grid on white background. The character is facing toward the viewer (south/down) and performing an attack.\n\nTop row (frames 1-2):\nFrame 1 (top-left): Wind-up/anticipation - preparing to strike, pulling back weapon or gathering energy\nFrame 2 (top-right): Attack in motion - the strike or spell being unleashed downward/toward camera\n\nBottom row (frames 3-4):\nFrame 3 (bottom-left): Impact/peak - maximum extension of attack, full power\nFrame 4 (bottom-right): Recovery - returning to ready stance\n\nWe see the character's front/face. Top-down 3/4 view. The attack should fit the character's design (sword, magic, punch, etc).\n\nUse detailed 32-bit pixel art style with proper shading and highlights. Same character design in all frames. Make the attack visually dynamic."
+    },
+    {
+      "id": "sprite-attack-iso-up",
+      "category": "sprite",
+      "title": "等距攻击-向上（俯视 RPG）",
+      "desc": "4 帧攻击：与向下攻击同型但背向镜头，需前向攻击图作输入",
+      "scene": "edit",
+      "prompt": "Create a 4-frame pixel art ATTACK animation sprite sheet of this character attacking UPWARD (away from the camera) in a top-down isometric RPG perspective (3/4 overhead view, like a classic top-down RPG).\n\nI've also sent you a reference of the same character's front-facing attack. Use the EXACT SAME attack type, weapon, and visual effects - just show it from behind.\n\nArrange the 4 frames in a 2x2 grid on white background. The character is facing away from the viewer (north/up) and performing the same attack.\n\nTop row (frames 1-2):\nFrame 1 (top-left): Wind-up/anticipation - same motion as reference but seen from behind\nFrame 2 (top-right): Attack in motion - the strike unleashed upward/away from camera\n\nBottom row (frames 3-4):\nFrame 3 (bottom-left): Impact/peak - maximum extension, same attack type as reference\nFrame 4 (bottom-right): Recovery - returning to ready stance\n\nWe see the character's back. Top-down 3/4 view. MUST use the same attack style as the reference image.\n\nUse detailed 32-bit pixel art style with proper shading and highlights. Same character design in all frames."
+    },
+    {
+      "id": "sprite-attack-iso-side",
+      "category": "sprite",
+      "title": "等距攻击-侧向（俯视 RPG）",
+      "desc": "4 帧攻击：与向下攻击同型但侧脸朝右，需前向攻击图作输入",
+      "scene": "edit",
+      "prompt": "Create a 4-frame pixel art ATTACK animation sprite sheet of this character attacking SIDEWAYS (to the right) in a top-down isometric RPG perspective (3/4 overhead view, like a classic top-down RPG).\n\nI've also sent you a reference of the same character's front-facing attack. Use the EXACT SAME attack type, weapon, and visual effects - just show it from the side profile.\n\nArrange the 4 frames in a 2x2 grid on white background. The character faces RIGHT and performs the same attack.\n\nTop row (frames 1-2):\nFrame 1 (top-left): Wind-up/anticipation - same motion as reference but from side view, facing right\nFrame 2 (top-right): Attack in motion - the strike unleashed to the right\n\nBottom row (frames 3-4):\nFrame 3 (bottom-left): Impact/peak - maximum extension, same attack type as reference\nFrame 4 (bottom-right): Recovery - returning to ready stance\n\nIMPORTANT: Show the character's SIDE PROFILE facing RIGHT. Top-down 3/4 overhead angle. MUST use the same attack style as the reference image.\n\nUse detailed 32-bit pixel art style with proper shading and highlights. Same character design in all frames. Character facing RIGHT."
+    },
+    {
+      "id": "sprite-idle-iso",
+      "category": "sprite",
+      "title": "等距待机/呼吸（俯视 RPG）",
+      "desc": "4 帧微幅待机呼吸循环，3/4 俯视，朝向镜头（南）",
+      "scene": "edit",
+      "prompt": "Create a 4-frame pixel art idle/breathing animation sprite sheet of this character in a top-down isometric RPG perspective (3/4 overhead view, like a classic top-down RPG).\n\nArrange the 4 frames in a 2x2 grid on white background. The character is FACING TOWARD THE CAMERA (south/down) and standing still with a subtle idle animation.\n\nTop row (frames 1-2):\nFrame 1 (top-left): Neutral standing pose - relaxed stance, facing down/toward viewer\nFrame 2 (top-right): Slight inhale - body rises subtly, maybe slight arm movement\n\nBottom row (frames 3-4):\nFrame 3 (bottom-left): Full breath - slight upward posture\nFrame 4 (bottom-right): Exhale - returning to neutral, slight settle\n\nKeep movements SUBTLE - this is a gentle breathing/idle loop, not dramatic motion. Character should look alive but relaxed. We see the character's front/face from a top-down 3/4 overhead angle.\n\nUse detailed 32-bit pixel art style with proper shading and highlights. Same character design in all frames."
+    },
+    {
+      "id": "sprite-v4tx3-actions",
+      "category": "sprite",
+      "title": "连生动作V4Tx3（A0/A1/A2）",
+      "desc": "按 A0/A1/A2 关键字生成不同动作 spritesheet，5 行网格，绿底，1:1",
+      "scene": "edit",
+      "references": [
+        "assets/references/sprite-v4tx3-actions/ref1.png"
+      ],
+      "prompt": "你是一个自身的像素动画师，专门用来设计像素角色动画。\n你将严格按照网格布局生成像素角色的spritesheet。\n你会默认把背景设置为绿色。\n图片中不出现任何文字，不出现任何网格线和数字。\n角色的动作严格按照参考图生成。\n每行的帧数严格按照参考图生成。\n画面比例1:1\n如果用户提示词中有A0就参考第一张图生成：\n第一行： 向左走动（6帧）\n第二行： 向下走动（6帧）\n第三行： 向上走动（6帧）\n第四行： 向左跑动（6帧）\n第五行： 向下跑动（6帧）\n如果用户提示词中有A1就参考第二张图生成：\n第一行： 向上跑动（6帧）\n第二行： 下蹲（6帧）\n第三行： 抛掷（6帧）\n第四行： 抛掷后续（2帧）、正面站立（1帧）、反面站立（1帧）、跳跃（2帧）\n第五行： 其他\n如果用户提示词中有A2就参考第三张图生成：\n第一行、第二行、第三行：挥剑动作 （9帧）\n第四行、第五行： 刺枪动作（8帧）"
+    },
+    {
+      "id": "sprite-char-v3",
+      "category": "sprite",
+      "title": "角色生成 V3",
+      "desc": "网格布局生成角色 spritesheet，白/绿底",
+      "scene": "edit",
+      "references": [
+        "assets/references/sprite-char-v3/ref1.png"
+      ],
+      "prompt": "你是一个自身的像素动画师，专门用来设计像素角色动画。\n你将严格按照网格布局生成像素角色的spritesheet。\n你会默认把背景设置为白色或绿色。"
+    },
+    {
+      "id": "sprite-char-v23ot",
+      "category": "sprite",
+      "title": "预设像素角色生成器 V2.3OT",
+      "desc": "4 行网格：向下/向右/向上跑动 + 闲置 + 准备姿态，1:1",
+      "scene": "edit",
+      "references": [
+        "assets/references/sprite-char-v23ot/ref1.png",
+        "assets/references/sprite-char-v23ot/ref2.png",
+        "assets/references/sprite-char-v23ot/ref3.png"
+      ],
+      "prompt": "你是一个自身的像素动画师，专门用来设计像素角色动画。\n你将严格按照网格布局生成像素角色的spritesheet。\n你会默认把背景设置为白色或绿色。\n图片中不出现任何文字，不出现任何网格线和数字。\n画面比例1:1\n第一行： 向下跑动（6帧）\n第二行： 向右跑动（6帧）和向下、向上闲置（各1帧）\n第三行： 向上跑动（6帧）和向左闲置、向右闲置（各1帧）\n第四行： 准备姿态"
+    },
+    {
+      "id": "sprite-horizontal-char",
+      "category": "sprite",
+      "title": "横版人物生成",
+      "desc": "6 行网格：跑/走/跳/idle+die/挥剑攻击×2，1:1",
+      "scene": "edit",
+      "references": [
+        "assets/references/sprite-horizontal-char/ref1.png"
+      ],
+      "prompt": "你是一个自身的像素动画师，专门用来设计像素角色动画。\n你将严格按照网格布局生成像素角色的spritesheet。\n你会默认把背景设置为白色或绿色。\n图片中不出现任何文字，不出现任何网格线和数字。\n画面比例1:1\n第一行： 向右跑动（8帧）\n第二行： 向右走动（8帧）\n第三行： 跳（8帧）\n第四行： idle（前4帧）die（后4帧）\n第五行：挥剑攻击 宽4帧\n第六行：挥剑攻击 宽3帧"
+    },
+    {
+      "id": "sprite-8dir-topdown",
+      "category": "sprite",
+      "title": "八方向 TopDown 角色生成",
+      "desc": "5 行网格：左下/左/左上/上/下跑动各 6 帧，1:1",
+      "scene": "edit",
+      "references": [
+        "assets/references/sprite-8dir-topdown/ref1.png"
+      ],
+      "prompt": "你是一个自身的像素动画师，专门用来设计像素角色动画。\n你将严格按照网格布局生成像素角色的spritesheet。\n你会默认把背景设置为白色或绿色。\n图片中不出现任何文字，不出现任何网格线和数字。\n画面比例1:1\n第一行： 向左下跑动（6帧）\n第二行： 向左跑动（6帧）\n第三行： 向左上跑动（6帧）\n第四行： 向上跑动（6帧）\n第五行： 向下跑动（6帧）"
+    },
+    {
+      "id": "sprite-horse-riding",
+      "category": "sprite",
+      "title": "骑马动作生成",
+      "desc": "像素角色骑马 spritesheet，网格布局，白/绿底，1:1",
+      "scene": "edit",
+      "references": [
+        "assets/references/sprite-horse-riding/ref1.png",
+        "assets/references/sprite-horse-riding/ref2.png"
+      ],
+      "prompt": "你是一个自身的像素动画师，专门用来设计像素角色动画。\n你将严格按照网格布局生成像素角色的spritesheet。\n像素角色在骑马\n你会默认把背景设置为白色或绿色。\n图片中不出现任何文字，不出现任何网格线和数字。\n画面比例1:1"
+    },
+    {
+      "id": "sprite-one-image-all-actions-2",
+      "category": "sprite",
+      "title": "一图全动作2",
+      "desc": "角色不拿武器，朝向与参考图一致，网格布局，1:1",
+      "scene": "edit",
+      "references": [
+        "assets/references/sprite-one-image-all-actions-2/ref1.png"
+      ],
+      "prompt": "你是一个自身的像素动画师，专门用来设计像素角色动画。\n你将严格按照网格布局生成像素角色的spritesheet。\n你会默认把背景设置为白色或绿色。\n图片中不出现任何文字，不出现任何网格线和数字。\n画面比例1:1\n角色手里不拿武器\n生成的角色朝向与参考图一致"
+    },
+    {
+      "id": "sprite-zombie-b1",
+      "category": "sprite",
+      "title": "僵尸 B1",
+      "desc": "怪物攻击+死亡 spritesheet，手不拿道具，姿态与参考图一致，1:1",
+      "scene": "edit",
+      "references": [
+        "assets/references/sprite-zombie-b1/ref1.png",
+        "assets/references/sprite-zombie-b1/ref2.png"
+      ],
+      "prompt": "你是一个自身的像素动画师，专门用来设计像素角色动画。\n你将严格按照网格布局生成像素角色的spritesheet。\n你会默认把背景设置为白色或绿色。\n图片中不出现任何文字，不出现任何网格线和数字。\n画面比例1:1\n角色姿态与朝向跟参考图一致，手里不拿道具。\n参考图1为攻击动作参考，参考图2为死亡动作参考。"
+    },
+    {
+      "id": "sprite-pet-dog",
+      "category": "sprite",
+      "title": "像素宠物-狗",
+      "desc": "像素宠物 spritesheet，姿态与参考图一致，1:1",
+      "scene": "edit",
+      "references": [
+        "assets/references/sprite-pet-dog/ref1.png"
+      ],
+      "prompt": "你是一个资深的像素动画师，专门用来设计像素宠物动画。\n你将严格按照网格布局生成像素宠物的spritesheet。\n你会默认把背景设置为白色或绿色。\n图片中不出现任何文字，不出现任何网格线和数字。\n画面比例1:1\n宠物姿态与朝向跟参考图一致。"
+    },
+    {
+      "id": "sprite-monster-bird",
+      "category": "sprite",
+      "title": "像素怪物-鸟",
+      "desc": "像素怪物 spritesheet，朝向与参考图一致，1:1",
+      "scene": "edit",
+      "references": [
+        "assets/references/sprite-monster-bird/ref1.png"
+      ],
+      "prompt": "你是一个资深的像素动画师，专门用来设计像素怪物动画。\n你将严格按照网格布局生成像素怪物的spritesheet。\n图片中不出现任何文字、网格线和数字。\n画面比例1:1，生成的怪物朝向与参考图一致。"
+    },
+    {
+      "id": "bg-sky-layer",
+      "category": "background",
+      "title": "天空/远景层（视差）",
+      "desc": "横版视差背景最远层：天空、远山、云",
+      "scene": "edit",
+      "aspect": "21:9",
+      "prompt": "Create the SKY/BACKDROP layer for a side-scrolling pixel art game parallax background.\n\nCreate an environment that fits the character's world. This is the FURTHEST layer - only sky and very distant elements (distant mountains, clouds, horizon).\n\nStyle: Pixel art, 32-bit retro game aesthetic, matching the character's style.\nThis is a wide panoramic scene."
+    },
+    {
+      "id": "bg-midground-layer",
+      "category": "background",
+      "title": "中景层（视差）",
+      "desc": "视差中景：角色标志性场景（村庄/战场/地标），透明底",
+      "scene": "edit",
+      "aspect": "21:9",
+      "prompt": "Create the MIDDLE layer of a 3-layer parallax background for a side-scrolling pixel art game.\n\nCreate the character's ICONIC/CANONICAL location from their story. Use their most recognizable setting - home village, famous landmarks, signature battlegrounds.\nExamples: a hero's home village with monument, a world tournament arena, a castle.\n\nElements should fill the frame from middle down to bottom.\n\nStyle: Pixel art matching the other images.\nIMPORTANT: Use a transparent background (checkerboard pattern) so this layer can overlay the others."
+    },
+    {
+      "id": "bg-foreground-layer",
+      "category": "background",
+      "title": "前景层（视差）",
+      "desc": "视差前景：地面/草丛/岩石/平台，透明底",
+      "scene": "edit",
+      "aspect": "21:9",
+      "prompt": "Create the FOREGROUND layer of a 3-layer parallax background for a side-scrolling pixel art game.\n\nCreate the closest foreground elements (ground, grass, rocks, platforms - whatever fits the character's world) that complete the scene.\n\nStyle: Pixel art matching the other images.\nIMPORTANT: Use a transparent background (checkerboard pattern) so this layer can overlay the others."
+    },
+    {
+      "id": "bg-isometric-map",
+      "category": "background",
+      "title": "等距 RPG 世界地图",
+      "desc": "俯视大地图：路径、水域、建筑、地形，不含角色",
+      "scene": "edit",
+      "prompt": "Create a large, detailed top-down isometric pixel art game world map. Do not place any character on the map.\n\nStyle: Classic RPG top-down map, 3/4 overhead perspective.\n\nThe map should include a cohesive world with:\n- Winding dirt/stone paths connecting areas\n- A small body of water (pond, river, or stream)\n- A few small buildings or structures that fit the world\n- Rocky areas or hills\n- Various terrain types for visual interest\n\nThis is a single large continuous map image (NOT tiled, NOT a tileset). It should look like a complete, explorable game world viewed from above.\n\nUse detailed 32-bit pixel art style. Make it colorful and inviting. Fill the entire image with map content - no empty borders."
+    },
+    {
+      "id": "bg-scene-topdown-front",
+      "category": "background",
+      "title": "像素场景-正视角",
+      "desc": "俯视正视角全景场景，不出现人物；支持「提取物件」「去除物件」关键字，16:9",
+      "scene": "both",
+      "aspect": "16:9",
+      "prompt": "你是一名资深的像素场景画师，你将根据用户描述的场景生成一个topdown类型的俯视正视角的全景像素风场景，不出现人物。长宽比16:9\n如果用户提示词中有关键字\"提取物件\"，那么请基于已经生成的场景，将场景中的物件单独提取（物件包括树木），并有序排列，物件与物件之间保持一定距离，避免后期提取的时候混淆。物件的大小与原场景一致。并且用一个纯黑色背景色填充。\n如果没有出现 提取物件 这个关键字就不触发物件提取功能，仅单独生成场景。\n如果用户提示词中有关键字\"去除物件\"，那么请基于已经生成的场景，让场景只剩下场地，包括树木也一并除去，但是不包括地面和草地。"
+    },
+    {
+      "id": "bg-scene-arcade",
+      "category": "background",
+      "title": "像素场景-街机",
+      "desc": "2D 横版侧视街机全景场景，多视差层（远/中/前景），不出现人物",
+      "scene": "text",
+      "prompt": "你是一名资深的像素横版街机场景画师。你将根据用户描述，生成一张 2D 横版侧视（Side-scrolling Arcade perspective） 的全景像素场景，风格参考经典动作/格斗街机游戏。\n画面规范：\n\n视角： 严格的 2D 侧视视角，展现一个流动的、具有电影感的动作关卡。\n构图： 强调水平方向的推进感（Level Flow）。场景必须包含多个视差层（Parallax Layers），以模拟深度：\n远景（Far Background）： 遥远的地标（如城市天际线、山脉、巨大的月亮），细节简化。\n中景（Midground）： 主要的可通行区域（如街道、平台、工厂内部），细节丰富，包含障碍物。\n前景（Foreground）： 快速掠过的景物（如电线杆、栏杆、破碎的车辆），用于增强速度感和深度。\n所有的建筑都是正朝镜头。\n风格细节： >     * 色彩与光影： 色彩鲜明、饱和度高，具有强烈的戏剧性或环境光效（如霓虹灯、爆炸后的余晖、激光）。光影更强调氛围而非写实。\n细节丰富： 场景充满生活气息或破坏痕迹，例如：涂鸦墙、垃圾桶、霓虹招牌、蒸汽管道、破损的机械。\n禁忌： 不出现任何玩家人物、UI 界面或文字。"
+    },
+    {
+      "id": "bg-scene-topdown-45",
+      "category": "background",
+      "title": "像素场景-45度",
+      "desc": "俯视45度全景场景，不出现人物/山体/天空，建筑朝向45度；支持「提取物件」「去除物件」关键字",
+      "scene": "both",
+      "prompt": "你是一名资深的像素场景画师，你将根据用户描述的场景生成一个topdown类型的俯视45视角的全景像素风场景，不出现人物，山体，天空。建筑朝向都是45度的\n如果用户提示词中有关键字\"提取物件\"，那么请基于已经生成的场景，将场景中的物件与建筑单独提取（物件包括树木），并有序排列，物件与物件之间保持一定距离，避免后期提取的时候混淆。物件的大小与原场景一致。并且用一个纯色的区别的物件颜色背景色填充。\n如果没有出现 提取物件 这个关键字就不触发物件提取功能，仅单独生成场景。\n如果用户提示词中有关键字\"去除物件\"，那么请基于已经生成的场景，让场景只剩下场地，包括树木也一并除去，但是不包括地面和草地。"
+    },
+    {
+      "id": "bg-scene-terraria",
+      "category": "background",
+      "title": "像素场景-泰拉",
+      "desc": "泰拉瑞亚风 2D 横版侧切面全景场景，Tile 拼接质感，不出现人物",
+      "scene": "text",
+      "prompt": "你是一名资深的像素横版场景画师。你将根据用户描述，生成一张 2D 横版侧视（Side-scrolling perspective） 的全景像素场景，风格参考《泰拉瑞亚》。\n画面规范：\n\n视角： 严格的 2D 侧切面视角（Cross-section view），展现地表、天空或地底的纵深感。\n构图： 强调层次感，包含远景（背景山峦/天空）、中景（环境装饰/墙壁）和前景（可交互的方块/平台）。\n风格细节： >     * Tile-based 质感： 场景元素呈现出由 16x16 或 32x32 像素图块拼接而成的特征。\n色彩与光影： 色彩鲜明，具有强烈的环境光效（如发光的矿石、火把或魔法植物）。\n生物群落特征： 根据描述突出特定的生物群落（如森林、丛林、腐化之地或地牢）。\n禁忌： 不出现任何人物、UI 界面或文字。"
+    },
+    {
+      "id": "convert-to-pixel",
+      "category": "convert",
+      "title": "转 32 位像素风",
+      "desc": "把任意图片转成 PS1/SNES 风格像素立绘，全身居中白底",
+      "scene": "edit",
+      "prompt": "Transform this character into detailed 32-bit pixel art style (like PlayStation 1 / SNES era games).\nIMPORTANT: Must be a FULL BODY shot showing the entire character from head to feet.\nKeep the character centered in the frame on a plain white background.\nInclude proper shading, highlights, and anti-aliased edges for a polished look.\nThe character should have well-defined features, expressive details, and rich colors.\nShow in a front-facing or 3/4 view pose, standing idle, suitable for sprite sheet animation.\nMaintain the character's key features, colors, and identity while converting to pixel art."
+    },
+    {
+      "id": "convert-remove-bg",
+      "category": "convert",
+      "title": "抠图/去背景",
+      "desc": "移除背景，保留主体，输出透明 PNG",
+      "scene": "edit",
+      "prompt": "Remove the background completely. Keep the main subject with clean edges and full detail. Output a transparent background (PNG with alpha). Do not alter the subject's colors, proportions, or features."
+    },
+    {
+      "id": "convert-change-bg",
+      "category": "convert",
+      "title": "更换背景",
+      "desc": "保留主体，替换为新背景场景",
+      "scene": "edit",
+      "prompt": "Keep the main subject unchanged (same pose, identity, colors, proportions). Replace only the background with a new scene that fits the subject. Ensure natural blending between subject and new background with consistent lighting and shadows."
+    }
+  ]
+}

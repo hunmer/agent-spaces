@@ -3,7 +3,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
   Input, ScrollArea, Button, openMediaGallery,
 } from '@agent-spaces/ui';
-import { PROMPT_CATEGORIES, PROMPT_LIBRARY, getPromptsByScene } from '../utils/prompts';
+import { PROMPT_CATEGORIES } from '../utils/prompts';
 import { ASPECT_OPTIONS } from '../utils/constants';
 import { resolveReferenceImages } from '../utils/workflow';
 import usePromptLibrary from '../hooks/usePromptLibrary';
@@ -17,19 +17,19 @@ import usePromptLibrary from '../hooks/usePromptLibrary';
  * @param {{ open:boolean, scene:'text'|'edit', onClose:()=>void, onPick:(item:object)=>void }} props
  */
 export default function PromptPickerDialog({ open, scene = 'text', onClose, onPick }) {
-  const { customPrompts, savePrompt, deletePrompt } = usePromptLibrary();
+  const { mergedPrompts, savePrompt, deletePrompt, resetPrompts } = usePromptLibrary();
   const [activeCat, setActiveCat] = useState(null); // null = 全部
   const [keyword, setKeyword] = useState('');
   const [editing, setEditing] = useState(null); // null=关闭，对象=正在新增/编辑
 
-  // 合并：自定义在前，内置在后；都按 scene 过滤
+  // 合并：custom 在前 builtin 在后；都按 scene 过滤
   const merged = useMemo(() => {
-    const builtin = getPromptsByScene(scene).map((p) => ({ ...p, custom: false }));
-    const custom = customPrompts
-      .filter((p) => p.scene === scene || p.scene === 'both')
-      .map((p) => ({ ...p, custom: true }));
+    const custom = mergedPrompts
+      .filter((p) => p.custom && (p.scene === scene || p.scene === 'both'));
+    const builtin = mergedPrompts
+      .filter((p) => !p.custom && (p.scene === scene || p.scene === 'both'));
     return [...custom, ...builtin];
-  }, [scene, customPrompts]);
+  }, [scene, mergedPrompts]);
 
   const list = useMemo(() => {
     const kw = keyword.trim().toLowerCase();
@@ -51,8 +51,16 @@ export default function PromptPickerDialog({ open, scene = 'text', onClose, onPi
 
   const handleDelete = (e, item) => {
     e.stopPropagation();
-    if (window.confirm(`删除自定义提示词「${item.title}」？`)) {
+    const label = item.builtin ? '内置' : '自定义';
+    if (window.confirm(`删除${label}提示词「${item.title}」？${item.builtin ? '（重置后会恢复）' : ''}`)) {
       deletePrompt(item.id).catch((err) => console.error('deletePrompt failed:', err));
+    }
+  };
+
+  // 重置：默认值覆盖同 id，保留用户独有新增
+  const handleReset = () => {
+    if (window.confirm('重置提示词库？\n内置项恢复默认值（含已删除/编辑过的），\n你新增的提示词会保留。')) {
+      resetPrompts().catch((err) => console.error('resetPrompts failed:', err));
     }
   };
 
@@ -85,6 +93,16 @@ export default function PromptPickerDialog({ open, scene = 'text', onClose, onPi
               onClick={() => setEditing({ id: '', title: '', desc: '', prompt: '', category: cats[0]?.id || 'character', aspect: '', scene })}
             >
               ➕ 新建
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-8 shrink-0"
+              onClick={handleReset}
+              title="用默认值覆盖同 id 项，保留你新增的提示词"
+            >
+              ↺ 重置
             </Button>
           </div>
           <div className="flex flex-wrap gap-1.5">
@@ -134,7 +152,8 @@ export default function PromptPickerDialog({ open, scene = 'text', onClose, onPi
                     className="flex flex-1 flex-col gap-1 text-left"
                   >
                     <span className="flex items-center gap-1.5">
-                      {p.custom && <span className="rounded bg-primary/15 px-1 text-[10px] text-primary">自</span>}
+                      {p.custom && !p.builtin && <span className="rounded bg-primary/15 px-1 text-[10px] text-primary">自</span>}
+                      {p.builtin && <span className="rounded bg-muted px-1 text-[10px] text-muted-foreground">默</span>}
                       <span className="line-clamp-1 text-sm font-medium">{p.title}</span>
                       {p.aspect && <span className="rounded bg-muted px-1 text-[10px] text-muted-foreground">{p.aspect}</span>}
                       {refImages.length > 0 && <span className="rounded bg-muted px-1 text-[10px] text-muted-foreground">🖼 {refImages.length}</span>}
@@ -171,26 +190,24 @@ export default function PromptPickerDialog({ open, scene = 'text', onClose, onPi
                       {p.prompt}
                     </span>
                   </button>
-                  {p.custom && (
-                    <div className="absolute right-1.5 top-1.5 flex gap-1 opacity-0 transition group-hover:opacity-100">
-                      <button
-                        type="button"
-                        onClick={() => setEditing(p)}
-                        className="rounded bg-background/80 px-1.5 py-0.5 text-[11px] text-muted-foreground hover:text-primary"
-                        title="编辑"
-                      >
-                        ✏️
-                      </button>
-                      <button
-                        type="button"
-                        onClick={(e) => handleDelete(e, p)}
-                        className="rounded bg-background/80 px-1.5 py-0.5 text-[11px] text-muted-foreground hover:text-red-500"
-                        title="删除"
-                      >
-                        🗑
-                      </button>
-                    </div>
-                  )}
+                  <div className="absolute right-1.5 top-1.5 flex gap-1 opacity-0 transition group-hover:opacity-100">
+                    <button
+                      type="button"
+                      onClick={() => setEditing(p)}
+                      className="rounded bg-background/80 px-1.5 py-0.5 text-[11px] text-muted-foreground hover:text-primary"
+                      title="编辑"
+                    >
+                      ✏️
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => handleDelete(e, p)}
+                      className="rounded bg-background/80 px-1.5 py-0.5 text-[11px] text-muted-foreground hover:text-red-500"
+                      title="删除"
+                    >
+                      🗑
+                    </button>
+                  </div>
                 </div>
               );
             })}

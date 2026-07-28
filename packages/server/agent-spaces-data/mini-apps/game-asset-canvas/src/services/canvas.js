@@ -135,6 +135,20 @@ export default {
     return { ok: true };
   },
 
+  // 重置提示词库：用默认值覆盖同 id 项，保留用户独有新增（默认中不存在该 id 的）。
+  // defaults 由前端传入（src/data/prompt-defaults.json 内容），服务端只读 configs/ 无法访问 src。
+  // 语义：默认 id 全部恢复默认值（含用户删除/编辑过的），用户新增 id 原样保留。
+  reset_prompts: ({ defaults }, ctx) => {
+    const defaultList = Array.isArray(defaults) ? defaults : [];
+    const defaultIds = new Set(defaultList.map((p) => p.id).filter(Boolean));
+    ctx.updateConfig(PROMPT_CONFIG, (prev) => {
+      const userList = Array.isArray(prev) ? prev : [];
+      const userNew = userList.filter((p) => p.id && !defaultIds.has(p.id));
+      return [...defaultList, ...userNew];
+    });
+    return { ok: true };
+  },
+
   // —— 工作区管理 ——
 
   // 列出全部工作区 + 当前激活 id
