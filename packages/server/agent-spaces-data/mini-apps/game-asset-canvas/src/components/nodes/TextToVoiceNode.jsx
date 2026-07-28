@@ -1,6 +1,6 @@
-import { useCallback, useState } from 'react';
+import { useCallback } from 'react';
 import NodeShell from './NodeShell';
-import PromptPickerDialog from '../PromptPickerDialog';
+import { useNodeDialog } from './NodeDialogContext';
 import PickedPromptBadge from './PickedPromptBadge';
 import CountAndConcurrency from './CountAndConcurrency';
 import { NODE_TYPES, VOICE_PROVIDER_OPTIONS, WORKFLOWS } from '../../utils/constants';
@@ -52,7 +52,7 @@ export default function TextToVoiceNode({ id, data, selected }) {
   const onUpdate = data?.onUpdate;
   const onGenerate = data?.onGenerateMedia;
   const onCancelProcess = data?.onCancelProcess;
-  const [pickerOpen, setPickerOpen] = useState(false);
+  const { openPicker } = useNodeDialog();
 
   const set = useCallback((patch) => {
     onUpdate?.({ params: { ...params, ...patch } });
@@ -83,7 +83,10 @@ export default function TextToVoiceNode({ id, data, selected }) {
           <span className="text-xs font-medium text-muted-foreground">文本</span>
           <button
             type="button"
-            onClick={() => setPickerOpen(true)}
+            onClick={() => openPicker({
+              scene: 'text',
+              onPick: (item) => set({ pickedPrompt: item.prompt }),
+            })}
             className="text-xs text-muted-foreground transition hover:text-primary"
           >
             📋 提示词库
@@ -168,13 +171,6 @@ export default function TextToVoiceNode({ id, data, selected }) {
           ))}
         </div>
       )}
-
-      <PromptPickerDialog
-        open={pickerOpen}
-        scene="text"
-        onClose={() => setPickerOpen(false)}
-        onPick={(item) => set({ pickedPrompt: item.prompt })}
-      />
     </NodeShell>
   );
 }

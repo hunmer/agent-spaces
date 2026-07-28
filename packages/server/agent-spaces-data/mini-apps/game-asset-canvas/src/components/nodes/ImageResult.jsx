@@ -1,5 +1,15 @@
-import { useCallback, useRef, useState } from 'react';
-import { FolderPlus, Loader2, Plus, Trash2, openMediaGallery, Popover, PopoverContent, PopoverTrigger } from '@agent-spaces/ui';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { FolderPlus, ImageOff, Loader2, Plus, Trash2, openMediaGallery, Popover, PopoverContent, PopoverTrigger } from '@agent-spaces/ui';
+
+// 图片加载失败占位：onError 时切换为该块，显示破损图标 + url
+function BrokenImagePlaceholder({ url }) {
+  return (
+    <div className="flex h-full w-full flex-col items-center justify-center gap-1 bg-muted/30 p-1 text-muted-foreground">
+      <ImageOff className="h-4 w-4 opacity-50" />
+      <span className="max-w-full truncate text-[9px]" title={url}>加载失败</span>
+    </div>
+  );
+}
 
 /**
  * 节点内的图片网格结果展示，点击用 MediaGallery 打开大图（可翻页）。
@@ -63,14 +73,7 @@ export default function ImageResult({ images, max = 0, preview = false, onImageL
     return (
       <div className="flex w-full flex-col gap-2">
         {list.map((url, i) => (
-          <button
-            type="button"
-            key={i}
-            onClick={(e) => { e.stopPropagation(); open(i); }}
-            className="block w-full overflow-hidden"
-          >
-            <img src={url} alt="" className="block h-auto w-full object-contain" onLoad={onImageLoad} />
-          </button>
+          <PreviewImage key={i} url={url} onOpen={() => open(i)} onImageLoad={onImageLoad} />
         ))}
       </div>
     );
@@ -128,7 +131,7 @@ export default function ImageResult({ images, max = 0, preview = false, onImageL
                 onClick={(e) => { e.stopPropagation(); open(i); }}
                 className="block h-full w-full overflow-hidden rounded"
               >
-                <img src={url} alt="" className="h-full w-full object-cover" />
+                <GridImage url={url} />
               </button>
               {onAddToAssets && (
                 <button
@@ -155,6 +158,75 @@ export default function ImageResult({ images, max = 0, preview = false, onImageL
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+/**
+ * 图片加载中占位：spinner + 高度撑开，避免切换时空白跳动
+ */
+function ImageLoadingPlaceholder() {
+  return (
+    <div className="flex min-h-[120px] w-full items-center justify-center bg-muted/20">
+      <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+    </div>
+  );
+}
+
+/**
+ * 预览态单图：加载中显示 spinner 占位，加载完毕才展示；失败切换占位块（点击仍可尝试打开 gallery）。
+ */
+function PreviewImage({ url, onOpen, onImageLoad }) {
+  const [failed, setFailed] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  // url 变化（版本切换）时重置状态：重新进入 loading，允许重新加载新图
+  useEffect(() => { setFailed(false); setLoaded(false); }, [url]);
+  return (
+    <button
+      type="button"
+      onClick={(e) => { e.stopPropagation(); onOpen(); }}
+      className="block w-full overflow-hidden"
+    >
+      {failed ? (
+        <BrokenImagePlaceholder url={url} />
+      ) : (
+        <>
+          {!loaded && <ImageLoadingPlaceholder />}
+          <img
+            src={url}
+            alt=""
+            className={`block h-auto w-full object-contain transition-opacity duration-200 ${loaded ? 'opacity-100' : 'absolute opacity-0'}`}
+            onLoad={(e) => { setLoaded(true); onImageLoad?.(e); }}
+            onError={() => setFailed(true)}
+          />
+        </>
+      )}
+    </button>
+  );
+}
+
+/**
+ * 网格态单图：加载中显示 spinner 占位，加载完毕才展示；失败切换占位块（点击仍可尝试打开 gallery）。
+ */
+function GridImage({ url }) {
+  const [failed, setFailed] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  useEffect(() => { setFailed(false); setLoaded(false); }, [url]);
+  if (failed) return <BrokenImagePlaceholder url={url} />;
+  return (
+    <div className="relative h-full w-full">
+      {!loaded && (
+        <div className="absolute inset-0 flex items-center justify-center bg-muted/20">
+          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+        </div>
+      )}
+      <img
+        src={url}
+        alt=""
+        className={`h-full w-full object-cover transition-opacity duration-200 ${loaded ? 'opacity-100' : 'opacity-0'}`}
+        onLoad={() => setLoaded(true)}
+        onError={() => setFailed(true)}
+      />
     </div>
   );
 }

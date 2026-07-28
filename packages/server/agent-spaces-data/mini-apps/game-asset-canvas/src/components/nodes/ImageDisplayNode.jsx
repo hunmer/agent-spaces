@@ -2,6 +2,7 @@ import { useCallback, useRef, useState, useEffect } from 'react';
 import { Handle, NodeResizer, NodeToolbar, Position } from '@xyflow/react';
 import { ChevronLeft, ChevronRight, Upload, openMediaGallery } from '@agent-spaces/ui';
 import useViewportActivation from '../../hooks/useViewportActivation';
+import { FLOATING_HANDLE_OFFSET } from '../canvas/floating-edge-utils';
 
 /**
  * 图片展示节点：纯展示图片，无外壳边框/标题栏。
@@ -91,7 +92,7 @@ export default function ImageDisplayNode({ id, data, selected }) {
     : '已上传';
 
   return (
-    <div ref={rootRef} className="group relative h-full w-full overflow-hidden rounded-lg bg-card shadow-sm">
+    <div ref={rootRef} className="group relative h-full w-full overflow-visible">
       {/* NodeToolbar：导出/抠图/放大/编辑（选中且单选时） */}
       {showToolbar && (
         <NodeToolbar isVisible={!!selected && selectionCount <= 1} position={Position.Top} align="end" offset={8}>
@@ -139,16 +140,17 @@ export default function ImageDisplayNode({ id, data, selected }) {
       <Handle
         type="target"
         position={Position.Left}
-        className="!h-3 !w-3 !border-2 !border-background !bg-muted-foreground"
-        style={{ zIndex: 50 }}
+        className="!h-5 !w-5 !cursor-crosshair !border-2 !border-muted-foreground/60 !bg-background !shadow-sm !transition-all !duration-150 hover:!h-7 hover:!w-7 hover:!border-primary hover:!shadow-md"
+        style={{ left: -FLOATING_HANDLE_OFFSET, zIndex: 50 }}
       />
       <Handle
         type="source"
         position={Position.Right}
-        className="!h-3 !w-3 !border-2 !border-background !bg-primary"
-        style={{ zIndex: 50 }}
+        className="!h-5 !w-5 !cursor-crosshair !border-2 !border-muted-foreground/60 !bg-background !shadow-sm !transition-all !duration-150 hover:!h-7 hover:!w-7 hover:!border-primary hover:!shadow-md"
+        style={{ right: -FLOATING_HANDLE_OFFSET, zIndex: 50 }}
       />
 
+      <div className="absolute inset-0 overflow-hidden rounded-lg bg-card shadow-sm">
       {/* 顶部自定义拖拽 handle：ReactFlow node.dragHandle 指向 .image-drag-handle，
           整节点只能从这里拖动。透明窄条覆盖图片顶部，hover 时浮现便于发现。 */}
       <div
@@ -252,6 +254,7 @@ export default function ImageDisplayNode({ id, data, selected }) {
         className="hidden"
         onChange={handleFile}
       />
+      </div>
     </div>
   );
 }

@@ -8,6 +8,7 @@ import ImageResult from './ImageResult';
  *
  * @param {object} props
  * @param {number} [props.width] 卡片宽度（跟随节点主体宽度，未给则 100%）
+ * @param {boolean} [props.hasExternalSourceHandle] 为外置输出 Handle 预留间距
  * @param {string} [props.status] 节点状态：idle/running/done/error
  * @param {string} [props.statusMsg] running 时自定义提示文案
  * @param {Array<string>} [props.images] 产出图（data.output.images）
@@ -22,6 +23,7 @@ import ImageResult from './ImageResult';
  */
 export default function NodeOutput({
   width,
+  hasExternalSourceHandle = false,
   status = 'idle',
   statusMsg,
   images = [],
@@ -33,6 +35,8 @@ export default function NodeOutput({
   versions,
   activeVersion,
   onSwitchVersion,
+  onMouseEnter,
+  onMouseLeave,
 }) {
   const hasImages = images.length > 0;
   // 无产出且非运行中：不渲染（折叠栏也没必要显示）
@@ -63,8 +67,11 @@ export default function NodeOutput({
 
   return (
     <div
-      className="nodrag nopan relative z-10 mt-1"
+      className={`nodrag nopan relative z-10 ${hasExternalSourceHandle ? 'mt-8' : 'mt-1'}`}
       style={{ width: typeof width === 'number' ? width : '100%' }}
+      data-node-output
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
     >
       <button
         type="button"

@@ -1,0 +1,1 @@
+export const FLOATING_HANDLE_OFFSET = 18;

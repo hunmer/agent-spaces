@@ -247,6 +247,29 @@ Each frame shows a different phase of the walking motion. This creates a smooth 
 Use detailed 32-bit pixel art style with proper shading and highlights. Same character design in all frames. Character facing right.`,
   },
   {
+    // 来源：blendi-remade/sprite-sheet-creator · GPT Image 2 专用（修正方向错误）
+    id: 'sprite-walk-gpt2',
+    category: 'sprite',
+    title: '行走动画-GPT Image2 增强（2x2 横版）',
+    desc: 'GPT Image 2 专用：强化侧脸朝右方向，4 帧行走循环，2x2 白底',
+    scene: 'edit',
+    prompt: `Create a 4-frame pixel art walk cycle sprite sheet of this character.
+
+Character orientation (critical): The character is shown in SIDE PROFILE, with their face, chest, and front foot pointing toward the RIGHT edge of the image. The character's back is on the LEFT side of the image. This is the same side-profile orientation used in classic 2D platformers like Super Mario Bros or Mega Man moving rightward across the screen.
+
+Arrange the 4 frames in a 2x2 grid on white background.
+
+Top row (frames 1-2):
+Frame 1 (top-left): Front leg (right leg) extended forward toward the right edge of the image, back leg extended behind toward the left edge
+Frame 2 (top-right): Legs close together, passing pose
+
+Bottom row (frames 3-4):
+Frame 3 (bottom-left): Opposite stride — back leg (left leg) now forward toward the right edge
+Frame 4 (bottom-right): Legs close together, passing pose
+
+Use detailed 32-bit pixel art style with proper shading and highlights. Same character design in all frames. All 4 frames must show the character from the SAME side profile angle, facing the RIGHT edge of the image.`,
+  },
+  {
     id: 'sprite-jump',
     category: 'sprite',
     title: '跳跃动画（2x2 横版）',
@@ -374,6 +397,102 @@ Frame 4 (bottom-right): Legs close together, passing/crossing - transition back
 We see the character's RIGHT-facing side profile from a top-down 3/4 overhead angle. This creates a smooth looping walk cycle.
 
 Use detailed 32-bit pixel art style with proper shading and highlights. Same character design in all frames. Character facing RIGHT.`,
+  },
+  {
+    // 来源：blendi-remade/sprite-sheet-creator · 等距 RPG 攻击向下
+    id: 'sprite-attack-iso-down',
+    category: 'sprite',
+    title: '等距攻击-向下（俯视 RPG）',
+    desc: '4 帧攻击：蓄力/挥击/命中/收招，3/4 俯视，朝向镜头（南）',
+    scene: 'edit',
+    prompt: `Create a 4-frame pixel art ATTACK animation sprite sheet of this character attacking DOWNWARD (toward the camera) in a top-down isometric RPG perspective (3/4 overhead view, like a classic top-down RPG).
+
+Arrange the 4 frames in a 2x2 grid on white background. The character is facing toward the viewer (south/down) and performing an attack.
+
+Top row (frames 1-2):
+Frame 1 (top-left): Wind-up/anticipation - preparing to strike, pulling back weapon or gathering energy
+Frame 2 (top-right): Attack in motion - the strike or spell being unleashed downward/toward camera
+
+Bottom row (frames 3-4):
+Frame 3 (bottom-left): Impact/peak - maximum extension of attack, full power
+Frame 4 (bottom-right): Recovery - returning to ready stance
+
+We see the character's front/face. Top-down 3/4 view. The attack should fit the character's design (sword, magic, punch, etc).
+
+Use detailed 32-bit pixel art style with proper shading and highlights. Same character design in all frames. Make the attack visually dynamic.`,
+  },
+  {
+    // 来源：blendi-remade/sprite-sheet-creator · 等距 RPG 攻击向上（需前向攻击图作输入）
+    id: 'sprite-attack-iso-up',
+    category: 'sprite',
+    title: '等距攻击-向上（俯视 RPG）',
+    desc: '4 帧攻击：与向下攻击同型但背向镜头，需前向攻击图作输入',
+    scene: 'edit',
+    prompt: `Create a 4-frame pixel art ATTACK animation sprite sheet of this character attacking UPWARD (away from the camera) in a top-down isometric RPG perspective (3/4 overhead view, like a classic top-down RPG).
+
+I've also sent you a reference of the same character's front-facing attack. Use the EXACT SAME attack type, weapon, and visual effects - just show it from behind.
+
+Arrange the 4 frames in a 2x2 grid on white background. The character is facing away from the viewer (north/up) and performing the same attack.
+
+Top row (frames 1-2):
+Frame 1 (top-left): Wind-up/anticipation - same motion as reference but seen from behind
+Frame 2 (top-right): Attack in motion - the strike unleashed upward/away from camera
+
+Bottom row (frames 3-4):
+Frame 3 (bottom-left): Impact/peak - maximum extension, same attack type as reference
+Frame 4 (bottom-right): Recovery - returning to ready stance
+
+We see the character's back. Top-down 3/4 view. MUST use the same attack style as the reference image.
+
+Use detailed 32-bit pixel art style with proper shading and highlights. Same character design in all frames.`,
+  },
+  {
+    // 来源：blendi-remade/sprite-sheet-creator · 等距 RPG 攻击侧向（需前向攻击图作输入）
+    id: 'sprite-attack-iso-side',
+    category: 'sprite',
+    title: '等距攻击-侧向（俯视 RPG）',
+    desc: '4 帧攻击：与向下攻击同型但侧脸朝右，需前向攻击图作输入',
+    scene: 'edit',
+    prompt: `Create a 4-frame pixel art ATTACK animation sprite sheet of this character attacking SIDEWAYS (to the right) in a top-down isometric RPG perspective (3/4 overhead view, like a classic top-down RPG).
+
+I've also sent you a reference of the same character's front-facing attack. Use the EXACT SAME attack type, weapon, and visual effects - just show it from the side profile.
+
+Arrange the 4 frames in a 2x2 grid on white background. The character faces RIGHT and performs the same attack.
+
+Top row (frames 1-2):
+Frame 1 (top-left): Wind-up/anticipation - same motion as reference but from side view, facing right
+Frame 2 (top-right): Attack in motion - the strike unleashed to the right
+
+Bottom row (frames 3-4):
+Frame 3 (bottom-left): Impact/peak - maximum extension, same attack type as reference
+Frame 4 (bottom-right): Recovery - returning to ready stance
+
+IMPORTANT: Show the character's SIDE PROFILE facing RIGHT. Top-down 3/4 overhead angle. MUST use the same attack style as the reference image.
+
+Use detailed 32-bit pixel art style with proper shading and highlights. Same character design in all frames. Character facing RIGHT.`,
+  },
+  {
+    // 来源：blendi-remade/sprite-sheet-creator · 等距 RPG 待机呼吸
+    id: 'sprite-idle-iso',
+    category: 'sprite',
+    title: '等距待机/呼吸（俯视 RPG）',
+    desc: '4 帧微幅待机呼吸循环，3/4 俯视，朝向镜头（南）',
+    scene: 'edit',
+    prompt: `Create a 4-frame pixel art idle/breathing animation sprite sheet of this character in a top-down isometric RPG perspective (3/4 overhead view, like a classic top-down RPG).
+
+Arrange the 4 frames in a 2x2 grid on white background. The character is FACING TOWARD THE CAMERA (south/down) and standing still with a subtle idle animation.
+
+Top row (frames 1-2):
+Frame 1 (top-left): Neutral standing pose - relaxed stance, facing down/toward viewer
+Frame 2 (top-right): Slight inhale - body rises subtly, maybe slight arm movement
+
+Bottom row (frames 3-4):
+Frame 3 (bottom-left): Full breath - slight upward posture
+Frame 4 (bottom-right): Exhale - returning to neutral, slight settle
+
+Keep movements SUBTLE - this is a gentle breathing/idle loop, not dramatic motion. Character should look alive but relaxed. We see the character's front/face from a top-down 3/4 overhead angle.
+
+Use detailed 32-bit pixel art style with proper shading and highlights. Same character design in all frames.`,
   },
   {
     // 来源：FrameRonin · nanobanana 连生动作V4Tx3（Gemini Gem）

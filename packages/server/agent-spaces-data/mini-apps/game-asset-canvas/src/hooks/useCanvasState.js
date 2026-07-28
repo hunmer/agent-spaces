@@ -82,12 +82,15 @@ export default function useCanvasState(workspaceId) {
       if (nd.id !== nodeId) return nd;
       const oldData = nd.data || {};
       const merged = typeof patch === 'function' ? patch(oldData) : { ...(oldData || {}), ...patch };
-      // 自动版本存档：检测到 status:'done' 且本次有产出图，存一个完整快照。
+      // 自动版本存档：仅当状态从非 done 转为 done 且本次有产出图时，存一个完整快照。
+      // 用「状态转换」而非「done 出现」作为触发条件，避免 setNodes updater 被多次调用
+      // （ReactFlow batching / 重渲染）导致同一批产出重复加版本。
       // 版本切换走专用回调（带 __switchVersion 标记），不会触发新增版本。
       const isDone = merged?.status === 'done';
+      const wasNotDone = oldData?.status !== 'done';
       const hasOutputImages = Array.isArray(merged?.output?.images) && merged.output.images.length > 0;
       const isSwitch = merged?.__switchVersion === true;
-      if (isDone && hasOutputImages && !isSwitch && !merged.__versionSkip) {
+      if (isDone && wasNotDone && hasOutputImages && !isSwitch && !merged.__versionSkip) {
         const versions = Array.isArray(oldData.versions) ? [...oldData.versions] : [];
         versions.push({
           params: merged.params ? { ...merged.params } : undefined,

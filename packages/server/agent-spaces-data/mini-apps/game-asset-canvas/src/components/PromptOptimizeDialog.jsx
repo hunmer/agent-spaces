@@ -168,7 +168,7 @@ export default function PromptOptimizeDialog({ open, prompt = '', agentConfig, o
           )}
         </div>
 
-        <DialogFooter className="flex-row justify-end gap-2 border-t border-border px-5 py-3">
+        <DialogFooter className="flex-row justify-end gap-2 border-t border-border px-5 py-3 mb-3">
           <Button variant="ghost" size="sm" onClick={handleCancel} disabled={loading}>
             取消
           </Button>

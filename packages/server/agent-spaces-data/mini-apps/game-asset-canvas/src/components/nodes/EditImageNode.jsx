@@ -1,8 +1,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import { PromptTextEditor, SearchSelect, Wand2 } from '@agent-spaces/ui';
 import NodeShell from './NodeShell';
-import PromptPickerDialog from '../PromptPickerDialog';
-import PromptOptimizeDialog from '../PromptOptimizeDialog';
+import { useNodeDialog } from './NodeDialogContext';
 import PickedPromptBadge from './PickedPromptBadge';
 import FileUpload from '../FileUpload';
 import CountAndConcurrency from './CountAndConcurrency';
@@ -67,8 +66,7 @@ export default function EditImageNode({ id, data, selected }) {
   const onUpdate = data?.onUpdate;
   const onGenerate = data?.onGenerate;
   const onCancelProcess = data?.onCancelProcess;
-  const [pickerOpen, setPickerOpen] = useState(false);
-  const [optimizeOpen, setOptimizeOpen] = useState(false);
+  const { openPicker, openOptimize } = useNodeDialog();
 
   const set = useCallback((patch) => {
     onUpdate?.({ params: { ...params, ...patch } });
@@ -153,7 +151,14 @@ export default function EditImageNode({ id, data, selected }) {
           </span>
           <button
             type="button"
-            onClick={() => setPickerOpen(true)}
+            onClick={() => openPicker({
+              scene: 'edit',
+              onPick: (item) => set({
+                pickedPrompt: item.prompt,
+                referenceImages: resolveReferenceImages(item.references),
+                ...(item.aspect ? { aspect: item.aspect } : {}),
+              }),
+            })}
             className="text-xs text-muted-foreground transition hover:text-primary"
           >
             📋 提示词库
@@ -168,7 +173,22 @@ export default function EditImageNode({ id, data, selected }) {
           />
           <button
             type="button"
-            onClick={() => setOptimizeOpen(true)}
+            onClick={() => openOptimize({
+              prompt: promptHtmlToText(promptHtml),
+              agentConfig: data?.promptOptimizeAgent,
+              onApply: (newPrompt) => {
+                // 纯文本 → PromptTextEditor 可用的 HTML（段落用 <p>，换行用 <br>）
+                const escape = (s) => s
+                  .replace(/&/g, '&amp;')
+                  .replace(/</g, '&lt;')
+                  .replace(/>/g, '&gt;');
+                const html = newPrompt
+                  .split(/\n{2,}/)
+                  .map((para) => `<p>${escape(para).replace(/\n/g, '<br>')}</p>`)
+                  .join('');
+                set({ promptHtml: html });
+              },
+            })}
             title="优化提示词"
             disabled={!data?.promptOptimizeAgent?.id}
             className="nopan nowheel absolute bottom-1.5 right-1.5 flex h-6 w-6 items-center justify-center rounded text-muted-foreground opacity-60 transition hover:bg-primary/10 hover:text-primary hover:opacity-100 disabled:cursor-not-allowed disabled:opacity-30"
@@ -234,37 +254,6 @@ export default function EditImageNode({ id, data, selected }) {
       {error && (
         <p className="rounded-md bg-red-500/10 px-2 py-1 text-xs text-red-500">{error}</p>
       )}
-
-
-      <PromptPickerDialog
-        open={pickerOpen}
-        scene="edit"
-        onClose={() => setPickerOpen(false)}
-        onPick={(item) => set({
-          pickedPrompt: item.prompt,
-          referenceImages: resolveReferenceImages(item.references),
-          ...(item.aspect ? { aspect: item.aspect } : {}),
-        })}
-      />
-
-      <PromptOptimizeDialog
-        open={optimizeOpen}
-        prompt={promptHtmlToText(promptHtml)}
-        agentConfig={data?.promptOptimizeAgent}
-        onClose={() => setOptimizeOpen(false)}
-        onApply={(newPrompt) => {
-          // 纯文本 → PromptTextEditor 可用的 HTML（段落用 <p>，换行用 <br>）
-          const escape = (s) => s
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;');
-          const html = newPrompt
-            .split(/\n{2,}/)
-            .map((para) => `<p>${escape(para).replace(/\n/g, '<br>')}</p>`)
-            .join('');
-          set({ promptHtml: html });
-        }}
-      />
     </NodeShell>
   );
 }

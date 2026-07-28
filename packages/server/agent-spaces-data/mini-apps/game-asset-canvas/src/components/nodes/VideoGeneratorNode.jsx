@@ -1,8 +1,8 @@
-import { useCallback, useState } from 'react';
+import { useCallback } from 'react';
 import { FileUpload } from '@agent-spaces/ui';
 import NodeShell from './NodeShell';
+import { useNodeDialog } from './NodeDialogContext';
 import UpstreamImageList, { orderUpstream } from './UpstreamImageList';
-import PromptPickerDialog from '../PromptPickerDialog';
 import PickedPromptBadge from './PickedPromptBadge';
 import CountAndConcurrency from './CountAndConcurrency';
 import {
@@ -85,7 +85,7 @@ export default function VideoGeneratorNode({ id, data, selected }) {
   const onGenerate = data?.onGenerateMedia;
   const onCancelProcess = data?.onCancelProcess;
   const uploading = data?.uploading;
-  const [pickerOpen, setPickerOpen] = useState(false);
+  const { openPicker } = useNodeDialog();
 
   const set = useCallback((patch) => {
     onUpdate?.({ params: { ...params, ...patch } });
@@ -170,7 +170,10 @@ export default function VideoGeneratorNode({ id, data, selected }) {
           <span className="text-xs font-medium text-muted-foreground">提示词</span>
           <button
             type="button"
-            onClick={() => setPickerOpen(true)}
+            onClick={() => openPicker({
+              scene: 'text',
+              onPick: (item) => set({ pickedPrompt: item.prompt }),
+            })}
             className="text-xs text-muted-foreground transition hover:text-primary"
           >
             📋 提示词库
@@ -281,13 +284,6 @@ export default function VideoGeneratorNode({ id, data, selected }) {
           ))}
         </div>
       )}
-
-      <PromptPickerDialog
-        open={pickerOpen}
-        scene="text"
-        onClose={() => setPickerOpen(false)}
-        onPick={(item) => set({ pickedPrompt: item.prompt })}
-      />
     </NodeShell>
   );
 }

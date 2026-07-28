@@ -1,8 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { SearchSelect, Wand2 } from '@agent-spaces/ui';
 import NodeShell from './NodeShell';
-import PromptPickerDialog from '../PromptPickerDialog';
-import PromptOptimizeDialog from '../PromptOptimizeDialog';
+import { useNodeDialog } from './NodeDialogContext';
 import PickedPromptBadge from './PickedPromptBadge';
 import CountAndConcurrency from './CountAndConcurrency';
 import { ASPECT_OPTIONS, DEFAULT_MODEL, MODEL_OPTIONS, NODE_TYPES, SIZE_OPTIONS, WORKFLOWS } from '../../utils/constants';
@@ -65,8 +64,7 @@ export default function TextToImageNode({ id, data, selected }) {
   const onUpdate = data?.onUpdate;
   const onGenerate = data?.onGenerate;
   const onCancelProcess = data?.onCancelProcess;
-  const [pickerOpen, setPickerOpen] = useState(false);
-  const [optimizeOpen, setOptimizeOpen] = useState(false);
+  const { openPicker, openOptimize } = useNodeDialog();
   const promptRef = useRef(null);
 
   // textarea 自动调整高度：重置为 auto 后按 scrollHeight 撑开，上限 500px 后出现滚动条。
@@ -108,7 +106,10 @@ export default function TextToImageNode({ id, data, selected }) {
           <span className="text-xs font-medium text-muted-foreground">提示词</span>
           <button
             type="button"
-            onClick={() => setPickerOpen(true)}
+            onClick={() => openPicker({
+              scene: 'text',
+              onPick: (item) => set({ pickedPrompt: item.prompt, ...(item.aspect ? { aspect: item.aspect } : {}) }),
+            })}
             className="text-xs text-muted-foreground transition hover:text-primary"
           >
             📋 提示词库
@@ -125,7 +126,11 @@ export default function TextToImageNode({ id, data, selected }) {
           />
           <button
             type="button"
-            onClick={() => setOptimizeOpen(true)}
+            onClick={() => openOptimize({
+              prompt: params.prompt || '',
+              agentConfig: data?.promptOptimizeAgent,
+              onApply: (newPrompt) => set({ prompt: newPrompt }),
+            })}
             title="优化提示词"
             disabled={!data?.promptOptimizeAgent?.id}
             className="nopan nowheel absolute bottom-1.5 right-1.5 flex h-6 w-6 items-center justify-center rounded text-muted-foreground opacity-60 transition hover:bg-primary/10 hover:text-primary hover:opacity-100 disabled:cursor-not-allowed disabled:opacity-30"
@@ -191,22 +196,6 @@ export default function TextToImageNode({ id, data, selected }) {
       {error && (
         <p className="rounded-md bg-red-500/10 px-2 py-1 text-xs text-red-500">{error}</p>
       )}
-
-
-      <PromptPickerDialog
-        open={pickerOpen}
-        scene="text"
-        onClose={() => setPickerOpen(false)}
-        onPick={(item) => set({ pickedPrompt: item.prompt, ...(item.aspect ? { aspect: item.aspect } : {}) })}
-      />
-
-      <PromptOptimizeDialog
-        open={optimizeOpen}
-        prompt={params.prompt || ''}
-        agentConfig={data?.promptOptimizeAgent}
-        onClose={() => setOptimizeOpen(false)}
-        onApply={(newPrompt) => set({ prompt: newPrompt })}
-      />
     </NodeShell>
   );
 }

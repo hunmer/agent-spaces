@@ -5,6 +5,7 @@ import { NODE_META } from '../../utils/constants';
 import useViewportActivation from '../../hooks/useViewportActivation';
 import ImageResult from './ImageResult';
 import NodeOutput from './NodeOutput';
+import { FLOATING_HANDLE_OFFSET } from '../canvas/floating-edge-utils';
 
 const STATUS_TEXT = {
   idle: '',
@@ -45,6 +46,20 @@ export default function NodeShell({
   const outputImages = data?.output?.images?.length ? data.output.images : (data?.images || []);
   const previewImages = data?.output?.images || [];
   const outputPreviewEnabled = !!data?.outputPreviewMode && (previewImages.length > 0 || status === 'running');
+  // 产出卡片 props（预览分支与正常分支共用）：图片/回调/版本/状态
+  const outputProps = {
+    status,
+    statusMsg: data?.statusMsg,
+    images: data?.output?.images || [],
+    fileName: data?.params?.fileName,
+    onAddToAssets: data?.onAddToAssets,
+    onAddImages: data?.onAddImages,
+    onRemoveImage: data?.onRemoveImage,
+    onClearImages: data?.onClearImages,
+    versions: data?.versions,
+    activeVersion: data?.activeVersion,
+    onSwitchVersion: data?.onSwitchVersion,
+  };
   const [hovered, setHovered] = useState(false);
   const onExportImages = data?.onExportImages;
   const onProcessImage = data?.onProcessImage;
@@ -71,7 +86,8 @@ export default function NodeShell({
     if (!outputPreviewEnabled || hovered) return;
     const root = rootRef.current;
     if (!root?.hasAttribute('data-output-preview')) return;
-    const height = Math.ceil(root.scrollHeight);
+    const card = root.querySelector('[data-node-card]');
+    const height = Math.ceil(card?.scrollHeight || root.clientHeight);
     data?.onOutputPreviewHeight?.(height);
   }, [outputPreviewEnabled, hovered, data?.onOutputPreviewHeight]);
 
@@ -97,9 +113,18 @@ export default function NodeShell({
     setHovered(true);
     data?.onOutputPreviewHover?.(true);
   };
-  const handleMouseLeave = () => {
+  const handleMouseLeave = (event) => {
     pointerInsideRef.current = false;
     if (rootRef.current?.contains(document.activeElement)) return;
+    // 鼠标移到产出卡片（兄弟元素）或 Portal 弹层时，视为仍在节点内，不切换预览
+    const related = event.relatedTarget;
+    if (related instanceof Element) {
+      if (related.closest?.('[data-node-output]')) {
+        pointerInsideRef.current = true;
+        return;
+      }
+      if (related.closest?.('[role="dialog"], [role="popover"], [data-radix-popper-content-wrapper]')) return;
+    }
     setHovered(false);
     if (outputPreviewEnabled) data?.onOutputPreviewHover?.(false);
   };
@@ -111,6 +136,10 @@ export default function NodeShell({
   const handleBlurCapture = (event) => {
     if (!outputPreviewEnabled) return;
     if (event.currentTarget.contains(event.relatedTarget) || pointerInsideRef.current) return;
+    // 焦点移到 Portal 弹层（Dialog/Popover 等，渲染在 body 下）时保持 hover，
+    // 避免打开提示词库等对话框后节点切回预览态导致表单消失
+    const related = event.relatedTarget;
+    if (related instanceof Element && related.closest('[role="dialog"], [role="popover"], [data-radix-popper-content-wrapper]')) return;
     setHovered(false);
     data?.onOutputPreviewHover?.(false);
   };
@@ -122,11 +151,19 @@ export default function NodeShell({
     const handlePointerMove = (event) => {
       const root = rootRef.current;
       if (!root || root.contains(document.activeElement)) return;
+      if (event.target instanceof Node && root.contains(event.target)) {
+        pointerInsideRef.current = true;
+        return;
+      }
       const rect = root.getBoundingClientRect();
       const inside = event.clientX >= rect.left && event.clientX <= rect.right
         && event.clientY >= rect.top && event.clientY <= rect.bottom;
       pointerInsideRef.current = inside;
       if (inside) return;
+      // 鼠标在 Portal 弹层（Dialog/Popover，渲染在 body）上时保持 hover
+      const overPortal = event.target instanceof Element
+        && event.target.closest?.('[role="dialog"], [role="popover"], [data-radix-popper-content-wrapper]');
+      if (overPortal) return;
       setHovered(false);
       data?.onOutputPreviewHover?.(false);
     };
@@ -163,19 +200,52 @@ export default function NodeShell({
 
   if (outputPreviewEnabled && !hovered) {
     return (
-      <div
-        ref={rootRef}
-        data-output-preview
-        className="relative w-full overflow-hidden rounded-lg bg-card shadow-sm"
-        onMouseEnter={handleMouseEnter}
-        onMouseLeave={handleMouseLeave}
-      >
+      <>
+      {/* 顶部行：版本数字按钮（可滚动）+ 类型 Badge。放在主 div 之外，
+          避免鼠标进入按钮时触发节点 hover→切换预览模式 */}
+      <div className="nodrag nopan relative z-20 mb-1 flex items-center gap-1.5 px-1" style={{ width: nodeWidth || undefined }}>
+        {Array.isArray(data?.versions) && data.versions.length > 1 && data?.onSwitchVersion && (
+          <div
+            className="scrollbar-none flex min-w-0 flex-1 items-center gap-1 overflow-x-auto"
+            onWheelCapture={(e) => {
+              // ctrl+wheel 默认触发画布缩放；这里转成横向滚动并阻止冒泡
+              e.preventDefault();
+              e.stopPropagation();
+              e.currentTarget.scrollLeft += e.deltaY || e.deltaX;
+            }}
+          >
+            {data.versions.map((v, i) => (
+              <button
+                key={i}
+                type="button"
+                title={v?.createdAt ? new Date(v.createdAt).toLocaleString() : `版本 ${i + 1}`}
+                onClick={(e) => { e.stopPropagation(); data.onSwitchVersion(i); }}
+                className={
+                  'flex size-5 shrink-0 items-center justify-center rounded-full border bg-background text-[10px] font-medium shadow-sm transition ' +
+                  (i === (data?.activeVersion ?? data.versions.length - 1)
+                    ? 'border-primary text-primary'
+                    : 'border-border text-muted-foreground hover:border-primary hover:text-primary')
+                }
+              >
+                {i + 1}
+              </button>
+            ))}
+          </div>
+        )}
         <Badge
           variant="secondary"
-          className="pointer-events-none absolute right-2 top-2 z-10 max-w-[calc(100%-1rem)] truncate bg-background/85 shadow-sm backdrop-blur-sm"
+          className="ml-auto max-w-[50%] shrink-0 truncate bg-background/85 shadow-sm backdrop-blur-sm"
         >
           {meta.label}
         </Badge>
+      </div>
+      <div
+        ref={rootRef}
+        data-output-preview
+        className="relative w-full overflow-visible"
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+      >
         {resizable && (
           <NodeResizer
             isVisible={!!selected}
@@ -191,27 +261,32 @@ export default function NodeShell({
           <Handle
             type="target"
             position={Position.Top}
-            className="!h-3 !w-3 !border-2 !border-background !bg-muted-foreground"
+            className="!h-5 !w-5 !cursor-crosshair !border-2 !border-muted-foreground/60 !bg-background !shadow-sm !transition-all !duration-150 hover:!h-7 hover:!w-7 hover:!border-primary hover:!shadow-md"
+            style={{ top: -FLOATING_HANDLE_OFFSET, zIndex: 50 }}
           />
         )}
-        <div className="nodrag nopan nowheel w-full">
-          {status === 'running' ? (
-            <div className="flex min-h-[160px] w-full flex-col items-center justify-center gap-2 text-muted-foreground">
-              <Loader className="h-6 w-6" />
-              <span className="text-xs">{data?.statusMsg || '处理中…'}</span>
-            </div>
-          ) : viewportActivated ? (
-            <ImageResult images={previewImages} preview onImageLoad={reportOutputPreviewHeight} />
-          ) : null}
+        <div data-node-card className="w-full overflow-hidden rounded-lg bg-card shadow-sm">
+          <div className="nodrag nopan nowheel w-full">
+            {status === 'running' ? (
+              <div className="flex min-h-[160px] w-full flex-col items-center justify-center gap-2 text-muted-foreground">
+                <Loader className="h-6 w-6" />
+                <span className="text-xs">{data?.statusMsg || '处理中…'}</span>
+              </div>
+            ) : viewportActivated ? (
+              <ImageResult images={previewImages} preview onImageLoad={reportOutputPreviewHeight} />
+            ) : null}
+          </div>
         </div>
         {sourceHandle && (
           <Handle
             type="source"
             position={Position.Bottom}
-            className="!h-3 !w-3 !border-2 !border-background !bg-primary"
+            className="!h-5 !w-5 !cursor-crosshair !border-2 !border-muted-foreground/60 !bg-background !shadow-sm !transition-all !duration-150 hover:!h-7 hover:!w-7 hover:!border-primary hover:!shadow-md"
+            style={{ bottom: -FLOATING_HANDLE_OFFSET, zIndex: 50 }}
           />
         )}
       </div>
+      </>
     );
   }
 
@@ -219,7 +294,7 @@ export default function NodeShell({
     <>
     <div
       ref={rootRef}
-      className="flex h-full w-full flex-col overflow-hidden rounded-lg border border-border bg-card text-card-foreground shadow-sm"
+      className="relative h-full w-full overflow-visible"
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
       onFocusCapture={handleFocusCapture}
@@ -282,9 +357,11 @@ export default function NodeShell({
         <Handle
           type="target"
           position={Position.Top}
-          className="!h-3 !w-3 !border-2 !border-background !bg-muted-foreground"
+          className="!h-5 !w-5 !cursor-crosshair !border-2 !border-muted-foreground/60 !bg-background !shadow-sm !transition-all !duration-150 hover:!h-7 hover:!w-7 hover:!border-primary hover:!shadow-md"
+          style={{ top: -FLOATING_HANDLE_OFFSET, zIndex: 50 }}
         />
       )}
+      <div className="flex h-full w-full flex-col overflow-hidden rounded-lg border border-border bg-card text-card-foreground shadow-sm">
       <div
         data-node-header
         className="flex shrink-0 items-center justify-between gap-2 px-3 py-2"
@@ -324,29 +401,26 @@ export default function NodeShell({
           {viewportActivated ? children : null}
         </div>
       </div>
+      </div>
       {sourceHandle && (
         <Handle
           type="source"
           position={Position.Bottom}
-          className="!h-3 !w-3 !border-2 !border-background !bg-primary"
+          className="!h-5 !w-5 !cursor-crosshair !border-2 !border-muted-foreground/60 !bg-background !shadow-sm !transition-all !duration-150 hover:!h-7 hover:!w-7 hover:!border-primary hover:!shadow-md"
+          style={{ bottom: -FLOATING_HANDLE_OFFSET, zIndex: 50 }}
         />
       )}
     </div>
     {/* 产出卡片：节点外部下方独立卡片，不随表单滚动，不受 resize 钳制。
-        统一渲染所有节点的产出，替代各节点 children 内手写的 <ImageResult>。 */}
+        统一渲染所有节点的产出，替代各节点 children 内手写的 <ImageResult>。
+        onMouseEnter/Leave 复用主 div 逻辑：鼠标在产出卡片上时视为仍在节点内，
+        避免预览模式下移到底部产出误触发切回大图预览。 */}
     <NodeOutput
+      {...outputProps}
       width={nodeWidth || undefined}
-      status={status}
-      statusMsg={data?.statusMsg}
-      images={data?.output?.images || []}
-      fileName={data?.params?.fileName}
-      onAddToAssets={data?.onAddToAssets}
-      onAddImages={data?.onAddImages}
-      onRemoveImage={data?.onRemoveImage}
-      onClearImages={data?.onClearImages}
-      versions={data?.versions}
-      activeVersion={data?.activeVersion}
-      onSwitchVersion={data?.onSwitchVersion}
+      hasExternalSourceHandle={!!sourceHandle}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
     />
     </>
   );

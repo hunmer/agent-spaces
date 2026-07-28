@@ -20,6 +20,7 @@ import CanvasContextMenu from './canvas/CanvasContextMenu';
 import DropNodeMenu from './canvas/DropNodeMenu';
 import MultiSelectToolbar from './canvas/MultiSelectToolbar';
 import GroupOverlays from './canvas/GroupOverlays';
+import FloatingEdge from './canvas/FloatingEdge';
 import AssetLibraryPickerDialog from './AssetLibraryPickerDialog';
 import useAssetLibrary from '../hooks/useAssetLibrary';
 
@@ -44,6 +45,9 @@ import useDecoratedNodes from '../hooks/useDecoratedNodes';
 import { IMAGE_TAGS, NODE_TYPES, NODE_META, dedupeTags } from '../utils/constants';
 import { NODE_COMPONENTS, PANEL_ID_MAIN, PANEL_ID_RIGHT, DEFAULT_SIZE, initialData } from '../utils/canvas-constants';
 import { genId } from '../utils/canvas-id';
+
+const EDGE_TYPES = { floating: FloatingEdge };
+const DEFAULT_EDGE_OPTIONS = { type: 'floating' };
 
 /**
  * 游戏资产生成画布主组件（编排层）。
@@ -235,6 +239,10 @@ export default function Canvas() {
 
   const deleteKeyCode = useMemo(() => (['Backspace', 'Delete']), []);
   const nodeTypes = useMemo(() => NODE_COMPONENTS, []);
+  const floatingEdges = useMemo(
+    () => edges.map((edge) => (edge.type === 'floating' ? edge : { ...edge, type: 'floating' })),
+    [edges],
+  );
 
   const handleOutputPreviewHeight = useCallback((id, height) => {
     if (!id || !Number.isFinite(height) || height <= 0) return;
@@ -555,7 +563,7 @@ export default function Canvas() {
           >
             <ReactFlow
               nodes={decoratedNodes}
-              edges={edges}
+              edges={floatingEdges}
               onNodesChange={onNodesChange}
               onEdgesChange={onEdgesChange}
               onConnect={onConnect}
@@ -565,6 +573,8 @@ export default function Canvas() {
               onNodesDelete={onNodesDelete}
               deleteKeyCode={deleteKeyCode}
               nodeTypes={nodeTypes}
+              edgeTypes={EDGE_TYPES}
+              defaultEdgeOptions={DEFAULT_EDGE_OPTIONS}
               fitView
               proOptions={{ hideAttribution: true }}
             >
