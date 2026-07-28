@@ -14,8 +14,7 @@
  * vendor 文件来源（自包含 ESM bundle）：
  * - gifenc.js       — GIF 编码 + 调色板量化（官方 ESM build）
  * - gifuct-js.js    — GIF 解码（esm.sh ?bundle，js-binary-schema-parser 已内联）
- * - image-q.js      — Wu 色彩量化（esm.sh ?bundle + node polyfill）
- * - node-process.js / node-buffer.js — image-q 的 node polyfill
+ * - image-q.js      — Wu 色彩量化（esm.sh ?bundle，node polyfill import 已剔除，nextTick 走 setTimeout）
  * （ZIP 打包改用宿主 window.AgentSpaces.downloadZip，不再本地加载 jszip）
  */
 const VENDOR_BASE = 'vendor/';
@@ -132,8 +131,15 @@ export async function getFabric() {
  * browser-image-compression：前端图片压缩（Web Worker，不卡 UI）。
  * 用于 AI 分析前把大图压成 base64，减小传输体积 + 保证 AI 坐标与画布背景图同源。
  *
- * 加载方式（与 fabric 同款）：UMD 格式 `e.imageCompression=t()` 挂到 globalThis，
- * 用 (0,eval)(code) 全局求值后 window.imageCompression 可用。
+ * 加载坑点：UMD 头是 `"object"==typeof exports && "undefined"!=typeof module ? module.exports=t() : ...`。
+ * webpack 5 模块作用域下，间接 eval (0,eval)(code) 仍能读到 webpack 注入的空 `exports`/`module`
+ * 变量（模块包装函数的形参），导致 `typeof exports === "object"` 命中 CommonJS 分支，
+ * `t()` 被赋给 `module.exports` 而非挂到 globalThis，window.imageCompression 永远缺失。
+ *
+ * 正解：用 `(function(){ ... })()` IIFE 包裹源码，函数内用局部 var 屏蔽外层 `exports`/`module`/`define`，
+ * UMD 检测全部落空 → 走全局挂载分支 `globalThis.imageCompression = t()`。
+ * （fabric 用 `typeof exports != "undefined"` 判断，但同时 `var fabric` 全局声明兜底，所以没这问题。）
+ *
  * 返回 imageCompression 函数：`const compress = await getImageCompression(); compress(file, opts)`
  */
 export async function getImageCompression() {
@@ -144,8 +150,10 @@ export async function getImageCompression() {
   const resp = await fetch(url);
   if (!resp.ok) throw new Error(`vendor 加载失败(${resp.status}): browser-image-compression.js`);
   const code = await resp.text();
-  // 间接 eval：全局作用域执行 UMD，e.imageCompression=t() → window.imageCompression
-  (0, eval)(code);
+  // IIFE 包裹：局部 var 屏蔽 webpack 模块作用域的 exports/module/define，
+  // 强制 UMD 走全局挂载分支。this 传 globalThis 保证 UMD 里 e=globalThis。
+  const wrapped = `(function(exports,module,define){${code}\n}).call(globalThis,undefined,undefined,undefined)`;
+  (0, eval)(wrapped);
   if (typeof window.imageCompression !== 'function') {
     throw new Error('imageCompression 加载后不是函数（UMD 初始化失败）');
   }

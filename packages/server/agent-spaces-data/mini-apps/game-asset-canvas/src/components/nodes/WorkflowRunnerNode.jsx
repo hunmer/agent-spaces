@@ -35,7 +35,7 @@ export const PARAMS_SCHEMA = [
     label: '输入参数(JSON)',
     type: 'text',
     required: true,
-    description: '提交给工作流 start 节点的 JSON 字符串，如 {"prompt":"...","model":"gpt-image-1"}。',
+    description: '提交给工作流 start 节点的 JSON 字符串。选中工作流后会按其 inputFields 自动生成模板预填，用户在此基础上修改即可。',
   },
   {
     key: 'urlFieldPath',
@@ -80,7 +80,16 @@ export default function WorkflowRunnerNode({ id, data, selected }) {
       const AS = window.AgentSpaces;
       const resp = await AS.callPluginTool(BUILTIN_PLUGIN, 'list_workflows', { page_size: 50 });
       const list = resp?.data?.workflows || resp?.result?.data?.workflows || resp?.result?.workflows || resp?.workflows || [];
-      setWorkflowList(Array.isArray(list) ? list : []);
+      // 归一化：summarizeWorkflowForTool 返回 workflow_id/title，WorkflowListDialog 需要 id/name
+      // （否则 workflow.id 为 undefined，内部 workflow.id.slice(0,8) 会报错）
+      const normalized = (Array.isArray(list) ? list : []).map((wf) => ({
+        ...wf,
+        id: wf.id || wf.workflow_id,
+        name: wf.name || wf.title || '未命名工作流',
+        updatedAt: wf.updatedAt || 0,
+        nodes: wf.nodes || [],
+      }));
+      setWorkflowList(normalized);
     } catch (err) {
       setPickerError(err?.message || String(err));
     } finally {
@@ -91,9 +100,24 @@ export default function WorkflowRunnerNode({ id, data, selected }) {
   const onPickWorkflow = useCallback((workflow) => {
     const wfId = workflow.workflow_id || workflow.id;
     const wfName = workflow.title || workflow.name || '未命名工作流';
-    set({ workflowId: wfId, workflowName: wfName });
+    // start 节点 inputFields（list_workflows 已带出，字段结构见 summarizeWorkflowForTool）
+    const inputFields = Array.isArray(workflow.inputFields) ? workflow.inputFields : [];
+    // 是否预填模板：inputText 为空 / 仅 {}（初始态）/ 等于上次自动生成的模板（未手改）时覆盖，
+    // 避免冲掉用户已手动修改的内容。
+    const currentText = (params.inputText || '').trim();
+    const prevTemplate = (params.lastTemplate || '').trim();
+    const isPristine = !currentText || currentText === '{}';
+    const shouldPrefill = isPristine || currentText === prevTemplate;
+    let nextPatch = { workflowId: wfId, workflowName: wfName, inputFields };
+    if (shouldPrefill) {
+      const template = buildTemplateFromFields(inputFields);
+      const templateText = JSON.stringify(template, null, 2);
+      nextPatch.inputText = templateText;
+      nextPatch.lastTemplate = templateText;
+    }
+    set(nextPatch);
     setPickerOpen(false);
-  }, [set]);
+  }, [set, params.inputText, params.lastTemplate]);
 
   // 解析 JSON 输入：非法时返回 null + 通过节点 error 提示
   const parseInput = useCallback(() => {
@@ -213,8 +237,28 @@ export default function WorkflowRunnerNode({ id, data, selected }) {
       {/* JSON 参数编辑器 */}
       <div className="flex flex-col gap-1">
         <div className="flex items-center justify-between">
-          <span className="text-xs font-medium text-muted-foreground">输入参数 (JSON)</span>
-          <span className="text-[10px] text-muted-foreground">start 节点 inputFields</span>
+          <span className="text-xs font-medium text-muted-foreground">
+            输入参数 (JSON)
+            {params.inputFields?.length > 0 && (
+              <span className="ml-1 text-[10px] text-muted-foreground/70">
+                · {params.inputFields.length} 个字段
+              </span>
+            )}
+          </span>
+          {params.inputFields?.length > 0 && (
+            <button
+              type="button"
+              title="按 start 节点 inputFields 重置为模板"
+              onClick={(e) => {
+                e.stopPropagation();
+                const templateText = JSON.stringify(buildTemplateFromFields(params.inputFields), null, 2);
+                set({ inputText: templateText, lastTemplate: templateText });
+              }}
+              className="text-[10px] text-muted-foreground transition hover:text-primary"
+            >
+              ↺ 重置为模板
+            </button>
+          )}
         </div>
         <div
           className="nodrag nopan nowheel overflow-hidden rounded-md border border-border"
@@ -311,6 +355,52 @@ export default function WorkflowRunnerNode({ id, data, selected }) {
       )}
     </NodeShell>
   );
+}
+
+/**
+ * 根据 start 节点 inputFields 生成 JSON 模板（用于选中工作流后预填）。
+ * 每个字段取其 value 作为默认值；无 value 时按 type 给占位空值。
+ * 递归处理 object 类型的 children（展平为嵌套对象）。
+ * @param {Array} fields start 节点 data.inputFields（OutputField[]）
+ * @returns {object} 可直接 JSON.stringify 的模板对象
+ */
+function buildTemplateFromFields(fields) {
+  if (!Array.isArray(fields) || !fields.length) return {};
+  const out = {};
+  for (const f of fields) {
+    if (!f || typeof f.key !== 'string' || !f.key) continue;
+    out[f.key] = defaultFieldValue(f);
+  }
+  return out;
+}
+
+/** 单个 OutputField 的默认值：有 value 用 value；否则按 type 给空占位 */
+function defaultFieldValue(field) {
+  if (field && Object.prototype.hasOwnProperty.call(field, 'value') && field.value !== undefined) {
+    return field.value;
+  }
+  switch (field?.type) {
+    case 'number': return 0;
+    case 'boolean': return false;
+    case 'object': {
+      const childObj = {};
+      for (const c of field.children || []) {
+        if (c && typeof c.key === 'string' && c.key) childObj[c.key] = defaultFieldValue(c);
+      }
+      return childObj;
+    }
+    case 'select': return Array.isArray(field.options) && field.options.length ? field.options[0] : '';
+    case 'array':
+    case 'string[]':
+    case 'number[]':
+    case 'file[]':
+    case 'image[]':
+    case 'audio[]':
+    case 'video[]':
+    case 'any[]':
+      return [];
+    default: return '';
+  }
 }
 
 /**

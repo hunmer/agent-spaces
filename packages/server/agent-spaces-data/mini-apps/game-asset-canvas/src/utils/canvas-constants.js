@@ -223,6 +223,8 @@ export function initialData(type) {
         workflowId: '',
         workflowName: '',
         inputText: '{}',
+        inputFields: [],
+        lastTemplate: '',
         urlFieldPath: '',
         count: 1,
         concurrency: 1,
