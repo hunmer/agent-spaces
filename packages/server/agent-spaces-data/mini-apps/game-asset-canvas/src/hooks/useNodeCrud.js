@@ -1,7 +1,7 @@
 import { useCallback, useRef } from 'react';
 import { addEdge, MarkerType } from '@xyflow/react';
 import { NODE_TYPES, NODE_META, IMAGE_TAGS, WORKFLOWS } from '../utils/constants';
-import { DEFAULT_SIZE, initialData } from '../utils/canvas-constants';
+import { DEFAULT_SIZE, initialData, CANVAS_DROP_MIME } from '../utils/canvas-constants';
 import { genId, autoPosition } from '../utils/canvas-id';
 import { autoLayout } from '../utils/layout';
 import { downloadJson, serializeCanvas } from '../utils/export';
@@ -171,6 +171,33 @@ export default function useNodeCrud({
     event.dataTransfer.dropEffect = 'move';
   }, []);
 
+  // 按 URL 在落点批量建图片展示节点（历史记录/素材库图片拖入画布复用）。
+  // 多张时网格排列；source 统一标记为 'drop'（拖拽落点来源）。
+  const addImageNodesAt = useCallback((urls, position) => {
+    if (!urls?.length) return;
+    const size = DEFAULT_SIZE[NODE_TYPES.imageDisplay];
+    const meta = NODE_META[NODE_TYPES.imageDisplay];
+    const gap = 20;
+    const cols = 3;
+    setNodes((prev) => {
+      const additions = urls.map((url, i) => {
+        const col = i % cols;
+        const row = Math.floor(i / cols);
+        const cx = position?.x ?? 120;
+        const cy = position?.y ?? 120;
+        return {
+          id: genId(NODE_TYPES.imageDisplay),
+          type: NODE_TYPES.imageDisplay,
+          position: { x: cx + col * (size.w + gap) - size.w / 2, y: cy + row * (size.h + gap) - size.h / 2 },
+          width: size.w, height: size.h,
+          style: { width: size.w, height: size.h },
+          data: { ...initialData(NODE_TYPES.imageDisplay), images: [url], source: 'drop', label: meta.label },
+        };
+      });
+      return [...prev, ...additions];
+    });
+  }, [setNodes]);
+
   // 系统图片文件拖入画布：在落点建图片展示节点（loading 占位），串行上传
   const handleDropFiles = useCallback(async (fileList, position) => {
     const files = Array.from(fileList || []).filter((f) => f.type?.startsWith('image/'));
@@ -235,11 +262,24 @@ export default function useNodeCrud({
         if (type) { createNodeAt(type, position, patch); return; }
       } catch {}
     }
+    // 历史记录/素材库的图片缩略图拖入：按图片 URL 在落点建 imageDisplay 节点
+    const imgRaw = event.dataTransfer.getData(CANVAS_DROP_MIME);
+    if (imgRaw) {
+      try {
+        const parsed = JSON.parse(imgRaw);
+        const urls = Array.isArray(parsed?.urls) ? parsed.urls.filter(Boolean)
+          : (typeof parsed === 'string' ? [parsed] : []);
+        if (urls.length) {
+          addImageNodesAt(urls, position);
+          return;
+        }
+      } catch {}
+    }
     const type = event.dataTransfer.getData('application/reactflow') || dragTypeRef.current;
     dragTypeRef.current = null;
     if (!type) return;
     createNodeAt(type, position);
-  }, [reactFlow, createNodeAt, handleDropFiles]);
+  }, [reactFlow, createNodeAt, handleDropFiles, addImageNodesAt]);
 
   // 画布右键：记录右键处的画布坐标供建节点
   const handleContextMenu = useCallback((event) => {

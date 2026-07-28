@@ -6,6 +6,7 @@ import {
   Plus, Trash2, Loader2, Pencil, Check, CopyPlus,
 } from '@agent-spaces/ui';
 import useAssetLibrary from '../hooks/useAssetLibrary';
+import { CANVAS_DROP_MIME } from '../utils/canvas-constants';
 
 /**
  * 素材库 tab：与当前工作区绑定。支持创建/重命名/删除分类，每个分类可上传图片。
@@ -498,10 +499,13 @@ function AssetThumb({ asset, categoryId, picker, selected, onToggle, onRemove, o
   };
 
   // 默认模式：img 可拖拽，拖起时把移动协议写入 dataTransfer 并关闭 HoverCard
+  // 同时写入画布图片拖拽协议（CANVAS_DROP_MIME）：拖到画布时按 url 建 imageDisplay 节点。
+  // 拖到库内其他分类时由 handleMoveDrop 优先识别 ASSET_MOVE_MIME 处理为移动，两者互不干扰。
   const handleDragStart = (e) => {
     const payload = JSON.stringify({ assetId: asset.id, fromCategoryId: categoryId });
     e.dataTransfer.setData(ASSET_MOVE_MIME, payload);
     e.dataTransfer.setData('text/plain', payload); // 兜底
+    e.dataTransfer.setData(CANVAS_DROP_MIME, JSON.stringify({ urls: [asset.url] }));
     e.dataTransfer.effectAllowed = 'move';
     setHoverOpen(false);
   };

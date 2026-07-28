@@ -33,7 +33,8 @@ export function computeInputImages(nodes, edges) {
     || type === NODE_TYPES.videoGenerator
     || type === NODE_TYPES.imageCompare
     || type === NODE_TYPES.cutout
-    || type === NODE_TYPES.directorDesk;
+    || type === NODE_TYPES.directorDesk
+    || type === NODE_TYPES.photopea;
 
   // 取某节点「作为 source 时应给出的产出图」：output.images 优先，回退 data.images。
   // derivedByNode 允许把上一轮 receiver 的派生图并入视图（解决多跳转发）。

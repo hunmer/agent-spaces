@@ -6,6 +6,7 @@ import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
 } from '@agent-spaces/ui';
 import { NODE_META, NODE_TYPES, NODE_TYPE_TO_PROCESSOR } from '../utils/constants';
+import { CANVAS_DROP_MIME } from '../utils/canvas-constants';
 import AssetLibrary from './AssetLibrary';
 
 // 节点分类（顶部 chips 筛选用）。category 字段同步打到 ADD_ITEMS 每项。
@@ -41,6 +42,7 @@ const ADD_ITEMS = [
   { type: NODE_TYPES.cutout, label: '抠图', category: 'edit' },
   { type: NODE_TYPES.promptReverse, label: '反推提示词', category: 'edit' },
   { type: NODE_TYPES.directorDesk, label: '3D导演台', category: 'edit' },
+  { type: NODE_TYPES.photopea, label: '在线PS', category: 'edit' },
   // 工具
   { type: NODE_TYPES.uiSplitter, label: '雪碧图拆分', category: 'util' },
   { type: NODE_TYPES.bboxViewer, label: 'UI拆分', category: 'util' },
@@ -304,25 +306,82 @@ function NodeList({ nodes, onSelectNode, onLocateNode, onDeleteNode }) {
 
 // ============ 生成记录 ============
 function HistoryList({ history, onRemoveHistory, onClearHistory, onUseImage, onInsertHistory, onDragStartHistory, onAddToAssets }) {
+  const [activeCat, setActiveCat] = useState('all');
+  // nodeType → category 映射（ADD_ITEMS 是单一数据源）
+  const typeToCat = useMemo(() => {
+    const m = new Map();
+    for (const it of ADD_ITEMS) m.set(it.type, it.category);
+    return m;
+  }, []);
+  // 动态分类 chips：基于历史记录里实际出现过的 nodeType 推导 category，避免列空分类。
+  // 同时统计每类记录数，用于 chips 计数显示。
+  const cats = useMemo(() => {
+    const seen = new Set();
+    const counts = new Map();
+    counts.set('all', history.length);
+    for (const it of history) {
+      const cat = typeToCat.get(it.nodeType);
+      if (cat) {
+        seen.add(cat);
+        counts.set(cat, (counts.get(cat) || 0) + 1);
+      }
+    }
+    return NODE_CATEGORIES
+      .filter((c) => c.id === 'all' || seen.has(c.id))
+      .map((c) => ({ ...c, count: counts.get(c.id) || 0 }));
+  }, [history, typeToCat]);
+  const filtered = useMemo(() => {
+    if (activeCat === 'all') return history;
+    return history.filter((it) => typeToCat.get(it.nodeType) === activeCat);
+  }, [history, activeCat, typeToCat]);
+
   return (
     <div className="flex h-full flex-col">
       {history.length > 0 && (
-        <div className="flex justify-end border-b border-border px-2 py-1">
-          <button
-            type="button"
-            onClick={onClearHistory}
-            className="text-xs text-muted-foreground transition hover:text-red-500"
-          >
-            清空记录
-          </button>
-        </div>
+        <>
+          {/* 分类筛选 chips（参考「选择添加节点」列表样式）：含计数 + 横向滚动防溢出 */}
+          {cats.length > 1 && (
+            <div className="nodrag nopan nowheel scrollbar-none flex gap-1 overflow-x-auto border-b border-border p-2">
+              {cats.map((c) => {
+                const active = activeCat === c.id;
+                return (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => setActiveCat(c.id)}
+                    className={
+                      'flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-medium whitespace-nowrap transition ' +
+                      (active
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-muted text-muted-foreground hover:bg-muted/70 hover:text-foreground')
+                    }
+                  >
+                    {c.label}
+                    <span className={'rounded-full px-1 text-[10px] ' + (active ? 'bg-primary-foreground/20' : 'bg-background/60')}>
+                      {c.count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+          <div className="flex justify-end border-b border-border px-2 py-1">
+            <button
+              type="button"
+              onClick={onClearHistory}
+              className="text-xs text-muted-foreground transition hover:text-red-500"
+            >
+              清空记录
+            </button>
+          </div>
+        </>
       )}
       <ScrollArea className="min-h-0 flex-1">
         <div className="flex flex-col gap-2 p-2">
           {history.length === 0 && (
             <p className="px-2 py-8 text-center text-xs text-muted-foreground">暂无生成记录</p>
           )}
-          {history.map((it) => (
+          {filtered.map((it) => (
             <HistoryCard
               key={it.id}
               item={it}
@@ -333,6 +392,9 @@ function HistoryList({ history, onRemoveHistory, onClearHistory, onUseImage, onI
               onAddToAssets={onAddToAssets}
             />
           ))}
+          {history.length > 0 && filtered.length === 0 && (
+            <p className="px-2 py-8 text-center text-xs text-muted-foreground">该分类暂无记录</p>
+          )}
         </div>
       </ScrollArea>
     </div>
@@ -459,6 +521,14 @@ function formatTime(ts) {
 // delay=500ms 延迟显示；点击打开 mediaGallery 大图查看；右上角按钮把单张图加到素材库。
 function HistoryImageThumb({ url, images, index, onAddToAssets }) {
   const [hoverOpen, setHoverOpen] = useState(false);
+  // 拖拽缩略图到画布：写入画布图片协议，落点建 imageDisplay 节点（拖图片，区别于拖卡片建 nodeType 节点）。
+  // stopPropagation 防止冒泡到 HistoryCard 的 onDragStart（否则会被当作「拖节点」处理）。
+  const handleImgDragStart = (e) => {
+    e.stopPropagation();
+    e.dataTransfer.setData(CANVAS_DROP_MIME, JSON.stringify({ urls: [url] }));
+    e.dataTransfer.effectAllowed = 'copy';
+    setHoverOpen(false);
+  };
   return (
     <HoverCard open={hoverOpen} onOpenChange={setHoverOpen}>
       <HoverCardTrigger
@@ -470,7 +540,14 @@ function HistoryImageThumb({ url, images, index, onAddToAssets }) {
               onClick={() => openMediaGallery(images.map((src) => ({ src, type: 'image' })), index)}
               className="block h-full w-full overflow-hidden rounded"
             >
-              <img src={url} alt="" className="h-full w-full object-cover transition hover:opacity-80" loading="lazy" />
+              <img
+                src={url}
+                alt=""
+                className="h-full w-full cursor-grab object-cover transition hover:opacity-80 active:cursor-grabbing"
+                loading="lazy"
+                draggable
+                onDragStart={handleImgDragStart}
+              />
             </button>
             {/* 右上角：把该单张图片添加到素材库分组 */}
             <button

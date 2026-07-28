@@ -32,10 +32,31 @@ export default function ImageResult({ images, max = 0, preview = false, onImageL
     return `${base}_${i + 1}${ext}`;
   };
 
-  const items = list.map((src, i) => ({ src, type: 'image', fileName: nameFor(i) }));
+  // gallery 列表：包含所有历史版本的产出图（按版本顺序合并），点击当前版本第 i 张时
+  // 定位到 gallery 里的全局索引（当前版本之前所有版本的图数之和 + i）。
+  // 无 versions 或仅一个版本时退化为当前 list，行为与旧版一致。
+  const galleryItems = (() => {
+    if (!Array.isArray(versions) || versions.length === 0) {
+      return list.map((src, i) => ({ src, type: 'image', fileName: nameFor(i) }));
+    }
+    return versions
+      .filter((v) => Array.isArray(v?.output?.images))
+      .flatMap((v) => v.output.images.map((src) => ({ src, type: 'image' })));
+  })();
+  // 当前版本首图在 gallery 里的偏移（之前的版本图数之和）
+  const galleryOffset = (() => {
+    if (!Array.isArray(versions) || versions.length === 0) return 0;
+    const active = typeof activeVersion === 'number' ? activeVersion : versions.length - 1;
+    let offset = 0;
+    for (let i = 0; i < active && i < versions.length; i++) {
+      const imgs = versions[i]?.output?.images;
+      if (Array.isArray(imgs)) offset += imgs.length;
+    }
+    return offset;
+  })();
 
   const open = (index) => {
-    openMediaGallery(items, index);
+    openMediaGallery(galleryItems.length ? galleryItems : list.map((src, i) => ({ src, type: 'image', fileName: nameFor(i) })), galleryOffset + index);
   };
 
   if (preview) {
@@ -101,7 +122,7 @@ export default function ImageResult({ images, max = 0, preview = false, onImageL
       {list.length > 0 && (
         <div className="grid grid-cols-3 gap-1">
           {list.map((url, i) => (
-            <div key={i} className="group/ir relative block aspect-square overflow-visible rounded border border-border">
+            <div key={i} className="group relative block aspect-square overflow-visible rounded border border-border">
               <button
                 type="button"
                 onClick={(e) => { e.stopPropagation(); open(i); }}
@@ -114,7 +135,7 @@ export default function ImageResult({ images, max = 0, preview = false, onImageL
                   type="button"
                   onClick={(e) => { e.stopPropagation(); onAddToAssets({ url, fileName: nameFor(i) }); }}
                   title="添加到素材库"
-                  className="absolute -right-1 -top-1 z-20 flex size-5 items-center justify-center rounded-full border border-border bg-background text-muted-foreground opacity-0 shadow-sm transition hover:bg-primary hover:text-primary-foreground group-hover/ir:opacity-100"
+                  className="absolute -right-1 -top-1 z-20 flex size-5 items-center justify-center rounded-full border border-border bg-background text-muted-foreground opacity-0 shadow-sm transition hover:bg-primary hover:text-primary-foreground group-hover:opacity-100"
                 >
                   <FolderPlus className="h-3 w-3" />
                 </button>
@@ -125,7 +146,7 @@ export default function ImageResult({ images, max = 0, preview = false, onImageL
                   type="button"
                   onClick={(e) => { e.stopPropagation(); onRemoveImage(i); }}
                   title="从产出删除"
-                  className="absolute -bottom-1 -right-1 z-20 flex size-5 items-center justify-center rounded-full border border-border bg-background text-muted-foreground opacity-0 shadow-sm transition hover:bg-destructive hover:text-destructive-foreground group-hover/ir:opacity-100"
+                  className="absolute -bottom-1 -right-1 z-20 flex size-5 items-center justify-center rounded-full border border-border bg-background text-muted-foreground opacity-0 shadow-sm transition hover:bg-destructive hover:text-destructive-foreground group-hover:opacity-100"
                 >
                   <Trash2 className="h-3 w-3" />
                 </button>

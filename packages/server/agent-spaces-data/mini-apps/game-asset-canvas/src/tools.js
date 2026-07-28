@@ -35,6 +35,7 @@ const NODE_TYPE_ENUM = [
   'imageCompare',
   'cutout',
   'directorDesk',
+  'photopea',
   'note',
 ];
 
@@ -65,6 +66,7 @@ const NODE_TYPE_DESC = [
   'imageCompare=图片对比（双图滑块对比）',
   'cutout=抠图（白底/色度键/工作流/rembg 四合一）',
   'directorDesk=3D导演台（3D摆位+多视角截图）',
+  'photopea=在线PS（Photopea云端，完整图层/蒙版/滤镜编辑）',
   'note=便签（纯文本备注）',
 ].join(' / ');
 

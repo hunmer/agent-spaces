@@ -51,6 +51,8 @@ export const NODE_TYPES = {
   cutout: 'cutout',
   // 3D导演台节点：iframe 加载 vendor/director-desk-web，截图经 postMessage 回传
   directorDesk: 'directorDesk',
+  // 在线PS节点：iframe 加载 Photopea（云端），加载上游/上传图，导出经 saveToOE 回传
+  photopea: 'photopea',
   // 注：分组不是节点，是 WorkflowGroupOverlay（由 groups 数据驱动，复用 workflow-editor 同源组件）
 };
 
@@ -213,6 +215,7 @@ export const NODE_META = {
   [NODE_TYPES.note]: { label: '便签', icon: '📝', color: '#f59e0b' },
   [NODE_TYPES.cutout]: { label: '抠图', icon: '✂️', color: '#14b8a6' },
   [NODE_TYPES.directorDesk]: { label: '3D导演台', icon: '🎥', color: '#7c3aed' },
+  [NODE_TYPES.photopea]: { label: '在线PS', icon: '🖌️', color: '#0ea5e9' },
 };
 
 // 图片展示节点的来源标签（不同来源传不同 tag 做区分）
@@ -234,6 +237,7 @@ export const IMAGE_TAGS = {
   export: '导出',
   cutout: '抠图',
   directorDesk: '3D导演台',
+  photopea: '在线PS',
 };
 
 // 持久化配置文件名（工作区共享的顶层配置）

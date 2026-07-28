@@ -25,6 +25,7 @@ import VideoGeneratorNode, { PARAMS_SCHEMA as VIDEO_GENERATOR_PARAMS } from '../
 import ImageCompareNode from '../components/nodes/ImageCompareNode';
 import CutoutNode from '../components/nodes/CutoutNode';
 import DirectorDeskNode from '../components/nodes/DirectorDeskNode';
+import PhotopeaNode from '../components/nodes/PhotopeaNode';
 import NoteNode from '../components/nodes/NoteNode';
 
 // 节点类型 -> 渲染组件
@@ -56,6 +57,7 @@ export const NODE_COMPONENTS = {
   [NODE_TYPES.imageCompare]: ImageCompareNode,
   [NODE_TYPES.cutout]: CutoutNode,
   [NODE_TYPES.directorDesk]: DirectorDeskNode,
+  [NODE_TYPES.photopea]: PhotopeaNode,
   [NODE_TYPES.note]: NoteNode,
 };
 
@@ -95,6 +97,7 @@ export const ADD_NODE_ITEMS = [
   { type: NODE_TYPES.imageCompare },
   { type: NODE_TYPES.cutout },
   { type: NODE_TYPES.directorDesk },
+  { type: NODE_TYPES.photopea },
   { type: NODE_TYPES.note },
 ];
 
@@ -109,6 +112,7 @@ export const DEFAULT_SIZE = {
   [NODE_TYPES.videoGenerator]: { w: 300, h: 320 },
   [NODE_TYPES.cutout]: { w: 290, h: 260 },
   [NODE_TYPES.directorDesk]: { w: 300, h: 260 },
+  [NODE_TYPES.photopea]: { w: 300, h: 260 },
   default: { w: 290, h: 240 },
 };
 
@@ -116,6 +120,11 @@ export const DEFAULT_SIZE = {
 export const PANEL_ID_MAIN = 'canvas-main';
 export const PANEL_ID_RIGHT = 'canvas-right';
 export const DEFAULT_PANEL_LAYOUT = { [PANEL_ID_MAIN]: 72, [PANEL_ID_RIGHT]: 28 };
+
+// 画布图片拖拽协议：历史记录/素材库的图片缩略图拖到画布时写入此 MIME（payload 为 {urls:string[]} JSON）。
+// 画布 handleDrop 识别后，在落点按图片 URL 批量创建 imageDisplay 节点。
+// 与素材库内部移动协议（AssetLibrary 内的 'application/x-asset-move'）互不干扰。
+export const CANVAS_DROP_MIME = 'application/x-canvas-drop-images';
 
 // tags 去重保序（图片展示节点 data.tags 用）
 export function dedupeTags(tags) {
@@ -193,6 +202,10 @@ export function initialData(type) {
   }
   if (type === NODE_TYPES.directorDesk) {
     // 3D导演台：可选全景图输入 + 截图产出
+    return { status: 'idle', output: { images: [] }, uploadedImages: [], upstreamOrder: [] };
+  }
+  if (type === NODE_TYPES.photopea) {
+    // 在线PS（Photopea）：可选图输入 + 导出图产出
     return { status: 'idle', output: { images: [] }, uploadedImages: [], upstreamOrder: [] };
   }
   if (type === NODE_TYPES.videoGenerator) {

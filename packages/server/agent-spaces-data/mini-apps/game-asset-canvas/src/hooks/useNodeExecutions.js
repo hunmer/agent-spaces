@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { NODE_TYPES, IMAGE_TAGS, WORKFLOWS, defaultCutoutParams } from '../utils/constants';
+import { NODE_TYPES, IMAGE_TAGS, WORKFLOWS, NODE_META, defaultCutoutParams } from '../utils/constants';
 import { generateAudio, generateVideo, normalizeImageUrls, runAgentVisionText, runWithConcurrency } from '../utils/workflow';
 import { runProcessor } from '../utils/image-ops';
 import { runCutout } from '../utils/cutout';
@@ -27,6 +27,17 @@ export default function useNodeExecutions({ runWorkflow, updateNodeData, addHist
   const makeOnUpdate = useCallback((nodeId) => (patch) => {
     updateNodeData(nodeId, patch);
   }, [updateNodeData]);
+
+  // 完成后通知：settings.notifyOnComplete 开启时，节点生成成功后调 sendNotification 推送通知。
+  // 失败静默（通知是锦上添花，不应阻塞流程）。
+  const notifyDone = useCallback((title, description) => {
+    if (!settings?.notifyOnComplete) return;
+    try {
+      window.AgentSpaces?.sendNotification?.('mini_app', title, description);
+    } catch (e) {
+      console.warn('sendNotification failed:', e);
+    }
+  }, [settings?.notifyOnComplete]);
 
   // 节点点击"生成"：优先用设置页配置的工作流 ID，fallback 到节点传的 workflowId
   // input.count > 1 时按 count 重复调用工作流（runWithConcurrency 限并发），图片合并。
@@ -83,6 +94,7 @@ export default function useNodeExecutions({ runWorkflow, updateNodeData, addHist
         images: urls,
         createdAt: Date.now(),
       }).catch((e) => console.error('addHistory failed:', e));
+      notifyDone('生成完成', `${NODE_META[nodeType]?.label || '节点'}产出了 ${urls.length} 张图`);
     } catch (err) {
       if (wfHandle.aborted) {
         updateNodeData(nodeId, { status: 'cancelled', error: undefined });
@@ -164,6 +176,7 @@ export default function useNodeExecutions({ runWorkflow, updateNodeData, addHist
         mediaType: isAudio ? 'audio' : 'video',
         createdAt: Date.now(),
       }).catch((e) => console.error('addHistory(media) failed:', e));
+      notifyDone('生成完成', `${NODE_META[nodeType]?.label || '节点'}生成了 ${urls.length} 个${isAudio ? '音频' : '视频'}`);
     } catch (err) {
       if (wfHandle.aborted) {
         updateNodeData(nodeId, { status: 'cancelled', error: undefined });
@@ -227,6 +240,7 @@ export default function useNodeExecutions({ runWorkflow, updateNodeData, addHist
         text: text.slice(0, 5000),
         createdAt: Date.now(),
       }).catch((e) => console.error('promptReverse addHistory failed:', e));
+      notifyDone('反推完成', `已反推 ${inputImages.length} 张图的提示词`);
     } catch (err) {
       if (controller.signal.aborted) return;
       console.error('promptReverse failed:', err);
@@ -318,6 +332,7 @@ export default function useNodeExecutions({ runWorkflow, updateNodeData, addHist
         images: urls,
         createdAt: Date.now(),
       }).catch((e) => console.error('processLocal addHistory failed:', e));
+      notifyDone('处理完成', `${NODE_META[histNodeType]?.label || '节点'}处理完成，产出 ${urls.length} 张图`);
     } catch (err) {
       if (controller.signal.aborted) return;
       console.error('processLocal failed:', err);
@@ -358,6 +373,7 @@ export default function useNodeExecutions({ runWorkflow, updateNodeData, addHist
         images: urls,
         createdAt: Date.now(),
       }).catch((e) => console.error('cutout addHistory failed:', e));
+      notifyDone('抠图完成', `抠图完成，产出 ${urls.length} 张图`);
     } catch (err) {
       if (controller.signal.aborted) return;
       console.error('cutout failed:', err);

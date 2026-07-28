@@ -10,7 +10,7 @@ import { BBOX_AGENT_INIT_NAME, BBOX_AI_SYSTEM_PROMPT, BBOX_AI_USER_PROMPT, PROMP
 
 const {
   Dialog, DialogContent, DialogHeader, DialogTitle,
-  Button, Label, Input, NumberInput, Textarea, WorkflowListDialog, Workflow, RotateCcw, Bot, Sparkles, Search, TagInput,
+  Button, Label, Input, NumberInput, Textarea, WorkflowListDialog, Workflow, RotateCcw, Bot, Sparkles, Search, TagInput, Switch,
 } = window.AgentSpacesUI;
 
 // 工作流列表归一化（兼容 workflow_id/id、title/name）
@@ -265,6 +265,18 @@ export default function SettingsDialog({ open, value, onClose, onSave }) {
                 />
               </div>
             </div>
+          </div>
+
+          {/* 完成后通知 */}
+          <div className="mt-1 flex items-center justify-between border-t border-border pt-4">
+            <div className="flex flex-col gap-0.5">
+              <Label className="text-sm font-medium">完成后通知</Label>
+              <span className="text-xs text-muted-foreground">节点生成成功后发送系统通知</span>
+            </div>
+            <Switch
+              checked={!!cfg.notifyOnComplete}
+              onCheckedChange={(v) => setCfg((prev) => ({ ...prev, notifyOnComplete: v }))}
+            />
           </div>
 
           {/* BBox AI 分析配置 */}

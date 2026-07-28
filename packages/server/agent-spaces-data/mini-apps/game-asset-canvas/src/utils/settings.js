@@ -51,6 +51,8 @@ export const DEFAULT_SETTINGS = {
   promptReverseAgentConfigId: '',
   promptReverseAgentName: '',
   promptReverseUserPrompt: PROMPT_REVERSE_USER_PROMPT,
+  // 完成后通知：节点生成成功后调 sendNotification 推送通知（默认关闭）
+  notifyOnComplete: false,
 };
 
 // 工作流槽位：设置页为每个节点类型选一个目标工作流

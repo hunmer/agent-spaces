@@ -37,6 +37,7 @@ const VALID_NODE_TYPES = [
   'imageCompare',  // 图片对比
   'cutout',        // 抠图（统一节点：白底/色度键/工作流/rembg）
   'directorDesk',  // 3D导演台
+  'photopea',      // 在线PS（Photopea）
   'note',          // 便签
 ];
 
@@ -67,6 +68,7 @@ const NODE_LABELS = {
   imageCompare: '图片对比',
   cutout: '抠图',
   directorDesk: '3D导演台',
+  photopea: '在线PS',
   note: '便签',
 };
 
