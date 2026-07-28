@@ -4,12 +4,13 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   WORKFLOW_SLOTS, BUILTIN_PLUGIN,
+  DEFAULT_TEXT_TO_IMAGE_MODELS, DEFAULT_EDIT_IMAGE_MODELS,
 } from '../utils/settings';
 import { BBOX_AGENT_INIT_NAME, BBOX_AI_SYSTEM_PROMPT, BBOX_AI_USER_PROMPT, PROMPT_REVERSE_AGENT_INIT_NAME, PROMPT_REVERSE_SYSTEM_PROMPT, PROMPT_REVERSE_USER_PROMPT } from '../utils/constants';
 
 const {
   Dialog, DialogContent, DialogHeader, DialogTitle,
-  Button, Label, Input, NumberInput, Textarea, WorkflowListDialog, Workflow, RotateCcw, Bot, Sparkles, Search,
+  Button, Label, Input, NumberInput, Textarea, WorkflowListDialog, Workflow, RotateCcw, Bot, Sparkles, Search, TagInput,
 } = window.AgentSpacesUI;
 
 // 工作流列表归一化（兼容 workflow_id/id、title/name）
@@ -64,20 +65,14 @@ export default function SettingsDialog({ open, value, onClose, onSave }) {
   const [error, setError] = useState('');
   const [agentBusy, setAgentBusy] = useState(false);
 
-  // 自动保存：cfg 变化且与上次已保存值不同时，调 onSave。
-  // 用 lastSavedJson 比较规避与父组件回传 value 的死循环（父传回相同 value 不再触发保存）。
+  // lastSavedJson 必须先声明（在两个 effect 之前），供自动保存比较基准使用。
   const lastSavedJson = useRef('');
   const savedRef = useRef(onSave);
   savedRef.current = onSave;
-  useEffect(() => {
-    if (!open) return;
-    const json = JSON.stringify(cfg);
-    if (json === lastSavedJson.current) return;
-    lastSavedJson.current = json;
-    savedRef.current?.(cfg);
-  }, [open, cfg]);
 
   // 打开时同步外部 value + 重置基准（不触发保存）
+  // 必须在「自动保存」effect 之前声明：首次打开时先初始化 lastSavedJson，
+  // 否则自动保存 effect 会因 lastSavedJson 为空字符串而误触发一次保存。
   useEffect(() => {
     if (open) {
       setCfg(value || {});
@@ -85,6 +80,16 @@ export default function SettingsDialog({ open, value, onClose, onSave }) {
       setError('');
     }
   }, [open, value]);
+
+  // 自动保存：cfg 变化且与上次已保存值不同时，调 onSave。
+  // 用 lastSavedJson 比较规避与父组件回传 value 的死循环（父传回相同 value 不再触发保存）。
+  useEffect(() => {
+    if (!open) return;
+    const json = JSON.stringify(cfg);
+    if (json === lastSavedJson.current) return;
+    lastSavedJson.current = json;
+    savedRef.current?.(cfg);
+  }, [open, cfg]);
 
   // —— 配置 BBox AI 模型（openAgentEditor 弹窗，systemPrompt 在 preset 内配置） ——
   const configureBboxAgent = async () => {
@@ -211,6 +216,56 @@ export default function SettingsDialog({ open, value, onClose, onSave }) {
           <p className="text-xs text-muted-foreground">
             节点执行时会调用此处配置的工作流；未设置时使用内置默认值。
           </p>
+
+          {/* 模型列表（文生图 / 编辑图片） */}
+          <div className="mt-1 border-t border-border pt-4">
+            <div className="mb-1 text-sm font-semibold text-muted-foreground">模型列表</div>
+            <p className="mb-3 text-xs text-muted-foreground">
+              自定义节点模型选择器的可选值。节点支持临时输入列表外的值。
+            </p>
+            <div className="grid grid-cols-1 gap-x-8 gap-y-4 sm:grid-cols-2">
+              <div className="flex flex-col gap-1.5">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-medium">文生图模型</Label>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-6 px-2 text-xs"
+                    onClick={() => setCfg((prev) => ({ ...prev, textToImageModels: [...DEFAULT_TEXT_TO_IMAGE_MODELS] }))}
+                    title="恢复内置默认模型列表"
+                  >
+                    <RotateCcw className="h-3 w-3" /> 恢复默认
+                  </Button>
+                </div>
+                <TagInput
+                  value={Array.isArray(cfg.textToImageModels) ? cfg.textToImageModels : []}
+                  onChange={(tags) => setCfg((prev) => ({ ...prev, textToImageModels: tags }))}
+                  placeholder="输入模型名，如 gpt-image-1"
+                  addLabel="添加"
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-medium">编辑图片模型</Label>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-6 px-2 text-xs"
+                    onClick={() => setCfg((prev) => ({ ...prev, editImageModels: [...DEFAULT_EDIT_IMAGE_MODELS] }))}
+                    title="恢复内置默认模型列表"
+                  >
+                    <RotateCcw className="h-3 w-3" /> 恢复默认
+                  </Button>
+                </div>
+                <TagInput
+                  value={Array.isArray(cfg.editImageModels) ? cfg.editImageModels : []}
+                  onChange={(tags) => setCfg((prev) => ({ ...prev, editImageModels: tags }))}
+                  placeholder="输入模型名，如 gpt-image-1"
+                  addLabel="添加"
+                />
+              </div>
+            </div>
+          </div>
 
           {/* BBox AI 分析配置 */}
           <div className="mt-1 border-t border-border pt-4 sm:col-span-2">

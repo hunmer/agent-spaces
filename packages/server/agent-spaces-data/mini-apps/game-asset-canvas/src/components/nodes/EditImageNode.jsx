@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
-import { PromptTextEditor } from '@agent-spaces/ui';
+import { PromptTextEditor, SearchSelect } from '@agent-spaces/ui';
 import NodeShell from './NodeShell';
 import ImageResult from './ImageResult';
 import PromptPickerDialog from '../PromptPickerDialog';
@@ -47,6 +47,12 @@ export const PARAMS_SCHEMA = [
     type: 'select',
     options: SIZE_OPTIONS.map((v) => ({ value: v, label: v })),
     default: '1k',
+  },
+  {
+    key: 'fileName',
+    label: '文件名',
+    type: 'text',
+    description: '可选。产出图下载、保存到素材库时使用的文件名（含扩展名，如 hero_edited.png）；多张产出自动加 _2/_3 后缀。留空则用 URL 默认名。',
   },
 ];
 export default function EditImageNode({ id, data, selected }) {
@@ -163,11 +169,33 @@ export default function EditImageNode({ id, data, selected }) {
         </div>
       </div>
 
+      {/* 模型：优先用设置页自定义列表，回退内置 MODEL_OPTIONS；支持临时输入列表外的值 */}
+      <label className="flex flex-col gap-1">
+        <span className="text-xs font-medium text-muted-foreground">模型</span>
+        <SearchSelect
+          value={params.model || DEFAULT_MODEL}
+          onChange={(v) => set({ model: v })}
+          options={data?.modelOptions || MODEL_OPTIONS}
+          placeholder="选择或输入模型"
+          searchPlaceholder="搜索模型…"
+        />
+      </label>
+
       <div className="grid grid-cols-2 gap-2">
-        <MiniSelect label="模型" value={params.model || DEFAULT_MODEL} options={MODEL_OPTIONS} onChange={(v) => set({ model: v })} />
         <MiniSelect label="比例" value={params.aspect || '1:1'} rawOptions={ASPECT_OPTIONS} onChange={(v) => set({ aspect: v })} />
         <MiniSelect label="尺寸" value={params.size || '1k'} rawOptions={SIZE_OPTIONS} onChange={(v) => set({ size: v })} />
       </div>
+
+      <label className="flex flex-col gap-1">
+        <span className="text-xs font-medium text-muted-foreground">文件名（可选）</span>
+        <input
+          type="text"
+          className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm outline-none focus:border-primary"
+          placeholder="如 hero_edited.png，留空用默认名"
+          value={params.fileName || ''}
+          onChange={(e) => set({ fileName: e.target.value || undefined })}
+        />
+      </label>
 
       <CountAndConcurrency
         count={params.count ?? 1}
@@ -198,7 +226,7 @@ export default function EditImageNode({ id, data, selected }) {
         <p className="rounded-md bg-red-500/10 px-2 py-1 text-xs text-red-500">{error}</p>
       )}
 
-      {images.length > 0 && <ImageResult images={images} onAddToAssets={data?.onAddToAssets} />}
+      <ImageResult images={images} fileName={params.fileName} onAddToAssets={data?.onAddToAssets} onAddImages={data?.onAddImages} onRemoveImage={data?.onRemoveImage} onClearImages={data?.onClearImages} versions={data?.versions} activeVersion={data?.activeVersion} onSwitchVersion={data?.onSwitchVersion} />
 
       <PromptPickerDialog
         open={pickerOpen}

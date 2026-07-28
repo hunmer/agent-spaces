@@ -260,6 +260,25 @@ export default {
     return next;
   },
 
+  // 更新资产字段（title / name / url）。categoryId 可选，不传则全库按 assetId 查找
+  update_asset: ({ workspaceId, categoryId, assetId, patch }, ctx) => {
+    if (!assetId || !patch) return readAssetLibrary(ctx, workspaceId);
+    const lib = readAssetLibrary(ctx, workspaceId);
+    const next = {
+      categories: lib.categories.map((c) => {
+        if (categoryId && c.id !== categoryId) return c;
+        let changed = false;
+        const assets = (c.assets || []).map((a) => {
+          if (a.id === assetId) { changed = true; return { ...a, ...patch }; }
+          return a;
+        });
+        return changed ? { ...c, assets } : c;
+      }),
+    };
+    ctx.writeConfig(assetLibPath(workspaceId), next);
+    return next;
+  },
+
   // 移动资产到另一分类（原子：源分类删除 + 目标分类追加，目标已存在同 url 则仅删源）
   move_asset: ({ workspaceId, fromCategoryId, assetId, toCategoryId }, ctx) => {
     if (!fromCategoryId || !toCategoryId || fromCategoryId === toCategoryId) return readAssetLibrary(ctx, workspaceId);

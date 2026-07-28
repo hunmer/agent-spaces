@@ -80,8 +80,27 @@ export default function useCanvasState(workspaceId) {
   const updateNodeData = useCallback((nodeId, patch) => {
     setNodes((prev) => prev.map((nd) => {
       if (nd.id !== nodeId) return nd;
-      const data = typeof patch === 'function' ? patch(nd.data || {}) : patch;
-      return { ...nd, data: { ...(nd.data || {}), ...data } };
+      const oldData = nd.data || {};
+      const merged = typeof patch === 'function' ? patch(oldData) : { ...(oldData || {}), ...patch };
+      // 自动版本存档：检测到 status:'done' 且本次有产出图，存一个完整快照。
+      // 版本切换走专用回调（带 __switchVersion 标记），不会触发新增版本。
+      const isDone = merged?.status === 'done';
+      const hasOutputImages = Array.isArray(merged?.output?.images) && merged.output.images.length > 0;
+      const isSwitch = merged?.__switchVersion === true;
+      if (isDone && hasOutputImages && !isSwitch && !merged.__versionSkip) {
+        const versions = Array.isArray(oldData.versions) ? [...oldData.versions] : [];
+        versions.push({
+          params: merged.params ? { ...merged.params } : undefined,
+          output: { ...merged.output },
+          createdAt: Date.now(),
+        });
+        merged.versions = versions;
+        merged.activeVersion = versions.length - 1;
+      }
+      // 清理内部标记，避免持久化
+      delete merged.__switchVersion;
+      delete merged.__versionSkip;
+      return { ...nd, data: { ...oldData, ...merged } };
     }));
   }, []);
 

@@ -133,7 +133,7 @@ export default function UiSplitterNode({ id, data, selected }) {
       )}
 
       {/* 产出 */}
-      {images.length > 0 && <ImageResult images={images} onAddToAssets={data?.onAddToAssets} />}
+      <ImageResult images={images} onAddToAssets={data?.onAddToAssets} onAddImages={data?.onAddImages} onRemoveImage={data?.onRemoveImage} onClearImages={data?.onClearImages} versions={data?.versions} activeVersion={data?.activeVersion} onSwitchVersion={data?.onSwitchVersion} />
 
       <UiSplitterDialog
         open={dialogOpen}

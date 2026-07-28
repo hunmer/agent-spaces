@@ -1,5 +1,5 @@
 // 设置默认值 + 工作流槽位 + 模型选项
-import { WORKFLOWS, BUILTIN_PLUGIN, BBOX_AI_SYSTEM_PROMPT, BBOX_AI_USER_PROMPT, PROMPT_REVERSE_SYSTEM_PROMPT, PROMPT_REVERSE_USER_PROMPT } from './constants';
+import { WORKFLOWS, BUILTIN_PLUGIN, MODEL_OPTIONS, BBOX_AI_SYSTEM_PROMPT, BBOX_AI_USER_PROMPT, PROMPT_REVERSE_SYSTEM_PROMPT, PROMPT_REVERSE_USER_PROMPT } from './constants';
 
 // re-export 供 SettingsDialog 使用
 export { BUILTIN_PLUGIN };
@@ -14,13 +14,23 @@ export const DEFAULT_VIDEO_GENERATOR_WORKFLOW_ID = WORKFLOWS.video_generator;
 // 设置文件路径（configs/）
 export const SETTINGS_PATH = 'settings.json';
 
+// 模型列表默认值：取自 constants.MODEL_OPTIONS 的 value，作为 TagInput 的初始展示。
+// 用户在设置页增删后写入 settings；「恢复内置默认」按钮一键填回此列表。
+const BUILTIN_MODEL_VALUES = MODEL_OPTIONS.map((o) => o.value);
+export const DEFAULT_TEXT_TO_IMAGE_MODELS = [...BUILTIN_MODEL_VALUES];
+export const DEFAULT_EDIT_IMAGE_MODELS = [...BUILTIN_MODEL_VALUES];
+
 export const DEFAULT_SETTINGS = {
   // 文生图工作流
   textToImageWorkflowId: DEFAULT_TEXT_TO_IMAGE_WORKFLOW_ID,
   textToImageWorkflowName: 'text_to_image',
+  // 文生图支持的模型列表（默认取内置 MODEL_OPTIONS value，可在设置页增删）
+  textToImageModels: DEFAULT_TEXT_TO_IMAGE_MODELS,
   // 编辑图片工作流
   editImageWorkflowId: DEFAULT_EDIT_IMAGE_WORKFLOW_ID,
   editImageWorkflowName: 'edit_image',
+  // 编辑图片支持的模型列表（默认取内置 MODEL_OPTIONS value，可在设置页增删）
+  editImageModels: DEFAULT_EDIT_IMAGE_MODELS,
   // 抠图和放大工作流
   imageEnchanterWorkflowId: DEFAULT_IMAGE_ENCHANTER_WORKFLOW_ID,
   imageEnchanterWorkflowName: 'image_enchanter',

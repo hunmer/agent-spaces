@@ -2,7 +2,8 @@ import { useCallback, useState } from 'react';
 import {
   Dropzone, FileUpload, ScrollArea, openMediaGallery,
   HoverCard, HoverCardTrigger, HoverCardContent,
-  Plus, Trash2, Loader2, Pencil, Check,
+  DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
+  Plus, Trash2, Loader2, Pencil, Check, CopyPlus,
 } from '@agent-spaces/ui';
 import useAssetLibrary from '../hooks/useAssetLibrary';
 
@@ -24,10 +25,10 @@ import useAssetLibrary from '../hooks/useAssetLibrary';
  *   onSelectionChange?: (selected: array)=>void,
  * }} props
  */
-export default function AssetLibrary({ workspaceId, picker, multi, onSelectionChange }) {
+export default function AssetLibrary({ workspaceId, picker, multi, onSelectionChange, onInsertImagesToCanvas }) {
   const {
     categories, createCategory, renameCategory, deleteCategory,
-    removeAsset, moveAsset, uploadFiles, uploadingCount,
+    removeAsset, updateAsset, moveAsset, uploadFiles, uploadingCount,
   } = useAssetLibrary(workspaceId);
 
   const isPicker = picker === 'group' || picker === 'image';
@@ -139,7 +140,9 @@ export default function AssetLibrary({ workspaceId, picker, multi, onSelectionCh
               onRename={!isPicker ? (name) => renameCategory(cat.id, name) : undefined}
               onDelete={!isPicker ? () => deleteCategory(cat.id) : undefined}
               onRemoveAsset={!isPicker ? (assetId) => removeAsset(cat.id, assetId) : undefined}
+              onUpdateAsset={!isPicker ? (assetId, patch) => updateAsset(cat.id, assetId, patch) : undefined}
               onMoveAsset={!isPicker ? (fromCatId, assetId) => moveAsset(fromCatId, assetId, cat.id) : undefined}
+              onInsertImagesToCanvas={!isPicker ? onInsertImagesToCanvas : undefined}
             />
           ))}
         </div>
@@ -153,7 +156,8 @@ function CategoryCard({
   category, picker, multi,
   selectedGroup, selectedAssetKeys,
   onToggleGroup, onToggleAsset,
-  onUploadFiles, onRename, onDelete, onRemoveAsset, onMoveAsset,
+  onUploadFiles, onRename, onDelete, onRemoveAsset, onUpdateAsset, onMoveAsset,
+  onInsertImagesToCanvas,
 }) {
   const { assets } = category;
   const isPicker = picker === 'group' || picker === 'image';
@@ -163,6 +167,9 @@ function CategoryCard({
   const [editName, setEditName] = useState(category.name);
   // 库内图片拖入移动高亮态（仅正常模式，与 Dropzone 的上传高亮互斥）
   const [moveOver, setMoveOver] = useState(false);
+  // 插入选择模式：进入后图片可勾选，分类头按钮切换为 插入/插入到分组/取消
+  const [insertMode, setInsertMode] = useState(false);
+  const [insertSelected, setInsertSelected] = useState([]); // 选中的 assetId 列表
 
   const handleFilesChange = useCallback(async (files) => {
     const pending = [];
@@ -261,22 +268,92 @@ function CategoryCard({
       )}
       {!isPicker && (
         <>
-          <button
-            type="button"
-            className="rounded p-1 text-muted-foreground transition hover:text-primary"
-            onClick={(e) => { e.stopPropagation(); setEditName(category.name); setEditing(true); }}
-            title="重命名"
-          >
-            <Pencil className="h-3 w-3" />
-          </button>
-          <button
-            type="button"
-            className="rounded p-1 text-muted-foreground transition hover:text-destructive"
-            onClick={(e) => { e.stopPropagation(); handleDelete(); }}
-            title="删除分类"
-          >
-            <Trash2 className="h-3 w-3" />
-          </button>
+          {insertMode ? (
+            // 插入选择模式：插入 / 插入到分组 / 取消
+            <>
+              <button
+                type="button"
+                disabled={insertSelected.length === 0}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const urls = (assets || []).filter((a) => insertSelected.includes(a.id)).map((a) => a.url);
+                  onInsertImagesToCanvas?.(urls, {});
+                  setInsertMode(false);
+                  setInsertSelected([]);
+                }}
+                className="rounded px-1.5 py-0.5 text-[11px] text-primary transition hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                插入{insertSelected.length > 0 ? `(${insertSelected.length})` : ''}
+              </button>
+              <button
+                type="button"
+                disabled={insertSelected.length === 0}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const urls = (assets || []).filter((a) => insertSelected.includes(a.id)).map((a) => a.url);
+                  onInsertImagesToCanvas?.(urls, { group: true, groupName: category.name });
+                  setInsertMode(false);
+                  setInsertSelected([]);
+                }}
+                className="rounded px-1.5 py-0.5 text-[11px] text-primary transition hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                插入到分组
+              </button>
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); setInsertMode(false); setInsertSelected([]); }}
+                className="rounded px-1.5 py-0.5 text-[11px] text-muted-foreground transition hover:text-foreground"
+              >
+                取消
+              </button>
+            </>
+          ) : (
+            <>
+              {onInsertImagesToCanvas && (assets?.length || 0) > 0 && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger
+                    render={
+                      <button
+                        type="button"
+                        className="rounded p-1 text-muted-foreground transition hover:text-primary"
+                        onClick={(e) => e.stopPropagation()}
+                        title="插入到画布"
+                      />
+                    }
+                  >
+                    <CopyPlus className="h-3 w-3" />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                    <DropdownMenuItem onClick={() => { setInsertMode(true); setInsertSelected([]); }}>
+                      选择插入
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => onInsertImagesToCanvas(assets.map((a) => a.url), {})}>
+                      全部插入
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => onInsertImagesToCanvas(assets.map((a) => a.url), { group: true, groupName: category.name })}>
+                      全部插入到新分组
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+              <button
+                type="button"
+                className="rounded p-1 text-muted-foreground transition hover:text-primary"
+                onClick={(e) => { e.stopPropagation(); setEditName(category.name); setEditing(true); }}
+                title="重命名"
+              >
+                <Pencil className="h-3 w-3" />
+              </button>
+              <button
+                type="button"
+                className="rounded p-1 text-muted-foreground transition hover:text-destructive"
+                onClick={(e) => { e.stopPropagation(); handleDelete(); }}
+                title="删除分类"
+              >
+                <Trash2 className="h-3 w-3" />
+              </button>
+            </>
+          )}
         </>
       )}
     </>
@@ -309,14 +386,20 @@ function CategoryCard({
             selected={selectedAssetKeys?.includes(`${category.id}#${ast.id}`)}
             onToggle={() => onToggleAsset?.(category.id, ast)}
             onRemove={onRemoveAsset ? () => onRemoveAsset(ast.id) : undefined}
+            onUpdateTitle={onUpdateAsset ? (title) => onUpdateAsset(ast.id, { title }) : undefined}
+            insertSelect={insertMode}
+            insertChecked={insertSelected.includes(ast.id)}
+            onInsertCheck={() => setInsertSelected((prev) =>
+              prev.includes(ast.id) ? prev.filter((x) => x !== ast.id) : [...prev, ast.id],
+            )}
           />
         ))}
       </div>
     </div>
   );
 
-  // 上传入口（picker 模式隐藏）
-  const uploadEl = !isPicker && (
+  // 上传入口（picker 模式 / 插入选择模式 隐藏）
+  const uploadEl = !isPicker && !insertMode && (
     <div className="p-2 pt-0">
       <FileUpload
         value={fuValue}
@@ -385,16 +468,33 @@ function CategoryCard({
 const ASSET_MOVE_MIME = 'application/x-asset-move';
 
 // ============ 单张资产缩略图 ============
-function AssetThumb({ asset, categoryId, picker, selected, onToggle, onRemove }) {
+function AssetThumb({ asset, categoryId, picker, selected, onToggle, onRemove, onUpdateTitle, insertSelect, insertChecked, onInsertCheck }) {
   const isPickerImage = picker === 'image';
   // HoverCard：受控 + delay=500ms 延迟显示；拖拽时立即关闭避免遮挡
   const [hoverOpen, setHoverOpen] = useState(false);
+  // 标题 inline 编辑态
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [titleDraft, setTitleDraft] = useState('');
+  // 展示名：优先 title（可读标题），其次 name（文件名）
+  const displayName = asset.title || asset.name;
   const handleClick = () => {
     if (isPickerImage) {
       onToggle?.();
     } else {
-      openMediaGallery([{ src: asset.url, type: 'image' }], 0);
+      openMediaGallery([{ src: asset.url, type: 'image', alt: displayName, fileName: asset.name }], 0);
     }
+  };
+
+  const startEditTitle = (e) => {
+    e.stopPropagation();
+    setTitleDraft(asset.title || '');
+    setEditingTitle(true);
+    setHoverOpen(false);
+  };
+  const commitTitle = () => {
+    setEditingTitle(false);
+    const v = titleDraft.trim();
+    if (onUpdateTitle && v !== (asset.title || '')) onUpdateTitle(v || undefined);
   };
 
   // 默认模式：img 可拖拽，拖起时把移动协议写入 dataTransfer 并关闭 HoverCard
@@ -414,7 +514,7 @@ function AssetThumb({ asset, categoryId, picker, selected, onToggle, onRemove })
         tabIndex={0}
         onClick={onToggle}
         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onToggle?.(); } }}
-        title={asset.name || '点击选中'}
+        title={displayName || '点击选中'}
         className={
           'group/asset relative aspect-square cursor-pointer overflow-hidden rounded border transition '
           + (selected ? 'border-primary ring-2 ring-primary' : 'border-border hover:border-primary/50')
@@ -435,28 +535,86 @@ function AssetThumb({ asset, categoryId, picker, selected, onToggle, onRemove })
     );
   }
 
-  // 默认：预览 + 删除
+  // 插入选择模式：整张图可点选，显示选中角标，不进入 hover 预览
+  if (insertSelect) {
+    return (
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={onInsertCheck}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onInsertCheck?.(); } }}
+        title={displayName || '点击选中'}
+        className={
+          'group/asset relative aspect-square cursor-pointer overflow-hidden rounded border transition '
+          + (insertChecked ? 'border-primary ring-2 ring-primary' : 'border-border hover:border-primary/50')
+        }
+      >
+        <img
+          src={asset.url}
+          alt={displayName || ''}
+          className="h-full w-full object-cover"
+          loading="lazy"
+        />
+        {insertChecked && (
+          <div className="absolute right-0.5 top-0.5 flex size-4 items-center justify-center rounded bg-primary text-primary-foreground">
+            <Check className="h-2.5 w-2.5" />
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // 默认：预览 + 删除 + 改标题
   return (
     <HoverCard open={hoverOpen} onOpenChange={setHoverOpen}>
       <HoverCardTrigger
         delay={500}
         render={
-          <div className="group/asset relative aspect-square cursor-pointer overflow-hidden rounded border border-border">
-            <button type="button" onClick={handleClick} className="block h-full w-full">
-              <img
-                src={asset.url}
-                alt={asset.name || ''}
-                className="h-full w-full cursor-grab object-cover transition hover:opacity-80 active:cursor-grabbing"
-                loading="lazy"
-                draggable
-                onDragStart={handleDragStart}
-              />
-            </button>
-            {onRemove && (
+          <div className="group/asset relative aspect-square cursor-pointer overflow-visible rounded border border-border">
+            {editingTitle ? (
+              // 标题编辑态：覆盖一个 input，回车/失焦提交，Esc 取消
+              <div className="absolute inset-0 z-30 flex items-center bg-background/90 p-1" onClick={(e) => e.stopPropagation()}>
+                <input
+                  autoFocus
+                  value={titleDraft}
+                  onChange={(e) => setTitleDraft(e.target.value)}
+                  onClick={(e) => e.stopPropagation()}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') commitTitle();
+                    if (e.key === 'Escape') setEditingTitle(false);
+                  }}
+                  onBlur={commitTitle}
+                  placeholder="标题"
+                  className="w-full rounded border border-border bg-background px-1 py-0.5 text-[10px] outline-none focus:border-primary nodrag nopan nowheel"
+                />
+              </div>
+            ) : (
+              <button type="button" onClick={handleClick} className="block h-full w-full overflow-hidden rounded">
+                <img
+                  src={asset.url}
+                  alt={displayName || ''}
+                  className="h-full w-full cursor-grab object-cover transition hover:opacity-80 active:cursor-grabbing"
+                  loading="lazy"
+                  draggable
+                  onDragStart={handleDragStart}
+                />
+              </button>
+            )}
+            {onUpdateTitle && !editingTitle && (
+              <button
+                type="button"
+                onClick={startEditTitle}
+                className="absolute left-0.5 top-0.5 z-20 flex size-4 items-center justify-center rounded bg-background/80 text-muted-foreground opacity-0 transition hover:bg-primary hover:text-primary-foreground group-hover/asset:opacity-100"
+                title="编辑标题"
+              >
+                <Pencil className="h-2.5 w-2.5" />
+              </button>
+            )}
+            {onRemove && !editingTitle && (
               <button
                 type="button"
                 onClick={(e) => { e.stopPropagation(); onRemove(); }}
-                className="absolute right-0.5 top-0.5 flex size-4 items-center justify-center rounded bg-background/80 text-muted-foreground transition hover:bg-destructive hover:text-destructive-foreground"
+                className="absolute right-0.5 top-0.5 z-20 flex size-4 items-center justify-center rounded bg-background/80 text-muted-foreground transition hover:bg-destructive hover:text-destructive-foreground"
                 title="删除图片"
               >
                 <Trash2 className="h-2.5 w-2.5" />
@@ -468,11 +626,11 @@ function AssetThumb({ asset, categoryId, picker, selected, onToggle, onRemove })
       <HoverCardContent className="flex max-w-[500px] w-auto flex-col items-center p-1">
         <img
           src={asset.url}
-          alt={asset.name || ''}
+          alt={asset.title || asset.name || ''}
           className="max-h-[320px] max-w-[320px] rounded object-contain"
         />
-        {asset.name && (
-          <p className="mt-1 max-w-[320px] truncate text-[11px] text-muted-foreground">{asset.name}</p>
+        {(asset.title || asset.name) && (
+          <p className="mt-1 max-w-[320px] truncate text-[11px] text-muted-foreground">{asset.title || asset.name}</p>
         )}
       </HoverCardContent>
     </HoverCard>

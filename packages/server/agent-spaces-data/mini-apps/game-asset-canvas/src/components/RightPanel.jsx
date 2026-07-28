@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   openMediaGallery, ScrollArea, Tabs, TabsList, TabsTrigger, TabsContent,
   Crosshair, Trash2, Plus, Boxes, History, Images, Zap, CopyPlus, FolderPlus,
+  HoverCard, HoverCardTrigger, HoverCardContent,
+  DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
 } from '@agent-spaces/ui';
 import { NODE_META, NODE_TYPES, NODE_TYPE_TO_PROCESSOR } from '../utils/constants';
 import AssetLibrary from './AssetLibrary';
@@ -64,7 +66,7 @@ export default function RightPanel({
   onAdd, onDragStartNode, onExecute,
   history, onRemoveHistory, onClearHistory, onUseImage,
   onInsertHistory, onDragStartHistory,
-  onAddToAssets,
+  onAddToAssets, onInsertImagesToCanvas,
   workspaceId,
 }) {
   return (
@@ -111,7 +113,7 @@ export default function RightPanel({
         </TabsContent>
 
         <TabsContent value="assets" className="mt-0 min-h-0 flex-1 overflow-hidden">
-          <AssetLibrary workspaceId={workspaceId} />
+          <AssetLibrary workspaceId={workspaceId} onInsertImagesToCanvas={onInsertImagesToCanvas} />
         </TabsContent>
       </Tabs>
     </div>
@@ -379,24 +381,13 @@ function HistoryCard({ item, onRemove, onUseImage, onInsert, onDragStart, onAddT
           style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(56px, 1fr))' }}
         >
           {images.map((url, i) => (
-            <div key={i} className="relative block aspect-square overflow-visible rounded border border-border">
-              <button
-                type="button"
-                onClick={() => openMediaGallery(images.map((src) => ({ src, type: 'image' })), i)}
-                className="block h-full w-full overflow-hidden rounded"
-              >
-                <img src={url} alt="" className="h-full w-full object-cover transition hover:opacity-80" />
-              </button>
-              {/* 右上角：把该单张图片添加到素材库分组 */}
-              <button
-                type="button"
-                onClick={(e) => { e.stopPropagation(); onAddToAssets?.([url]); }}
-                title="添加到素材库"
-                className="absolute -right-1 -top-1 z-20 flex size-5 items-center justify-center rounded-full border border-border bg-background text-muted-foreground shadow-sm transition hover:bg-primary hover:text-primary-foreground"
-              >
-                <FolderPlus className="h-3 w-3" />
-              </button>
-            </div>
+            <HistoryImageThumb
+              key={i}
+              url={url}
+              images={images}
+              index={i}
+              onAddToAssets={onAddToAssets}
+            />
           ))}
         </div>
       )}
@@ -422,15 +413,28 @@ function HistoryCard({ item, onRemove, onUseImage, onInsert, onDragStart, onAddT
           </button>
         )}
         {hasNodeType && (
-          <button
-            type="button"
-            onClick={() => onInsert?.(item)}
-            title="插入到画布（新建节点并预填历史参数）"
-            className="flex items-center gap-1 text-[10px] text-muted-foreground transition hover:text-primary"
-          >
-            <CopyPlus className="h-3 w-3" />
-            插入到画布
-          </button>
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              render={
+                <button
+                  type="button"
+                  title="插入到画布（新建节点并预填历史参数）"
+                  className="flex items-center gap-1 text-[10px] text-muted-foreground transition hover:text-primary"
+                />
+              }
+            >
+              <CopyPlus className="h-3 w-3" />
+              插入到画布
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => onInsert?.(item, {})}>
+                全部插入（独立节点）
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onInsert?.(item, { group: true })}>
+                插入到新分组
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         )}
         <button
           type="button"
@@ -449,4 +453,44 @@ function formatTime(ts) {
   const d = new Date(ts);
   const pad = (x) => String(x).padStart(2, '0');
   return `${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+// 生成记录单张图片缩略图：HoverCard 预览（参考素材库 AssetThumb 实现）
+// delay=500ms 延迟显示；点击打开 mediaGallery 大图查看；右上角按钮把单张图加到素材库。
+function HistoryImageThumb({ url, images, index, onAddToAssets }) {
+  const [hoverOpen, setHoverOpen] = useState(false);
+  return (
+    <HoverCard open={hoverOpen} onOpenChange={setHoverOpen}>
+      <HoverCardTrigger
+        delay={500}
+        render={
+          <div className="relative block aspect-square overflow-visible rounded border border-border">
+            <button
+              type="button"
+              onClick={() => openMediaGallery(images.map((src) => ({ src, type: 'image' })), index)}
+              className="block h-full w-full overflow-hidden rounded"
+            >
+              <img src={url} alt="" className="h-full w-full object-cover transition hover:opacity-80" loading="lazy" />
+            </button>
+            {/* 右上角：把该单张图片添加到素材库分组 */}
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onAddToAssets?.([url]); }}
+              title="添加到素材库"
+              className="absolute -right-1 -top-1 z-20 flex size-5 items-center justify-center rounded-full border border-border bg-background text-muted-foreground shadow-sm transition hover:bg-primary hover:text-primary-foreground"
+            >
+              <FolderPlus className="h-3 w-3" />
+            </button>
+          </div>
+        }
+      />
+      <HoverCardContent className="flex max-w-[500px] w-auto flex-col items-center p-1">
+        <img
+          src={url}
+          alt=""
+          className="max-h-[320px] max-w-[320px] rounded object-contain"
+        />
+      </HoverCardContent>
+    </HoverCard>
+  );
 }

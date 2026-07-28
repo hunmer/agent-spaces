@@ -61,6 +61,7 @@ export { NumberInput } from '@/components/ui/number-input';
 export type { NumberInputProps } from '@/components/ui/number-input';
 export { SearchSelect } from '@/components/ui/search-select';
 export type { SearchSelectOption, SearchSelectProps } from '@/components/ui/search-select';
+export { TagInput } from '@/components/common/tag-input';
 export { FolderPicker } from '@/components/ui/folder-picker';
 export { Markdown } from '@/components/ui/markdown';
 export { ExpandableTabs } from '@/components/ui/expandable-tabs';

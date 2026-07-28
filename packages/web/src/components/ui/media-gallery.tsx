@@ -18,6 +18,8 @@ export type MediaItem = {
   thumb?: string
   type?: 'image' | 'audio' | 'video'
   alt?: string
+  // 下载时使用的文件名（不含扩展名时按 src 推断）。lightGallery 的 download 按钮据此命名下载文件。
+  fileName?: string
 }
 
 function buildDynamicEl(items: MediaItem[]) {
@@ -37,7 +39,12 @@ function buildDynamicEl(items: MediaItem[]) {
         },
       }
     }
-    return { src: item.src, thumb: item.thumb || item.src, subHtml, subHtmlUrl }
+    // 有 fileName 时映射到 lightGallery 的 download 字段，下载按钮据此命名。
+    const el: Record<string, unknown> = { src: item.src, thumb: item.thumb || item.src, subHtml, subHtmlUrl }
+    if (item.fileName) {
+      el.download = item.fileName
+    }
+    return el
   }) as Array<Record<string, unknown>>
 }
 

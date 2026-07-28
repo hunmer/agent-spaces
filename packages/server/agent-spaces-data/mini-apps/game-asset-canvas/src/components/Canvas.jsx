@@ -42,7 +42,7 @@ import useCanvasAgentRpc from '../hooks/useCanvasAgentRpc';
 import useDecoratedNodes from '../hooks/useDecoratedNodes';
 
 import { IMAGE_TAGS, NODE_TYPES, NODE_META, dedupeTags } from '../utils/constants';
-import { NODE_COMPONENTS, PANEL_ID_MAIN, PANEL_ID_RIGHT } from '../utils/canvas-constants';
+import { NODE_COMPONENTS, PANEL_ID_MAIN, PANEL_ID_RIGHT, DEFAULT_SIZE, initialData } from '../utils/canvas-constants';
 import { genId } from '../utils/canvas-id';
 
 /**
@@ -269,26 +269,35 @@ export default function Canvas() {
   // —— 添加到素材库：节点产出图 / 生成记录图 共用的分组选择器 ——
   const { addAsset } = useAssetLibrary(activeId);
   const [assetsPickerOpen, setAssetsPickerOpen] = useState(false);
+  // 统一归一化为 {url, fileName?}：兼容旧调用方传 string / string[]，以及新调用方传 {url,fileName} / 该类对象数组
   const [assetsPickerImages, setAssetsPickerImages] = useState([]);
 
-  // 入口：传入一张或多张图 url，打开分组选择器
-  const handleAddToAssets = useCallback((urls) => {
-    const list = (Array.isArray(urls) ? urls : [urls]).filter(Boolean);
+  // 入口：传入一张或多张图（url 字符串或 {url,fileName?} 对象），打开分组选择器
+  const handleAddToAssets = useCallback((payload) => {
+    const list = (Array.isArray(payload) ? payload : [payload])
+      .map((it) => (typeof it === 'string' ? { url: it } : it))
+      .filter((it) => it && it.url);
     if (!list.length) return;
     setAssetsPickerImages(list);
     setAssetsPickerOpen(true);
   }, []);
 
   // 确认：把待加图片逐张写入所有选中分组（add_asset 服务端已按 url 去重）
+  // fileName 同时作为入库 name（文件名）和 title（去掉扩展名的可读标题）
   const handleAssetsPickerConfirm = useCallback(async (pickedGroups) => {
     if (!pickedGroups?.length) return;
     for (const grp of pickedGroups) {
-      for (const url of assetsPickerImages) {
+      for (const item of assetsPickerImages) {
+        const url = item.url;
+        const fileName = item.fileName || url.split('/').pop() || 'untitled';
+        const dot = fileName.lastIndexOf('.');
+        const title = dot > 0 ? fileName.slice(0, dot) : fileName;
         try {
           await addAsset(grp.id, {
             id: `ast-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
             url,
-            name: url.split('/').pop() || 'untitled',
+            name: fileName,
+            title,
             size: 0,
             uploadedAt: Date.now(),
           });
@@ -298,6 +307,114 @@ export default function Canvas() {
       }
     }
   }, [addAsset, assetsPickerImages]);
+
+  // —— 插入一组图片到画布（素材库「插入到画布」复用）——
+  // opts.group=true 时建一条 WorkflowGroup 把所有图片节点归组；否则每张图独立节点。
+  // opts.groupName 指定分组名（缺省用时间戳）。
+  const handleInsertImagesToCanvas = useCallback((urls, opts = {}) => {
+    const list = (Array.isArray(urls) ? urls : [urls]).filter(Boolean);
+    if (!list.length) return;
+    if (!opts.group) {
+      addImageNodesFromUrls(list, { source: 'assets' });
+      return;
+    }
+    // 分组模式：参考 handleExportImages，子节点网格排列 + 一条 WorkflowGroup
+    const size = DEFAULT_SIZE[NODE_TYPES.imageDisplay];
+    const meta = NODE_META[NODE_TYPES.imageDisplay];
+    const cols = Math.min(3, list.length);
+    const now = new Date();
+    const hh = String(now.getHours()).padStart(2, '0');
+    const mm = String(now.getMinutes()).padStart(2, '0');
+    const groupName = opts.groupName || `素材 ${hh}:${mm}`;
+    const childIds = list.map(() => genId(NODE_TYPES.imageDisplay));
+    setNodes((prev) => {
+      const base = prev.length;
+      const startX = 420 + base * 6;
+      const startY = 120;
+      const additions = list.map((url, i) => {
+        const id = childIds[i];
+        const col = i % cols;
+        const row = Math.floor(i / cols);
+        return {
+          id,
+          type: NODE_TYPES.imageDisplay,
+          position: { x: startX + col * (size.w + 20), y: startY + row * (size.h + 20) },
+          width: size.w, height: size.h,
+          style: { width: size.w, height: size.h },
+          data: { ...initialData(NODE_TYPES.imageDisplay), images: [url], source: 'assets', label: meta.label },
+        };
+      });
+      return [...prev, ...additions];
+    });
+    setGroups((prev) => [...prev, {
+      id: genId('group'),
+      name: groupName,
+      childNodeIds: childIds,
+      childGroupIds: [],
+      locked: false,
+      disabled: false,
+      savedNodeStates: {},
+    }]);
+  }, [addImageNodesFromUrls, setNodes, setGroups]);
+
+  // —— 生成记录「插入到画布」菜单：包装 crud.handleInsertHistory 支持分组 ——
+  // opts.group=true 时，先建节点（crud.handleInsertHistory 返回新节点 id），再建一条 WorkflowGroup。
+  const handleInsertHistoryWithMenu = useCallback((item, opts = {}) => {
+    const newId = crud.handleInsertHistory(item);
+    if (opts.group && newId) {
+      const meta = NODE_META[item.nodeType];
+      const now = new Date();
+      const hh = String(now.getHours()).padStart(2, '0');
+      const mm = String(now.getMinutes()).padStart(2, '0');
+      setGroups((prev) => [...prev, {
+        id: genId('group'),
+        name: opts.groupName || `${meta?.label || '记录'} ${hh}:${mm}`,
+        childNodeIds: [newId],
+        childGroupIds: [],
+        locked: false,
+        disabled: false,
+        savedNodeStates: {},
+      }]);
+    }
+  }, [crud, setGroups]);
+
+  // 产出区「添加/删除单张/清空」：统一写回 data.output.images（基于最新 data 用函数式 patch）。
+  // 这些是用户对当前产出图的手动编辑，不是新生成，加 __versionSkip 避免被版本存档误捕获。
+  // makeOnUpdate 是浅合并整对象，这里需要读旧 images 增删，故直接调 updateNodeData 传函数 patch。
+  const handleOutputImagesChange = useCallback((nodeId, mutator) => {
+    updateNodeData(nodeId, (data) => {
+      const prev = Array.isArray(data?.output?.images) ? data.output.images : [];
+      const next = mutator(prev);
+      return { __versionSkip: true, output: { ...(data?.output || {}), images: next } };
+    });
+  }, [updateNodeData]);
+  const handleAddOutputImages = useCallback((nodeId, urls) => {
+    if (!Array.isArray(urls) || !urls.length) return;
+    handleOutputImagesChange(nodeId, (prev) => [...prev, ...urls.filter(Boolean)]);
+  }, [handleOutputImagesChange]);
+  const handleRemoveOutputImage = useCallback((nodeId, index) => {
+    handleOutputImagesChange(nodeId, (prev) => prev.filter((_, i) => i !== index));
+  }, [handleOutputImagesChange]);
+  const handleClearOutputImages = useCallback((nodeId) => {
+    handleOutputImagesChange(nodeId, () => []);
+  }, [handleOutputImagesChange]);
+
+  // 版本切换：把节点 params/output/status 还原到指定历史版本。加 __switchVersion 标记，
+  // updateNodeData 不会把这次写入当作新版本存档，仅更新 activeVersion。
+  const handleSwitchVersion = useCallback((nodeId, versionIndex) => {
+    updateNodeData(nodeId, (data) => {
+      const versions = Array.isArray(data?.versions) ? data.versions : [];
+      const v = versions[versionIndex];
+      if (!v) return { __switchVersion: true };
+      return {
+        __switchVersion: true,
+        params: v.params ? { ...v.params } : (data.params ? { ...data.params } : undefined),
+        output: { ...v.output },
+        status: 'done',
+        activeVersion: versionIndex,
+      };
+    });
+  }, [updateNodeData]);
 
   const nodeCallbacks = useMemo(() => ({
     makeOnUpdate,
@@ -316,11 +433,18 @@ export default function Canvas() {
     onBBoxCutout: handleBBoxCutout,
     onResetParams: handleResetParams,
     onAddToAssets: handleAddToAssets,
+    // 产出区操作（写 data.output.images）
+    onAddOutputImages: handleAddOutputImages,
+    onRemoveOutputImage: handleRemoveOutputImage,
+    onClearOutputImages: handleClearOutputImages,
+    // 版本切换（还原 params/output/status 到指定历史版本）
+    onSwitchVersion: handleSwitchVersion,
   }), [
     makeOnUpdate, handleGenerate, handleGenerateMedia, handleProcessImage,
     handleProcessLocal, handleCutout, handleCutoutCreate, handleCancelProcess, handlePromptReverse,
     handleExportImages, handleAutoSize, handleAutoSizeToContent, handleBBoxCutout, handleResetParams,
-    handleAddToAssets,
+    handleAddToAssets, handleAddOutputImages, handleRemoveOutputImage, handleClearOutputImages,
+    handleSwitchVersion,
   ]);
 
   // —— Agent RPC（WS message 监听，ref 持有最新值只订阅一次）——
@@ -503,9 +627,10 @@ export default function Canvas() {
           onRemoveHistory={removeHistory}
           onClearHistory={clearHistory}
           onUseImage={selection.handleUseImage}
-          onInsertHistory={crud.handleInsertHistory}
+          onInsertHistory={handleInsertHistoryWithMenu}
           onDragStartHistory={crud.handleDragStartHistory}
           onAddToAssets={handleAddToAssets}
+          onInsertImagesToCanvas={handleInsertImagesToCanvas}
           workspaceId={activeId}
         />
       </ResizablePanel>
@@ -516,7 +641,6 @@ export default function Canvas() {
         onClose={() => setSettingsOpen(false)}
         onSave={async (cfg) => {
           await saveSettings(cfg);
-          setSettingsOpen(false);
         }}
       />
 

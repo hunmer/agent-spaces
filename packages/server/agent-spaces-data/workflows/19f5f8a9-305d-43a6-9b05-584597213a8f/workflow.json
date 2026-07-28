@@ -16,19 +16,24 @@
           {
             "key": "images",
             "type": "string[]",
-            "description": "图片列表"
+            "description": "图片列表",
+            "children": []
           },
           {
             "key": "prompt",
             "type": "string",
             "description": "提示词",
-            "required": true
+            "required": true,
+            "children": []
           },
           {
             "key": "model",
             "type": "string",
+            "value": "",
             "description": "模型名称",
-            "required": true
+            "required": true,
+            "inputMode": "variable",
+            "children": []
           },
           {
             "key": "aspect",
@@ -40,7 +45,8 @@
               "1:1",
               "4:3",
               "3:4"
-            ]
+            ],
+            "children": []
           },
           {
             "key": "size",
@@ -50,7 +56,8 @@
               "1k",
               "2k",
               "4k"
-            ]
+            ],
+            "children": []
           }
         ]
       }
@@ -879,7 +886,7 @@
     }
   ],
   "createdAt": 1782271756656,
-  "updatedAt": 1784914957049,
+  "updatedAt": 1785206094343,
   "published": false,
   "enabledPlugins": [
     "workflow.openai",
@@ -888,9 +895,9 @@
     "workflow.jimeng",
     "workflow.ai-image"
   ],
-  "lastRunAt": 1785079394428,
+  "lastRunAt": 1785211294374,
   "groups": [],
   "description": "编辑图片",
   "variables": [],
-  "lastOpenedAt": 1785072300715
+  "lastOpenedAt": 1785206053238
 }

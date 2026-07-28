@@ -39,6 +39,8 @@ export default function useDecoratedNodes({
       onProcessImage, onProcessLocal, onCutout, onCutoutCreate, onCancelProcess,
       onPromptReverse, onEditImages, onAutoSize, onAutoSizeToContent, onBBoxCutout, onResetParams,
       onAddToAssets,
+      onAddOutputImages, onRemoveOutputImage, onClearOutputImages,
+      onSwitchVersion,
     } = callbacks || {};
     return nodes.map((nd) => {
       const up = upstreamMap.get(nd.id);
@@ -88,6 +90,12 @@ export default function useDecoratedNodes({
             compressThresholdMB: Number(settings.bboxCompressThresholdMB) || 0,
             compressTargetMB: Number(settings.bboxCompressTargetMB) || 0,
           } : undefined,
+          // 文生图/编辑图片模型列表（用户在设置页自定义；空则节点回退到内置 MODEL_OPTIONS）
+          modelOptions: nd.type === NODE_TYPES.textToImage
+            ? (Array.isArray(settings.textToImageModels) ? settings.textToImageModels.map((v) => ({ value: v, label: v })) : undefined)
+            : nd.type === NODE_TYPES.editImage
+              ? (Array.isArray(settings.editImageModels) ? settings.editImageModels.map((v) => ({ value: v, label: v })) : undefined)
+              : undefined,
           // BBox 查看器元素拆分抠图回调（仅 bboxViewer 用）
           onCutout: nd.type === NODE_TYPES.bboxViewer ? onBBoxCutout : undefined,
           // 重置参数回调：仅对有 params 的节点注入（imageDisplay/note/uiSplitter 等无 params 不注入）
@@ -96,6 +104,12 @@ export default function useDecoratedNodes({
             : undefined,
           // 添加到素材库：节点产出图右上角按钮用（节点 ImageResult 通过 data.onAddToAssets 取）
           onAddToAssets,
+          // 产出区添加/删除单张/清空（绑定 nodeId，写 data.output.images；节点 ImageResult 透传）
+          onAddImages: onAddOutputImages ? (urls) => onAddOutputImages(nd.id, urls) : undefined,
+          onRemoveImage: onRemoveOutputImage ? (index) => onRemoveOutputImage(nd.id, index) : undefined,
+          onClearImages: onClearOutputImages ? () => onClearOutputImages(nd.id) : undefined,
+          // 版本切换（还原 params/output/status 到历史版本；节点 ImageResult 渲染版本标记）
+          onSwitchVersion: onSwitchVersion ? (index) => onSwitchVersion(nd.id, index) : undefined,
         },
       };
     });

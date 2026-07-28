@@ -117,7 +117,7 @@ export default function DirectorDeskNode({ id, data, selected }) {
         <p className="rounded-md bg-red-500/10 px-2 py-1 text-xs text-red-500">{data.error}</p>
       )}
 
-      {images.length > 0 && <ImageResult images={images} onAddToAssets={data?.onAddToAssets} />}
+      <ImageResult images={images} onAddToAssets={data?.onAddToAssets} onAddImages={data?.onAddImages} onRemoveImage={data?.onRemoveImage} onClearImages={data?.onClearImages} versions={data?.versions} activeVersion={data?.activeVersion} onSwitchVersion={data?.onSwitchVersion} />
 
       <DirectorDeskDialog
         open={deskOpen}

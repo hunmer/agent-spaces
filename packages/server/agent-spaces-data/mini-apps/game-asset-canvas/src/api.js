@@ -690,6 +690,10 @@ export default {
       id: asString(input?.assetId) || genAssetId(),
       url,
       name: asString(input?.fileName) || 'untitled',
+      // 可选标题：优先 input.title，否则从 fileName 去扩展名推导
+      title: asString(input?.title)
+        || (() => { const f = asString(input?.fileName) || ''; const d = f.lastIndexOf('.'); return d > 0 ? f.slice(0, d) : ''; })()
+        || undefined,
       size: typeof input?.size === 'number' ? input.size : 0,
       uploadedAt: typeof input?.uploadedAt === 'number' ? input.uploadedAt : Date.now(),
     };
@@ -728,9 +732,10 @@ export default {
     const nextPatch = {};
     if (typeof patch.url === 'string' && patch.url.trim()) nextPatch.url = patch.url.trim();
     if (typeof patch.name === 'string') nextPatch.name = patch.name;
+    if (typeof patch.title === 'string') nextPatch.title = patch.title.trim() ? patch.title.trim() : undefined;
     if (typeof patch.size === 'number') nextPatch.size = patch.size;
     if (Object.keys(nextPatch).length === 0) {
-      return { ok: false, message: 'data 里没有可改的字段（支持 url / name / size）' };
+      return { ok: false, message: 'data 里没有可改的字段（支持 url / name / title / size）' };
     }
     const next = {
       categories: (lib.categories || []).map((c) => {

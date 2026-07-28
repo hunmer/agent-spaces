@@ -89,6 +89,16 @@ export default function useAssetLibrary(workspaceId) {
     });
   }, [workspaceId]);
 
+  // 更新资产字段（title/name/url）。categoryId 可选，不传则全库按 assetId 查找
+  const updateAsset = useCallback(async (categoryId, assetId, patch) => {
+    return window.AgentSpaces?.invokeService?.('update_asset', {
+      workspaceId,
+      categoryId,
+      assetId,
+      patch,
+    });
+  }, [workspaceId]);
+
   // 移动资产到另一分类（原子操作：源删除 + 目标追加，服务端按 url 去重）
   const moveAsset = useCallback(async (fromCategoryId, assetId, toCategoryId) => {
     return window.AgentSpaces?.invokeService?.('move_asset', {
@@ -119,6 +129,8 @@ export default function useAssetLibrary(workspaceId) {
             id: `ast-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
             url,
             name: file.name || 'untitled',
+            // 标题：去扩展名的文件名，便于素材库展示与检索
+            title: (() => { const f = file.name || ''; const d = f.lastIndexOf('.'); return d > 0 ? f.slice(0, d) : ''; })() || undefined,
             size: file.size || 0,
             uploadedAt: Date.now(),
           });
@@ -138,6 +150,7 @@ export default function useAssetLibrary(workspaceId) {
     deleteCategory,
     addAsset,
     removeAsset,
+    updateAsset,
     moveAsset,
     uploadFiles,
     uploadingCount,

@@ -143,6 +143,7 @@ export default function useNodeCrud({
   }, []);
 
   // 历史记录「插入到画布」：在视口中心创建新节点，预填历史参数 + 产出图作输入
+  // 返回新节点 id（供调用方做分组等后续操作）
   const handleInsertHistory = useCallback((item) => {
     const patch = historyToNodePatch(item);
     let position = null;
@@ -150,7 +151,7 @@ export default function useNodeCrud({
       const center = getViewportCenter();
       if (center) position = reactFlow.screenToFlowPosition(center);
     }
-    createNodeAt(item.nodeType, position, patch);
+    return createNodeAt(item.nodeType, position, patch);
   }, [createNodeAt, reactFlow, getViewportCenter]);
 
   // 历史项拖拽起始：dataTransfer 写 patch JSON，drop 时 createNodeAt(type, position, patch)
