@@ -1,7 +1,6 @@
 import { useCallback, useState } from 'react';
 import { FileUpload } from '@agent-spaces/ui';
 import NodeShell from './NodeShell';
-import ImageResult from './ImageResult';
 import UpstreamImageList, { orderUpstream } from './UpstreamImageList';
 import PhotopeaDialog from '../PhotopeaDialog';
 import { NODE_TYPES } from '../../utils/constants';
@@ -28,7 +27,6 @@ export default function PhotopeaNode({ id, data, selected }) {
   const upstreamOrder = Array.isArray(data?.upstreamOrder) ? data.upstreamOrder : [];
   const upstreamImages = orderUpstream(rawUpstream, upstreamOrder);
   const allInputs = dedupeUrls([...uploadedImages, ...upstreamImages]);
-  const images = data?.output?.images || [];
   const uploading = data?.uploading;
   const onUpdate = data?.onUpdate;
   const [editorOpen, setEditorOpen] = useState(false);
@@ -121,7 +119,6 @@ export default function PhotopeaNode({ id, data, selected }) {
         <p className="rounded-md bg-red-500/10 px-2 py-1 text-xs text-red-500">{data.error}</p>
       )}
 
-      <ImageResult images={images} onAddToAssets={data?.onAddToAssets} onAddImages={data?.onAddImages} onRemoveImage={data?.onRemoveImage} onClearImages={data?.onClearImages} versions={data?.versions} activeVersion={data?.activeVersion} onSwitchVersion={data?.onSwitchVersion} />
 
       <PhotopeaDialog
         open={editorOpen}

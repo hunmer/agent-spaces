@@ -1,7 +1,6 @@
 import { useCallback, useState } from 'react';
 import { FileUpload } from '@agent-spaces/ui';
 import NodeShell from './NodeShell';
-import ImageResult from './ImageResult';
 import UpstreamImageList, { orderUpstream } from './UpstreamImageList';
 import PixelEditorDialog from '../PixelEditorDialog';
 import { NODE_TYPES } from '../../utils/constants';
@@ -29,7 +28,6 @@ export default function PixelEditorNode({ id, data, selected }) {
   const upstreamImages = orderUpstream(rawUpstream, upstreamOrder);
   // 合并输入：上传图在前 + 上游连线图（已排序）在后，去重保序
   const allFrames = dedupeUrls([...uploadedImages, ...upstreamImages]);
-  const images = data?.output?.images || [];
   const uploading = data?.uploading;
   const error = data?.error;
   const onUpdate = data?.onUpdate;
@@ -145,8 +143,6 @@ export default function PixelEditorNode({ id, data, selected }) {
         <p className="rounded-md bg-red-500/10 px-2 py-1 text-xs text-red-500">{error}</p>
       )}
 
-      {/* 产出 */}
-      <ImageResult images={images} onAddToAssets={data?.onAddToAssets} onAddImages={data?.onAddImages} onRemoveImage={data?.onRemoveImage} onClearImages={data?.onClearImages} versions={data?.versions} activeVersion={data?.activeVersion} onSwitchVersion={data?.onSwitchVersion} />
 
       <PixelEditorDialog
         open={editorOpen}

@@ -4,6 +4,7 @@ import { Badge, Loader, RotateCcw } from '@agent-spaces/ui';
 import { NODE_META } from '../../utils/constants';
 import useViewportActivation from '../../hooks/useViewportActivation';
 import ImageResult from './ImageResult';
+import NodeOutput from './NodeOutput';
 
 const STATUS_TEXT = {
   idle: '',
@@ -54,6 +55,17 @@ export default function NodeShell({
   const selectionCount = data?.selectionCount ?? 1;
   const rootRef = useRef(null);
   const pointerInsideRef = useRef(false);
+  // 跟踪节点主体宽度，让产出卡片与节点同宽（产出卡片在 fragment 第二根，不在节点 height 钳制内）
+  const [nodeWidth, setNodeWidth] = useState(0);
+  useLayoutEffect(() => {
+    const root = rootRef.current;
+    if (!root || typeof ResizeObserver === 'undefined') return;
+    const update = () => setNodeWidth(root.offsetWidth);
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(root);
+    return () => ro.disconnect();
+  }, []);
 
   const reportOutputPreviewHeight = useCallback(() => {
     if (!outputPreviewEnabled || hovered) return;
@@ -204,6 +216,7 @@ export default function NodeShell({
   }
 
   return (
+    <>
     <div
       ref={rootRef}
       className="flex h-full w-full flex-col overflow-hidden rounded-lg border border-border bg-card text-card-foreground shadow-sm"
@@ -319,6 +332,23 @@ export default function NodeShell({
         />
       )}
     </div>
+    {/* 产出卡片：节点外部下方独立卡片，不随表单滚动，不受 resize 钳制。
+        统一渲染所有节点的产出，替代各节点 children 内手写的 <ImageResult>。 */}
+    <NodeOutput
+      width={nodeWidth || undefined}
+      status={status}
+      statusMsg={data?.statusMsg}
+      images={data?.output?.images || []}
+      fileName={data?.params?.fileName}
+      onAddToAssets={data?.onAddToAssets}
+      onAddImages={data?.onAddImages}
+      onRemoveImage={data?.onRemoveImage}
+      onClearImages={data?.onClearImages}
+      versions={data?.versions}
+      activeVersion={data?.activeVersion}
+      onSwitchVersion={data?.onSwitchVersion}
+    />
+    </>
   );
 }
 

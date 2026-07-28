@@ -1,7 +1,6 @@
 import { useCallback, useState } from 'react';
 import { FileUpload } from '@agent-spaces/ui';
 import NodeShell from './NodeShell';
-import ImageResult from './ImageResult';
 import BBoxViewerDialog from '../BBoxViewerDialog';
 import { NODE_TYPES } from '../../utils/constants';
 
@@ -21,7 +20,6 @@ export default function BBoxViewerNode({ id, data, selected }) {
   // 单图：上传优先，无上传取连线首张
   const inputUrl = uploadedImages[0] || upstreamImages[0] || '';
   const inputImages = inputUrl ? [inputUrl] : [];
-  const images = data?.output?.images || [];
   const bboxData = data?.bboxData || null;
   const onUpdate = data?.onUpdate;
   const uploading = data?.uploading;
@@ -147,8 +145,6 @@ export default function BBoxViewerNode({ id, data, selected }) {
         <p className="rounded-md bg-red-500/10 px-2 py-1 text-xs text-red-500">{data.error}</p>
       )}
 
-      {/* 产出（导出到画布的图） */}
-      <ImageResult images={images} onAddToAssets={data?.onAddToAssets} onAddImages={data?.onAddImages} onRemoveImage={data?.onRemoveImage} onClearImages={data?.onClearImages} versions={data?.versions} activeVersion={data?.activeVersion} onSwitchVersion={data?.onSwitchVersion} />
 
       <BBoxViewerDialog
         open={dialogOpen}

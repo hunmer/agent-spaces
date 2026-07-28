@@ -4,7 +4,6 @@ import {
   Button, Input, NumberInput, Label, ScrollArea, Loader, ColorPicker, Switch,
   Tooltip, TooltipTrigger, TooltipContent,
   ResizablePanelGroup, ResizablePanel, ResizableHandle,
-  Popover, PopoverContent, PopoverTrigger,
 } from '@agent-spaces/ui';
 import { Undo2, Redo2, Pipette, SquarePen, MousePointer2, Trash2, Eraser, Scissors, LayoutGrid } from '@agent-spaces/ui';
 import { getFabric } from '../utils/image-ops/cdn';
@@ -24,6 +23,46 @@ const hexToRgb = (hex) => {
 // 背景色预设（ColorPicker 色板）
 const BG_PRESETS = ['#ffffff', '#000000', '#f5f5f5', '#1a1a1a', '#00b140', '#ff00ff'];
 
+const normalizeGridCount = (value, fallback = 2) => Math.max(1, Math.min(20, Math.round(value) || fallback));
+const gridSplitThrottleMs = (cols, rows) => Math.min(1000, 80 + normalizeGridCount(cols) * normalizeGridCount(rows) * 2);
+const evenlySpacedGuides = (size, count) => {
+  const guides = [];
+  for (let i = 1; i < count; i++) guides.push(Math.round((size * i) / count));
+  return guides;
+};
+const normalizeGuideAxis = (values, size, expectedCount) => {
+  if (!Array.isArray(values)) return null;
+  const guides = [...new Set(values
+    .filter(Number.isFinite)
+    .map((value) => Math.max(1, Math.min(size - 1, Math.round(value)))))]
+    .sort((a, b) => a - b);
+  return guides.length === expectedCount ? guides : null;
+};
+const resolveGridGuides = (saved, width, height, fallbackCols = 2, fallbackRows = 2) => {
+  const cols = normalizeGridCount(saved?.cols, fallbackCols);
+  const rows = normalizeGridCount(saved?.rows, fallbackRows);
+  return {
+    cols,
+    rows,
+    v: normalizeGuideAxis(saved?.v, width, cols - 1) || evenlySpacedGuides(width, cols),
+    h: normalizeGuideAxis(saved?.h, height, rows - 1) || evenlySpacedGuides(height, rows),
+  };
+};
+const gridBoxesFromGuides = (width, height, vertical, horizontal) => {
+  const vx = [0, ...(vertical || []).filter((x) => x > 0 && x < width), width].sort((a, b) => a - b);
+  const hy = [0, ...(horizontal || []).filter((y) => y > 0 && y < height), height].sort((a, b) => a - b);
+  const boxes = [];
+  for (let i = 0; i < vx.length - 1; i++) {
+    const boxWidth = vx[i + 1] - vx[i];
+    if (boxWidth < 2) continue;
+    for (let j = 0; j < hy.length - 1; j++) {
+      const boxHeight = hy[j + 1] - hy[j];
+      if (boxHeight >= 2) boxes.push({ x: vx[i], y: hy[j], width: boxWidth, height: boxHeight });
+    }
+  }
+  return boxes;
+};
+
 /**
  * UI 拆分对话框：用 fabric.js 在画布上框选区域 + 自动检测连通域，
  * 把每个框导出成一张切片图，上传后回传给节点。
@@ -32,7 +71,7 @@ const BG_PRESETS = ['#ffffff', '#000000', '#f5f5f5', '#1a1a1a', '#00b140', '#ff0
  *
  * 节点对话框数据持久化（见 handoff.md「节点对话框数据持久化规范」）：
  * - 节点把持久化快照作为 initialData 传入；对话框每次有效业务变更后调 onDataChange 写回。
- * - 持久化内容：每图 rects/pickedColor/exportEnabled + 检测参数 + inputSignature（输入标识）。
+ * - 持久化内容：每图 rects/pickedColor/exportEnabled/gridGuides + 检测参数 + inputSignature（输入标识）。
  * - 恢复时机：fabric + 所有图 source 就绪后，仅当 inputSignature 与当前输入一致才灌回；
  *   输入变化（增删/换序/换 URL）时按仍存在的 URL 逐图恢复，不存在的丢弃。
  * - 不持久化运行时对象：source/imageData、undo/redo 栈、fabric 对象、activeUrl、loading 等。
@@ -40,7 +79,7 @@ const BG_PRESETS = ['#ffffff', '#000000', '#f5f5f5', '#1a1a1a', '#00b140', '#ff0
  * @param {object} props
  * @param {boolean} props.open
  * @param {string[]} props.inputImages 输入图 URL（节点传入，多张）
- * @param {object} [props.initialData] 节点持久化的拆分快照 { inputSignature, method, tolerance, minArea, padding, pickedHex, perImage }
+ * @param {object} [props.initialData] 节点持久化的拆分快照 { inputSignature, method, tolerance, minArea, padding, pickedHex, gridMode, perImage }
  * @param {(data:object)=>void} [props.onDataChange] 业务数据变化时写回节点
  * @param {(urls: string[]) => void} props.onSave 切片上传完成回调（保存当前激活图的切片）
  * @param {(oldUrl: string, newUrl: string) => boolean|void} [props.onReplaceImage] 裁切后替换原图回调（返回 false 表示原图只读，已改追加）
@@ -50,7 +89,7 @@ export default function UiSplitterDialog({ open, inputImages, initialData, onDat
   const stageRef = useRef(null);            // fabric 容器 DOM
   const fcRef = useRef(null);               // fabric.Canvas 实例
   const fabricLibRef = useRef(null);        // fabric 命名空间
-  // 每张图的独立状态：imageStatesRef.current[url] = { source, pickedColor:[r,g,b], undo:[], redo:[], rects:[] }
+  // 每张图的独立状态：imageStatesRef.current[url] = { source, pickedColor, undo, redo, rects, gridGuides }
   const imageStatesRef = useRef({});
   const activeUrlRef = useRef('');          // 当前激活图 URL（回调闭包读最新值）
   const roRef = useRef(null);               // 容器尺寸观察器
@@ -85,6 +124,8 @@ export default function UiSplitterDialog({ open, inputImages, initialData, onDat
   const gridRowsRef = useRef(2);           // 网格行数
   const vGuidesRef = useRef([]);           // 垂直参考线 x 坐标（图片像素，已排序）
   const hGuidesRef = useRef([]);           // 水平参考线 y 坐标（图片像素，已排序）
+  const gridSplitTimerRef = useRef(null);   // 实时拆分节流尾调用
+  const lastGridSplitAtRef = useRef(0);
   // 持久化表单参数 ref（onDataChange 写回时读最新值，避免 setMethod 异步导致写回旧值）
   const methodRef = useRef('corner');
   const toleranceRef = useRef(70);
@@ -117,8 +158,7 @@ export default function UiSplitterDialog({ open, inputImages, initialData, onDat
   const [gridMode, setGridMode] = useState(false);   // 网格模式（驱动右面板切换 + 工具条高亮）
   const [gridCols, setGridCols] = useState(2);
   const [gridRows, setGridRows] = useState(2);
-  const [showGridPopover, setShowGridPopover] = useState(false);
-  const [gridBusy, setGridBusy] = useState(false);   // 网格拆分/退出进行中（禁用按钮防抖）
+  const [cropBusy, setCropBusy] = useState(false);
   useEffect(() => { gridColsRef.current = gridCols; }, [gridCols]);
   useEffect(() => { gridRowsRef.current = gridRows; }, [gridRows]);
   const [status, setStatus] = useState('选择图片开始。滚轮缩放，空格拖拽，Alt 拉框。');
@@ -232,6 +272,12 @@ export default function UiSplitterDialog({ open, inputImages, initialData, onDat
         rects: (st?.rects || []).map((b) => ({ ...b })),
         pickedColor: st?.pickedColor ? [...st.pickedColor] : null,
         exportEnabled: exportEnabledRef.current[url] !== false,
+        gridGuides: st?.gridGuides ? {
+          cols: st.gridGuides.cols,
+          rows: st.gridGuides.rows,
+          v: [...(st.gridGuides.v || [])],
+          h: [...(st.gridGuides.h || [])],
+        } : null,
       };
     }
     onDataChangeRef.current?.({
@@ -260,7 +306,7 @@ export default function UiSplitterDialog({ open, inputImages, initialData, onDat
     const source = sourceRef.current;
     // 同步当前图切片框到 state（保证 totalCount 统计最新）
     const cur = curState();
-    if (cur) cur.rects = rects().map(realBox);
+    if (cur && !gridModeRef.current) cur.rects = rects().map(realBox);
     if (!source) { setPreviews([]); setCount(0); setTotalCount(0); return; }
     const boxes = cur?.rects || [];
     setCount(boxes.length);
@@ -320,6 +366,14 @@ export default function UiSplitterDialog({ open, inputImages, initialData, onDat
   const deleteRectAt = useCallback((index) => {
     const fc = fcRef.current;
     if (!fc) return;
+    if (gridModeRef.current) {
+      const st = curState();
+      if (!st?.rects?.[index]) return;
+      st.rects = st.rects.filter((_, i) => i !== index);
+      renderList();
+      setStatus('已删除该网格切片');
+      return;
+    }
     const all = rects();
     const r = all[index];
     if (!r) return;
@@ -328,7 +382,7 @@ export default function UiSplitterDialog({ open, inputImages, initialData, onDat
     fc.renderAll();
     renderList();
     setStatus('已删除该切片框');
-  }, [rects, pushHistory, renderList]);
+  }, [rects, pushHistory, renderList, curState]);
 
   const applySnapshot = useCallback((boxes) => {
     const fc = fcRef.current;
@@ -436,7 +490,32 @@ export default function UiSplitterDialog({ open, inputImages, initialData, onDat
     // 存回旧图切片框
     const prevUrl = activeUrlRef.current;
     if (prevUrl && prevUrl !== url && imageStatesRef.current[prevUrl]) {
-      imageStatesRef.current[prevUrl].rects = snapshot();
+      const prev = imageStatesRef.current[prevUrl];
+      if (gridModeRef.current) {
+        const vs = [];
+        const hs = [];
+        for (const o of fc.getObjects()) {
+          if (o.kind !== 'guide') continue;
+          if (o.axis === 'v') vs.push(Math.round(o.left));
+          else if (o.axis === 'h') hs.push(Math.round(o.top));
+        }
+        prev.gridGuides = {
+          cols: gridColsRef.current,
+          rows: gridRowsRef.current,
+          v: vs.sort((a, b) => a - b),
+          h: hs.sort((a, b) => a - b),
+        };
+        if (gridSplitTimerRef.current) clearTimeout(gridSplitTimerRef.current);
+        gridSplitTimerRef.current = null;
+        prev.rects = gridBoxesFromGuides(
+          prev.source.canvas.width,
+          prev.source.canvas.height,
+          prev.gridGuides.v,
+          prev.gridGuides.h,
+        );
+      } else {
+        prev.rects = snapshot();
+      }
     }
     activeUrlRef.current = url;
     setActiveUrl(url);
@@ -455,14 +534,14 @@ export default function UiSplitterDialog({ open, inputImages, initialData, onDat
     // 恢复目标图切片框
     applyingHistoryRef.current = true;
     clearRects();
-    (next.rects || []).forEach((box) => addRect(box));
+    if (!gridModeRef.current) (next.rects || []).forEach((box) => addRect(box));
     applyingHistoryRef.current = false;
     // 应用当前绘制模式到新渲染的切片框
     const inDraw = drawModeRef.current;
     for (const r of fc.getObjects().filter((o) => o.kind === 'slice')) r.selectable = !inDraw;
-    fc.selection = !inDraw;
-    fc.defaultCursor = inDraw ? 'crosshair' : 'default';
-    fc.hoverCursor = inDraw ? 'crosshair' : 'move';
+    fc.selection = gridModeRef.current ? false : !inDraw;
+    fc.defaultCursor = gridModeRef.current ? 'default' : inDraw ? 'crosshair' : 'default';
+    fc.hoverCursor = gridModeRef.current ? 'default' : inDraw ? 'crosshair' : 'move';
     fc.renderAll();
     // 恢复背景色显示
     setPickedHex(toHex(next.pickedColor || [239, 26, 239]));
@@ -518,6 +597,9 @@ export default function UiSplitterDialog({ open, inputImages, initialData, onDat
             undo: [],
             redo: [],
             rects: [],
+            gridGuides: savedPi?.gridGuides
+              ? resolveGridGuides(savedPi.gridGuides, source.canvas.width, source.canvas.height)
+              : null,
           };
         }
         // 恢复检测参数到表单 + ref（setState 异步，ref 立即生效保证 computeOptions 读到最新值）
@@ -608,8 +690,7 @@ export default function UiSplitterDialog({ open, inputImages, initialData, onDat
             const savedPi = savedPerImage?.[u];
             const savedRects = Array.isArray(savedPi?.rects) ? savedPi.rects.filter((b) => b && Number.isFinite(b.x)) : null;
             if (u === first && restoreGridMode) {
-              // 网格模式独占当前图片，不恢复/检测切片框。
-              s0.rects = [];
+              // 网格参考线是恢复真源，切片由实时拆分重新计算。
             } else if (savedRects && savedRects.length) {
               // 恢复持久化切片框（深拷贝防御后续运行时修改污染）
               s0.rects = savedRects.map((b) => ({ ...b }));
@@ -670,6 +751,9 @@ export default function UiSplitterDialog({ open, inputImages, initialData, onDat
       activeUrlRef.current = '';
       gridModeRef.current = false;
       setGridMode(false);
+      if (gridSplitTimerRef.current) clearTimeout(gridSplitTimerRef.current);
+      gridSplitTimerRef.current = null;
+      lastGridSplitAtRef.current = 0;
       spaceDownRef.current = false;
       panningRef.current = false;
       drawingRef.current = false;
@@ -705,7 +789,16 @@ export default function UiSplitterDialog({ open, inputImages, initialData, onDat
     }
     vGuidesRef.current = vs.sort((a, b) => a - b);
     hGuidesRef.current = hs.sort((a, b) => a - b);
-  }, []);
+    const st = curState();
+    if (st) {
+      st.gridGuides = {
+        cols: gridColsRef.current,
+        rows: gridRowsRef.current,
+        v: [...vGuidesRef.current],
+        h: [...hGuidesRef.current],
+      };
+    }
+  }, [curState]);
 
   // 清除画布上的网格覆盖层（不动切片框）；重绘时保留参考线坐标。
   const clearGuides = useCallback((resetPositions = true) => {
@@ -757,60 +850,101 @@ export default function UiSplitterDialog({ open, inputImages, initialData, onDat
     fc.renderAll();
   }, [clearGuides]);
 
-  // 网格态切换图片后，按当前图片尺寸重建矩形和均分参考线。
-  useEffect(() => {
+  const restoreGridForCurrent = useCallback(() => {
     const src = sourceRef.current;
-    if (!gridMode || !src) return;
-    const cols = gridColsRef.current;
-    const rows = gridRowsRef.current;
-    vGuidesRef.current = [];
-    hGuidesRef.current = [];
-    for (let i = 1; i < cols; i++) vGuidesRef.current.push(Math.round((src.canvas.width * i) / cols));
-    for (let j = 1; j < rows; j++) hGuidesRef.current.push(Math.round((src.canvas.height * j) / rows));
+    const st = curState();
+    if (!src || !st) return null;
+    const guides = resolveGridGuides(
+      st.gridGuides,
+      src.canvas.width,
+      src.canvas.height,
+      gridColsRef.current,
+      gridRowsRef.current,
+    );
+    gridColsRef.current = guides.cols;
+    gridRowsRef.current = guides.rows;
+    vGuidesRef.current = [...guides.v];
+    hGuidesRef.current = [...guides.h];
+    st.gridGuides = { ...guides, v: [...guides.v], h: [...guides.h] };
+    setGridCols(guides.cols);
+    setGridRows(guides.rows);
     renderGuides();
-  }, [activeUrl, gridMode, renderGuides]);
+    return guides;
+  }, [curState, renderGuides]);
 
-  // 进入网格模式：清切片框 + 均分参考线 + 切换右面板
+  const buildGridBoxes = useCallback(() => {
+    const src = sourceRef.current;
+    if (!src) return [];
+    return gridBoxesFromGuides(src.canvas.width, src.canvas.height, vGuidesRef.current, hGuidesRef.current);
+  }, []);
+
+  const applyGridSplit = useCallback(() => {
+    if (!gridModeRef.current) return [];
+    syncGuidesFromCanvas();
+    const boxes = buildGridBoxes();
+    const st = curState();
+    if (st) st.rects = boxes;
+    renderList();
+    setStatus(`网格实时拆分：${boxes.length} 个切片`);
+    return boxes;
+  }, [syncGuidesFromCanvas, buildGridBoxes, curState, renderList]);
+
+  const scheduleGridSplit = useCallback((immediate = false) => {
+    const run = () => {
+      gridSplitTimerRef.current = null;
+      lastGridSplitAtRef.current = Date.now();
+      applyGridSplit();
+    };
+    const throttleMs = gridSplitThrottleMs(gridColsRef.current, gridRowsRef.current);
+    const remaining = throttleMs - (Date.now() - lastGridSplitAtRef.current);
+    if (immediate || remaining <= 0) {
+      if (gridSplitTimerRef.current) clearTimeout(gridSplitTimerRef.current);
+      run();
+    } else if (!gridSplitTimerRef.current) {
+      gridSplitTimerRef.current = setTimeout(run, remaining);
+    }
+  }, [applyGridSplit]);
+
+  // 网格态切换图片或恢复对话框时，优先恢复该图片最后一次参考线位置。
+  useEffect(() => {
+    if (!gridMode || !sourceRef.current) return;
+    restoreGridForCurrent();
+    scheduleGridSplit(true);
+  }, [activeUrl, gridMode, restoreGridForCurrent, scheduleGridSplit]);
+
+  // 进入网格模式：优先恢复当前图片上次参考线，没有快照时按行列均分。
   const enterGridMode = useCallback(() => {
     const fc = fcRef.current;
     const src = sourceRef.current;
     if (!fc || !src) return;
-    // 清当前图切片框（进入网格视为放弃当前切片，记录历史便于撤销）
     pushHistory();
     clearRects();
     clearGuides();
-    const iw = src.canvas.width;
-    const ih = src.canvas.height;
-    const cols = gridColsRef.current;
-    const rows = gridRowsRef.current;
-    const vs = [];
-    const hs = [];
-    for (let i = 1; i < cols; i++) vs.push(Math.round((iw * i) / cols));
-    for (let j = 1; j < rows; j++) hs.push(Math.round((ih * j) / rows));
-    vGuidesRef.current = vs;
-    hGuidesRef.current = hs;
-    renderGuides();
-    // 切片框不可选、画布不可框选
     fc.selection = false;
-    for (const o of fc.getObjects().filter((g) => g.kind === 'slice')) o.selectable = false;
     fc.defaultCursor = 'default';
     fc.hoverCursor = 'default';
-    // 退出裁切模式（互斥）
     if (cropDraftRef.current) { fc.remove(cropDraftRef.current); cropDraftRef.current = null; }
     cropModeRef.current = false;
     setCropMode(false);
     setCropBox(null);
     gridModeRef.current = true;
     setGridMode(true);
-    renderList();
-    setStatus(`网格模式：${cols} 列 × ${rows} 行，拖动参考线调整位置，点【网格拆分】生成切片`);
-  }, [pushHistory, clearRects, clearGuides, renderGuides, renderList]);
+    restoreGridForCurrent();
+    scheduleGridSplit(true);
+  }, [pushHistory, clearRects, clearGuides, restoreGridForCurrent, scheduleGridSplit]);
 
-  // 退出网格模式：清参考线 + 恢复右面板
+  // 退出网格模式：固化最后一次实时拆分结果为普通切片框。
   const exitGridMode = useCallback(() => {
     const fc = fcRef.current;
     if (!fc) return;
+    if (gridSplitTimerRef.current) clearTimeout(gridSplitTimerRef.current);
+    gridSplitTimerRef.current = null;
+    const boxes = applyGridSplit();
     clearGuides();
+    clearRects();
+    for (const box of boxes) addRect(box);
+    gridModeRef.current = false;
+    setGridMode(false);
     // 恢复绘制模式的光标/选择态
     const inDraw = drawModeRef.current;
     for (const r of fc.getObjects().filter((o) => o.kind === 'slice')) r.selectable = !inDraw;
@@ -818,48 +952,9 @@ export default function UiSplitterDialog({ open, inputImages, initialData, onDat
     fc.defaultCursor = inDraw ? 'crosshair' : 'default';
     fc.hoverCursor = inDraw ? 'crosshair' : 'move';
     fc.renderAll();
-    gridModeRef.current = false;
-    setGridMode(false);
-    syncSplitData();
-  }, [clearGuides, syncSplitData]);
-
-  // 网格拆分：按参考线坐标生成切片框并退出网格
-  const splitByGrid = useCallback(() => {
-    const fc = fcRef.current;
-    const src = sourceRef.current;
-    if (!fc || !src) return;
-    syncGuidesFromCanvas();
-    const iw = src.canvas.width;
-    const ih = src.canvas.height;
-    const vx = [0, ...vGuidesRef.current, iw].sort((a, b) => a - b);
-    const hy = [0, ...hGuidesRef.current, ih].sort((a, b) => a - b);
-    const boxes = [];
-    for (let i = 0; i < vx.length - 1; i++) {
-      const w = vx[i + 1] - vx[i];
-      if (w < 2) continue;
-      for (let j = 0; j < hy.length - 1; j++) {
-        const h = hy[j + 1] - hy[j];
-        if (h < 2) continue;
-        boxes.push({ x: vx[i], y: hy[j], width: w, height: h });
-      }
-    }
-    if (!boxes.length) { setStatus('网格区域为空，无法拆分'); return; }
-    pushHistory();
-    clearRects();
-    clearGuides();
-    for (const b of boxes) addRect(b);
-    // 退出网格态
-    const inDraw = drawModeRef.current;
-    for (const r of fc.getObjects().filter((o) => o.kind === 'slice')) r.selectable = !inDraw;
-    fc.selection = !inDraw;
-    fc.defaultCursor = inDraw ? 'crosshair' : 'default';
-    fc.hoverCursor = inDraw ? 'crosshair' : 'move';
-    fc.renderAll();
-    gridModeRef.current = false;
-    setGridMode(false);
     renderList();
-    setStatus(`已按网格拆分为 ${boxes.length} 个切片`);
-  }, [syncGuidesFromCanvas, pushHistory, clearRects, clearGuides, addRect, renderList]);
+    setStatus(`已退出网格模式，保留 ${boxes.length} 个切片`);
+  }, [applyGridSplit, clearGuides, clearRects, addRect, renderList]);
 
   // 应用裁切：导出裁切区域 → 上传 → 替换/追加原图 → 重建 source
   const applyCrop = useCallback(async () => {
@@ -869,7 +964,7 @@ export default function UiSplitterDialog({ open, inputImages, initialData, onDat
     if (!AS?.uploadFile || !box || !src) return;
     const url = activeUrlRef.current;
     if (!url) return;
-    setGridBusy(true);
+    setCropBusy(true);
     setError('');
     setStatus('正在裁切并上传…');
     try {
@@ -928,7 +1023,7 @@ export default function UiSplitterDialog({ open, inputImages, initialData, onDat
       console.error('[ui-splitter] crop failed:', err);
       setError(err?.message || String(err));
     } finally {
-      setGridBusy(false);
+      setCropBusy(false);
     }
   }, [cropBox, fitToStage, renderList, updateHistoryButtons]);
 
@@ -1086,6 +1181,7 @@ export default function UiSplitterDialog({ open, inputImages, initialData, onDat
           const clamped = Math.max(inset, Math.min(ih - inset, t.top));
           t.set({ top: clamped });
         }
+        scheduleGridSplit();
         return;
       }
       if (!fc.__historyMoveStarted) { pushHistory(); fc.__historyMoveStarted = true; }
@@ -1096,8 +1192,8 @@ export default function UiSplitterDialog({ open, inputImages, initialData, onDat
     fc.on('object:modified', (event) => {
       const t = event?.target;
       if (t?.kind === 'guide') {
-        // 拖动结束：把所有参考线坐标重排写回 ref
-        syncGuidesFromCanvas();
+        // 松手立即补最后一次，确保节流期间的最终位置不丢失。
+        scheduleGridSplit(true);
         fc.__historyMoveStarted = false;
         fc.__historyScaleStarted = false;
         return;
@@ -1106,7 +1202,7 @@ export default function UiSplitterDialog({ open, inputImages, initialData, onDat
       fc.__historyScaleStarted = false;
       renderList();
     });
-  }, [pushHistory, renderList, setColor, curState, syncGuidesFromCanvas]);
+  }, [pushHistory, renderList, setColor, curState, scheduleGridSplit]);
 
   // ===== 键盘：空格平移 / Delete 删切片框 / Ctrl+Z 撤销 / Ctrl+Y(Ctrl+Shift+Z) 重做 =====
   useEffect(() => {
@@ -1170,7 +1266,7 @@ export default function UiSplitterDialog({ open, inputImages, initialData, onDat
     if (!AS?.uploadFile) { setError('宿主 uploadFile 不可用'); return; }
     // 先把当前画布上的切片框同步回当前图 state（保证最新）
     const cur = curState();
-    if (cur) cur.rects = snapshot();
+    if (cur && !gridModeRef.current) cur.rects = snapshot();
     // 收集每张图的切片（跳过无切片框的图）
     const states = imageStatesRef.current;
     const tasks = [];
@@ -1279,7 +1375,7 @@ export default function UiSplitterDialog({ open, inputImages, initialData, onDat
     setCropMode(next);
   }, [exitGridMode]);
 
-  // 切换网格模式（force 可显式指定开/关，供 popover Switch 用）
+  // 顶部网格按钮直接切换模式。
   const toggleGridMode = useCallback((force) => {
     const target = typeof force === 'boolean' ? force : !gridModeRef.current;
     if (target === gridModeRef.current) return;
@@ -1291,46 +1387,23 @@ export default function UiSplitterDialog({ open, inputImages, initialData, onDat
     }
   }, [enterGridMode, exitGridMode]);
 
-  // 网格参数变化（popover 内）：重置参考线为均分位置。
-  // 调参即视为启用网格（避免开了 popover 改行列却没画线的困惑）。
+  // 网格参数变化：重置为均分位置并立即刷新实时切片。
   const applyGridSize = useCallback((cols, rows) => {
-    const c = Math.max(1, Math.min(20, Math.round(cols) || 1));
-    const r = Math.max(1, Math.min(20, Math.round(rows) || 1));
+    const c = normalizeGridCount(cols, 1);
+    const r = normalizeGridCount(rows, 1);
     setGridCols(c);
     setGridRows(r);
     gridColsRef.current = c;
     gridRowsRef.current = r;
     const src = sourceRef.current;
     if (!src) return;
-    // 尚未进入网格 → 自动进入（清切片框 + 设 gridMode）
-    if (!gridModeRef.current) {
-      gridModeRef.current = true;
-      setGridMode(true);
-      const fc = fcRef.current;
-      if (fc) {
-        pushHistory();
-        clearRects();
-        clearGuides();
-        fc.selection = false;
-        for (const o of fc.getObjects().filter((g) => g.kind === 'slice')) o.selectable = false;
-        fc.defaultCursor = 'default';
-        fc.hoverCursor = 'default';
-        if (cropModeRef.current) {
-          cropModeRef.current = false;
-          setCropMode(false);
-          setCropBox(null);
-        }
-      }
-    }
-    // 重新均分参考线
-    vGuidesRef.current = [];
-    for (let i = 1; i < c; i++) vGuidesRef.current.push(Math.round((src.canvas.width * i) / c));
-    hGuidesRef.current = [];
-    for (let j = 1; j < r; j++) hGuidesRef.current.push(Math.round((src.canvas.height * j) / r));
+    vGuidesRef.current = evenlySpacedGuides(src.canvas.width, c);
+    hGuidesRef.current = evenlySpacedGuides(src.canvas.height, r);
+    const st = curState();
+    if (st) st.gridGuides = { cols: c, rows: r, v: [...vGuidesRef.current], h: [...hGuidesRef.current] };
     renderGuides();
-    renderList();
-    setStatus(`网格：${c} 列 × ${r} 行，拖动参考线后点【网格拆分】`);
-  }, [renderGuides, renderList, pushHistory, clearRects, clearGuides]);
+    scheduleGridSplit(true);
+  }, [curState, renderGuides, scheduleGridSplit]);
 
   // 取消裁切（确认条 ✖）
   const cancelCrop = useCallback(() => {
@@ -1487,6 +1560,19 @@ export default function UiSplitterDialog({ open, inputImages, initialData, onDat
               </div>
             </>
           )}
+          {gridMode && (
+            <>
+              <Field label="列数">
+                <NumberInput min={1} max={20} value={gridCols}
+                  onChange={(v) => applyGridSize(v ?? 1, gridRows)} className="h-8 w-20" />
+              </Field>
+              <Field label="行数">
+                <NumberInput min={1} max={20} value={gridRows}
+                  onChange={(v) => applyGridSize(gridCols, v ?? 1)} className="h-8 w-20" />
+              </Field>
+              <span className="pb-2 text-[11px] text-muted-foreground">实时切片 {count}</span>
+            </>
+          )}
           {/* 裁切 / 网格 模式组（与绘制模式互斥） */}
           <div className={`flex items-end gap-1.5 ${gridMode ? '' : 'border-l border-border pl-2'}`}>
             {!gridMode && (
@@ -1501,39 +1587,17 @@ export default function UiSplitterDialog({ open, inputImages, initialData, onDat
                 <TooltipContent side="bottom">裁切：拉框选范围，替换原图</TooltipContent>
               </Tooltip>
             )}
-            {/* 网格：单按钮，点击弹 popover（含开关 + 行列参数） */}
-            <Popover open={showGridPopover} onOpenChange={setShowGridPopover}>
-              <PopoverTrigger render={
+            <Tooltip>
+              <TooltipTrigger render={
                 <Button size="icon" variant={gridMode ? 'default' : 'outline'}
                   className={`h-8 w-8 ${gridMode ? 'ring-2 ring-primary/40' : ''}`}
                   disabled={cropMode}
-                  title="网格模式：均分参考线，长按拖动调整" />
+                  onClick={toggleGridMode} />
               }>
                 <LayoutGrid className="h-4 w-4" />
-              </PopoverTrigger>
-              <PopoverContent align="start" className="w-60 p-3">
-                <div className="mb-3 flex items-center justify-between">
-                  <span className="text-xs font-medium">网格模式</span>
-                  <Switch checked={gridMode} onCheckedChange={(on) => toggleGridMode(on)} />
-                </div>
-                <div className="flex items-center gap-2">
-                  <Field label="列数">
-                    <NumberInput min={1} max={20} value={gridCols}
-                      onChange={(v) => applyGridSize(v ?? 1, gridRows)} className="h-8 w-20" />
-                  </Field>
-                  <span className="pb-1 text-muted-foreground">×</span>
-                  <Field label="行数">
-                    <NumberInput min={1} max={20} value={gridRows}
-                      onChange={(v) => applyGridSize(gridCols, v ?? 1)} className="h-8 w-20" />
-                  </Field>
-                </div>
-                <p className="mt-2 text-[10px] text-muted-foreground">
-                  {gridMode
-                    ? '调整即重置参考线为均分位置，拖动参考线后点【网格拆分】。'
-                    : '打开开关启用网格，按列×行均分参考线。'}
-                </p>
-              </PopoverContent>
-            </Popover>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">{gridMode ? '退出网格模式' : '进入网格模式'}</TooltipContent>
+            </Tooltip>
           </div>
         </div>
 
@@ -1561,10 +1625,10 @@ export default function UiSplitterDialog({ open, inputImages, initialData, onDat
                     <span className="text-xs text-muted-foreground">
                       裁切 {Math.round(cropBox.width)}×{Math.round(cropBox.height)}
                     </span>
-                    <Button size="sm" className="h-7" disabled={gridBusy} onClick={applyCrop}>
-                      {gridBusy ? '处理中…' : '应用裁切'}
+                    <Button size="sm" className="h-7" disabled={cropBusy} onClick={applyCrop}>
+                      {cropBusy ? '处理中…' : '应用裁切'}
                     </Button>
-                    <Button size="sm" variant="ghost" className="h-7" disabled={gridBusy} onClick={cancelCrop}>
+                    <Button size="sm" variant="ghost" className="h-7" disabled={cropBusy} onClick={cancelCrop}>
                       取消
                     </Button>
                   </div>
@@ -1598,39 +1662,16 @@ export default function UiSplitterDialog({ open, inputImages, initialData, onDat
 
           <ResizableHandle />
 
-          {/* 右：切片结果 + 底部保存按钮（网格模式下隐藏，改为网格操作区） */}
+          {/* 右：普通模式与网格实时拆分共用切片预览。 */}
           <ResizablePanel id="split-result" order={2} minSize="20%" maxSize="55%" defaultSize="28%">
             <aside className="flex h-full min-h-0 flex-col border-l border-border">
-              {gridMode ? (
-                <>
-                  <div className="border-b border-border px-3 py-2">
-                    <span className="text-xs font-medium">网格模式 {gridCols}×{gridRows}</span>
-                    <p className="mt-1 text-[11px] text-muted-foreground">
-                      拖动黄色参考线调整位置，确认后拆分。
-                    </p>
-                  </div>
-                  <div className="flex flex-1 flex-col justify-center gap-2 p-3">
-                    <div className="rounded-md border border-border bg-muted/30 p-3 text-[11px] text-muted-foreground">
-                      <div className="mb-1 flex justify-between"><span>垂直线</span><span>{gridCols - 1} 条</span></div>
-                      <div className="mb-1 flex justify-between"><span>水平线</span><span>{gridRows - 1} 条</span></div>
-                      <div className="flex justify-between"><span>预计切片</span><span>{gridCols * gridRows} 块</span></div>
-                    </div>
-                    <Button size="sm" className="h-9 w-full" disabled={gridBusy} onClick={() => { setGridBusy(true); try { splitByGrid(); } finally { setGridBusy(false); } }}>
-                      网格拆分
-                    </Button>
-                    <Button size="sm" variant="outline" className="h-9 w-full" disabled={gridBusy} onClick={toggleGridMode}>
-                      退出网格
-                    </Button>
-                  </div>
-                </>
-              ) : (
-                <>
+              <>
                   <div className="flex items-center justify-between border-b border-border px-3 py-2">
                     <span className="text-xs font-medium">
-                      切片 {count}
+                      {gridMode ? '网格实时切片' : '切片'} {count}
                       {thumbUrls.length > 1 && activeUrl ? `（图 ${thumbUrls.indexOf(activeUrl) + 1}）` : ''}
                     </span>
-                    <div className="flex items-center gap-1">
+                    {!gridMode && <div className="flex items-center gap-1">
                       <Tooltip>
                         <TooltipTrigger render={
                           <Button size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground hover:text-destructive"
@@ -1643,13 +1684,13 @@ export default function UiSplitterDialog({ open, inputImages, initialData, onDat
                       <Button size="sm" variant="ghost" className="h-7 text-[11px]" onClick={renderList} disabled={loading}>
                         刷新预览
                       </Button>
-                    </div>
+                    </div>}
                   </div>
                   <ScrollArea className="min-h-0 flex-1">
                     <div className="grid grid-cols-1 gap-2 p-3 sm:grid-cols-2 lg:grid-cols-1">
                       {previews.length === 0 && (
                         <p className="px-2 py-8 text-center text-xs text-muted-foreground">
-                          {loading ? '加载中…' : '无切片。表单变化自动检测或拉框新建'}
+                          {loading ? '加载中…' : gridMode ? '正在计算网格切片…' : '无切片。表单变化自动检测或拉框新建'}
                         </p>
                       )}
                       {previews.map((it, i) => (
@@ -1693,8 +1734,7 @@ export default function UiSplitterDialog({ open, inputImages, initialData, onDat
                         : `💾 保存全部 ${totalCount} 张切片${thumbUrls.length > 1 ? `（${thumbUrls.length} 张图）` : ''}`}
                     </Button>
                   </div>
-                </>
-              )}
+              </>
             </aside>
           </ResizablePanel>
         </ResizablePanelGroup>
@@ -1703,7 +1743,7 @@ export default function UiSplitterDialog({ open, inputImages, initialData, onDat
           滚轮缩放 · 按住 <kbd className="rounded border border-border bg-background px-1">空格</kbd> 拖拽平移 ·
           工具栏切换 <kbd className="rounded border border-border bg-background px-1">框选/选择</kbd> 模式（Alt 强制拉框）·
           <kbd className="rounded border border-border bg-background px-1">裁切</kbd> 拉框替换原图 ·
-          <kbd className="rounded border border-border bg-background px-1">网格</kbd> 均分参考线（长按拖动）·
+          <kbd className="rounded border border-border bg-background px-1">网格</kbd> 拖动参考线实时拆分 ·
           <kbd className="rounded border border-border bg-background px-1">Ctrl+Z</kbd> 撤销
         </div>
       </DialogContent>

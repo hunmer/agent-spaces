@@ -2,7 +2,6 @@ import { useCallback, useState } from 'react';
 import { FileUpload } from '@agent-spaces/ui';
 import ImageEditorDialog from '../ImageEditorDialog';
 import NodeShell from './NodeShell';
-import ImageResult from './ImageResult';
 import UpstreamImageList, { orderUpstream } from './UpstreamImageList';
 import ParamField from './ParamField';
 import {
@@ -42,7 +41,6 @@ export default function CutoutNode({ id, type, data, selected }) {
   const upstreamOrder = Array.isArray(data?.upstreamOrder) ? data.upstreamOrder : [];
   const upstreamImages = orderUpstream(rawUpstream, upstreamOrder);
   const inputImages = dedupeUrls([...uploadedImages, ...upstreamImages]);
-  const images = data?.output?.images || [];
   const colorPickerImage = inputImages[0] || images[0] || '';
   const status = data?.status || 'idle';
   const error = data?.error;
@@ -212,7 +210,6 @@ export default function CutoutNode({ id, type, data, selected }) {
         <p className="rounded-md bg-red-500/10 px-2 py-1 text-xs text-red-500">{error}</p>
       )}
 
-      <ImageResult images={images} onAddToAssets={data?.onAddToAssets} onAddImages={data?.onAddImages} onRemoveImage={data?.onRemoveImage} onClearImages={data?.onClearImages} versions={data?.versions} activeVersion={data?.activeVersion} onSwitchVersion={data?.onSwitchVersion} />
 
       <ImageEditorDialog
         open={!!colorPicker}
