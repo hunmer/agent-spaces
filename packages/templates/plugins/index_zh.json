@@ -947,6 +947,40 @@
     ]
   },
   {
+    "id": "workflow.runninghub",
+    "name": "RunningHub",
+    "version": "1.0.0",
+    "description": "RunningHub AI 任务平台：ComfyUI 工作流、AI 应用、模型 API 视频生成（图生视频/参考生视频，聚合可灵/海螺/Vidu/万相/seedance/SkyReels 等），支持任务查询、取消、公共模型列表与工作流 JSON 获取",
+    "author": {
+      "name": "workflow"
+    },
+    "tags": [
+      "AI",
+      "视频生成",
+      "ComfyUI",
+      "RunningHub",
+      "图生视频",
+      "参考生视频"
+    ],
+    "type": "server",
+    "hasView": false,
+    "hasWorkflow": true,
+    "path": "runninghub",
+    "iconUrl": "plugins/runninghub/icon.png",
+    "md5": "297c96ca851ff61321de28fe8dd5f74e",
+    "updatedAt": "2026-07-28T08:20:18.492Z",
+    "files": [
+      "actions.js",
+      "icon.png",
+      "info.json",
+      "lang.json",
+      "main.js",
+      "shared.js",
+      "tools.js",
+      "workflow.js"
+    ]
+  },
+  {
     "id": "workflow.suno",
     "name": "Suno AI 音乐生成",
     "version": "1.0.0",

@@ -80,6 +80,21 @@ export default function UiSplitterNode({ id, data, selected }) {
     onUpdate?.({ splitData: next });
   }, [onUpdate]);
 
+  // 裁切后替换原图：在 uploadedImages 里 → 原地替换；上游只读图 → 追加为上传图（返回 false 告知只读）
+  const handleReplaceImage = useCallback((oldUrl, newUrl) => {
+    const uploaded = Array.isArray(data?.uploadedImages) ? data.uploadedImages : [];
+    const idx = uploaded.indexOf(oldUrl);
+    if (idx >= 0) {
+      const next = uploaded.slice();
+      next[idx] = newUrl;
+      onUpdate?.({ uploadedImages: next, splitData: null });
+      return true;
+    }
+    // 上游图只读：追加裁切结果为新上传图
+    onUpdate?.({ uploadedImages: [...uploaded, newUrl], splitData: null });
+    return false;
+  }, [data?.uploadedImages, onUpdate]);
+
   // FileUpload value：把持久化的 uploadedImages URL 转回 FileUploadFile 格式
   const fileUploadValue = uploadedImages.map((url, i) => ({
     id: `up-${i}-${url.slice(-12)}`,
@@ -141,6 +156,7 @@ export default function UiSplitterNode({ id, data, selected }) {
         initialData={splitData}
         onDataChange={handleSplitDataChange}
         onSave={handleSave}
+        onReplaceImage={handleReplaceImage}
         onClose={() => setDialogOpen(false)}
       />
     </NodeShell>

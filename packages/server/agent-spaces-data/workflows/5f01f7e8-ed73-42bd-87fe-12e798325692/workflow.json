@@ -1,0 +1,133 @@
+{
+  "id": "5f01f7e8-ed73-42bd-87fe-12e798325692",
+  "name": "runninghub",
+  "type": "normal",
+  "folderId": null,
+  "nodes": [
+    {
+      "id": "node_1785226309770_start",
+      "type": "start",
+      "label": "Start",
+      "position": {
+        "x": 250,
+        "y": 50
+      },
+      "data": {}
+    },
+    {
+      "id": "node_1785226309770_end",
+      "type": "end",
+      "label": "End",
+      "position": {
+        "x": 250,
+        "y": 400
+      },
+      "data": {}
+    },
+    {
+      "id": "node_1785226414431_b3klmi",
+      "type": "runninghub_comfyui_create",
+      "label": "Run ComfyUI Workflow",
+      "position": {
+        "x": 615,
+        "y": 210
+      },
+      "data": {
+        "apiKey": "{{ __config__[\"workflow.runninghub\"][\"apiKey\"] }}",
+        "baseUrl": "{{ __config__[\"workflow.runninghub\"][\"baseUrl\"] }}",
+        "instanceType": "default",
+        "outputs": [
+          {
+            "key": "success",
+            "type": "boolean",
+            "dataType": "boolean"
+          },
+          {
+            "key": "message",
+            "type": "string"
+          },
+          {
+            "key": "data",
+            "type": "object",
+            "dataType": "object",
+            "children": [
+              {
+                "key": "taskId",
+                "type": "string"
+              },
+              {
+                "key": "outputs",
+                "type": "string"
+              },
+              {
+                "key": "taskCostTime",
+                "type": "string"
+              }
+            ]
+          }
+        ],
+        "workflowId": "2052600370756628482",
+        "nodeInfoList": []
+      }
+    },
+    {
+      "id": "node_1785226640983_gvs2q9",
+      "type": "runninghub_image_to_video",
+      "label": "Image to Video",
+      "position": {
+        "x": -45,
+        "y": 180
+      },
+      "data": {
+        "apiKey": "{{ __config__[\"workflow.runninghub\"][\"apiKey\"] }}",
+        "baseUrl": "{{ __config__[\"workflow.runninghub\"][\"baseUrl\"] }}",
+        "model": "vidu/image-to-video-q2-pro",
+        "duration": "5",
+        "resolution": "720p",
+        "aspectRatio": "16:9",
+        "movementAmplitude": "auto",
+        "bgm": "true",
+        "outputs": [
+          {
+            "key": "success",
+            "type": "boolean",
+            "dataType": "boolean"
+          },
+          {
+            "key": "message",
+            "type": "string"
+          },
+          {
+            "key": "data",
+            "type": "object",
+            "dataType": "object",
+            "children": [
+              {
+                "key": "taskId",
+                "type": "string"
+              },
+              {
+                "key": "outputs",
+                "type": "string"
+              },
+              {
+                "key": "taskCostTime",
+                "type": "string"
+              }
+            ]
+          }
+        ],
+        "imageUrl": "https://drive-1252358454.cos.ap-guangzhou.myqcloud.com/uploads/2026-07/28/2026-02-22-211949_waiIllustriousSDXL_v160_1078068930832419.png",
+        "prompt": "让画面的人物动起来"
+      }
+    }
+  ],
+  "edges": [],
+  "createdAt": 1785226309789,
+  "updatedAt": 1785227160259,
+  "published": false,
+  "lastOpenedAt": 1785226309808,
+  "enabledPlugins": [
+    "workflow.runninghub"
+  ]
+}

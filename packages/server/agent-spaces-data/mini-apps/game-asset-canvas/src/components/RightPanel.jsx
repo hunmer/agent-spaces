@@ -412,12 +412,15 @@ function HistoryCard({ item, onRemove, onUseImage, onInsert, onDragStart, onAddT
   const mediaUrls = (isAudio || isVideo) && images.length ? images : (cover ? [cover] : []);
   const hasNodeType = !!item.nodeType && !!NODE_META[item.nodeType];
   return (
-    <div
-      className="rounded-md border border-border p-2"
-      draggable={hasNodeType}
-      onDragStart={(e) => hasNodeType && onDragStart?.(item, e)}
-    >
-      <div className="mb-1 flex items-center justify-between gap-2">
+    <div className="rounded-md border border-border p-2">
+      {/* 标题行作为「拖拽建 nodeType 节点」的手柄：拖标题=建节点，拖下方图片=拖图片到画布。
+          不再把整个卡片设为 draggable，否则会吞掉内部图片缩略图的 dragstart。 */}
+      <div
+        className="mb-1 flex cursor-grab items-center justify-between gap-2"
+        draggable={hasNodeType}
+        onDragStart={(e) => hasNodeType && onDragStart?.(item, e)}
+        title={hasNodeType ? '拖到画布新建节点' : undefined}
+      >
         <span className="flex items-center gap-1 text-xs font-medium">
           {NODE_META[item.nodeType]?.icon} {NODE_META[item.nodeType]?.label || item.nodeType}
         </span>
@@ -526,7 +529,7 @@ function HistoryImageThumb({ url, images, index, onAddToAssets }) {
   const handleImgDragStart = (e) => {
     e.stopPropagation();
     e.dataTransfer.setData(CANVAS_DROP_MIME, JSON.stringify({ urls: [url] }));
-    e.dataTransfer.effectAllowed = 'copy';
+    e.dataTransfer.effectAllowed = 'move';
     setHoverOpen(false);
   };
   return (
