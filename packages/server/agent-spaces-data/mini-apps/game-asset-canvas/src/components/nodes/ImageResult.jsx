@@ -276,16 +276,18 @@ function AddImagesButton({ onAddImages }) {
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <button
-          type="button"
-          title="添加图片"
-          onClick={(e) => e.stopPropagation()}
-          className="flex items-center gap-0.5 rounded p-1 text-muted-foreground transition hover:bg-foreground/10 hover:text-primary"
-        >
-          <Plus className="h-3.5 w-3.5" />
-        </button>
-      </PopoverTrigger>
+      <PopoverTrigger
+        render={
+          <button
+            type="button"
+            title="添加图片"
+            onClick={(e) => e.stopPropagation()}
+            className="flex items-center gap-0.5 rounded p-1 text-muted-foreground transition hover:bg-foreground/10 hover:text-primary"
+          >
+            <Plus className="h-3.5 w-3.5" />
+          </button>
+        }
+      />
       <PopoverContent
         className="w-64 p-2"
         // 阻止 popover 内交互冒泡到画布（避免触发节点拖拽/平移）

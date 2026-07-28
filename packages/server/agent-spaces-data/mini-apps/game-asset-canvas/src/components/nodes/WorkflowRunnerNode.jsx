@@ -100,8 +100,20 @@ export default function WorkflowRunnerNode({ id, data, selected }) {
   const onPickWorkflow = useCallback((workflow) => {
     const wfId = workflow.workflow_id || workflow.id;
     const wfName = workflow.title || workflow.name || '未命名工作流';
-    // start 节点 inputFields（list_workflows 已带出，字段结构见 summarizeWorkflowForTool）
-    const inputFields = Array.isArray(workflow.inputFields) ? workflow.inputFields : [];
+    // start 节点 inputFields：listWorkflowsForMiniApp 不直接返回 inputFields，
+    // 但返回完整 nodes，从 type==='start' 的节点 data.inputFields 提取。
+    // 兼容兜底：顶层 inputFields / startNodes[].inputFields（其他数据源可能带）。
+    let inputFields = Array.isArray(workflow.inputFields) ? workflow.inputFields : [];
+    if (!inputFields.length && Array.isArray(workflow.startNodes)) {
+      const s = workflow.startNodes.find((n) => Array.isArray(n?.inputFields) && n.inputFields.length);
+      if (s) inputFields = s.inputFields;
+    }
+    if (!inputFields.length && Array.isArray(workflow.nodes)) {
+      const startNode = workflow.nodes.find((n) => n?.type === 'start');
+      if (startNode && Array.isArray(startNode.data?.inputFields)) {
+        inputFields = startNode.data.inputFields;
+      }
+    }
     // 是否预填模板：inputText 为空 / 仅 {}（初始态）/ 等于上次自动生成的模板（未手改）时覆盖，
     // 避免冲掉用户已手动修改的内容。
     const currentText = (params.inputText || '').trim();
