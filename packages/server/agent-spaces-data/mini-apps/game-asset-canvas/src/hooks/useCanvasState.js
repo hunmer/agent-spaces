@@ -91,6 +91,12 @@ export default function useCanvasState(workspaceId) {
       const hasOutputImages = Array.isArray(merged?.output?.images) && merged.output.images.length > 0;
       const isSwitch = merged?.__switchVersion === true;
       if (isDone && wasNotDone && hasOutputImages && !isSwitch && !merged.__versionSkip) {
+        console.log('[DEBUG][version-archive] archiving version for node', nodeId, {
+          oldStatus: oldData?.status,
+          newStatus: merged?.status,
+          imgCount: merged.output.images.length,
+          existingVersions: (oldData.versions || []).length,
+        });
         const versions = Array.isArray(oldData.versions) ? [...oldData.versions] : [];
         versions.push({
           params: merged.params ? { ...merged.params } : undefined,

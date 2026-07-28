@@ -67,8 +67,11 @@ export default function NodeOutput({
 
   return (
     <div
-      className={`nodrag nopan relative z-10 ${hasExternalSourceHandle ? 'mt-8' : 'mt-1'}`}
-      style={{ width: typeof width === 'number' ? width : '100%' }}
+      className="nodrag nopan relative z-10 mt-1"
+      style={{
+        width: typeof width === 'number' ? width : '100%',
+        marginTop: hasExternalSourceHandle ? 40 : undefined,
+      }}
       data-node-output
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}

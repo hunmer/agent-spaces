@@ -70,6 +70,7 @@ export default function UiSplitterNode({ id, data, selected }) {
   }, [onUpdate]);
 
   const handleSave = useCallback((urls) => {
+    console.log('[DEBUG][UiSplitter] handleSave called, urls count:', urls?.length, urls);
     onUpdate?.({ status: 'done', output: { images: urls }, error: undefined });
   }, [onUpdate]);
 

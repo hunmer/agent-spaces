@@ -1,8 +1,9 @@
 import { useCallback, useRef, useState, useEffect } from 'react';
-import { Handle, NodeResizer, NodeToolbar, Position } from '@xyflow/react';
+import { NodeResizer, NodeToolbar, Position } from '@xyflow/react';
 import { ChevronLeft, ChevronRight, Upload, openMediaGallery } from '@agent-spaces/ui';
 import useViewportActivation from '../../hooks/useViewportActivation';
 import { FLOATING_HANDLE_OFFSET } from '../canvas/floating-edge-utils';
+import FloatingHandle from './FloatingHandle';
 
 /**
  * 图片展示节点：纯展示图片，无外壳边框/标题栏。
@@ -137,16 +138,14 @@ export default function ImageDisplayNode({ id, data, selected }) {
         lineClassName="!border-primary/40"
       />
 
-      <Handle
+      <FloatingHandle
         type="target"
         position={Position.Left}
-        className="!h-5 !w-5 !cursor-crosshair !border-2 !border-muted-foreground/60 !bg-background !shadow-sm !transition-all !duration-150 hover:!h-7 hover:!w-7 hover:!border-primary hover:!shadow-md"
         style={{ left: -FLOATING_HANDLE_OFFSET, zIndex: 50 }}
       />
-      <Handle
+      <FloatingHandle
         type="source"
         position={Position.Right}
-        className="!h-5 !w-5 !cursor-crosshair !border-2 !border-muted-foreground/60 !bg-background !shadow-sm !transition-all !duration-150 hover:!h-7 hover:!w-7 hover:!border-primary hover:!shadow-md"
         style={{ right: -FLOATING_HANDLE_OFFSET, zIndex: 50 }}
       />
 

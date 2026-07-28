@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { Handle, NodeResizer, NodeToolbar, Position } from '@xyflow/react';
+import { NodeResizer, NodeToolbar, Position } from '@xyflow/react';
 import { Badge, Loader, RotateCcw } from '@agent-spaces/ui';
 import { NODE_META } from '../../utils/constants';
 import useViewportActivation from '../../hooks/useViewportActivation';
 import ImageResult from './ImageResult';
 import NodeOutput from './NodeOutput';
+import FloatingHandle from './FloatingHandle';
 import { FLOATING_HANDLE_OFFSET } from '../canvas/floating-edge-utils';
 
 const STATUS_TEXT = {
@@ -258,10 +259,9 @@ export default function NodeShell({
           />
         )}
         {targetHandle && (
-          <Handle
+          <FloatingHandle
             type="target"
             position={Position.Top}
-            className="!h-5 !w-5 !cursor-crosshair !border-2 !border-muted-foreground/60 !bg-background !shadow-sm !transition-all !duration-150 hover:!h-7 hover:!w-7 hover:!border-primary hover:!shadow-md"
             style={{ top: -FLOATING_HANDLE_OFFSET, zIndex: 50 }}
           />
         )}
@@ -278,10 +278,9 @@ export default function NodeShell({
           </div>
         </div>
         {sourceHandle && (
-          <Handle
+          <FloatingHandle
             type="source"
             position={Position.Bottom}
-            className="!h-5 !w-5 !cursor-crosshair !border-2 !border-muted-foreground/60 !bg-background !shadow-sm !transition-all !duration-150 hover:!h-7 hover:!w-7 hover:!border-primary hover:!shadow-md"
             style={{ bottom: -FLOATING_HANDLE_OFFSET, zIndex: 50 }}
           />
         )}
@@ -354,10 +353,9 @@ export default function NodeShell({
         />
       )}
       {targetHandle && (
-        <Handle
+        <FloatingHandle
           type="target"
           position={Position.Top}
-          className="!h-5 !w-5 !cursor-crosshair !border-2 !border-muted-foreground/60 !bg-background !shadow-sm !transition-all !duration-150 hover:!h-7 hover:!w-7 hover:!border-primary hover:!shadow-md"
           style={{ top: -FLOATING_HANDLE_OFFSET, zIndex: 50 }}
         />
       )}
@@ -403,10 +401,9 @@ export default function NodeShell({
       </div>
       </div>
       {sourceHandle && (
-        <Handle
+        <FloatingHandle
           type="source"
           position={Position.Bottom}
-          className="!h-5 !w-5 !cursor-crosshair !border-2 !border-muted-foreground/60 !bg-background !shadow-sm !transition-all !duration-150 hover:!h-7 hover:!w-7 hover:!border-primary hover:!shadow-md"
           style={{ bottom: -FLOATING_HANDLE_OFFSET, zIndex: 50 }}
         />
       )}
