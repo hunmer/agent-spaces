@@ -1,21 +1,32 @@
 /**
  * 骨骼层级树（左侧第二个 tab）。
  *
- * 数据来自 getBoneTree(spine)，递归渲染。点击节点选中对应骨骼。
+ * 数据来自 getBoneTree(spine)，递归渲染。点击节点名选中对应骨骼。
+ * 每行右侧有眼睛图标，点击切换该骨骼（及其子级）的显示/隐藏。
  * 顶部显示骨骼数量（如 7/58）。
  */
 import { getBoneTree } from '../loaders/SpineLoader';
 
 export class BoneTree {
-  constructor(container, { onSelect }) {
+  /**
+   * @param {object} opts
+   * @param {Function} opts.onSelect 选中骨骼回调
+   * @param {object} opts.visibility BoneVisibility 实例（控制骨骼显隐）
+   * @param {Function} opts.onToggleVisibility 切换显隐回调 (bone) => void
+   */
+  constructor(container, { onSelect, visibility, onToggleVisibility }) {
     this.container = container;
     this.onSelect = onSelect || (() => {});
+    this.visibility = visibility;
+    this.onToggleVisibility = onToggleVisibility || (() => {});
     this.tree = [];
     this.selectedName = null;
     this.expanded = new Set();
+    this.spine = null;
   }
 
   setSpine(spine) {
+    this.spine = spine;
     this.tree = getBoneTree(spine);
     // 默认全部展开（骨骼数量不多时）
     this.expanded = new Set();
@@ -31,6 +42,11 @@ export class BoneTree {
 
   selectByName(name) {
     this.selectedName = name;
+    this._render();
+  }
+
+  /** 显隐状态变化后刷新图标 */
+  refresh() {
     this._render();
   }
 
@@ -51,8 +67,9 @@ export class BoneTree {
     const isSelected = name === this.selectedName;
     const hasChildren = node.children.length > 0;
     const isExpanded = this.expanded.has(name);
+    const isHidden = this.visibility?.isHidden(node.bone) ?? false;
 
-    const row = el('div', `bone-node ${isSelected ? 'selected' : ''}`);
+    const row = el('div', `bone-node ${isSelected ? 'selected' : ''} ${isHidden ? 'bone-hidden' : ''}`);
     row.style.paddingLeft = `${node.depth * 14 + 6}px`;
 
     // 展开/折叠按钮
@@ -70,6 +87,15 @@ export class BoneTree {
 
     const nameEl = el('span', 'bone-name', name);
     row.appendChild(nameEl);
+
+    // 眼睛图标（显隐切换）
+    const eye = el('span', `bone-eye ${isHidden ? 'eye-off' : 'eye-on'}`, isHidden ? '🚫' : '👁');
+    eye.title = isHidden ? '显示（当前已隐藏）' : '隐藏';
+    eye.onclick = (e) => {
+      e.stopPropagation();
+      this.onToggleVisibility(node.bone);
+    };
+    row.appendChild(eye);
 
     row.onclick = () => {
       this.selectedName = name;

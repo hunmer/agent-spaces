@@ -5,7 +5,7 @@
  *  - bone.worldX/worldY 是 skeleton 空间坐标（相对 skeleton root）
  *  - pixi-spine 渲染 mesh 时，这些坐标经过 Spine 实例的 worldTransform 映射到舞台
  *  - gizmo graphics 挂在 spineContainer（与 spine 实例同级，跟随 viewScale 缩放/平移）
- *  - 绘制时把 bone 的 skeleton 坐标用 spine.worldTransform 转成容器坐标，
+ *  - 绘制时把 bone 的 skeleton 坐标用 spine.localTransform 转成容器坐标，
  *    这样骨骼线与角色 mesh 完全对齐，且线条粗细用固定屏幕像素（不随 spine 缩放）
  *
  * 用 PIXI.Graphics 绘制：
@@ -18,7 +18,7 @@
  *  - 拖拽中实时 skeleton.updateWorldTransform() + 重绘 gizmo
  */
 import * as PIXI from 'pixi.js';
-import { CoordinateUtils } from './CoordinateUtils';
+import { CoordinateUtils } from './CoordinateUtils.js';
 
 export class BoneGizmoLayer {
   /**
@@ -72,13 +72,14 @@ export class BoneGizmoLayer {
 
   /**
    * 把骨骼的 skeleton 空间坐标 (worldX, worldY) 转成 spineContainer 坐标。
-   * 通过 spine 实例的 worldTransform 矩阵变换。
+   * 只应用 spine 相对父容器的 localTransform；父容器的 view transform 会在渲染时统一应用。
    */
   _boneToContainer(bone) {
     if (!this.spine) return { x: bone.worldX, y: bone.worldY };
-    const wt = this.spine.worldTransform;
-    const a = wt.a, b = wt.b, c = wt.c, d = wt.d, tx = wt.tx, ty = wt.ty;
-    // PIXI worldTransform: [a c tx; b d ty; 0 0 1]
+    const lt = this.spine.transform?.localTransform;
+    if (!lt) return { x: bone.worldX, y: bone.worldY };
+    const a = lt.a, b = lt.b, c = lt.c, d = lt.d, tx = lt.tx, ty = lt.ty;
+    // PIXI Matrix: [a c tx; b d ty; 0 0 1]
     return {
       x: bone.worldX * a + bone.worldY * c + tx,
       y: bone.worldX * b + bone.worldY * d + ty,

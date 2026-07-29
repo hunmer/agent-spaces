@@ -18,7 +18,7 @@
  */
 import './styles.css';
 import { SpineEditorApp } from './core/SpineEditorApp';
-import { loadSpine, getAnimations, getSkins } from './loaders/SpineLoader';
+import { loadSpine, getAnimations, getSkins, BoneVisibility } from './loaders/SpineLoader';
 import { PoseExporter } from './exporters/PoseExporter';
 import { Toolbar } from './ui/Toolbar';
 import { AssetFilter } from './ui/AssetFilter';
@@ -33,6 +33,7 @@ let boneTree = null;
 let transformPanel = null;
 let pendingAssets = null; // 就绪前收到的注入资源（ready 后消费）
 let loadedAssetsRaw = null; // 最近加载的原始资源（用于「下载 Spine」导出）
+let visibility = null;    // BoneVisibility 实例（骨骼显隐管理）
 
 function setStatus(text, type = 'ready') {
   const bar = document.getElementById('statusbar');
@@ -82,11 +83,20 @@ async function init() {
     onSelect: (charBase) => loadFromLibrary(charBase),
   });
 
+  // 骨骼显隐管理器
+  visibility = new BoneVisibility();
+
   // 骨骼树（左侧 tab2）
   boneTree = new BoneTree(document.getElementById('tab-bones'), {
     onSelect: (bone) => {
       app.gizmo.selectBone(bone);
       transformPanel.setBone(bone);
+    },
+    visibility,
+    onToggleVisibility: (bone) => {
+      visibility.toggle(app?.spine, bone);
+      boneTree.refresh();
+      app.gizmo.redraw();
     },
   });
 
@@ -98,6 +108,7 @@ async function init() {
       refreshUndoRedo();
     },
     onFlip: (bone, axis) => { app.flip(bone, axis); refreshUndoRedo(); },
+    onFlipCharacter: (axis) => { app.flipCharacter(axis); refreshUndoRedo(); },
     onReset: (bone) => { app.resetBone(bone); refreshUndoRedo(); },
     onResetAll: () => { app.resetAll(); refreshUndoRedo(); },
   });
@@ -155,6 +166,8 @@ async function loadSpineInto(assets) {
       name: assets.name || 'spine',
     });
     app.setSpine(spine);
+    // 重置骨骼显隐状态
+    visibility?.reset(spine);
 
     // 更新 UI
     const anims = getAnimations(spine);
@@ -196,20 +209,21 @@ async function loadFromLibrary(charBase) {
   setStatus(`正在从仓库下载 ${skin}…`, 'modified');
   setHint(`下载 ${skin} 中…`);
   try {
-    // 下载三个文件转 dataUrl（避免跨域 + 走 fetch）
-    const [skelBuf, atlasText] = await Promise.all([
-      fetch(`${base}.skel`).then((r) => { if (!r.ok) throw new Error(`.skel ${r.status}`); return r.arrayBuffer(); }),
-      fetch(`${base}.atlas`).then((r) => { if (!r.ok) throw new Error(`.atlas ${r.status}`); return r.text(); }),
+    // 下载三个文件：skel/atlas/png 全部转 dataUrl（统一格式 + 可用于「下载 Spine」导出）
+    const [skelDataUrl, atlasDataUrl, pngDataUrl] = await Promise.all([
+      fetch(`${base}.skel`).then((r) => { if (!r.ok) throw new Error(`.skel ${r.status}`); return blobToDataUrl(r); }),
+      fetch(`${base}.atlas`).then((r) => { if (!r.ok) throw new Error(`.atlas ${r.status}`); return blobToDataUrl(r); }),
+      fetch(`${base}.png`).then((r) => { if (!r.ok) throw new Error(`.png ${r.status}`); return blobToDataUrl(r); }),
     ]);
-    // png 用 URL（PIXI.BaseTexture.from 可直接加载远程 URL，但跨域需 CORS——gh-pages 支持）
-    const pngUrl = `${base}.png`;
     const spine = await loadSpine({
-      skel: new Uint8Array(skelBuf),
-      atlas: atlasText,
-      png: pngUrl,
+      skel: skelDataUrl,
+      atlas: atlasDataUrl,
+      png: pngDataUrl,
       name: charBase.name,
     });
     app.setSpine(spine);
+    // 重置骨骼显隐状态
+    visibility?.reset(spine);
     const anims = getAnimations(spine);
     const skins = getSkins(spine);
     toolbar.setAnimations(anims);
@@ -217,7 +231,8 @@ async function loadFromLibrary(charBase) {
     boneTree.setSpine(spine);
     transformPanel.setBone(null);
     if (skins.length) app.setSkin(skins[0]);
-    loadedAssetsRaw = { name: charBase.name, _librarySkin: skin };
+    // 缓存原始 dataUrl（供「下载 Spine」导出）
+    loadedAssetsRaw = { name: charBase.name, skelDataUrl, atlasDataUrl, pngDataUrl };
     setHint(null);
     setStatus(`已加载：${charBase.name}（Spine ${spine._spineVersion}）`, 'ready');
     refreshUndoRedo();
@@ -226,6 +241,16 @@ async function loadFromLibrary(charBase) {
     setHint('下载失败：' + (err?.message || err));
     setStatus(`下载失败：${err?.message || String(err)}`, 'error');
   }
+}
+
+/** fetch Response → base64 dataUrl */
+function blobToDataUrl(resp) {
+  return resp.blob().then((b) => new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onloadend = () => resolve(r.result);
+    r.onerror = () => reject(new Error('转 dataUrl 失败'));
+    r.readAsDataURL(b);
+  }));
 }
 
 // ===== 导出 =====
@@ -246,20 +271,37 @@ function exportScreenshot() {
   setStatus(`已截图：${name}（已回传节点）`, 'ready');
 }
 
-function exportSpineFiles() {
+async function exportSpineFiles() {
   if (!loadedAssetsRaw) { setStatus('无可导出的原始文件', 'error'); return; }
-  // 角色库加载的资源没有原始 dataUrl，提示用户上传后再导出
-  if (loadedAssetsRaw._librarySkin) {
-    setStatus('角色库资源无法导出原始文件，请上传本地资源后再导出', 'error');
-    return;
-  }
+  const name = loadedAssetsRaw.name || 'spine';
   const files = [];
-  if (loadedAssetsRaw.skelDataUrl) files.push({ name: `${loadedAssetsRaw.name}.skel`, dataUrl: loadedAssetsRaw.skelDataUrl });
-  if (loadedAssetsRaw.atlasDataUrl) files.push({ name: `${loadedAssetsRaw.name}.atlas`, dataUrl: loadedAssetsRaw.atlasDataUrl });
-  if (loadedAssetsRaw.pngDataUrl) files.push({ name: `${loadedAssetsRaw.name}.png`, dataUrl: loadedAssetsRaw.pngDataUrl });
+  if (loadedAssetsRaw.skelDataUrl) files.push({ name: `${name}.skel`, dataUrl: loadedAssetsRaw.skelDataUrl });
+  if (loadedAssetsRaw.atlasDataUrl) files.push({ name: `${name}.atlas`, dataUrl: loadedAssetsRaw.atlasDataUrl });
+  if (loadedAssetsRaw.pngDataUrl) files.push({ name: `${name}.png`, dataUrl: loadedAssetsRaw.pngDataUrl });
   if (!files.length) { setStatus('无可导出的原始文件', 'error'); return; }
-  postToParent('spine:export-spine', { files });
-  setStatus(`已导出 ${files.length} 个原始文件`, 'ready');
+  setStatus(`正在打包 ZIP（${files.length} 个文件）…`, 'modified');
+  try {
+    // 在 iframe 内用 JSZip 打包，直接触发浏览器下载（不回传 mini-app）
+    const { default: JSZip } = await import('jszip');
+    const zip = new JSZip();
+    for (const f of files) {
+      const blob = await (await fetch(f.dataUrl)).blob();
+      zip.file(f.name, blob);
+    }
+    const zipBlob = await zip.generateAsync({ type: 'blob' });
+    const url = URL.createObjectURL(zipBlob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${name}.zip`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    setStatus(`已下载 ${name}.zip（${files.length} 个文件）`, 'ready');
+  } catch (err) {
+    console.error('[spine-editor] exportSpineFiles failed:', err);
+    setStatus(`打包失败：${err?.message || String(err)}`, 'error');
+  }
 }
 
 function refreshUndoRedo() {

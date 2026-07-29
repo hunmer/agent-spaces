@@ -192,9 +192,9 @@ export class SpineEditorApp {
     // 确保新 spine 先更新一次（计算 mesh 顶点 + bounds），否则 fitView 拿到空 bounds
     spine.skeleton.setToSetupPose();
     spine.update(0);
-    // 强制更新 worldTransform，确保 getBounds/fitView/_boneToContainer 读到最新值
+    // 强制更新 transform，确保 getBounds/fitView 读到最新值
     this.spineContainer.updateTransform();
-    // gizmo 挂在 spineContainer（与 spine 同级），redraw 时用 spine.worldTransform 转坐标
+    // gizmo 挂在 spineContainer（与 spine 同级），redraw 时只应用 spine 的本地变换
     this.gizmo.setSkeleton(spine);
     this.history.clear();
 
@@ -205,8 +205,8 @@ export class SpineEditorApp {
       const stand2 = anims.find((a) => a.name === 'stand2');
       this.currentAnimation = stand2 ? stand2.name : anims[0].name;
     }
-    // 默认 pose 模式
-    this.setMode('pose');
+    // 保持当前模式：若用户在播放模式，新角色自动播放当前动画；否则 pose 模式
+    this.setMode(this.mode);
 
     // 重置视图缩放/平移（避免旧角色的 viewScale/viewX/viewY 残留）
     this.viewScale = 1;
@@ -266,9 +266,7 @@ export class SpineEditorApp {
       } else {
         this.spine.skeleton.updateWorldTransform();
       }
-      // 关键：手动更新 spine 及其父容器的 worldTransform，
-      // 确保 _boneToContainer 读到的 spine.worldTransform 与当前骨骼状态一致
-      // （pixi 渲染阶段才自动 updateTransform，ticker 回调里读的是上一帧，导致骨骼线错位）
+      // 手动同步 transform，确保 getBounds 和交互读取当前帧矩阵。
       this.spineContainer.updateTransform();
       this.gizmo.redraw();
     }
@@ -320,6 +318,21 @@ export class SpineEditorApp {
     this.spine.skeleton.updateWorldTransform();
     this.gizmo.redraw();
     this.history.push(this.spine.skeleton, 'flip');
+    this._setModified(true);
+  }
+
+  /**
+   * 翻转整个角色（镜像）。通过 skeleton.scaleX/scaleY 取反，
+   * 影响所有骨骼及 attachment，视觉上整体翻转。
+   */
+  flipCharacter(axis) {
+    if (!this.spine) return;
+    if (axis === 'x') this.spine.skeleton.scaleX *= -1;
+    else this.spine.skeleton.scaleY *= -1;
+    this.spine.skeleton.updateWorldTransform();
+    this.spineContainer.updateTransform();
+    this.gizmo.redraw();
+    this.history.push(this.spine.skeleton, 'flipChar');
     this._setModified(true);
   }
 

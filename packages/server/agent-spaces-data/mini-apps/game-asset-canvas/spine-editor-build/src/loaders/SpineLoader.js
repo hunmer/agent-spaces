@@ -173,4 +173,99 @@ export function getBoneTree(spine) {
   return roots;
 }
 
-export default { loadSpine, getAnimations, getSkins, getBoneTree };
+/**
+ * 骨骼显隐管理。
+ *
+ * Spine 的骨骼（Bone）本身是变换节点，不直接绘制；绘制的是绑定到骨骼的 slot.attachment（mesh）。
+ * 隐藏一根骨骼 = 把绑定到该骨骼（及其所有子孙骨骼）的 slot 的 attachment 临时置 null，
+ * 恢复时从缓存还原。缓存 key 用 bone.data.name。
+ *
+ * _hiddenAttachments: Map<boneName, Array<{slot, attachment}>>
+ */
+export class BoneVisibility {
+  constructor() {
+    this.hidden = new Set(); // 已隐藏的骨骼名（含用户显式隐藏的根）
+    this.saved = new Map();  // boneName -> [{slot, attachment}]
+  }
+
+  /** 收集某骨骼及其所有子孙骨骼 */
+  _collectBones(bone, acc = []) {
+    acc.push(bone);
+    for (const child of bone.children || []) {
+      this._collectBones(child, acc);
+    }
+    return acc;
+  }
+
+  /**
+   * 隐藏一根骨骼（及其子级）相关的所有 slot attachment。
+   * @param {object} spine Spine 实例
+   * @param {object} bone 目标骨骼
+   */
+  hide(spine, bone) {
+    if (!spine?.skeleton || !bone) return;
+    const name = bone.data.name;
+    if (this.hidden.has(name)) return;
+    this.hidden.add(name);
+    const bones = this._collectBones(bone);
+    const boneSet = new Set(bones);
+    const savedSlots = [];
+    for (const slot of spine.skeleton.slots) {
+      if (boneSet.has(slot.bone) && slot.attachment) {
+        savedSlots.push({ slot, attachment: slot.attachment });
+        slot.setAttachment(null);
+      }
+    }
+    this.saved.set(name, savedSlots);
+    spine.skeleton.updateWorldTransform();
+  }
+
+  /**
+   * 显示一根骨骼（及其子级）相关的所有 slot attachment。
+   */
+  show(spine, bone) {
+    if (!spine?.skeleton || !bone) return;
+    const name = bone.data.name;
+    if (!this.hidden.has(name)) return;
+    this.hidden.delete(name);
+    const savedSlots = this.saved.get(name) || [];
+    for (const { slot, attachment } of savedSlots) {
+      slot.setAttachment(attachment);
+    }
+    this.saved.delete(name);
+    spine.skeleton.updateWorldTransform();
+  }
+
+  /** 切换显隐 */
+  toggle(spine, bone) {
+    const name = bone.data.name;
+    if (this.hidden.has(name)) this.show(spine, bone);
+    else this.hide(spine, bone);
+  }
+
+  /** 某骨骼是否已隐藏（含被祖先隐藏的间接情况） */
+  isHidden(bone) {
+    let cur = bone;
+    while (cur) {
+      if (this.hidden.has(cur.data.name)) return true;
+      cur = cur.parent;
+    }
+    return false;
+  }
+
+  /** 重置所有显隐（恢复全部 attachment） */
+  reset(spine) {
+    for (const name of this.hidden) {
+      const savedSlots = this.saved.get(name) || [];
+      for (const { slot, attachment } of savedSlots) {
+        slot.setAttachment(attachment);
+      }
+    }
+    this.hidden.clear();
+    this.saved.clear();
+    if (spine?.skeleton) spine.skeleton.updateWorldTransform();
+  }
+}
+
+export default { loadSpine, getAnimations, getSkins, getBoneTree, BoneVisibility };
+

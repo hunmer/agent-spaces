@@ -5,10 +5,11 @@
  * 点击「应用变换」写入骨骼。「翻转」「重置」按钮。
  */
 export class TransformPanel {
-  constructor(container, { onApply, onFlip, onReset, onResetAll }) {
+  constructor(container, { onApply, onFlip, onFlipCharacter, onReset, onResetAll }) {
     this.container = container;
     this.onApply = onApply || (() => {});
     this.onFlip = onFlip || (() => {});
+    this.onFlipCharacter = onFlipCharacter || (() => {});
     this.onReset = onReset || (() => {});
     this.onResetAll = onResetAll || (() => {});
     this.bone = null;
@@ -19,7 +20,13 @@ export class TransformPanel {
     this.container.innerHTML = `
       <div class="panel-title">变换 Transform</div>
       <div class="panel-empty">未选中骨骼<br/>点击骨骼树或画布圆点选择</div>
+      <div class="btn-row">
+        <button class="btn btn-sm" id="btn-flip-char-x" title="镜像整个角色">翻转角色↔</button>
+        <button class="btn btn-sm" id="btn-flip-char-y" title="上下翻转整个角色">翻转角色↕</button>
+      </div>
     `;
+    this.container.querySelector('#btn-flip-char-x').onclick = () => this.onFlipCharacter('x');
+    this.container.querySelector('#btn-flip-char-y').onclick = () => this.onFlipCharacter('y');
   }
 
   /** 设置当前骨骼（选中时调用）。liveUpdate=true 表示拖拽中实时刷新输入框 */
@@ -72,6 +79,10 @@ export class TransformPanel {
         <button class="btn btn-sm" id="btn-flip-y">竖直翻转</button>
       </div>
       <div class="btn-row">
+        <button class="btn btn-sm" id="btn-flip-char-x" title="镜像整个角色">翻转角色↔</button>
+        <button class="btn btn-sm" id="btn-flip-char-y" title="上下翻转整个角色">翻转角色↕</button>
+      </div>
+      <div class="btn-row">
         <button class="btn btn-sm" id="btn-reset">重置骨骼</button>
         <button class="btn btn-sm btn-danger" id="btn-reset-all">全部重置</button>
       </div>
@@ -87,9 +98,23 @@ export class TransformPanel {
         scaleY: parseFloat(val('#field-sy')),
       });
     };
-    this.container.querySelector('#btn-flip-x').onclick = () => this.onFlip(this.bone, 'x');
-    this.container.querySelector('#btn-flip-y').onclick = () => this.onFlip(this.bone, 'y');
-    this.container.querySelector('#btn-reset').onclick = () => this.onReset(this.bone);
+    this.container.querySelector('#btn-flip-x').onclick = () => {
+      if (!this.bone) return;
+      this.onFlip(this.bone, 'x');
+      this.setBone(this.bone); // 翻转后刷新面板数值，给用户即时反馈
+    };
+    this.container.querySelector('#btn-flip-y').onclick = () => {
+      if (!this.bone) return;
+      this.onFlip(this.bone, 'y');
+      this.setBone(this.bone);
+    };
+    this.container.querySelector('#btn-flip-char-x').onclick = () => this.onFlipCharacter('x');
+    this.container.querySelector('#btn-flip-char-y').onclick = () => this.onFlipCharacter('y');
+    this.container.querySelector('#btn-reset').onclick = () => {
+      if (!this.bone) return;
+      this.onReset(this.bone);
+      this.setBone(this.bone);
+    };
     this.container.querySelector('#btn-reset-all').onclick = () => this.onResetAll();
 
     const val = (sel) => this.container.querySelector(sel)?.value || 0;

@@ -127,6 +127,7 @@ export default function FileUpload({ value = [], onChange, max = 6, placeholder 
 
   const onDrop = useCallback((e) => {
     e.preventDefault();
+    e.stopPropagation(); // 阻止冒泡到 ReactFlow，避免外部文件已被本组件消费后又触发画布「拖拽建节点」
     setDragOver(false);
     handleFiles(e.dataTransfer.files);
   }, [handleFiles]);
@@ -144,7 +145,11 @@ export default function FileUpload({ value = [], onChange, max = 6, placeholder 
   return (
     <div className="flex flex-col gap-2">
       {(extras.length > 0 || urls.length > 0) && (
-        <div className="grid grid-cols-3 gap-1.5">
+        <div
+          className="grid grid-cols-3 gap-1.5"
+          onDrop={(e) => { e.preventDefault(); e.stopPropagation(); }}
+          onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+        >
           {displayItems.map((item, i) => {
             const sortable = unifiedSortable || (uploadedSortable && item.kind === 'uploaded');
             return (

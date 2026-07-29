@@ -203,6 +203,20 @@ html, body {
   padding: 4px 0;
   border-bottom: 1px solid var(--border);
 }
+.bone-node { justify-content: flex-start; }
+.bone-name { flex: 1; }
+.bone-eye {
+  margin-left: auto;
+  font-size: 12px;
+  cursor: pointer;
+  opacity: 0.5;
+  transition: opacity 0.15s;
+  flex-shrink: 0;
+}
+.bone-eye:hover { opacity: 1; }
+.bone-eye.eye-on { opacity: 0.4; }
+.bone-eye.eye-off { opacity: 1; }
+.bone-hidden .bone-name { opacity: 0.4; text-decoration: line-through; }
 
 /* ===== 画布 ===== */
 #canvas-container {

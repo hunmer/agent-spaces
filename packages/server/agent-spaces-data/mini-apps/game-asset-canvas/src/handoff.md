@@ -130,6 +130,7 @@ Agent → api.js handler → ctx.requestClient(type, payload, timeoutMs)
 17. **vendor 库加载**：fabric/browser-image-compression 走 `(0,eval)` 全局求值；painterro 走 loadVendor + esmSuffix 转 ESM；pixelorama/director-desk 走 iframe + postMessage。
 18. **API 参数 schema = 节点即文档**：不要在 tools.js 内联枚举值/写 NODE_PARAMS_SPEC 注入提示词。枚举参数的 options 在节点组件 PARAMS_SCHEMA 里**直接引用 constants 的 OPTIONS**（单一数据源）。
 19. **工作区数据目录落地是「单写非双写」**：产图只产生**一份**文件。directory 设了 → 落工作区目录 `{historyId}/{index}.ext` + 返回指向该文件的 `localFileUrl`（走 `/local-file` 路由，被 `isBackendUrl` 识别为后端地址，下游/编辑不二次下载、不怕外链过期）；directory 没设 → 回退落 data 目录。**historyId 必须在调用 generateImages 前生成**（作落地子目录名，与 addHistory 共用同一 id）。改这套逻辑同时改两处调用点：`useWorkflow`（节点内生成）+ `useExecutionQueue.submit`（表单生成）。宿主能力 `saveImageToDir`/`localFileUrl`/`revealAbsolutePath` + 服务端 `write-absolute` 路由已具备，纯 mini-app 改动刷新即生效。
+20. **Spine gizmo 坐标只用本地变换**：角色和骨骼 Graphics 同挂 `spineContainer`，`_boneToContainer` 只能应用 `spine.transform.localTransform`；使用 `worldTransform` 会把父容器的 fit/zoom/pan 重复应用，导致首次加载骨骼偏到右下方。
 
 ## 工作区数据目录（产图落本地）
 
@@ -192,6 +193,7 @@ generateImages(workflowId, input, {directory, historyId})   ← utils/workflow.j
 
 - `vendor/pixelorama-web/` — Godot 4.7 导出像素编辑器，iframe + postMessage（pxr-load/pxr-export），COOP/COEP 由自带 SW 注入。改 GDScript 后需 Godot 重新导出 pck。
 - `vendor/director-desk-web/` — storyai-3d-director-desk 构建产物，iframe + postMessage（director-desk-ready/captures-sent/panorama）。
+- `vendor/spine-editor-web/` — PixiJS + pixi-spine 独立 SPA；源码在 `spine-editor-src/`，修改后需 `npm run build` 并同步 dist 到上层。
 - `vendor/painterro.min.js` — 图片编辑器，loadVendor + esmSuffix 转 ESM。
 - `vendor/fabric.min.js` / `browser-image-compression.js` — `(0,eval)` 全局求值。
 - `vendor/{gifenc,gifuct-js,image-q,jszip}.js` — 图像处理，Blob URL dynamic import。

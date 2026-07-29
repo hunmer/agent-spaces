@@ -248,6 +248,9 @@ export interface MiniAppFileEntry {
 }
 
 /** Flat file list with mtime, so clients can diff for incremental refresh. */
+// 目录级排除：node_modules/.git/dist 等巨型/构建目录不应进入 manifest，
+// 否则编辑器预扫描会逐个读取数千个文件（如 vendor 内嵌的 SPA 源码工程）。
+const MANIFEST_SKIP_DIRS = new Set(['node_modules', '.git', '.cache', '.turbo', '.parcel-cache']);
 export function getFileManifest(projectId: string): MiniAppFileEntry[] {
   const dir = srcDir(projectId);
   if (!existsSync(dir)) return [];
@@ -255,6 +258,7 @@ export function getFileManifest(projectId: string): MiniAppFileEntry[] {
   const files: MiniAppFileEntry[] = [];
   function walk(d: string, prefix: string) {
     for (const entry of readdirSync(d, { withFileTypes: true })) {
+      if (entry.isDirectory() && MANIFEST_SKIP_DIRS.has(entry.name)) continue;
       const rel = prefix ? `${prefix}/${entry.name}` : entry.name;
       if (entry.isDirectory()) {
         walk(join(d, entry.name), rel);
