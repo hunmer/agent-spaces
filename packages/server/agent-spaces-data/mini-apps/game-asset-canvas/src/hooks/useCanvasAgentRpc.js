@@ -2,7 +2,8 @@ import { useEffect, useRef } from 'react';
 import { addEdge, MarkerType } from '@xyflow/react';
 import { NODE_META, NODE_TYPES, WORKFLOWS, VOICE_PROVIDER_OPTIONS, DEFAULT_VIDEO_MODEL, VIDEO_ASPECT_OPTIONS, VIDEO_QUALITY_OPTIONS, VIDEO_DURATION_OPTIONS, DEFAULT_MODEL } from '../utils/constants';
 import { DEFAULT_SIZE, initialData, NODE_PARAMS_SCHEMA } from '../utils/canvas-constants';
-import { genId, autoPosition } from '../utils/canvas-id';
+import { genId } from '../utils/canvas-id';
+import { findFreePositions } from '../utils/layout';
 
 /**
  * 把新建的节点 id 列表归入指定名称的分组。
@@ -200,7 +201,9 @@ export default function useCanvasAgentRpc({ nodes, edges, createNodeAt, updateNo
             if (!specs.length) throw new Error('nodes 不能为空');
             const ids = specs.map(() => genId('node'));
             setNodesFn((prev) => {
-              const base = prev.length;
+              // 先构造节点尺寸；显式坐标保持不变，自动坐标逐个避让。
+              // 障碍物包含已有节点、同批显式定位节点和已完成布局的新节点，
+              // 避免固定网格步长小于高节点尺寸时发生重叠。
               const additions = specs.map((spec, i) => {
                 const type = spec.type;
                 const meta = NODE_META[type] || {};
@@ -208,13 +211,29 @@ export default function useCanvasAgentRpc({ nodes, edges, createNodeAt, updateNo
                 return {
                   id: ids[i],
                   type,
-                  position: spec.position || autoPosition(base + i),
+                  position: spec.position || null,
                   width: size.w,
                   height: size.h,
                   style: { width: size.w, height: size.h },
                   data: { ...initialData(type), label: meta.label, ...(spec.data || {}) },
                 };
               });
+              const obstacles = [
+                ...prev,
+                ...additions.filter((node) => node.position),
+              ];
+              for (const node of additions) {
+                if (node.position) continue;
+                node.position = findFreePositions(
+                  { x: 120, y: 120 },
+                  node.width,
+                  node.height,
+                  1,
+                  obstacles,
+                  { gap: 40, direction: 'right', cols: 3 },
+                )[0];
+                obstacles.push(node);
+              }
               return [...prev, ...additions];
             });
             if (payload.focusFirst !== false && ids.length) {

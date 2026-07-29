@@ -23,6 +23,9 @@ import MultiSelectToolbar from './canvas/MultiSelectToolbar';
 import GroupOverlays from './canvas/GroupOverlays';
 import FloatingEdge from './canvas/FloatingEdge';
 import AssetLibraryPickerDialog from './AssetLibraryPickerDialog';
+import ExportImagesDialog from './ExportImagesDialog';
+import GroupConfirmDialog from './GroupConfirmDialog';
+import DeleteGroupDialog from './DeleteGroupDialog';
 import useAssetLibrary from '../hooks/useAssetLibrary';
 
 import useCanvasState from '../hooks/useCanvasState';
@@ -44,7 +47,7 @@ import useCanvasAgentRpc from '../hooks/useCanvasAgentRpc';
 import useDecoratedNodes from '../hooks/useDecoratedNodes';
 
 import { IMAGE_TAGS, NODE_TYPES, NODE_META, dedupeTags } from '../utils/constants';
-import { NODE_COMPONENTS, PANEL_ID_MAIN, PANEL_ID_RIGHT, DEFAULT_SIZE, initialData } from '../utils/canvas-constants';
+import { NODE_COMPONENTS, PANEL_ID_MAIN, PANEL_ID_RIGHT } from '../utils/canvas-constants';
 import { genId } from '../utils/canvas-id';
 
 const EDGE_TYPES = { floating: FloatingEdge };
@@ -117,7 +120,7 @@ export default function Canvas() {
   const { panelLayout, showMinimap, handlePanelLayoutChange, toggleMinimap } = usePanelLayout();
 
   // —— 图片节点批量产出（先抽，被执行队列 onComplete 前向引用）——
-  const { addImageNodesFromUrls, handleExportImages } = useImageOutputs({ setNodes, setGroups });
+  const { addImageNodesFromUrls, addImageNodesGrouped, handleExportImages } = useImageOutputs({ setNodes, setGroups });
 
   // —— 执行队列（onComplete/onError 用 imageOutputs + updateNodeData + addHistory）——
   const { jobs, submit, cancel, clearFinished, runningCount } = useExecutionQueue({
@@ -342,9 +345,30 @@ export default function Canvas() {
     }
   }, [addAsset, assetsPickerImages]);
 
+  // —— 导出图片流程：多图选择 → 分组确认 → 落到画布 ——
+  // exportState: 多图时打开选择对话框 { sourceNode, images }
+  // groupState: 选完图后打开分组确认 { sourceNode, urls }
+  const [exportState, setExportState] = useState(null);
+  const [groupState, setGroupState] = useState(null);
+  const handleExportImagesWithPicker = useCallback((sourceNode, imgs) => {
+    if (!imgs?.length) return;
+    if (imgs.length === 1) {
+      handleExportImages(sourceNode, imgs);
+      return;
+    }
+    setExportState({ sourceNode, images: imgs });
+  }, [handleExportImages]);
+
+  // ExportImages 选完后：弹分组确认框（询问是否分组 + 分组名）
+  const handleExportSelection = useCallback((urls) => {
+    if (!urls?.length || !exportState?.sourceNode) return;
+    setGroupState({ sourceNode: exportState.sourceNode, urls });
+  }, [exportState]);
+
   // —— 插入一组图片到画布（素材库「插入到画布」复用）——
   // opts.group=true 时建一条 WorkflowGroup 把所有图片节点归组；否则每张图独立节点。
   // opts.groupName 指定分组名（缺省用时间戳）。
+  // 位置统一走 addImageNodesGrouped（内部用 findFreePositions 避让已有节点，不重叠）。
   const handleInsertImagesToCanvas = useCallback((urls, opts = {}) => {
     const list = (Array.isArray(urls) ? urls : [urls]).filter(Boolean);
     if (!list.length) return;
@@ -352,44 +376,8 @@ export default function Canvas() {
       addImageNodesFromUrls(list, { source: 'assets' });
       return;
     }
-    // 分组模式：参考 handleExportImages，子节点网格排列 + 一条 WorkflowGroup
-    const size = DEFAULT_SIZE[NODE_TYPES.imageDisplay];
-    const meta = NODE_META[NODE_TYPES.imageDisplay];
-    const cols = Math.min(3, list.length);
-    const now = new Date();
-    const hh = String(now.getHours()).padStart(2, '0');
-    const mm = String(now.getMinutes()).padStart(2, '0');
-    const groupName = opts.groupName || `素材 ${hh}:${mm}`;
-    const childIds = list.map(() => genId(NODE_TYPES.imageDisplay));
-    setNodes((prev) => {
-      const base = prev.length;
-      const startX = 420 + base * 6;
-      const startY = 120;
-      const additions = list.map((url, i) => {
-        const id = childIds[i];
-        const col = i % cols;
-        const row = Math.floor(i / cols);
-        return {
-          id,
-          type: NODE_TYPES.imageDisplay,
-          position: { x: startX + col * (size.w + 20), y: startY + row * (size.h + 20) },
-          width: size.w, height: size.h,
-          style: { width: size.w, height: size.h },
-          data: { ...initialData(NODE_TYPES.imageDisplay), images: [url], source: 'assets', label: meta.label },
-        };
-      });
-      return [...prev, ...additions];
-    });
-    setGroups((prev) => [...prev, {
-      id: genId('group'),
-      name: groupName,
-      childNodeIds: childIds,
-      childGroupIds: [],
-      locked: false,
-      disabled: false,
-      savedNodeStates: {},
-    }]);
-  }, [addImageNodesFromUrls, setNodes, setGroups]);
+    addImageNodesGrouped(list, { source: 'assets', groupName: opts.groupName || '' });
+  }, [addImageNodesFromUrls, addImageNodesGrouped]);
 
   // —— 生成记录「插入到画布」菜单：包装 crud.handleInsertHistory 支持分组 ——
   // opts.group=true 时，先建节点（crud.handleInsertHistory 返回新节点 id），再建一条 WorkflowGroup。
@@ -429,6 +417,11 @@ export default function Canvas() {
   const handleRemoveOutputImage = useCallback((nodeId, index) => {
     handleOutputImagesChange(nodeId, (prev) => prev.filter((_, i) => i !== index));
   }, [handleOutputImagesChange]);
+  // 产出图重排序：拖拽调整顺序，写回 data.output.images
+  const handleReorderOutputImages = useCallback((nodeId, next) => {
+    if (!Array.isArray(next)) return;
+    handleOutputImagesChange(nodeId, () => next);
+  }, [handleOutputImagesChange]);
   const handleClearOutputImages = useCallback((nodeId) => {
     // 清空产出同时清空版本历史：避免清空后 versions 残留，刷新页面版本按钮又出现
     updateNodeData(nodeId, { __versionSkip: true, output: { images: [] }, versions: [], activeVersion: undefined, status: 'idle' });
@@ -455,7 +448,7 @@ export default function Canvas() {
     makeOnUpdate,
     onGenerate: handleGenerate,
     onGenerateMedia: handleGenerateMedia,
-    onExportImages: handleExportImages,
+    onExportImages: handleExportImagesWithPicker,
     onProcessImage: handleProcessImage,
     onProcessLocal: handleProcessLocal,
     onCutout: handleCutout,
@@ -472,13 +465,14 @@ export default function Canvas() {
     onAddOutputImages: handleAddOutputImages,
     onRemoveOutputImage: handleRemoveOutputImage,
     onClearOutputImages: handleClearOutputImages,
+    onReorderOutputImages: handleReorderOutputImages,
     // 版本切换（还原 params/output/status 到指定历史版本）
     onSwitchVersion: handleSwitchVersion,
   }), [
     makeOnUpdate, handleGenerate, handleGenerateMedia, handleProcessImage,
     handleProcessLocal, handleCutout, handleCutoutCreate, handleCancelProcess, handlePromptReverse,
-    handleExportImages, handleAutoSize, handleAutoSizeToContent, handleBBoxCutout, handleResetParams,
-    handleAddToAssets, handleAddOutputImages, handleRemoveOutputImage, handleClearOutputImages,
+    handleExportImagesWithPicker, handleAutoSize, handleAutoSizeToContent, handleBBoxCutout, handleResetParams,
+    handleAddToAssets, handleAddOutputImages, handleRemoveOutputImage, handleClearOutputImages, handleReorderOutputImages,
     handleSwitchVersion,
   ]);
 
@@ -586,7 +580,7 @@ export default function Canvas() {
               connectionLineComponent={ConnectionLine}
               onSelectionChange={selection.onSelectionChange}
               onNodesDelete={onNodesDelete}
-              deleteKeyCode={deleteKeyCode}
+              deleteKeyCode={(groupOps.selectedGroupId || groupOps.deleteGroupId) ? null : deleteKeyCode}
               nodeTypes={nodeTypes}
               edgeTypes={EDGE_TYPES}
               defaultEdgeOptions={DEFAULT_EDGE_OPTIONS}
@@ -625,7 +619,7 @@ export default function Canvas() {
                 items={groupOps.groupOverlayItems}
                 selectedGroupId={groupOps.selectedGroupId}
                 onSelect={groupOps.setSelectedGroupId}
-                onDelete={groupOps.deleteGroup}
+                onDelete={groupOps.requestDeleteGroup}
                 onUpdate={groupOps.updateGroup}
                 onMove={groupOps.handleGroupMove}
                 onConnect={groupOps.handleGroupConnect}
@@ -715,6 +709,46 @@ export default function Canvas() {
         executions={executions}
         settings={settings}
         onClose={() => setExecuteState(null)}
+      />
+
+      <ExportImagesDialog
+        open={!!exportState}
+        images={exportState?.images || []}
+        onClose={() => setExportState(null)}
+        onExport={(urls) => {
+          // 多图选完 → 关闭选择框 → 弹分组确认框
+          setExportState(null);
+          handleExportSelection(urls);
+        }}
+      />
+
+      <GroupConfirmDialog
+        open={!!groupState}
+        count={groupState?.urls?.length}
+        defaultGroupName={groupState?.sourceNode
+          ? `${NODE_META[groupState.sourceNode.type]?.label || '导出'} ${new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}`
+          : ''}
+        onClose={() => setGroupState(null)}
+        onConfirm={(groupName) => {
+          // 创建分组（groupName 为 null 表示用户未填名，用默认）
+          if (groupState?.sourceNode) {
+            handleExportImages(groupState.sourceNode, groupState.urls, { groupName: groupName ?? '' });
+          }
+        }}
+        onCancel={() => {
+          // 不分组：独立节点加入画布
+          if (groupState?.sourceNode) {
+            handleExportImages(groupState.sourceNode, groupState.urls);
+          }
+        }}
+      />
+
+      <DeleteGroupDialog
+        open={!!groupOps.deleteGroupId}
+        group={groups.find((group) => group.id === groupOps.deleteGroupId) || null}
+        nodeCount={groupOps.deleteGroupNodeCount}
+        onClose={groupOps.cancelDeleteGroup}
+        onConfirm={groupOps.confirmDeleteGroup}
       />
     </ResizablePanelGroup>
   );

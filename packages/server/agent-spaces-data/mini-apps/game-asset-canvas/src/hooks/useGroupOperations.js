@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { addEdge, MarkerType } from '@xyflow/react';
 import { genId } from '../utils/canvas-id';
 import { collectGroupNodeIds, findLeafNodeIds } from '../utils/group-helpers';
@@ -25,6 +25,7 @@ import { collectGroupNodeIds, findLeafNodeIds } from '../utils/group-helpers';
  */
 export default function useGroupOperations({ groups, nodes, edges, setGroups, setNodes, setEdges, reactFlow }) {
   const [selectedGroupId, setSelectedGroupId] = useState(null);
+  const [deleteGroupId, setDeleteGroupId] = useState(null);
 
   // nodes/groups 的 ref 镜像：让「读最新值」的 callback 去掉对 nodes/groups 的依赖
   const nodesRef = useRef(nodes);
@@ -40,12 +41,58 @@ export default function useGroupOperations({ groups, nodes, edges, setGroups, se
       .filter((n) => group.childNodeIds.includes(n.id))
       .map((n) => ({ id: n.id, position: n.position, width: n.width, height: n.height })),
   })), [groups, nodes]);
+  const deleteGroupNodeCount = useMemo(
+    () => (deleteGroupId ? collectGroupNodeIds(groups, deleteGroupId).length : 0),
+    [deleteGroupId, groups],
+  );
 
-  // 删除分组（仅删 group 数据，保留其中的图片子节点）
-  const deleteGroup = useCallback((groupId) => {
+  // 请求删除：键盘 Delete 和 overlay 删除按钮统一打开确认框。
+  const requestDeleteGroup = useCallback((groupId) => {
     if (!groupId) return;
-    setGroups((prev) => prev.filter((g) => g.id !== groupId));
-  }, [setGroups]);
+    setDeleteGroupId(groupId);
+  }, []);
+
+  const cancelDeleteGroup = useCallback(() => setDeleteGroupId(null), []);
+
+  // 删除分组；可选同时删除组内（含子组）的节点及相关连线。
+  const confirmDeleteGroup = useCallback((deleteElements = false) => {
+    const groupId = deleteGroupId;
+    if (!groupId) return;
+    const nodeIds = deleteElements
+      ? new Set(collectGroupNodeIds(groupsRef.current, groupId))
+      : new Set();
+
+    if (nodeIds.size) {
+      setNodes((prev) => prev.filter((node) => !nodeIds.has(node.id)));
+      setEdges((prev) => prev.filter((edge) => !nodeIds.has(edge.source) && !nodeIds.has(edge.target)));
+    }
+    setGroups((prev) => prev
+      .filter((group) => group.id !== groupId)
+      .map((group) => ({
+        ...group,
+        childNodeIds: nodeIds.size
+          ? group.childNodeIds.filter((id) => !nodeIds.has(id))
+          : group.childNodeIds,
+        childGroupIds: group.childGroupIds.filter((id) => id !== groupId),
+      })));
+    setSelectedGroupId(null);
+    setDeleteGroupId(null);
+  }, [deleteGroupId, setEdges, setGroups, setNodes]);
+
+  // 分组被选中时接管 Delete；输入框内和确认框打开时不响应。
+  useEffect(() => {
+    if (!selectedGroupId || deleteGroupId) return undefined;
+    const handleKeyDown = (event) => {
+      if (event.key !== 'Delete') return;
+      const target = event.target;
+      if (target?.closest?.('input, textarea, select, [contenteditable="true"], [role="dialog"]')) return;
+      event.preventDefault();
+      event.stopPropagation();
+      requestDeleteGroup(selectedGroupId);
+    };
+    window.addEventListener('keydown', handleKeyDown, true);
+    return () => window.removeEventListener('keydown', handleKeyDown, true);
+  }, [deleteGroupId, requestDeleteGroup, selectedGroupId]);
 
   // 更新分组（重命名/颜色/锁定等，WorkflowGroupOverlay 回调）
   const updateGroup = useCallback((groupId, updates) => {
@@ -123,8 +170,10 @@ export default function useGroupOperations({ groups, nodes, edges, setGroups, se
 
   return {
     selectedGroupId, setSelectedGroupId,
+    deleteGroupId, deleteGroupNodeCount,
     groupOverlayItems,
-    deleteGroup, updateGroup, createGroupFromSelection,
+    requestDeleteGroup, cancelDeleteGroup, confirmDeleteGroup,
+    updateGroup, createGroupFromSelection,
     screenDeltaToFlowDelta, handleGroupMove, handleGroupConnect,
   };
 }

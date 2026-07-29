@@ -1,87 +1,113 @@
 import { useCallback } from 'react';
 import { NODE_TYPES, NODE_META, IMAGE_TAGS } from '../utils/constants';
 import { DEFAULT_SIZE, dedupeTags, initialData } from '../utils/canvas-constants';
+import { findFreePositions } from '../utils/layout';
 import { genId } from '../utils/canvas-id';
+
+const DEFAULT_NODE_W = 280;
+const DEFAULT_NODE_H = 220;
+
+// 取节点的包围盒（position + width/height），用于布局避让
+const nodeBox = (n, fallbackW, fallbackH) => ({
+  x: n.position?.x ?? 0,
+  y: n.position?.y ?? 0,
+  width: n.width || n.measured?.width || fallbackW,
+  height: n.height || n.measured?.height || fallbackH,
+});
+
+// 源节点右侧锚点（第一个新块的左上角候选位置）
+const rightAnchorOf = (sourceNode, gap) => {
+  const box = nodeBox(sourceNode, DEFAULT_NODE_W, DEFAULT_NODE_H);
+  return { x: box.x + box.width + gap, y: box.y };
+};
+
+/**
+ * 在给定 nodes 快照上为一组图片计算位置并构造新节点（不调用 setNodes）。
+ * 位置用 findFreePositions 避让已有节点，保证互不重叠。
+ *
+ * @param {Array} prevNodes   当前画布已有节点（避让参考 + 追加基准）
+ * @param {string[]} urls     图片 url
+ * @param {object} opts
+ *   - sourceNode: 来源节点（决定右侧锚点；缺省用画布左上角）
+ *   - source:     来源标记
+ *   - tags:       标签数组
+ * @returns {{ additions: Array, positions: Array }} 新节点数组 + 对应位置
+ */
+function buildImageNodes(prevNodes, urls, opts) {
+  if (!urls?.length) return { additions: [], positions: [] };
+  const size = DEFAULT_SIZE[NODE_TYPES.imageDisplay];
+  const meta = NODE_META[NODE_TYPES.imageDisplay];
+  const source = opts.source || 'queue';
+  const tags = dedupeTags(opts.tags);
+  const gap = 40;
+  const anchor = opts.sourceNode
+    ? rightAnchorOf(opts.sourceNode, gap)
+    : { x: 420, y: 120 };
+  const positions = findFreePositions(
+    anchor, size.w, size.h, urls.length, prevNodes,
+    { gap, direction: 'right', cols: Math.min(3, Math.max(1, urls.length)) },
+  );
+  const additions = urls.map((url, i) => ({
+    id: genId(NODE_TYPES.imageDisplay),
+    type: NODE_TYPES.imageDisplay,
+    position: positions[i],
+    width: size.w, height: size.h,
+    style: { width: size.w, height: size.h },
+    data: {
+      ...initialData(NODE_TYPES.imageDisplay),
+      images: [url],
+      source,
+      tags,
+      label: meta.label,
+      ...(opts.autoSize === false ? { autoSize: false } : {}),
+    },
+  }));
+  return { additions, positions };
+}
 
 /**
  * 图片节点批量产出相关操作。
  * 从 Canvas.jsx 抽出（原 B7）。被 useExecutionQueue.onComplete（队列完成建图）
  * 和生成记录「用作输入」复用，故单独成 hook。
  *
+ * 新增节点位置：在 sourceNode 右侧用 findFreePositions 找不重叠的空位（通用避让函数）。
+ * 无 sourceNode 时退化为画布左上角网格排列。
+ *
  * @param {object} deps
  * @param {Function} deps.setNodes
  * @param {Function} deps.setGroups
- * @returns {{ addImageNodesFromUrls, handleExportImages }}
+ * @returns {{ addImageNodesFromUrls, handleExportImages, addImageNodesGrouped }}
  */
 export default function useImageOutputs({ setNodes, setGroups }) {
-  // 队列任务完成后：每张图生成一个独立的图片展示节点，错落排列
-  // opts.tags: 来源标签数组（存入节点 data.tags）
-  // opts.source: 来源标记（默认 'queue'）
+  // 队列任务完成后：每张图生成一个独立的图片展示节点（不分组）。
+  // 有 sourceNode 时排在它右侧（避让已有节点），否则退化为画布左上角网格。
+  // opts.sourceNode / opts.tags / opts.source
   const addImageNodesFromUrls = useCallback((urls, opts = {}) => {
     if (!urls?.length) return;
-    const size = DEFAULT_SIZE[NODE_TYPES.imageDisplay];
-    const meta = NODE_META[NODE_TYPES.imageDisplay];
-    const source = opts.source || 'queue';
-    const tags = dedupeTags(opts.tags);
     setNodes((prev) => {
-      const base = prev.length;
-      const additions = urls.map((url, i) => ({
-        id: genId(NODE_TYPES.imageDisplay),
-        type: NODE_TYPES.imageDisplay,
-        position: { x: 420 + (i % 3) * (size.w + 20), y: 120 + Math.floor(i / 3) * (size.h + 20) + base * 10 },
-        width: size.w, height: size.h,
-        style: { width: size.w, height: size.h },
-        data: { ...initialData(NODE_TYPES.imageDisplay), images: [url], source, tags, label: meta.label },
-      }));
+      const { additions } = buildImageNodes(prev, urls, opts);
       return [...prev, ...additions];
     });
   }, [setNodes]);
 
-  // —— 导出图片：单图直接加节点；多图分组（复用 workflow-editor 的 WorkflowGroup 数据结构 + WorkflowGroupOverlay 渲染）——
-  // 多图时创建若干 imageDisplay 子节点 + 一条 group 数据（childNodeIds 关联子节点），
-  // 分组名 = 来源节点名 + 时间。group 不作为 ReactFlow 节点，而是由 WorkflowGroupOverlay（在
-  // ViewportPortal 内）按子节点包围盒自动贴合渲染，与宿主 workflow 编辑器完全同源。
-  const handleExportImages = useCallback((sourceNode, imgs) => {
-    if (!imgs?.length) return;
-    // 单图：保持原行为，直接加一个独立图片节点（不分组）
-    if (imgs.length === 1) {
-      addImageNodesFromUrls(imgs, { tags: [IMAGE_TAGS.export] });
-      return;
-    }
-    // 多图：分组。子节点网格排列在画布空白区
-    const size = DEFAULT_SIZE[NODE_TYPES.imageDisplay];
-    const meta = NODE_META[NODE_TYPES.imageDisplay];
-    const cols = Math.min(3, imgs.length);
-    const tags = dedupeTags([IMAGE_TAGS.export]);
-    // 分组名：来源节点名 + 时间（HH:mm）
-    const srcLabel = sourceNode ? (NODE_META[sourceNode.type]?.label || '导出') : '导出';
+  // 批量加入图片节点并归组（一条 WorkflowGroup）。位置用 findFreePositions 避让。
+  // 返回新建子节点 id 数组（供调用方做后续关联）。
+  // opts: sourceNode / source / tags / groupName
+  const addImageNodesGrouped = useCallback((urls, opts = {}) => {
+    if (!urls?.length) return [];
+    const childIds = urls.map(() => genId(NODE_TYPES.imageDisplay));
+    setNodes((prev) => {
+      // 分组布局按统一默认尺寸计算；禁止图片加载后按自然尺寸放大节点，避免破坏既有间距。
+      const { additions } = buildImageNodes(prev, urls, { ...opts, autoSize: false });
+      // 用预生成的 id 覆盖（保持 childIds 与最终节点一致）
+      additions.forEach((node, i) => { node.id = childIds[i]; });
+      return [...prev, ...additions];
+    });
+    const srcLabel = opts.sourceNode ? (NODE_META[opts.sourceNode.type]?.label || '导出') : '导出';
     const now = new Date();
     const hh = String(now.getHours()).padStart(2, '0');
     const mm = String(now.getMinutes()).padStart(2, '0');
-    const groupName = `${srcLabel} 导出 ${hh}:${mm}`;
-
-    // 子节点先入画布，拿到它们的 id 再建 group
-    const childIds = imgs.map(() => genId(NODE_TYPES.imageDisplay));
-    setNodes((prev) => {
-      const base = prev.length;
-      const startX = 420 + base * 6;
-      const startY = 120;
-      const additions = imgs.map((url, i) => {
-        const id = childIds[i];
-        const col = i % cols;
-        const row = Math.floor(i / cols);
-        return {
-          id,
-          type: NODE_TYPES.imageDisplay,
-          position: { x: startX + col * (size.w + 20), y: startY + row * (size.h + 20) },
-          width: size.w, height: size.h,
-          style: { width: size.w, height: size.h },
-          data: { ...initialData(NODE_TYPES.imageDisplay), images: [url], source: 'export', tags, label: meta.label },
-        };
-      });
-      return [...prev, ...additions];
-    });
-    // 新增一条 group 数据（WorkflowGroup 结构）
+    const groupName = opts.groupName || `${srcLabel} ${hh}:${mm}`;
     setGroups((prev) => [...prev, {
       id: genId('group'),
       name: groupName,
@@ -91,7 +117,29 @@ export default function useImageOutputs({ setNodes, setGroups }) {
       disabled: false,
       savedNodeStates: {},
     }]);
-  }, [addImageNodesFromUrls, setNodes, setGroups]);
+    return childIds;
+  }, [setNodes, setGroups]);
 
-  return { addImageNodesFromUrls, handleExportImages };
+  // —— 导出图片 ——
+  // opts.groupName: 有值（含空字符串→走默认名）则创建分组；undefined 表示不分组（独立节点）。
+  // 这样把「是否分组」的决定权交给调用方（Canvas 里经 GroupConfirmDialog 确认后再传）。
+  // 单图强制不分组（原行为）。
+  const handleExportImages = useCallback((sourceNode, imgs, opts = {}) => {
+    if (!imgs?.length) return;
+    const tags = dedupeTags([IMAGE_TAGS.export]);
+    const baseOpts = { sourceNode, tags, source: 'export' };
+    // 单图：保持原行为，直接加一个独立图片节点（不分组）
+    if (imgs.length === 1) {
+      addImageNodesFromUrls(imgs, baseOpts);
+      return;
+    }
+    // 多图：由 opts.groupName 决定是否分组
+    if (opts.groupName !== undefined) {
+      addImageNodesGrouped(imgs, { ...baseOpts, groupName: opts.groupName });
+    } else {
+      addImageNodesFromUrls(imgs, baseOpts);
+    }
+  }, [addImageNodesFromUrls, addImageNodesGrouped]);
+
+  return { addImageNodesFromUrls, addImageNodesGrouped, handleExportImages };
 }

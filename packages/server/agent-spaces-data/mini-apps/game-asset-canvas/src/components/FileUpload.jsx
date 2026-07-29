@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState } from 'react';
 import { openMediaGallery } from '@agent-spaces/ui';
+import { IMAGE_REORDER_MIME } from '../utils/canvas-constants';
 
 /**
  * 图片上传组件：支持点击/拖拽上传，调用 window.AgentSpaces.uploadFile 上传到后端，
@@ -21,6 +22,45 @@ export default function FileUpload({ value = [], onChange, max = 6, placeholder 
   const urls = Array.isArray(value) ? value : [];
   // 只读项归一：过滤无 src 的项
   const extras = (Array.isArray(extraItems) ? extraItems : []).filter((e) => e && e.src);
+
+  // 上传图拖拽排序（原生 HTML5 DnD，参考 UpstreamImageList）：多图时启用。
+  // extras（参考图/连线图）只读，不参与排序；仅 urls 内部互调，回传新顺序给 onChange。
+  const sortable = urls.length > 1;
+  const draggingRef = useRef(null);
+  const [draggingIdx, setDraggingIdx] = useState(null);
+  const [overIdx, setOverIdx] = useState(null);
+  const reorderMove = (from, to) => {
+    if (from === to || from < 0 || to < 0 || from >= urls.length || to >= urls.length) return;
+    const next = [...urls];
+    const [m] = next.splice(from, 1);
+    next.splice(to, 0, m);
+    onChange?.(next);
+  };
+  const onReorderDragStart = (i) => (e) => {
+    draggingRef.current = i;
+    setDraggingIdx(i);
+    e.dataTransfer.effectAllowed = 'move';
+    try {
+      e.dataTransfer.setData('text/plain', String(i));
+      // 写入互斥标记：画布 handleDrop 见此标记直接 return，不建节点（防误触发）
+      e.dataTransfer.setData(IMAGE_REORDER_MIME, '1');
+    } catch {}
+  };
+  const onReorderDragOver = (i) => (e) => {
+    if (!sortable) return;
+    const from = draggingRef.current;
+    if (from === null || from === i) return;
+    e.preventDefault();
+    if (overIdx !== i) setOverIdx(i);
+    reorderMove(from, i);
+    draggingRef.current = i;
+    setDraggingIdx(i);
+  };
+  const onReorderDragEnd = () => {
+    draggingRef.current = null;
+    setDraggingIdx(null);
+    setOverIdx(null);
+  };
 
   const uploadOne = useCallback(async (file) => {
     const AS = window.AgentSpaces;
@@ -93,7 +133,7 @@ export default function FileUpload({ value = [], onChange, max = 6, placeholder 
               className="group relative aspect-square cursor-pointer overflow-hidden rounded-md border border-border bg-muted/40"
               onClick={() => openAt(i)}
             >
-              <img src={e.src} alt="" className="h-full w-full object-cover" />
+              <img src={e.src} alt="" draggable={false} className="h-full w-full object-cover" />
               {e.badge && (
                 <span className="absolute bottom-0.5 left-0.5 rounded bg-black/60 px-1 text-[9px] leading-tight text-white">
                   {e.badge}
@@ -116,10 +156,18 @@ export default function FileUpload({ value = [], onChange, max = 6, placeholder 
             return (
               <div
                 key={i}
-                className="group relative aspect-square cursor-pointer overflow-hidden rounded-md border border-border"
+                draggable={sortable || undefined}
+                onDragStart={sortable ? onReorderDragStart(i) : undefined}
+                onDragOver={sortable ? onReorderDragOver(i) : undefined}
+                onDragEnd={sortable ? onReorderDragEnd : undefined}
+                className={`group relative aspect-square overflow-hidden rounded-md border transition-colors ${
+                  sortable && draggingIdx === i ? 'border-primary opacity-40'
+                    : sortable && overIdx === i && draggingIdx !== i ? 'border-primary border-t-2'
+                    : 'border-border'
+                } ${sortable ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'}`}
                 onClick={() => openAt(idx)}
               >
-                <img src={src} alt="" className="h-full w-full object-cover" />
+                <img src={src} alt="" draggable={false} className="h-full w-full object-cover" />
                 <button
                   type="button"
                   onClick={(ev) => { ev.stopPropagation(); onRemove(i); }}

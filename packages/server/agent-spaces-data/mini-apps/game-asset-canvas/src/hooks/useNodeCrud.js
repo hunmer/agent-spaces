@@ -1,7 +1,7 @@
 import { useCallback, useRef } from 'react';
 import { addEdge, MarkerType } from '@xyflow/react';
 import { NODE_TYPES, NODE_META, IMAGE_TAGS, WORKFLOWS } from '../utils/constants';
-import { DEFAULT_SIZE, initialData, CANVAS_DROP_MIME } from '../utils/canvas-constants';
+import { DEFAULT_SIZE, initialData, CANVAS_DROP_MIME, IMAGE_REORDER_MIME } from '../utils/canvas-constants';
 import { genId, autoPosition } from '../utils/canvas-id';
 import { autoLayout } from '../utils/layout';
 import { downloadJson, serializeCanvas, pickAndParseCanvasFile } from '../utils/export';
@@ -248,6 +248,8 @@ export default function useNodeCrud({
   // 放下：区分系统图片文件 / 历史项 / 节点类型
   const handleDrop = useCallback((event) => {
     event.preventDefault();
+    // 节点内/弹窗内图片列表拖拽排序的标记：直接放行，不建节点（否则 img 默认被浏览器转成文件会误建 imageDisplay）
+    if (event.dataTransfer.getData(IMAGE_REORDER_MIME)) return;
     if (event.dataTransfer.files?.length) {
       const position = reactFlow.screenToFlowPosition({ x: event.clientX, y: event.clientY });
       handleDropFiles(event.dataTransfer.files, position);

@@ -38,7 +38,7 @@ export default function useDecoratedNodes({
       onProcessImage, onProcessLocal, onCutout, onCutoutCreate, onCancelProcess,
       onPromptReverse, onEditImages, onAutoSize, onAutoSizeToContent, onBBoxCutout, onResetParams,
       onAddToAssets,
-      onAddOutputImages, onRemoveOutputImage, onClearOutputImages,
+      onAddOutputImages, onRemoveOutputImage, onClearOutputImages, onReorderOutputImages,
       onSwitchVersion,
     } = callbacks || {};
     return nodes.map((nd) => {
@@ -111,6 +111,7 @@ export default function useDecoratedNodes({
           onAddImages: onAddOutputImages ? (urls) => onAddOutputImages(nd.id, urls) : undefined,
           onRemoveImage: onRemoveOutputImage ? (index) => onRemoveOutputImage(nd.id, index) : undefined,
           onClearImages: onClearOutputImages ? () => onClearOutputImages(nd.id) : undefined,
+          onReorderImages: onReorderOutputImages ? (next) => onReorderOutputImages(nd.id, next) : undefined,
           // 版本切换（还原 params/output/status 到历史版本；节点 ImageResult 渲染版本标记）
           onSwitchVersion: onSwitchVersion ? (index) => onSwitchVersion(nd.id, index) : undefined,
         },

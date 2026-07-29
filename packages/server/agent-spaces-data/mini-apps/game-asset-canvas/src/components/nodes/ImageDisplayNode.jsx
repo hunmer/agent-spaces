@@ -23,6 +23,7 @@ export default function ImageDisplayNode({ id, data, selected }) {
   const images = Array.isArray(data?.images) ? data.images.filter(Boolean) : [];
   const onUpdate = data?.onUpdate;
   const onAutoSize = data?.onAutoSize;
+  const autoSizeEnabled = data?.autoSize !== false;
   const fileRef = useRef(null);
   const rootRef = useRef(null);
   const viewportActivated = useViewportActivation(rootRef);
@@ -53,8 +54,8 @@ export default function ImageDisplayNode({ id, data, selected }) {
     const img = e.currentTarget;
     const nw = img?.naturalWidth;
     const nh = img?.naturalHeight;
-    if (nw && nh && onAutoSize) onAutoSize(id, nw, nh);
-  }, [id, onAutoSize]);
+    if (nw && nh && onAutoSize && autoSizeEnabled) onAutoSize(id, nw, nh);
+  }, [autoSizeEnabled, id, onAutoSize]);
 
   const handleFile = useCallback(async (e) => {
     const file = e.target.files?.[0];

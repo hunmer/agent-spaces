@@ -58,6 +58,7 @@ export default function NodeShell({
     onAddImages: data?.onAddImages,
     onRemoveImage: data?.onRemoveImage,
     onClearImages: data?.onClearImages,
+    onReorderImages: data?.onReorderImages,
     versions: data?.versions,
     activeVersion: data?.activeVersion,
     onSwitchVersion: data?.onSwitchVersion,

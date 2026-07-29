@@ -11,7 +11,7 @@ import {
  * 顶部工具栏：标题 + Menubar + 右侧插槽（工作区切换/执行队列/节点数）。
  *
  * Menubar 布局：
- *   文件▾(导出/导入) | 画布▾(自动布局/清空) | 工具▾(像素编辑器/3D导演台/提示词管理/设置) | 选择▾(全选/反选/取消选择)
+ *   文件▾(导出/导入) | 画布▾(自动布局/清空) | 工具▾(像素编辑器/3D导演台/在线PS/提示词管理/设置) | 选择▾(全选/反选/取消选择)
  *
  * @param {{ onClear, onAutoLayout, onExport, onImport, onOpenSettings, onOpenPromptManager,
  *           onSelectAll, onInvertSelect, onClearSelection,
@@ -33,6 +33,11 @@ export default function Toolbar({
   const openDirectorDesk = () => {
     const url = `${window.location.origin}/api/mini-apps/game-asset-canvas/src/file/vendor/director-desk-web/index.html`;
     window.open(url, '_blank', 'noopener');
+  };
+
+  // 在线PS：新窗口打开 Photopea（浏览器版 Photoshop，无需本地依赖）。
+  const openOnlinePS = () => {
+    window.open('https://www.photopea.com', '_blank', 'noopener');
   };
 
   return (
@@ -59,12 +64,13 @@ export default function Toolbar({
           </MenubarContent>
         </MenubarMenu>
 
-        {/* 工具▾：像素编辑器 / 3D导演台 / 提示词管理 / 设置（原「编辑器」菜单改名） */}
+        {/* 工具▾：像素编辑器 / 3D导演台 / 在线PS / 提示词管理 / 设置（原「编辑器」菜单改名） */}
         <MenubarMenu>
           <MenubarTrigger>工具</MenubarTrigger>
           <MenubarContent>
             <MenubarItem onClick={openPixelEditor}>像素编辑器</MenubarItem>
             <MenubarItem onClick={openDirectorDesk}>3D导演台</MenubarItem>
+            <MenubarItem onClick={openOnlinePS}>在线PS</MenubarItem>
             <MenubarSeparator />
             <MenubarItem onClick={onOpenPromptManager}>提示词管理</MenubarItem>
             <MenubarItem onClick={onOpenSettings}>设置</MenubarItem>

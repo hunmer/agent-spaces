@@ -17,6 +17,7 @@ import ImageResult from './ImageResult';
  * @param {Function} [props.onAddImages]
  * @param {Function} [props.onRemoveImage]
  * @param {Function} [props.onClearImages]
+ * @param {Function} [props.onReorderImages]
  * @param {Array} [props.versions]
  * @param {number} [props.activeVersion]
  * @param {Function} [props.onSwitchVersion]
@@ -32,6 +33,7 @@ export default function NodeOutput({
   onAddImages,
   onRemoveImage,
   onClearImages,
+  onReorderImages,
   versions,
   activeVersion,
   onSwitchVersion,
@@ -107,6 +109,7 @@ export default function NodeOutput({
               onAddImages={onAddImages}
               onRemoveImage={onRemoveImage}
               onClearImages={onClearImages}
+              onReorderImages={onReorderImages}
               versions={versions}
               activeVersion={activeVersion}
               onSwitchVersion={onSwitchVersion}

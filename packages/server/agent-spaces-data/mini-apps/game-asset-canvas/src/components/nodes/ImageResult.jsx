@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { FolderPlus, ImageOff, Loader2, Plus, Trash2, openMediaGallery, Popover, PopoverContent, PopoverTrigger } from '@agent-spaces/ui';
+import { IMAGE_REORDER_MIME } from '../../utils/canvas-constants';
 
 // 图片加载失败占位：onError 时切换为该块，显示破损图标 + url
 function BrokenImagePlaceholder({ url }) {
@@ -22,15 +23,55 @@ function BrokenImagePlaceholder({ url }) {
  * @param {Function} [props.onAddImages] 传入则标题右侧显示「添加」按钮（Popover 内上传），上传成功后回传新增 url 数组
  * @param {Function} [props.onRemoveImage] 传入则每张图右下角显示删除按钮，点击回传被删图索引
  * @param {Function} [props.onClearImages] 传入则标题右侧显示「清空」按钮，点击清空所有产出
+ * @param {Function} [props.onReorderImages] 传入则产出网格支持拖拽排序，回传重排后的 url 数组
  * @param {Array} [props.versions] 历史版本数组 [{params, output, createdAt}]
  * @param {number} [props.activeVersion] 当前选中的版本索引
  * @param {Function} [props.onSwitchVersion] 版本切换回调，回传版本索引
  */
-export default function ImageResult({ images, max = 0, preview = false, onImageLoad, onAddToAssets, fileName, onAddImages, onRemoveImage, onClearImages, versions, activeVersion, onSwitchVersion }) {
+export default function ImageResult({ images, max = 0, preview = false, onImageLoad, onAddToAssets, fileName, onAddImages, onRemoveImage, onClearImages, onReorderImages, versions, activeVersion, onSwitchVersion }) {
   const all = images || [];
   const list = max > 0 ? all.slice(0, max) : all;
   const hasVersions = Array.isArray(versions) && versions.length > 1 && onSwitchVersion;
   if (!list.length && !onAddImages && !hasVersions) return null;
+
+  // 拖拽排序（原生 HTML5 DnD，参考 UpstreamImageList）：仅在非预览态 + 注入 onReorderImages + 多图时启用。
+  // draggingRef 用 ref 保证 dragstart→dragover 间同步读取（state 异步会读到 null）。
+  const sortable = !preview && typeof onReorderImages === 'function' && list.length > 1;
+  const draggingRef = useRef(null);
+  const [draggingIdx, setDraggingIdx] = useState(null);
+  const [overIdx, setOverIdx] = useState(null);
+  const reorderMove = (from, to) => {
+    if (from === to || from < 0 || to < 0 || from >= list.length || to >= list.length) return;
+    const next = [...list];
+    const [m] = next.splice(from, 1);
+    next.splice(to, 0, m);
+    onReorderImages(next);
+  };
+  const onReorderDragStart = (i) => (e) => {
+    draggingRef.current = i;
+    setDraggingIdx(i);
+    e.dataTransfer.effectAllowed = 'move';
+    try {
+      e.dataTransfer.setData('text/plain', String(i));
+      // 写入互斥标记：画布 handleDrop 见此标记直接 return，不建节点（防误触发）
+      e.dataTransfer.setData(IMAGE_REORDER_MIME, '1');
+    } catch {}
+  };
+  const onReorderDragOver = (i) => (e) => {
+    if (!sortable) return;
+    const from = draggingRef.current;
+    if (from === null || from === i) return;
+    e.preventDefault();
+    if (overIdx !== i) setOverIdx(i);
+    reorderMove(from, i);
+    draggingRef.current = i;
+    setDraggingIdx(i);
+  };
+  const onReorderDragEnd = () => {
+    draggingRef.current = null;
+    setDraggingIdx(null);
+    setOverIdx(null);
+  };
 
   // 多张图且设了 fileName 时，自动补 _2/_3 序号（第一张不加序号），保持下载名唯一可读。
   const nameFor = (i) => {
@@ -82,7 +123,9 @@ export default function ImageResult({ images, max = 0, preview = false, onImageL
   return (
     <div className="flex flex-col gap-1.5">
       <div className="flex items-center justify-between">
-        <span className="text-xs font-medium text-muted-foreground">产出（{all.length}）</span>
+        <span className="text-xs font-medium text-muted-foreground">
+          产出（{all.length}）{sortable ? '· 可拖拽排序' : ''}
+        </span>
         <div className="flex items-center gap-1">
           {/* 添加：Popover 内嵌上传，复用 window.AgentSpaces.uploadFile，上传成功回传新 url 数组 */}
           {onAddImages && <AddImagesButton onAddImages={onAddImages} />}
@@ -125,7 +168,18 @@ export default function ImageResult({ images, max = 0, preview = false, onImageL
       {list.length > 0 && (
         <div className="grid grid-cols-3 gap-1">
           {list.map((url, i) => (
-            <div key={i} className="group relative block aspect-square overflow-visible rounded border border-border">
+            <div
+              key={i}
+              draggable={sortable || undefined}
+              onDragStart={sortable ? onReorderDragStart(i) : undefined}
+              onDragOver={sortable ? onReorderDragOver(i) : undefined}
+              onDragEnd={sortable ? onReorderDragEnd : undefined}
+              className={`group relative block aspect-square overflow-visible rounded border transition-colors ${
+                sortable && draggingIdx === i ? 'border-primary opacity-40'
+                  : sortable && overIdx === i && draggingIdx !== i ? 'border-primary border-t-2'
+                  : 'border-border'
+              } ${sortable ? 'cursor-grab active:cursor-grabbing' : ''}`}
+            >
               <button
                 type="button"
                 onClick={(e) => { e.stopPropagation(); open(i); }}
@@ -223,6 +277,7 @@ function GridImage({ url }) {
       <img
         src={url}
         alt=""
+        draggable={false}
         className={`h-full w-full object-cover transition-opacity duration-200 ${loaded ? 'opacity-100' : 'opacity-0'}`}
         onLoad={() => setLoaded(true)}
         onError={() => setFailed(true)}

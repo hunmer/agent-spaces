@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { debounce, loadCanvas, onCanvasChanged, saveCanvas } from '../utils/storage';
+import {
+  canvasConfigPath, debounce, loadCanvas, onCanvasChanged, saveCanvas,
+} from '../utils/storage';
 import { SAVE_DEBOUNCE } from '../utils/constants';
 
 const DEFAULT_VIEWPORT = { x: 0, y: 0, zoom: 1 };
@@ -14,7 +16,7 @@ export default function useCanvasState(workspaceId) {
   const [groups, setGroups] = useState([]);
   const [viewport, setViewport] = useState(DEFAULT_VIEWPORT);
   const [hasSavedViewport, setHasSavedViewport] = useState(false);
-  const [loaded, setLoaded] = useState(false);
+  const [loadedWorkspaceId, setLoadedWorkspaceId] = useState(null);
 
   const remoteRef = useRef(false);
   const lastSavedRef = useRef(null);
@@ -22,24 +24,35 @@ export default function useCanvasState(workspaceId) {
 
   // 初次加载 + 工作区切换时重新读取
   useEffect(() => {
-    const state = loadCanvas(workspaceId);
-    remoteRef.current = true;
-    lastSavedRef.current = state;
-    if (state && Array.isArray(state.nodes)) {
-      setNodes(migrateLegacyPreviewMode(state));
-      setEdges(state.edges || []);
-      setGroups(Array.isArray(state.groups) ? state.groups : []);
-    } else {
-      // 新工作区：清空，避免上个工作区的节点残留
-      setNodes([]);
-      setEdges([]);
-      setGroups([]);
+    const applyState = (state) => {
+      remoteRef.current = true;
+      lastSavedRef.current = state;
+      if (state && Array.isArray(state.nodes)) {
+        setNodes(migrateLegacyPreviewMode(state));
+        setEdges(state.edges || []);
+        setGroups(Array.isArray(state.groups) ? state.groups : []);
+      } else {
+        // 新工作区：清空，避免上个工作区的节点残留
+        setNodes([]);
+        setEdges([]);
+        setGroups([]);
+      }
+      const savedViewport = normalizeViewport(state?.viewport);
+      setViewport(savedViewport || DEFAULT_VIEWPORT);
+      setHasSavedViewport(Boolean(savedViewport));
+      setLoadedWorkspaceId(workspaceId);
+    };
+
+    const agentSpaces = window.AgentSpaces;
+    if (agentSpaces?.isConfigReady?.() === false) {
+      const path = canvasConfigPath(workspaceId);
+      return agentSpaces.onConfigReady?.((configs) => applyState(configs?.[path] || null));
     }
-    const savedViewport = normalizeViewport(state?.viewport);
-    setViewport(savedViewport || DEFAULT_VIEWPORT);
-    setHasSavedViewport(Boolean(savedViewport));
-    setLoaded(true);
+    applyState(loadCanvas(workspaceId));
+    return undefined;
   }, [workspaceId]);
+
+  const loaded = loadedWorkspaceId === workspaceId;
 
   // 订阅远端变化（多端同步）—— 仅在本地没有未保存改动时套用
   useEffect(() => {

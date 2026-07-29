@@ -132,6 +132,11 @@ export const DEFAULT_PANEL_LAYOUT = { [PANEL_ID_MAIN]: 72, [PANEL_ID_RIGHT]: 28 
 // 与素材库内部移动协议（AssetLibrary 内的 'application/x-asset-move'）互不干扰。
 export const CANVAS_DROP_MIME = 'application/x-canvas-drop-images';
 
+// 节点内/弹窗内图片列表「拖拽排序」互斥标记：写入此 MIME 表示当前在列表内排序，
+// 画布 handleDrop 见此标记直接 return，不创建节点（防止松手落画布误建 imageDisplay）。
+// 与 CANVAS_DROP_MIME（建节点）方向相反——本标记是「抑制建节点」。
+export const IMAGE_REORDER_MIME = 'application/x-image-reorder';
+
 // tags 去重保序（图片展示节点 data.tags 用）
 export function dedupeTags(tags) {
   const seen = new Set();
