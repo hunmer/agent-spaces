@@ -40,6 +40,7 @@ const VALID_NODE_TYPES = [
   'photopea',      // 在线PS（Photopea）
   'workflowRunner',// 执行工作流（通用）
   'spineEditor',   // 骨骼编辑器
+  'videoDisplay',  // 视频展示
   'note',          // 便签
 ];
 
@@ -73,6 +74,7 @@ const NODE_LABELS = {
   photopea: '在线PS',
   workflowRunner: '执行工作流',
   spineEditor: '骨骼编辑器',
+  videoDisplay: '视频展示',
   note: '便签',
 };
 

@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { NODE_TYPES, IMAGE_TAGS } from '../utils/constants';
-import { computeInputImages } from '../utils/input-images';
+import { computeInputImages, computeInputVideos } from '../utils/input-images';
 import { dedupeTags } from '../utils/canvas-constants';
 
 /**
@@ -32,6 +32,7 @@ export default function useDecoratedNodes({
   onOutputPreviewHeight, onOutputPreviewModeChange, settings, callbacks,
 }) {
   const upstreamMap = useMemo(() => computeInputImages(nodes, edges), [nodes, edges]);
+  const upstreamVideosMap = useMemo(() => computeInputVideos(nodes, edges), [nodes, edges]);
 
   const decoratedNodes = useMemo(() => {
     const groupAssetUrls = new Set([
@@ -48,9 +49,11 @@ export default function useDecoratedNodes({
       onAddOutputImages, onRemoveOutputImage, onClearOutputImages, onReorderOutputImages,
       onSwitchVersion,
       onDeleteUpstreamImage,
+      onExportVideos,
     } = callbacks || {};
     return nodes.map((nd) => {
       const up = upstreamMap.get(nd.id);
+      const upVids = upstreamVideosMap.get(nd.id);
       const data = { ...nd.data };
       if (up) {
         data.images = up.images;
@@ -58,6 +61,13 @@ export default function useDecoratedNodes({
         if (up.isDisplay) {
           data.source = 'upstream';
           data.tags = dedupeTags([...(nd.data?.tags || []), IMAGE_TAGS.upstream]);
+        }
+      }
+      // 视频派生注入（对称图片逻辑）：videoDisplay 有连入边时用上游视频覆盖 data.videos
+      if (upVids) {
+        data.videos = upVids.videos;
+        if (upVids.isDisplay) {
+          data.source = 'upstream';
         }
       }
       const preview = outputPreviewState?.[nd.id];
@@ -70,8 +80,9 @@ export default function useDecoratedNodes({
           height: previewHeight,
           style: { ...nd.style, height: previewHeight },
         } : {}),
-        // 图片展示节点：限定只能从 .image-drag-handle 拖动（图片区域可点选/看大图不触发拖拽）
-        dragHandle: nd.type === NODE_TYPES.imageDisplay ? '.image-drag-handle' : nd.dragHandle,
+        // 图片/视频展示节点：限定只能从 .image-drag-handle 拖动（媒体区域可点选/播放不触发拖拽）
+        dragHandle: (nd.type === NODE_TYPES.imageDisplay || nd.type === NODE_TYPES.videoDisplay)
+          ? '.image-drag-handle' : nd.dragHandle,
         data: {
           ...data,
           selectionCount,
@@ -81,6 +92,7 @@ export default function useDecoratedNodes({
           onGenerate,
           onGenerateMedia,
           onExportImages: (imgs) => onExportImages?.(nd, imgs),
+          onExportVideos: (vids) => onExportVideos?.(nd, vids),
           onProcessImage,
           onProcessLocal,
           onCutout,
@@ -129,7 +141,7 @@ export default function useDecoratedNodes({
       };
     });
   }, [
-    nodes, upstreamMap, protectedImageUrls, selectionCount, outputPreviewState,
+    nodes, upstreamMap, upstreamVideosMap, protectedImageUrls, selectionCount, outputPreviewState,
     onOutputPreviewHeight, onOutputPreviewModeChange, settings, callbacks,
   ]);
 

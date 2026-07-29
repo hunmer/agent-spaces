@@ -58,6 +58,8 @@ export const NODE_TYPES = {
   // 骨骼编辑器节点：iframe 加载 vendor/spine-editor-web（PixiJS+pixi-spine），
   // 加载 Spine 资源(.skel/.atlas/.png)，骨骼姿势编辑/动画预览/导出。
   spineEditor: 'spineEditor',
+  // 视频展示节点：展示/上传视频，支持连线接收上游视频产出（对标 imageDisplay）
+  videoDisplay: 'videoDisplay',
   // 注：分组不是节点，是 WorkflowGroupOverlay（由 groups 数据驱动，复用 workflow-editor 同源组件）
 };
 
@@ -223,6 +225,7 @@ export const NODE_META = {
   [NODE_TYPES.photopea]: { label: '在线PS', icon: '🖌️', color: '#0ea5e9' },
   [NODE_TYPES.workflowRunner]: { label: '执行工作流', icon: '⚙️', color: '#0ea5e9' },
   [NODE_TYPES.spineEditor]: { label: '骨骼编辑器', icon: '🦴', color: '#8b5cf6' },
+  [NODE_TYPES.videoDisplay]: { label: '视频展示', icon: '🎬', color: '#ec4899' },
 };
 
 // 图片展示节点的来源标签（不同来源传不同 tag 做区分）

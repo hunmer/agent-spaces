@@ -49,6 +49,8 @@ export class SpineEditorApp {
       view: this.canvasElement,
       background: '#eef0f3',
       antialias: true,
+      // 录制 WebGL canvas 需保留绘图缓冲区，否则 captureStream 会抓到黑屏/残帧
+      preserveDrawingBuffer: true,
       resizeTo: this.canvasElement.parentElement,
     });
 

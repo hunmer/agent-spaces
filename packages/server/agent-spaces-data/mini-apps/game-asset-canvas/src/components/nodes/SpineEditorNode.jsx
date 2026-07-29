@@ -22,6 +22,7 @@ export default function SpineEditorNode({ id, data, selected }) {
 
   // FileUpload 三件套：识别 .skel / .atlas / .png，分别 uploadFile 持久化
   const handleFilesChange = useCallback(async (files) => {
+    console.log('[SpineEditor] handleFilesChange 收到 files:', files?.length, files?.map?.(it => ({ name: it?.file?.name, isFile: it?.file instanceof File, hasUrl: !!(it?.file?.uploadedUrl || it?.file?.url) })));
     const AS = window.AgentSpaces;
     if (!AS?.uploadFile) {
       console.warn('AgentSpaces.uploadFile 不可用');
@@ -43,10 +44,12 @@ export default function SpineEditorNode({ id, data, selected }) {
         const existing = f.uploadedUrl || f.uploadedHttpPath || f.url || f.httpPath;
         let url = existing;
         if (!url && f instanceof File) {
+          console.log('[SpineEditor] 开始上传:', f.name, f.type, f.size);
           const uploaded = await AS.uploadFile(f);
+          console.log('[SpineEditor] 上传返回:', f.name, uploaded);
           url = uploaded?.url || uploaded?.httpPath;
         }
-        if (!url) continue;
+        if (!url) { console.log('[SpineEditor] 跳过（无 url）:', f.name); continue; }
         const lower = (f.name || '').toLowerCase();
         if (lower.endsWith('.skel') || lower.endsWith('.json')) { assets.skel = url; }
         else if (lower.endsWith('.atlas')) { assets.atlas = url; }
@@ -57,6 +60,7 @@ export default function SpineEditorNode({ id, data, selected }) {
       assets.name = baseName;
       // 校验三件套齐全（至少 .skel + .atlas + .png）
       const complete = assets.skel && assets.atlas && assets.png;
+      console.log('[SpineEditor] 组装完成:', assets, 'complete=', complete);
       onUpdate?.({
         uploading: false,
         uploadedAssets: assets,
@@ -74,10 +78,25 @@ export default function SpineEditorNode({ id, data, selected }) {
     setEditorOpen(false);
   }, [onUpdate]);
 
+  // 录制视频回传：合并进 output.videos（不覆盖 images）
+  const handleExportVideo = useCallback((url) => {
+    if (!url) return;
+    const prevOutput = data?.output || {};
+    const prevVideos = Array.isArray(prevOutput.videos) ? prevOutput.videos : [];
+    onUpdate?.({
+      status: 'done',
+      output: { ...prevOutput, videos: [...prevVideos, url] },
+      error: undefined,
+    });
+  }, [onUpdate, data?.output]);
+
   // 导出姿势 JSON 回调（文本，不经 uploadFile）
   const handlePoseExport = useCallback((poseJson) => {
     onUpdate?.({ exportedPose: poseJson });
   }, [onUpdate]);
+
+  // 产出视频（output.videos）
+  const videos = Array.isArray(data?.output?.videos) ? data.output.videos : [];
 
   // FileUpload value：把已有资源 URL 还原成 FileUpload 格式（仅展示用）
   const fileUploadValue = (() => {
@@ -127,6 +146,34 @@ export default function SpineEditorNode({ id, data, selected }) {
         </details>
       )}
 
+      {videos.length > 0 && (
+        <div className="flex flex-col gap-1.5">
+          <span className="text-xs font-medium text-muted-foreground">
+            录制视频{videos.length > 1 ? `（${videos.length}）` : ''}
+          </span>
+          {videos.map((url, i) => (
+            <div key={url + i} className="flex flex-col gap-1">
+              <video key={url} src={url} controls className="w-full rounded border border-border" />
+              <a
+                href={url}
+                target="_blank"
+                rel="noreferrer"
+                className="truncate text-xs text-primary underline-offset-2 hover:underline"
+              >
+                {videos.length > 1 ? `#${i + 1} ` : ''}下载 / 打开视频
+              </a>
+            </div>
+          ))}
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); data?.onExportVideos?.(videos); }}
+            className="w-full rounded-md border border-border px-2 py-1 text-xs text-muted-foreground transition hover:border-primary hover:text-primary"
+          >
+            导出视频到画布
+          </button>
+        </div>
+      )}
+
       {data?.error && (
         <p className="rounded-md bg-red-500/10 px-2 py-1 text-xs text-red-500">{data.error}</p>
       )}
@@ -135,6 +182,7 @@ export default function SpineEditorNode({ id, data, selected }) {
         open={editorOpen}
         assets={canOpen ? uploadedAssets : null}
         onSave={handleSave}
+        onExportVideo={handleExportVideo}
         onPoseExport={handlePoseExport}
         onClose={() => setEditorOpen(false)}
       />

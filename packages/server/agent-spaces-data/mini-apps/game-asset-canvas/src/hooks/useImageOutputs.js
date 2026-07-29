@@ -66,6 +66,40 @@ function buildImageNodes(prevNodes, urls, opts) {
 }
 
 /**
+ * 视频版 buildImageNodes：构造 videoDisplay 节点（对称逻辑，data.videos 字段）。
+ */
+function buildVideoNodes(prevNodes, urls, opts) {
+  if (!urls?.length) return { additions: [], positions: [] };
+  const size = DEFAULT_SIZE[NODE_TYPES.videoDisplay];
+  const meta = NODE_META[NODE_TYPES.videoDisplay];
+  const source = opts.source || 'queue';
+  const tags = dedupeTags(opts.tags);
+  const gap = 40;
+  const anchor = opts.sourceNode
+    ? rightAnchorOf(opts.sourceNode, gap)
+    : { x: 420, y: 120 };
+  const positions = findFreePositions(
+    anchor, size.w, size.h, urls.length, prevNodes,
+    { gap, direction: 'right', cols: Math.min(3, Math.max(1, urls.length)) },
+  );
+  const additions = urls.map((url, i) => ({
+    id: genId(NODE_TYPES.videoDisplay),
+    type: NODE_TYPES.videoDisplay,
+    position: positions[i],
+    width: size.w, height: size.h,
+    style: { width: size.w, height: size.h },
+    data: {
+      ...initialData(NODE_TYPES.videoDisplay),
+      videos: [url],
+      source,
+      tags,
+      label: meta.label,
+    },
+  }));
+  return { additions, positions };
+}
+
+/**
  * 图片节点批量产出相关操作。
  * 从 Canvas.jsx 抽出（原 B7）。被 useExecutionQueue.onComplete（队列完成建图）
  * 和生成记录「用作输入」复用，故单独成 hook。
@@ -142,4 +176,30 @@ export default function useImageOutputs({ setNodes, setGroups }) {
   }, [addImageNodesFromUrls, addImageNodesGrouped]);
 
   return { addImageNodesFromUrls, addImageNodesGrouped, handleExportImages };
+}
+
+/**
+ * 视频节点批量产出相关操作（对称 useImageOutputs）。
+ *
+ * @param {object} deps
+ * @param {Function} deps.setNodes
+ * @returns {{ addVideoNodesFromUrls, handleExportVideos }}
+ */
+export function useVideoOutputs({ setNodes }) {
+  const addVideoNodesFromUrls = useCallback((urls, opts = {}) => {
+    if (!urls?.length) return;
+    setNodes((prev) => {
+      const { additions } = buildVideoNodes(prev, urls, opts);
+      return [...prev, ...additions];
+    });
+  }, [setNodes]);
+
+  // 导出视频到画布：单视频独立节点，多视频也独立节点（视频一般不分组成 WorkflowGroup）
+  const handleExportVideos = useCallback((sourceNode, vids, opts = {}) => {
+    if (!vids?.length) return;
+    const tags = dedupeTags([IMAGE_TAGS.export]);
+    addVideoNodesFromUrls(vids, { sourceNode, tags, source: 'export' });
+  }, [addVideoNodesFromUrls]);
+
+  return { addVideoNodesFromUrls, handleExportVideos };
 }

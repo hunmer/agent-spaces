@@ -53,6 +53,7 @@ const ADD_ITEMS = [
   // 媒体
   { type: NODE_TYPES.textToVoice, label: '生成配音', category: 'media' },
   { type: NODE_TYPES.videoGenerator, label: '生成视频', category: 'media' },
+  { type: NODE_TYPES.videoDisplay, label: '视频展示', category: 'media' },
 ];
 
 // 每张卡片最小宽度（px），用于响应式推算列数

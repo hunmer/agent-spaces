@@ -35,7 +35,7 @@ import useSettings from '../hooks/useSettings';
 import useExecutionQueue from '../hooks/useExecutionQueue';
 import useWorkspaces from '../hooks/useWorkspaces';
 import usePanelLayout from '../hooks/usePanelLayout';
-import useImageOutputs from '../hooks/useImageOutputs';
+import useImageOutputs, { useVideoOutputs } from '../hooks/useImageOutputs';
 import useSelectionClipboard from '../hooks/useSelectionClipboard';
 import useGroupOperations from '../hooks/useGroupOperations';
 import useGroupExecution from '../hooks/useGroupExecution';
@@ -122,6 +122,8 @@ export default function Canvas() {
 
   // —— 图片节点批量产出（先抽，被执行队列 onComplete 前向引用）——
   const { addImageNodesFromUrls, addImageNodesGrouped, handleExportImages } = useImageOutputs({ setNodes, setGroups });
+  // —— 视频节点批量产出（视频导出到画布）——
+  const { handleExportVideos } = useVideoOutputs({ setNodes });
 
   // —— 执行队列（onComplete/onError 用 imageOutputs + updateNodeData + addHistory）——
   const { jobs, submit, cancel, clearFinished, runningCount } = useExecutionQueue({
@@ -361,6 +363,12 @@ export default function Canvas() {
     setExportState({ sourceNode, images: imgs });
   }, [handleExportImages]);
 
+  // 视频导出到画布（复用 handleExportVideos，视频不分组成独立节点）
+  const handleExportVideosWithPicker = useCallback((sourceNode, vids) => {
+    if (!vids?.length) return;
+    handleExportVideos(sourceNode, vids);
+  }, [handleExportVideos]);
+
   // ExportImages 选完后：弹分组确认框（询问是否分组 + 分组名）
   const handleExportSelection = useCallback((urls) => {
     if (!urls?.length || !exportState?.sourceNode) return;
@@ -497,12 +505,14 @@ export default function Canvas() {
     onSwitchVersion: handleSwitchVersion,
     // 删除一张上游输入图（断开产出该图的连入边）
     onDeleteUpstreamImage: handleDeleteUpstreamImage,
+    // 视频导出到画布（生成 videoDisplay 节点）
+    onExportVideos: handleExportVideosWithPicker,
   }), [
     makeOnUpdate, handleGenerate, handleGenerateMedia, handleProcessImage,
     handleProcessLocal, handleCutout, handleCutoutCreate, handleCancelProcess, handlePromptReverse,
     handleExportImagesWithPicker, handleAutoSize, handleAutoSizeToContent, handleBBoxCutout, handleResetParams,
     handleAddToAssets, handleAddOutputImages, handleRemoveOutputImage, handleClearOutputImages, handleReorderOutputImages,
-    handleSwitchVersion, handleDeleteUpstreamImage,
+    handleSwitchVersion, handleDeleteUpstreamImage, handleExportVideosWithPicker,
   ]);
 
   // —— Agent RPC（WS message 监听，ref 持有最新值只订阅一次）——

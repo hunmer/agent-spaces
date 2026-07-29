@@ -14,12 +14,14 @@ export class Toolbar {
     onModeChange, onAnimationChange, onSkinChange,
     onUndo, onRedo, onFitView,
     onExportPose, onExportScreenshot, onExportSpine,
+    onToggleRecord,
   }) {
     this.container = container;
-    this.cb = { onModeChange, onAnimationChange, onSkinChange, onUndo, onRedo, onFitView, onExportPose, onExportScreenshot, onExportSpine };
+    this.cb = { onModeChange, onAnimationChange, onSkinChange, onUndo, onRedo, onFitView, onExportPose, onExportScreenshot, onExportSpine, onToggleRecord };
     this.animations = [];
     this.skins = [];
     this.mode = 'pose';
+    this.recording = false;
     this._render();
   }
 
@@ -46,6 +48,16 @@ export class Toolbar {
     const r = this.container.querySelector('#btn-redo');
     if (u) u.disabled = !canUndo;
     if (r) r.disabled = !canRedo;
+  }
+
+  /** 同步录制按钮状态（文案 + 样式） */
+  setRecording(recording) {
+    this.recording = !!recording;
+    const btn = this.container.querySelector('#btn-record');
+    if (btn) {
+      btn.textContent = this.recording ? '■ 停止录制' : '● 录制';
+      btn.classList.toggle('recording', this.recording);
+    }
   }
 
   _render() {
@@ -76,6 +88,10 @@ export class Toolbar {
       </div>
       <div class="tb-sep"></div>
       <div class="tb-group">
+        <button class="btn btn-sm btn-record" id="btn-record" title="录制画布动作（WebM）">● 录制</button>
+      </div>
+      <div class="tb-sep"></div>
+      <div class="tb-group">
         <button class="btn btn-sm" id="btn-export-pose">导出姿势</button>
         <button class="btn btn-sm" id="btn-export-shot">截图</button>
         <button class="btn btn-sm" id="btn-export-spine">下载 Spine</button>
@@ -92,6 +108,7 @@ export class Toolbar {
     this.container.querySelector('#btn-undo').onclick = () => this.cb.onUndo?.();
     this.container.querySelector('#btn-redo').onclick = () => this.cb.onRedo?.();
     this.container.querySelector('#btn-fit').onclick = () => this.cb.onFitView?.();
+    this.container.querySelector('#btn-record').onclick = () => this.cb.onToggleRecord?.();
     this.container.querySelector('#btn-export-pose').onclick = () => this.cb.onExportPose?.();
     this.container.querySelector('#btn-export-shot').onclick = () => this.cb.onExportScreenshot?.();
     this.container.querySelector('#btn-export-spine').onclick = () => this.cb.onExportSpine?.();

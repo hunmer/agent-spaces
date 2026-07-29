@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@agent-spaces/
  * 通信协议（与 spine-editor-src/src/main.js 配对）：
  *   iframe→父 `spine:ready`：编辑器就绪 → 注入上传的 .skel/.atlas/.png
  *   iframe→父 `spine:export-screenshot` {dataUrl, name}：截图 → uploadFile → http URL
+ *   iframe→父 `spine:export-video` {dataUrl, name}：动作录制（WebM）→ uploadFile → http URL
  *   iframe→父 `spine:export-spine` {files:[{name,dataUrl}]}：原始文件包 → 逐个 uploadFile
  *   iframe→父 `spine:export-pose` {json, name}：姿势 JSON（文本，直接回传不经 uploadFile）
  *   父→iframe `spine:inject-assets` {skelDataUrl, atlasDataUrl, pngDataUrl, name}
@@ -19,16 +20,19 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@agent-spaces/
  * @param {object|null} props.assets {skel, atlas, png, name}（http URL），null 表示用编辑器内置角色库
  * @param {(urls: string[]) => void} props.onSave 截图/文件导出完成回调
  * @param {(poseJson: string) => void} props.onPoseExport 姿势 JSON 导出回调
+ * @param {(url: string) => void} props.onExportVideo 动作录制视频导出回调
  * @param {() => void} props.onClose
  */
-export default function SpineEditorDialog({ open, assets, onSave, onPoseExport, onClose }) {
+export default function SpineEditorDialog({ open, assets, onSave, onPoseExport, onExportVideo, onClose }) {
   const iframeRef = useRef(null);
   const readyRef = useRef(false);
   const injectedRef = useRef(false);
   const onSaveRef = useRef(onSave);
   const onPoseExportRef = useRef(onPoseExport);
+  const onExportVideoRef = useRef(onExportVideo);
   onSaveRef.current = onSave;
   onPoseExportRef.current = onPoseExport;
+  onExportVideoRef.current = onExportVideo;
   const [ready, setReady] = useState(false);
   const [statusMsg, setStatusMsg] = useState('');
   const [loadError, setLoadError] = useState('');
@@ -128,6 +132,24 @@ export default function SpineEditorDialog({ open, assets, onSave, onPoseExport, 
           }
         } catch (err) {
           console.error('[spine-parent] screenshot upload failed:', err);
+          setLoadError(err?.message || String(err));
+        }
+      } else if (msg.type === 'spine:export-video') {
+        // {dataUrl, name} —— 动作录制 WebM，逻辑同 screenshot，MIME 用 video/webm
+        try {
+          const blob = await (await fetch(msg.payload.dataUrl)).blob();
+          const AS = window.AgentSpaces;
+          if (!AS?.uploadFile) throw new Error('宿主 uploadFile 不可用');
+          const fileName = msg.payload.name || `spine-${Date.now()}.webm`;
+          const file = new File([blob], fileName, { type: blob.type || 'video/webm' });
+          const uploaded = await AS.uploadFile(file);
+          const httpUrl = uploaded?.url || uploaded?.httpPath;
+          if (httpUrl) {
+            setStatusMsg(`视频已回传：${fileName}`);
+            onExportVideoRef.current?.(httpUrl);
+          }
+        } catch (err) {
+          console.error('[spine-parent] video upload failed:', err);
           setLoadError(err?.message || String(err));
         }
       } else if (msg.type === 'spine:export-spine') {

@@ -29,6 +29,7 @@ import DirectorDeskNode from '../components/nodes/DirectorDeskNode';
 import PhotopeaNode from '../components/nodes/PhotopeaNode';
 import WorkflowRunnerNode, { PARAMS_SCHEMA as WORKFLOW_RUNNER_PARAMS } from '../components/nodes/WorkflowRunnerNode';
 import SpineEditorNode from '../components/nodes/SpineEditorNode';
+import VideoDisplayNode from '../components/nodes/VideoDisplayNode';
 import NoteNode from '../components/nodes/NoteNode';
 
 // 节点类型 -> 渲染组件
@@ -63,6 +64,7 @@ export const NODE_COMPONENTS = {
   [NODE_TYPES.photopea]: PhotopeaNode,
   [NODE_TYPES.workflowRunner]: WorkflowRunnerNode,
   [NODE_TYPES.spineEditor]: SpineEditorNode,
+  [NODE_TYPES.videoDisplay]: VideoDisplayNode,
   [NODE_TYPES.note]: NoteNode,
 };
 
@@ -106,6 +108,7 @@ export const ADD_NODE_ITEMS = [
   { type: NODE_TYPES.photopea },
   { type: NODE_TYPES.workflowRunner },
   { type: NODE_TYPES.spineEditor },
+  { type: NODE_TYPES.videoDisplay },
   { type: NODE_TYPES.note },
 ];
 
@@ -123,6 +126,7 @@ export const DEFAULT_SIZE = {
   [NODE_TYPES.photopea]: { w: 300, h: 260 },
   [NODE_TYPES.workflowRunner]: { w: 320, h: 340 },
   [NODE_TYPES.spineEditor]: { w: 300, h: 260 },
+  [NODE_TYPES.videoDisplay]: { w: 320, h: 240 },
   default: { w: 290, h: 240 },
 };
 
@@ -157,6 +161,7 @@ export function dedupeTags(tags) {
 export function initialData(type) {
   if (type === NODE_TYPES.note) return { text: '' };
   if (type === NODE_TYPES.imageDisplay) return { images: [], source: '' };
+  if (type === NODE_TYPES.videoDisplay) return { videos: [], source: '' };
   if (type === NODE_TYPES.imageProcess) {
     return {
       status: 'idle',

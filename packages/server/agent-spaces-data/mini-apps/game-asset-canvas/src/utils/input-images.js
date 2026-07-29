@@ -87,3 +87,63 @@ export function computeInputImages(nodes, edges) {
   }
   return map;
 }
+
+/**
+ * 基于 nodes/edges 拓扑计算每个「视频接收节点」的输入视频（纯函数，对称 computeInputImages）。
+ *
+ * - 视频产出字段：output.videos 优先，降级 output.video（单值兼容 videoGenerator）
+ * - 透传类节点（videoDisplay）无 output 时回退 data.videos / 上游派生视频
+ * - receiver 含 videoDisplay（透传）+ videoGenerator（消费参考，非透传）
+ *
+ * @param {Array} nodes
+ * @param {Array} edges
+ * @returns {Map<string, {videos: string[], isDisplay: boolean}>} nodeId -> 派生输入
+ */
+export function computeInputVideos(nodes, edges) {
+  const VIDEO_RECEIVER_TYPES = new Set([NODE_TYPES.videoDisplay, NODE_TYPES.videoGenerator]);
+  const VIDEO_PASSTHROUGH_TYPES = new Set([NODE_TYPES.videoDisplay]);
+
+  // 取某节点「作为 source 时应给出的产出视频」
+  const sourceVideos = (node, derivedByNode) => {
+    const sd = node.data || {};
+    const outVideos = Array.isArray(sd.output?.videos) ? sd.output.videos
+      : (sd.output?.video ? [sd.output.video] : []);
+    if (outVideos.length) return outVideos;
+    if (!VIDEO_PASSTHROUGH_TYPES.has(node.type)) return [];
+    const own = Array.isArray(sd.videos) ? sd.videos : [];
+    const derived = derivedByNode.get(node.id);
+    return own.length ? own : (derived || []);
+  };
+
+  const incomingByTarget = new Map();
+  for (const e of edges) {
+    if (!incomingByTarget.has(e.target)) incomingByTarget.set(e.target, []);
+    incomingByTarget.get(e.target).push(e);
+  }
+  const byId = new Map(nodes.map((n) => [n.id, n]));
+  const map = new Map();
+  const derived = new Map();
+
+  for (let iter = 0; iter < nodes.length; iter++) {
+    let changed = false;
+    for (const node of nodes) {
+      if (!VIDEO_RECEIVER_TYPES.has(node.type)) continue;
+      const incoming = incomingByTarget.get(node.id);
+      if (!incoming || !incoming.length) continue;
+      const upstream = [];
+      for (const e of incoming) {
+        const src = byId.get(e.source);
+        if (!src) continue;
+        upstream.push(...sourceVideos(src, derived));
+      }
+      const prev = derived.get(node.id);
+      if (!prev || prev.join('|') !== upstream.join('|')) {
+        derived.set(node.id, upstream);
+        map.set(node.id, { videos: upstream, isDisplay: node.type === NODE_TYPES.videoDisplay });
+        changed = true;
+      }
+    }
+    if (!changed) break;
+  }
+  return map;
+}

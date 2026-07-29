@@ -13,11 +13,13 @@
  *   本→父：spine:ready
  *          spine:export-pose {json, name}
  *          spine:export-screenshot {dataUrl, name}
+ *          spine:export-video {dataUrl, name}    // 动作录制（WebM）
  *          spine:export-spine {files:[{name,dataUrl}]}
  *          spine:close
  */
 import './styles.css';
 import { SpineEditorApp } from './core/SpineEditorApp';
+import { RecordManager } from './core/RecordManager';
 import { loadSpine, getAnimations, getSkins, BoneVisibility } from './loaders/SpineLoader';
 import { PoseExporter } from './exporters/PoseExporter';
 import { Toolbar } from './ui/Toolbar';
@@ -34,6 +36,7 @@ let transformPanel = null;
 let pendingAssets = null; // 就绪前收到的注入资源（ready 后消费）
 let loadedAssetsRaw = null; // 最近加载的原始资源（用于「下载 Spine」导出）
 let visibility = null;    // BoneVisibility 实例（骨骼显隐管理）
+let recorder = null;      // RecordManager（canvas 动作录制）
 
 function setStatus(text, type = 'ready') {
   const bar = document.getElementById('statusbar');
@@ -76,7 +79,15 @@ async function init() {
     onExportPose: exportPose,
     onExportScreenshot: exportScreenshot,
     onExportSpine: exportSpineFiles,
+    onToggleRecord: toggleRecord,
   });
+
+  // 录制管理器（检测不支持时禁用按钮）
+  recorder = new RecordManager(canvas);
+  if (!RecordManager.isSupported()) {
+    const btn = document.getElementById('btn-record');
+    if (btn) { btn.disabled = true; btn.title = '当前浏览器不支持录制'; }
+  }
 
   // 角色库过滤（左侧 tab1）
   filter = new AssetFilter(document.getElementById('tab-library'), {
@@ -269,6 +280,37 @@ function exportScreenshot() {
   const name = `${app.spine.name || 'spine'}-${Date.now()}.png`;
   postToParent('spine:export-screenshot', { dataUrl, name });
   setStatus(`已截图：${name}（已回传节点）`, 'ready');
+}
+
+/** 切换录制：开始（自动切播放模式）/停止（回传 WebM） */
+async function toggleRecord() {
+  if (!recorder) return;
+  if (!recorder.isRecording) {
+    // 开始录制
+    if (!app?.spine) { setStatus('无角色可录制，先加载角色', 'error'); return; }
+    try {
+      // pose 模式画面几乎静止，动作录制需动画推进 → 自动切 play 模式
+      if (app.mode !== 'play') {
+        app.setMode('play');
+        toolbar.setMode('play');
+      }
+      recorder.start({ fps: 30 });
+      toolbar.setRecording(true);
+      setStatus('录制中…再次点击停止', 'modified');
+    } catch (err) {
+      console.error('[spine-editor] record start failed:', err);
+      setStatus(`录制失败：${err?.message || String(err)}`, 'error');
+    }
+  } else {
+    // 停止录制
+    setStatus('正在生成视频…', 'modified');
+    const dataUrl = await recorder.stop();
+    toolbar.setRecording(false);
+    if (!dataUrl) { setStatus('录制失败：未能生成视频', 'error'); return; }
+    const name = `${app.spine?.name || 'spine'}-${Date.now()}.webm`;
+    postToParent('spine:export-video', { dataUrl, name });
+    setStatus(`已录制：${name}（已回传节点）`, 'ready');
+  }
 }
 
 async function exportSpineFiles() {

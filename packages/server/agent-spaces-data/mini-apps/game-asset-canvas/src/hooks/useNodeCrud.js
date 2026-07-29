@@ -250,6 +250,9 @@ export default function useNodeCrud({
     event.preventDefault();
     // 节点内/弹窗内图片列表拖拽排序的标记：直接放行，不建节点（否则 img 默认被浏览器转成文件会误建 imageDisplay）
     if (event.dataTransfer.getData(IMAGE_REORDER_MIME)) return;
+    // drop 落在节点内（含节点内 FileUpload/dropzone）：交给节点自行处理，画布不建节点。
+    // 否则事件冒泡到这里会因 dataTransfer.files 非空误建 imageDisplay，且 FileUpload 的 onChange 也被触发导致重复消费。
+    if (event.target instanceof Element && event.target.closest('.react-flow__node')) return;
     if (event.dataTransfer.files?.length) {
       const position = reactFlow.screenToFlowPosition({ x: event.clientX, y: event.clientY });
       handleDropFiles(event.dataTransfer.files, position);

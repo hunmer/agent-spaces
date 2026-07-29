@@ -310,6 +310,16 @@ html, body {
 .btn-danger { color: var(--danger); border-color: var(--danger); }
 .btn-danger:hover:not(:disabled) { background: rgba(247, 118, 142, 0.15); }
 .btn-sm { padding: 3px 8px; font-size: 11px; }
+/* 录制按钮：默认红字提示，录制中红底白字 + 闪烁红点 */
+.btn-record { color: var(--danger); border-color: var(--danger); position: relative; padding-left: 20px; }
+.btn-record::before {
+  content: ''; position: absolute; left: 8px; top: 50%; transform: translateY(-50%);
+  width: 8px; height: 8px; border-radius: 50%; background: var(--danger);
+}
+.btn-record:hover:not(:disabled) { background: rgba(224, 49, 49, 0.12); }
+.btn-record.recording { background: var(--danger); color: #fff; border-color: var(--danger); }
+.btn-record.recording::before { background: #fff; animation: rec-blink 1s steps(2, start) infinite; }
+@keyframes rec-blink { to { opacity: 0; } }
 .btn-row { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
 .btn-row .btn { flex: 1; min-width: 70px; }
 
