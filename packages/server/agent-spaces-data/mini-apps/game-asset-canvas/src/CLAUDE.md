@@ -65,6 +65,7 @@ graph TD
 - **跳过**：`vendor/`（51MB 二进制）、`assets/`（静态资源）、`chat/` `data/` `configs/`（运行时数据）、`src/handoff.md`（已提炼到详情）
 - **覆盖率**：核心源码 100%，节点组件（19 个）和顶层 components（17 个）按文件名 + 关键代表性样本（NodeShell 不在本轮定点读取，但其约定已在 conventions/faq 提炼）
 - **2026-07-29 增量**：Spine 独立 Vite/iframe 项目已迁入 `src/spine/`，宿主 UI 在 `SpineEditorDialog.jsx` / `SpinePanels.jsx` / `ReskinPanel.jsx`，运行时固定 dist 在 `vendor/spine/`。
+- **2026-07-30 增量**：Spine loader 按 JSON 版本路由 3.8/4.2 runtime；4.2 使用本地 `spine-pixi-v7@4.2.119` IIFE。录制停止后先预览，再选择导出到画布或下载。
 - **建议下一步深挖**：
   - 如需精确节点组件实现细节，定点读 `components/nodes/<具体>.jsx`
   - 如需精确 image-ops 算法实现，定点读 `utils/image-ops/<具体>.js`（gif.js / matte.js / pixelate.js 等）

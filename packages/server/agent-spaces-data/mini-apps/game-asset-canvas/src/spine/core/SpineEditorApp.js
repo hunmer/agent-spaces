@@ -14,6 +14,7 @@
 import { PIXI } from '../runtime.js';
 import { BoneGizmoLayer } from './BoneGizmoLayer.js';
 import { HistoryManager } from './HistoryManager.js';
+import { calculateFitTransform } from './ViewUtils.js';
 
 export class SpineEditorApp {
   constructor(canvasElement) {
@@ -28,11 +29,13 @@ export class SpineEditorApp {
     this.viewScale = 1;
     this.viewX = 0;
     this.viewY = 0;
+    this.viewInteractionEnabled = true;
 
     // 模式
     this.mode = 'pose';         // 'pose' | 'play'
     this.currentAnimation = null;
     this.currentSkin = null;
+    this.playbackSpeed = 1;
 
     // 平移状态
     this.panning = false;
@@ -95,6 +98,7 @@ export class SpineEditorApp {
     // 滚轮缩放
     canvas.addEventListener('wheel', (e) => {
       e.preventDefault();
+      if (!this.viewInteractionEnabled) return;
       // ctrl/cmd/shift + 滚轮 = 缩放；普通滚轮也缩放（PRD：Shift+滚轮/Ctrl+滚轮缩放）
       const factor = e.deltaY < 0 ? 1.1 : 1 / 1.1;
       this.zoomAt(e.offsetX, e.offsetY, factor);
@@ -102,6 +106,7 @@ export class SpineEditorApp {
 
     // 中键 / 空格+左键 平移
     stage.on('pointerdown', (e) => {
+      if (!this.viewInteractionEnabled) return;
       // 只在没命中骨骼时平移（gizmo 的 pointerdown 会 stopPropagation? 不会，pixi 事件冒泡）
       // 用 button 判断：1=中键，或空格+左键
       if (e.button === 1 || (e.button === 0 && this.spaceDown)) {
@@ -125,7 +130,7 @@ export class SpineEditorApp {
 
     // 空格键
     this._windowKeyDown = (e) => {
-      if (e.code === 'Space' && !this._isInputFocused()) {
+      if (e.code === 'Space' && this.viewInteractionEnabled && !this._isInputFocused()) {
         e.preventDefault();
         this.spaceDown = true;
         canvas.style.cursor = 'grab';
@@ -151,6 +156,7 @@ export class SpineEditorApp {
 
   /** 在指定屏幕点缩放（保持该点不动） */
   zoomAt(screenX, screenY, factor) {
+    if (!this.viewInteractionEnabled) return;
     const newScale = Math.max(0.1, Math.min(5, this.viewScale * factor));
     const realFactor = newScale / this.viewScale;
     // 保持 (screenX, screenY) 对应的世界点不动
@@ -166,24 +172,51 @@ export class SpineEditorApp {
     this.spineContainer.position.set(this.viewX, this.viewY);
   }
 
+  setViewInteractionEnabled(enabled) {
+    this.viewInteractionEnabled = !!enabled;
+    if (!this.viewInteractionEnabled) {
+      this.panning = false;
+      this.panStart = null;
+      this.spaceDown = false;
+      this.canvasElement.style.cursor = '';
+    }
+  }
+
   /** 适应视图：居中并适配画布 */
   fitView() {
     if (!this.spine) return;
-    // 用 spine 的 bounds
-    const bounds = this.spine.getBounds();
-    if (!bounds || bounds.width <= 0 || bounds.height <= 0) return;
-    const screen = this.app.screen;
-    const padding = 60;
-    const scaleX = (screen.width - padding * 2) / bounds.width;
-    const scaleY = (screen.height - padding * 2) / bounds.height;
-    const scale = Math.min(scaleX, scaleY, 2);
-    this.viewScale = scale;
-    // 居中：让 bounds 中心对齐画布中心
-    const cx = bounds.x + bounds.width / 2;
-    const cy = bounds.y + bounds.height / 2;
-    this.viewX = screen.width / 2 - cx * scale;
-    this.viewY = screen.height / 2 - cy * scale;
+    // getBounds() 返回全局坐标，先清除旧视图变换，避免重复适应时二次计算缩放/平移。
+    this.viewScale = 1;
+    this.viewX = 0;
+    this.viewY = 0;
     this._applyView();
+    this.spineContainer.updateTransform();
+    const bounds = this.spine.getBounds();
+    const transform = calculateFitTransform(bounds, this.app.screen, {
+      padding: 60,
+      minScale: 0.1,
+      maxScale: 5,
+    });
+    if (!transform) return;
+    this.viewScale = transform.scale;
+    this.viewX = transform.x;
+    this.viewY = transform.y;
+    this._applyView();
+  }
+
+  getRecordingBounds(padding = 32) {
+    if (!this.spine || !this.app) return null;
+    this.spineContainer.updateTransform();
+    const bounds = this.spine.getBounds();
+    if (!bounds || bounds.width <= 0 || bounds.height <= 0) return null;
+    const scaleX = this.canvasElement.width / this.app.screen.width;
+    const scaleY = this.canvasElement.height / this.app.screen.height;
+    return {
+      x: (bounds.x - padding) * scaleX,
+      y: (bounds.y - padding) * scaleY,
+      width: (bounds.width + padding * 2) * scaleX,
+      height: (bounds.height + padding * 2) * scaleY,
+    };
   }
 
   /** 加载 Spine 实例并放入容器 */
@@ -195,6 +228,7 @@ export class SpineEditorApp {
     }
     this.spine = spine;
     this.spineContainer.addChild(spine);
+    spine.state.timeScale = this.playbackSpeed;
     // 确保新 spine 先更新一次（计算 mesh 顶点 + bounds），否则 fitView 拿到空 bounds
     spine.skeleton.setToSetupPose();
     spine.update(0);
@@ -251,6 +285,13 @@ export class SpineEditorApp {
     if (this.mode === 'play' && this.spine) {
       this.spine.state.setAnimation(0, name, true);
     }
+  }
+
+  setPlaybackSpeed(speed) {
+    const value = Number(speed);
+    if (!Number.isFinite(value) || value <= 0) return;
+    this.playbackSpeed = value;
+    if (this.spine?.state) this.spine.state.timeScale = value;
   }
 
   setSkin(name) {

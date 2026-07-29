@@ -27,9 +27,16 @@ import {
   buildOriginalSilhouettes, segmentByShapeIntersection, applyMaskToRegion,
 } from './shapeSegmenter';
 import { loadImage, createCanvas, cropRegionRotated, erodeAlpha } from './canvasUtils';
+import { generateImages } from '../workflow';
 
-const NANO_BANANA_PLUGIN = 'workflow.nano-banana';
 const REMBG_PLUGIN = 'workflow.rembg';
+const EDIT_ASPECTS = [
+  ['16:9', 16 / 9],
+  ['9:16', 9 / 16],
+  ['1:1', 1],
+  ['4:3', 4 / 3],
+  ['3:4', 3 / 4],
+];
 
 /** 工具函数：等待并解包 callPluginTool 结果 */
 async function callPlugin(pluginId, toolName, args) {
@@ -66,19 +73,28 @@ async function uploadDataUrl(dataUrl, filename) {
   return uploaded?.url || uploaded?.httpPath;
 }
 
-/** 调 nano-banana 重绘一张图，返回重绘后的 http URL */
-async function geminiRedraw(imageUrl, prompt, opts, log) {
-  const { nanoApiKey, nanoModel = 'gemini-2.5-flash-image-preview', imageSize = 'auto' } = opts;
-  log('gemini', `调用 Gemini 重绘（${nanoModel}）…`);
+function closestEditAspect(width, height) {
+  const ratio = width > 0 && height > 0 ? width / height : 1;
+  return EDIT_ASPECTS.reduce((best, option) => (
+    Math.abs(option[1] - ratio) < Math.abs(best[1] - ratio) ? option : best
+  ))[0];
+}
+
+/** 调 edit_image workflow 重绘一张图，返回重绘后的 http URL */
+async function workflowRedraw(imageUrl, prompt, opts, log) {
+  const {
+    workflowId, model = 'gpt-image-1', aspect = '1:1', size = '2k',
+  } = opts;
+  if (!workflowId) throw new Error('未配置编辑图片工作流');
+  log('workflow', `调用 edit_image（${model} / ${aspect} / ${size}）…`);
   const t0 = performance.now();
-  const editArgs = { image: imageUrl, prompt, model: nanoModel, responseModalities: 'image' };
-  if (nanoApiKey) editArgs.apiKey = nanoApiKey;
-  if (imageSize && imageSize !== 'auto') editArgs.imageSize = imageSize;
-  const editResult = await callPlugin(NANO_BANANA_PLUGIN, 'nano_banana_edit_image', editArgs);
-  const url = editResult?.data?.images?.[0] || editResult?.images?.[0];
-  if (!url) throw new Error('Gemini 未返回重绘结果图');
+  const images = await generateImages(workflowId, {
+    images: [imageUrl], prompt, model, aspect, size,
+  });
+  const url = images[0];
+  if (!url) throw new Error('edit_image 未返回重绘结果图');
   const ms = Math.round(performance.now() - t0);
-  log('gemini', `Gemini 重绘完成（${ms}ms）`, { url, durationMs: ms });
+  log('workflow', `edit_image 重绘完成（${ms}ms）`, { url, durationMs: ms });
   return { url, durationMs: ms };
 }
 
@@ -95,9 +111,9 @@ async function geminiRedraw(imageUrl, prompt, opts, log) {
  * @param {Object} [opts]
  * @param {'atlas'|'exploded'} [opts.method='atlas'] 合成方法
  * @param {'sam'|'bg_components'} [opts.segMethod='sam'] 分割方法
- * @param {string} [opts.nanoApiKey] nano-banana apiKey
- * @param {string} [opts.nanoModel] Gemini 模型
- * @param {string} [opts.imageSize] 输出尺寸 auto/1K/2K/4K
+ * @param {string} opts.workflowId edit_image workflow ID
+ * @param {string} [opts.model] 处理模型
+ * @param {string} [opts.size='2k'] 输出尺寸
  * @param {boolean} [opts.erode] 是否侵蚀去白边（默认 false）
  * @param {number} [opts.erodePx] 侵蚀半径（默认按 region 边长缩放）
  * @param {(step:string, msg:string, data?:object) => void} [opts.onLog] 日志回调
@@ -109,8 +125,7 @@ export async function runReskin(input, opts = {}) {
   } = input;
   const {
     method = 'atlas', segMethod = 'sam',
-    nanoApiKey, nanoModel = 'gemini-2.5-flash-image-preview',
-    imageSize = 'auto', erode = false, onLog = () => {},
+    workflowId, model = 'gpt-image-1', size = '2k', erode = false, onLog = () => {},
   } = opts;
 
   const log = (step, msg, data) => { try { onLog(step, msg, data); } catch { /* ignore */ } };
@@ -149,12 +164,20 @@ export async function runReskin(input, opts = {}) {
   }
   log('compose', `composite 合成完成: ${layout.compositeW}×${layout.compositeH}`, { layout, method });
 
-  // ④ 上传 composite → Gemini 重绘
+  // ④ 上传 composite → edit_image workflow 重绘
   log('upload', '上传 composite 到宿主…');
   const compositeUrl = await uploadDataUrl(compositeCanvas.toDataURL('image/png'), `composite-${skinName}-${Date.now()}.png`);
   log('upload', 'composite 已上传');
-  const { url: reskinnedUrl, durationMs: geminiMs } = await geminiRedraw(
-    compositeUrl, reskinPrompt, { nanoApiKey, nanoModel, imageSize }, log,
+  const { url: reskinnedUrl, durationMs: editImageMs } = await workflowRedraw(
+    compositeUrl,
+    reskinPrompt,
+    {
+      workflowId,
+      model,
+      size,
+      aspect: closestEditAspect(compositeCanvas.width, compositeCanvas.height),
+    },
+    log,
   );
 
   // ⑤ 下载重绘图，确定分割源
@@ -167,7 +190,7 @@ export async function runReskin(input, opts = {}) {
   } else {
     // exploded：分割源就是重绘后的 composite 本身
     segmentSource = reskinnedImg;
-    // 尺寸对齐（Gemini 可能改尺寸）
+    // 尺寸对齐（工作流可能改尺寸）
     if (segmentSource.width !== layout.compositeW || segmentSource.height !== layout.compositeH) {
       const tmp = createCanvas(layout.compositeW, layout.compositeH);
       tmp.getContext('2d').drawImage(segmentSource, 0, 0, layout.compositeW, layout.compositeH);
@@ -283,7 +306,7 @@ export async function runReskin(input, opts = {}) {
     newAtlasText: repackResult.atlasText,
     newSpineJson,
     layout,
-    stats: { totalMs, regionCount: regions.length, packedCount: Object.keys(repackResult.placements).length, slotCount: Object.keys(skinPlacements).length, geminiMs, method, segMethod },
+    stats: { totalMs, regionCount: regions.length, packedCount: Object.keys(repackResult.placements).length, slotCount: Object.keys(skinPlacements).length, editImageMs, method, segMethod },
   };
 }
 
@@ -306,12 +329,14 @@ const SLOT_NEGATIVE = 'do not change the silhouette; do not add background scene
  * @param {object} input.spineJson 当前 spine JSON
  * @param {Array} input.regions 原 atlas 的 region 列表
  * @param {HTMLCanvasElement} input.atlasSheet 原 atlas sheet（供其他 region 占位）
- * @param {Object} [opts] 同 runReskin 的 opts（nanoApiKey/nanoModel/imageSize/erode/onLog）
+ * @param {Object} [opts] 同 runReskin 的 opts（workflowId/model/size/erode/onLog）
  * @returns {Promise<Object>} { newAtlasCanvas, newAtlasText, newSpineJson, stats }
  */
 export async function runInpaintSlot(input, opts = {}) {
   const { slot, skinName, prompt, regionCanvas, spineJson, regions, atlasSheet } = input;
-  const { nanoApiKey, nanoModel = 'gemini-2.5-flash-image-preview', imageSize = 'auto', erode = false, onLog = () => {} } = opts;
+  const {
+    workflowId, model = 'gpt-image-1', size = '2k', erode = false, onLog = () => {},
+  } = opts;
   const log = (step, msg, data) => { try { onLog(step, msg, data); } catch { /* ignore */ } };
   const t0 = performance.now();
 
@@ -323,9 +348,19 @@ export async function runInpaintSlot(input, opts = {}) {
 
   log('inpaint', `开始局部重绘：${slot}（region: ${targetRegionName}）`);
 
-  // ① 上传 region → Gemini 重绘（锁 silhouette）
+  // ① 上传 region → edit_image workflow 重绘（锁 silhouette）
   const regionUrl = await uploadDataUrl(regionCanvas.toDataURL('image/png'), `slot-${slot}-${Date.now()}.png`);
-  const { url: reskinnedUrl } = await geminiRedraw(regionUrl, SLOT_PROMPT(prompt), { nanoApiKey, nanoModel, imageSize }, log);
+  const { url: reskinnedUrl } = await workflowRedraw(
+    regionUrl,
+    SLOT_PROMPT(prompt),
+    {
+      workflowId,
+      model,
+      size,
+      aspect: closestEditAspect(regionCanvas.width, regionCanvas.height),
+    },
+    log,
+  );
 
   // ② 下载 → rembg 清背景（不跑 SAM，只去背景）
   log('inpaint', '清理背景…');

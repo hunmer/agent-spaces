@@ -1,178 +1,306 @@
-# Handoff: 骨骼编辑器 + AI 换肤（spineEditor 节点）
+# Handoff: Spine 骨骼编辑器 + AI 换肤
 
-> 本文件记录 game-asset-canvas 的 `spineEditor` 节点：Spine 骨骼编辑器 + AI 换肤功能。
-> 总体 mini-app 架构见 `src/handoff.md`；本文件只聚焦骨骼编辑器与换肤。
-> mini-app 根：`packages/server/agent-spaces-data/mini-apps/game-asset-canvas/`
+> 更新时间：2026-07-30
+>
+> mini-app 根目录：`packages/server/agent-spaces-data/mini-apps/game-asset-canvas/`
+>
+> 节点类型：`spineEditor`
 
-## 2026-07-29 迁移完成
+## 当前状态
 
-- 已移除独立 `spine-editor-build` Vite 项目和 `vendor/spine-editor-web` iframe 产物。
-- 编辑核心迁入 `src/spine/`，由 `SpineEditorDialog.jsx` 直接初始化和销毁。
-- 工具栏、角色库、骨骼树、变换面板、换肤面板全部使用 `@agent-spaces/ui`。
-- 变换与换肤合并为同一个右侧 Tabs 侧边栏。
-- PixiJS、pixi-spine、JSZip 固定版本 dist 保存在 `src/vendor/spine/`，由 `src/spine/runtime.js` 本地加载。
-- 固定版本：`pixi.js@7.3.3`、`@pixi-spine/all-3.8@4.0.6`、`jszip@3.10.1`。
+Spine 已从独立 Vite SPA 完整迁入 `game-asset-canvas`：
 
-## 功能概览
+- 已删除 `spine-editor-build/` 和 `src/vendor/spine-editor-web/`。
+- 不再使用 iframe、postMessage 或独立 npm 构建。
+- 编辑核心位于 `src/spine/`，由 `SpineEditorDialog.jsx` 直接创建和销毁。
+- 工具栏、角色库、骨骼树、变换面板和换肤面板统一使用 `@agent-spaces/ui`。
+- 右侧侧边栏通过 Tabs 融合“变换”和“换肤”。
+- PixiJS、pixi-spine、JSZip 使用固定版本浏览器 dist，并保存到 `src/vendor/spine/`。
+- 角色库资源固定从 jsDelivr 的 `FrankoFPM/Spine-Viewer-Web@gh-pages` 分支加载。
+- Dialog canvas 使用 callback ref/state 触发初始化，避免 Portal 延迟挂载导致编辑器不启动。
 
-### 骨骼编辑器（已实现）
-用户上传 `.skel/.json + .atlas + .png` 三件套（或从内置角色库选择），在 mini-app 对话框内用 PixiJS + pixi-spine 渲染角色，可视化骨骼层级、拖拽调整骨骼变换、切换皮肤/动画、导出姿势/截图/录制/三件套。
+## 功能范围
 
-### AI 换肤（已实现）
-把原 Python 后端（`reskin-app`）的换肤 pipeline **全部迁移到前端**（除 SAM 分割调 rembg 插件外），集成进骨骼编辑器：
-- 支持 **两种合成方法**：atlas（截图+atlas 左右并排）/ exploded（爆炸图）
-- 支持 **两种分割方法**：sam（rembg SAM 逐 region 抠图）/ bg_components（形状交集法，纯前端像素遍历）
-- 支持 **.skel 资源换肤**（从 pixi-spine 实例反向导出最小 spine JSON）
-- 支持 **per-slot 局部重绘**（只重绘一个部位，锁 silhouette）
-- 支持 **侵蚀去白边**（UI 开关 + 半径调节）
-- **热加载预览**：换肤后 `baseTexture.setResource()` 即时在画布看到效果，无需重载
-- **皮肤历史**：localStorage 持久化，点击即应用
-- **实时日志**：pipeline 每步上报
+### 骨骼编辑器
 
-## 架构
+- 上传 `.skel/.json + .atlas + .png` 三件套。
+- 从内置角色索引选择远程角色。
+- Spine 3.8 二进制/JSON 与 Spine 4.2 JSON 解析。
+- 姿势/动画模式切换、动画切换、播放速度（`0.25x`～`2x`）、皮肤切换。
+- 骨骼树选择、展开折叠、骨骼及子级显隐。
+- 画布骨骼 Gizmo：拖拽移动、右键旋转。
+- 数值编辑 X/Y/Rotation/ScaleX/ScaleY。
+- 单骨骼/整角色翻转、单骨骼/全部重置。
+- 撤销/重做、正确按角色 bounds 居中的适应视图、截图、WebM 录制、姿势 JSON、三件套 ZIP。
 
-```
-mini-app React 节点
-┌─────────────────────────────────────────────────────────────┐
-│ SpineEditorNode.jsx                                         │
-│  - FileUpload 三件套                                         │
-│  - 打开骨骼编辑器按钮                                         │
-│                                                             │
-│ SpineEditorDialog.jsx                                       │
-│  - React 工具栏 / 角色库 / 骨骼树                              │
-│  - Canvas + SpineEditorApp                                  │
-│  - 右侧 Tabs：Transform / ReskinPanel                        │
-│  - 截图 / 姿势 / 录制 / ZIP 导出                              │
-│                                                             │
-│ src/spine/                                                  │
-│  - core / loaders / exporters / components / runtime        │
-│                                                             │
-│ src/vendor/spine/                                           │
-│  - pixi / pixi-spine / jszip 固定版本 dist                   │
-└─────────────────────────────────────────────────────────────┘
-```
+### AI 换肤
 
-## AI 换肤 Pipeline（reskinPipeline.js）
+- 全局换肤与 per-slot 局部重绘。
+- 合成方法：`atlas` / `exploded`。
+- 分割方法：`sam` / `bg_components`。
+- `.skel` 资源通过运行时实例反向导出最小 Spine JSON。
+- 可选侵蚀去白边及半径设置。
+- atlas 贴图热替换预览。
+- 实时 pipeline 日志。
+- localStorage 皮肤历史与重新应用。
+- 右上角设置对话框选择处理模型；模型列表复用画布全局 `editImageModels`。
+- AI 重绘统一调用画布设置中的 `edit_image` workflow，不再直接调用 Nano Banana 插件。
 
-```
-① 取素材：Canvas snapshot + 原 atlas sheet + 原 .atlas 文本 + spine JSON
-   (.skel 资源 → SpineJsonExporter 从当前实例反向导出最小 JSON)
-   ↓
-② 合成 composite（按 method 分流）：
-   - atlas：[snapshot | atlas_sheet] 左右并排（compositeBuilder.js）
-   - exploded：region 按 attachment 位置摆放 + 迭代分离重叠（explodedComposer.js）
-   ↓
-③ nano-banana 插件 Gemini 重绘 composite（geminiRedraw 公共函数）
-   callPluginTool('workflow.nano-banana','nano_banana_edit_image',{image,prompt,model})
-   ↓
-④ 分割回切（按 segMethod 分流）：
-   - sam：逐 region 裁出 → rembg_sam_segment(bbox 中心 point prompt) → 抠图 PNG
-   - bg_components：形状交集法（原轮廓 ∩ 新alpha，纯像素遍历，shapeSegmenter.js）
-   - (可选侵蚀去白边：erodeAlpha，半径按 region 边长缩放)
-   ↓
-⑤ repack：region PNG 用 shelf packing 打包成新 atlas sheet（atlasRepack.js + Canvas 合成）
-   ↓
-⑥ skin_writer：往 spine JSON 的 skins 加新 skin（skinWriter.js，兼容 3.8 dict / 4.0 array）
-   ↓
-⑦ 产出：新 atlas PNG + 新 .atlas + 新 spine JSON + 原 .skel
-   → SpineEditorApp.replaceAtlasTexture 热加载预览 + 存历史 + 可导出三件套
+## 当前架构
+
+```text
+SpineEditorNode.jsx
+  ├─ FileUpload：上传并持久化三件套
+  ├─ 维护节点 output / exportedPose / reskinAssets
+  └─ 打开 SpineEditorDialog
+       ├─ 顶部：模式 / 动画 / 速度 / 皮肤 / 撤销 / 导出 / 设置
+       ├─ 左侧 Tabs
+       │    ├─ SpineAssetLibrary
+       │    └─ SpineBoneTree
+       ├─ 中间：原生 canvas + SpineEditorApp
+       └─ 右侧 Tabs
+            ├─ SpineTransformPanel
+            └─ ReskinPanel
+
+SpineEditorDialog
+  ├─ loadSpineRuntime() → src/vendor/spine/*
+  ├─ loadSpine() → pixi-spine Spine 实例
+  ├─ SpineEditorApp → Pixi 渲染与编辑
+  ├─ RecordManager / PoseExporter / SpineJsonExporter
+  └─ 直接函数调用 ReskinPanel，无 postMessage
 ```
 
-### per-slot 局部重绘（runInpaintSlot）
-只重绘一个 slot 的 region（锁 silhouette，**不跑 SAM**）：
-单 region 送 Gemini（SLOT_PROMPT 约束保持形状）→ rembg 清背景 → 复用 repack/addSkin 组装。
+### 生命周期
 
-## 关键技术决策
+1. Dialog 打开后，callback ref 获得实际 canvas 元素，再调用 `loadSpineRuntime()`。
+2. 创建 `SpineEditorApp(canvas)`、`BoneVisibility`、`RecordManager`。
+3. 上传资源或选择角色后，将三个 URL 转成 data URL 并调用 `loadSpine()`。
+4. `SpineEditorApp.setSpine()` 安装实例、初始化动画、适应视图并记录初始历史。
+5. Dialog 关闭时停止录制、移除 window 事件并销毁 Pixi Application。
 
-| 决策点 | 方案 | 原因 |
-|---|---|---|
-| **Spine 运行时** | `@pixi-spine/all-3.8@4.0.6` + `pixi.js@^7.3.3` | 碧蓝航线角色库全是 3.8；all-4.0 只含 4.0 loader |
-| **PixiJS API** | v7 旧 Graphics API（drawCircle/beginFill）+ extract.canvas() | v8 新 API 不兼容 |
-| **骨骼坐标对齐** | `_boneToContainer(bone)` 经 spine.worldTransform 转容器坐标 | bone.worldX/Y 是 skeleton 空间 |
-| **worldTransform 同步** | redraw 前手动 `spineContainer.updateTransform()` | ticker 回调读的是上一帧 |
-| **集成方式** | mini-app React 直接集成 | 统一宿主 UI，去掉独立项目、iframe 和 postMessage |
-| **换肤算力位置** | 全部在 mini-app 主应用 | 可直连 callPluginTool/uploadFile，并与编辑器共享实例 |
-| **AI 编辑** | nano-banana 插件（封装 Gemini） | 语义与原后端一致，key 在后端不暴露 |
-| **SAM 分割** | rembg 插件 rembg_sam_segment | 复用 mini-app 抠图能力 |
-| **bg_components** | 形状交集法（不引 opencv.js） | 纯像素遍历，pose-consistent 换肤够用 |
-| **.skel→.json** | SpineJsonExporter 从 Skin.getAttachments() 反向提取 | pixi-spine 不支持导出；只需 skins 段标量字段 |
-| **热加载预览** | baseTexture.setResource()（UV 不动） | 无需重载 .skel，region 布局一致即可 |
-| **主题** | 亮色（画布背景 #eef0f3） | 按用户要求 |
+角色在编辑器就绪前被选择时会写入 `pendingAssetsRef`；初始化完成后优先消费排队资源，避免点击无响应。
 
-## 文件清单
+## UI 约定
 
-### mini-app 主应用（`src/`）
+所有可交互控件从 `@agent-spaces/ui` 导入：
 
-**换肤工具模块**（`src/utils/reskin/`，纯 JS 无第三方依赖）：
+- 操作：`Button`
+- 表单：`Input`、`Textarea`、`Select`、`Switch`、`Label`
+- 模式/侧栏：`Tabs`
+- 滚动与反馈：`ScrollArea`、`Badge`、`Loader`
+- 图标：通过 `@agent-spaces/ui` 转出的 lucide icons
+
+`canvas`、图片、视频和普通布局容器仍使用浏览器原生元素；它们不是可替换的宿主表单控件。
+
+## 本地运行时
+
+### 固定版本
+
+| 包 | 版本 | 本地文件 | SHA-256 |
+|---|---:|---|---|
+| `pixi.js` | 7.3.3 | `src/vendor/spine/pixi-7.3.3.min.js` | `97f839f755b300177d6fc61903d1bb50c0f101687c88c4b3a9e94f68059286df` |
+| `@pixi-spine/all-3.8` | 4.0.6 | `src/vendor/spine/pixi-spine-3.8-4.0.6.js` | `60c6a0f32d6b391015c2fff0c112c89ab3823aa495d79483fee59bcf2035f3ef` |
+| `@esotericsoftware/spine-pixi-v7` | 4.2.119 | `src/vendor/spine/spine-pixi-v7-4.2.119.min.js` | `4fdf0795b255f2b3fc7beb4cb7a20bc1bdc9765080eeec9814aa389582e3cdd4` |
+| `jszip` | 3.10.1 | `src/vendor/spine/jszip-3.10.1.min.js` | `acc7e41455a80765b5fd9c7ee1b8078a6d160bbbca455aeae854de65c947d59e` |
+
+### 加载方式
+
+`src/spine/runtime.js` 使用：
+
+1. `window.AgentSpaces.srcFileUrl('vendor/spine/<file>')` 生成同源 URL。
+2. `fetch()` 获取本地 dist 文本。
+3. 间接 `eval` 在全局作用域初始化 `window.PIXI`、`PIXI.spine`、`window.JSZip`。
+4. 解析 JSON 的 `skeleton.spine`：3.8 使用 `PIXI.spine`，4.2 按需加载官方 `spine-pixi-v7` IIFE 并缓存独立 namespace。
+5. Promise 缓存保证重复打开 Dialog 时不重复加载。
+6. PixiJS 必须严格匹配 `7.3.3`，避免复用其它功能遗留的不同主版本全局对象。
+
+### 升级 dist
+
+使用固定 jsDelivr npm dist 路径下载，更新文件名后同步修改 `runtime.js` 和上表：
+
+```text
+https://cdn.jsdelivr.net/npm/pixi.js@7.3.3/dist/pixi.min.js
+https://cdn.jsdelivr.net/npm/@pixi-spine/all-3.8@4.0.6/dist/pixi-spine-3.8.js
+https://cdn.jsdelivr.net/npm/@esotericsoftware/spine-pixi-v7@4.2.119/dist/iife/spine-pixi-v7.min.js
+https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js
+```
+
+项目本身没有 `package.json`，不需要 `npm install` 或构建步骤。
+
+## 编辑核心
+
 | 文件 | 职责 |
 |---|---|
-| `reskinPipeline.js` | **核心串联**：runReskin（全局换肤）+ runInpaintSlot（局部重绘）+ geminiRedraw 公共函数 |
-| `compositeBuilder.js` | [snapshot\|atlas] 合成 + 裁半边 + ATLAS_RESKIN_PROMPT |
-| `explodedComposer.js` | 爆炸图合成 + EXPLODED_RESKIN_PROMPT |
-| `shapeSegmenter.js` | 形状交集分割（buildOriginalSilhouettes / segmentByShapeIntersection / applyMaskToRegion）|
-| `atlasReader.js` | 解析 .atlas 文本 → regions + safeFilename |
-| `atlasPacker.js` | shelf bin-packing + nextPow2 |
-| `atlasRepack.js` | 打包 region 成新 sheet + 写 .atlas 文本 |
-| `skinWriter.js` | 往 spine JSON 加 skin + regionToSlotMap（兼容 3.8/4.0）|
-| `canvasUtils.js` | Canvas 图像操作（loadImage/cropRegionRotated/erodeAlpha/pasteToSheet）|
-| `spineDataToJson.js` | 从 pixi-spine 实例提取最小 spine JSON（.skel 支持，主应用侧备用）|
+| `src/spine/runtime.js` | 本地 dist 加载、版本检查和缓存 |
+| `src/spine/core/SpineEditorApp.js` | Pixi Application、视图、模式、播放速度、截图、atlas 热替换、变换和历史 |
+| `src/spine/core/ViewUtils.js` | 适应视图的纯函数缩放与居中计算 |
+| `src/spine/core/BoneGizmoLayer.js` | 骨骼连线、关节点、命中测试、移动和旋转 |
+| `src/spine/core/CoordinateUtils.js` | Spine/Pixi 坐标转换 |
+| `src/spine/core/HistoryManager.js` | 骨骼变换快照、撤销/重做 |
+| `src/spine/core/RecordManager.js` | `captureStream + MediaRecorder` WebM 录制 |
+| `src/spine/loaders/SpineLoader.js` | `.skel/.json/.atlas/.png` 解析、动画/皮肤/骨骼树、显隐 |
+| `src/spine/exporters/PoseExporter.js` | 当前骨骼姿势 JSON |
+| `src/spine/exporters/SpineJsonExporter.js` | 从运行时实例提取换肤需要的最小 Spine JSON |
+| `src/spine/components/SpinePanels.jsx` | 角色库、骨骼树、变换 React UI |
+| `src/spine/data/mainData.json` | 角色索引 |
+| `src/spine/test/BoneGizmoLayer.test.js` | 骨骼坐标回归测试 |
+| `src/spine/test/ViewUtils.test.js` | 适应视图居中、缩放上限和窄视口回归测试 |
 
-**组件**：
-| 文件 | 职责 |
+### 坐标约定
+
+- `bone.worldX/worldY` 是 skeleton 空间坐标。
+- Gizmo 与 Spine 实例同挂在 `spineContainer` 下。
+- `_boneToContainer()` 只应用 Spine 实例的 `localTransform`，不重复应用容器缩放/平移或 `worldTransform`。
+- 每帧绘制前调用 `spineContainer.updateTransform()`，避免读取上一帧矩阵。
+- 相关行为由 `BoneGizmoLayer.test.js` 覆盖。
+
+### 播放与视图约定
+
+- 播放速度保存在 `SpineEditorApp.playbackSpeed`，通过 `spine.state.timeScale` 应用；切换角色后继续沿用当前速度。
+- `fitView()` 必须先把 `spineContainer` 恢复到单位缩放和零平移，再读取 `spine.getBounds()`。
+- 适应视图使用 60px padding，缩放范围 `0.1x`～`5x`，与手动滚轮缩放上限一致。
+
+## 换肤调用链
+
+`ReskinPanel` 不再发送消息，直接接收 workflow/model 配置与四个函数：
+
+```js
+{
+  workflowId,
+  processingModel,
+  replaceAtlas(pngDataUrl, name),
+  requestSnapshot(),
+  requestSpineJson(),
+  onReskinComplete(result),
+}
+```
+
+- `workflowId` 来自全局设置 `editImageWorkflowId`。
+- `processingModel` 由右上角设置对话框选择，候选值来自全局设置 `editImageModels`，当前选择保存在 localStorage。
+- `edit_image` 输入固定为 `{ images, prompt, model, aspect, size }`；当前尺寸使用 `2k`，比例按输入图宽高选择最接近的工作流支持值。
+
+### 全局换肤 `runReskin`
+
+```text
+Canvas snapshot + 原 atlas sheet + .atlas + Spine JSON
+  → atlas/exploded composite
+  → edit_image workflow（模型由编辑器设置选择）
+  → sam 或 bg_components 分割
+  → 可选 erodeAlpha
+  → atlas repack + addSkin
+  → replaceAtlasTexture 热预览
+  → 历史记录 + onReskinComplete
+```
+
+### 局部重绘 `runInpaintSlot`
+
+```text
+选择 slot
+  → 从 default skin 映射目标 atlas region
+  → 裁出单 region
+  → edit_image workflow 局部重绘
+  → rembg 去背景
+  → repack + addSkin
+  → 热预览 + onReskinComplete
+```
+
+## 导出与节点持久化
+
+| 操作 | 实际行为 |
 |---|---|
-| `src/components/ReskinPanel.jsx` | 换肤面板：全局/局部切换 + method/segMethod 选 + 侵蚀开关 + 日志 + 历史 |
-| `src/components/SpineEditorDialog.jsx` | React 编排：runtime、Canvas、工具栏、侧边栏、导出 |
-| `src/components/nodes/SpineEditorNode.jsx` | 节点：FileUpload + 打开编辑器 + onReskinComplete 上传三件套 |
+| 截图 | Canvas PNG → `uploadFile` → `data.output.images`；当前实现随后关闭 Dialog |
+| 姿势 | JSON 字符串 → `data.exportedPose` |
+| 录制 | 开始时自动适应视图并锁定缩放/平移，隐藏骨骼 Gizmo，将角色屏幕包围盒（含 32px 边距）逐帧裁剪为 WebM；停止后恢复交互并预览 |
+| 下载 Spine | 原始三件套由 JSZip 在浏览器打包并直接下载，不写节点 output |
+| AI 换肤 | 新 PNG、`.atlas`、Spine JSON 上传；写入 `data.reskinAssets`，PNG 写入 `data.output.images` |
 
-**注册**（6 处，刷新即生效）：constants.js / canvas-constants.js / api.js / tools.js / RightPanel.jsx 的 `spineEditor` 条目。
-
-### 编辑核心（`src/spine/`）
-| 文件 | 职责 |
-|---|---|
-| `core/SpineEditorApp.js` | Pixi 封装：渲染/缩放/模式/截图 + replaceAtlasTexture + getAtlasInfo |
-| `core/BoneGizmoLayer.js` | 骨骼连线+圆点+拖拽交互 |
-| `loaders/SpineLoader.js` | 加载 spine（挂 _atlas/_baseTexture 供热加载）|
-| `exporters/PoseExporter.js` | 姿势 JSON 导出 |
-| `exporters/SpineJsonExporter.js` | **新增**：从 spine 实例导出最小 JSON（支持 .skel）|
-| `components/SpinePanels.jsx` | 宿主 UI：角色库、骨骼树、变换面板 |
-| `runtime.js` | 从 `src/vendor/spine/` 加载 PixiJS、pixi-spine、JSZip |
-
-## 更新第三方 dist
-
-固定版本文件保存在 `src/vendor/spine/`。升级时从 npm 官方包的 jsDelivr dist 路径下载，并同步更新 `src/spine/runtime.js` 文件名与本节版本记录；项目本身无需 npm install 或构建。
+换肤不会修改原始 `.skel`；`reskinAssets.skel` 保留原 URL，新增 Spine JSON 单独上传。
 
 ## 插件依赖
 
-换肤功能依赖两个插件（需在宿主配置）：
-- **nano-banana**（`workflow.nano-banana`）：AI 图像编辑，动作 `nano_banana_edit_image`，需配置 apiKey
-- **rembg**（`workflow.rembg`）：背景去除/SAM 分割，动作 `rembg_sam_segment` / `rembg_remove`，需配置 baseUrl
+`manifest.json` 已声明：
+
+```json
+{
+  "enabledPlugins": [
+    "@agent-spaces/builtin",
+    "workflow.rembg"
+  ]
+}
+```
+
+- `@agent-spaces/builtin`：通过 `execute_workflow_sync` 执行画布设置中的 `edit_image` workflow。
+- `workflow.rembg`：`rembg_sam_segment` / `rembg_remove`，需要插件侧 baseUrl。
+
+## 节点注册位置
+
+- `src/utils/constants.js`：节点类型和元信息。
+- `src/utils/canvas-constants.js`：ReactFlow 组件、默认尺寸和初始数据。
+- `src/components/RightPanel.jsx`：新增节点列表。
+- `src/api.js`：Agent API 类型和标签。
+- `src/tools.js`：Agent tool schema/说明。
+- `src/components/nodes/SpineEditorNode.jsx`：节点实现。
+
+## 已完成验证
+
+### 静态验证
+
+- 6 个本轮修改 JS/JSX 文件通过 Babel React preset 转译。
+- 140 个非 vendor 文件相对 import 闭环通过。
+- `manifest.json` JSON 解析通过。
+- `git diff --check` 通过。
+- `node --test src/spine/test/*.test.js`：5/5 通过。
+
+### 浏览器验证
+
+- 本地 dist 路由均返回 HTTP 200。
+- Chrome 中确认：`PIXI.VERSION === '7.3.3'`。
+- `PIXI.Application`、`PIXI.spine.Spine`、`SkeletonBinary`、`JSZip` 均成功初始化。
+- `SpineEditorApp` 创建 WebGL renderer，画布尺寸 `640×480`，Gizmo 初始化成功。
+- 真实角色 `Abercrombie` 解析成功：Spine `3.8.99`、52 骨骼、21 动画、1 皮肤、54 atlas regions。
 
 ## 已知限制
 
-1. **角色库远程加载**：`loadFromLibrary` 走 `FrankoFPM.github.io/Spine-Viewer-Web`，依赖该 gh-pages 在线
-2. **bg_components 精度**：形状交集法要求换肤 pose-consistent；部件挪位时精度有限（flood fill + IoU fallback 未实现）
-3. **SAM prompt**：用 region bbox 中心点；精度不足时可改 box prompt
-4. **bundle 体积**：pixi+pixi-spine gzip 约 213KB，首次加载 1-2 秒
+1. 角色索引在本地，但 `.skel/.atlas/.png` 仍从 jsDelivr 上固定的 `FrankoFPM/Spine-Viewer-Web@gh-pages` 分支加载，依赖网络和远端 CDN。
+2. 当前支持 Spine 3.8 二进制/JSON 和 4.2 JSON；Spine 4.2 二进制及其他 major.minor 版本尚未路由。
+3. `bg_components` 要求新图与原 pose/轮廓接近，部件明显位移时精度有限。
+4. SAM 当前使用 region bbox 中心点 prompt，复杂部件可考虑升级为 box prompt。
+5. atlas 热预览复用当前 UV，要求新 sheet 布局与当前 atlas 兼容；导出的新 `.atlas` 才是最终布局依据。
+6. ZIP 下载当前统一把骨架文件命名为 `<name>.skel`，即使输入源是 `.json`。
+7. MediaRecorder/canvas.captureStream 依赖 Chromium 等现代浏览器，Safari 兼容性有限。
 
-## 验收路径
+### Spine 4.2 上传问题与修复
 
-### 骨骼编辑器
-1. 刷新页面 → 右侧「编辑」分类有「🦴 骨骼编辑器」卡片
-2. 拖入画布 → 上传 .skel/.json + .atlas + .png → 点「打开骨骼编辑器」→ 对话框加载
-3. 左侧角色库选角色 / 骨骼树点选 / 左键拖移动 / 右键拖旋转 / Ctrl+Z 撤销
-4. 导出截图/姿势/录制/三件套 → 经 uploadFile 回传节点
+2026-07-30 上传以下三件套时，文件上传、URL 组装、canvas 挂载和编辑器初始化均成功：
 
-### AI 换肤
-1. 打开骨骼编辑器 → 右侧「🎨 AI 换肤」面板
-2. 全局换肤：选合成方法(atlas/exploded) + 分割方法(sam/bg_components) + 输入描述 → 开始
-3. .skel 资源也能换肤（日志显示「从编辑器导出 spine JSON」）
-4. 局部重绘：切到局部模式 → 选部位 → 输入描述 → 重绘该部位
-5. 观察日志：合成→Gemini→分割进度(N/总数)→打包→完成
-6. 完成后画布热加载预览 + 历史记录可点击应用
-7. 节点 output 含新三件套 URL（供下游连线）
+```text
+character-template-slim-annotated-2048.atlas
+character-template-slim-annotated-2048.json
+skin-4bf5e782fbbc6a3c.png
+```
 
-## Suggested Skills
+骨架 JSON 声明 Spine `4.2.43`，旧 3.8 loader 明确输出：
 
-- **write-mini-app-code**（`docs/skills/write-mini-app-code/SKILL.md`）— 改本 mini-app 前必读
-- **diagnose** — 若有新的骨骼线错位/加载失败/换肤失败 bug，用此 skill 系统化诊断
-- **handoff** — 继续交接时用
+```text
+Spine 3.8 loader cant load version 4.2.43
+Invalid timeline type for a bone: inherit (右腿2)
+```
+
+结论：该失败不是 FileUpload、宿主上传、Dialog 生命周期或资源 URL 问题，而是运行时版本不兼容。现已增加官方 `spine-pixi-v7@4.2.119` 独立 runtime，并在解析前读取 JSON `skeleton.spine` 路由；3.8 仍使用原 `PIXI.spine`，两套 parser 不覆盖彼此。
+
+## 最短验收路径
+
+1. 打开 `game-asset-canvas`，新增“骨骼编辑器”节点。
+2. 上传 Spine 3.8 三件套或从角色库选择角色，确认动画和骨骼树出现；再上传 `pixel_female_mage`，确认 Spine 4.2.43 正常显示。
+3. 选择骨骼，验证拖拽、数值变换、撤销/重做和适应视图；播放模式切换 `0.25x`～`2x`。
+4. 停止 WebM 录制后确认出现预览 Dialog；分别验证“导出到画布”和“下载视频”。
+5. 点击右上角设置选择处理模型；在右侧换肤中分别验证 `edit_image` 全局换肤、局部重绘、热预览和历史重新应用。
+6. 检查节点 `output.images`、`output.videos`、`exportedPose`、`reskinAssets`。
+
+## 后续接手建议
+
+- 修改 mini-app 前先读 `docs/skills/write-mini-app-code/SKILL.md`。
+- 加载/坐标问题优先检查 `runtime.js`、`SpineLoader.js`、`BoneGizmoLayer.js`。
+- 换肤问题按 `ReskinPanel → reskinPipeline → 插件响应 → 分割 → repack` 顺序排查。
+- 出现 `loader cant load version` 或 `Invalid timeline type` 时先检查骨架 Spine 版本，不要继续排查上传链路。
+- 更新第三方版本时必须重新做浏览器全局导出检查和真实角色解析验证。

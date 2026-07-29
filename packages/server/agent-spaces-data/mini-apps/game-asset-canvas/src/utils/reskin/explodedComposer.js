@@ -5,8 +5,8 @@
  * 迭代推开重叠直到每对间有 padding 间隙，得到一张「爆炸视图」合成图。
  *
  * 与 atlas 方法（[snapshot|atlas] 左右并排）的区别：
- * exploded 不需要 snapshot，直接用 region 摆放图作为 Gemini 输入和分割源。
- * 给 Gemini 更强的解剖上下文（头→身→肢），跨部位风格一致性通常更好。
+ * exploded 不需要 snapshot，直接用 region 摆放图作为 AI 编辑输入和分割源。
+ * 给处理模型更强的解剖上下文（头→身→肢），跨部位风格一致性通常更好。
  */
 import { cropRegionRotated } from './canvasUtils';
 

@@ -21,7 +21,9 @@ import { cropRegionRotated, loadImage } from '../utils/reskin/canvasUtils';
  * @param {Promise<object|null>} props.requestSpineJson 从当前编辑器实例导出 spine JSON（支持 .skel）
  * @param {(assets:{skel,atlas,png,spineJson}) => void} [props.onReskinComplete] 换肤完成
  */
-export default function ReskinPanel({ assets, replaceAtlas, requestSnapshot, requestSpineJson, onReskinComplete }) {
+export default function ReskinPanel({
+  assets, workflowId, processingModel, replaceAtlas, requestSnapshot, requestSpineJson, onReskinComplete,
+}) {
   const [prompt, setPrompt] = useState('');
   const [skinName, setSkinName] = useState('');
   const [method, setMethod] = useState('atlas');         // 'atlas' | 'exploded'
@@ -123,7 +125,8 @@ export default function ReskinPanel({ assets, replaceAtlas, requestSnapshot, req
         skinName: finalSkinName, prompt,
       }, {
         method, segMethod, erode, erodePx,
-        nanoModel: 'gemini-2.5-flash-image-preview',
+        workflowId,
+        model: processingModel,
         onLog: (step, msg, data) => addLog(step, msg, data),
       });
 
@@ -150,7 +153,7 @@ export default function ReskinPanel({ assets, replaceAtlas, requestSnapshot, req
     } finally {
       setRunning(false);
     }
-  }, [prompt, assets, method, segMethod, erode, erodePx, finalSkinName, requestSnapshot, requestSpineJson, replaceAtlas, onReskinComplete, addLog, spineName]);
+  }, [prompt, assets, method, segMethod, erode, erodePx, finalSkinName, requestSnapshot, requestSpineJson, replaceAtlas, onReskinComplete, addLog, spineName, workflowId, processingModel]);
 
   /** per-slot 局部重绘 */
   const handleInpaintSlot = useCallback(async () => {
@@ -199,7 +202,8 @@ export default function ReskinPanel({ assets, replaceAtlas, requestSnapshot, req
         regionCanvas, spineJson, regions, atlasSheet: atlasSheetImg,
       }, {
         erode, erodePx,
-        nanoModel: 'gemini-2.5-flash-image-preview',
+        workflowId,
+        model: processingModel,
         onLog: (step, msg, data) => addLog(step, msg, data),
       });
 
@@ -214,7 +218,7 @@ export default function ReskinPanel({ assets, replaceAtlas, requestSnapshot, req
     } finally {
       setRunning(false);
     }
-  }, [prompt, assets, selectedSlot, erode, erodePx, finalSkinName, requestSpineJson, replaceAtlas, onReskinComplete, addLog]);
+  }, [prompt, assets, selectedSlot, erode, erodePx, finalSkinName, requestSpineJson, replaceAtlas, onReskinComplete, addLog, workflowId, processingModel]);
 
   const deleteHistory = useCallback((name, e) => {
     e?.stopPropagation();
@@ -227,7 +231,7 @@ export default function ReskinPanel({ assets, replaceAtlas, requestSnapshot, req
 
   const stepLabel = (step) => ({
     snapshot: '截图', load: '加载', pipeline: '换肤', parse: '解析', compose: '合成',
-    upload: '上传', gemini: 'Gemini', split: '裁切', segment: '分割', repack: '打包',
+    upload: '上传', workflow: '工作流', split: '裁切', segment: '分割', repack: '打包',
     skin: '皮肤', preview: '预览', apply: '应用', inpaint: '局部', done: '完成', error: '错误',
   }[step] || step);
 

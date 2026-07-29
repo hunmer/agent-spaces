@@ -1,7 +1,7 @@
 /**
  * 合成 [snapshot | atlas_sheet] 左右并排图（对译 app/backend/reskin/atlas_compose.py）。
  *
- * Gemini 收到单张含两半的图：左半=角色渲染（颜色/风格参考），右半=atlas sheet（重绘目标）。
+ * 处理模型收到单张含两半的图：左半=角色渲染（颜色/风格参考），右半=atlas sheet（重绘目标）。
  * 较矮的一半垂直居中，上下白底填充。
  */
 

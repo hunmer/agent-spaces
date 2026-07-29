@@ -2,7 +2,7 @@
  * Canvas 图像工具 —— 前端替代 PIL 的图像操作。
  *
  * 提供 dataUrl↔Image↔Canvas 互转、裁剪、粘贴、按 bbox+rotate 裁 region、
- * 侵蚀 alpha 边缘（去 Gemini 白边）等能力，供 reskin pipeline 使用。
+ * 侵蚀 alpha 边缘（去 AI 重绘白边）等能力，供 reskin pipeline 使用。
  *
  * 浏览器原生 Canvas 2D API，无第三方依赖。
  */
@@ -96,7 +96,7 @@ export function cropRegionRotated(sheet, x, y, w, h, rotate = 0) {
 }
 
 /**
- * 侵蚀 alpha 边缘（去 Gemini 重绘后的白边）。
+ * 侵蚀 alpha 边缘（去 AI 重绘后的白边）。
  * 简化版：遍历像素，alpha < 阈值的置 0，边缘 N 像素的 alpha 衰减。
  * radius > 0 才生效；返回新 canvas（不改原）。
  *

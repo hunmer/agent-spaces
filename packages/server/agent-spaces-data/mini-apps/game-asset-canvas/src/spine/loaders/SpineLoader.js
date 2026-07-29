@@ -18,7 +18,15 @@
  *   - TextureAtlas, AtlasAttachmentLoader
  *   - Spine (渲染类)
  */
-import { PIXI, getSpineRuntime } from '../runtime.js';
+import { PIXI, getSpineRuntime, loadSpine42Runtime } from '../runtime.js';
+
+export function getJsonSpineVersion(jsonText) {
+  try {
+    return String(JSON.parse(jsonText)?.skeleton?.spine || '');
+  } catch {
+    throw new Error('Spine JSON 格式无效');
+  }
+}
 
 /**
  * 把 base64 dataUrl 转成 ArrayBuffer（用于 .skel 二进制解析）。
@@ -49,10 +57,6 @@ async function dataUrlToText(dataUrl) {
  * @throws {Error} 版本不匹配 / 文件缺失 / 解析失败
  */
 export async function loadSpine({ skel, atlas, png, name = 'spine' }) {
-  const {
-    Spine, SkeletonBinary, SkeletonJson,
-    TextureAtlas, AtlasAttachmentLoader,
-  } = getSpineRuntime();
   // 1. 准备数据
   let skelBytes;
   let atlasText;
@@ -92,20 +96,37 @@ export async function loadSpine({ skel, atlas, png, name = 'spine' }) {
     atlasText = atlas;
   }
 
+  const version = isJson ? getJsonSpineVersion(skelBytes) : '';
+  const useSpine42 = version.startsWith('4.2');
+  if (isJson && version && !version.startsWith('3.8') && !useSpine42) {
+    throw new Error(`暂不支持 Spine ${version}，当前支持 3.8 和 4.2 JSON`);
+  }
+  const runtime = useSpine42 ? await loadSpine42Runtime() : getSpineRuntime();
+  const {
+    Spine, SkeletonBinary, SkeletonJson,
+    TextureAtlas, AtlasAttachmentLoader,
+  } = runtime;
+
   // 2. 加载贴图（PIXI.BaseTexture.from 兼容 dataUrl 和 URL）
   const baseTexture = PIXI.BaseTexture.from(png);
 
   // 3. 解析 atlas
-  const spineAtlas = new TextureAtlas(atlasText, (line, callback) => {
-    callback(baseTexture);
-  });
+  let spineAtlas;
+  if (useSpine42) {
+    spineAtlas = new TextureAtlas(atlasText);
+    for (const page of spineAtlas.pages) page.setTexture(runtime.SpineTexture.from(baseTexture));
+  } else {
+    spineAtlas = new TextureAtlas(atlasText, (_line, callback) => {
+      callback(baseTexture);
+    });
+  }
   const attachmentLoader = new AtlasAttachmentLoader(spineAtlas);
 
-  // 4. 解析骨架（按格式选 parser，版本自动路由 3.8/4.0）
+  // 4. 解析骨架（按格式选 parser，JSON 版本自动路由 3.8/4.2）
   let spineData;
   if (isJson) {
     const jsonParser = new SkeletonJson(attachmentLoader);
-    spineData = jsonParser.readSkeletonData(skelBytes);
+    spineData = jsonParser.readSkeletonData(useSpine42 ? JSON.parse(skelBytes) : skelBytes);
   } else {
     const binaryParser = new SkeletonBinary(attachmentLoader);
     spineData = binaryParser.readSkeletonData(skelBytes);
@@ -116,8 +137,15 @@ export async function loadSpine({ skel, atlas, png, name = 'spine' }) {
   }
 
   // 5. 构造 Spine 实例
-  const spine = new Spine(spineData);
+  const spine = useSpine42
+    ? new Spine({ skeletonData: spineData, autoUpdate: false })
+    : new Spine(spineData);
   spine.name = name;
+  if (!spine.spineData) spine.spineData = spineData;
+  if (useSpine42 && runtime.Physics) {
+    const updateWorldTransform = spine.skeleton.updateWorldTransform.bind(spine.skeleton);
+    spine.skeleton.updateWorldTransform = (physics = runtime.Physics.update) => updateWorldTransform(physics);
+  }
 
   // 记录版本（用于 UI 提示）
   spine._spineVersion = spineData.version || 'unknown';

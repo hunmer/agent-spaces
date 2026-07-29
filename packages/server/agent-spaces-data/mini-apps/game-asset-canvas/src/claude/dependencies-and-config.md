@@ -41,6 +41,7 @@
 | `img-comparison-slider.js` | - | - | `(0,eval)` 注册 customElement | 图片对比节点 |
 | `spine/pixi-7.3.3.min.js` | 7.3.3 | 444KB | `(0,eval)` 挂 `window.PIXI` | Spine 渲染 |
 | `spine/pixi-spine-3.8-4.0.6.js` | 4.0.6 | 145KB | `(0,eval)` 挂 `PIXI.spine` | Spine 3.8 解析/渲染 |
+| `spine/spine-pixi-v7-4.2.119.min.js` | 4.2.119 | 190KB | 按 JSON 版本懒加载 IIFE，缓存独立 namespace | Spine 4.2 JSON 解析/渲染 |
 | `spine/jszip-3.10.1.min.js` | 3.10.1 | 95KB | `(0,eval)` 挂 `window.JSZip` | Spine 三件套 ZIP |
 | `pixelorama-web/` | Godot 4.7 导出 | ~45MB | iframe（含 index.pck 12MB + index.wasm 37MB + service worker） | 像素编辑器节点 |
 

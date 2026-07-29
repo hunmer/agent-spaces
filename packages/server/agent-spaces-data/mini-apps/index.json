@@ -409,7 +409,6 @@
     "mainFile": "index.jsx",
     "enabledPlugins": [
       "@agent-spaces/builtin",
-      "workflow.nano-banana",
       "workflow.rembg"
     ],
     "agentPermissions": [
@@ -464,6 +463,6 @@
       }
     ],
     "createdAt": "2026-07-22T00:00:00.000Z",
-    "updatedAt": "2026-07-29T17:13:18.932Z"
+    "updatedAt": "2026-07-29T18:37:49.380Z"
   }
 ]

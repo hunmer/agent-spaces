@@ -88,7 +88,8 @@ export default function SpineEditorNode({ id, data, selected }) {
       output: { ...prevOutput, videos: [...prevVideos, url] },
       error: undefined,
     });
-  }, [onUpdate, data?.output]);
+    data?.onExportVideos?.([url]);
+  }, [onUpdate, data?.output, data?.onExportVideos]);
 
   // 导出姿势 JSON 回调（文本，不经 uploadFile）
   const handlePoseExport = useCallback((poseJson) => {

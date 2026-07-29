@@ -16,3 +16,30 @@
 - 2026-07-29：Chrome 验证 PixiJS 7.3.3、pixi-spine、JSZip 全局加载成功，SpineEditorApp WebGL 初始化成功。
 - 2026-07-29：真实角色 Abercrombie（Spine 3.8.99）解析成功：52 骨骼、21 动画、1 皮肤、54 atlas regions。
 - 2026-07-29：最终 Babel、git diff check、坐标测试通过；开发服务保留在 3000/3100 端口供验收。
+- 2026-07-30：开始修复 Spine 角色库选择无响应；已确认调用链为 SpineAssetLibrary → SpineEditorDialog.loadAssets → loadSpine。
+- 2026-07-30：确认初始化竞态是静默无响应根因；已增加待加载资源缓存，并在编辑器就绪后自动消费。
+- 2026-07-30：`SpineEditorDialog.jsx` Babel 转译、`git diff --check`、Spine 现有测试 2/2 均通过；按用户要求未做浏览器实测。
+- 2026-07-30：根据二次反馈修正根因：以 callback ref/state 监听 Dialog canvas 实际挂载，触发编辑器初始化；增加四处关键生命周期调试日志。
+- 2026-07-30：二次修复通过 Babel 转译、`git diff --check` 和 Spine 测试 2/2；未使用浏览器实测。
+- 2026-07-30：日志确认 GitHub Pages 代理请求三件套均返回 500；已将角色库源切换到 jsDelivr 的 `gh-pages` 分支。
+- 2026-07-30：Node `fetch` 模拟代理请求 `yalisangna_alter` 三件套均为 200；两个相关 JSX Babel 转译与 `git diff --check` 通过。
+- 2026-07-30：开始实现 Spine 播放速度、edit_image 模型设置和适应视图修复。
+- 2026-07-30：核心层已增加 playbackSpeed；fitView 改为清除旧视图变换后计算，并新增纯函数与 3 个单元测试。
+- 2026-07-30：顶栏已增加播放速度选择和设置按钮；模型设置复用全局 editImageModels，并传入换肤面板。
+- 2026-07-30：换肤重绘已从 Nano Banana 插件切换到统一 edit_image workflow，并移除 manifest 的 Nano Banana 依赖。
+- 2026-07-30：6 个修改 JS/JSX 转译、140 文件相对 import、manifest、diff 格式均通过；Spine 单元测试 5/5 通过。按要求未使用浏览器实测。
+- 2026-07-30：开始修复 Spine 录制预览导出、右上角按钮重叠及本地节点文件加载报错。
+- 2026-07-30：已读交接文档并确认本地样例为 Spine 4.2.43；现有 pixi-spine 3.8 runtime 是加载报错根因。
+- 2026-07-30：交接文档中的 mini-app skill 相对路径已失效，正在仓库内定位实际规范文件。
+- 2026-07-30：已读取实际 mini-app 开发规范、项目约定及录制/加载源码；确认录制自动上传点和按钮重叠布局位置。
+- 2026-07-30：已核对 Spine 官方文档与 npm 产物，确定使用 `spine-pixi-v7@4.2.119` IIFE 按版本加载 4.2 JSON。
+- 2026-07-30：已实现录制预览与手动导出/下载、标题栏关闭按钮避让、Spine 3.8/4.2 JSON 版本路由，并同步本地 vendor 与项目文档。
+- 2026-07-30：Spine 单元测试 8/8、4 个修改文件 Babel 转译、141 文件相对 import、vendor SHA-256、diff 格式均通过；真实 `pixel_female_mage` 4.2 parser 验证成功。
+- 2026-07-30：收到浏览器运行反馈，确认 4.2 IIFE 已执行但严格模式下未暴露到 `window.spine`；已改为直接返回 namespace，并加入导出键诊断日志。
+- 2026-07-30：修复后按浏览器无 CommonJS 环境验证官方 IIFE namespace 与真实 4.2 样例解析成功；Spine 测试 8/8、Babel 与 diff 检查通过。
+- 2026-07-30：录制开始时隐藏 BoneGizmoLayer，停止录制或发生异常时恢复录制前可见状态。
+- 2026-07-30：录制显隐改动通过 Babel、Spine 测试 8/8 与 diff 格式检查。
+- 2026-07-30：开始将 Spine 录制源从完整编辑画布改为角色屏幕包围盒区域。
+- 2026-07-30：新增中间裁剪 Canvas 和角色 bounds 坐标换算；裁剪测试及全部 Spine 测试 10/10、Babel、diff 检查通过。
+- 2026-07-30：录制开始前自动执行 fitView，并在录制期间锁定滚轮缩放、平移和适应视图按钮。
+- 2026-07-30：视图锁定新增 2 个回归测试；全部 Spine 测试 12/12、Babel 和 diff 检查通过。

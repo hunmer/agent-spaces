@@ -6,7 +6,7 @@ import {
 } from '@agent-spaces/ui';
 import { getBoneTree } from '../loaders/SpineLoader.js';
 
-const LIBRARY_BASE = 'https://FrankoFPM.github.io/Spine-Viewer-Web/assets/';
+const LIBRARY_BASE = 'https://cdn.jsdelivr.net/gh/FrankoFPM/Spine-Viewer-Web@gh-pages/assets/';
 const PAGE_SIZE = 48;
 
 export function SpineAssetLibrary({ disabled, onSelect }) {

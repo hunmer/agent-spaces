@@ -1,11 +1,13 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Badge, Bone, Button, Camera, CircleStop, Dialog, DialogContent,
-  DialogHeader, DialogTitle, Download, Loader, Maximize2, Play, Redo2,
-  Save, Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  DialogFooter, DialogHeader, DialogTitle, Download, Loader, Maximize2, Play, Redo2,
+  Save, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Settings2,
   Tabs, TabsContent, TabsList, TabsTrigger, Undo2, Video,
 } from '@agent-spaces/ui';
 import ReskinPanel from './ReskinPanel';
+import useSettings from '../hooks/useSettings';
+import { DEFAULT_EDIT_IMAGE_MODELS } from '../utils/settings';
 import { SpineEditorApp } from '../spine/core/SpineEditorApp';
 import { RecordManager } from '../spine/core/RecordManager';
 import { PoseExporter } from '../spine/exporters/PoseExporter';
@@ -18,17 +20,23 @@ import {
   SpineAssetLibrary, SpineBoneTree, SpineTransformPanel,
 } from '../spine/components/SpinePanels';
 
+const PLAYBACK_SPEEDS = ['0.25', '0.5', '1', '1.5', '2'];
+const RESKIN_MODEL_STORAGE_KEY = 'spine-editor:processing-model';
+
 export default function SpineEditorDialog({
   open, assets, onSave, onPoseExport, onExportVideo, onReskinComplete, onClose,
 }) {
-  const canvasRef = useRef(null);
+  const { settings: canvasSettings } = useSettings();
   const editorRef = useRef(null);
   const recorderRef = useRef(null);
   const visibilityRef = useRef(null);
   const loadedRawRef = useRef(null);
+  const pendingAssetsRef = useRef(null);
+  const recordingGizmoVisibleRef = useRef(true);
   const callbacksRef = useRef({ onSave, onPoseExport, onExportVideo, onReskinComplete });
   callbacksRef.current = { onSave, onPoseExport, onExportVideo, onReskinComplete };
 
+  const [canvasElement, setCanvasElement] = useState(null);
   const [ready, setReady] = useState(false);
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState('正在加载本地 Spine 运行时');
@@ -38,14 +46,37 @@ export default function SpineEditorDialog({
   const [animations, setAnimations] = useState([]);
   const [skins, setSkins] = useState([]);
   const [mode, setMode] = useState('pose');
+  const [playbackSpeed, setPlaybackSpeed] = useState(1);
   const [animation, setAnimation] = useState('');
   const [skin, setSkin] = useState('');
   const [selectedBone, setSelectedBone] = useState(null);
   const [modified, setModified] = useState(false);
   const [recording, setRecording] = useState(false);
+  const [recordPreview, setRecordPreview] = useState(null);
   const [revision, setRevision] = useState(0);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [processingModel, setProcessingModel] = useState(() => {
+    try { return localStorage.getItem(RESKIN_MODEL_STORAGE_KEY) || ''; }
+    catch { return ''; }
+  });
+
+  const processingModels = useMemo(() => {
+    const values = Array.isArray(canvasSettings.editImageModels)
+      ? canvasSettings.editImageModels.map((value) => String(value).trim()).filter(Boolean)
+      : [];
+    return values.length ? [...new Set(values)] : [...DEFAULT_EDIT_IMAGE_MODELS];
+  }, [canvasSettings.editImageModels]);
+
+  useEffect(() => {
+    if (processingModels.includes(processingModel)) return;
+    setProcessingModel(processingModels[0] || 'gpt-image-1');
+  }, [processingModel, processingModels]);
 
   const touchRevision = useCallback(() => setRevision((value) => value + 1), []);
+  const handleCanvasRef = useCallback((element) => {
+    setCanvasElement(element);
+    console.debug('[SpineEditor] canvas', element ? 'attached' : 'detached');
+  }, []);
 
   const urlToDataUrl = useCallback(async (url) => {
     if (!url) throw new Error('Spine 资源 URL 为空');
@@ -64,8 +95,19 @@ export default function SpineEditorDialog({
   }, []);
 
   const loadAssets = useCallback(async (source) => {
+    if (!source?.skel || !source?.atlas || !source?.png) {
+      setError('Spine 资源不完整：需要 .skel/.json、.atlas 和贴图');
+      setStatus('加载失败');
+      return;
+    }
     const editor = editorRef.current;
-    if (!editor || !source?.skel || !source?.atlas || !source?.png) return;
+    if (!editor) {
+      pendingAssetsRef.current = source;
+      console.debug('[SpineEditor] queued assets until editor is ready:', source.name || 'Spine');
+      setStatus(`编辑器初始化完成后加载 ${source.name || 'Spine'}...`);
+      return;
+    }
+    pendingAssetsRef.current = null;
     setLoading(true);
     setError('');
     setStatus(`正在加载 ${source.name || 'Spine'}...`);
@@ -114,18 +156,19 @@ export default function SpineEditorDialog({
   }, [touchRevision, urlToDataUrl]);
 
   useEffect(() => {
-    if (!open || !canvasRef.current) return undefined;
+    if (!open || !canvasElement) return undefined;
     let disposed = false;
     let editor = null;
 
     const initialize = async () => {
+      console.debug('[SpineEditor] initializing runtime');
       setReady(false);
       setError('');
       setStatus('正在加载本地 Spine 运行时');
       try {
         await loadSpineRuntime();
-        if (disposed || !canvasRef.current) return;
-        editor = new SpineEditorApp(canvasRef.current);
+        if (disposed) return;
+        editor = new SpineEditorApp(canvasElement);
         await editor.init();
         if (disposed) {
           editor.destroy();
@@ -133,7 +176,7 @@ export default function SpineEditorDialog({
         }
         editorRef.current = editor;
         visibilityRef.current = new BoneVisibility();
-        recorderRef.current = new RecordManager(canvasRef.current);
+        recorderRef.current = new RecordManager(canvasElement);
         editor.setCallbacks({
           onSelect: (boneValue) => {
             setSelectedBone(boneValue);
@@ -145,9 +188,12 @@ export default function SpineEditorDialog({
           },
           onModified: setModified,
         });
+        console.debug('[SpineEditor] editor ready');
         setReady(true);
         setStatus('编辑器已就绪');
-        if (assets) await loadAssets(assets);
+        const initialAssets = pendingAssetsRef.current || assets;
+        if (initialAssets) console.debug('[SpineEditor] loading initial assets:', initialAssets.name || 'Spine');
+        if (initialAssets) await loadAssets(initialAssets);
       } catch (err) {
         console.error('[SpineEditor] init failed:', err);
         setError(err?.message || String(err));
@@ -164,7 +210,7 @@ export default function SpineEditorDialog({
       editorRef.current = null;
       editor?.destroy();
     };
-  }, [open, assets, loadAssets, touchRevision]);
+  }, [open, assets, canvasElement, loadAssets, touchRevision]);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -196,6 +242,17 @@ export default function SpineEditorDialog({
   const handleAnimation = (value) => {
     setAnimation(value);
     editorRef.current?.setAnimation(value);
+  };
+
+  const handlePlaybackSpeed = (value) => {
+    const speed = Number(value);
+    setPlaybackSpeed(speed);
+    editorRef.current?.setPlaybackSpeed(speed);
+  };
+
+  const handleProcessingModel = (value) => {
+    setProcessingModel(value);
+    try { localStorage.setItem(RESKIN_MODEL_STORAGE_KEY, value); } catch { /* ignore */ }
   };
 
   const handleSkin = (value) => {
@@ -248,25 +305,68 @@ export default function SpineEditorDialog({
     if (!recorder || !editor?.spine) return;
     try {
       if (!recorder.isRecording) {
+        setRecordPreview(null);
         handleMode('play');
-        recorder.start({ fps: 30 });
+        editor.fitView();
+        editor.setViewInteractionEnabled(false);
+        recordingGizmoVisibleRef.current = editor.gizmo?.visible !== false;
+        editor.gizmo?.setVisible(false);
+        editor.app?.render();
+        recorder.start({ fps: 30, crop: editor.getRecordingBounds() });
         setRecording(true);
         setStatus('录制中');
         return;
       }
       setLoading(true);
       const dataUrl = await recorder.stop();
+      editor.setViewInteractionEnabled(true);
+      editor.gizmo?.setVisible(recordingGizmoVisibleRef.current);
       setRecording(false);
       if (!dataUrl) throw new Error('录制结果为空');
       const fileName = `${editor.spine.name || 'spine'}-${Date.now()}.webm`;
-      const url = await uploadDataUrl(dataUrl, fileName, 'video/webm');
-      if (url) callbacksRef.current.onExportVideo?.(url);
-      setStatus(`已导出视频 ${fileName}`);
+      setRecordPreview({ dataUrl, fileName });
+      setStatus(`录制完成 ${fileName}`);
     } catch (err) {
+      editor.setViewInteractionEnabled(true);
+      editor.gizmo?.setVisible(recordingGizmoVisibleRef.current);
       setError(err?.message || String(err));
       setRecording(false);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const exportRecordingToCanvas = async () => {
+    if (!recordPreview) return;
+    setLoading(true);
+    try {
+      const url = await uploadDataUrl(recordPreview.dataUrl, recordPreview.fileName, 'video/webm');
+      if (!url) throw new Error('视频上传失败');
+      callbacksRef.current.onExportVideo?.(url);
+      setStatus(`已导出视频 ${recordPreview.fileName}`);
+      setRecordPreview(null);
+    } catch (err) {
+      setError(err?.message || String(err));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const downloadRecording = async () => {
+    if (!recordPreview) return;
+    try {
+      const blob = await (await fetch(recordPreview.dataUrl)).blob();
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = recordPreview.fileName;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      setStatus(`已下载 ${recordPreview.fileName}`);
+    } catch (err) {
+      setError(err?.message || String(err));
     }
   };
 
@@ -312,7 +412,7 @@ export default function SpineEditorDialog({
         className="flex flex-col gap-0 overflow-hidden p-0"
         style={{ width: '96vw', maxWidth: '96vw', height: '94vh', maxHeight: '94vh' }}
       >
-        <DialogHeader className="border-b border-border px-4 py-3">
+        <DialogHeader className="border-b border-border px-4 py-3 pr-14">
           <div className="flex min-w-0 items-center justify-between gap-3">
             <div className="flex min-w-0 items-center gap-2">
               <Bone className="h-5 w-5 shrink-0" />
@@ -327,16 +427,25 @@ export default function SpineEditorDialog({
                 </TabsList>
               </Tabs>
               <CompactSelect value={animation} onValueChange={handleAnimation} options={animations} placeholder="动画" disabled={!spine || mode !== 'play'} />
+              <CompactSelect
+                value={String(playbackSpeed)}
+                onValueChange={handlePlaybackSpeed}
+                options={PLAYBACK_SPEEDS}
+                placeholder="速度"
+                disabled={!spine || mode !== 'play'}
+                formatOption={(value) => `${value}x`}
+              />
               <CompactSelect value={skin} onValueChange={handleSkin} options={skins} placeholder="皮肤" disabled={!spine} />
               <Button type="button" variant="ghost" size="icon-sm" title="撤销" disabled={!canUndo} onClick={() => { editor?.undo(); touchRevision(); }}><Undo2 className="h-4 w-4" /></Button>
               <Button type="button" variant="ghost" size="icon-sm" title="重做" disabled={!canRedo} onClick={() => { editor?.redo(); touchRevision(); }}><Redo2 className="h-4 w-4" /></Button>
-              <Button type="button" variant="ghost" size="icon-sm" title="适应视图" disabled={!spine} onClick={() => editor?.fitView()}><Maximize2 className="h-4 w-4" /></Button>
+              <Button type="button" variant="ghost" size="icon-sm" title="适应视图" disabled={!spine || recording} onClick={() => editor?.fitView()}><Maximize2 className="h-4 w-4" /></Button>
               <Button type="button" variant={recording ? 'destructive' : 'ghost'} size="icon-sm" title={recording ? '停止录制' : '录制'} disabled={!spine || !RecordManager.isSupported()} onClick={toggleRecord}>
                 {recording ? <CircleStop className="h-4 w-4" /> : <Video className="h-4 w-4" />}
               </Button>
               <Button type="button" variant="ghost" size="icon-sm" title="导出姿势" disabled={!spine} onClick={exportPose}><Save className="h-4 w-4" /></Button>
               <Button type="button" variant="ghost" size="icon-sm" title="导出截图" disabled={!spine || loading} onClick={exportScreenshot}><Camera className="h-4 w-4" /></Button>
               <Button type="button" variant="ghost" size="icon-sm" title="下载 Spine" disabled={!loadedRawRef.current || loading} onClick={downloadSpine}><Download className="h-4 w-4" /></Button>
+              <Button type="button" variant="ghost" size="icon-sm" title="设置" onClick={() => setSettingsOpen(true)}><Settings2 className="h-4 w-4" /></Button>
             </div>
           </div>
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -372,7 +481,7 @@ export default function SpineEditorDialog({
           </Tabs>
 
           <div className="relative min-w-0 flex-1 bg-muted">
-            <canvas ref={canvasRef} className="block h-full w-full" />
+            <canvas ref={handleCanvasRef} className="block h-full w-full" />
             {!spine && ready && !loading ? (
               <div className="pointer-events-none absolute inset-0 flex items-center justify-center text-sm text-muted-foreground">
                 从左侧选择角色或在节点中上传 Spine 三件套
@@ -391,6 +500,8 @@ export default function SpineEditorDialog({
             <TabsContent value="reskin" className="mt-0 min-h-0 flex-1">
               <ReskinPanel
                 assets={currentAssets}
+                workflowId={canvasSettings.editImageWorkflowId}
+                processingModel={processingModel}
                 replaceAtlas={replaceAtlas}
                 requestSnapshot={requestSnapshot}
                 requestSpineJson={requestSpineJson}
@@ -400,19 +511,93 @@ export default function SpineEditorDialog({
           </Tabs>
         </div>
       </DialogContent>
+      <SpineSettingsDialog
+        open={settingsOpen}
+        models={processingModels}
+        model={processingModel}
+        onModelChange={handleProcessingModel}
+        onClose={() => setSettingsOpen(false)}
+      />
+      <RecordingPreviewDialog
+        preview={recordPreview}
+        exporting={loading}
+        onExport={exportRecordingToCanvas}
+        onDownload={downloadRecording}
+        onClose={() => setRecordPreview(null)}
+      />
     </Dialog>
   );
 }
 
-function CompactSelect({ value, onValueChange, options, placeholder, disabled }) {
+function RecordingPreviewDialog({ preview, exporting, onExport, onDownload, onClose }) {
+  return (
+    <Dialog open={!!preview} onOpenChange={(nextOpen) => { if (!nextOpen) onClose?.(); }}>
+      <DialogContent
+        className="flex flex-col gap-0 overflow-hidden p-0"
+        style={{ width: 'calc(100vw - 2rem)', maxWidth: '860px', maxHeight: '82vh' }}
+      >
+        <DialogHeader className="border-b border-border px-4 py-3 pr-10">
+          <DialogTitle className="text-sm">录制预览</DialogTitle>
+        </DialogHeader>
+        <div className="flex min-h-0 flex-1 items-center justify-center bg-muted p-4">
+          {preview ? (
+            <video
+              key={preview.fileName}
+              src={preview.dataUrl}
+              controls
+              autoPlay
+              className="max-h-[62vh] max-w-full rounded border border-border bg-background"
+            />
+          ) : null}
+        </div>
+        <DialogFooter className="flex-row justify-end gap-2 border-t border-border px-4 py-3">
+          <Button type="button" onClick={onExport} disabled={!preview || exporting}>
+            {exporting ? <Loader className="h-4 w-4" /> : <Video className="h-4 w-4" />}
+            导出到画布
+          </Button>
+          <Button type="button" variant="outline" onClick={onDownload} disabled={!preview || exporting}>
+            <Download className="h-4 w-4" />
+            下载视频
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function CompactSelect({ value, onValueChange, options, placeholder, disabled, formatOption = (option) => option }) {
   return (
     <Select value={value || null} onValueChange={onValueChange} disabled={disabled}>
       <SelectTrigger size="sm" className="max-w-36">
-        <SelectValue>{value || placeholder}</SelectValue>
+        <SelectValue>{value ? formatOption(value) : placeholder}</SelectValue>
       </SelectTrigger>
       <SelectContent>
-        {options.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}
+        {options.map((option) => <SelectItem key={option} value={option}>{formatOption(option)}</SelectItem>)}
       </SelectContent>
     </Select>
+  );
+}
+
+function SpineSettingsDialog({ open, models, model, onModelChange, onClose }) {
+  return (
+    <Dialog open={open} onOpenChange={(nextOpen) => { if (!nextOpen) onClose?.(); }}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>骨骼编辑器设置</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-2 py-2">
+          <label htmlFor="spine-processing-model" className="text-sm font-medium">处理模型</label>
+          <Select value={model || null} onValueChange={onModelChange}>
+            <SelectTrigger id="spine-processing-model" className="w-full">
+              <SelectValue>{model || '选择模型'}</SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              {models.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-muted-foreground">模型列表来自画布全局设置中的编辑图片模型。</p>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }

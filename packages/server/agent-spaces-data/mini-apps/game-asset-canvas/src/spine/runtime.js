@@ -6,6 +6,8 @@ const RUNTIME_FILES = [
 ];
 
 let runtimePromise = null;
+let spine42Promise = null;
+let spine42Runtime = null;
 let jszipPromise = null;
 
 async function fetchVendor(fileName) {
@@ -28,6 +30,11 @@ async function evalGlobalVendor(fileName, wrapUmd = false) {
     return;
   }
   (0, eval)(code);
+}
+
+async function evalSpine42Vendor(fileName) {
+  const code = await fetchVendor(fileName);
+  return new Function(`${code}\nreturn typeof spine !== 'undefined' ? spine : null;`)();
 }
 
 export async function loadSpineRuntime() {
@@ -56,6 +63,34 @@ export function getSpineRuntime() {
     throw new Error('Spine 运行时尚未加载');
   }
   return window.PIXI.spine;
+}
+
+export async function loadSpine42Runtime() {
+  if (spine42Runtime?.Spine && spine42Runtime?.SkeletonJson) return spine42Runtime;
+  if (!spine42Promise) {
+    spine42Promise = (async () => {
+      await loadSpineRuntime();
+      const previousSpine = window.spine;
+      const previousRequire = window.require;
+      try {
+        const loaded = await evalSpine42Vendor('spine-pixi-v7-4.2.119.min.js');
+        console.debug('[SpineEditor] Spine 4.2 runtime exports:', loaded ? Object.keys(loaded).slice(0, 12) : []);
+        if (!loaded?.Spine || !loaded?.SkeletonJson || !loaded?.SpineTexture) {
+          throw new Error('Spine 4.2 本地运行时初始化失败');
+        }
+        spine42Runtime = loaded;
+        return loaded;
+      } finally {
+        window.spine = previousSpine;
+        if (previousRequire === undefined) delete window.require;
+        else window.require = previousRequire;
+      }
+    })().catch((error) => {
+      spine42Promise = null;
+      throw error;
+    });
+  }
+  return spine42Promise;
 }
 
 export async function getJSZip() {
