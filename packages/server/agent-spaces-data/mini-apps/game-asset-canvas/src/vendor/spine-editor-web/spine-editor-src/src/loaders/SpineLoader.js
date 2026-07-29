@@ -1,14 +1,20 @@
 /**
  * Spine 资源加载器。
  *
- * 复刻参考仓库 Spine-Viewer-Web 的 UploadAssets.loadAssets 逻辑，并扩展：
- * 1. 同时支持 .skel（二进制）和 .json（文本）两种骨架格式
- * 2. 通过 @pixi-spine/all-4.0 同时提供 3.8 和 4.0 运行时（单一包内含两个 runtime）
- * 3. 输入支持 base64 dataUrl（从父 iframe 注入）或同源 URL（角色库内置资源）
+ * 使用 @pixi-spine/all-3.8（与参考仓库 Spine-Viewer-Web 完全一致），
+ * 支持 Spine 3.8 格式（覆盖碧蓝航线角色库及大量老游戏资源）。
  *
- * @pixi-spine/all-4.0 导出：
- *   - SkeletonBinary (自动识别 3.8/4.0 版本)
- *   - SkeletonJson
+ * 注意：@pixi-spine 的 3.8 和 4.0 loader 导出同名 class（SkeletonBinary 等），
+ * 不能同时 import（命名冲突）。如需 4.0 支持，需在此按 .skel 版本路由到独立包。
+ * 当前内置角色库数据（碧蓝航线）全部为 3.8 格式，故用 all-3.8。
+ *
+ * 复刻参考仓库 UploadAssets.loadAssets 逻辑，扩展：
+ * 1. 同时支持 .skel（二进制）和 .json（文本）两种骨架格式
+ * 2. 输入支持 base64 dataUrl（从父 iframe 注入）或同源 URL（角色库内置资源）
+ *
+ * @pixi-spine/all-3.8 导出：
+ *   - SkeletonBinary (解析 3.8 二进制)
+ *   - SkeletonJson (解析 3.8 JSON)
  *   - TextureAtlas, AtlasAttachmentLoader
  *   - Spine (渲染类)
  */
@@ -16,7 +22,7 @@ import * as PIXI from 'pixi.js';
 import {
   Spine, SkeletonBinary, SkeletonJson,
   TextureAtlas, AtlasAttachmentLoader,
-} from '@pixi-spine/all-4.0';
+} from '@pixi-spine/all-3.8';
 
 /**
  * 把 base64 dataUrl 转成 ArrayBuffer（用于 .skel 二进制解析）。

@@ -1,19 +1,19 @@
-/* Spine 骨骼编辑器样式 —— 与宿主 dark 主题协调的深色 UI */
+/* Spine 骨骼编辑器样式 —— 亮色主题 */
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 :root {
-  --bg: #1a1b26;
-  --bg-panel: #1f2335;
-  --bg-elevated: #292e44;
-  --bg-hover: #363b54;
-  --border: #3b4261;
-  --text: #c0caf5;
-  --text-muted: #565f89;
-  --accent: #7aa2f7;
-  --accent-hover: #89b4fa;
-  --danger: #f7768e;
-  --success: #9ece6a;
-  --warning: #e0af68;
+  --bg: #f6f7f9;
+  --bg-panel: #ffffff;
+  --bg-elevated: #f1f3f5;
+  --bg-hover: #e9ecef;
+  --border: #dee2e6;
+  --text: #212529;
+  --text-muted: #868e96;
+  --accent: #4c6ef5;
+  --accent-hover: #3b5bdb;
+  --danger: #e03131;
+  --success: #2f9e44;
+  --warning: #f08c00;
 }
 
 html, body {
@@ -208,7 +208,7 @@ html, body {
 #canvas-container {
   flex: 1;
   position: relative;
-  background: #24283b;
+  background: #eef0f3;
   min-width: 0;
   overflow: hidden;
 }

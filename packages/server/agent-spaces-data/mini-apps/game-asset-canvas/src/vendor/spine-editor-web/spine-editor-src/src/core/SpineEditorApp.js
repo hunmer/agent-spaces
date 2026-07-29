@@ -47,7 +47,7 @@ export class SpineEditorApp {
   async init() {
     this.app = new PIXI.Application({
       view: this.canvasElement,
-      background: '#24283b',
+      background: '#eef0f3',
       antialias: true,
       resizeTo: this.canvasElement.parentElement,
     });
@@ -182,29 +182,38 @@ export class SpineEditorApp {
 
   /** 加载 Spine 实例并放入容器 */
   setSpine(spine) {
-    // 清除旧的
+    // 清除旧的（不销毁 children：gizmo graphics 由 BoneGizmoLayer 自管理）
     if (this.spine) {
       this.spineContainer.removeChild(this.spine);
-      this.spine.destroy({ children: true });
+      this.spine.destroy();
     }
     this.spine = spine;
     this.spineContainer.addChild(spine);
+    // 确保新 spine 先更新一次（计算 mesh 顶点 + bounds），否则 fitView 拿到空 bounds
+    spine.skeleton.setToSetupPose();
+    spine.update(0);
+    // 强制更新 worldTransform，确保 getBounds/fitView/_boneToContainer 读到最新值
+    this.spineContainer.updateTransform();
+    // gizmo 挂在 spineContainer（与 spine 同级），redraw 时用 spine.worldTransform 转坐标
     this.gizmo.setSkeleton(spine);
     this.history.clear();
 
-    // 默认状态：setup pose + 第一个动画（参考仓库逻辑）
-    spine.skeleton.setToSetupPose();
+    // 默认状态：第一个动画（参考仓库逻辑）
     const anims = spine.spineData.animations;
     if (anims && anims.length) {
       // 优先 stand2，否则第一个
       const stand2 = anims.find((a) => a.name === 'stand2');
-      const name = stand2 ? stand2.name : anims[0].name;
-      this.currentAnimation = name;
+      this.currentAnimation = stand2 ? stand2.name : anims[0].name;
     }
     // 默认 pose 模式
     this.setMode('pose');
 
-    // 初始视图：居中
+    // 重置视图缩放/平移（避免旧角色的 viewScale/viewX/viewY 残留）
+    this.viewScale = 1;
+    this.viewX = 0;
+    this.viewY = 0;
+    this._applyView();
+    // 初始视图：居中（spine 已 update + updateTransform，bounds 有效且准确）
     this.fitView();
 
     // 记录初始快照
@@ -257,6 +266,10 @@ export class SpineEditorApp {
       } else {
         this.spine.skeleton.updateWorldTransform();
       }
+      // 关键：手动更新 spine 及其父容器的 worldTransform，
+      // 确保 _boneToContainer 读到的 spine.worldTransform 与当前骨骼状态一致
+      // （pixi 渲染阶段才自动 updateTransform，ticker 回调里读的是上一帧，导致骨骼线错位）
+      this.spineContainer.updateTransform();
       this.gizmo.redraw();
     }
   }
