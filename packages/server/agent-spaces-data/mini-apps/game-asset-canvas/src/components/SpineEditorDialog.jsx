@@ -46,6 +46,8 @@ export default function SpineEditorDialog({ open, assets, onSave, onPoseExport, 
   const [loadError, setLoadError] = useState('');
   // 换肤用的 snapshot 回调暂存（requestSnapshot 发消息后等待 spine:snapshot 回传）
   const snapshotResolverRef = useRef(null);
+  // 换肤用的 spine JSON 回调暂存（requestSpineJson 发消息后等待 spine:spine-json 回传）
+  const spineJsonResolverRef = useRef(null);
 
   // 构造编辑器 index.html 的同源 URL（参考 PixelEditorDialog 的 projectId 解析）
   const editorUrl = (() => {
@@ -128,6 +130,26 @@ export default function SpineEditorDialog({ open, assets, onSave, onPoseExport, 
       if (!ok) {
         clearTimeout(timer);
         snapshotResolverRef.current = null;
+        resolve(null);
+      }
+    });
+  }, [postToIframe]);
+
+  // 请求 iframe 导出当前 spine 的最小 JSON（换肤用，支持 .skel 资源）
+  const requestSpineJson = useCallback(() => {
+    return new Promise((resolve) => {
+      const timer = setTimeout(() => {
+        spineJsonResolverRef.current = null;
+        resolve(null);
+      }, 10000);
+      spineJsonResolverRef.current = (json) => {
+        clearTimeout(timer);
+        resolve(json);
+      };
+      const ok = postToIframe('spine:request-spine-json');
+      if (!ok) {
+        clearTimeout(timer);
+        spineJsonResolverRef.current = null;
         resolve(null);
       }
     });
@@ -226,6 +248,12 @@ export default function SpineEditorDialog({ open, assets, onSave, onPoseExport, 
         }
       } else if (msg.type === 'spine:atlas-info') {
         // atlas 信息（调试用，暂不处理）
+      } else if (msg.type === 'spine:spine-json') {
+        // {json} | {error} —— 从 spine 实例导出的最小 JSON（换肤用，支持 .skel）
+        if (spineJsonResolverRef.current) {
+          spineJsonResolverRef.current(msg.payload?.json || null);
+          spineJsonResolverRef.current = null;
+        }
       }
     };
     window.addEventListener('message', onMsg);
@@ -284,6 +312,7 @@ export default function SpineEditorDialog({ open, assets, onSave, onPoseExport, 
               assets={assets}
               postToIframe={postToIframe}
               requestSnapshot={requestSnapshot}
+              requestSpineJson={requestSpineJson}
               onReskinComplete={(reskinAssets) => onReskinCompleteRef.current?.(reskinAssets)}
             />
           </div>

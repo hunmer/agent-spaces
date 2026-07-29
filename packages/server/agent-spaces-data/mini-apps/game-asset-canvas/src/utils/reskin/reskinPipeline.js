@@ -1,14 +1,15 @@
 /**
  * AI 换肤 pipeline 串联（对译 app/backend/reskin/pipeline.py + atlas_rebake.rebake_skin）。
  *
- * 全流程：
- *   ① 取素材：snapshot + 原 atlas sheet + 原 .atlas 文本 + spine JSON
- *   ② 合成 composite [snapshot | atlas]
- *   ③ nano-banana (Gemini) 重绘 composite
- *   ④ 逐 region：裁出 → rembg SAM 抠图 → 收集
- *   ⑤ repack 打包成新 atlas sheet
- *   ⑥ skin_writer 写新 spine JSON
- *   ⑦ 返回 { newAtlasCanvas, newAtlasText, newSpineJson, layout, stats }
+ * 支持两种合成方法：
+ *   - atlas（默认）：[snapshot | atlas_sheet] 左右并排
+ *   - exploded：每个 region 按 attachment 位置摆放成爆炸图
+ *
+ * 支持两种分割方法：
+ *   - sam（默认）：逐 region 调 rembg SAM 抠图（精确但慢，N 次网络往返）
+ *   - bg_components：形状交集法（原轮廓 ∩ 新alpha，纯前端像素遍历，快）
+ *
+ * 另含 per-slot 局部重绘（runInpaintSlot）。
  *
  * 所有步骤通过 onLog(step, msg, data) 回调实时上报，供 UI 展示。
  */
@@ -20,8 +21,12 @@ import {
   buildAtlasComposite, cropAtlasHalf, ATLAS_RESKIN_PROMPT, ATLAS_RESKIN_NEGATIVE,
 } from './compositeBuilder';
 import {
-  loadImage, createCanvas, cropRegionRotated, erodeAlpha, canvasToBlob,
-} from './canvasUtils';
+  buildExplodedComposite, EXPLODED_RESKIN_PROMPT, EXPLODED_RESKIN_NEGATIVE,
+} from './explodedComposer';
+import {
+  buildOriginalSilhouettes, segmentByShapeIntersection, applyMaskToRegion,
+} from './shapeSegmenter';
+import { loadImage, createCanvas, cropRegionRotated, erodeAlpha } from './canvasUtils';
 
 const NANO_BANANA_PLUGIN = 'workflow.nano-banana';
 const REMBG_PLUGIN = 'workflow.rembg';
@@ -31,7 +36,6 @@ async function callPlugin(pluginId, toolName, args) {
   const AS = window.AgentSpaces;
   if (!AS?.callPluginTool) throw new Error('宿主 callPluginTool 不可用');
   const ret = await AS.callPluginTool(pluginId, toolName, args);
-  // 解包：{ success, result } → result；否则直接用 ret
   const data = ret && typeof ret === 'object' && 'result' in ret && typeof ret.success === 'boolean'
     ? ret.result
     : ret;
@@ -62,21 +66,39 @@ async function uploadDataUrl(dataUrl, filename) {
   return uploaded?.url || uploaded?.httpPath;
 }
 
+/** 调 nano-banana 重绘一张图，返回重绘后的 http URL */
+async function geminiRedraw(imageUrl, prompt, opts, log) {
+  const { nanoApiKey, nanoModel = 'gemini-2.5-flash-image-preview', imageSize = 'auto' } = opts;
+  log('gemini', `调用 Gemini 重绘（${nanoModel}）…`);
+  const t0 = performance.now();
+  const editArgs = { image: imageUrl, prompt, model: nanoModel, responseModalities: 'image' };
+  if (nanoApiKey) editArgs.apiKey = nanoApiKey;
+  if (imageSize && imageSize !== 'auto') editArgs.imageSize = imageSize;
+  const editResult = await callPlugin(NANO_BANANA_PLUGIN, 'nano_banana_edit_image', editArgs);
+  const url = editResult?.data?.images?.[0] || editResult?.images?.[0];
+  if (!url) throw new Error('Gemini 未返回重绘结果图');
+  const ms = Math.round(performance.now() - t0);
+  log('gemini', `Gemini 重绘完成（${ms}ms）`, { url, durationMs: ms });
+  return { url, durationMs: ms };
+}
+
 /**
  * 执行完整换肤 pipeline。
  *
  * @param {Object} input 输入素材
- * @param {HTMLCanvasElement|string} input.snapshot 角色截图（canvas 或 dataUrl）
+ * @param {HTMLCanvasElement|string} input.snapshot 角色截图（atlas 方法必需）
  * @param {string} input.atlasSheetUrl 原 atlas sheet PNG 的 http URL
  * @param {string} input.atlasText 原 .atlas 文件文本
  * @param {object} input.spineJson 原 Spine JSON 对象
  * @param {string} input.skinName 新皮肤名
  * @param {string} input.prompt 用户换肤描述
  * @param {Object} [opts]
- * @param {string} [opts.nanoApiKey] nano-banana apiKey（不传则用插件配置默认值）
- * @param {string} [opts.nanoModel] Gemini 模型（默认 gemini-2.5-flash-image-preview）
+ * @param {'atlas'|'exploded'} [opts.method='atlas'] 合成方法
+ * @param {'sam'|'bg_components'} [opts.segMethod='sam'] 分割方法
+ * @param {string} [opts.nanoApiKey] nano-banana apiKey
+ * @param {string} [opts.nanoModel] Gemini 模型
  * @param {string} [opts.imageSize] 输出尺寸 auto/1K/2K/4K
- * @param {boolean} [opts.erode] 是否侵蚀去白边（默认 false，MVP 关闭）
+ * @param {boolean} [opts.erode] 是否侵蚀去白边（默认 false）
  * @param {number} [opts.erodePx] 侵蚀半径（默认按 region 边长缩放）
  * @param {(step:string, msg:string, data?:object) => void} [opts.onLog] 日志回调
  * @returns {Promise<Object>} { newAtlasCanvas, newAtlasText, newSpineJson, layout, stats }
@@ -86,16 +108,15 @@ export async function runReskin(input, opts = {}) {
     snapshot, atlasSheetUrl, atlasText, spineJson, skinName, prompt,
   } = input;
   const {
+    method = 'atlas', segMethod = 'sam',
     nanoApiKey, nanoModel = 'gemini-2.5-flash-image-preview',
     imageSize = 'auto', erode = false, onLog = () => {},
   } = opts;
 
-  const log = (step, msg, data) => {
-    try { onLog(step, msg, data); } catch { /* 忽略回调错误 */ }
-  };
+  const log = (step, msg, data) => { try { onLog(step, msg, data); } catch { /* ignore */ } };
   const t0 = performance.now();
 
-  // ① 解析原 atlas，拿 region 列表
+  // ① 解析原 atlas
   log('parse', '解析原 atlas…');
   const atlas = parseAtlas(atlasText);
   const regions = atlas.regions;
@@ -104,108 +125,143 @@ export async function runReskin(input, opts = {}) {
     sheetW: atlas.sheetW, sheetH: atlas.sheetH, regionCount: regions.length,
   });
 
-  // ② 加载 snapshot + atlas sheet，合成 composite
-  log('compose', '加载素材并合成 composite…');
-  const snapImg = snapshot instanceof HTMLCanvasElement ? snapshot : await loadImage(snapshot);
+  // ② 加载原 atlas sheet
   const atlasSheetImg = await loadImage(atlasSheetUrl);
-  const { canvas: compositeCanvas, layout } = buildAtlasComposite(snapImg, atlasSheetImg);
-  log('compose', `composite 合成完成: ${layout.compositeW}×${layout.compositeH}`, { layout });
 
-  // ③ 上传 composite → nano-banana 重绘
+  // ③ 合成 composite（按 method 分流）
+  log('compose', `合成 composite（方法: ${method}）…`);
+  let compositeCanvas, layout, reskinPrompt, reskinNegative;
+  if (method === 'exploded') {
+    const r = buildExplodedComposite({ atlasSheet: atlasSheetImg, regions, spineJson, padding: 10 });
+    compositeCanvas = r.canvas;
+    layout = r.layout;
+    reskinPrompt = EXPLODED_RESKIN_PROMPT.replace('{user_prompt}', prompt);
+    reskinNegative = EXPLODED_RESKIN_NEGATIVE;
+  } else {
+    // atlas 方法需要 snapshot
+    if (!snapshot) throw new Error('atlas 方法需要 snapshot（角色截图）');
+    const snapImg = snapshot instanceof HTMLCanvasElement ? snapshot : await loadImage(snapshot);
+    const r = buildAtlasComposite(snapImg, atlasSheetImg);
+    compositeCanvas = r.canvas;
+    layout = r.layout;
+    reskinPrompt = ATLAS_RESKIN_PROMPT.replace('{user_prompt}', prompt);
+    reskinNegative = ATLAS_RESKIN_NEGATIVE;
+  }
+  log('compose', `composite 合成完成: ${layout.compositeW}×${layout.compositeH}`, { layout, method });
+
+  // ④ 上传 composite → Gemini 重绘
   log('upload', '上传 composite 到宿主…');
   const compositeUrl = await uploadDataUrl(compositeCanvas.toDataURL('image/png'), `composite-${skinName}-${Date.now()}.png`);
-  log('upload', 'composite 已上传', { url: compositeUrl });
+  log('upload', 'composite 已上传');
+  const { url: reskinnedUrl, durationMs: geminiMs } = await geminiRedraw(
+    compositeUrl, reskinPrompt, { nanoApiKey, nanoModel, imageSize }, log,
+  );
 
-  const fullPrompt = ATLAS_RESKIN_PROMPT.replace('{user_prompt}', prompt);
-  log('gemini', `调用 Gemini 重绘（${nanoModel}）…`);
-  const geminiT0 = performance.now();
-  const editArgs = {
-    image: compositeUrl,
-    prompt: fullPrompt,
-    model: nanoModel,
-    responseModalities: 'image',
-  };
-  if (nanoApiKey) editArgs.apiKey = nanoApiKey;
-  if (imageSize && imageSize !== 'auto') editArgs.imageSize = imageSize;
-
-  const editResult = await callPlugin(NANO_BANANA_PLUGIN, 'nano_banana_edit_image', editArgs);
-  const reskinnedUrl = editResult?.data?.images?.[0] || editResult?.images?.[0];
-  if (!reskinnedUrl) throw new Error('Gemini 未返回重绘结果图');
-  const geminiMs = Math.round(performance.now() - geminiT0);
-  log('gemini', `Gemini 重绘完成（${geminiMs}ms）`, { url: reskinnedUrl, durationMs: geminiMs });
-
-  // ④ 下载重绘图，裁 atlas 半边，resize 对齐原 sheet
-  log('split', '裁取 atlas 半边…');
+  // ⑤ 下载重绘图，确定分割源
   const reskinnedImg = await loadImage(await urlToDataUrl(reskinnedUrl));
-  const atlasHalf = cropAtlasHalf(reskinnedImg, layout, atlas.sheetW, atlas.sheetH);
-  log('split', `atlas 半边已裁齐: ${atlasHalf.width}×${atlasHalf.height}`);
-
-  // ⑤ 逐 region：裁出 → rembg SAM 抠图 → 收集
-  log('segment', `开始逐 region 分割（共 ${regions.length} 个）…`);
-  const regionParts = {};       // region 名 → {img, width, height}
-  const regionSafeMap = {};     // sanitized 名 → 原始 region 名
-  let segDone = 0;
-  for (const region of regions) {
-    const safe = safeFilename(region.name);
-    regionSafeMap[safe] = region.name;
-    // 按 bbox+rotate 裁出 region
-    const regionCanvas = cropRegionRotated(
-      atlasHalf, region.x, region.y, region.w, region.h, region.rotate,
-    );
-    // 上传 region → rembg SAM 抠图
-    try {
-      const regionUrl = await uploadDataUrl(
-        regionCanvas.toDataURL('image/png'),
-        `region-${safe}-${Date.now()}.png`,
-      );
-      // SAM point prompt：bbox 中心，label=1（前景）
-      const cx = Math.round(region.w / 2);
-      const cy = Math.round(region.h / 2);
-      const samResult = await callPlugin(REMBG_PLUGIN, 'rembg_sam_segment', {
-        image: regionUrl,
-        extras: { sam_prompt: [{ type: 'point', data: [cx, cy], label: 1 }] },
-      });
-      const maskedUrl = samResult?.data?.imageUrl || samResult?.imageUrl;
-      if (!maskedUrl) throw new Error('rembg 未返回抠图结果');
-      let maskedImg = await loadImage(await urlToDataUrl(maskedUrl));
-      // 尺寸对齐（rembg 可能改变尺寸）
-      if (maskedImg.width !== region.w || maskedImg.height !== region.h) {
-        const tmp = createCanvas(region.w, region.h);
-        tmp.getContext('2d').drawImage(maskedImg, 0, 0, region.w, region.h);
-        maskedImg = tmp;
-      }
-      // 可选侵蚀去白边
-      if (erode) {
-        const side = Math.max(region.w, region.h);
-        const px = opts.erodePx ?? Math.max(1, Math.round(side / 60));
-        maskedImg = erodeAlpha(maskedImg, px);
-      }
-      regionParts[region.name] = { img: maskedImg, width: region.w, height: region.h };
-    } catch (err) {
-      // 单 region 抠图失败 → 降级用原始裁切（不抠图），不阻塞整体
-      log('segment', `region "${region.name}" 抠图失败，降级用原始裁切: ${err?.message || err}`, { region: region.name, error: true });
-      regionParts[region.name] = { img: regionCanvas, width: region.w, height: region.h };
+  let segmentSource; // 分割用的源 canvas
+  if (method === 'atlas') {
+    log('split', '裁取 atlas 半边…');
+    segmentSource = cropAtlasHalf(reskinnedImg, layout, atlas.sheetW, atlas.sheetH);
+    log('split', `atlas 半边已裁齐: ${segmentSource.width}×${segmentSource.height}`);
+  } else {
+    // exploded：分割源就是重绘后的 composite 本身
+    segmentSource = reskinnedImg;
+    // 尺寸对齐（Gemini 可能改尺寸）
+    if (segmentSource.width !== layout.compositeW || segmentSource.height !== layout.compositeH) {
+      const tmp = createCanvas(layout.compositeW, layout.compositeH);
+      tmp.getContext('2d').drawImage(segmentSource, 0, 0, layout.compositeW, layout.compositeH);
+      segmentSource = tmp;
     }
-    segDone += 1;
-    log('segment', `分割进度 ${segDone}/${regions.length}`, { done: segDone, total: regions.length });
+  }
+
+  // ⑥ 分割（按 segMethod 分流）
+  log('segment', `开始分割（方法: ${segMethod}，共 ${regions.length} 个 region）…`, { segMethod });
+  const regionParts = {};       // region 名 → {img, width, height}
+  let segDone = 0;
+
+  if (segMethod === 'bg_components') {
+    // 形状交集法：原轮廓 ∩ 新alpha
+    // atlas 模式：原轮廓从原 atlas sheet 取；exploded：从原 composite 取（但原 composite 没存，用原 atlas sheet 近似）
+    const silhouettes = buildOriginalSilhouettes(atlasSheetImg, regions);
+    // 对于 exploded，silhouettes 的坐标系是原 atlas 的，但 segmentSource 是 composite 的 placements 坐标系
+    // 需要把 segmentSource 按 placement 裁出（exploded 的 region bbox 来自 layout.placements）
+    const segRegions = method === 'exploded'
+      ? Object.entries(layout.placements || {}).map(([name, p]) => ({ name, x: p.x, y: p.y, w: p.w, h: p.h, rotate: 0 }))
+      : regions;
+    // exploded 的 silhouettes 要从 segmentSource 自身重建（它的轮廓就是原 region alpha）
+    const useSilhouettes = method === 'exploded'
+      ? buildOriginalSilhouettes(segmentSource, segRegions)
+      : silhouettes;
+    const masks = segmentByShapeIntersection(segmentSource, segRegions, useSilhouettes);
+    const srcW = segmentSource.width, srcH = segmentSource.height;
+    for (const region of segRegions) {
+      const mask = masks[region.name];
+      if (mask) {
+        const masked = applyMaskToRegion(segmentSource, region, mask, srcW, srcH);
+        let finalImg = masked;
+        if (erode) {
+          const side = Math.max(region.w, region.h);
+          const px = opts.erodePx ?? Math.max(1, Math.round(side / 60));
+          finalImg = erodeAlpha(masked, px);
+        }
+        regionParts[region.name] = { img: finalImg, width: region.w, height: region.h };
+      } else {
+        regionParts[region.name] = { img: cropRegionRotated(segmentSource, region.x, region.y, region.w, region.h, region.rotate), width: region.w, height: region.h };
+      }
+      segDone += 1;
+      log('segment', `分割进度 ${segDone}/${segRegions.length}`, { done: segDone, total: segRegions.length });
+    }
+  } else {
+    // SAM 模式：逐 region rembg 抠图
+    for (const region of regions) {
+      const safe = safeFilename(region.name);
+      const regionCanvas = cropRegionRotated(segmentSource, region.x, region.y, region.w, region.h, region.rotate);
+      try {
+        const regionUrl = await uploadDataUrl(regionCanvas.toDataURL('image/png'), `region-${safe}-${Date.now()}.png`);
+        const cx = Math.round(region.w / 2);
+        const cy = Math.round(region.h / 2);
+        const samResult = await callPlugin(REMBG_PLUGIN, 'rembg_sam_segment', {
+          image: regionUrl,
+          extras: { sam_prompt: [{ type: 'point', data: [cx, cy], label: 1 }] },
+        });
+        const maskedUrl = samResult?.data?.imageUrl || samResult?.imageUrl;
+        if (!maskedUrl) throw new Error('rembg 未返回抠图结果');
+        let maskedImg = await loadImage(await urlToDataUrl(maskedUrl));
+        if (maskedImg.width !== region.w || maskedImg.height !== region.h) {
+          const tmp = createCanvas(region.w, region.h);
+          tmp.getContext('2d').drawImage(maskedImg, 0, 0, region.w, region.h);
+          maskedImg = tmp;
+        }
+        if (erode) {
+          const side = Math.max(region.w, region.h);
+          const px = opts.erodePx ?? Math.max(1, Math.round(side / 60));
+          maskedImg = erodeAlpha(maskedImg, px);
+        }
+        regionParts[region.name] = { img: maskedImg, width: region.w, height: region.h };
+      } catch (err) {
+        log('segment', `region "${region.name}" 抠图失败，降级用原始裁切: ${err?.message || err}`, { region: region.name, error: true });
+        regionParts[region.name] = { img: regionCanvas, width: region.w, height: region.h };
+      }
+      segDone += 1;
+      log('segment', `分割进度 ${segDone}/${regions.length}`, { done: segDone, total: regions.length });
+    }
   }
   log('segment', `分割完成，成功 ${Object.keys(regionParts).length}/${regions.length} 个 region`);
 
-  // ⑥ repack 打包成新 atlas sheet
+  // ⑦ repack 打包
   log('repack', '打包新 atlas sheet…');
-  const atlasBaseName = skinName;
-  const repackResult = await repackAtlas(regionParts, atlasBaseName, 2);
+  const repackResult = await repackAtlas(regionParts, skinName, 2);
   log('repack', `新 atlas 打包完成: ${repackResult.sheetW}×${repackResult.sheetH}，${Object.keys(repackResult.placements).length} region`, {
     sheetW: repackResult.sheetW, sheetH: repackResult.sheetH,
   });
 
-  // ⑦ skin_writer 写新 spine JSON
+  // ⑧ skin_writer
   log('skin', '生成新 spine JSON（含新 skin）…');
-  // 构建 slot → placement / attachmentNames 映射
   const region2slot = regionToSlotMap(spineJson);
   const skinPlacements = {};
   const attachmentNames = {};
-  for (const [origRegion, part] of Object.entries(regionParts)) {
+  for (const [origRegion] of Object.entries(regionParts)) {
     const slot = region2slot[origRegion];
     if (!slot) continue;
     const safe = safeFilename(origRegion);
@@ -227,14 +283,108 @@ export async function runReskin(input, opts = {}) {
     newAtlasText: repackResult.atlasText,
     newSpineJson,
     layout,
-    stats: {
-      totalMs,
-      regionCount: regions.length,
-      packedCount: Object.keys(repackResult.placements).length,
-      slotCount: Object.keys(skinPlacements).length,
-      geminiMs,
-    },
+    stats: { totalMs, regionCount: regions.length, packedCount: Object.keys(repackResult.placements).length, slotCount: Object.keys(skinPlacements).length, geminiMs, method, segMethod },
   };
 }
 
-export { ATLAS_RESKIN_PROMPT, ATLAS_RESKIN_NEGATIVE };
+// ===== Per-slot 局部重绘 =====
+
+const SLOT_PROMPT = (prompt) => `Redraw this single character body part in the new style: "${prompt}".
+CRITICAL CONSTRAINTS: keep the EXACT same silhouette/outline/shape; transparent background; match input dimensions exactly; no text/labels.`;
+const SLOT_NEGATIVE = 'do not change the silhouette; do not add background scenery; do not crop the part; do not render any text.';
+
+/**
+ * Per-slot 局部重绘（对译 server.py inpaint_slot）。
+ *
+ * 只重绘一个 slot 的 region，用原 alpha 当 mask（不跑 SAM），保证 silhouette 不变。
+ *
+ * @param {Object} input
+ * @param {string} input.slot slot 名
+ * @param {string} input.skinName 当前皮肤名（用于读取已有 region）
+ * @param {string} input.prompt 重绘描述
+ * @param {HTMLCanvasElement} input.regionCanvas 该 slot 当前 region 的 PNG（canvas）
+ * @param {object} input.spineJson 当前 spine JSON
+ * @param {Array} input.regions 原 atlas 的 region 列表
+ * @param {HTMLCanvasElement} input.atlasSheet 原 atlas sheet（供其他 region 占位）
+ * @param {Object} [opts] 同 runReskin 的 opts（nanoApiKey/nanoModel/imageSize/erode/onLog）
+ * @returns {Promise<Object>} { newAtlasCanvas, newAtlasText, newSpineJson, stats }
+ */
+export async function runInpaintSlot(input, opts = {}) {
+  const { slot, skinName, prompt, regionCanvas, spineJson, regions, atlasSheet } = input;
+  const { nanoApiKey, nanoModel = 'gemini-2.5-flash-image-preview', imageSize = 'auto', erode = false, onLog = () => {} } = opts;
+  const log = (step, msg, data) => { try { onLog(step, msg, data); } catch { /* ignore */ } };
+  const t0 = performance.now();
+
+  const region2slot = regionToSlotMap(spineJson);
+  const slot2region = {};
+  for (const [r, s] of Object.entries(region2slot)) slot2region[s] = r;
+  const targetRegionName = slot2region[slot];
+  if (!targetRegionName) throw new Error(`slot "${slot}" 无对应 region`);
+
+  log('inpaint', `开始局部重绘：${slot}（region: ${targetRegionName}）`);
+
+  // ① 上传 region → Gemini 重绘（锁 silhouette）
+  const regionUrl = await uploadDataUrl(regionCanvas.toDataURL('image/png'), `slot-${slot}-${Date.now()}.png`);
+  const { url: reskinnedUrl } = await geminiRedraw(regionUrl, SLOT_PROMPT(prompt), { nanoApiKey, nanoModel, imageSize }, log);
+
+  // ② 下载 → rembg 清背景（不跑 SAM，只去背景）
+  log('inpaint', '清理背景…');
+  let maskedImg = await loadImage(await urlToDataUrl(reskinnedUrl));
+  try {
+    const rembgResult = await callPlugin(REMBG_PLUGIN, 'rembg_remove', { image: reskinnedUrl });
+    const cleanUrl = rembgResult?.data?.imageUrl || rembgResult?.imageUrl;
+    if (cleanUrl) maskedImg = await loadImage(await urlToDataUrl(cleanUrl));
+  } catch (err) {
+    log('inpaint', `rembg 清背景失败，用原图: ${err?.message || err}`, { error: true });
+  }
+  // 尺寸对齐
+  const rw = regionCanvas.width, rh = regionCanvas.height;
+  if (maskedImg.width !== rw || maskedImg.height !== rh) {
+    const tmp = createCanvas(rw, rh);
+    tmp.getContext('2d').drawImage(maskedImg, 0, 0, rw, rh);
+    maskedImg = tmp;
+  }
+  if (erode) {
+    const side = Math.max(rw, rh);
+    const px = opts.erodePx ?? Math.max(1, Math.round(side / 60));
+    maskedImg = erodeAlpha(maskedImg, px);
+  }
+
+  // ③ 收集所有 region（目标 slot 用新图，其余用原 atlas sheet 裁出）
+  log('inpaint', '组装新 atlas…');
+  const regionParts = {};
+  for (const region of regions) {
+    if (region.name === targetRegionName) {
+      regionParts[region.name] = { img: maskedImg, width: rw, height: rh };
+    } else {
+      const c = cropRegionRotated(atlasSheet, region.x, region.y, region.w, region.h, region.rotate);
+      regionParts[region.name] = { img: c, width: region.w, height: region.h };
+    }
+  }
+
+  // ④ repack + skin_writer
+  const repackResult = await repackAtlas(regionParts, skinName, 2);
+  const skinPlacements = {};
+  const attachmentNames = {};
+  for (const [origRegion] of Object.entries(regionParts)) {
+    const s = region2slot[origRegion];
+    if (!s) continue;
+    const safe = safeFilename(origRegion);
+    const placement = repackResult.placements[safe];
+    if (!placement) continue;
+    skinPlacements[s] = placement;
+    attachmentNames[s] = safe;
+  }
+  const newSpineJson = addSkin(spineJson, skinName, skinPlacements, { attachmentNames });
+  const totalMs = Math.round(performance.now() - t0);
+  log('inpaint', `局部重绘完成（${totalMs}ms）`, { totalMs });
+
+  return {
+    newAtlasCanvas: repackResult.canvas,
+    newAtlasText: repackResult.atlasText,
+    newSpineJson,
+    stats: { totalMs, slot, region: targetRegionName },
+  };
+}
+
+export { ATLAS_RESKIN_PROMPT, ATLAS_RESKIN_NEGATIVE, EXPLODED_RESKIN_PROMPT, EXPLODED_RESKIN_NEGATIVE };

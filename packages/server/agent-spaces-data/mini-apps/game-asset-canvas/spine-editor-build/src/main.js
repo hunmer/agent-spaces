@@ -22,6 +22,7 @@ import { SpineEditorApp } from './core/SpineEditorApp';
 import { RecordManager } from './core/RecordManager';
 import { loadSpine, getAnimations, getSkins, BoneVisibility } from './loaders/SpineLoader';
 import { PoseExporter } from './exporters/PoseExporter';
+import { SpineJsonExporter } from './exporters/SpineJsonExporter';
 import { Toolbar } from './ui/Toolbar';
 import { AssetFilter } from './ui/AssetFilter';
 import { BoneTree } from './ui/BoneTree';
@@ -411,6 +412,20 @@ window.addEventListener('message', async (event) => {
     // 父端查询当前 atlas 信息
     const info = app?.getAtlasInfo?.() || null;
     postToParent('spine:atlas-info', info || { error: '无 atlas 信息' });
+  } else if (msg.type === 'spine:request-spine-json') {
+    // 父端请求从当前 spine 实例导出最小 JSON（换肤需要，支持 .skel 资源）
+    if (!app?.spine) {
+      postToParent('spine:spine-json', { error: '无角色，无法导出 JSON' });
+    } else {
+      try {
+        const json = SpineJsonExporter.export(app.spine);
+        if (!json) throw new Error('导出失败');
+        postToParent('spine:spine-json', { json });
+      } catch (err) {
+        console.error('[spine-editor] export spine json failed:', err);
+        postToParent('spine:spine-json', { error: err?.message || String(err) });
+      }
+    }
   }
 });
 
