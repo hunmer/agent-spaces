@@ -372,7 +372,7 @@ function bindShortcuts() {
 }
 
 // ===== postMessage 监听（父→本） =====
-window.addEventListener('message', (event) => {
+window.addEventListener('message', async (event) => {
   const msg = event.data || {};
   if (typeof msg !== 'object' || !msg.type) return;
   console.log('[spine-editor] recv', msg.type);
@@ -384,6 +384,33 @@ window.addEventListener('message', (event) => {
     }
   } else if (msg.type === 'spine:inject-background') {
     // 背景：可选，暂简化为不处理（可作为后续增强）
+  } else if (msg.type === 'spine:request-snapshot') {
+    // 父端请求 canvas 截图（换肤输入）
+    if (!app?.spine) {
+      postToParent('spine:snapshot', { error: '无角色可截图' });
+    } else {
+      const dataUrl = app.exportScreenshot();
+      postToParent('spine:snapshot', { dataUrl });
+    }
+  } else if (msg.type === 'spine:replace-atlas') {
+    // 父端热加载新 atlas sheet（换肤预览）
+    if (!app?.spine) {
+      postToParent('spine:atlas-replaced', { error: '无角色，无法换肤' });
+      return;
+    }
+    try {
+      await app.replaceAtlasTexture(msg.payload.pngDataUrl);
+      postToParent('spine:atlas-replaced', { name: msg.payload?.name || 'reskin' });
+      setStatus(`已应用换肤：${msg.payload?.name || 'reskin'}`, 'ready');
+    } catch (err) {
+      console.error('[spine-editor] replaceAtlasTexture failed:', err);
+      postToParent('spine:atlas-replaced', { error: err?.message || String(err) });
+      setStatus(`换肤失败：${err?.message || String(err)}`, 'error');
+    }
+  } else if (msg.type === 'spine:get-atlas-info') {
+    // 父端查询当前 atlas 信息
+    const info = app?.getAtlasInfo?.() || null;
+    postToParent('spine:atlas-info', info || { error: '无 atlas 信息' });
   }
 });
 

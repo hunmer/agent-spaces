@@ -122,6 +122,11 @@ export async function loadSpine({ skel, atlas, png, name = 'spine' }) {
   // 记录版本（用于 UI 提示）
   spine._spineVersion = spineData.version || 'unknown';
 
+  // 挂载 atlas 资源引用，供热加载换肤（replaceAtlasTexture）使用。
+  // baseTexture 是所有 region 的底层贴图；换 sheet 时改它的 resource 即可，UV/region 不动。
+  spine._atlas = spineAtlas;
+  spine._baseTexture = baseTexture;
+
   return spine;
 }
 

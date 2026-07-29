@@ -287,6 +287,54 @@ export class SpineEditorApp {
     return url;
   }
 
+  /**
+   * 热加载新 atlas sheet 贴图（换肤预览）。
+   * 方案 A：替换 baseTexture 的底层 resource，UV/region 不动。
+   * 前提：新 sheet 的 region 布局与原 atlas 完全一致（同一套骨骼换贴图）。
+   *
+   * @param {string} pngDataUrl 新 atlas sheet 的 PNG dataUrl
+   * @returns {Promise<void>}
+   */
+  async replaceAtlasTexture(pngDataUrl) {
+    if (!this.spine?._baseTexture) throw new Error('当前 spine 无 baseTexture，无法热加载');
+    const newBaseTex = PIXI.BaseTexture.from(pngDataUrl);
+    // 等待新贴图加载完成
+    if (!newBaseTex.valid) {
+      await new Promise((resolve) => {
+        const onLoaded = () => resolve();
+        newBaseTex.once('loaded', onLoaded);
+        newBaseTex.once('update', onLoaded);
+        // 兜底：500ms 后强制 resolve
+        setTimeout(resolve, 500);
+      });
+    }
+    // 用新 resource 替换原 baseTexture 的底层资源
+    const newResource = newBaseTex.resource;
+    this.spine._baseTexture.setResource(newResource, 0);
+    this.spine._baseTexture.update();
+    // 销毁临时 baseTexture（保留 resource 给原 baseTexture 用）
+    newBaseTex.destroy(true);
+    // 强制刷新渲染
+    this.app.render();
+    this.gizmo.redraw();
+  }
+
+  /**
+   * 获取当前 atlas 信息（用于校验/展示）。
+   * @returns {{sheetW:number, sheetH:number, regionCount:number}|null}
+   */
+  getAtlasInfo() {
+    const bt = this.spine?._baseTexture;
+    const atlas = this.spine?._atlas;
+    if (!bt) return null;
+    const regions = atlas?.regions || [];
+    return {
+      sheetW: bt.width,
+      sheetH: bt.height,
+      regionCount: regions.length,
+    };
+  }
+
   // ===== 选中 / 变换回调（由 UI 设置）=====
   setCallbacks({ onSelect, onLiveTransform, onModified }) {
     this._onSelectBone = onSelect;

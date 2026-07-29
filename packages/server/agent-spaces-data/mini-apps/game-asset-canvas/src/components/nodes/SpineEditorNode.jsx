@@ -95,6 +95,42 @@ export default function SpineEditorNode({ id, data, selected }) {
     onUpdate?.({ exportedPose: poseJson });
   }, [onUpdate]);
 
+  // AI 换肤完成回调：把新三件套上传并回填节点产出
+  const handleReskinComplete = useCallback(async (reskinAssets) => {
+    const AS = window.AgentSpaces;
+    if (!AS?.uploadFile) return;
+    try {
+      // 新 atlas PNG 是 dataUrl，需上传转 http URL
+      let pngUrl = uploadedAssets?.png;
+      if (reskinAssets.png?.startsWith('data:')) {
+        const blob = await (await fetch(reskinAssets.png)).blob();
+        const file = new File([blob], `${reskinAssets.spineJson?.skeleton?.name || 'spine'}-reskin.png`, { type: 'image/png' });
+        const uploaded = await AS.uploadFile(file);
+        pngUrl = uploaded?.url || uploaded?.httpPath || pngUrl;
+      }
+      // 新 atlas 文本 + spine JSON 也上传（供下游使用）
+      const baseName = uploadedAssets?.name || 'spine';
+      const uploads = await Promise.all([
+        uploadText(AS, reskinAssets.atlas, `${baseName}-reskin.atlas`),
+        uploadText(AS, JSON.stringify(reskinAssets.spineJson, null, 2), `${baseName}-reskin.json`),
+      ]);
+      const [atlasUrl, spineJsonUrl] = uploads;
+      onUpdate?.({
+        status: 'done',
+        reskinAssets: {
+          skel: reskinAssets.skel,            // 原 .skel/.json 不变
+          atlas: atlasUrl,
+          png: pngUrl,
+          spineJson: spineJsonUrl,
+        },
+        output: { images: [pngUrl] },
+        error: undefined,
+      });
+    } catch (err) {
+      console.error('[SpineEditor] reskin upload failed:', err);
+    }
+  }, [onUpdate, uploadedAssets]);
+
   // 产出视频（output.videos）
   const videos = Array.isArray(data?.output?.videos) ? data.output.videos : [];
 
@@ -184,10 +220,19 @@ export default function SpineEditorNode({ id, data, selected }) {
         onSave={handleSave}
         onExportVideo={handleExportVideo}
         onPoseExport={handlePoseExport}
+        onReskinComplete={handleReskinComplete}
         onClose={() => setEditorOpen(false)}
       />
     </NodeShell>
   );
+}
+
+/** 把文本内容上传成文件，返回 http URL */
+async function uploadText(AS, text, filename) {
+  const blob = new Blob([text], { type: 'application/octet-stream' });
+  const file = new File([blob], filename, { type: 'application/octet-stream' });
+  const uploaded = await AS.uploadFile(file);
+  return uploaded?.url || uploaded?.httpPath;
 }
 
 function makeFUItem(url, name) {

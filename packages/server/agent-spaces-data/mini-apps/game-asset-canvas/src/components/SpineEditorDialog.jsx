@@ -1,17 +1,22 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@agent-spaces/ui';
+import ReskinPanel from './ReskinPanel';
 
 /**
  * 骨骼编辑器对话框：iframe 加载本地 PixiJS+pixi-spine 构建产物
  * （vendor/spine-editor-web/index.html）。
  *
- * 通信协议（与 spine-editor-src/src/main.js 配对）：
+ * 通信协议（与 spine-editor-build/src/main.js 配对）：
  *   iframe→父 `spine:ready`：编辑器就绪 → 注入上传的 .skel/.atlas/.png
  *   iframe→父 `spine:export-screenshot` {dataUrl, name}：截图 → uploadFile → http URL
  *   iframe→父 `spine:export-video` {dataUrl, name}：动作录制（WebM）→ uploadFile → http URL
  *   iframe→父 `spine:export-spine` {files:[{name,dataUrl}]}：原始文件包 → 逐个 uploadFile
  *   iframe→父 `spine:export-pose` {json, name}：姿势 JSON（文本，直接回传不经 uploadFile）
  *   父→iframe `spine:inject-assets` {skelDataUrl, atlasDataUrl, pngDataUrl, name}
+ *   父→iframe `spine:request-snapshot`：请求 canvas 截图（换肤用）
+ *   iframe→父 `spine:snapshot` {dataUrl}：canvas 截图回传
+ *   父→iframe `spine:replace-atlas` {pngDataUrl, name}：热加载新 atlas sheet（换肤预览）
+ *   iframe→父 `spine:atlas-replaced` {name} | {error}：热加载结果回执
  *
  * iframe 同源（父 origin + srcFileUrl 路径段），无跨域阻断。
  *
@@ -21,21 +26,26 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@agent-spaces/
  * @param {(urls: string[]) => void} props.onSave 截图/文件导出完成回调
  * @param {(poseJson: string) => void} props.onPoseExport 姿势 JSON 导出回调
  * @param {(url: string) => void} props.onExportVideo 动作录制视频导出回调
+ * @param {(assets:{skel,atlas,png,spineJson}) => void} [props.onReskinComplete] 换肤完成回调
  * @param {() => void} props.onClose
  */
-export default function SpineEditorDialog({ open, assets, onSave, onPoseExport, onExportVideo, onClose }) {
+export default function SpineEditorDialog({ open, assets, onSave, onPoseExport, onExportVideo, onReskinComplete, onClose }) {
   const iframeRef = useRef(null);
   const readyRef = useRef(false);
   const injectedRef = useRef(false);
   const onSaveRef = useRef(onSave);
   const onPoseExportRef = useRef(onPoseExport);
   const onExportVideoRef = useRef(onExportVideo);
+  const onReskinCompleteRef = useRef(onReskinComplete);
   onSaveRef.current = onSave;
   onPoseExportRef.current = onPoseExport;
   onExportVideoRef.current = onExportVideo;
+  onReskinCompleteRef.current = onReskinComplete;
   const [ready, setReady] = useState(false);
   const [statusMsg, setStatusMsg] = useState('');
   const [loadError, setLoadError] = useState('');
+  // 换肤用的 snapshot 回调暂存（requestSnapshot 发消息后等待 spine:snapshot 回传）
+  const snapshotResolverRef = useRef(null);
 
   // 构造编辑器 index.html 的同源 URL（参考 PixelEditorDialog 的 projectId 解析）
   const editorUrl = (() => {
@@ -101,6 +111,27 @@ export default function SpineEditorDialog({ open, assets, onSave, onPoseExport, 
       setLoadError(`资源注入失败：${err?.message || String(err)}`);
     }
   }, [assets, urlToDataUrl, postToIframe]);
+
+  // 请求 iframe 当前 canvas 截图（换肤用）：发消息后等待 spine:snapshot 回传
+  const requestSnapshot = useCallback(() => {
+    return new Promise((resolve) => {
+      // 超时兜底（10s）
+      const timer = setTimeout(() => {
+        snapshotResolverRef.current = null;
+        resolve(null);
+      }, 10000);
+      snapshotResolverRef.current = (dataUrl) => {
+        clearTimeout(timer);
+        resolve(dataUrl);
+      };
+      const ok = postToIframe('spine:request-snapshot');
+      if (!ok) {
+        clearTimeout(timer);
+        snapshotResolverRef.current = null;
+        resolve(null);
+      }
+    });
+  }, [postToIframe]);
 
   // 全局 message 监听
   useEffect(() => {
@@ -180,6 +211,21 @@ export default function SpineEditorDialog({ open, assets, onSave, onPoseExport, 
         // {json, name} —— 纯文本，直接回传
         onPoseExportRef.current?.(msg.payload.json);
         setStatusMsg(`已导出姿势 JSON：${msg.payload.name}`);
+      } else if (msg.type === 'spine:snapshot') {
+        // {dataUrl} | {error} —— 换肤请求的 canvas 截图回传
+        if (snapshotResolverRef.current) {
+          snapshotResolverRef.current(msg.payload?.dataUrl || null);
+          snapshotResolverRef.current = null;
+        }
+      } else if (msg.type === 'spine:atlas-replaced') {
+        // 热加载结果回执
+        if (msg.payload?.error) {
+          setStatusMsg(`换肤预览失败：${msg.payload.error}`);
+        } else {
+          setStatusMsg(`已应用换肤：${msg.payload?.name || ''}`);
+        }
+      } else if (msg.type === 'spine:atlas-info') {
+        // atlas 信息（调试用，暂不处理）
       }
     };
     window.addEventListener('message', onMsg);
@@ -221,15 +267,26 @@ export default function SpineEditorDialog({ open, assets, onSave, onPoseExport, 
           </p>
         )}
 
-        {/* 编辑器 iframe 主体 */}
-        <div className="relative flex min-h-0 flex-1 bg-black">
-          <iframe
-            ref={iframeRef}
-            src={editorUrl}
-            title="骨骼编辑器"
-            allow="autoplay; fullscreen"
-            className="h-full w-full border-0"
-          />
+        {/* 编辑器 iframe 主体 + 换肤侧栏 */}
+        <div className="relative flex min-h-0 flex-1">
+          <div className="relative flex min-h-0 flex-1 bg-black">
+            <iframe
+              ref={iframeRef}
+              src={editorUrl}
+              title="骨骼编辑器"
+              allow="autoplay; fullscreen"
+              className="h-full w-full border-0"
+            />
+          </div>
+          {/* AI 换肤侧栏 */}
+          <div className="flex w-64 flex-shrink-0 flex-col border-l border-border bg-background">
+            <ReskinPanel
+              assets={assets}
+              postToIframe={postToIframe}
+              requestSnapshot={requestSnapshot}
+              onReskinComplete={(reskinAssets) => onReskinCompleteRef.current?.(reskinAssets)}
+            />
+          </div>
         </div>
 
         <div className="border-t border-border px-4 py-2 text-[11px] text-muted-foreground">
