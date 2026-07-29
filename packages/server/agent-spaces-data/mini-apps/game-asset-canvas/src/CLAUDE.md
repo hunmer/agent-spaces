@@ -2,7 +2,7 @@
 
 Agent Spaces 宿主里的 React mini-app，用 ReactFlow 搭一个节点化的游戏资产生成画布：节点调工作流（文生图/编辑/抠图/放大/语音/视频）或跑本地图像算法（GIF/像素化/Sheet 合成），节点间连线传图，支持多工作区隔离 + 复制粘贴 + 分组 overlay/多实例执行 + Agent RPC 操控画布。
 
-项目**无 package.json、无构建步骤**，所有运行时依赖经宿主 allowlist（`@xyflow/react` / `@dagrejs/dagre` / `@agent-spaces/ui`）或本地 vendor / CDN 加载（fabric/painterro/pixelorama/gifenc/browser-image-compression）。源码三层结构：Canvas.jsx 只做编排，业务逻辑在 hooks，纯函数/单例在 utils，展示子组件在 components/canvas。
+项目**无 package.json、无构建步骤**，所有运行时依赖经宿主 allowlist（`@xyflow/react` / `@dagrejs/dagre` / `@agent-spaces/ui`）或本地 vendor / CDN 加载（fabric/painterro/pixelorama/gifenc/browser-image-compression/PixiJS/pixi-spine/JSZip）。源码三层结构：Canvas.jsx 只做编排，业务逻辑在 hooks，纯函数/单例在 utils，展示子组件在 components/canvas；Spine 编辑子域集中在 `src/spine/`。
 
 > **本文件是轻量索引**，细节在 `claude/*.md`。旧版单文件契约已废弃（仍保留作历史参考），新内容请写到 `claude/` 详情文件。
 
@@ -44,6 +44,9 @@ graph TD
     B --> E[components/nodes 19个]
     C --> F[utils 纯函数/单例]
     F --> G[utils/image-ops 本地算法]
+    D --> K[spine 编辑器 React UI]
+    K --> L[src/spine 编辑核心]
+    L --> M[vendor/spine 本地 dist]
     B --> H[services/canvas.js 单写者]
     I[api.js / tools.js] -.RPC.-> J[useCanvasAgentRpc]
     J --> C
@@ -57,10 +60,11 @@ graph TD
 
 ## 扫描状态
 
-- **更新时间**：2026-07-25
+- **更新时间**：2026-07-29
 - **已扫描**：`src/` 全部源码（101 个 JS/JSX），关键文件定点读取 13 个（Canvas/constants/services/api/workflow/image-ops/useCanvasState/useNodeExecutions/useCanvasAgentRpc/settings/storage/manifest/handoff）
 - **跳过**：`vendor/`（51MB 二进制）、`assets/`（静态资源）、`chat/` `data/` `configs/`（运行时数据）、`src/handoff.md`（已提炼到详情）
 - **覆盖率**：核心源码 100%，节点组件（19 个）和顶层 components（17 个）按文件名 + 关键代表性样本（NodeShell 不在本轮定点读取，但其约定已在 conventions/faq 提炼）
+- **2026-07-29 增量**：Spine 独立 Vite/iframe 项目已迁入 `src/spine/`，宿主 UI 在 `SpineEditorDialog.jsx` / `SpinePanels.jsx` / `ReskinPanel.jsx`，运行时固定 dist 在 `vendor/spine/`。
 - **建议下一步深挖**：
   - 如需精确节点组件实现细节，定点读 `components/nodes/<具体>.jsx`
   - 如需精确 image-ops 算法实现，定点读 `utils/image-ops/<具体>.js`（gif.js / matte.js / pixelate.js 等）

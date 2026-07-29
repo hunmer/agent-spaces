@@ -11,9 +11,9 @@
  *
  * 不负责：骨骼树/变换面板等 DOM UI（由各 ui/*.js 模块处理，通过回调通信）。
  */
-import * as PIXI from 'pixi.js';
-import { BoneGizmoLayer } from './BoneGizmoLayer';
-import { HistoryManager } from './HistoryManager';
+import { PIXI } from '../runtime.js';
+import { BoneGizmoLayer } from './BoneGizmoLayer.js';
+import { HistoryManager } from './HistoryManager.js';
 
 export class SpineEditorApp {
   constructor(canvasElement) {
@@ -38,6 +38,8 @@ export class SpineEditorApp {
     this.panning = false;
     this.panStart = null;
     this.spaceDown = false;
+    this._windowKeyDown = null;
+    this._windowKeyUp = null;
 
     this.onReady = null;
     this._tickerBound = null;
@@ -122,19 +124,21 @@ export class SpineEditorApp {
     stage.on('pointerupoutside', endPan);
 
     // 空格键
-    window.addEventListener('keydown', (e) => {
+    this._windowKeyDown = (e) => {
       if (e.code === 'Space' && !this._isInputFocused()) {
         e.preventDefault();
         this.spaceDown = true;
         canvas.style.cursor = 'grab';
       }
-    });
-    window.addEventListener('keyup', (e) => {
+    };
+    this._windowKeyUp = (e) => {
       if (e.code === 'Space') {
         this.spaceDown = false;
         canvas.style.cursor = '';
       }
-    });
+    };
+    window.addEventListener('keydown', this._windowKeyDown);
+    window.addEventListener('keyup', this._windowKeyUp);
 
     // 禁用右键菜单（右键用于旋转）
     canvas.addEventListener('contextmenu', (e) => e.preventDefault());
@@ -416,6 +420,8 @@ export class SpineEditorApp {
   canRedo() { return this.history.canRedo(); }
 
   destroy() {
+    if (this._windowKeyDown) window.removeEventListener('keydown', this._windowKeyDown);
+    if (this._windowKeyUp) window.removeEventListener('keyup', this._windowKeyUp);
     if (this._tickerBound) this.app?.ticker.remove(this._tickerBound);
     this.gizmo?.destroy();
     this.app?.destroy(true);

@@ -17,7 +17,7 @@
  *  - 右键拖 → 修改 bone.rotation
  *  - 拖拽中实时 skeleton.updateWorldTransform() + 重绘 gizmo
  */
-import * as PIXI from 'pixi.js';
+import { PIXI } from '../runtime.js';
 import { CoordinateUtils } from './CoordinateUtils.js';
 
 export class BoneGizmoLayer {

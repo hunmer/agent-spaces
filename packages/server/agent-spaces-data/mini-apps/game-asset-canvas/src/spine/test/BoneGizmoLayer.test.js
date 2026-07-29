@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { BoneGizmoLayer } from '../src/core/BoneGizmoLayer.js';
+import { BoneGizmoLayer } from '../core/BoneGizmoLayer.js';
 
 test('bone coordinates stay local to the shared spine container', () => {
   const bone = { worldX: 10, worldY: 20 };

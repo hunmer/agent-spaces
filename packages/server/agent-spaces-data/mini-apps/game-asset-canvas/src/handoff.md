@@ -193,7 +193,7 @@ generateImages(workflowId, input, {directory, historyId})   ← utils/workflow.j
 
 - `vendor/pixelorama-web/` — Godot 4.7 导出像素编辑器，iframe + postMessage（pxr-load/pxr-export），COOP/COEP 由自带 SW 注入。改 GDScript 后需 Godot 重新导出 pck。
 - `vendor/director-desk-web/` — storyai-3d-director-desk 构建产物，iframe + postMessage（director-desk-ready/captures-sent/panorama）。
-- `vendor/spine-editor-web/` — PixiJS + pixi-spine 独立 SPA；源码在 `spine-editor-src/`，修改后需 `npm run build` 并同步 dist 到上层。
+- `spine/` + `vendor/spine/` — Spine 编辑核心、宿主 React UI 与本地 PixiJS/pixi-spine/JSZip 固定版本 dist，无独立构建步骤。
 - `vendor/painterro.min.js` — 图片编辑器，loadVendor + esmSuffix 转 ESM。
 - `vendor/fabric.min.js` / `browser-image-compression.js` — `(0,eval)` 全局求值。
 - `vendor/{gifenc,gifuct-js,image-q,jszip}.js` — 图像处理，Blob URL dynamic import。

@@ -1,5 +1,5 @@
 /**
- * RecordManager：canvas 视频录制封装（MediaRecorder + WebM）。
+ * mini-app RecordManager：canvas 视频录制封装（MediaRecorder + WebM）。
  *
  * 职责：
  * 1. 用 canvas.captureStream(fps) 抓 WebGL 画面流

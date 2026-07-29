@@ -55,8 +55,8 @@ export const NODE_TYPES = {
   photopea: 'photopea',
   // 执行工作流节点：选工作流 + 自定义 JSON 参数 → 执行 → 提取 URL 字段展示到 gallery
   workflowRunner: 'workflowRunner',
-  // 骨骼编辑器节点：iframe 加载 vendor/spine-editor-web（PixiJS+pixi-spine），
-  // 加载 Spine 资源(.skel/.atlas/.png)，骨骼姿势编辑/动画预览/导出。
+  // 骨骼编辑器节点：mini-app 直接加载本地 PixiJS/pixi-spine dist，
+  // 支持 Spine 资源(.skel/.atlas/.png)的姿势编辑、动画预览、换肤和导出。
   spineEditor: 'spineEditor',
   // 视频展示节点：展示/上传视频，支持连线接收上游视频产出（对标 imageDisplay）
   videoDisplay: 'videoDisplay',
@@ -671,4 +671,3 @@ export function defaultCutoutParams(mode) {
   for (const p of params) out[p.key] = p.default;
   return out;
 }
-

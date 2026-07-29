@@ -1,19 +1,19 @@
 import { useCallback, useState } from 'react';
-import { FileUpload } from '@agent-spaces/ui';
+import { Bone, Button, Download, FileUpload } from '@agent-spaces/ui';
 import NodeShell from './NodeShell';
 import SpineEditorDialog from '../SpineEditorDialog';
 import { NODE_TYPES } from '../../utils/constants';
 
 /**
  * 骨骼编辑器节点：上传 .skel/.atlas/.png 三件套（持久化 http URL），
- * 点击「打开骨骼编辑器」弹窗用 iframe 加载 vendor/spine-editor-web（PixiJS+pixi-spine），
- * 资源经 fetch→dataUrl→postMessage 注入编辑器。
+ * 点击「打开骨骼编辑器」后在 mini-app 对话框内直接加载本地 PixiJS+pixi-spine dist，
+ * 资源经 fetch→dataUrl 注入编辑核心。
  *
- * 编辑器内导出（姿势 JSON / 截图 PNG / Spine 文件包）经 postMessage 回传：
+ * 编辑器内导出（姿势 JSON / 截图 PNG / Spine 文件包）直接回传节点：
  * - 截图/Spine 文件经 uploadFile 转 http URL → data.output.images（下游可连线）
  * - 姿势 JSON 存 data.exportedPose（文本，供查看/下游引用）
  *
- * 与 directorDesk/pixelEditor 同款 iframe+postMessage 模式，刷新即生效。
+ * 源码由宿主 renderer 即时编译，刷新即生效。
  */
 export default function SpineEditorNode({ id, data, selected }) {
   const uploadedAssets = data?.uploadedAssets || null; // { skel, atlas, png, name }
@@ -166,14 +166,16 @@ export default function SpineEditorNode({ id, data, selected }) {
       </div>
 
       {/* 也可从内置角色库选择（编辑器内提供），故允许无上传时打开 */}
-      <button
+      <Button
         type="button"
         onClick={() => setEditorOpen(true)}
         disabled={data?.uploading}
-        className="w-full rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+        size="sm"
+        className="w-full"
       >
-        🦴 打开骨骼编辑器
-      </button>
+        <Bone className="h-4 w-4" />
+        打开骨骼编辑器
+      </Button>
 
       {data?.exportedPose && (
         <details className="rounded-md border border-border p-1.5 text-[10px]">
@@ -200,13 +202,16 @@ export default function SpineEditorNode({ id, data, selected }) {
               </a>
             </div>
           ))}
-          <button
+          <Button
             type="button"
+            variant="outline"
+            size="sm"
             onClick={(e) => { e.stopPropagation(); data?.onExportVideos?.(videos); }}
-            className="w-full rounded-md border border-border px-2 py-1 text-xs text-muted-foreground transition hover:border-primary hover:text-primary"
+            className="w-full"
           >
+            <Download className="h-4 w-4" />
             导出视频到画布
-          </button>
+          </Button>
         </div>
       )}
 

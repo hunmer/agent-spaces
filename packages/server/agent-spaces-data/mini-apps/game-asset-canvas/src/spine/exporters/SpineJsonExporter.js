@@ -1,5 +1,5 @@
 /**
- * Spine JSON 导出器：从 pixi-spine 运行时实例反向提取最小 spine JSON。
+ * mini-app Spine JSON 导出器：从 pixi-spine 运行时实例反向提取最小 spine JSON。
  *
  * pixi-spine 不支持 .skel→.json 导出，但换肤只需 skins 段标量字段。
  * 从 Skin.getAttachments() 提取 default skin 的 attachment 标量字段，

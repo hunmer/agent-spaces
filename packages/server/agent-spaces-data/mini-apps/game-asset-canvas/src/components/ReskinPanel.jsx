@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Button, Loader } from '@agent-spaces/ui';
+import {
+  Badge, Button, Input, Label, Loader, Paintbrush, ScrollArea,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Switch, Tabs, TabsList, TabsTrigger, Textarea, Trash2, WandSparkles,
+} from '@agent-spaces/ui';
 import { runReskin, runInpaintSlot } from '../utils/reskin/reskinPipeline';
 import { parseAtlas, safeFilename } from '../utils/reskin/atlasReader';
 import { cropRegionRotated, loadImage } from '../utils/reskin/canvasUtils';
@@ -12,12 +16,12 @@ import { cropRegionRotated, loadImage } from '../utils/reskin/canvasUtils';
  *
  * @param {object} props
  * @param {object|null} props.assets 当前 spine 三件套 {skel, atlas, png, name}
- * @param {(type:string, payload?:object) => boolean} props.postToIframe 向 iframe 发消息
+ * @param {(pngDataUrl:string, name:string) => Promise<void>|void} props.replaceAtlas 热加载 atlas
  * @param {Promise<string|null>} props.requestSnapshot 请求 iframe 截图
- * @param {Promise<object|null>} props.requestSpineJson 请求 iframe 导出 spine JSON（支持 .skel）
+ * @param {Promise<object|null>} props.requestSpineJson 从当前编辑器实例导出 spine JSON（支持 .skel）
  * @param {(assets:{skel,atlas,png,spineJson}) => void} [props.onReskinComplete] 换肤完成
  */
-export default function ReskinPanel({ assets, postToIframe, requestSnapshot, requestSpineJson, onReskinComplete }) {
+export default function ReskinPanel({ assets, replaceAtlas, requestSnapshot, requestSpineJson, onReskinComplete }) {
   const [prompt, setPrompt] = useState('');
   const [skinName, setSkinName] = useState('');
   const [method, setMethod] = useState('atlas');         // 'atlas' | 'exploded'
@@ -83,9 +87,9 @@ export default function ReskinPanel({ assets, postToIframe, requestSnapshot, req
   const applyHistory = useCallback(async (item) => {
     if (!item?.assets?.pngDataUrl) return;
     addLog('apply', `应用历史皮肤：${item.name}`);
-    postToIframe?.('spine:replace-atlas', { pngDataUrl: item.assets.pngDataUrl, name: item.name });
+    await replaceAtlas?.(item.assets.pngDataUrl, item.name);
     setActiveSkin(item.name);
-  }, [postToIframe, addLog]);
+  }, [replaceAtlas, addLog]);
 
   /** 全局换肤 */
   const handleRun = useCallback(async () => {
@@ -125,7 +129,7 @@ export default function ReskinPanel({ assets, postToIframe, requestSnapshot, req
 
       addLog('preview', '应用新皮肤到画布预览…');
       const pngDataUrl = result.newAtlasCanvas.toDataURL('image/png');
-      postToIframe?.('spine:replace-atlas', { pngDataUrl, name: finalSkinName });
+      await replaceAtlas?.(pngDataUrl, finalSkinName);
       setActiveSkin(finalSkinName);
 
       const historyItem = {
@@ -146,7 +150,7 @@ export default function ReskinPanel({ assets, postToIframe, requestSnapshot, req
     } finally {
       setRunning(false);
     }
-  }, [prompt, assets, method, segMethod, erode, erodePx, finalSkinName, requestSnapshot, requestSpineJson, postToIframe, onReskinComplete, addLog, spineName]);
+  }, [prompt, assets, method, segMethod, erode, erodePx, finalSkinName, requestSnapshot, requestSpineJson, replaceAtlas, onReskinComplete, addLog, spineName]);
 
   /** per-slot 局部重绘 */
   const handleInpaintSlot = useCallback(async () => {
@@ -200,7 +204,7 @@ export default function ReskinPanel({ assets, postToIframe, requestSnapshot, req
       });
 
       const pngDataUrl = result.newAtlasCanvas.toDataURL('image/png');
-      postToIframe?.('spine:replace-atlas', { pngDataUrl, name: finalSkinName });
+      await replaceAtlas?.(pngDataUrl, finalSkinName);
       setActiveSkin(finalSkinName);
       onReskinComplete?.({ skel: assets.skel, atlas: result.newAtlasText, png: pngDataUrl, spineJson: result.newSpineJson });
       addLog('done', `✓ 局部重绘完成：${selectedSlot}`);
@@ -210,7 +214,7 @@ export default function ReskinPanel({ assets, postToIframe, requestSnapshot, req
     } finally {
       setRunning(false);
     }
-  }, [prompt, assets, selectedSlot, erode, erodePx, finalSkinName, requestSpineJson, postToIframe, onReskinComplete, addLog]);
+  }, [prompt, assets, selectedSlot, erode, erodePx, finalSkinName, requestSpineJson, replaceAtlas, onReskinComplete, addLog]);
 
   const deleteHistory = useCallback((name, e) => {
     e?.stopPropagation();
@@ -228,93 +232,71 @@ export default function ReskinPanel({ assets, postToIframe, requestSnapshot, req
   }[step] || step);
 
   return (
-    <div className="flex h-full flex-col gap-2 overflow-hidden">
-      <div className="border-b border-border px-3 py-2">
-        <h3 className="text-xs font-semibold">🎨 AI 换肤</h3>
-        <p className="mt-0.5 text-[10px] text-muted-foreground">
-          {assets ? `当前：${spineName}` : '需先加载 spine 资源'}
-        </p>
-      </div>
-
-      <div className="flex flex-col gap-2 border-b border-border px-3 py-2">
-        {/* 模式切换：全局 / 局部 */}
-        <div className="flex gap-1 text-[10px]">
-          <button
-            type="button"
-            onClick={() => setSlotMode(false)}
-            disabled={running}
-            className={`flex-1 rounded px-2 py-1 ${!slotMode ? 'bg-primary text-primary-foreground' : 'border border-border text-muted-foreground'}`}
-          >全局换肤</button>
-          <button
-            type="button"
-            onClick={() => { setSlotMode(true); if (assets) loadSlots(); }}
-            disabled={running || !assets}
-            className={`flex-1 rounded px-2 py-1 ${slotMode ? 'bg-primary text-primary-foreground' : 'border border-border text-muted-foreground'}`}
-          >局部重绘</button>
+    <div className="flex h-full min-h-0 flex-col overflow-hidden">
+      <div className="space-y-3 border-b border-border p-3">
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-xs font-medium">AI 换肤</span>
+          <Badge variant="secondary" className="max-w-36 truncate">{assets ? spineName : '未加载'}</Badge>
         </div>
+        <Tabs
+          value={slotMode ? 'slot' : 'global'}
+          onValueChange={(value) => {
+            const nextSlotMode = value === 'slot';
+            setSlotMode(nextSlotMode);
+            if (nextSlotMode && assets) loadSlots();
+          }}
+        >
+          <TabsList className="w-full">
+            <TabsTrigger value="global" disabled={running} className="flex-1">全局换肤</TabsTrigger>
+            <TabsTrigger value="slot" disabled={running || !assets} className="flex-1">局部重绘</TabsTrigger>
+          </TabsList>
+        </Tabs>
 
-        <textarea
-          rows={2}
+        <Textarea
+          rows={3}
           placeholder={slotMode ? '描述该部位新样式' : '描述新皮肤，如 "黑精灵，黑翅膀，金甲"'}
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
           disabled={running}
-          className="w-full resize-none rounded border border-border bg-background px-2 py-1 text-xs outline-none focus:border-primary"
+          className="resize-none text-xs"
         />
 
         {!slotMode ? (
           <>
-            <input
-              type="text"
+            <Input
               placeholder={slug(prompt) || '皮肤名'}
               value={skinName}
               onChange={(e) => setSkinName(e.target.value)}
               disabled={running}
-              className="w-full rounded border border-border bg-background px-2 py-1 text-xs outline-none focus:border-primary"
+              className="h-8 text-xs"
             />
-            {/* 合成方法 */}
-            <label className="flex items-center justify-between gap-2 text-[10px]">
-              <span className="text-muted-foreground">合成方法</span>
-              <select value={method} onChange={(e) => setMethod(e.target.value)} disabled={running} className="rounded border border-border bg-background px-1 py-0.5 text-[10px]">
-                <option value="atlas">Atlas + 截图</option>
-                <option value="exploded">爆炸图</option>
-              </select>
-            </label>
-            {/* 分割方法 */}
-            <label className="flex items-center justify-between gap-2 text-[10px]">
-              <span className="text-muted-foreground">分割方法</span>
-              <select value={segMethod} onChange={(e) => setSegMethod(e.target.value)} disabled={running} className="rounded border border-border bg-background px-1 py-0.5 text-[10px]">
-                <option value="sam">SAM 精确（慢）</option>
-                <option value="bg_components">形状交集（快）</option>
-              </select>
-            </label>
+            <FieldSelect label="合成方法" value={method} onValueChange={setMethod} disabled={running} options={[
+              ['atlas', 'Atlas + 截图'],
+              ['exploded', '爆炸图'],
+            ]} />
+            <FieldSelect label="分割方法" value={segMethod} onValueChange={setSegMethod} disabled={running} options={[
+              ['sam', 'SAM 精确'],
+              ['bg_components', '形状交集'],
+            ]} />
           </>
         ) : (
-          <label className="flex items-center justify-between gap-2 text-[10px]">
-            <span className="text-muted-foreground">重绘部位</span>
-            <select
-              value={selectedSlot}
-              onChange={(e) => { setSelectedSlot(e.target.value); if (!slots.length) loadSlots(); }}
-              disabled={running}
-              className="max-w-[140px] truncate rounded border border-border bg-background px-1 py-0.5 text-[10px]"
-            >
-              {slots.length ? slots.map((s) => <option key={s} value={s}>{s}</option>)
-                : <option value="">点击加载部位…</option>}
-            </select>
-          </label>
+          <FieldSelect
+            label="重绘部位"
+            value={selectedSlot}
+            onValueChange={setSelectedSlot}
+            disabled={running || !slots.length}
+            options={slots.map((slot) => [slot, slot])}
+            placeholder="无可用部位"
+          />
         )}
 
-        {/* 侵蚀去白边 */}
-        <div className="flex items-center gap-2 text-[10px]">
-          <label className="flex items-center gap-1">
-            <input type="checkbox" checked={erode} onChange={(e) => setErode(e.target.checked)} disabled={running} />
-            <span className="text-muted-foreground">去白边</span>
-          </label>
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <Switch checked={erode} onCheckedChange={setErode} disabled={running} />
+            <Label className="text-xs">去白边</Label>
+          </div>
           {erode && (
-            <label className="flex items-center gap-1">
-              <input type="number" min={1} max={20} value={erodePx} onChange={(e) => setErodePx(Math.max(1, Number(e.target.value)))} disabled={running} className="w-12 rounded border border-border bg-background px-1 py-0.5 text-[10px]" />
-              <span className="text-muted-foreground">px</span>
-            </label>
+            <Input type="number" min={1} max={20} value={erodePx} onChange={(e) => setErodePx(Math.max(1, Number(e.target.value)))} disabled={running} className="h-8 w-20 text-xs" />
           )}
         </div>
 
@@ -324,16 +306,15 @@ export default function ReskinPanel({ assets, postToIframe, requestSnapshot, req
           onClick={slotMode ? handleInpaintSlot : handleRun}
           disabled={running || !prompt.trim() || !assets || (slotMode && !selectedSlot)}
         >
-          {running ? <Loader className="h-3.5 w-3.5" /> : slotMode ? '✏️' : '🎨'}
+          {running ? <Loader className="h-3.5 w-3.5" /> : slotMode ? <Paintbrush className="h-3.5 w-3.5" /> : <WandSparkles className="h-3.5 w-3.5" />}
           {running ? '处理中…' : slotMode ? '局部重绘' : '开始换肤'}
         </Button>
       </div>
 
-      {/* 日志区 */}
       {logs.length > 0 && (
         <div className="flex min-h-0 flex-1 flex-col border-b border-border">
-          <div className="px-3 py-1 text-[10px] font-medium text-muted-foreground">日志</div>
-          <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-2 font-mono text-[10px] leading-relaxed">
+          <div className="px-3 py-2 text-xs font-medium">日志</div>
+          <ScrollArea className="min-h-0 flex-1 px-3 pb-2 font-mono text-[10px] leading-relaxed">
             {logs.map((log, i) => {
               const isError = log.data?.error || log.step === 'error';
               const prog = log.data?.done != null && log.data?.total ? ` (${log.data.done}/${log.data.total})` : '';
@@ -344,15 +325,14 @@ export default function ReskinPanel({ assets, postToIframe, requestSnapshot, req
               );
             })}
             <div ref={logEndRef} />
-          </div>
+          </ScrollArea>
         </div>
       )}
 
-      {/* 历史区 */}
       {history.length > 0 && (
         <div className="flex min-h-0 flex-1 flex-col">
-          <div className="px-3 py-1 text-[10px] font-medium text-muted-foreground">皮肤历史（{history.length}）</div>
-          <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-2">
+          <div className="px-3 py-2 text-xs font-medium">皮肤历史（{history.length}）</div>
+          <ScrollArea className="min-h-0 flex-1 px-2 pb-2">
             {history.map((item) => (
               <div
                 key={item.name + item.timestamp}
@@ -364,12 +344,30 @@ export default function ReskinPanel({ assets, postToIframe, requestSnapshot, req
                   <div className="truncate text-[11px] font-medium">{item.name}</div>
                   <div className="truncate text-[9px] text-muted-foreground">{item.prompt}</div>
                 </div>
-                <button onClick={(e) => deleteHistory(item.name, e)} className="flex-shrink-0 text-[10px] text-muted-foreground opacity-0 transition hover:text-red-500 group-hover:opacity-100" title="删除">✕</button>
+                <Button type="button" variant="ghost" size="icon-sm" onClick={(e) => deleteHistory(item.name, e)} title="删除" className="h-7 w-7 opacity-0 group-hover:opacity-100">
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
               </div>
             ))}
-          </div>
+          </ScrollArea>
         </div>
       )}
+    </div>
+  );
+}
+
+function FieldSelect({ label, value, onValueChange, options, disabled, placeholder }) {
+  return (
+    <div className="flex items-center justify-between gap-2">
+      <Label className="text-xs text-muted-foreground">{label}</Label>
+      <Select value={value || null} onValueChange={onValueChange} disabled={disabled}>
+        <SelectTrigger size="sm" className="min-w-36 max-w-44">
+          <SelectValue>{value ? (options.find(([key]) => key === value)?.[1] || value) : placeholder}</SelectValue>
+        </SelectTrigger>
+        <SelectContent>
+          {options.map(([key, text]) => <SelectItem key={key} value={key}>{text}</SelectItem>)}
+        </SelectContent>
+      </Select>
     </div>
   );
 }

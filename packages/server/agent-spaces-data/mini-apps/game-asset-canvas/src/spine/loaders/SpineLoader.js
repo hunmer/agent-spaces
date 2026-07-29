@@ -18,11 +18,7 @@
  *   - TextureAtlas, AtlasAttachmentLoader
  *   - Spine (渲染类)
  */
-import * as PIXI from 'pixi.js';
-import {
-  Spine, SkeletonBinary, SkeletonJson,
-  TextureAtlas, AtlasAttachmentLoader,
-} from '@pixi-spine/all-3.8';
+import { PIXI, getSpineRuntime } from '../runtime.js';
 
 /**
  * 把 base64 dataUrl 转成 ArrayBuffer（用于 .skel 二进制解析）。
@@ -53,6 +49,10 @@ async function dataUrlToText(dataUrl) {
  * @throws {Error} 版本不匹配 / 文件缺失 / 解析失败
  */
 export async function loadSpine({ skel, atlas, png, name = 'spine' }) {
+  const {
+    Spine, SkeletonBinary, SkeletonJson,
+    TextureAtlas, AtlasAttachmentLoader,
+  } = getSpineRuntime();
   // 1. 准备数据
   let skelBytes;
   let atlasText;
@@ -273,4 +273,3 @@ export class BoneVisibility {
 }
 
 export default { loadSpine, getAnimations, getSkins, getBoneTree, BoneVisibility };
-

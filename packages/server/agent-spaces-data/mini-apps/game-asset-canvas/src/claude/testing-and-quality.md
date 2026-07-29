@@ -8,7 +8,8 @@
 2. **宿主层 lint/tsc**（仅对 `packages/web` 和 `packages/server` 的 TypeScript 文件）
 3. **手测**：刷新 mini-app 后人工验证功能
 
-独立 vendor 工程例外：`src/vendor/spine-editor-web/spine-editor-src/` 使用 Node 内置测试运行器，修改骨骼坐标逻辑后运行 `npm test`。
+Spine 坐标逻辑使用 Node 内置测试运行器：
+`node --test src/spine/test/BoneGizmoLayer.test.js`。
 
 ## 语法自检（验收/调试速查）
 
