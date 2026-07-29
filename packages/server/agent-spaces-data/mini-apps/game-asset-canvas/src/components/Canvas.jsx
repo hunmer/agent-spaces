@@ -64,8 +64,8 @@ export default function Canvas() {
   const { workspaces, activeId, createWorkspace, renameWorkspace, switchWorkspace, deleteWorkspace } = useWorkspaces();
   const activeWorkspace = workspaces.find((ws) => ws.id === activeId);
   const {
-    nodes, edges, groups, loaded,
-    setNodes, setEdges, setGroups, updateNodeData,
+    nodes, edges, groups, viewport, hasSavedViewport, loaded,
+    setNodes, setEdges, setGroups, setViewport, updateNodeData,
   } = useCanvasState(activeId);
   // 落地策略由 directory 驱动：设了则产图落到工作区目录，否则落 data（详见 useWorkflow/generateImages）
   const runWorkflow = useWorkflow(activeWorkspace?.directory);
@@ -574,8 +574,11 @@ export default function Canvas() {
             onPick={crud.handleAddAtMenu}
           >
             <ReactFlow
+              key={activeId}
               nodes={decoratedNodes}
               edges={floatingEdges}
+              viewport={viewport}
+              onViewportChange={setViewport}
               onNodesChange={onNodesChange}
               onEdgesChange={onEdgesChange}
               onConnect={onConnect}
@@ -587,7 +590,7 @@ export default function Canvas() {
               nodeTypes={nodeTypes}
               edgeTypes={EDGE_TYPES}
               defaultEdgeOptions={DEFAULT_EDGE_OPTIONS}
-              fitView
+              fitView={!hasSavedViewport}
               proOptions={{ hideAttribution: true }}
             >
               <Background variant={BackgroundVariant.Dots} gap={16} size={1} />

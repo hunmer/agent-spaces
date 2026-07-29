@@ -126,6 +126,7 @@ export default function UiSplitterDialog({
   const croppingRef = useRef(false);       // 正在拖拽裁切框
   const cropStartRef = useRef(null);       // 裁切起点 {x,y}
   const cropDraftRef = useRef(null);       // 裁切范围临时 fabric.Rect（橙色虚线框）
+  const cropSizeLabelRef = useRef(null);   // 裁切拖拽中的宽高标签
   // 网格模式（fabric 闭包读最新值）
   const gridModeRef = useRef(false);       // 是否处于网格模式
   const gridColsRef = useRef(2);           // 网格列数
@@ -472,6 +473,13 @@ export default function UiSplitterDialog({
     if (!open || !readyRef.current || gridModeRef.current || cropModeRef.current) return;
     detectAll();
   }, [open, method, tolerance, minArea, padding, pickedHex, detectAll]);
+
+  // 网格模式下，视觉参数（背景色/容差/边距）变化只影响导出底色，不改变切片框，
+  // detectAll 会被上面的 effect 跳过，这里补一次 renderList 重算切片预览。
+  useEffect(() => {
+    if (!open || !readyRef.current || !gridModeRef.current) return;
+    renderList();
+  }, [open, pickedHex, tolerance, minArea, padding, renderList]);
 
   // 让 fabric 视口 contain 居中显示整张图片（坐标系仍是图片像素，仅改 viewportTransform）
   const fitToStage = useCallback(() => {
@@ -822,11 +830,61 @@ export default function UiSplitterDialog({
   const clearGuides = useCallback((resetPositions = true) => {
     const fc = fcRef.current;
     if (!fc) return;
-    for (const o of fc.getObjects().filter((g) => g.kind === 'guide' || g.kind === 'grid-boundary')) fc.remove(o);
+    for (const o of fc.getObjects().filter((g) => (
+      g.kind === 'guide' || g.kind === 'grid-boundary' || g.kind === 'grid-distance'
+    ))) fc.remove(o);
     if (resetPositions) {
       vGuidesRef.current = [];
       hGuidesRef.current = [];
     }
+  }, []);
+
+  // 拖动参考线时，显示该轴全部相邻线（含两侧边框）之间的图片像素距离。
+  const renderGuideDistances = useCallback((axis) => {
+    const fc = fcRef.current;
+    const fabric = fabricLibRef.current;
+    const src = sourceRef.current;
+    if (!fc || !fabric || !src) return;
+    for (const o of fc.getObjects().filter((item) => item.kind === 'grid-distance')) fc.remove(o);
+
+    const isVertical = axis === 'v';
+    const size = isVertical ? src.canvas.width : src.canvas.height;
+    const crossSize = isVertical ? src.canvas.height : src.canvas.width;
+    const positions = fc.getObjects()
+      .filter((item) => item.kind === 'guide' && item.axis === axis)
+      .map((item) => Math.round(isVertical ? item.left : item.top))
+      .sort((a, b) => a - b);
+    const boundaries = [0, ...positions, size];
+
+    for (let i = 0; i < boundaries.length - 1; i++) {
+      const start = boundaries[i];
+      const end = boundaries[i + 1];
+      const distance = Math.max(0, end - start);
+      const label = new fabric.Text(`${distance}px`, {
+        left: isVertical ? (start + end) / 2 : Math.min(8, crossSize / 2),
+        top: isVertical ? Math.min(8, crossSize / 2) : (start + end) / 2,
+        originX: isVertical ? 'center' : 'left',
+        originY: isVertical ? 'top' : 'center',
+        fontSize: 13,
+        fontWeight: 'bold',
+        fill: '#111827',
+        backgroundColor: 'rgba(254, 240, 138, 0.92)',
+        padding: 3,
+        selectable: false,
+        evented: false,
+        objectCaching: false,
+      });
+      label.kind = 'grid-distance';
+      fc.add(label);
+    }
+    fc.requestRenderAll();
+  }, []);
+
+  const clearGuideDistances = useCallback(() => {
+    const fc = fcRef.current;
+    if (!fc) return;
+    for (const o of fc.getObjects().filter((item) => item.kind === 'grid-distance')) fc.remove(o);
+    fc.requestRenderAll();
   }, []);
 
   // 在当前图片上渲染网格边界，并按 vGuidesRef/hGuidesRef 绘制内部参考线。
@@ -1095,6 +1153,7 @@ export default function UiSplitterDialog({
         cropStartRef.current = p;
         // 清除上一个未应用的裁切框
         if (cropDraftRef.current) { fc.remove(cropDraftRef.current); cropDraftRef.current = null; }
+        if (cropSizeLabelRef.current) { fc.remove(cropSizeLabelRef.current); cropSizeLabelRef.current = null; }
         cropDraftRef.current = new fabric.Rect({
           left: p.x, top: p.y, width: 1, height: 1,
           fill: 'rgba(234,179,8,0.08)', stroke: '#eab308', strokeWidth: 2,
@@ -1103,6 +1162,14 @@ export default function UiSplitterDialog({
         });
         cropDraftRef.current.kind = 'crop';
         fc.add(cropDraftRef.current);
+        cropSizeLabelRef.current = new fabric.Text('1 × 1 px', {
+          left: p.x, top: p.y, originX: 'center', originY: 'center',
+          fontSize: 13, fontWeight: 'bold', fill: '#111827',
+          backgroundColor: 'rgba(254, 240, 138, 0.92)', padding: 3,
+          selectable: false, evented: false, objectCaching: false,
+        });
+        cropSizeLabelRef.current.kind = 'crop-size';
+        fc.add(cropSizeLabelRef.current);
         setCropBox(null);
         return;
       }
@@ -1136,11 +1203,15 @@ export default function UiSplitterDialog({
       if (croppingRef.current && cropDraftRef.current) {
         const p = pointerPoint(event);
         const s = cropStartRef.current;
-        cropDraftRef.current.set({
-          left: Math.min(s.x, p.x),
-          top: Math.min(s.y, p.y),
-          width: Math.abs(p.x - s.x),
-          height: Math.abs(p.y - s.y),
+        const left = Math.min(s.x, p.x);
+        const top = Math.min(s.y, p.y);
+        const width = Math.abs(p.x - s.x);
+        const height = Math.abs(p.y - s.y);
+        cropDraftRef.current.set({ left, top, width, height });
+        cropSizeLabelRef.current?.set({
+          text: `${Math.round(width)} × ${Math.round(height)} px`,
+          left: left + width / 2,
+          top: top + height / 2,
         });
         fc.renderAll();
         return;
@@ -1168,6 +1239,7 @@ export default function UiSplitterDialog({
       if (croppingRef.current) {
         croppingRef.current = false;
         const d = cropDraftRef.current;
+        if (cropSizeLabelRef.current) { fc.remove(cropSizeLabelRef.current); cropSizeLabelRef.current = null; }
         if (!d) return;
         if (d.width < 2 || d.height < 2) {
           fc.remove(d); cropDraftRef.current = null; setCropBox(null); fc.renderAll(); return;
@@ -1203,6 +1275,7 @@ export default function UiSplitterDialog({
           const clamped = Math.max(inset, Math.min(ih - inset, t.top));
           t.set({ top: clamped });
         }
+        renderGuideDistances(t.axis);
         scheduleGridSplit();
         return;
       }
@@ -1215,6 +1288,7 @@ export default function UiSplitterDialog({
       const t = event?.target;
       if (t?.kind === 'guide') {
         // 松手立即补最后一次，确保节流期间的最终位置不丢失。
+        clearGuideDistances();
         scheduleGridSplit(true);
         fc.__historyMoveStarted = false;
         fc.__historyScaleStarted = false;
@@ -1224,7 +1298,7 @@ export default function UiSplitterDialog({
       fc.__historyScaleStarted = false;
       renderList();
     });
-  }, [pushHistory, renderList, setColor, curState, scheduleGridSplit]);
+  }, [pushHistory, renderList, setColor, curState, scheduleGridSplit, renderGuideDistances, clearGuideDistances]);
 
   // ===== 键盘：空格平移 / Delete 删切片框 / Ctrl+Z 撤销 / Ctrl+Y(Ctrl+Shift+Z) 重做 =====
   useEffect(() => {
@@ -1550,6 +1624,28 @@ export default function UiSplitterDialog({
                   <option value="brightness">暗色前景</option>
                 </select>
               </Field>
+              {method === 'picked' && (
+                <>
+                  <Field label="背景色">
+                    <div className="flex h-8 items-center rounded-md border border-border bg-background px-2">
+                      <ColorPicker colors={BG_PRESETS} value={pickedHex} onChange={handlePickColor} />
+                    </div>
+                  </Field>
+                  <div className="flex items-end gap-1.5">
+                    <Tooltip>
+                      <TooltipTrigger render={
+                        <Button size="icon" variant={pickingRef.current ? 'default' : 'outline'}
+                          className={`h-8 w-8 ${pickingRef.current ? 'ring-2 ring-primary/40' : ''}`}
+                          disabled={cropMode}
+                          onClick={togglePicking} />
+                      }>
+                        <Pipette className="h-4 w-4" />
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom">💧 吸取背景色</TooltipContent>
+                    </Tooltip>
+                  </div>
+                </>
+              )}
               <span className="pb-2 text-[11px] text-muted-foreground">实时切片 {count}</span>
             </>
           ) : null}

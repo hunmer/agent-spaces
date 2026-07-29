@@ -171,9 +171,12 @@ interface CanvasFile {
   nodes: Node[];
   edges: Edge[];
   groups: WorkflowGroup[];
+  viewport?: { x: number; y: number; zoom: number };
   savedAt: number;
 }
 ```
+
+`viewport` 记录该工作区最后一次画布平移和缩放状态；旧文件缺少该字段时使用默认视口，并在后续画布变更时写入。
 
 输出预览是节点级状态，持久化在 `nodes[].data.outputPreviewMode`（缺省 false）。画布 Controls 入口只负责批量把所有节点设为 true；节点预览高度是运行时派生数据，不写入文件。读取旧文件时，若顶层 `outputPreviewMode` 为 true，会迁移到尚未设置该字段的节点。
 

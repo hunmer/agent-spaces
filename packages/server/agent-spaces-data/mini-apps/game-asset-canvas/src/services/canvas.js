@@ -45,13 +45,14 @@ function readWorkspaceList(ctx) {
 export default {
   // —— 画布（按工作区隔离）——
 
-  // 保存整张画布（节点 + 连线 + 分组）
+  // 保存整张画布（节点 + 连线 + 分组 + 视口）
   save_canvas: ({ workspaceId, state }, ctx) => {
     const payload = state || {};
     ctx.writeConfig(wsPath(workspaceId, CANVAS_FILE), {
       nodes: Array.isArray(payload.nodes) ? payload.nodes : [],
       edges: Array.isArray(payload.edges) ? payload.edges : [],
       groups: Array.isArray(payload.groups) ? payload.groups : [],
+      ...(isViewport(payload.viewport) ? { viewport: payload.viewport } : {}),
       savedAt: Date.now(),
     });
     return { ok: true };
@@ -331,3 +332,11 @@ export default {
     return next;
   },
 };
+
+function isViewport(viewport) {
+  return Boolean(viewport)
+    && Number.isFinite(viewport.x)
+    && Number.isFinite(viewport.y)
+    && Number.isFinite(viewport.zoom)
+    && viewport.zoom > 0;
+}
