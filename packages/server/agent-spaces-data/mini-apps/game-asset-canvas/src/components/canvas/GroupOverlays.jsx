@@ -1,5 +1,7 @@
+import { Fragment } from 'react';
 import { ViewportPortal } from '@xyflow/react';
 import { WorkflowGroupOverlay } from '@agent-spaces/ui';
+import GroupExecutionToolbar from './GroupExecutionToolbar';
 
 /**
  * 分组 overlay 列表：在 ReactFlow 的 ViewportPortal 内渲染所有分组的 WorkflowGroupOverlay。
@@ -21,22 +23,37 @@ import { WorkflowGroupOverlay } from '@agent-spaces/ui';
 export default function GroupOverlays({
   items, selectedGroupId,
   onSelect, onDelete, onUpdate, onMove, onConnect, screenDeltaToFlowDelta,
+  inputSlotCounts, onSetExecutionMode, onSetExecutionCount,
+  runningGroupIds,
+  onSwitchExecutionRun, onUploadExecutionAssets, onRemoveExecutionAsset,
 }) {
   return (
     <ViewportPortal>
       {items.map(({ group, childNodes }) => (
-        <WorkflowGroupOverlay
-          key={group.id}
-          group={group}
-          childNodes={childNodes}
-          isSelected={selectedGroupId === group.id}
-          onSelect={onSelect}
-          onDelete={onDelete}
-          onUpdate={onUpdate}
-          onMove={onMove}
-          onConnect={onConnect}
-          screenDeltaToFlowDelta={screenDeltaToFlowDelta}
-        />
+        <Fragment key={group.id}>
+          <WorkflowGroupOverlay
+            group={group}
+            childNodes={childNodes}
+            isSelected={selectedGroupId === group.id}
+            onSelect={onSelect}
+            onDelete={onDelete}
+            onUpdate={onUpdate}
+            onMove={onMove}
+            onConnect={onConnect}
+            screenDeltaToFlowDelta={screenDeltaToFlowDelta}
+          />
+          <GroupExecutionToolbar
+            group={group}
+            childNodes={childNodes}
+            inputSlotCount={inputSlotCounts.get(group.id) || 0}
+            busy={runningGroupIds.has(group.id)}
+            onSetMode={onSetExecutionMode}
+            onSetCount={onSetExecutionCount}
+            onSwitchRun={onSwitchExecutionRun}
+            onUploadFiles={onUploadExecutionAssets}
+            onRemoveAsset={onRemoveExecutionAsset}
+          />
+        </Fragment>
       ))}
     </ViewportPortal>
   );

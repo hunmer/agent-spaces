@@ -155,12 +155,40 @@ interface WorkflowGroup {
   locked?: boolean;
   disabled?: boolean;
   savedNodeStates?: Record<string, any>;  // 锁定/禁用前的状态快照
+  batchExecution?: GroupBatchExecution;   // 分组多实例执行配置（见下）
 }
 ```
 
 - 持久化到 `canvas.json` 的 `groups` 字段（service `save_canvas` 透传）。
 - 旧 canvas.json 无 groups 兜底为 `[]`。
 - 删节点时 `onNodesDelete` 同步清理 groups 里悬空的 childNodeIds。
+
+### 分组多实例执行（GroupBatchExecution）
+
+```typescript
+interface GroupBatchExecution {
+  mode: 'count' | 'assets';
+  count: {
+    target: number;              // 1-50
+    activeId: string | null;
+    runs: Array<{ id: string; index: number; nodeStates: Record<string, NodeData> }>;
+  };
+  assets: {
+    activeId: string | null;
+    templateNodeStates: Record<string, NodeData> | null;
+    runs: Array<{
+      id: string;
+      name: string;
+      url: string;               // uploadFile 返回的持久化 URL
+      nodeStates: Record<string, NodeData>;
+    }>;
+  };
+}
+```
+
+- 当前实例仍以画布 `nodes[].data` 为实时状态；切换前写回当前 run，再恢复目标 run 的整组节点 data。
+- 素材实例只替换没有上游输入的玩家上传槽位；图片展示节点写 `data.images`，普通接收节点写 `data.uploadedImages`，图片对比节点写未被上游占用的 first/second 槽位。
+- 新素材实例会清空运行状态和旧产出。组内节点运行时禁止切换实例，避免异步完成回调写入其他实例。
 
 ## 画布文件（CanvasFile）
 

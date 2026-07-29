@@ -38,6 +38,7 @@ import usePanelLayout from '../hooks/usePanelLayout';
 import useImageOutputs from '../hooks/useImageOutputs';
 import useSelectionClipboard from '../hooks/useSelectionClipboard';
 import useGroupOperations from '../hooks/useGroupOperations';
+import useGroupExecution from '../hooks/useGroupExecution';
 import useNodeCrud from '../hooks/useNodeCrud';
 import useNodeExecutions from '../hooks/useNodeExecutions';
 import useLastParams from '../hooks/useLastParams';
@@ -187,6 +188,7 @@ export default function Canvas() {
 
   // —— 分组操作 + overlay 移动/连线 ——
   const groupOps = useGroupOperations({ groups, nodes, edges, setGroups, setNodes, setEdges, reactFlow });
+  const groupExecution = useGroupExecution({ groups, nodes, edges, setGroups, setNodes });
 
   // —— ReactFlow 变更回调（逻辑简单，留在编排层）——
   const onNodesChange = useCallback((changes) => {
@@ -624,6 +626,13 @@ export default function Canvas() {
                 onMove={groupOps.handleGroupMove}
                 onConnect={groupOps.handleGroupConnect}
                 screenDeltaToFlowDelta={groupOps.screenDeltaToFlowDelta}
+                inputSlotCounts={groupExecution.inputSlotCounts}
+                runningGroupIds={groupExecution.runningGroupIds}
+                onSetExecutionMode={groupExecution.setMode}
+                onSetExecutionCount={groupExecution.setCount}
+                onSwitchExecutionRun={groupExecution.switchRun}
+                onUploadExecutionAssets={groupExecution.uploadAssets}
+                onRemoveExecutionAsset={groupExecution.removeAsset}
               />
             </ReactFlow>
 
