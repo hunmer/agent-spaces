@@ -165,6 +165,8 @@ export default function CutoutNode({ id, type, data, selected }) {
           urls={upstreamImages}
           sortable
           onChangeOrder={(next) => onUpdate?.({ upstreamOrder: next })}
+          onDelete={data?.onDeleteUpstreamImage}
+          nonDeletableUrls={data?.protectedUpstreamImageUrls}
         />
       )}
 

@@ -429,6 +429,31 @@ export default function Canvas() {
     updateNodeData(nodeId, { __versionSkip: true, output: { images: [] }, versions: [], activeVersion: undefined, status: 'idle' });
   }, [updateNodeData]);
 
+  // 删除节点的一张上游输入图：反查产出该 url 的连入边并删除（与 computeInputImages 的产出判定一致：
+  // source 节点 output.images 优先，仅 imageDisplay 透传 data.images）。用 ref 读最新值保持稳定引用。
+  const handleDeleteUpstreamImage = useCallback((nodeId, url) => {
+    if (!nodeId || !url) return;
+    const curNodes = nodesRef.current;
+    const curEdges = edgesRef.current;
+    const byId = new Map(curNodes.map((n) => [n.id, n]));
+    const isDisplayType = (id) => byId.get(id)?.type === NODE_TYPES.imageDisplay;
+    // 某 source 节点作为产出给出的图集合
+    const sourceImageSet = (srcId) => {
+      const n = byId.get(srcId);
+      const sd = n?.data || {};
+      const out = Array.isArray(sd.output?.images) ? sd.output.images : [];
+      if (out.length) return new Set(out);
+      // 仅透传类节点无 output 时回退 data.images；生成类节点无 output 视为无产出
+      return isDisplayType(srcId) ? new Set(Array.isArray(sd.images) ? sd.images : []) : new Set();
+    };
+    const toRemove = curEdges
+      .filter((e) => e.target === nodeId && sourceImageSet(e.source).has(url))
+      .map((e) => e.id);
+    if (!toRemove.length) return;
+    const removeSet = new Set(toRemove);
+    setEdges((prev) => prev.filter((e) => !removeSet.has(e.id)));
+  }, [setEdges]);
+
   // 版本切换：把节点 params/output/status 还原到指定历史版本。加 __switchVersion 标记，
   // updateNodeData 不会把这次写入当作新版本存档，仅更新 activeVersion。
   const handleSwitchVersion = useCallback((nodeId, versionIndex) => {
@@ -470,12 +495,14 @@ export default function Canvas() {
     onReorderOutputImages: handleReorderOutputImages,
     // 版本切换（还原 params/output/status 到指定历史版本）
     onSwitchVersion: handleSwitchVersion,
+    // 删除一张上游输入图（断开产出该图的连入边）
+    onDeleteUpstreamImage: handleDeleteUpstreamImage,
   }), [
     makeOnUpdate, handleGenerate, handleGenerateMedia, handleProcessImage,
     handleProcessLocal, handleCutout, handleCutoutCreate, handleCancelProcess, handlePromptReverse,
     handleExportImagesWithPicker, handleAutoSize, handleAutoSizeToContent, handleBBoxCutout, handleResetParams,
     handleAddToAssets, handleAddOutputImages, handleRemoveOutputImage, handleClearOutputImages, handleReorderOutputImages,
-    handleSwitchVersion,
+    handleSwitchVersion, handleDeleteUpstreamImage,
   ]);
 
   // —— Agent RPC（WS message 监听，ref 持有最新值只订阅一次）——
@@ -489,7 +516,7 @@ export default function Canvas() {
   });
 
   const { decoratedNodes } = useDecoratedNodes({
-    nodes, edges,
+    nodes, edges, protectedImageUrls: groupExecution.protectedImageUrls,
     selectionCount: selection.selectionCount,
     outputPreviewState,
     onOutputPreviewHeight: handleOutputPreviewHeight,

@@ -1,0 +1,7009 @@
+{
+    "abercrombie": {
+        "name": "Abercrombie",
+        "type": "Monitor",
+        "group": "Royal Navy",
+        "skin": [
+            "abeikelongbi",
+            "abeikelongbi_2",
+            "abeikelongbi_3"
+        ]
+    },
+    "abukuma": {
+        "name": "Abukuma",
+        "type": "Light Cruiser",
+        "group": "Sakura Empire",
+        "skin": [
+            "awuwei",
+            "awuwei_g"
+        ]
+    },
+    "acasta": {
+        "name": "Acasta",
+        "type": "Destroyer",
+        "group": "Royal Navy",
+        "skin": [
+            "akasita",
+            "akasita_2",
+            "akasita_3",
+            "akasita_4",
+            "akasita_g"
+        ]
+    },
+    "achilles": {
+        "name": "Achilles",
+        "type": "Light Cruiser",
+        "group": "Royal Navy",
+        "skin": [
+            "ajilisi",
+            "ajilisi_g"
+        ]
+    },
+    "admiral_graf_spee": {
+        "name": "Admiral Graf Spee",
+        "type": "Heavy Cruiser",
+        "group": "Ironblood",
+        "skin": [
+            "sipeibojue",
+            "sipeibojue_2",
+            "sipeibojue_3",
+            "sipeibojue_4",
+            "sipeibojue_5",
+            "sipeibojue_younv",
+            "sipeibojue_zhua"
+        ]
+    },
+    "admiral_hipper": {
+        "name": "Admiral Hipper",
+        "type": "Heavy Cruiser",
+        "group": "Ironblood",
+        "skin": [
+            "xipeierhaijunshangjiang",
+            "xipeierhaijunshangjiang_3",
+            "xipeierhaijunshangjiang_3_hx",
+            "xipeierhaijunshangjiang_hx"
+        ]
+    },
+    "admiral_hipper_idol": {
+        "name": "Admiral Hipper (Idol)",
+        "type": "Heavy Cruiser",
+        "group": "Ironblood",
+        "skin": [
+            "xipeier_idol",
+            "xipeier_idol_hx"
+        ]
+    },
+    "agano": {
+        "name": "Agano",
+        "type": "Light Cruiser",
+        "group": "Sakura Empire",
+        "skin": [
+            "aheye",
+            "aheye_2",
+            "aheye_3",
+            "aheye_4"
+        ]
+    },
+    "agir": {
+        "name": "Agir",
+        "type": "Large Cruiser",
+        "group": "Ironblood",
+        "skin": [
+            "aijier",
+            "aijier_2",
+            "aijier_3",
+            "aijier_3_hx"
+        ]
+    },
+    "ajax": {
+        "name": "Ajax",
+        "type": "Light Cruiser",
+        "group": "Royal Navy",
+        "skin": [
+            "ajiakesi",
+            "ajiakesi_2",
+            "ajiakesi_3",
+            "ajiakesi_g"
+        ]
+    },
+    "akagi": {
+        "name": "Akagi",
+        "type": "Aircraft Carrier",
+        "group": "Sakura Empire",
+        "skin": [
+            "chicheng",
+            "chicheng_2",
+            "chicheng_3",
+            "chicheng_4",
+            "chicheng_5",
+            "chicheng_6",
+            "chicheng_h",
+            "chicheng_idol",
+            "chicheng_younv"
+        ]
+    },
+    "akagi_idol": {
+        "name": "Akagi (Idol)",
+        "type": "Aircraft Carrier",
+        "group": "Sakura Empire",
+        "skin": [
+            "chicheng_idol"
+        ]
+    },
+    "akagichan": {
+        "name": "Akagi-chan",
+        "type": "Aircraft Carrier",
+        "group": "Sakura Empire",
+        "skin": [
+            "chicheng_younv"
+        ]
+    },
+    "akashi": {
+        "name": "Akashi",
+        "type": "Repair",
+        "group": "Sakura Empire",
+        "skin": [
+            "mingshi",
+            "mingshi_2",
+            "mingshi_3",
+            "mingshi_4",
+            "mingshi_5",
+            "mingshi_h"
+        ]
+    },
+    "akatsuki": {
+        "name": "Akatsuki",
+        "type": "Destroyer",
+        "group": "Sakura Empire",
+        "skin": [
+            "xiao",
+            "xiao_2",
+            "xiao_3",
+            "xiao_4",
+            "xiao_5"
+        ]
+    },
+    "alabama_": {
+        "name": "Alabama",
+        "type": "Battleship",
+        "group": "Eagle Union",
+        "skin": [
+            "alabama",
+            "alabama_2"
+        ]
+    },
+    "albacore": {
+        "name": "Albacore",
+        "type": "Submarine",
+        "group": "Eagle Union",
+        "skin": [
+            "daqinghuayu",
+            "daqinghuayu_3",
+            "daqinghuayu_4",
+            "daqinghuayu_idol"
+        ]
+    },
+    "albacore_idol": {
+        "name": "Albacore (Idol)",
+        "type": "Submarine",
+        "group": "Eagle Union",
+        "skin": [
+            "daqinghuayu_idol"
+        ]
+    },
+    "albion": {
+        "name": "Albion",
+        "type": "Light Aircraft Carrier",
+        "group": "Royal Navy",
+        "skin": [
+            "aerbien",
+            "aerbien_2"
+        ]
+    },
+    "alfredo_oriani": {
+        "name": "Alfredo Oriani",
+        "type": "Destroyer",
+        "group": "Sardegna Empire",
+        "skin": [
+            "aerfuleiduo",
+            "aerfuleiduo_2"
+        ]
+    },
+    "algerie": {
+        "name": "Algérie",
+        "type": "Heavy Cruiser",
+        "group": "Vichya Dominion",
+        "skin": [
+            "aerjiliya",
+            "aerjiliya_2",
+            "aerjiliya_3",
+            "aerjiliya_alter"
+        ]
+    },
+    "algerie_meta": {
+        "name": "Algérie META",
+        "type": "Heavy Cruiser",
+        "group": "META",
+        "skin": [
+            "aerjiliya_alter"
+        ]
+    },
+    "allen_m_sumner": {
+        "name": "Allen M. Sumner",
+        "type": "Destroyer",
+        "group": "Eagle Union",
+        "skin": [
+            "ailunsamuna",
+            "ailunsamuna_2"
+        ]
+    },
+    "amagi": {
+        "name": "Amagi",
+        "type": "Battlecruiser",
+        "group": "Sakura Empire",
+        "skin": [
+            "tiancheng",
+            "tiancheng_2",
+            "tiancheng_3",
+            "tiancheng_younv"
+        ]
+    },
+    "amagichan": {
+        "name": "Amagi-chan",
+        "type": "Battlecruiser",
+        "group": "Sakura Empire",
+        "skin": [
+            "tiancheng_younv"
+        ]
+    },
+    "amazon": {
+        "name": "Amazon",
+        "type": "Destroyer",
+        "group": "Royal Navy",
+        "skin": [
+            "nvjiang",
+            "nvjiang_2",
+            "nvjiang_g"
+        ]
+    },
+    "ami": {
+        "name": "Ami",
+        "type": "Submarine",
+        "group": "Idolm@ster",
+        "skin": [
+            "yamei",
+            "yamei_2"
+        ]
+    },
+    "an_shan": {
+        "name": "An Shan",
+        "type": "Destroyer",
+        "group": "Dragon Empire",
+        "skin": [
+            "anshan",
+            "anshan_2",
+            "anshan_3",
+            "anshan_g"
+        ]
+    },
+    "anchorage": {
+        "name": "Anchorage",
+        "type": "Heavy Cruiser",
+        "group": "Eagle Union",
+        "skin": [
+            "ankeleiqi",
+            "ankeleiqi_2"
+        ]
+    },
+    "andrea_doria": {
+        "name": "Andrea Doria",
+        "type": "Battleship",
+        "group": "Sardegna Empire",
+        "skin": [
+            "andelieyaduoliya",
+            "andelieyaduoliya_2"
+        ]
+    },
+    "aoba": {
+        "name": "Aoba",
+        "type": "Heavy Cruiser",
+        "group": "Sakura Empire",
+        "skin": [
+            "qingye"
+        ]
+    },
+    "aquila": {
+        "name": "Aquila",
+        "type": "Aircraft Carrier",
+        "group": "Sardegna Empire",
+        "skin": [
+            "tianying",
+            "tianying_2",
+            "tianying_3",
+            "tianying_2_hx"
+        ]
+    },
+    "arashio": {
+        "name": "Arashio",
+        "type": "Destroyer",
+        "group": "Sakura Empire",
+        "skin": [
+            "huangchao",
+            "huangchao_3"
+        ]
+    },
+    "archerfish": {
+        "name": "Archerfish",
+        "type": "Submarine",
+        "group": "Eagle Union",
+        "skin": [
+            "sheshuiyu",
+            "sheshuiyu_2",
+            "sheshuiyu_3"
+        ]
+    },
+    "ardent": {
+        "name": "Ardent",
+        "type": "Destroyer",
+        "group": "Royal Navy",
+        "skin": [
+            "rexin",
+            "rexin_2",
+            "rexin_3",
+            "rexin_g"
+        ]
+    },
+    "arethusa": {
+        "name": "Arethusa",
+        "type": "Light Cruiser",
+        "group": "Royal Navy",
+        "skin": [
+            "aruituosha"
+        ]
+    },
+    "argus": {
+        "name": "Argus",
+        "type": "Light Aircraft Carrier",
+        "group": "Royal Navy",
+        "skin": [
+            "baiyanjuren",
+            "baiyanjuren_2",
+            "baiyanjuren_3"
+        ]
+    },
+    "ariake": {
+        "name": "Ariake",
+        "type": "Destroyer",
+        "group": "Sakura Empire",
+        "skin": [
+            "youming",
+            "youming_2",
+            "youming_g"
+        ]
+    },
+    "arizona": {
+        "name": "Arizona",
+        "type": "Battleship",
+        "group": "Eagle Union",
+        "skin": [
+            "yalisangna",
+            "yalisangna_2",
+            "yalisangna_2_hx",
+            "yalisangna_alter"
+        ]
+    },
+    "arizona_meta": {
+        "name": "Arizona META",
+        "type": "Battleship",
+        "group": "META",
+        "skin": [
+            "yalisangna_alter"
+        ]
+    },
+    "ark_royal": {
+        "name": "Ark Royal",
+        "type": "Aircraft Carrier",
+        "group": "Royal Navy",
+        "skin": [
+            "huangjiafangzhou",
+            "huangjiafangzhou_2",
+            "huangjiafangzhou_3",
+            "huangjiafangzhou_4",
+            "huangjiafangzhou_5",
+            "huangjiafangzhou_alter",
+            "huangjiafangzhou_g",
+            "huangjiafangzhou_h"
+        ]
+    },
+    "ark_royal_meta": {
+        "name": "Ark Royal META",
+        "type": "Aircraft Carrier",
+        "group": "META",
+        "skin": [
+            "huangjiafangzhou_alter"
+        ]
+    },
+    "arkhangelsk": {
+        "name": "Arkhangelsk",
+        "type": "Battleship",
+        "group": "Northern Parliament",
+        "skin": [
+            "aerhangeersike",
+            "aerhangeersike_2"
+        ]
+    },
+    "asashio": {
+        "name": "Asashio",
+        "type": "Destroyer",
+        "group": "Sakura Empire",
+        "skin": [
+            "zhaochao",
+            "zhaochao_2",
+            "zhaochao_4",
+            "zhaochao_5"
+        ]
+    },
+    "ashigara": {
+        "name": "Ashigara",
+        "type": "Heavy Cruiser",
+        "group": "Sakura Empire",
+        "skin": [
+            "zubing",
+            "zubing_2",
+            "zubing_3"
+        ]
+    },
+    "astoria": {
+        "name": "Astoria",
+        "type": "Heavy Cruiser",
+        "group": "Eagle Union",
+        "skin": [
+            "asituoliya",
+            "asituoliya_2",
+            "asituoliya_3"
+        ]
+    },
+    "atago": {
+        "name": "Atago",
+        "type": "Heavy Cruiser",
+        "group": "Sakura Empire",
+        "skin": [
+            "aidang",
+            "aidang_2",
+            "aidang_3",
+            "aidang_4",
+            "aidang_5",
+            "aidang_h"
+        ]
+    },
+    "attilio_regolo": {
+        "name": "Attilio Regolo",
+        "type": "Destroyer",
+        "group": "Sardegna Empire",
+        "skin": [
+            "adiliao",
+            "adiliao_2"
+        ]
+    },
+    "atlanta": {
+        "name": "Atlanta",
+        "type": "Light Cruiser",
+        "group": "Eagle Union",
+        "skin": [
+            "yatelanda"
+        ]
+    },
+    "august_von_parseval": {
+        "name": "August von Parseval",
+        "type": "Aircraft Carrier",
+        "group": "Ironblood",
+        "skin": [
+            "aogusite",
+            "aogusite_2"
+        ]
+    },
+    "aulick": {
+        "name": "Aulick",
+        "type": "Destroyer",
+        "group": "Eagle Union",
+        "skin": [
+            "aolike"
+        ]
+    },
+    "aurora": {
+        "name": "Aurora",
+        "type": "Light Cruiser",
+        "group": "Royal Navy",
+        "skin": [
+            "ouruola",
+            "ouruola_2",
+            "ouruola_3",
+            "ouruola_4",
+            "ouruola_h"
+        ]
+    },
+    "avrora": {
+        "name": "Avrora",
+        "type": "Light Cruiser",
+        "group": "Northern Parliament",
+        "skin": [
+            "afuleer",
+            "afuleer_2",
+            "afuleer_3"
+        ]
+    },
+    "ayanami": {
+        "name": "Ayanami",
+        "type": "Destroyer",
+        "group": "Sakura Empire",
+        "skin": [
+            "lingbo",
+            "lingbo_2",
+            "lingbo_4",
+            "lingbo_5",
+            "lingbo_6",
+            "lingbo_7",
+            "lingbo_8",
+            "lingbo_9",
+            "lingbo_10",
+            "lingbo_11",
+            "lingbo_13",
+            "lingbo_14",
+            "lingbo_15",
+            "lingbo_16",
+            "lingbo_g",
+            "lingbo_h"
+        ]
+    },
+    "aylwin": {
+        "name": "Aylwin",
+        "type": "Destroyer",
+        "group": "Eagle Union",
+        "skin": [
+            "aierwen",
+            "aierwen_2"
+        ]
+    },
+    "azuma": {
+        "name": "Azuma",
+        "type": "Large Cruiser",
+        "group": "Sakura Empire",
+        "skin": [
+            "wuqi",
+            "wuqi_2",
+            "wuqi_h"
+        ]
+    },
+    "azusa": {
+        "name": "Azusa",
+        "type": "Heavy Cruiser",
+        "group": "Idolm@ster",
+        "skin": [
+            "zi",
+            "zi_2"
+        ]
+    },
+    "bache": {
+        "name": "Bache",
+        "type": "Destroyer",
+        "group": "Eagle Union",
+        "skin": [
+            "beiqi",
+            "beiqi_2",
+            "beiqi_3"
+        ]
+    },
+    "bailey": {
+        "name": "Bailey",
+        "type": "Destroyer",
+        "group": "Eagle Union",
+        "skin": [
+            "beili",
+            "beili_2",
+            "beili_3",
+            "beili_g"
+        ]
+    },
+    "baltimore": {
+        "name": "Baltimore",
+        "type": "Heavy Cruiser",
+        "group": "Eagle Union",
+        "skin": [
+            "baerdimo",
+            "baerdimo_2",
+            "baerdimo_3",
+            "baerdimo_4",
+            "baerdimo_5",
+            "baerdimo_6",
+            "baerdimo_idol"
+        ]
+    },
+    "baltimore_idol": {
+        "name": "Baltimore (Idol)",
+        "type": "Heavy Cruiser",
+        "group": "Eagle Union",
+        "skin": [
+            "baerdimo_idol"
+        ]
+    },
+    "bataan": {
+        "name": "Bataan",
+        "type": "Light Aircraft Carrier",
+        "group": "Eagle Union",
+        "skin": [
+            "badan",
+            "badan_2"
+        ]
+    },
+    "beagle": {
+        "name": "Beagle",
+        "type": "Destroyer",
+        "group": "Royal Navy",
+        "skin": [
+            "xiaolietuquan"
+        ]
+    },
+    "bearn": {
+        "name": "Bearn",
+        "type": "Aircraft Carrier",
+        "group": "Iris Libre",
+        "skin": [
+            "beiyaen",
+            "beiyaen_2"
+        ]
+    },
+    "belchan": {
+        "name": "Bel-chan",
+        "type": "Light Cruiser",
+        "group": "Royal Navy",
+        "skin": [
+            "beierfasite_younv"
+        ]
+    },
+    "belfast": {
+        "name": "Belfast",
+        "type": "Light Cruiser",
+        "group": "Royal Navy",
+        "skin": [
+            "beierfasite",
+            "beierfasite_2",
+            "beierfasite_3",
+            "beierfasite_4",
+            "beierfasite_5",
+            "beierfasite_7",
+            "beierfasite_8",
+            "beierfasite_h",
+            "beierfasite_younv"
+        ]
+    },
+    "bellona": {
+        "name": "Bellona",
+        "type": "Light Cruiser",
+        "group": "Royal Navy",
+        "skin": [
+            "sizhannvshen",
+            "sizhannvshen_2"
+        ]
+    },
+    "benson": {
+        "name": "Benson",
+        "type": "Destroyer",
+        "group": "Eagle Union",
+        "skin": [
+            "bensen",
+            "bensen_2"
+        ]
+    },
+    "bili_22": {
+        "name": "22",
+        "type": "Destroyer",
+        "group": "Bilibili",
+        "skin": [
+            "22"
+        ]
+    },
+    "bili_33": {
+        "name": "33",
+        "type": "Destroyer",
+        "group": "Bilibili",
+        "skin": [
+            "33"
+        ]
+    },
+    "biloxi": {
+        "name": "Biloxi",
+        "type": "Light Cruiser",
+        "group": "Eagle Union",
+        "skin": [
+            "biluokexi",
+            "biluokexi_2",
+            "biluokexi_4",
+            "biluokexi_5",
+            "biluokexi_6"
+        ]
+    },
+    "birmingham": {
+        "name": "Birmingham",
+        "type": "Light Cruiser",
+        "group": "Eagle Union",
+        "skin": [
+            "bominghan",
+            "bominghan_2",
+            "bominghan_3",
+            "bominghan_4"
+        ]
+    },
+    "bismarck": {
+        "name": "Bismarck",
+        "type": "Battleship",
+        "group": "Ironblood",
+        "skin": [
+            "bisimai",
+            "bisimai_2",
+            "bisimai_3"
+        ]
+    },
+    "bismarck_zwei": {
+        "name": "Bismarck Zwei",
+        "type": "Battleship",
+        "group": "Ironblood",
+        "skin": [
+            "bisimaiZ",
+            "bisimaiZ_2"
+        ]
+    },
+    "black_prince": {
+        "name": "Black Prince",
+        "type": "Light Cruiser",
+        "group": "Royal Navy",
+        "skin": [
+            "heitaizi",
+            "heitaizi_2",
+            "heitaizi_3",
+            "heitaizi_4",
+            "heitaizi_5"
+        ]
+    },
+    "blucher": {
+        "name": "Blucher",
+        "type": "Heavy Cruiser",
+        "group": "Ironblood",
+        "skin": [
+            "bulvxieer",
+            "bulvxieer_2",
+            "bulvxieer_2_hx",
+            "bulvxieer_hx"
+        ]
+    },
+    "bluegill": {
+        "name": "Bluegill",
+        "type": "Submarine",
+        "group": "Eagle Union",
+        "skin": [
+            "lansaiyu",
+            "lansaiyu_2"
+        ]
+    },
+    "bogue": {
+        "name": "Bogue",
+        "type": "Light Aircraft Carrier",
+        "group": "Eagle Union",
+        "skin": [
+            "boge",
+            "boge_g"
+        ]
+    },
+    "boise": {
+        "name": "Boise",
+        "type": "Light Cruiser",
+        "group": "Eagle Union",
+        "skin": [
+            "boyixi",
+            "boyixi_2",
+            "boyixi_3",
+            "boyixi_4"
+        ]
+    },
+    "bolzano": {
+        "name": "Bolzano",
+        "type": "Heavy Cruiser",
+        "group": "Sardegna Empire",
+        "skin": [
+            "boerzhanuo",
+            "boerzhanuo_2",
+            "boerzhanuo_3"
+        ]
+    },
+    "bremerton": {
+        "name": "Bremerton",
+        "type": "Heavy Cruiser",
+        "group": "Eagle Union",
+        "skin": [
+            "bulaimodun",
+            "bulaimodun_2",
+            "bulaimodun_3",
+            "bulaimodun_4",
+            "bulaimodun_5",
+            "bulaimodun_4_hx"
+        ]
+    },
+    "brest": {
+        "name": "Brest",
+        "type": "Large Cruiser",
+        "group": "Iris Libre",
+        "skin": [
+            "buleisite",
+            "buleisite_2"
+        ]
+    },
+    "bristol": {
+        "name": "Bristol",
+        "type": "Destroyer",
+        "group": "Eagle Union",
+        "skin": [
+            "bulisituoer",
+            "bulisituoer_2"
+        ]
+    },
+    "brooklyn": {
+        "name": "Brooklyn",
+        "type": "Light Cruiser",
+        "group": "Eagle Union",
+        "skin": [
+            "bulukelin"
+        ]
+    },
+    "brunhilde": {
+        "name": "Brunhilde",
+        "type": "Battlecruiser",
+        "group": "Ironblood",
+        "skin": [
+            "bulunxierde",
+            "bulunxierde_2"
+        ]
+    },
+    "bulldog": {
+        "name": "Bulldog",
+        "type": "Destroyer",
+        "group": "Royal Navy",
+        "skin": [
+            "dadouquan"
+        ]
+    },
+    "bullin": {
+        "name": "Universal Bulin",
+        "type": "Destroyer",
+        "group": "Universal",
+        "skin": [
+            "gin",
+            "gin_2"
+        ]
+    },
+    "bullin_mkii": {
+        "name": "Trial Bulin MKII",
+        "type": "Destroyer",
+        "group": "Universal",
+        "skin": [
+            "kin"
+        ]
+    },
+    "bullin_mkiii": {
+        "name": "Specialized Bulin Custom MKIII",
+        "type": "Destroyer",
+        "group": "Universal",
+        "skin": [
+            "buli_super"
+        ]
+    },
+    "bunker_hill": {
+        "name": "Bunker Hill",
+        "type": "Aircraft Carrier",
+        "group": "Eagle Union",
+        "skin": [
+            "bangkeshan",
+            "bangkeshan_2"
+        ]
+    },
+    "bush": {
+        "name": "Bush",
+        "type": "Destroyer",
+        "group": "Eagle Union",
+        "skin": [
+            "bushi",
+            "bushi_2"
+        ]
+    },
+    "california": {
+        "name": "California",
+        "type": "Battleship",
+        "group": "Eagle Union",
+        "skin": [
+            "jialifuniya"
+        ]
+    },
+    "carabiniere": {
+        "name": "Carabiniere",
+        "type": "Destroyer",
+        "group": "Sardegna Empire",
+        "skin": [
+            "longqibing",
+            "longqibing_2"
+        ]
+    },
+    "casablanca": {
+        "name": "Casablanca",
+        "type": "Escort Aircraft Carrier",
+        "group": "Eagle Union",
+        "skin": [
+            "kasabulanka",
+            "kasabulanka_2"
+        ]
+    },
+    "cassin": {
+        "name": "Cassin",
+        "type": "Destroyer",
+        "group": "Eagle Union",
+        "skin": [
+            "kaxin",
+            "kaxin_2",
+            "kaxin_g"
+        ]
+    },
+    "cavalla": {
+        "name": "Cavalla",
+        "type": "Submarine",
+        "group": "Eagle Union",
+        "skin": [
+            "jiqi",
+            "jiqi_2",
+            "jiqi_3"
+        ]
+    },
+    "centaur": {
+        "name": "Centaur",
+        "type": "Light Aircraft Carrier",
+        "group": "Royal Navy",
+        "skin": [
+            "banrenma",
+            "banrenma_2",
+            "banrenma_3",
+            "banrenma_hx"
+        ]
+    },
+    "champagne": {
+        "name": "Champagne",
+        "type": "Battleship",
+        "group": "Iris Libre",
+        "skin": [
+            "xiangbin",
+            "xiangbin_2",
+            "xiangbin_h"
+        ]
+    },
+    "chang_chun": {
+        "name": "Chang Chun",
+        "type": "Destroyer",
+        "group": "Dragon Empire",
+        "skin": [
+            "changchun",
+            "changchun_2",
+            "changchun_3",
+            "changchun_g"
+        ]
+    },
+    "chao_ho": {
+        "name": "Chao_ho",
+        "type": "Light Cruiser",
+        "group": "Dragon Empire",
+        "skin": [
+            "zhaohe",
+            "zhaohe_2",
+            "zhaohe_3"
+        ]
+    },
+    "charybdis": {
+        "name": "Charybdis",
+        "type": "Light Cruiser",
+        "group": "Royal Navy",
+        "skin": [
+            "kalvbudisi",
+            "kalvbudisi_2",
+            "kalvbudisi_3",
+            "kalvbudisi_4",
+            "kalvbudisi_4_hx"
+        ]
+    },
+    "chapayev": {
+        "name": "Chapayev",
+        "type": "Light Cruiser",
+        "group": "Northern Parliament",
+        "skin": [
+            "qiabayefu",
+            "qiabayefu_2",
+            "qiabayefu_3",
+            "qiabayefu_4",
+            "qiabayefu_5"
+        ]
+    },
+    "charles_ausburne": {
+        "name": "Charles Ausburne",
+        "type": "Destroyer",
+        "group": "Eagle Union",
+        "skin": [
+            "aosiben",
+            "aosiben_g"
+        ]
+    },
+    "chaser": {
+        "name": "Chaser",
+        "type": "Light Aircraft Carrier",
+        "group": "Royal Navy",
+        "skin": [
+            "zhuiganzhe",
+            "zhuiganzhe_2",
+            "zhuiganzhe_3"
+        ]
+    },
+    "cheshire": {
+        "name": "Cheshire",
+        "type": "Heavy Cruiser",
+        "group": "Royal Navy",
+        "skin": [
+            "chaijun",
+            "chaijun_2",
+            "chaijun_3",
+            "chaijun_4",
+            "chaijun_younv"
+        ]
+    },
+    "chen_hai": {
+        "name": "Chen Hai",
+        "type": "Light Aircraft Carrier",
+        "group": "Dragon Empire",
+        "skin": [
+            "zhenhai",
+            "zhenhai_2",
+            "zhenhai_3"
+        ]
+    },
+    "chicago": {
+        "name": "Chicago",
+        "type": "Heavy Cruiser",
+        "group": "Eagle Union",
+        "skin": [
+            "zhijiage"
+        ]
+    },
+    "chihaya": {
+        "name": "Chihaya",
+        "type": "Aircraft Carrier",
+        "group": "Idolm@ster",
+        "skin": [
+            "qianzao",
+            "qianzao_2"
+        ]
+    },
+    "chikuma": {
+        "name": "Chikuma",
+        "type": "Heavy Cruiser",
+        "group": "Sakura Empire",
+        "skin": [
+            "zhumo"
+        ]
+    },
+    "chiyoda": {
+        "name": "Chiyoda",
+        "type": "Light Aircraft carrier",
+        "group": "Sakura Empire",
+        "skin": [
+            "qiandaitian",
+            "qiandaitian_2"
+        ]
+    },
+    "chitose": {
+        "name": "Chitose",
+        "type": "Light Aircraft carrier",
+        "group": "Sakura Empire",
+        "skin": [
+            "qiansui",
+            "qiansui_2",
+            "qiansui_3"
+        ]
+    },
+    "chkalov": {
+        "name": "Chkalov",
+        "type": "Aircraft carrier",
+        "group": "Northern Parliament",
+        "skin": [
+            "qikaluofu",
+            "qikaluofu_2"
+        ]
+    },
+    "choukai": {
+        "name": "Choukai",
+        "type": "Heavy Cruiser",
+        "group": "Sakura Empire",
+        "skin": [
+            "niaohai",
+            "niaohai_2"
+        ]
+    },
+    "cleveland": {
+        "name": "Cleveland",
+        "type": "Light Cruiser",
+        "group": "Eagle Union",
+        "skin": [
+            "kelifulan",
+            "kelifulan_2",
+            "kelifulan_3",
+            "kelifulan_4",
+            "kelifulan_5",
+            "kelifulan_6",
+            "kelifulan_7",
+            "kelifulan_h",
+            "kelifulan_idol",
+            "kelifulan_younv"
+        ]
+    },
+    "cleveland_idol": {
+        "name": "Cleveland (Idol)",
+        "type": "Light Cruiser",
+        "group": "Eagle Union",
+        "skin": [
+            "kelifulan_idol"
+        ]
+    },
+    "colorado": {
+        "name": "Colorado",
+        "type": "Battleship",
+        "group": "Eagle Union",
+        "skin": [
+            "keluoladuo",
+            "keluoladuo_2",
+            "keluoladuo_3"
+        ]
+    },
+    "columbia": {
+        "name": "Columbia",
+        "type": "Light Cruiser",
+        "group": "Eagle Union",
+        "skin": [
+            "gelunbiya",
+            "gelunbiya_2",
+            "gelunbiya_3"
+        ]
+    },
+    "comet": {
+        "name": "Comet",
+        "type": "Destroyer",
+        "group": "Royal Navy",
+        "skin": [
+            "huixing",
+            "huixing_g"
+        ]
+    },
+    "concord": {
+        "name": "Concord",
+        "type": "Light Cruiser",
+        "group": "Eagle Union",
+        "skin": [
+            "kangkede",
+            "kangkede_2",
+            "kangkede_3"
+        ]
+    },
+    "conte_di_cavour": {
+        "name": "Conte di Cavour",
+        "type": "Battleship",
+        "group": "Sardegna Empire",
+        "skin": [
+            "jiafuerbojue",
+            "jiafuerbojue_2"
+        ]
+    },
+    "cooper": {
+        "name": "Cooper",
+        "type": "Destroyer",
+        "group": "Eagle Union",
+        "skin": [
+            "kubo",
+            "kubo_2",
+            "kubo_3"
+        ]
+    },
+    "craven": {
+        "name": "Craven",
+        "type": "Destroyer",
+        "group": "Eagle Union",
+        "skin": [
+            "keleiwen",
+            "keleiwen_2"
+        ]
+    },
+    "crescent": {
+        "name": "Crescent",
+        "type": "Destroyer",
+        "group": "Royal Navy",
+        "skin": [
+            "xinyue",
+            "xinyue_g",
+            "xinyue_jp"
+        ]
+    },
+    "curacoa": {
+        "name": "Curacoa",
+        "type": "Light Cruiser",
+        "group": "Royal Navy",
+        "skin": [
+            "kulasuo",
+            "kulasuo_2",
+            "kulasuo_g"
+        ]
+    },
+    "curlew": {
+        "name": "Curlew",
+        "type": "Light Cruiser",
+        "group": "Royal Navy",
+        "skin": [
+            "biaoyu",
+            "biaoyu_2",
+            "biaoyu_g"
+        ]
+    },
+    "cygnet": {
+        "name": "Cygnet",
+        "type": "Destroyer",
+        "group": "Royal Navy",
+        "skin": [
+            "xiaotiane",
+            "xiaotiane_2",
+            "xiaotiane_3",
+            "xiaotiane_4",
+            "xiaotiane_5",
+            "xiaotiane_6",
+            "xiaotiane_g"
+        ]
+    },
+    "dace": {
+        "name": "Dace",
+        "type": "Submarine",
+        "group": "Eagle Union",
+        "skin": [
+            "tiaoyu"
+        ]
+    },
+    "denver": {
+        "name": "Denver",
+        "type": "Light Cruiser",
+        "group": "Eagle Union",
+        "skin": [
+            "danfo"
+        ]
+    },
+    "deutschland": {
+        "name": "Deutschland",
+        "type": "Heavy Cruiser",
+        "group": "Ironblood",
+        "skin": [
+            "deyizhi",
+            "deyizhi_2",
+            "deyizhi_3",
+            "deyizhi_4",
+            "deyizhi_5"
+        ]
+    },
+    "dewey": {
+        "name": "Dewey",
+        "type": "Destroyer",
+        "group": "Eagle Union",
+        "skin": [
+            "duwei",
+            "duwei_2",
+            "duwei_3"
+        ]
+    },
+    "dido": {
+        "name": "Dido",
+        "type": "Light Cruiser",
+        "group": "Royal Navy",
+        "skin": [
+            "daiduo",
+            "daiduo_2",
+            "daiduo_idol"
+        ]
+    },
+    "dido_idol": {
+        "name": "Dido (Idol)",
+        "type": "Light Cruiser",
+        "group": "Royal Navy",
+        "skin": [
+            "daiduo_idol"
+        ]
+    },
+    "doa_honoka": {
+        "name": "Honoka",
+        "type": "Battleship",
+        "group": "Venus Vacation",
+        "skin": [
+            "suixiang_doa"
+        ]
+    },
+    "doa_kasumi": {
+        "name": "Kasumi",
+        "type": "Heavy Cruiser",
+        "group": "Venus Vacation",
+        "skin": [
+            "xia_DOA",
+            "xia_2_DOA"
+        ]
+    },
+    "doa_luna": {
+        "name": "Luna",
+        "type": "Light Aircraft Carrier",
+        "group": "Venus Vacation",
+        "skin": [
+            "luna_doa"
+        ]
+    },
+    "doa_marie_rose": {
+        "name": "Marie Rose",
+        "type": "Destroyer",
+        "group": "Venus Vacation",
+        "skin": [
+            "maliluosi_DOA",
+            "maliluosi_2_DOA",
+            "maliluosi_3_DOA"
+        ]
+    },
+    "doa_misaki": {
+        "name": "Misaki",
+        "type": "Light Cruiser",
+        "group": "Venus Vacation",
+        "skin": [
+            "haixiao_DOA",
+            "haixiao_2_DOA"
+        ]
+    },
+    "doa_monica": {
+        "name": "Monica",
+        "type": "Light Cruiser",
+        "group": "Venus Vacation",
+        "skin": [
+            "monika_DOA",
+            "monika_2_DOA"
+        ]
+    },
+    "doa_nagisa": {
+        "name": "Nagisa",
+        "type": "Battleship",
+        "group": "Venus Vacation",
+        "skin": [
+            "zhixiao_DOA",
+            "zhixiao_2_DOA"
+        ]
+    },
+    "doa_nyotengu": {
+        "name": "Nyotengu",
+        "type": "Aircraft Carrier",
+        "group": "Venus Vacation",
+        "skin": [
+            "nvtiangou_DOA",
+            "nvtiangou_2_DOA"
+        ]
+    },
+    "doa_tamaki": {
+        "name": "Tamaki",
+        "type": "Battlecruiser",
+        "group": "Venus Vacation",
+        "skin": [
+            "huan_doa"
+        ]
+    },
+    "dorsetshire": {
+        "name": "Dorsetshire",
+        "type": "Heavy Cruiser",
+        "group": "Royal Navy",
+        "skin": [
+            "duosaitejun"
+        ]
+    },
+    "downes": {
+        "name": "Downes",
+        "type": "Destroyer",
+        "group": "Eagle Union",
+        "skin": [
+            "tangsi",
+            "tangsi_2",
+            "tangsi_g"
+        ]
+    },
+    "drake": {
+        "name": "Drake",
+        "type": "Heavy Cruiser",
+        "group": "Royal Navy",
+        "skin": [
+            "deleike",
+            "deleike_2"
+        ]
+    },
+    "duca_degli_abruzzi": {
+        "name": "Duca degli Abruzzi",
+        "type": "Light Cruiser",
+        "group": "Sardegna Empire",
+        "skin": [
+            "abuluqi",
+            "abuluqi_2"
+        ]
+    },
+    "duke_of_york": {
+        "name": "Duke of York",
+        "type": "Battleship",
+        "group": "Royal Navy",
+        "skin": [
+            "yuekegongjue",
+            "yuekegongjue_2",
+            "yuekegongjue_3"
+        ]
+    },
+    "dunkerque": {
+        "name": "Dunkerque",
+        "type": "Battlecruiser",
+        "group": "Vichya Dominion",
+        "skin": [
+            "dunkeerke",
+            "dunkeerke_2",
+            "dunkeerke_3"
+        ]
+    },
+    "eagle": {
+        "name": "Eagle",
+        "type": "Aircraft Carrier",
+        "group": "Royal Navy",
+        "skin": [
+            "ying",
+            "ying_2"
+        ]
+    },
+    "echo": {
+        "name": "Echo",
+        "type": "Destroyer",
+        "group": "Royal Navy",
+        "skin": [
+            "huisheng"
+        ]
+    },
+    "edinburgh": {
+        "name": "Edinburgh",
+        "type": "Light Cruiser",
+        "group": "Royal Navy",
+        "skin": [
+            "aidingbao",
+            "aidingbao_2",
+            "aidingbao_3"
+        ]
+    },
+    "elbe": {
+        "name": "Elbe",
+        "type": "Light Aircraft Carrier",
+        "group": "Ironblood",
+        "skin": [
+            "yibei",
+            "yibei_2",
+            "yibei_3"
+        ]
+    },
+    "elbing": {
+        "name": "Elbing",
+        "type": "Light Cruiser",
+        "group": "Ironblood",
+        "skin": [
+            "aierbin",
+            "aierbin_2",
+            "aierbin_3"
+        ]
+    },
+    "eldridge": {
+        "name": "Eldridge",
+        "type": "Destroyer",
+        "group": "Eagle Union",
+        "skin": [
+            "aierdeliqi",
+            "aierdeliqi_2",
+            "aierdeliqi_3",
+            "aierdeliqi_4",
+            "aierdeliqi_5",
+            "aierdeliqi_7"
+        ]
+    },
+    "emanuele_pessagno": {
+        "name": "Emanuele Pessagno",
+        "type": "Destroyer",
+        "group": "Sardegna Empire",
+        "skin": [
+            "aimannuaier",
+            "aimannuaier_2"
+        ]
+    },
+    "emden": {
+        "name": "Emden",
+        "type": "Light Cruiser",
+        "group": "Ironblood",
+        "skin": [
+            "aimudeng",
+            "aimudeng_2",
+            "aimudeng_3"
+        ]
+    },
+    "emile_bertin": {
+        "name": "Émile Bertin",
+        "type": "Light Cruiser",
+        "group": "Iris Libre",
+        "skin": [
+            "aimierbeierding",
+            "aimierbeierding_2",
+            "aimierbeierding_3",
+            "aimierbeierding_4",
+            "aimierbeierding_g"
+        ]
+    },
+    "enterprise": {
+        "name": "Enterprise",
+        "type": "Aircraft Carrier",
+        "group": "Eagle Union",
+        "skin": [
+            "qiye",
+            "qiye_2",
+            "qiye_3",
+            "qiye_4",
+            "qiye_5",
+            "qiye_6",
+            "qiye_7",
+            "qiye_8",
+            "qiye_9",
+            "qiye_dark",
+            "qiye_h",
+            "qiye_younv"
+        ]
+    },
+    "enterprise_hms": {
+        "name": "Enterprise",
+        "type": "Light Cruiser",
+        "group": "Royal Navy",
+        "skin": [
+            "jinqu"
+        ]
+    },
+    "erebus": {
+        "name": "Erebus",
+        "type": "Monitor",
+        "group": "Royal Navy",
+        "skin": [
+            "heianjie",
+            "heianjie_2",
+            "heianjie_3"
+        ]
+    },
+    "eskimo": {
+        "name": "Eskimo",
+        "type": "Destroyer",
+        "group": "Royal Navy",
+        "skin": [
+            "aisijimo",
+            "aisijimo_2"
+        ]
+    },
+    "essex": {
+        "name": "Essex",
+        "type": "Aircraft Carrier",
+        "group": "Eagle Union",
+        "skin": [
+            "aisaikesi",
+            "aisaikesi_2",
+            "aisaikesi_3",
+            "aisaikesi_4",
+            "aisaikesi_5",
+            "aisaikesi_6",
+            "aisaikesi_7"
+        ]
+    },
+    "exeter": {
+        "name": "Exeter",
+        "type": "Heavy Cruiser",
+        "group": "Royal Navy",
+        "skin": [
+            "aikesaite",
+            "aikesaite_2",
+            "aikesaite_g"
+        ]
+    },
+    "felix_schultz": {
+        "name": "Felix Schultz",
+        "type": "Destroyer",
+        "group": "Ironblood",
+        "skin": [
+            "feilikesishuerci"
+        ]
+    },
+    "fiji": {
+        "name": "Fiji",
+        "type": "Light Cruiser",
+        "group": "Royal Navy",
+        "skin": [
+            "feiji",
+            "feiji_2"
+        ]
+    },
+    "flandre": {
+        "name": "Flandre",
+        "type": "Battelship",
+        "group": "Vichya Dominion",
+        "skin": [
+            "fulandeer"
+        ]
+    },
+    "fletcher": {
+        "name": "Fletcher",
+        "type": "Destroyer",
+        "group": "Eagle Union",
+        "skin": [
+            "fulaiche"
+        ]
+    },
+    "foch": {
+        "name": "Foch",
+        "type": "Heavy Cruiser",
+        "group": "Vichya Dominion",
+        "skin": [
+            "fuxu",
+            "fuxu_2",
+            "fuxu_3"
+        ]
+    },
+    "foote": {
+        "name": "Foote",
+        "type": "Destroyer",
+        "group": "Eagle Union",
+        "skin": [
+            "fute"
+        ]
+    },
+    "forbin": {
+        "name": "Forbin",
+        "type": "Destroyer",
+        "group": "Iris Libre",
+        "skin": [
+            "fuerban",
+            "fuerban_2",
+            "fuerban_3",
+            "fuerban_4",
+            "fuerban_g",
+            "fuerban_h"
+        ]
+    },
+    "fortune": {
+        "name": "Fortune",
+        "type": "Destroyer",
+        "group": "Royal Navy",
+        "skin": [
+            "mingyunnvshen",
+            "mingyunnvshen_2",
+            "mingyunnvshen_alter",
+            "mingyunnvshen_g"
+        ]
+    },
+    "fortune_meta": {
+        "name": "Fortune META",
+        "type": "Destroyer",
+        "group": "META",
+        "skin": [
+            "mingyunnvshen_alter"
+        ]
+    },
+    "foxhound": {
+        "name": "Foxhound",
+        "type": "Destroyer",
+        "group": "Royal Navy",
+        "skin": [
+            "huti",
+            "huti_g"
+        ]
+    },
+    "friedrich_der_grosse": {
+        "name": "Friedrich der Große",
+        "type": "Battleship",
+        "group": "Ironblood",
+        "skin": [
+            "feiteliedadi",
+            "feiteliedadi_2",
+            "feiteliedadi_2_hx",
+            "feiteliedadi_h",
+            "feiteliedadi_h_hx",
+            "feiteliedadi_hx"
+        ]
+    },
+    "formidable": {
+        "name": "Formidable",
+        "type": "Aircraft Carrier",
+        "group": "Royal Navy",
+        "skin": [
+            "kewei",
+            "kewei_2",
+            "kewei_3",
+            "kewei_younv"
+        ]
+    },
+    "fubuki": {
+        "name": "Fubuki",
+        "type": "Destroyer",
+        "group": "Sakura Empire",
+        "skin": [
+            "chuixue",
+            "chuixue_2",
+            "chuixue_3",
+            "chuixue_4",
+            "chuixue_5",
+            "chuixue_6"
+        ]
+    },
+    "fumizuki": {
+        "name": "Fumizuki",
+        "type": "Destroyer",
+        "group": "Sakura Empire",
+        "skin": [
+            "wenyue",
+            "wenyue_2"
+        ]
+    },
+    "furutaka": {
+        "name": "Furutaka",
+        "type": "Heavy Cruiser",
+        "group": "Sakura Empire",
+        "skin": [
+            "guying",
+            "guying_g"
+        ]
+    },
+    "fusou": {
+        "name": "Fusou",
+        "type": "Battleship",
+        "group": "Sakura Empire",
+        "skin": [
+            "fusang",
+            "fusang_2",
+            "fusang_3",
+            "fusang_alter",
+            "fusang_g"
+        ]
+    },
+    "fusou_meta": {
+        "name": "Fusou META",
+        "type": "Battleship",
+        "group": "META",
+        "skin": [
+            "fusang_alter"
+        ]
+    },
+    "fu_shun": {
+        "name": "Fu shun",
+        "type": "Destroyer",
+        "group": "Dragon Empire",
+        "skin": [
+            "fushun",
+            "fushun_2"
+        ]
+    },
+    "galatea": {
+        "name": "Galatea",
+        "type": "Light Cruiser",
+        "group": "Royal Navy",
+        "skin": [
+            "jialadiya"
+        ]
+    },
+    "gangute__": {
+        "name": "Gangut",
+        "type": "Battleship",
+        "group": "Northern Parliament",
+        "skin": [
+            "gangute",
+            "gangute_2",
+            "gangute_3"
+        ]
+    },
+    "gascogne": {
+        "name": "Gascogne",
+        "type": "Battleship",
+        "group": "Vichya Dominion",
+        "skin": [
+            "jiasikenie",
+            "jiasikenie_2",
+            "jiasikenie_idol"
+        ]
+    },
+    "gascogne_idol": {
+        "name": "Gascogne (Idol)",
+        "type": "Battleship",
+        "group": "Vichya Dominion",
+        "skin": [
+            "jiasikenie_idol"
+        ]
+    },
+    "georgia": {
+        "name": "Georgia",
+        "type": "Battleship",
+        "group": "Eagle Union",
+        "skin": [
+            "zuozhiya",
+            "zuozhiya_2",
+            "zuozhiya_4",
+            "zuozhiya_6"
+        ]
+    },
+    "giulio_cesare": {
+        "name": "Giulio Cesare",
+        "type": "Battleship",
+        "group": "Sardegna Empire",
+        "skin": [
+            "kaisa",
+            "kaisa_2",
+            "kaisa_3",
+            "kaisa_3_hx"
+        ]
+    },
+    "giuseppe_garibaldi": {
+        "name": "Giuseppe Garibaldi",
+        "type": "Light Cruiser",
+        "group": "Sardegna Empire",
+        "skin": [
+            "zhusaipei",
+            "zhusaipei_2"
+        ]
+    },
+    "glasgow": {
+        "name": "Glasgow",
+        "type": "Light Cruiser",
+        "group": "Royal Navy",
+        "skin": [
+            "gelasige",
+            "gelasige_2"
+        ]
+    },
+    "glorious": {
+        "name": "Glorious",
+        "type": "Aircraft Carrier",
+        "group": "Royal Navy",
+        "skin": [
+            "guangrong",
+            "guangrong_2",
+            "guangrong_3"
+        ]
+    },
+    "gloucester": {
+        "name": "Gloucester",
+        "type": "Light Cruiser",
+        "group": "Royal Navy",
+        "skin": [
+            "geluosite",
+            "geluosite_2"
+        ]
+    },
+    "glowworm": {
+        "name": "Glowworm",
+        "type": "Destroyer",
+        "group": "Royal Navy",
+        "skin": [
+            "yinghuochong",
+            "yinghuochong_2"
+        ]
+    },
+    "gneisenau": {
+        "name": "Gneisenau",
+        "type": "Battlecruiser",
+        "group": "Ironblood",
+        "skin": [
+            "genaisennao",
+            "genaisennao_2",
+            "genaisennao_alter"
+        ]
+    },
+    "gneisenau_meta": {
+        "name": "Gneisenau META",
+        "type": "Battlecruiser",
+        "group": "META",
+        "skin": [
+            "genaisennao_alter"
+        ]
+    },
+    "gorizia": {
+        "name": "Gorizia",
+        "type": "Heavy Cruiser",
+        "group": "Sardegna Empire",
+        "skin": [
+            "geliqiya",
+            "geliqiya_2"
+        ]
+    },
+    "graf_zeppelin": {
+        "name": "Graf Zeppelin",
+        "type": "Aircraft Carrier",
+        "group": "Ironblood",
+        "skin": [
+            "qibolin",
+            "qibolin_2",
+            "qibolin_younv"
+        ]
+    },
+    "gremyashchy": {
+        "name": "Gremyashchy",
+        "type": "Destroyer",
+        "group": "Northern Parliament",
+        "skin": [
+            "leiming",
+            "leiming_2"
+        ]
+    },
+    "grenville": {
+        "name": "Grenville",
+        "type": "Destroyer",
+        "group": "Royal Navy",
+        "skin": [
+            "gelunweier"
+        ]
+    },
+    "gridley": {
+        "name": "Gridley",
+        "type": "Destroyer",
+        "group": "Eagle Union",
+        "skin": [
+            "gelideli",
+            "gelideli_2"
+        ]
+    },
+    "gromky": {
+        "name": "Gromky",
+        "type": "Destroyer",
+        "group": "Northern Parliament",
+        "skin": [
+            "hongliang",
+            "hongliang_2"
+        ]
+    },
+    "grozny": {
+        "name": "Grozny",
+        "type": "Destroyer",
+        "group": "Northern Parliament",
+        "skin": [
+            "weiyan",
+            "weiyan_2",
+            "weiyan_3",
+            "weiyan_4",
+            "weiyan_5",
+            "weiyan_6"
+        ]
+    },
+    "haguro": {
+        "name": "Haguro",
+        "type": "Heavy Cruiser",
+        "group": "Sakura Empire",
+        "skin": [
+            "yuhei",
+            "yuhei_2",
+            "yuhei_3"
+        ]
+    },
+    "hai_chi": {
+        "name": "Hai Chi",
+        "type": "Light Cruiser",
+        "group": "Dragon Empire",
+        "skin": [
+            "haiqi",
+            "haiqi_2"
+        ]
+    },
+    "hai_tien": {
+        "name": "Hai Tien",
+        "type": "Light Cruiser",
+        "group": "Dragon Empire",
+        "skin": [
+            "haitian",
+            "haitian_2",
+            "haitian_3",
+            "haitian_3 #5800"
+        ]
+    },
+    "hakuryuu": {
+        "name": "Hakuryuu",
+        "type": "Aircraft Carrier",
+        "group": "Sakura Empire",
+        "skin": [
+            "bailong",
+            "bailong_2",
+            "bailong_3"
+        ]
+    },
+    "halsey_powell": {
+        "name": "Halsey Powell",
+        "type": "Destroyer",
+        "group": "Eagle Union",
+        "skin": [
+            "haerxibaoweier",
+            "haerxibaoweier_3"
+        ]
+    },
+    "hamakaze": {
+        "name": "Hamakaze",
+        "type": "Destroyer",
+        "group": "Sakura Empire",
+        "skin": [
+            "bangfeng",
+            "bangfeng_2",
+            "bangfeng_4",
+            "bangfeng_g"
+        ]
+    },
+    "hammann": {
+        "name": "Hammann",
+        "type": "Destroyer",
+        "group": "Eagle Union",
+        "skin": [
+            "haman",
+            "haman_2",
+            "haman_3",
+            "haman_4",
+            "haman_5",
+            "haman_g"
+        ]
+    },
+    "hammann_ii": {
+        "name": "Hammann II",
+        "type": "Destroyer",
+        "group": "Eagle Union",
+        "skin": [
+            "hamanII",
+            "hamanII_2"
+        ]
+    },
+    "hanazuki": {
+        "name": "Hanazuki",
+        "type": "Destroyer",
+        "group": "Sakura Empire",
+        "skin": [
+            "huayue",
+            "huayue_3",
+            "huayue_4"
+        ]
+    },
+    "harbin": {
+        "name": "Harbin",
+        "type": "Light Cruiser",
+        "group": "Dragon Empire",
+        "skin": [
+            "haerbin",
+            "haerbin_2",
+            "haerbin_h"
+        ]
+    },
+    "hardy": {
+        "name": "Hardy",
+        "type": "Destroyer",
+        "group": "Royal Navy",
+        "skin": [
+            "yonggan",
+            "yonggan_2"
+        ]
+    },
+    "haruka": {
+        "name": "Haruka",
+        "type": "Light Cruiser",
+        "group": "Idolm@ster",
+        "skin": [
+            "chunxiang",
+            "chunxiang_2"
+        ]
+    },
+    "haruna": {
+        "name": "Haruna",
+        "type": "Battlecruiser",
+        "group": "Sakura Empire",
+        "skin": [
+            "zhenming",
+            "zhenming_2",
+            "zhenming_3",
+            "zhenming_4"
+        ]
+    },
+    "harutsuki": {
+        "name": "Harutsuki",
+        "type": "Destroyer",
+        "group": "Sakura Empire",
+        "skin": [
+            "chunyue",
+            "chunyue_2"
+        ]
+    },
+    "hatakaze": {
+        "name": "Hatakaze",
+        "type": "Destroyer",
+        "group": "Sakura Empire",
+        "skin": [
+            "qifeng",
+            "qifeng_alter"
+        ]
+    },
+    "hatakaze_meta": {
+        "name": "Hatakaze META",
+        "type": "Destroyer",
+        "group": "META",
+        "skin": [
+            "qifeng_alter"
+        ]
+    },
+    "hatsuharu": {
+        "name": "Hatsuharu",
+        "type": "Destroyer",
+        "group": "Sakura Empire",
+        "skin": [
+            "chuchun",
+            "chuchun_2",
+            "chuchun_3",
+            "chuchun_g"
+        ]
+    },
+    "hatsushimo": {
+        "name": "Hatsushimo",
+        "type": "Destroyer",
+        "group": "Sakura Empire",
+        "skin": [
+            "chushuang",
+            "chushuang_2",
+            "chushuang_g"
+        ]
+    },
+    "hazelwood": {
+        "name": "Hazelwood",
+        "type": "Destroyer",
+        "group": "Eagle Union",
+        "skin": [
+            "heizewude"
+        ]
+    },
+    "hdn_black_heart": {
+        "name": "Black Heart",
+        "type": "Heavy Cruiser",
+        "group": "Neptunia",
+        "skin": [
+            "HDN202_1"
+        ]
+    },
+    "hdn_blanc": {
+        "name": "Blanc",
+        "type": "Destroyer",
+        "group": "Neptunia",
+        "skin": [
+            "HDN301"
+        ]
+    },
+    "hdn_green_heart": {
+        "name": "Green Heart",
+        "type": "Aircraft Carrier",
+        "group": "Neptunia",
+        "skin": [
+            "HDN402_1"
+        ]
+    },
+    "hdn_neptune": {
+        "name": "Neptune",
+        "type": "Light Cruiser",
+        "group": "Neptunia",
+        "skin": [
+            "HDN101"
+        ]
+    },
+    "hdn_noire": {
+        "name": "Noire",
+        "type": "Heavy Cruiser",
+        "group": "Neptunia",
+        "skin": [
+            "HDN201"
+        ]
+    },
+    "hdn_purple_heart": {
+        "name": "Purple Heart",
+        "type": "Light Cruiser",
+        "group": "Neptunia",
+        "skin": [
+            "HDN102_1"
+        ]
+    },
+    "hdn_vert": {
+        "name": "Vert",
+        "type": "Aircraft Carrier",
+        "group": "Neptunia",
+        "skin": [
+            "HDN401"
+        ]
+    },
+    "hdn_white_heart": {
+        "name": "White Heart",
+        "type": "Destroyer",
+        "group": "Neptunia",
+        "skin": [
+            "HDN302_1"
+        ]
+    },
+    "helena": {
+        "name": "Helena",
+        "type": "Light Cruiser",
+        "group": "Eagle Union",
+        "skin": [
+            "hailunna",
+            "hailunna_2",
+            "hailunna_3",
+            "hailunna_4",
+            "hailunna_alter",
+            "hailunna_g",
+            "hailunna_h",
+            "hailunna_younv"
+        ]
+    },
+    "helena_meta": {
+        "name": "Helena META",
+        "type": "Light Cruiser",
+        "group": "META",
+        "skin": [
+            "hailunna_alter"
+        ]
+    },
+    "hermes": {
+        "name": "Hermes",
+        "type": "Light Aircraft Carrier",
+        "group": "Royal Navy",
+        "skin": [
+            "jingjishen",
+            "jingjishen_g",
+            "jingjishen_ghost"
+        ]
+    },
+    "hermione": {
+        "name": "Hermione",
+        "type": "Light Cruiser",
+        "group": "Royal Navy",
+        "skin": [
+            "hemin",
+            "hemin_2",
+            "hemin_3",
+            "hemin_4",
+            "hemin_5",
+            "hemin_h"
+        ]
+    },
+    "hero": {
+        "name": "Hero",
+        "type": "Destroyer",
+        "group": "Royal Navy",
+        "skin": [
+            "yingxiong",
+            "yingxiong_2"
+        ]
+    },
+    "hibiki": {
+        "name": "Hibiki",
+        "type": "Destroyer",
+        "group": "Sakura Empire",
+        "skin": [
+            "xiang",
+            "xiang_2"
+        ]
+    },
+    "hiei": {
+        "name": "Hiei",
+        "type": "Battlecruiser",
+        "group": "Sakura Empire",
+        "skin": [
+            "birui",
+            "birui_2",
+            "birui_4",
+            "birui_5",
+            "birui_younv"
+        ]
+    },
+    "hieichan": {
+        "name": "Hiei-chan",
+        "type": "Battlecruiser",
+        "group": "Sakura Empire",
+        "skin": [
+            "birui_younv"
+        ]
+    },
+    "hindenburg": {
+        "name": "Hinderburg",
+        "type": "Heavy Cruiser",
+        "group": "Ironblood",
+        "skin": [
+            "xingdengbao"
+        ]
+    },
+    "hiryuu": {
+        "name": "Hiryuu",
+        "type": "Aircraft Carrier",
+        "group": "Sakura Empire",
+        "skin": [
+            "feilong",
+            "feilong_2",
+            "feilong_alter",
+            "feilong_g"
+        ]
+    },
+    "hiryuu_meta": {
+        "name": "Hiryuu META",
+        "type": "Aircraft Carrier",
+        "group": "META",
+        "skin": [
+            "feilong_alter"
+        ]
+    },
+    "hiyou": {
+        "name": "Hiyou",
+        "type": "Light Aircraft Carrier",
+        "group": "Sakura Empire",
+        "skin": [
+            "feiying",
+            "feiying_alter"
+        ]
+    },
+    "hiyou_meta": {
+        "name": "Hiyou META",
+        "type": "Light Aircraft Carrier",
+        "group": "META",
+        "skin": [
+            "feiying_alter"
+        ]
+    },
+    "hobby": {
+        "name": "Hobby",
+        "type": "Destroyer",
+        "group": "Eagle Union",
+        "skin": [
+            "huobi",
+            "huobi_2"
+        ]
+    },
+    "honolulu": {
+        "name": "Honolulu",
+        "type": "Light Cruiser",
+        "group": "Eagle Union",
+        "skin": [
+            "huonululu",
+            "huonululu_2",
+            "huonululu_3",
+            "huonululu_4",
+            "huonululu_5"
+        ]
+    },
+    "hood": {
+        "name": "Hood",
+        "type": "Battlecruiser",
+        "group": "Royal Navy",
+        "skin": [
+            "hude",
+            "hude_2",
+            "hude_3",
+            "hude_4",
+            "hude_5",
+            "hude_h"
+        ]
+    },
+    "hornet": {
+        "name": "Hornet",
+        "type": "Aircraft Carrier",
+        "group": "Eagle Union",
+        "skin": [
+            "dahuangfeng",
+            "dahuangfeng_2",
+            "dahuangfeng_3",
+            "dahuangfeng_4"
+        ]
+    },
+    "hornet_ii": {
+        "name": "Hornet II",
+        "type": "Aircraft Carrier",
+        "group": "Eagle Union",
+        "skin": [
+            "dahuangfengII",
+            "dahuangfengII_2"
+        ]
+    },
+    "houshou": {
+        "name": "Houshou",
+        "type": "Light Aircraft Carrier",
+        "group": "Sakura Empire",
+        "skin": [
+            "fengxiang",
+            "fengxiang_2"
+        ]
+    },
+    "houston": {
+        "name": "Houston",
+        "type": "Heavy Cruiser",
+        "group": "Eagle Union",
+        "skin": [
+            "xiusidun"
+        ]
+    },
+    "howe": {
+        "name": "Howe",
+        "type": "Battleship",
+        "group": "Royal Navy",
+        "skin": [
+            "hao",
+            "hao_2",
+            "hao_4",
+            "hao_5"
+        ]
+    },
+    "hunter": {
+        "name": "Hunter",
+        "type": "Destroyer",
+        "group": "Royal Navy",
+        "skin": [
+            "lieren",
+            "lieren_alter"
+        ]
+    },
+    "hunter_meta": {
+        "name": "Hunter META",
+        "type": "Destroyer",
+        "group": "META",
+        "skin": [
+            "lieren_alter"
+        ]
+    },
+    "hwah_jah": {
+        "name": "Hwah Jah",
+        "type": "Light Aircraft Carrier",
+        "group": "Dragon Empire",
+        "skin": [
+            "huajia",
+            "huajia_2",
+            "huajia_2_hx"
+        ]
+    },
+    "hyuuga": {
+        "name": "Hyuuga",
+        "type": "Battleship",
+        "group": "Sakura Empire",
+        "skin": [
+            "rixiang",
+            "rixiang_g"
+        ]
+    },
+    "i-13_": {
+        "name": "I13",
+        "type": "Submarine Aircraft Carrier",
+        "group": "Sakura Empire",
+        "skin": [
+            "i13"
+        ]
+    },
+    "i168_": {
+        "name": "I168",
+        "type": "Submarine",
+        "group": "Sakura Empire",
+        "skin": [
+            "I168",
+            "I168_2"
+        ]
+    },
+    "i19_": {
+        "name": "I19",
+        "type": "Submarine",
+        "group": "Sakura Empire",
+        "skin": [
+            "I19",
+            "I19_2",
+            "I19_3",
+            "i19_4"
+        ]
+    },
+    "i25_": {
+        "name": "I25",
+        "type": "Submarine",
+        "group": "Sakura Empire",
+        "skin": [
+            "I25",
+            "I25_2",
+            "i25_3"
+        ]
+    },
+    "i26_": {
+        "name": "I26",
+        "type": "Submarine",
+        "group": "Sakura Empire",
+        "skin": [
+            "I26",
+            "I26_2",
+            "i26_3"
+        ]
+    },
+    "i56_": {
+        "name": "I56",
+        "type": "Submarine",
+        "group": "Sakura Empire",
+        "skin": [
+            "I56",
+            "I56_2"
+        ]
+    },
+    "i58_": {
+        "name": "I58",
+        "type": "Submarine",
+        "group": "Sakura Empire",
+        "skin": [
+            "I58"
+        ]
+    },
+    "i8_": {
+        "name": "I-8",
+        "type": "Submarine",
+        "group": "Sakura Empire",
+        "skin": [
+            "I8"
+        ]
+    },
+    "ibuki": {
+        "name": "Ibuki",
+        "type": "Heavy Cruiser",
+        "group": "Sakura Empire",
+        "skin": [
+            "yichui",
+            "yichui_2",
+            "yichui_3",
+            "yichui_4",
+            "yichui_5"
+        ]
+    },
+    "icarus": {
+        "name": "Icarus",
+        "type": "Destroyer",
+        "group": "Royal Navy",
+        "skin": [
+            "yikaluosi",
+            "yikaluosi_2",
+            "yikaluosi_3",
+            "yikaluosi_4"
+        ]
+    },
+    "ikazuchi": {
+        "name": "Ikazuchi",
+        "type": "Destroyer",
+        "group": "Sakura Empire",
+        "skin": [
+            "lei",
+            "lei_2",
+            "lei_3",
+            "lei_4"
+        ]
+    },
+    "illustrious": {
+        "name": "Illustrious",
+        "type": "Aircraft Carrier",
+        "group": "Royal Navy",
+        "skin": [
+            "guanghui",
+            "guanghui_2",
+            "guanghui_3",
+            "guanghui_4",
+            "guanghui_5",
+            "guanghui_6",
+            "guanghui_h",
+            "guanghui_idol",
+            "guanghui_younv"
+        ]
+    },
+    "illustrious_idol": {
+        "name": "Illustrious (Idol)",
+        "type": "Aircraft Carrier",
+        "group": "Royal Navy",
+        "skin": [
+            "guanghui_idol"
+        ]
+    },
+    "impero": {
+        "name": "Impero",
+        "type": "Aircraft Carrier",
+        "group": "Sardegna Empire",
+        "skin": [
+            "diguo",
+            "diguo_2"
+        ]
+    },
+    "implacable": {
+        "name": "Implacable",
+        "type": "Aircraft Carrier",
+        "group": "Royal Navy",
+        "skin": [
+            "yuanchou",
+            "yuanchou_2",
+            "yuanchou_2_hx",
+            "yuanchou_hx"
+        ]
+    },
+    "inazuma": {
+        "name": "Inazuma",
+        "type": "Destroyer",
+        "group": "Sakura Empire",
+        "skin": [
+            "dian",
+            "dian_2",
+            "dian_3",
+            "dian_4"
+        ]
+    },
+    "independence": {
+        "name": "Independence",
+        "type": "Light Aircraft Carrier",
+        "group": "Eagle Union",
+        "skin": [
+            "duli",
+            "duli_2",
+            "duli_3",
+            "duli_5",
+            "duli_6",
+            "duli_g"
+        ]
+    },
+    "indianapolis": {
+        "name": "Indianapolis",
+        "type": "Heavy Cruiser",
+        "group": "Eagle Union",
+        "skin": [
+            "bolisi",
+            "bolisi_2",
+            "bolisi_3",
+            "bolisi_3_hx"
+        ]
+    },
+    "indomitable": {
+        "name": "Indomitable",
+        "type": "Aircraft Carrier",
+        "group": "Royal Navy",
+        "skin": [
+            "bunao",
+            "bunao_2"
+        ]
+    },
+    "ingraham": {
+        "name": "Ingraham",
+        "type": "Destroyer",
+        "group": "Eagle Union",
+        "skin": [
+            "yinggelahan",
+            "yinggelahan_2"
+        ]
+    },
+    "intrepid": {
+        "name": "Intrepid",
+        "type": "Aircraft Carrier",
+        "group": "Eagle Union",
+        "skin": [
+            "wuwei",
+            "wuwei_2"
+        ]
+    },
+    "iori": {
+        "name": "Iori",
+        "type": "Battleship",
+        "group": "Idolm@ster",
+        "skin": [
+            "yizhi",
+            "yizhi_2"
+        ]
+    },
+    "ise": {
+        "name": "Ise",
+        "type": "Battleship",
+        "group": "Sakura Empire",
+        "skin": [
+            "yishi",
+            "yishi_g"
+        ]
+    },
+    "isokaze": {
+        "name": "Isokaze",
+        "type": "Destroyer",
+        "group": "Sakura Empire",
+        "skin": [
+            "jifeng",
+            "jifeng_2",
+            "jifeng_3"
+        ]
+    },
+    "isuzu": {
+        "name": "Isuzu",
+        "type": "Light Cruiser",
+        "group": "Sakura Empire",
+        "skin": [
+            "wushiling",
+            "wushiling_2",
+            "wushiling_3",
+            "wushiling_5",
+            "wushiling_6",
+            "wushiling_g"
+        ]
+    },
+    "izumo": {
+        "name": "Izumo",
+        "type": "Battleship",
+        "group": "Sakura Empire",
+        "skin": [
+            "chuyun",
+            "chuyun_2"
+        ]
+    },
+    "jade": {
+        "name": "Jade",
+        "type": "Light Aircraft Carrier",
+        "group": "Ironblood",
+        "skin": [
+            "yade",
+            "yade_2"
+        ]
+    },
+    "jamaica": {
+        "name": "Jamaica",
+        "type": "Light Cruiser",
+        "group": "Royal Navy",
+        "skin": [
+            "yamaijia",
+            "yamaijia_2",
+            "yamaijia_3"
+        ]
+    },
+    "janus": {
+        "name": "Janus",
+        "type": "Destroyer",
+        "group": "Royal Navy",
+        "skin": [
+            "yanusi",
+            "yanusi_3",
+            "yanusi_4"
+        ]
+    },
+    "javelin": {
+        "name": "Javelin",
+        "type": "Destroyer",
+        "group": "Royal Navy",
+        "skin": [
+            "biaoqiang",
+            "biaoqiang_2",
+            "biaoqiang_3",
+            "biaoqiang_4",
+            "biaoqiang_5",
+            "biaoqiang_6",
+            "biaoqiang_7",
+            "biaoqiang_8",
+            "biaoqiang_9",
+            "biaoqiang_g",
+            "biaoqiang_h"
+        ]
+    },
+    "jean_bart": {
+        "name": "Jean Bart",
+        "type": "Battleship",
+        "group": "Vichya Dominion",
+        "skin": [
+            "rangbaer",
+            "rangbaer_2",
+            "rangbaer_3",
+            "rangbaer_4"
+        ]
+    },
+    "jeanne_d_arc": {
+        "name": "Jeanne d'Arc",
+        "type": "Light Cruiser",
+        "group": "Iris Libre",
+        "skin": [
+            "shengnvzhende",
+            "shengnvzhende_2"
+        ]
+    },
+    "jenkins": {
+        "name": "Jenkins",
+        "type": "Destroyer",
+        "group": "Eagle Union",
+        "skin": [
+            "jiejinsi",
+            "jiejinsi_3"
+        ]
+    },
+    "jersey": {
+        "name": "Jersey",
+        "type": "Destroyer",
+        "group": "Royal Navy",
+        "skin": [
+            "zexi"
+        ]
+    },
+    "jervis": {
+        "name": "Jervis",
+        "type": "Destroyer",
+        "group": "Royal Navy",
+        "skin": [
+            "jiaweisi",
+            "jiaweisi_2"
+        ]
+    },
+    "jintsuu": {
+        "name": "Jintsuu",
+        "type": "Light Cruiser",
+        "group": "Sakura Empire",
+        "skin": [
+            "shentong",
+            "shentong_2",
+            "shentong_4",
+            "shentong_alter",
+            "shentong_g"
+        ]
+    },
+    "joffre": {
+        "name": "Joffre",
+        "type": "Aircraft Carrier",
+        "group": "Vichya Dominion",
+        "skin": [
+            "xiafei",
+            "xiafei_2",
+            "xiafei_3",
+            "xiafei_boss"
+        ]
+    },
+    "juneau": {
+        "name": "Juneau",
+        "type": "Light Cruiser",
+        "group": "Eagle Union",
+        "skin": [
+            "zhunuo",
+            "zhunuo_2",
+            "zhunuo_g"
+        ]
+    },
+    "juno": {
+        "name": "Juno",
+        "type": "Destroyer",
+        "group": "Royal Navy",
+        "skin": [
+            "tianhou",
+            "tianhou_2",
+            "tianhou_ghost"
+        ]
+    },
+    "junyou": {
+        "name": "Jun'you",
+        "type": "Light Aircraft Carrier",
+        "group": "Sakura Empire",
+        "skin": [
+            "sunying",
+            "sunying_alter"
+        ]
+    },
+    "junyou_meta": {
+        "name": "Jun'you META",
+        "type": "Light Aircraft Carrier",
+        "group": "META",
+        "skin": [
+            "sunying_alter"
+        ]
+    },
+    "jupiter": {
+        "name": "Jupiter",
+        "type": "Destroyer",
+        "group": "Royal Navy",
+        "skin": [
+            "qiubite",
+            "qiubite_2",
+            "qiubite_ghost"
+        ]
+    },
+    "kaga": {
+        "name": "Kaga",
+        "type": "Aircraft Carrier",
+        "group": "Sakura Empire",
+        "skin": [
+            "jiahe",
+            "jiahe_2",
+            "jiahe_3",
+            "jiahe_4",
+            "jiahe_5",
+            "jiahe_6",
+            "jiahe_7",
+            "jiahe_h"
+        ]
+    },
+    "kaga_bb": {
+        "name": "Kaga",
+        "type": "Battleship",
+        "group": "Sakura Empire",
+        "skin": [
+            "jiahezhanlie"
+        ]
+    },
+    "kagerou": {
+        "name": "Kagerou",
+        "type": "Destroyer",
+        "group": "Sakura Empire",
+        "skin": [
+            "yangyan",
+            "yangyan_2",
+            "yangyan_g"
+        ]
+    },
+    "kako": {
+        "name": "Kako",
+        "type": "Heavy Cruiser",
+        "group": "Sakura Empire",
+        "skin": [
+            "jiagu",
+            "jiagu_g"
+        ]
+    },
+    "kala": {
+        "name": "Kala",
+        "type": "Large Cruiser",
+        "group": "Atelier",
+        "skin": [
+            "kala"
+        ]
+    },
+    "kalk": {
+        "name": "Kalk",
+        "type": "Destroyer",
+        "group": "Eagle Union",
+        "skin": [
+            "keerke",
+            "keerke_2"
+        ]
+    },
+    "kamikaze": {
+        "name": "Kamikaze",
+        "type": "Destroyer",
+        "group": "Sakura Empire",
+        "skin": [
+            "shenfeng",
+            "shenfeng_g"
+        ]
+    },
+    "karlsruhe": {
+        "name": "Karlsruhe",
+        "type": "Light Cruiser",
+        "group": "Ironblood",
+        "skin": [
+            "kaersilue",
+            "kaersilue_g"
+        ]
+    },
+    "kashino": {
+        "name": "Kashino",
+        "type": "Munition",
+        "group": "Sakura Empire",
+        "skin": [
+            "jianye",
+            "jianye_2",
+            "jianye_3",
+            "jianye_4"
+        ]
+    },
+    "kasumi": {
+        "name": "Kasumi",
+        "type": "Destroyer",
+        "group": "Sakura Empire",
+        "skin": [
+            "xia",
+            "xia_2",
+            "xia_3",
+            "xia_2_DOA",
+            "xia_DOA",
+            "xia_g"
+        ]
+    },
+    "katsuragi": {
+        "name": "Katsuragi",
+        "type": "Aircraft Carrier",
+        "group": "Sakura Empire",
+        "skin": [
+            "gecheng",
+            "gecheng_2",
+            "gecheng_3"
+        ]
+    },
+    "kawakaze": {
+        "name": "Kawakaze",
+        "type": "Destroyer",
+        "group": "Sakura Empire",
+        "skin": [
+            "jiangfeng",
+            "jiangfeng_2",
+            "jiangfeng_h"
+        ]
+    },
+    "kazagumo": {
+        "name": "Kazagumo",
+        "type": "Destroyer",
+        "group": "Sakura Empire",
+        "skin": [
+            "fengyun",
+            "fengyun_2",
+            "fengyun_3"
+        ]
+    },
+    "kearsarge": {
+        "name": "Kearsarge",
+        "type": "Aviation Battleship",
+        "group": "Eagle Union",
+        "skin": [
+            "qiershazhi"
+        ]
+    },
+    "kent": {
+        "name": "Kent",
+        "type": "Heavy Cruiser",
+        "group": "Royal Navy",
+        "skin": [
+            "kente"
+        ]
+    },
+    "kiev": {
+        "name": "Kiev",
+        "type": "Destroyer",
+        "group": "Northern Parliament",
+        "skin": [
+            "jifu",
+            "jifu_2",
+            "jifu_3"
+        ]
+    },
+    "kii": {
+        "name": "Kii",
+        "type": "Battleship",
+        "group": "Sakura Empire",
+        "skin": [
+            "jiyi",
+            "jiyi_2"
+        ]
+    },
+    "kimberly": {
+        "name": "Kimberly",
+        "type": "Destroyer",
+        "group": "Eagle Union",
+        "skin": [
+            "jinboli",
+            "jinboli_3"
+        ]
+    },
+    "king_george_v": {
+        "name": "King George V",
+        "type": "Battleship",
+        "group": "Royal Navy",
+        "skin": [
+            "qiaozhiwushi",
+            "qiaozhiwushi_2"
+        ]
+    },
+    "Kinu": {
+        "name": "Kinu",
+        "type": "Light Cruiser",
+        "group": "Sakura Empire",
+        "skin": [
+            "guinu",
+            "guinu_2",
+            "guinu_3",
+            "guinu_g"
+        ]
+    },
+    "kinugasa": {
+        "name": "Kinugasa",
+        "type": "Heavy Cruiser",
+        "group": "Sakura Empire",
+        "skin": [
+            "yili"
+        ]
+    },
+    "kirishima": {
+        "name": "Kirishima",
+        "type": "Battlecruiser",
+        "group": "Sakura Empire",
+        "skin": [
+            "wudao",
+            "wudao_2",
+            "wudao_3",
+            "wudao_4",
+            "wudao_5"
+        ]
+    },
+    "kirov": {
+        "name": "Kirov",
+        "type": "Light Cruiser",
+        "group": "Northern Parliament",
+        "skin": [
+            "jiluofu",
+            "jiluofu_2",
+            "jiluofu_3",
+            "jiluofu_4"
+        ]
+    },
+    "kisaragi": {
+        "name": "Kisaragi",
+        "type": "Destroyer",
+        "group": "Sakura Empire",
+        "skin": [
+            "ruyue",
+            "ruyue_2",
+            "ruyue_g"
+        ]
+    },
+    "kitakaze": {
+        "name": "Kitakaze",
+        "type": "Destroyer",
+        "group": "Sakura Empire",
+        "skin": [
+            "beifeng",
+            "beifeng_2",
+            "beifeng_4"
+        ]
+    },
+    "kiyonami": {
+        "name": "Kiyonami",
+        "type": "Destroyer",
+        "group": "Sakura Empire",
+        "skin": [
+            "qingbo",
+            "qingbo_3"
+        ]
+    },
+    "kizuna_ai": {
+        "name": "KizunaAI",
+        "type": "Destroyer",
+        "group": "KizunaAI",
+        "skin": [
+            "aijiangDD",
+            "aijiangDD_2"
+        ]
+    },
+    "kizuna_ai_bb": {
+        "name": "KizunaAI·SuperGamer",
+        "type": "Battleship",
+        "group": "KizunaAI",
+        "skin": [
+            "aijiangBB"
+        ]
+    },
+    "kizuna_ai_ca": {
+        "name": "KizunaAI·Elegant",
+        "type": "Heavy Cruiser",
+        "group": "KizunaAI",
+        "skin": [
+            "aijiangCL"
+        ]
+    },
+    "kizuna_ai_cv": {
+        "name": "KizunaAI·Anniversary",
+        "type": "Aircraft Carrier",
+        "group": "KizunaAI",
+        "skin": [
+            "aijiangCV"
+        ]
+    },
+    "klaudia": {
+        "name": "Klaudia",
+        "type": "Light Aircraft Carrier",
+        "group": "Atelier",
+        "skin": [
+            "keluodiya",
+            "keluodiya_2"
+        ]
+    },
+    "koln": {
+        "name": "Köln",
+        "type": "Light Cruiser",
+        "group": "Ironblood",
+        "skin": [
+            "kelong",
+            "kelong_g"
+        ]
+    },
+    "kongou": {
+        "name": "Kongou",
+        "type": "Battlecruiser",
+        "group": "Sakura Empire",
+        "skin": [
+            "jingang",
+            "jingang_2",
+            "jingang_3",
+            "jingang_4"
+        ]
+    },
+    "konigsberg": {
+        "name": "Königsberg",
+        "type": "Light Cruiser",
+        "group": "Ironblood",
+        "skin": [
+            "kenisibao"
+        ]
+    },
+    "kronshtadt": {
+        "name": "Kronshtadt",
+        "type": "Large Cruiser",
+        "group": "Northern Parliament",
+        "skin": [
+            "kalangshitade",
+            "kalangshitade_2"
+        ]
+    },
+    "kumano": {
+        "name": "Kumano",
+        "type": "Heavy Cruiser",
+        "group": "Sakura Empire",
+        "skin": [
+            "xiongye",
+            "xiongye_2",
+            "xiongye_3",
+            "xiongye_4"
+        ]
+    },
+    "kuroshio": {
+        "name": "Kuroshio",
+        "type": "Destroyer",
+        "group": "Sakura Empire",
+        "skin": [
+            "heichao"
+        ]
+    },
+    "kursk": {
+        "name": "Kursk",
+        "type": "Heavy Cruiser",
+        "group": "Northern Parliament",
+        "skin": [
+            "kuersike",
+            "kuersike_2",
+            "kuersike_hx"
+        ]
+    },
+    "kuybyshev": {
+        "name": "Kuybyshev",
+        "type": "Light Cruiser",
+        "group": "Northern Parliament",
+        "skin": [
+            "gubixuefu",
+            "gubixuefu_2"
+        ]
+    },
+    "laffey": {
+        "name": "Laffey",
+        "type": "Destroyer",
+        "group": "Eagle Union",
+        "skin": [
+            "lafei",
+            "lafei_2",
+            "lafei_3",
+            "lafei_4",
+            "lafei_5",
+            "lafei_6",
+            "lafei_8",
+            "lafei_9",
+            "lafei_10",
+            "lafei_11",
+            "lafei_12",
+            "lafei_g",
+            "lafei_h"
+        ]
+    },
+    "langley": {
+        "name": "Langley",
+        "type": "Light Aircraft Carrier",
+        "group": "Eagle Union",
+        "skin": [
+            "lanli",
+            "lanli_g"
+        ]
+    },
+    "langley_ii": {
+        "name": "Langley II",
+        "type": "Light Aircraft Carrier",
+        "group": "Eagle Union",
+        "skin": [
+            "lanliII",
+            "lanliII_2"
+        ]
+    },
+    "la_galissonniere": {
+        "name": "La Galissonniere",
+        "type": "Light Cruiser",
+        "group": "Vichya Dominion",
+        "skin": [
+            "jialisuoniye",
+            "jialisuoniye_2",
+            "jialisuoniye_3",
+            "jialisuoniye_4",
+            "jialisuoniye_3_hx",
+            "jialisuoniye_alter",
+            "jialisuoniye_alter_hx"
+        ]
+    },
+    "la_galissonniere_meta": {
+        "name": "La Galissonniere META",
+        "type": "Light Cruiser",
+        "group": "META",
+        "skin": [
+            "jialisuoniye_alter",
+            "jialisuoniye_alter_hx"
+        ]
+    },
+    "leander": {
+        "name": "Leander",
+        "type": "Light Cruiser",
+        "group": "Royal Navy",
+        "skin": [
+            "liande",
+            "liande_g"
+        ]
+    },
+    "leipzig": {
+        "name": "Leipzig",
+        "type": "Light Cruiser",
+        "group": "Ironblood",
+        "skin": [
+            "laibixi",
+            "laibixi_2",
+            "laibixi_g"
+        ]
+    },
+    "leonarda_da_vinci": {
+        "name": "Leonardo Da Vinci",
+        "type": "Submarine",
+        "group": "Sardegna Empire",
+        "skin": [
+            "dafenqi",
+            "dafenqi_2"
+        ]
+    },
+    "lexington": {
+        "name": "Lexington",
+        "type": "Aircraft Carrier",
+        "group": "Eagle Union",
+        "skin": [
+            "liekexingdun",
+            "liekexingdun_2"
+        ]
+    },
+    "le_malin": {
+        "name": "Le Malin",
+        "type": "Destroyer",
+        "group": "Vichya Dominion",
+        "skin": [
+            "edu",
+            "edu_2",
+            "edu_3",
+            "edu_4",
+            "edu_idol"
+        ]
+    },
+    "le_malin_idol": {
+        "name": "Le Malin (Idol)",
+        "type": "Destroyer",
+        "group": "Vichya Dominion",
+        "skin": [
+            "edu_idol"
+        ]
+    },
+    "le_mars": {
+        "name": "Le Mars",
+        "type": "Destroyer",
+        "group": "Vichya Dominion",
+        "skin": [
+            "lemaer",
+            "lemaer_2",
+            "lemaer_3",
+            "lemaer_4",
+            "lemaer_g",
+            "lemaer_ghost"
+        ]
+    },
+    "le_temeraire": {
+        "name": "Le Téméraire",
+        "type": "Destroyer",
+        "group": "Iris Libre",
+        "skin": [
+            "lumang",
+            "lumang_2",
+            "lumang_3"
+        ]
+    },
+    "le_terrible": {
+        "name": "Le Terrible",
+        "type": "Destroyer",
+        "group": "Iris Libre",
+        "skin": [
+            "kebu",
+            "kebu_2",
+            "kebu_3"
+        ]
+    },
+    "le_triomphant": {
+        "name": "Le Triomphant",
+        "type": "Destroyer",
+        "group": "Iris Libre",
+        "skin": [
+            "kaixuan"
+        ]
+    },
+    "libeccio": {
+        "name": "Libeccio",
+        "type": "Destroyer",
+        "group": "Sardegna Empire",
+        "skin": [
+            "xinanfeng",
+            "xinanfeng_2"
+        ]
+    },
+    "atelierlila": {
+        "name": "Lila",
+        "type": "Heavy Cruiser",
+        "group": "Atelier",
+        "skin": [
+            "lila",
+            "lila_2"
+        ]
+    },
+    "little_cheshire": {
+        "name": "Little Cheshire",
+        "type": "Heavy Cruiser",
+        "group": "Royal Navy",
+        "skin": [
+            "chaijun_younv"
+        ]
+    },
+    "little_cleveland": {
+        "name": "Little Cleveland",
+        "type": "Light Cruiser",
+        "group": "Eagle Union",
+        "skin": [
+            "kelifulan_younv"
+        ]
+    },
+    "little_enterprise": {
+        "name": "Little Enterprise",
+        "type": "Aircraft Carrier",
+        "group": "Eagle Union",
+        "skin": [
+            "qiye_younv"
+        ]
+    },
+    "little_formidable": {
+        "name": "Little Formidable",
+        "type": "Aircraft Carrier",
+        "group": "Royal Navy",
+        "skin": [
+            "kewei_younv"
+        ]
+    },
+    "little_helena": {
+        "name": "Little Helena",
+        "type": "Light Cruiser",
+        "group": "Eagle Union",
+        "skin": [
+            "hailunna_younv"
+        ]
+    },
+    "little_illustrious": {
+        "name": "Little Illustrious",
+        "type": "Aircraft Carrier",
+        "group": "Royal Navy",
+        "skin": [
+            "guanghui_younv"
+        ]
+    },
+    "little_prinz_eugen": {
+        "name": "Little Prinz Eugen",
+        "type": "Heavy Cruiser",
+        "group": "Ironblood",
+        "skin": [
+            "ougen_younv"
+        ]
+    },
+    "little_renown": {
+        "name": "Little Renown",
+        "type": "Battlecruiser",
+        "group": "Royal Navy",
+        "skin": [
+            "shengwang_younv"
+        ]
+    },
+    "little_san_diego": {
+        "name": "Little San Diego",
+        "type": "Light Cruiser",
+        "group": "Eagle Union",
+        "skin": [
+            "shengdiyage_younv"
+        ]
+    },
+    "little_spee": {
+        "name": "Little Spee",
+        "type": "Heavy Cruiser",
+        "group": "Ironblood",
+        "skin": [
+            "sipeibojue_younv"
+        ]
+    },
+    "littorio": {
+        "name": "Littorio",
+        "type": "Battleship",
+        "group": "Sardegna Empire",
+        "skin": [
+            "lituoliao",
+            "lituoliao_2",
+            "lituoliao_3",
+            "lituoliao_4",
+            "lituoliao_5"
+        ]
+    },
+    "london": {
+        "name": "London",
+        "type": "Heavy Cruiser",
+        "group": "Royal Navy",
+        "skin": [
+            "lundun",
+            "lundun_3",
+            "lundun_g",
+            "lundun_h"
+        ]
+    },
+    "long_island": {
+        "name": "Long Island",
+        "type": "Light Aircraft Carrier",
+        "group": "Eagle Union",
+        "skin": [
+            "changdao",
+            "changdao_2",
+            "changdao_3",
+            "changdao_g"
+        ]
+    },
+    "lutzow": {
+        "name": "Lutzow",
+        "type": "Battlecruiser",
+        "group": "Ironblood",
+        "skin": [
+            "lvzuofu",
+            "lvzuofu_2",
+            "lvzuofu_3"
+        ]
+    },
+    "l_indomptable": {
+        "name": "L'Indomptable",
+        "type": "Destroyer",
+        "group": "Vichya Dominion",
+        "skin": [
+            "buqu",
+            "buqu_2",
+            "buqu_3"
+        ]
+    },
+    "l_opiniatre": {
+        "name": "L'Opiniâtre",
+        "type": "Destroyer",
+        "group": "Iris Libre",
+        "skin": [
+            "juejiang",
+            "juejiang_2"
+        ]
+    },
+    "maestrale": {
+        "name": "Maestrale",
+        "type": "Destroyer",
+        "group": "Sardegna Empire",
+        "skin": [
+            "xibeifeng",
+            "xibeifeng_2"
+        ]
+    },
+    "maille_breze": {
+        "name": "Maillé-Brézé",
+        "type": "Destroyer",
+        "group": "Iris Libre",
+        "skin": [
+            "mayebuleize",
+            "mayebuleize_2",
+            "mayebuleize_3"
+        ]
+    },
+    "mainz": {
+        "name": "Mainz",
+        "type": "Light Cruiser",
+        "group": "Ironblood",
+        "skin": [
+            "meiyinci",
+            "meiyinci_2"
+        ]
+    },
+    "magdeburg": {
+        "name": "Magdeburg",
+        "type": "Light Cruiser",
+        "group": "Ironblood",
+        "skin": [
+            "magedebao",
+            "magedebao_2",
+            "magedebao_3"
+        ]
+    },
+    "makinami": {
+        "name": "Makinami",
+        "type": "Destroyer",
+        "group": "Sakura Empire",
+        "skin": [
+            "juanbo",
+            "juanbo_2"
+        ]
+    },
+    "mami": {
+        "name": "Mami",
+        "type": "Submarine",
+        "group": "Idolm@ster",
+        "skin": [
+            "zhenmei",
+            "zhenmei_2"
+        ]
+    },
+    "manchester": {
+        "name": "Manchester",
+        "type": "Light Cruiser",
+        "group": "Royal Navy",
+        "skin": [
+            "manchesite",
+            "manchesite_2",
+            "manchesite_3"
+        ]
+    },
+    "marblehead": {
+        "name": "Marblehead",
+        "type": "Light Cruiser",
+        "group": "Eagle Union",
+        "skin": [
+            "mabuerheide",
+            "mabuerheide_2",
+            "mabuerheide_3",
+            "mabuerheide_4",
+            "mabuerheide_5"
+        ]
+    },
+    "marco_polo": {
+        "name": "Marco Polo",
+        "type": "Battleship",
+        "group": "Sardegna Empire",
+        "skin": [
+            "makeboluo",
+            "makeboluo_2",
+            "makeboluo_wangzuo"
+        ]
+    },
+    "marseillaise": {
+        "name": "Marseillaise",
+        "type": "Light Cruiser",
+        "group": "Vichya Dominion",
+        "skin": [
+            "masaiqu",
+            "masaiqu_2"
+        ]
+    },
+    "maryland": {
+        "name": "Maryland",
+        "type": "Battleship",
+        "group": "Eagle Union",
+        "skin": [
+            "malilan",
+            "malilan_2"
+        ]
+    },
+    "massachusetts": {
+        "name": "Massachusetts",
+        "type": "Battleship",
+        "group": "Eagle Union",
+        "skin": [
+            "masazhusai",
+            "masazhusai_2",
+            "masazhusai_hx"
+        ]
+    },
+    "matchless": {
+        "name": "Matchless",
+        "type": "Destroyer",
+        "group": "Royal Navy",
+        "skin": [
+            "wudi",
+            "wudi_2"
+        ]
+    },
+    "matsukaze": {
+        "name": "Matsukaze",
+        "type": "Destroyer",
+        "group": "Sakura Empire",
+        "skin": [
+            "songfeng",
+            "songfeng_g"
+        ]
+    },
+    "maury": {
+        "name": "Maury",
+        "type": "Destroyer",
+        "group": "Eagle Union",
+        "skin": [
+            "moli"
+        ]
+    },
+    "maya": {
+        "name": "Maya",
+        "type": "Heavy Cruiser",
+        "group": "Sakura Empire",
+        "skin": [
+            "moye"
+        ]
+    },
+    "mccall": {
+        "name": "McCall",
+        "type": "Destroyer",
+        "group": "Eagle Union",
+        "skin": [
+            "maikaoer"
+        ]
+    },
+    "memphis": {
+        "name": "Memphis",
+        "type": "Light Cruiser",
+        "group": "Eagle Union",
+        "skin": [
+            "mengfeisi",
+            "mengfeisi_2",
+            "mengfeisi_3",
+            "mengfeisi_4",
+            "mengfeisi_3_hx",
+            "mengfeisi_alter"
+        ]
+    },
+    "memphis_meta": {
+        "name": "Memphis META",
+        "type": "Light Cruiser",
+        "group": "META",
+        "skin": [
+            "mengfeisi_alter"
+        ]
+    },
+    "michishio": {
+        "name": "Michishio",
+        "type": "Destroyer",
+        "group": "Sakura Empire",
+        "skin": [
+            "manchao",
+            "manchao_2"
+        ]
+    },
+    "mikasa": {
+        "name": "Mikasa",
+        "type": "Battleship",
+        "group": "Sakura Empire",
+        "skin": [
+            "sanli",
+            "sanli_2",
+            "sanli_3",
+            "sanli_4",
+            "sanli_5",
+            "sanli_6",
+            "sanli_h"
+        ]
+    },
+    "mikazuki": {
+        "name": "Mikazuki",
+        "type": "Destroyer",
+        "group": "Sakura Empire",
+        "skin": [
+            "sanriyue",
+            "sanriyue_2"
+        ]
+    },
+    "mikuma": {
+        "name": "Mikuma",
+        "type": "Light Cruiser",
+        "group": "Sakura Empire",
+        "skin": [
+            "sanwei",
+            "sanwei_2"
+        ]
+    },
+    "minato_aqua": {
+        "name": "Minato Aqua",
+        "type": "Submarine",
+        "group": "Hololive",
+        "skin": [
+            "Vtuber_aqua",
+            "Vtuber_aqua_2"
+        ]
+    },
+    "minazuki": {
+        "name": "Minazuki",
+        "type": "Destroyer",
+        "group": "Sakura Empire",
+        "skin": [
+            "shuiwuyue"
+        ]
+    },
+    "minsk": {
+        "name": "Minsk",
+        "type": "Destroyer",
+        "group": "Northern Parliament",
+        "skin": [
+            "mingsike",
+            "mingsike_2"
+        ]
+    },
+    "minneapolis": {
+        "name": "Minneapolis",
+        "type": "Heavy Cruiser",
+        "group": "Eagle Union",
+        "skin": [
+            "mingniabolisi",
+            "mingniabolisi_2",
+            "mingniabolisi_3",
+            "mingniabolisi_4",
+            "mingniabolisi_h",
+            "mingniabolisi_hx"
+        ]
+    },
+    "miyuki": {
+        "name": "Miyuki",
+        "type": "Destroyer",
+        "group": "Sakura Empire",
+        "skin": [
+            "shenxue",
+            "shenxue_2"
+        ]
+    },
+    "mogami": {
+        "name": "Mogami",
+        "type": "Light Cruiser",
+        "group": "Sakura Empire",
+        "skin": [
+            "zuishang",
+            "zuishang_g"
+        ]
+    },
+    "monarch": {
+        "name": "Monarch",
+        "type": "Battleship",
+        "group": "Royal Navy",
+        "skin": [
+            "junzhu",
+            "junzhu_2",
+            "junzhu_3"
+        ]
+    },
+    "montpelier": {
+        "name": "Montpelier",
+        "type": "Light Cruiser",
+        "group": "Eagle Union",
+        "skin": [
+            "mengbiliai",
+            "mengbiliai_2",
+            "mengbiliai_3"
+        ]
+    },
+    "morrison": {
+        "name": "Morrison",
+        "type": "Destroyer",
+        "group": "Eagle Union",
+        "skin": [
+            "molisen",
+            "molisen_2"
+        ]
+    },
+    "mullany": {
+        "name": "Mullany",
+        "type": "Destroyer",
+        "group": "Eagle Union",
+        "skin": [
+            "malani",
+            "malani_3"
+        ]
+    },
+    "murasaki_shion": {
+        "name": "Murasaki Shion",
+        "type": "Light Aircraft Carrier",
+        "group": "Hololive",
+        "skin": [
+            "Vtuber_Shion",
+            "Vtuber_Shion_2"
+        ]
+    },
+    "murmansk": {
+        "name": "Murmansk",
+        "type": "Light Cruiser",
+        "group": "Northern Parliament",
+        "skin": [
+            "moermansike",
+            "moermansike_2"
+        ]
+    },
+    "musashi": {
+        "name": "Musashi",
+        "type": "Battleship",
+        "group": "Sakura Empire",
+        "skin": [
+            "wuzang",
+            "wuzang_2",
+            "wuzang_hx"
+        ]
+    },
+    "musketeer": {
+        "name": "Musketeer",
+        "type": "Destroyer",
+        "group": "Royal Navy",
+        "skin": [
+            "huoqiangshou"
+        ]
+    },
+    "mutsu": {
+        "name": "Mutsu",
+        "type": "Battleship",
+        "group": "Sakura Empire",
+        "skin": [
+            "luao",
+            "luao_2",
+            "luao_3"
+        ]
+    },
+    "mutsuki": {
+        "name": "Mutsuki",
+        "type": "Destroyer",
+        "group": "Sakura Empire",
+        "skin": [
+            "muyue",
+            "muyue_2",
+            "muyue_3",
+            "muyue_4",
+            "muyue_g"
+        ]
+    },
+    "myoukou": {
+        "name": "Myoukou",
+        "type": "Heavy Cruiser",
+        "group": "Sakura Empire",
+        "skin": [
+            "miaogao"
+        ]
+    },
+    "nachi": {
+        "name": "Nachi",
+        "type": "Heavy Cruiser",
+        "group": "Sakura Empire",
+        "skin": [
+            "nazhi",
+            "nazhi_g"
+        ]
+    },
+    "naganami": {
+        "name": "Naganami",
+        "type": "Destroyer",
+        "group": "Sakura Empire",
+        "skin": [
+            "changbo",
+            "changbo_2",
+            "changbo_3",
+            "changbo_4",
+            "changbo_h"
+        ]
+    },
+    "nagara": {
+        "name": "Nagara",
+        "type": "Light Cruiser",
+        "group": "Sakura Empire",
+        "skin": [
+            "changliang",
+            "changliang_2"
+        ]
+    },
+    "nagato": {
+        "name": "Nagato",
+        "type": "Battleship",
+        "group": "Sakura Empire",
+        "skin": [
+            "changmen",
+            "changmen_2",
+            "changmen_3",
+            "changmen_4",
+            "changmen_5",
+            "changmen_h"
+        ]
+    },
+    "nagatsuki": {
+        "name": "Nagatsuki",
+        "type": "Destroyer",
+        "group": "Sakura Empire",
+        "skin": [
+            "changyue",
+            "changyue_2"
+        ]
+    },
+    "naka": {
+        "name": "Naka",
+        "type": "Light Cruiser",
+        "group": "Sakura Empire",
+        "skin": [
+            "nake",
+            "nake_2"
+        ]
+    },
+    "nakiri_ayame": {
+        "name": "Nakiri Ayame",
+        "type": "Heavy Cruiser",
+        "group": "Hololive",
+        "skin": [
+            "Vtuber_Ayame",
+            "Vtuber_Ayame_2"
+        ]
+    },
+    "natsuiro_matsuri": {
+        "name": "Natsuiro Matsuri",
+        "type": "Destroyer",
+        "group": "Hololive",
+        "skin": [
+            "Vtuber_matsuri",
+            "Vtuber_matsuri_2"
+        ]
+    },
+    "nautilus": {
+        "name": "Nautilus",
+        "type": "Submarine",
+        "group": "Eagle Union",
+        "skin": [
+            "yingwuluo",
+            "yingwuluo_2",
+            "yingwuluo_3"
+        ]
+    },
+    "nelson": {
+        "name": "Nelson",
+        "type": "Battleship",
+        "group": "Royal Navy",
+        "skin": [
+            "naerxun",
+            "naerxun_2",
+            "naerxun_3",
+            "naerxun_g"
+        ]
+    },
+    "neptune": {
+        "name": "Neptune",
+        "type": "Light Cruiser",
+        "group": "Royal Navy",
+        "skin": [
+            "haiwangxing",
+            "haiwangxing_2",
+            "haiwangxing_3",
+            "haiwangxing_ghost"
+        ]
+    },
+    "nevada": {
+        "name": "Nevada",
+        "type": "Battleship",
+        "group": "Eagle Union",
+        "skin": [
+            "neihuada",
+            "neihuada_2",
+            "neihuada_g"
+        ]
+    },
+    "new_jersey": {
+        "name": "New Jersey",
+        "type": "Battleship",
+        "group": "Eagle Union",
+        "skin": [
+            "xinzexi",
+            "xinzexi_2",
+            "xinzexi_3",
+            "xinzexi_2_hx",
+            "xinzexi_h"
+        ]
+    },
+    "new_orleans": {
+        "name": "New Orleans",
+        "type": "Heavy Cruiser",
+        "group": "Eagle Union",
+        "skin": [
+            "xinaoerliang",
+            "xinaoerliang_2",
+            "xinaoerliang_2_hx"
+        ]
+    },
+    "newcastle": {
+        "name": "Newcastle",
+        "type": "Light Cruiser",
+        "group": "Royal Navy",
+        "skin": [
+            "niukasier",
+            "niukasier_2",
+            "niukasier_g"
+        ]
+    },
+    "nicholas": {
+        "name": "Nicholas",
+        "type": "Destroyer",
+        "group": "Eagle Union",
+        "skin": [
+            "nigulasi",
+            "nigulasi_2",
+            "nigulasi_3",
+            "nigulasi_4",
+            "nigulasi_5",
+            "nigulasi_g"
+        ]
+    },
+    "nicoloso_da_recco": {
+        "name": "Nicoloso da Recco",
+        "type": "Destroyer",
+        "group": "Sardegna Empire",
+        "skin": [
+            "daleike",
+            "daleike_2"
+        ]
+    },
+    "niizuki": {
+        "name": "Niizuki",
+        "type": "Destroyer",
+        "group": "Sakura Empire",
+        "skin": [
+            "xinyue_jp"
+        ]
+    },
+    "ning_hai": {
+        "name": "Ning Hai",
+        "type": "Light Cruiser",
+        "group": "Dragon Empire",
+        "skin": [
+            "ninghai",
+            "ninghai_2",
+            "ninghai_3",
+            "ninghai_4",
+            "ninghai_5",
+            "ninghai_6",
+            "ninghai_7",
+            "ninghai_g"
+        ]
+    },
+    "norfolk": {
+        "name": "Norfolk",
+        "type": "Heavy Cruiser",
+        "group": "Royal Navy",
+        "skin": [
+            "nuofuke"
+        ]
+    },
+    "northampton": {
+        "name": "Northampton",
+        "type": "Heavy Cruiser",
+        "group": "Eagle Union",
+        "skin": [
+            "beianpudun"
+        ]
+    },
+    "northampton_ii": {
+        "name": "Northampton II",
+        "type": "Heavy Cruiser",
+        "group": "Eagle Union",
+        "skin": [
+            "beianpudunII",
+            "beianpudunII_2"
+        ]
+    },
+    "north_carolina": {
+        "name": "North Carolina",
+        "type": "Battleship",
+        "group": "Eagle Union",
+        "skin": [
+            "beikaluolaina",
+            "beikaluolaina_2"
+        ]
+    },
+    "noshiro": {
+        "name": "Noshiro",
+        "type": "Light Cruiser",
+        "group": "Sakura Empire",
+        "skin": [
+            "nengdai",
+            "nengdai_2",
+            "nengdai_3",
+            "nengdai_4",
+            "nengdai_5",
+            "nengdai_6",
+            "nengdai_7",
+            "nengdai_h"
+        ]
+    },
+    "nowaki": {
+        "name": "Nowaki",
+        "type": "Destroyer",
+        "group": "Sakura Empire",
+        "skin": [
+            "yefen"
+        ]
+    },
+    "nurnberg": {
+        "name": "Nürnberg",
+        "type": "Light Cruiser",
+        "group": "Ironblood",
+        "skin": [
+            "niulunbao",
+            "niulunbao_2"
+        ]
+    },
+    "odin": {
+        "name": "Odin",
+        "type": "Battlecruiser",
+        "group": "Ironblood",
+        "skin": [
+            "aoding",
+            "aoding_2"
+        ]
+    },
+    "oite": {
+        "name": "Oite",
+        "type": "Destroyer",
+        "group": "Sakura Empire",
+        "skin": [
+            "zhuifeng",
+            "zhuifeng_2",
+            "zhuifeng_3"
+        ]
+    },
+    "oklahoma": {
+        "name": "Oklahoma",
+        "type": "Battleship",
+        "group": "Eagle Union",
+        "skin": [
+            "ekelahema",
+            "ekelahema_2",
+            "ekelahema_g"
+        ]
+    },
+    "omaha": {
+        "name": "Omaha",
+        "type": "Light Cruiser",
+        "group": "Eagle Union",
+        "skin": [
+            "aomaha"
+        ]
+    },
+    "ookami_mio": {
+        "name": "Ookami Mio",
+        "type": "Aircraft Carrier",
+        "group": "Hololive",
+        "skin": [
+            "Vtuber_Mio",
+            "Vtuber_Mio_2"
+        ]
+    },
+    "ooshio": {
+        "name": "Ooshio",
+        "type": "Destroyer",
+        "group": "Sakura Empire",
+        "skin": [
+            "dachao",
+            "dachao_2",
+            "dachao_3",
+            "dachao_4",
+            "dachao_5"
+        ]
+    },
+    "otto_von_alvensleben": {
+        "name": "Otto von Alvensleben",
+        "type": "Destroyer",
+        "group": "Ironblood",
+        "skin": [
+            "aotuo",
+            "aotuo_2"
+        ]
+    },
+    "oyashio": {
+        "name": "Oyashio",
+        "type": "Destroyer",
+        "group": "Sakura Empire",
+        "skin": [
+            "qinchao"
+        ]
+    },
+    "pamiat_merkuria": {
+        "name": "Pamiat Merkuria",
+        "type": "Light Cruiser",
+        "group": "Northern Parliament",
+        "skin": [
+            "shuixingjinian",
+            "shuixingjinian_2",
+            "shuixingjinian_3",
+            "shuixingjinian_4",
+            "shuixingjinian_5",
+            "shuixingjinian_g"
+        ]
+    },
+    "patricia": {
+        "name": "Patricia",
+        "type": "Battleship",
+        "group": "Atelier",
+        "skin": [
+            "patelixia",
+            "patelixia_2"
+        ]
+    },
+    "pennsylvania": {
+        "name": "Pennsylvania",
+        "type": "Battleship",
+        "group": "Eagle Union",
+        "skin": [
+            "binxifaniya",
+            "binxifaniya_2"
+        ]
+    },
+    "perseus": {
+        "name": "Perseus",
+        "type": "Light Aircraft Carrier",
+        "group": "Royal Navy",
+        "skin": [
+            "yingxianzuo",
+            "yingxianzuo_2"
+        ]
+    },
+    "penelope": {
+        "name": "Penelope",
+        "type": "Light Cruiser",
+        "group": "Royal Navy",
+        "skin": [
+            "peineiluopo",
+            "peineiluopo_2",
+            "peineiluopo_3"
+        ]
+    },
+    "pensacola": {
+        "name": "Pensacola",
+        "type": "Heavy Cruiser",
+        "group": "Eagle Union",
+        "skin": [
+            "pengsakela"
+        ]
+    },
+    "peter_strasser": {
+        "name": "Peter Strasser",
+        "type": "Aircraft Carrier",
+        "group": "Ironblood",
+        "skin": [
+            "shitelasai",
+            "shitelasai_2",
+            "shitelasai_3",
+            "shitelasai_hx"
+        ]
+    },
+    "phoenix": {
+        "name": "Phoenix",
+        "type": "Light Cruiser",
+        "group": "Eagle Union",
+        "skin": [
+            "feinikesi"
+        ]
+    },
+    "ping_hai": {
+        "name": "Ping Hai",
+        "type": "Light Cruiser",
+        "group": "Dragon Empire",
+        "skin": [
+            "pinghai",
+            "pinghai_2",
+            "pinghai_3",
+            "pinghai_4",
+            "pinghai_5",
+            "pinghai_6",
+            "pinghai_7",
+            "pinghai_g"
+        ]
+    },
+    "pola": {
+        "name": "Pola",
+        "type": "Heavy Cruiser",
+        "group": "Sardegna Empire",
+        "skin": [
+            "bola",
+            "bola_2"
+        ]
+    },
+    "pompeo_magno": {
+        "name": "Pompeo Magno",
+        "type": "Destroyer",
+        "group": "Sardegna Empire",
+        "skin": [
+            "pangpeimagenuo",
+            "pangpeimagenuo_2"
+        ]
+    },
+    "portland": {
+        "name": "Portland",
+        "type": "Heavy Cruiser",
+        "group": "Eagle Union",
+        "skin": [
+            "botelan",
+            "botelan_2",
+            "botelan_g"
+        ]
+    },
+    "prince_of_wales": {
+        "name": "Prince of Wales",
+        "type": "Battleship",
+        "group": "Royal Navy",
+        "skin": [
+            "weiershiqinwang",
+            "weiershiqinwang_2",
+            "weiershiqinwang_3",
+            "weiershiqinwang_4",
+            "weiershiqinwang_5"
+        ]
+    },
+    "princeton": {
+        "name": "Princeton",
+        "type": "Light Aircraft Carrier",
+        "group": "Royal Navy",
+        "skin": [
+            "pulinsidun",
+            "pulinsidun_2",
+            "pulinsidun_3",
+            "pulinsidun_4"
+        ]
+    },
+    "prinz_adalbert": {
+        "name": "Prinz Adalbert",
+        "type": "Heavy Cruiser",
+        "group": "Ironblood",
+        "skin": [
+            "adaerbote",
+            "adaerbote_2"
+        ]
+    },
+    "prinz_eugen": {
+        "name": "Prinz Eugen",
+        "type": "Heavy Cruiser",
+        "group": "Ironblood",
+        "skin": [
+            "ougen",
+            "ougen_2",
+            "ougen_3",
+            "ougen_4",
+            "ougen_5",
+            "ougen_6",
+            "ougen_2_hx",
+            "ougen_3_hx",
+            "ougen_h",
+            "ougen_hx",
+            "ougen_younv"
+        ]
+    },
+    "prinz_heinrich": {
+        "name": "Prinz Heinrich",
+        "type": "Heavy Cruiser",
+        "group": "Ironblood",
+        "skin": [
+            "haiyinlixi",
+            "haiyinlixi_2",
+            "haiyinlixi_3",
+            "haiyinlixi_4",
+            "haiyinlixi_5",
+            "haiyinlixi_2_hx",
+            "haiyinlixi_3_hx",
+            "haiyinlixi_5_hx",
+            "haiyinlixi_hx"
+        ]
+    },
+    "prinz_rupprecht": {
+        "name": "Prinz Rupprecht",
+        "type": "Battlecruiser",
+        "group": "Ironblood",
+        "skin": [
+            "lupuleixite",
+            "lupuleixite_2"
+        ]
+    },
+    "plymouth": {
+        "name": "Plymouth",
+        "type": "Light Cruiser",
+        "group": "Royal Navy",
+        "skin": [
+            "pulimaosi",
+            "pulimaosi_2"
+        ]
+    },
+    "queen_elizabeth": {
+        "name": "Queen Elizabeth",
+        "type": "Battleship",
+        "group": "Royal Navy",
+        "skin": [
+            "yilishabai",
+            "yilishabai_2",
+            "yilishabai_3",
+            "yilishabai_4",
+            "yilishabai_5",
+            "yilishabai_6",
+            "yilishabai_7",
+            "yilishabai_alter"
+        ]
+    },
+    "queen_elizabeth_meta": {
+        "name": "Queen Elizabeth META",
+        "type": "Battleship",
+        "group": "META",
+        "skin": [
+            "yilishabai_alter"
+        ]
+    },
+    "queen_elizabeth_might_knight": {
+        "name": "Queen Elizabeth META knight",
+        "type": "Battleship",
+        "group": "META",
+        "skin": [
+            "youlin_ylsb"
+        ]
+    },
+    "quincy": {
+        "name": "Quincy",
+        "type": "Heavy Cruiser",
+        "group": "Eagle Union",
+        "skin": [
+            "kunxi",
+            "kunxi_2"
+        ]
+    },
+    "radford": {
+        "name": "Radford",
+        "type": "Destroyer",
+        "group": "Eagle Union",
+        "skin": [
+            "ladefute",
+            "ladefute_3"
+        ]
+    },
+    "raleigh": {
+        "name": "Raleigh",
+        "type": "Light Cruiser",
+        "group": "Eagle Union",
+        "skin": [
+            "luoli"
+        ]
+    },
+    "ranger": {
+        "name": "Ranger",
+        "type": "Light Aircraft Carrier",
+        "group": "Eagle Union",
+        "skin": [
+            "tujizhe",
+            "tujizhe_g"
+        ]
+    },
+    "regensburg": {
+        "name": "Regensburg",
+        "type": "Light Cruiser",
+        "group": "Ironblood",
+        "skin": [
+            "leigensibao",
+            "leigensibao_2"
+        ]
+    },
+    "reno": {
+        "name": "Reno",
+        "type": "Light Cruiser",
+        "group": "Eagle Union",
+        "skin": [
+            "linuo",
+            "linuo_2",
+            "linuo_3",
+            "linuo_4",
+            "linuo_5"
+        ]
+    },
+    "renown": {
+        "name": "Renown",
+        "type": "Battlecruiser",
+        "group": "Royal Navy",
+        "skin": [
+            "shengwang",
+            "shengwang_alter",
+            "shengwang_younv"
+        ]
+    },
+    "renown_meta": {
+        "name": "Renown META",
+        "type": "Battlecruiser",
+        "group": "META",
+        "skin": [
+            "shengwang_alter"
+        ]
+    },
+    "repulse": {
+        "name": "Repulse",
+        "type": "Battlecruiser",
+        "group": "Royal Navy",
+        "skin": [
+            "fanji",
+            "fanji_alter"
+        ]
+    },
+    "repulse_meta": {
+        "name": "Repulse META",
+        "type": "Battlecruiser",
+        "group": "META",
+        "skin": [
+            "fanji_alter"
+        ]
+    },
+    "revenge": {
+        "name": "Revenge",
+        "type": "Battleship",
+        "group": "Royal Navy",
+        "skin": [
+            "fuchou",
+            "fuchou_2"
+        ]
+    },
+    "richelieu": {
+        "name": "Richelieu",
+        "type": "Battleship",
+        "group": "Iris Libre",
+        "skin": [
+            "lisailiu",
+            "lisailiu_2",
+            "lisailiu_3"
+        ]
+    },
+    "richmond": {
+        "name": "Richmond",
+        "type": "Light Cruiser",
+        "group": "Eagle Union",
+        "skin": [
+            "lishiman"
+        ]
+    },
+    "ritsuko": {
+        "name": "Ritsuko",
+        "type": "Munition",
+        "group": "Idolm@ster",
+        "skin": [
+            "lvzi",
+            "lvzi_2"
+        ]
+    },
+    "rodney": {
+        "name": "Rodney",
+        "type": "Battleship",
+        "group": "Royal Navy",
+        "skin": [
+            "luodeni",
+            "luodeni_2",
+            "luodeni_3",
+            "luodeni_4",
+            "luodeni_h"
+        ]
+    },
+    "roma": {
+        "name": "Roma",
+        "type": "Battleship",
+        "group": "Sardegna Empire",
+        "skin": [
+            "luoma",
+            "luoma_2",
+            "luoma_ghost"
+        ]
+    },
+    "roon": {
+        "name": "Roon",
+        "type": "Heavy Cruiser",
+        "group": "Ironblood",
+        "skin": [
+            "luoen",
+            "luoen_2",
+            "luoen_4",
+            "luoen_idol"
+        ]
+    },
+    "roon_idol": {
+        "name": "Roon (Idol)",
+        "type": "Heavy Cruiser",
+        "group": "Ironblood",
+        "skin": [
+            "luoen_idol"
+        ]
+    },
+    "royal_fortune": {
+        "name": "Royal Fortune",
+        "type": "Sailing Frigate",
+        "group": "Tempesta",
+        "skin": [
+            "huangjiacaifu",
+            "huangjiacaifu_2",
+            "huangjiacaifu_3"
+        ]
+    },
+    "royal_oak": {
+        "name": "Royal Oak",
+        "type": "Battleship",
+        "group": "Royal Navy",
+        "skin": [
+            "huangjiaxiangshu",
+            "huangjiaxiangshu_2"
+        ]
+    },
+    "ryuuhou": {
+        "name": "Ryuuhou",
+        "type": "Light Aircraft Carrier",
+        "group": "Sakura Empire",
+        "skin": [
+            "longfeng",
+            "longfeng_2"
+        ]
+    },
+    "ryuujou": {
+        "name": "Ryuujou",
+        "type": "Light Aircraft Carrier",
+        "group": "Sakura Empire",
+        "skin": [
+            "longxiang",
+            "longxiang_2",
+            "longxiang_3"
+        ]
+    },
+    "ryza": {
+        "name": "Ryza",
+        "type": "Light Cruiser",
+        "group": "Atelier",
+        "skin": [
+            "laisha",
+            "laisha_2"
+        ]
+    },
+    "saint_louis": {
+        "name": "Saint Louis",
+        "type": "Heavy Cruiser",
+        "group": "Iris Libre",
+        "skin": [
+            "luyijiushi",
+            "luyijiushi_2",
+            "luyijiushi_3"
+        ]
+    },
+    "sakawa": {
+        "name": "Sakawa",
+        "type": "Light Cruiser",
+        "group": "Sakura Empire",
+        "skin": [
+            "jiuyun",
+            "jiuyun_2",
+            "jiuyun_3",
+            "jiuyun_4"
+        ]
+    },
+    "salt_lake_city": {
+        "name": "Salt Lake City",
+        "type": "Heavy Cruiser",
+        "group": "Eagle Union",
+        "skin": [
+            "yanhucheng"
+        ]
+    },
+    "san_diego": {
+        "name": "San Diego",
+        "type": "Light Cruiser",
+        "group": "Eagle Union",
+        "skin": [
+            "shengdiyage",
+            "shengdiyage_2",
+            "shengdiyage_g",
+            "shengdiyage_h",
+            "shengdiyage_younv"
+        ]
+    },
+    "san_francisco": {
+        "name": "San Francisco",
+        "type": "Heavy Cruiser",
+        "group": "Eagle Union",
+        "skin": [
+            "jiujinshan",
+            "jiujinshan_3",
+            "jiujinshan_4"
+        ]
+    },
+    "san_juan": {
+        "name": "San Juan",
+        "type": "Light Cruiser",
+        "group": "Eagle Union",
+        "skin": [
+            "shenghuan",
+            "shenghuan_2"
+        ]
+    },
+    "saratoga": {
+        "name": "Saratoga",
+        "type": "Aircraft Carrier",
+        "group": "Eagle Union",
+        "skin": [
+            "salatuojia",
+            "salatuojia_2",
+            "salatuojia_3",
+            "salatuojia_4",
+            "salatuojia_5",
+            "salatuojia_6",
+            "salatuojia_7",
+            "salatuojia_8",
+            "salatuojia_9",
+            "salatuojia_g",
+            "salatuojia_h"
+        ]
+    },
+    "scharnhorst": {
+        "name": "Scharnhorst",
+        "type": "Battlecruiser",
+        "group": "Ironblood",
+        "skin": [
+            "shaenhuosite",
+            "shaenhuosite_2",
+            "shaenhuosite_alter"
+        ]
+    },
+    "scharnhorst_meta": {
+        "name": "Scharnhorst META",
+        "type": "Battlecruiser",
+        "group": "META",
+        "skin": [
+            "shaenhuosite_alter"
+        ]
+    },
+    "scylla": {
+        "name": "Scylla",
+        "type": "Light Cruiser",
+        "group": "Royal Navy",
+        "skin": [
+            "sikula",
+            "sikula_2"
+        ]
+    },
+    "seattle": {
+        "name": "Seattle",
+        "type": "Light Cruiser",
+        "group": "Eagle Union",
+        "skin": [
+            "xiyatu",
+            "xiyatu_2",
+            "xiyatu_3",
+            "xiyatu_4"
+        ]
+    },
+    "sendai": {
+        "name": "Sendai",
+        "type": "Light Cruiser",
+        "group": "Sakura Empire",
+        "skin": [
+            "chuannei",
+            "chuannei_g"
+        ]
+    },
+    "serri": {
+        "name": "Serri",
+        "type": "Aircraft Carrier",
+        "group": "Atelier",
+        "skin": [
+            "saili",
+            "saili_2"
+        ]
+    },
+    "sevastopol": {
+        "name": "Sevastopol",
+        "type": "Battleship",
+        "group": "Northern Parliament",
+        "skin": [
+            "saiwasituoboer",
+            "saiwasituoboer_2",
+            "saiwasituoboer_hx"
+        ]
+    },
+    "seydlitz": {
+        "name": "Seydlitz",
+        "type": "Battlecruiser",
+        "group": "Ironblood",
+        "skin": [
+            "saidelici",
+            "saidelici_4",
+            "saidelici_6"
+        ]
+    },
+    "shangri-la": {
+        "name": "Shangri-La",
+        "type": "Aircraft Carrier",
+        "group": "Eagle Union",
+        "skin": [
+            "xianggelila",
+            "xianggelila_2",
+            "xianggelila_3"
+        ]
+    },
+    "sheffield": {
+        "name": "Sheffield",
+        "type": "Light Cruiser",
+        "group": "Royal Navy",
+        "skin": [
+            "xiefeierde",
+            "xiefeierde_2",
+            "xiefeierde_3",
+            "xiefeierde_4",
+            "xiefeierde_5",
+            "xiefeierde_alter",
+            "xiefeierde_idol"
+        ]
+    },
+    "sheffield_idol": {
+        "name": "Sheffield (Idol)",
+        "type": "Light Cruiser",
+        "group": "Royal Navy",
+        "skin": [
+            "xiefeierde_idol"
+        ]
+    },
+    "sheffield_meta": {
+        "name": "Sheffield META",
+        "type": "Light Cruiser",
+        "group": "META",
+        "skin": [
+            "xiefeierde_alter"
+        ]
+    },
+    "shigure": {
+        "name": "Shigure",
+        "type": "Destroyer",
+        "group": "Sakura Empire",
+        "skin": [
+            "shiyu",
+            "shiyu_2",
+            "shiyu_3",
+            "shiyu_4",
+            "shiyu_g"
+        ]
+    },
+    "shimakaze": {
+        "name": "Shimakaze",
+        "type": "Destroyer",
+        "group": "Sakura Empire",
+        "skin": [
+            "daofeng",
+            "daofeng_3",
+            "daofeng_4",
+            "daofeng_5"
+        ]
+    },
+    "shimanto": {
+        "name": "Shimanto",
+        "type": "Light Cruiser",
+        "group": "Sakura Empire",
+        "skin": [
+            "siwanshi"
+        ]
+    },
+    "shinano": {
+        "name": "Shinano",
+        "type": "Aircraft Carrier",
+        "group": "Sakura Empire",
+        "skin": [
+            "xinnong",
+            "xinnong_2",
+            "xinnong_3",
+            "xinnong_4"
+        ]
+    },
+    "shirakami_fubuki": {
+        "name": "Shirakami Fubuki",
+        "type": "Destroyer",
+        "group": "Hololive",
+        "skin": [
+            "Vtuber_Fubuki",
+            "Vtuber_Fubuki_2"
+        ]
+    },
+    "shiranui": {
+        "name": "Shiranui",
+        "type": "Destroyer",
+        "group": "Sakura Empire",
+        "skin": [
+            "buzhihuo",
+            "buzhihuo_2",
+            "buzhihuo_g"
+        ]
+    },
+    "shiratsuyu": {
+        "name": "Shiratsuyu",
+        "type": "Destroyer",
+        "group": "Sakura Empire",
+        "skin": [
+            "bailu",
+            "bailu_2"
+        ]
+    },
+    "shirayuki": {
+        "name": "Shirayuki",
+        "type": "Destroyer",
+        "group": "Sakura Empire",
+        "skin": [
+            "baixue",
+            "baixue_2"
+        ]
+    },
+    "shouhou": {
+        "name": "Shouhou",
+        "type": "Light Aircraft Carrier",
+        "group": "Sakura Empire",
+        "skin": [
+            "xiangfeng",
+            "xiangfeng_2",
+            "xiangfeng_g"
+        ]
+    },
+    "shoukaku": {
+        "name": "Shoukaku",
+        "type": "Aircraft Carrier",
+        "group": "Sakura Empire",
+        "skin": [
+            "xianghe",
+            "xianghe_2",
+            "xianghe_3"
+        ]
+    },
+    "shropshire": {
+        "name": "Shropshire",
+        "type": "Heavy Cruiser",
+        "group": "Royal Navy",
+        "skin": [
+            "shiluopujun",
+            "shiluopujun_g"
+        ]
+    },
+    "sims": {
+        "name": "Sims",
+        "type": "Destroyer",
+        "group": "Eagle Union",
+        "skin": [
+            "ximusi",
+            "ximusi_g"
+        ]
+    },
+    "sirius": {
+        "name": "Sirius",
+        "type": "Light Cruiser",
+        "group": "Royal Navy",
+        "skin": [
+            "tianlangxing",
+            "tianlangxing_2",
+            "tianlangxing_3",
+            "tianlangxing_4"
+        ]
+    },
+    "smalley": {
+        "name": "Smalley",
+        "type": "Destroyer",
+        "group": "Eagle Union",
+        "skin": [
+            "simoli",
+            "simoli_3"
+        ]
+    },
+    "soobrazitelny": {
+        "name": "Soobrazitelny",
+        "type": "Destroyer",
+        "group": "Northern Parliament",
+        "skin": [
+            "lingmin",
+            "lingmin_2"
+        ]
+    },
+    "souryuu": {
+        "name": "Souryuu",
+        "type": "Aircraft Carrier",
+        "group": "Sakura Empire",
+        "skin": [
+            "canglong",
+            "canglong_2",
+            "canglong_3",
+            "canglong_alter",
+            "canglong_g"
+        ]
+    },
+    "souryuu_meta": {
+        "name": "Souryuu META",
+        "type": "Aircraft Carrier",
+        "group": "META",
+        "skin": [
+            "canglong_alter"
+        ]
+    },
+    "southampton": {
+        "name": "Southampton",
+        "type": "Light Cruiser",
+        "group": "Royal Navy",
+        "skin": [
+            "nananpudun",
+            "nananpudun_2",
+            "nananpudun_3",
+            "nananpudun_h"
+        ]
+    },
+    "south_dakota": {
+        "name": "South Dakota",
+        "type": "Battleship",
+        "group": "Eagle Union",
+        "skin": [
+            "nandaketa",
+            "nandaketa_2"
+        ]
+    },
+    "sovetskaya_belorussiya": {
+        "name": "Sovetskaya Belorussiya",
+        "type": "Battleship",
+        "group": "Northern Parliament",
+        "skin": [
+            "suweiaibeilaluosi",
+            "suweiaibeilaluosi_2"
+        ]
+    },
+    "sovetskaya_rossiya": {
+        "name": "Sovetskaya Rossiya",
+        "type": "Battleship",
+        "group": "Northern Parliament",
+        "skin": [
+            "suweiailuoxiya",
+            "suweiailuoxiya_2"
+        ]
+    },
+    "spence": {
+        "name": "Spence",
+        "type": "Destroyer",
+        "group": "Eagle Union",
+        "skin": [
+            "sipengsi"
+        ]
+    },
+    "ssss_akane": {
+        "name": "Shinjou Akane",
+        "type": "Battleship",
+        "group": "SSSS",
+        "skin": [
+            "qian",
+            "qian_2",
+            "qian_3"
+        ]
+    },
+    "ssss_chise": {
+        "name": "Asukagawa Chise",
+        "type": "Aircraft Carrier",
+        "group": "SSSS",
+        "skin": [
+            "qianlai",
+            "qianlai_2",
+            "qianlai_3"
+        ]
+    },
+    "ssss_hass": {
+        "name": "Hass",
+        "type": "Light Cruiser",
+        "group": "SSSS",
+        "skin": [
+            "lian",
+            "lian_2"
+        ]
+    },
+    "ssss_mujina": {
+        "name": "Mujina",
+        "type": "Battleship",
+        "group": "SSSS",
+        "skin": [
+            "he",
+            "he_2"
+        ]
+    },
+    "ssss_namiko": {
+        "name": "Namiko",
+        "type": "Heavy Cruiser",
+        "group": "SSSS",
+        "skin": [
+            "naimeizi",
+            "naimeizi_2"
+        ]
+    },
+    "ssss_rikka": {
+        "name": "Takarada Rikka",
+        "type": "Light Cruiser",
+        "group": "SSSS",
+        "skin": [
+            "baoduoliuhua",
+            "baoduoliuhua_2",
+            "baoduoliuhua_3"
+        ]
+    },
+    "ssss_yume": {
+        "name": "Minami Yume",
+        "type": "Heavy Cruiser",
+        "group": "SSSS",
+        "skin": [
+            "mengya",
+            "mengya_2",
+            "mengya_3"
+        ]
+    },
+    "ssss_the_2nd": {
+        "name": "The 2nd",
+        "type": "Aviation Battleship",
+        "group": "SSSS",
+        "skin": [
+            "erdaimu",
+            "erdaimu_2"
+        ]
+    },
+    "ssss_princess hime": {
+        "name": "Princess Hime",
+        "type": "Munition Ship",
+        "group": "SSSS",
+        "skin": [
+            "gongzhu",
+            "gongzhu_2"
+        ]
+    },
+    "st_louis": {
+        "name": "St.Louis",
+        "type": "Light Cruiser",
+        "group": "Eagle Union",
+        "skin": [
+            "shengluyisi",
+            "shengluyisi_2",
+            "shengluyisi_3",
+            "shengluyisi_4"
+        ]
+    },
+    "stanly": {
+        "name": "Stanly",
+        "type": "Destroyer",
+        "group": "Eagle Union",
+        "skin": [
+            "sitanli"
+        ]
+    },
+    "stephen_potter": {
+        "name": "Stephen Potter",
+        "type": "Destroyer",
+        "group": "Eagle Union",
+        "skin": [
+            "shidifenbote",
+            "shidifenbote_2"
+        ]
+    },
+    "stremitelny": {
+        "name": "Stremitelny",
+        "type": "Destroyer",
+        "group": "Northern Parliament",
+        "skin": [
+            "shensu",
+            "shensu_2"
+        ]
+    },
+    "suffolk": {
+        "name": "Suffolk",
+        "type": "Heavy Cruiser",
+        "group": "Royal Navy",
+        "skin": [
+            "safuke",
+            "safuke_g"
+        ]
+    },
+    "surcouf": {
+        "name": "Surcouf",
+        "type": "Submarine",
+        "group": "Iris Libre",
+        "skin": [
+            "xukufu",
+            "xukufu_2",
+            "xukufu_3"
+        ]
+    },
+    "suruga": {
+        "name": "Suruga",
+        "type": "Battleship",
+        "group": "Sakura Empire",
+        "skin": [
+            "junhe",
+            "junhe_3",
+            "junhe_4",
+            "junhe_5"
+        ]
+    },
+    "sussex": {
+        "name": "Sussex",
+        "type": "Heavy Cruiser",
+        "group": "Royal Navy",
+        "skin": [
+            "susaikesi",
+            "susaikesi_2",
+            "susaikesi_3"
+        ]
+    },
+    "suzutsuki": {
+        "name": "Suzutsuki",
+        "type": "Destroyer",
+        "group": "Sakura Empire",
+        "skin": [
+            "liangyue",
+            "liangyue_2",
+            "liangyue_3"
+        ]
+    },
+    "suzuya": {
+        "name": "Suzuya",
+        "type": "Heavy Cruiser",
+        "group": "Sakura Empire",
+        "skin": [
+            "linggu"
+        ]
+    },
+    "swiftsure": {
+        "name": "Swiftsure",
+        "type": "Light Cruiser",
+        "group": "Royal Navy",
+        "skin": [
+            "quejie",
+            "quejie_2",
+            "quejie_3",
+            "quejie_4"
+        ]
+    },
+    "taihou": {
+        "name": "Taihou",
+        "type": "Aircraft Carrier",
+        "group": "Sakura Empire",
+        "skin": [
+            "dafeng",
+            "dafeng_2",
+            "dafeng_3",
+            "dafeng_4",
+            "dafeng_5",
+            "dafeng_6",
+            "dafeng_h",
+            "dafeng_idol",
+            "dafeng_younv"
+        ]
+    },
+    "taihouchan": {
+        "name": "Taihou-chan",
+        "type": "Aircraft Carrier",
+        "group": "Sakura Empire",
+        "skin": [
+            "dafeng_younv"
+        ]
+    },
+    "taihou_idol": {
+        "name": "Taihou (Idol)",
+        "type": "Aircraft Carrier",
+        "group": "Sakura Empire",
+        "skin": [
+            "dafeng_idol"
+        ]
+    },
+    "tai_yuan": {
+        "name": "Tai Yuan",
+        "type": "Destroyer",
+        "group": "Dragon Empire",
+        "skin": [
+            "taiyuan",
+            "taiyuan_2"
+        ]
+    },
+    "takao": {
+        "name": "Takao",
+        "type": "Heavy Cruiser",
+        "group": "Sakura Empire",
+        "skin": [
+            "gaoxiong",
+            "gaoxiong_2",
+            "gaoxiong_3",
+            "gaoxiong_4",
+            "gaoxiong_5",
+            "gaoxiong_alter",
+            "gaoxiong_h"
+        ]
+    },
+    "takao_META": {
+        "name": "Takao META",
+        "type": "Heavy Cruiser",
+        "group": "META",
+        "skin": [
+            "gaoxiong_alter"
+        ]
+    },
+    "tallinn": {
+        "name": "Tallinn",
+        "type": "Heavy Cruiser",
+        "group": "Northern Parliament",
+        "skin": [
+            "talin",
+            "talin_2",
+            "talin_3"
+        ]
+    },
+    "tanikaze": {
+        "name": "Tanikaze",
+        "type": "Destroyer",
+        "group": "Sakura Empire",
+        "skin": [
+            "gufeng",
+            "gufeng_2",
+            "gufeng_4",
+            "gufeng_g"
+        ]
+    },
+    "tartu": {
+        "name": "Tartu",
+        "type": "Destroyer",
+        "group": "Vichya Dominion",
+        "skin": [
+            "taertu",
+            "taertu_2"
+        ]
+    },
+    "tashkent": {
+        "name": "Tashkent",
+        "type": "Destroyer",
+        "group": "Northern Parliament",
+        "skin": [
+            "tashigan",
+            "tashigan_2",
+            "tashigan_3",
+            "tashigan_idol"
+        ]
+    },
+    "tashkent_idol": {
+        "name": "Tashkent (Idol)",
+        "type": "Destroyer",
+        "group": "Northern Parliament",
+        "skin": [
+            "tashigan_idol"
+        ]
+    },
+    "tennessee": {
+        "name": "Tennessee",
+        "type": "Battleship",
+        "group": "Eagle Union",
+        "skin": [
+            "tiannaxi"
+        ]
+    },
+    "terror": {
+        "name": "Terror",
+        "type": "Monitor",
+        "group": "Royal Navy",
+        "skin": [
+            "kongbu",
+            "kongbu_2"
+        ]
+    },
+    "thatcher": {
+        "name": "Thatcher",
+        "type": "Destroyer",
+        "group": "Eagle Union",
+        "skin": [
+            "saqieer"
+        ]
+    },
+    "theseus": {
+        "name": "Theseus",
+        "type": "Light Aircraft Carrier",
+        "group": "Royal Navy",
+        "skin": [
+            "texiusi",
+            "texiusi_2"
+        ]
+    },
+    "thuringen": {
+        "name": "Thuringen",
+        "type": "Battleship",
+        "group": "Ironblood",
+        "skin": [
+            "tulingen",
+            "tulingen_2"
+        ]
+    },
+    "ticonderoga": {
+        "name": "Ticonderoga",
+        "type": "Aircraft Carrier",
+        "group": "Eagle Union",
+        "skin": [
+            "tikangdeluojia",
+            "tikangdeluojia_2",
+            "tikangdeluojia_3",
+            "tikangdeluojia_2_hx"
+        ]
+    },
+    "ting_an": {
+        "name": "Ting An",
+        "type": "Munition",
+        "group": "Dragon Empire",
+        "skin": [
+            "dingan",
+            "dingan_2",
+            "dingan_2_hx",
+            "dingan_hx"
+        ]
+    },
+    "tirpitz": {
+        "name": "Tirpitz",
+        "type": "Battleship",
+        "group": "Ironblood",
+        "skin": [
+            "tierbici",
+            "tierbici_2",
+            "tierbici_3",
+            "tierbici_4",
+            "tierbici_5",
+            "tierbici_2_hx",
+            "tierbici_3_hx",
+            "tierbici_4_hx",
+            "tierbici_5_hx",
+            "tierbici_hx"
+        ]
+    },
+    "trento": {
+        "name": "Trento",
+        "type": "Heavy Cruiser",
+        "group": "Sardegna Empire",
+        "skin": [
+            "teluntuo",
+            "teluntuo_2",
+            "teluntuo_alter"
+        ]
+    },
+    "trento_meta": {
+        "name": "Trento META",
+        "type": "Heavy Cruiser",
+        "group": "META",
+        "skin": [
+            "teluntuo_alter"
+        ]
+    },
+    "trieste": {
+        "name": "Trieste",
+        "type": "Heavy Cruiser",
+        "group": "Sardegna Empire",
+        "skin": [
+            "diliyasite",
+            "diliyasite_2",
+            "diliyasite_3"
+        ]
+    },
+    "tokino_sora": {
+        "name": "Tokino Sora",
+        "type": "Aircraft Carrier",
+        "group": "Hololive",
+        "skin": [
+            "vtuber_sora",
+            "vtuber_sora_2"
+        ]
+    },
+    "tone": {
+        "name": "Tone",
+        "type": "Heavy Cruiser",
+        "group": "Sakura Empire",
+        "skin": [
+            "ligen"
+        ]
+    },
+    "torricelli": {
+        "name": "Torricelli",
+        "type": "Submarine",
+        "group": "Sardegna Empire",
+        "skin": [
+            "tuolichaili",
+            "tuolichaili_2",
+            "tuolichaili_hx"
+        ]
+    },
+    "tosa": {
+        "name": "Tosa",
+        "type": "Battleship",
+        "group": "Sakura Empire",
+        "skin": [
+            "tuzuo",
+            "tuzuo_2"
+        ]
+    },
+    "u101_": {
+        "name": "U-101",
+        "type": "Submarine",
+        "group": "Ironblood",
+        "skin": [
+            "U101",
+            "U101_2"
+        ]
+    },
+    "u110_": {
+        "name": "U-110",
+        "type": "Submarine",
+        "group": "Ironblood",
+        "skin": [
+            "U110",
+            "u110_2",
+            "u110_3",
+            "u110_4",
+            "u110_5",
+            "u110_6"
+        ]
+    },
+    "u1206_": {
+        "name": "U-1206",
+        "type": "Submarine",
+        "group": "Ironblood",
+        "skin": [
+            "u1206",
+            "U1206_2"
+        ]
+    },
+    "u37_": {
+        "name": "U-37",
+        "type": "Submarine",
+        "group": "Ironblood",
+        "skin": [
+            "u37",
+            "u37_2"
+        ]
+    },
+    "u410_": {
+        "name": "U-410",
+        "type": "Submarine",
+        "group": "Ironblood",
+        "skin": [
+            "u410",
+            "u410_2"
+        ]
+    },
+    "u47_": {
+        "name": "U-47",
+        "type": "Submarine",
+        "group": "Ironblood",
+        "skin": [
+            "U47",
+            "U47_2",
+            "U47_3",
+            "u47_4",
+            "U47_5",
+            "U47_6"
+        ]
+    },
+    "u522_": {
+        "name": "U-522",
+        "type": "Submarine",
+        "group": "Ironblood",
+        "skin": [
+            "U522"
+        ]
+    },
+    "u556_": {
+        "name": "U-556",
+        "type": "Submarine",
+        "group": "Ironblood",
+        "skin": [
+            "u556",
+            "U556_2",
+            "U556_alter"
+        ]
+    },
+    "u556_meta": {
+        "name": "U-556 META",
+        "type": "Submarine",
+        "group": "META",
+        "skin": [
+            "U556_alter"
+        ]
+    },
+    "u557_": {
+        "name": "U-557",
+        "type": "Submarine",
+        "group": "Ironblood",
+        "skin": [
+            "U557"
+        ]
+    },
+    "u73_": {
+        "name": "U-73",
+        "type": "Submarine",
+        "group": "Ironblood",
+        "skin": [
+            "U73",
+            "U73_3",
+            "U73_4"
+        ]
+    },
+    "u81_": {
+        "name": "U-81",
+        "type": "Submarine",
+        "group": "Ironblood",
+        "skin": [
+            "U81",
+            "U81_2",
+            "U81_3"
+        ]
+    },
+    "u96_": {
+        "name": "U-96",
+        "type": "Submarine",
+        "group": "Ironblood",
+        "skin": [
+            "U96",
+            "u96_2",
+            "u96_3"
+        ]
+    },
+    "ulrich_von_hutten": {
+        "name": "Ulrich von Hutten",
+        "type": "Battleship",
+        "group": "Ironblood",
+        "skin": [
+            "wuerlixi",
+            "wuerlixi_2"
+        ]
+    },
+    "umikaze": {
+        "name": "Umikaze",
+        "type": "Destroyer",
+        "group": "Sakura Empire",
+        "skin": [
+            "haifeng",
+            "haifeng_2",
+            "haifeng_3"
+        ]
+    },
+    "unicorn": {
+        "name": "Unicorn",
+        "type": "Light Aircraft Carrier",
+        "group": "Royal Navy",
+        "skin": [
+            "dujiaoshou",
+            "dujiaoshou_2",
+            "dujiaoshou_3",
+            "dujiaoshou_4",
+            "dujiaoshou_5",
+            "dujiaoshou_6",
+            "dujiaoshou_7",
+            "dujiaoshou_8",
+            "dujiaoshou_9",
+            "dujiaoshou_g",
+            "dujiaoshou_h"
+        ]
+    },
+    "urakaze": {
+        "name": "Urakaze",
+        "type": "Destroyer",
+        "group": "Sakura Empire",
+        "skin": [
+            "pufeng",
+            "pufeng_2",
+            "pufeng_3"
+        ]
+    },
+    "uranami": {
+        "name": "Uranami",
+        "type": "Destroyer",
+        "group": "Sakura Empire",
+        "skin": [
+            "pubo",
+            "pubo_2"
+        ]
+    },
+    "uta_fumiruiru": {
+        "name": "Fumiruiru",
+        "type": "Aircraft Carrier",
+        "group": "Utawarerumono",
+        "skin": [
+            "fumilulu",
+            "fumilulu_2"
+        ]
+    },
+    "uta_kuon": {
+        "name": "Kuon",
+        "type": "Heavy Cruiser",
+        "group": "Utawarerumono",
+        "skin": [
+            "jiuyuan",
+            "jiuyuan_2"
+        ]
+    },
+    "uta_nekone": {
+        "name": "Nekone",
+        "type": "Destroyer",
+        "group": "Utawarerumono",
+        "skin": [
+            "maoyin",
+            "maoyin_2"
+        ]
+    },
+    "uta_rurutie": {
+        "name": "Rurutie",
+        "type": "Light Cruiser",
+        "group": "Utawarerumono",
+        "skin": [
+            "lulutiye",
+            "lulutiye_2"
+        ]
+    },
+    "uta_saraana": {
+        "name": "Saraana",
+        "type": "Light Aircraft Carrier",
+        "group": "Utawarerumono",
+        "skin": [
+            "salana",
+            "salana_2"
+        ]
+    },
+    "uta_uruuru": {
+        "name": "Uruuru",
+        "type": "Light Aircraft Carrier",
+        "group": "Utawarerumono",
+        "skin": [
+            "wululu",
+            "wululu_2"
+        ]
+    },
+    "uzuki": {
+        "name": "Uzuki",
+        "type": "Destroyer",
+        "group": "Sakura Empire",
+        "skin": [
+            "maoyue",
+            "maoyue_2"
+        ]
+    },
+    "valiant": {
+        "name": "Valiant",
+        "type": "Battleship",
+        "group": "Royal Navy",
+        "skin": [
+            "yingyong",
+            "yingyong_2",
+            "yingyong_3"
+        ]
+    },
+    "vampire": {
+        "name": "Vampire",
+        "type": "Destroyer",
+        "group": "Royal Navy",
+        "skin": [
+            "xixuegui",
+            "xixuegui_2",
+            "xixuegui_3",
+            "xixuegui_4",
+            "xixuegui_5",
+            "xixuegui_h"
+        ]
+    },
+    "vanguard": {
+        "name": "Vanguard",
+        "type": "Battleship",
+        "group": "Royal Navy",
+        "skin": [
+            "qianwei",
+            "qianwei_2"
+        ]
+    },
+    "vauquelin": {
+        "name": "Vauquelin",
+        "type": "Destroyer",
+        "group": "Vichya Dominion",
+        "skin": [
+            "wokelan",
+            "wokelan_2",
+            "wokelan_3",
+            "wokelan_4"
+        ]
+    },
+    "vestal": {
+        "name": "Vestal",
+        "type": "Repair",
+        "group": "Eagle Union",
+        "skin": [
+            "zaoshen",
+            "zaoshen_2",
+            "zaoshen_alter",
+            "zaoshen_ghost"
+        ]
+    },
+    "vestal_meta": {
+        "name": "Vestal META",
+        "type": "Repair",
+        "group": "META",
+        "skin": [
+            "zaoshen_alter"
+        ]
+    },
+    "victorious": {
+        "name": "Victorious",
+        "type": "Aircraft Carrier",
+        "group": "Royal Navy",
+        "skin": [
+            "shengli",
+            "shengli_2",
+            "shengli_3",
+            "shengli_3_hx"
+        ]
+    },
+    "vincennes": {
+        "name": "Vincennes",
+        "type": "Heavy Cruiser",
+        "group": "Eagle Union",
+        "skin": [
+            "wensensi",
+            "wensensi_2",
+            "wensensi_3"
+        ]
+    },
+    "vincenzo_gioberti": {
+        "name": "Vincenzo Gioberti",
+        "type": "Destroyer",
+        "group": "Sardegna Empire",
+        "skin": [
+            "wenqinzuojiaobeidi",
+            "wenqinzuojiaobeidi_3"
+        ]
+    },
+    "vittorio_veneto": {
+        "name": "Vittorio Veneto",
+        "type": "Battleship",
+        "group": "Sardegna Empire",
+        "skin": [
+            "weineituo",
+            "weineituo_2"
+        ]
+    },
+    "volga": {
+        "name": "Volga",
+        "type": "Aircraft Carrier",
+        "group": "Northern Parliament",
+        "skin": [
+            "fuerjia",
+            "fuerjia_2"
+        ]
+    },
+    "voroshilov": {
+        "name": "Voroshilov",
+        "type": "Light Cruiser",
+        "group": "Northern Parliament",
+        "skin": [
+            "fuluoxiluofu",
+            "fuluoxiluofu_2",
+            "fuluoxiluofu_hx"
+        ]
+    },
+    "wakaba": {
+        "name": "Wakaba",
+        "type": "Destroyer",
+        "group": "Sakura Empire",
+        "skin": [
+            "ruoye",
+            "ruoye_2",
+            "ruoye_3"
+        ]
+    },
+    "wakatsuki": {
+        "name": "Wakatsuki",
+        "type": "Destroyer",
+        "group": "Sakura Empire",
+        "skin": [
+            "ruoyue",
+            "ruoyue_2"
+        ]
+    },
+    "warspite": {
+        "name": "Warspite",
+        "type": "Battleship",
+        "group": "Royal Navy",
+        "skin": [
+            "yanzhan",
+            "yanzhan_2",
+            "yanzhan_3",
+            "yanzhan_g"
+        ]
+    },
+    "washington": {
+        "name": "Washington",
+        "type": "Battleship",
+        "group": "Eagle Union",
+        "skin": [
+            "huashengdun",
+            "huashengdun_2"
+        ]
+    },
+    "wasp": {
+        "name": "Wasp",
+        "type": "Aircraft Carrier",
+        "group": "Eagle Union",
+        "skin": [
+            "hufeng"
+        ]
+    },
+    "weser": {
+        "name": "Weser",
+        "type": "Light Aircraft Carrier",
+        "group": "Ironblood",
+        "skin": [
+            "weixi",
+            "weixi_2",
+            "weixi_3",
+            "weixi_4"
+        ]
+    },
+    "west_virginia": {
+        "name": "West Virginia",
+        "type": "Battleship",
+        "group": "Eagle Union",
+        "skin": [
+            "xifujiniya",
+            "xifujiniya_2",
+            "xifujiniya_3",
+            "xifujiniya_g"
+        ]
+    },
+    "wichita": {
+        "name": "Wichita",
+        "type": "Heavy Cruiser",
+        "group": "Eagle Union",
+        "skin": [
+            "weiqita",
+            "weiqita_2",
+            "weiqita_3"
+        ]
+    },
+    "yamashiro": {
+        "name": "Yamashiro",
+        "type": "Battleship",
+        "group": "Sakura Empire",
+        "skin": [
+            "shancheng",
+            "shancheng_2",
+            "shancheng_3",
+            "shancheng_4",
+            "shancheng_6",
+            "shancheng_7",
+            "shancheng_8",
+            "shancheng_alter",
+            "shancheng_g",
+            "shancheng_h"
+        ]
+    },
+    "yamashiro_meta": {
+        "name": "Yamashiro META",
+        "type": "Battleship",
+        "group": "META",
+        "skin": [
+            "shancheng_alter"
+        ]
+    },
+    "yamakaze": {
+        "name": "Yamakaze",
+        "type": "Destroyer",
+        "group": "Sakura Empire",
+        "skin": [
+            "shanfeng",
+            "shanfeng_2"
+        ]
+    },
+    "yat_sen": {
+        "name": "Yat Sen",
+        "type": "Light Cruiser",
+        "group": "Dragon Empire",
+        "skin": [
+            "yixian",
+            "yixian_2",
+            "yixian_3",
+            "yixian_g",
+            "yixian_h"
+        ]
+    },
+    "ying_swei": {
+        "name": "Ying Swei",
+        "type": "Light Cruiser",
+        "group": "Dragon Empire",
+        "skin": [
+            "yingrui",
+            "yingrui_2",
+            "yingrui_3"
+        ]
+    },
+    "yoizuki": {
+        "name": "Yoizuki",
+        "type": "Destroyer",
+        "group": "Sakura Empire",
+        "skin": [
+            "xiaoyue",
+            "xiaoyue_2",
+            "xiaoyue_3"
+        ]
+    },
+    "yorck": {
+        "name": "Yorck",
+        "type": "Heavy Cruiser",
+        "group": "Ironblood",
+        "skin": [
+            "yueke_ger",
+            "yueke_ger_2"
+        ]
+    },
+    "york": {
+        "name": "York",
+        "type": "Heavy Cruiser",
+        "group": "Royal Navy",
+        "skin": [
+            "yueke",
+            "yueke_2",
+            "yueke_ger_2",
+            "yueke_3",
+            "yueke_g",
+            "yueke_ger",
+            "yueke_h"
+        ]
+    },
+    "yorktown": {
+        "name": "Yorktown",
+        "type": "Aircraft Carrier",
+        "group": "Eagle Union",
+        "skin": [
+            "yuekecheng",
+            "yuekecheng_2",
+            "yuekecheng_3",
+            "yuekecheng_h"
+        ]
+    },
+    "yorktown_ii": {
+        "name": "Yorktown II",
+        "type": "Aircraft Carrier",
+        "group": "Eagle Union",
+        "skin": [
+            "yuekechengII",
+            "yuekechengII_2"
+        ]
+    },
+    "yukikaze": {
+        "name": "Yukikaze",
+        "type": "Destroyer",
+        "group": "Sakura Empire",
+        "skin": [
+            "xuefeng",
+            "xuefeng_2",
+            "xuefeng_3",
+            "xuefeng_h"
+        ]
+    },
+    "yura": {
+        "name": "Yura",
+        "type": "Light Cruiser",
+        "group": "Sakura Empire",
+        "skin": [
+            "youliang",
+            "youliang_2"
+        ]
+    },
+    "yuubari": {
+        "name": "Yuubari",
+        "type": "Light Cruiser",
+        "group": "Sakura Empire",
+        "skin": [
+            "xizhang",
+            "xizhang_g"
+        ]
+    },
+    "yuudachi": {
+        "name": "Yuudachi",
+        "type": "Destroyer",
+        "group": "Sakura Empire",
+        "skin": [
+            "xili",
+            "xili_2",
+            "xili_3",
+            "xili_4",
+            "xili_5",
+            "xili_g",
+            "xili_g_hx",
+            "xili_h",
+            "xili_hx"
+        ]
+    },
+    "yuugure": {
+        "name": "Yuugure",
+        "type": "Destroyer",
+        "group": "Sakura Empire",
+        "skin": [
+            "ximu",
+            "ximu_2",
+            "ximu_3",
+            "ximu_4",
+            "ximu_5",
+            "ximu_6",
+            "ximu_5_hx",
+            "ximu_g"
+        ]
+    },
+    "z1_": {
+        "name": "Z1 (Leberecht Maass)",
+        "type": "Destroyer",
+        "group": "Ironblood",
+        "skin": [
+            "z1",
+            "Z1_2",
+            "z1_g",
+            "z1_hx"
+        ]
+    },
+    "z16_": {
+        "name": "Friedrich Eckoldt",
+        "type": "Destroyer",
+        "group": "Ironblood",
+        "skin": [
+            "z16",
+            "z16_2"
+        ]
+    },
+    "z18_": {
+        "name": "Hans Lüdemann",
+        "type": "Destroyer",
+        "group": "Ironblood",
+        "skin": [
+            "z18"
+        ]
+    },
+    "z19_": {
+        "name": "Hermann Künne",
+        "type": "Destroyer",
+        "group": "Ironblood",
+        "skin": [
+            "Z19"
+        ]
+    },
+    "z2_": {
+        "name": "Georg Thiele",
+        "type": "Destroyer",
+        "group": "Ironblood",
+        "skin": [
+            "z2",
+            "Z2_2",
+            "z2_3"
+        ]
+    },
+    "z20_": {
+        "name": "Karl Galster",
+        "type": "Destroyer",
+        "group": "Ironblood",
+        "skin": [
+            "z20"
+        ]
+    },
+    "z21_": {
+        "name": "Wilhelm Heidkamp",
+        "type": "Destroyer",
+        "group": "Ironblood",
+        "skin": [
+            "z21"
+        ]
+    },
+    "z23_": {
+        "name": "Z23",
+        "type": "Destroyer",
+        "group": "Ironblood",
+        "skin": [
+            "z23",
+            "z23_2",
+            "z23_3",
+            "z23_4",
+            "z23_5",
+            "z23_6",
+            "z23_7",
+            "z23_8",
+            "z23_9",
+            "z23_10",
+            "z23_11",
+            "z23_12",
+            "z23_g",
+            "z23_h",
+            "z23_hx"
+        ]
+    },
+    "z24_": {
+        "name": "Z24",
+        "type": "Destroyer",
+        "group": "Ironblood",
+        "skin": [
+            "z24",
+            "Z24_2",
+            "z24_3"
+        ]
+    },
+    "z25_": {
+        "name": "Z25",
+        "type": "Destroyer",
+        "group": "Ironblood",
+        "skin": [
+            "Z25",
+            "z25_2"
+        ]
+    },
+    "z26_": {
+        "name": "Z26",
+        "type": "Destroyer",
+        "group": "Ironblood",
+        "skin": [
+            "z26",
+            "z26_2"
+        ]
+    },
+    "z28_": {
+        "name": "Z28",
+        "type": "Destroyer",
+        "group": "Ironblood",
+        "skin": [
+            "Z28",
+            "Z28_3",
+            "z28_4",
+            "Z28_hx"
+        ]
+    },
+    "z35_": {
+        "name": "Z35",
+        "type": "Destroyer",
+        "group": "Ironblood",
+        "skin": [
+            "z35",
+            "z35_2"
+        ]
+    },
+    "z36_": {
+        "name": "Z36",
+        "type": "Destroyer",
+        "group": "Ironblood",
+        "skin": [
+            "z36"
+        ]
+    },
+    "z46_": {
+        "name": "Z46",
+        "type": "Destroyer",
+        "group": "Ironblood",
+        "skin": [
+            "Z46",
+            "Z46_2",
+            "Z46_3",
+            "z46_4",
+            "z46_5",
+            "z46_6"
+        ]
+    },
+    "zara": {
+        "name": "Zara",
+        "type": "Heavy Cruiser",
+        "group": "Sardegna Empire",
+        "skin": [
+            "zhala",
+            "zhala_2"
+        ]
+    },
+    "zeppelinchan": {
+        "name": "Zeppelin-chan",
+        "type": "Aircraft Carrier",
+        "group": "Ironblood",
+        "skin": [
+            "qibolin_younv"
+        ]
+    },
+    "zuikaku": {
+        "name": "Zuikaku",
+        "type": "Aircraft Carrier",
+        "group": "Sakura Empire",
+        "skin": [
+            "ruihe",
+            "ruihe_2",
+            "ruihe_3"
+        ]
+    },
+    "ssss_BB": {
+        "name": "BB",
+        "type": "Battleship",
+        "group": "SSSS",
+        "skin": [
+            "BB_gulite"
+        ]
+    },
+    "ssss_CA": {
+        "name": "CA",
+        "type": "Heavy Cruiser",
+        "group": "SSSS",
+        "skin": [
+            "CA_gulite"
+        ]
+    },
+    "ssss_CL": {
+        "name": "CL",
+        "type": "Light Cruiser",
+        "group": "SSSS",
+        "skin": [
+            "CL_gulite"
+        ]
+    },
+    "ssss_CV": {
+        "name": "CV",
+        "type": "Aircraft Carrier",
+        "group": "SSSS",
+        "skin": [
+            "CV_gulite"
+        ]
+    },
+    "ssss_DD": {
+        "name": "DD",
+        "type": "Destroyer",
+        "group": "SSSS",
+        "skin": [
+            "DD_gulite"
+        ]
+    },
+    "ssss_SS": {
+        "name": "SS",
+        "type": "Submarine",
+        "group": "SSSS",
+        "skin": [
+            "SS_gulite"
+        ]
+    },
+    "ssss_boss": {
+        "name": "Boss",
+        "type": "Battleship",
+        "group": "SSSS",
+        "skin": [
+            "boss_gulite"
+        ]
+    },
+    "ssss_hangmu": {
+        "name": "Hangmu",
+        "type": "Battleship",
+        "group": "SSSS",
+        "skin": [
+            "hangmu_gulite"
+        ]
+    },
+    "ssss_qingxun": {
+        "name": "Qingxun",
+        "type": "Battleship",
+        "group": "SSSS",
+        "skin": [
+            "qingxun_gulite"
+        ]
+    },
+    "ssss_quzhu": {
+        "name": "Quzhu",
+        "type": "Battleship",
+        "group": "SSSS",
+        "skin": [
+            "quzhu_gulite"
+        ]
+    },
+    "ssss_zhanlie": {
+        "name": "Zhanlie",
+        "type": "Battleship",
+        "group": "SSSS",
+        "skin": [
+            "zhanlie_gulite"
+        ]
+    },
+    "ssss_zhongxun": {
+        "name": "Zhongxun",
+        "type": "Battleship",
+        "group": "SSSS",
+        "skin": [
+            "zhongxun_gulite"
+        ]
+    },
+    "siren_enforcer_ix_exploration": {
+        "name": "Enforcer IX: Exploration",
+        "type": "Battleship",
+        "group": "Siren",
+        "skin": [
+            "shenyuanboss4",
+            "shenyuanboss4_alter"
+        ]
+    },
+    "siren_enforcer_ix_exploration_meta": {
+        "name": "Enforcer IX: Exploration META",
+        "type": "Battleship",
+        "group": "Siren",
+        "skin": [
+            "shenyuanboss4_alter"
+        ]
+    },
+    "siren_enforcer_ix_concealment": {
+        "name": "Enforcer IX: Concealment",
+        "type": "Light Cruiser",
+        "group": "Siren",
+        "skin": [
+            "shenyuanboss5",
+            "shenyuanboss5_alter"
+        ]
+    },
+    "siren_enforcer_ix_concealment_meta": {
+        "name": "Enforcer IX: Concealment META",
+        "type": "Light Cruiser",
+        "group": "Siren",
+        "skin": [
+            "shenyuanboss5_alter"
+        ]
+    },
+    "siren_hermit_ix": {
+        "name": "Hermit IX",
+        "type": "Battleship",
+        "group": "Siren",
+        "skin": [
+            "sairenboss5",
+            "sairenboss5_alter"
+        ]
+    },
+    "siren_hermit_ix_meta": {
+        "name": "Hermit IX META",
+        "type": "Battleship",
+        "group": "Siren",
+        "skin": [
+            "sairenboss5_alter"
+        ]
+    },
+    "siren_tester": {
+        "name": "Tester",
+        "type": "Battleship",
+        "group": "Siren",
+        "skin": [
+            "unknown1"
+        ]
+    },
+    "siren_purifier": {
+        "name": "Purifier",
+        "type": "Battleship",
+        "group": "Siren",
+        "skin": [
+            "unknown3"
+        ]
+    },
+    "intruder": {
+        "name": "Intruder",
+        "type": "Light Cruiser",
+        "group": "Siren",
+        "skin": [
+            "ganraozhe"
+        ]
+    },
+    "omitter": {
+        "name": "Omitter",
+        "type": "Battleship",
+        "group": "Siren",
+        "skin": [
+            "qingchuzhe"
+        ]
+    },
+    "siren_boss": {
+        "name": "Siren boss",
+        "type": "Battleship",
+        "group": "Siren",
+        "skin": [
+            "sairenboss11"
+        ]
+    },
+    "siren_boss9": {
+        "name": "Siren boss",
+        "type": "Battleship",
+        "group": "Siren",
+        "skin": [
+            "sairenboss9"
+        ]
+    },
+    "siren_boss12": {
+        "name": "Siren boss",
+        "type": "Battleship",
+        "group": "Siren",
+        "skin": [
+            "sairenboss12",
+            "sairenboss12_pao"
+        ]
+    },
+    "siren_boss15": {
+        "name": "Siren boss",
+        "type": "Battleship",
+        "group": "Siren",
+        "skin": [
+            "sairenboss15"
+        ]
+    },
+    "siren_boss16": {
+        "name": "Siren boss",
+        "type": "Battleship",
+        "group": "Siren",
+        "skin": [
+            "sairenboss16"
+        ]
+    },
+    "siren_boss17": {
+        "name": "Siren boss",
+        "type": "Battleship",
+        "group": "Siren",
+        "skin": [
+            "sairenboss17",
+            "sairenboss17_pao1",
+            "sairenboss17_pao2"
+        ]
+    },
+    "qinraozhe_": {
+        "name": "qinraozhe",
+        "type": "Battleship",
+        "group": "Siren",
+        "skin": [
+            "qinraozhe",
+            "qinraozhe_IV"
+        ]
+    },
+    "qinraozhe_IV": {
+        "name": "qinraozhe-IV",
+        "type": "Battleship",
+        "group": "Siren",
+        "skin": [
+            "qinraozhe_IV"
+        ]
+    },
+    "siren_scavenger": {
+        "name": "Scavenger",
+        "type": "Destroyer",
+        "group": "Siren",
+        "skin": [
+            "sairenquzhu",
+            "sairenquzhu_6",
+            "sairenquzhu_M",
+            "sairenquzhu_i",
+            "sairenquzhu_ii"
+        ]
+    },
+    "siren_chaser": {
+        "name": "Chaser",
+        "type": "Light Cruiser",
+        "group": "Siren",
+        "skin": [
+            "sairenqingxun",
+            "sairenqingxun_6",
+            "sairenqingxun_M",
+            "sairenqingxun_i",
+            "sairenqingxun_iI"
+        ]
+    },
+    "siren_navigator": {
+        "name": "Navigator",
+        "type": "Heavy Cruiser",
+        "group": "Siren",
+        "skin": [
+            "sairenzhongxun",
+            "sairenzhongxun_6",
+            "sairenzhongxun_M",
+            "sairenzhongxun_i",
+            "sairenzhongxun_ii"
+        ]
+    },
+    "siren_smasher": {
+        "name": "Smasher",
+        "type": "Battleship",
+        "group": "Siren",
+        "skin": [
+            "sairenzhanlie",
+            "sairenzhanlie_6",
+            "sairenzhanlie_M",
+            "sairenzhanlie_i",
+            "sairenzhanlie_ii"
+        ]
+    },
+    "siren_conductor": {
+        "name": "Conductor",
+        "type": "Aircraft Carrier",
+        "group": "Siren",
+        "skin": [
+            "sairenhangmu",
+            "sairenhangmu_6",
+            "sairenhangmu_M",
+            "sairenhangmu_i",
+            "sairenhangmu_ii"
+        ]
+    },
+    "siren_lurker": {
+        "name": "Lurker",
+        "type": "Submarine",
+        "group": "Siren",
+        "skin": [
+            "sairenqianting",
+            "sairenqianting_6",
+            "sairenqianting_I",
+            "sairenqianting_II",
+            "sairenqianting_M"
+        ]
+    },
+    "siren_ship": {
+        "name": "Siren Ship",
+        "type": "Miscellaneous",
+        "group": "Miscellaneous",
+        "skin": [
+            "shenpanjijia_jihuang",
+            "shenpanjijia_zhanzheng",
+            "SrBB",
+            "srBB2",
+            "srBB3",
+            "srBB4",
+            "srBB5",
+            "SrCA",
+            "srCA2",
+            "srCA3",
+            "srCA4",
+            "srCA5",
+            "SrCL",
+            "srCL2",
+            "srCL3",
+            "srCL4",
+            "srCL5",
+            "SrCV",
+            "srCV2",
+            "srCV3",
+            "srCV4",
+            "srCV5",
+            "SrDD",
+            "srDD2",
+            "srDD3",
+            "srDD4",
+            "srDD5",
+            "zibao_maozi",
+            "zibao4",
+            "zibao5",
+            "srSS",
+            "srSS4",
+            "srSS5"
+        ]
+    },
+    "atelier_boss1": {
+        "name": "Atelier Boss 1",
+        "type": "Miscellaneous",
+        "group": "Atelier Sirens",
+        "skin": [
+            "lianjin_boss1"
+        ]
+    },
+    "atelier_boss2": {
+        "name": "Atelier Boss 2",
+        "type": "Miscellaneous",
+        "group": "Atelier Sirens",
+        "skin": [
+            "lianjin_boss2"
+        ]
+    },
+    "atelier_siren1": {
+        "name": "Atelier Siren 1",
+        "type": "Miscellaneous",
+        "group": "Atelier Sirens",
+        "skin": [
+            "lianjin_sairenhangmu"
+        ]
+    },
+    "atelier_siren2": {
+        "name": "Atelier Siren 2",
+        "type": "Miscellaneous",
+        "group": "Atelier Sirens",
+        "skin": [
+            "lianjin_sairenqingxun"
+        ]
+    },
+    "atelier_siren3": {
+        "name": "Atelier Siren 3",
+        "type": "Miscellaneous",
+        "group": "Atelier Sirens",
+        "skin": [
+            "lianjin_sairenquzhu"
+        ]
+    },
+    "atelier_siren4": {
+        "name": "Atelier Siren 4",
+        "type": "Miscellaneous",
+        "group": "Atelier Sirens",
+        "skin": [
+            "lianjin_sairenzhanlie"
+        ]
+    },
+    "atelier_siren5": {
+        "name": "Atelier Siren 5",
+        "type": "Miscellaneous",
+        "group": "Atelier Sirens",
+        "skin": [
+            "lianjin_sairenzhongxun"
+        ]
+    },
+    "atelier_ship": {
+        "name": "Atelier Ship",
+        "type": "Miscellaneous",
+        "group": "Atelier Mobs",
+        "skin": [
+            "lianjin_BB",
+            "lianjin_CA",
+            "lianjin_CL",
+            "lianjin_CV",
+            "lianjin_DD",
+            "lianjin_qianting",
+            "lianjin_zibao"
+        ]
+    },
+    "enemy_ship": {
+        "name": "Enemy Ship",
+        "type": "Miscellaneous",
+        "group": "Miscellaneous",
+        "skin": [
+            "eidsvold",
+            "bailudanchuan",
+            "Ztingdanchuan",
+            "biruiwudaodanchuan1",
+            "changliangdanchuan",
+            "chuanneidanchuan",
+            "chuixuedanchuan",
+            "fangkongdanchuan",
+            "fusangdanchuan",
+            "gaoxiongdanchuan",
+            "guyingdanchuan",
+            "liandedanchuan",
+            "mahandanchuan",
+            "miaogaodanchuan",
+            "muyuedanchuan",
+            "nuofukedanchuan",
+            "qiantingdanchuan",
+            "qingyedanchuan",
+            "qiumodanchuan",
+            "weixiudanchuan",
+            "weixiudanchuan2",
+            "wushilingdanchuan",
+            "xiyundanchuan",
+            "yangyandanchuan",
+            "yishidanchuan",
+            "yuleiting",
+            "yunshuchuan",
+            "zibaochuan",
+            "zuishangdanchuan2",
+            "fusangdanchuan_kizuna",
+            "miaogaodanchuan_kizuna",
+            "yangyandanchuan_kizuna",
+            "zibao_kizuna",
+            "feichuan",
+            "zhaladanchuan",
+            "zhusannuodanchuan",
+            "BB_holo",
+            "CA_holo",
+            "CL_holo",
+            "CV_holo",
+            "DD_holo",
+            "yunshu_holo",
+            "zibao_holo",
+            "chichengdanchuan_BOSS",
+            "zibao_zuantou",
+            "qiaozhiwushidanchuan",
+            "aerjiliyadanchuan",
+            "aimierbeierdingdanchuan",
+            "beiyaendanchuan",
+            "bulietanidanchuan",
+            "kuangfengdanchuan",
+            "qiantingdanchuan"
+        ]
+    },
+    "miscellaneous": {
+        "name": "Miscellaneous",
+        "type": "Miscellaneous",
+        "group": "Miscellaneous",
+        "skin": [
+            "ai_manjuuu",
+            "anniupaodan",
+            "biandangpaodan",
+            "bianpaojiu",
+            "boom1",
+            "boom2",
+            "boom3",
+            "caishen",
+            "denglong",
+            "dishu",
+            "fenbizidan",
+            "haibaohongzhaji",
+            "haibaopaodan",
+            "haibaoyulei",
+            "haibaoyuleiji",
+            "heibancapaodan",
+            "huabanzidan",
+            "jinbijiu",
+            "jinyuanbao",
+            "juzi",
+            "lenggui",
+            "liangjiaoqipaodan",
+            "loader",
+            "manjuupengquan",
+            "mantoufeiji",
+            "mantoupaodan",
+            "mantouyulei",
+            "moguiyu",
+            "paozhang",
+            "sairenyulei",
+            "shengdanfeijiu",
+            "shengdanlaojiu",
+            "shengdanshuyulei",
+            "shilaimupaodan",
+            "shizipaodan",
+            "skeleton",
+            "tanxiangshan",
+            "tongban",
+            "tonghuachengbaoB",
+            "xiangguzidan",
+            "xianyuhongzhajiJP",
+            "xianyupaodan",
+            "xianyuyuleiJP",
+            "xianyuyuleijiJP",
+            "yanhuapaodan",
+            "zhongguojie",
+            "1zhounianwutaiB",
+            "1zhounianwutaiT",
+            "shuilei4",
+            "gin_skill",
+            "kin_skill",
+            "NekoBox1",
+            "NekoBox2",
+            "NekoBox3",
+            "NekoBox4",
+            "SRNekoBox1",
+            "SRNekoBox2",
+            "SRNekoBox3",
+            "SRNekoBox4",
+            "SSRNekoBox1",
+            "SSRNekoBox2",
+            "SSRNekoBox3",
+            "SSRNekoBox4",
+            "jicheT",
+            "idolfeiji",
+            "vtuber1",
+            "vtuber2",
+            "chuizi",
+            "elf",
+            "liandao",
+            "cowboy",
+            "eagle",
+            "super",
+            "bulipaodun",
+            "bulizidan",
+            "3rd",
+            "redcar",
+            "tiangoujuu",
+            "hangkongwutai",
+            "hangtianyulei",
+            "huojianyulei",
+            "shenshengtianshi",
+            "weixingbanwu"
+        ]
+    },
+    "takegift_event": {
+        "name": "Take gift",
+        "type": "Gift",
+        "group": "Take",
+        "skin": [
+            "takegift_mingshi",
+            "takegift_qiye",
+            "takegift_linbo",
+            "takegift_lafei",
+            "takegift_salatuojia",
+            "takegift_z23",
+            "takegift_biaoqiang",
+            "takegift_dujiaoshou"
+        ]
+    }
+}

@@ -42,19 +42,28 @@ export default function GroupOverlays({
             onConnect={onConnect}
             screenDeltaToFlowDelta={screenDeltaToFlowDelta}
           />
-          <GroupExecutionToolbar
-            group={group}
-            childNodes={childNodes}
-            inputSlotCount={inputSlotCounts.get(group.id) || 0}
-            busy={runningGroupIds.has(group.id)}
-            onSetMode={onSetExecutionMode}
-            onSetCount={onSetExecutionCount}
-            onSwitchRun={onSwitchExecutionRun}
-            onUploadFiles={onUploadExecutionAssets}
-            onRemoveAsset={onRemoveExecutionAsset}
-          />
+          {(selectedGroupId === group.id || hasConfiguredExecution(group)) && (
+            <GroupExecutionToolbar
+              group={group}
+              childNodes={childNodes}
+              inputSlotCount={inputSlotCounts.get(group.id) || 0}
+              busy={runningGroupIds.has(group.id)}
+              onSetMode={onSetExecutionMode}
+              onSetCount={onSetExecutionCount}
+              onSwitchRun={onSwitchExecutionRun}
+              onUploadFiles={onUploadExecutionAssets}
+              onRemoveAsset={onRemoveExecutionAsset}
+            />
+          )}
         </Fragment>
       ))}
     </ViewportPortal>
   );
+}
+
+function hasConfiguredExecution(group) {
+  const execution = group.batchExecution;
+  const hasMultipleRuns = Number(execution?.count?.target) > 1;
+  const hasUploadedAssets = Array.isArray(execution?.assets?.runs) && execution.assets.runs.length > 0;
+  return hasMultipleRuns || hasUploadedAssets;
 }

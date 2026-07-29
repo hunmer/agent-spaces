@@ -1,25 +1,34 @@
 import { useRef, useState } from 'react';
+import { X } from '@agent-spaces/ui';
 
 /**
- * 通用「上游连线图列表」组件：只读缩略图（不可删，由连线管理），可选拖拽 + 上下移按钮排序。
+ * 通用「上游连线图列表」组件：缩略图（hover 显示删除按钮，删除即断开对应连线），
+ * 可选拖拽 + 上下移按钮排序。
  * 从 ImageProcessNode 抽出，供所有「多输入」节点复用（GIF 合成 / 像素编辑器 / 动画帧编辑器 等）。
  *
  * 排序结果（url 数组）经 onChangeOrder 回写到节点 data.upstreamOrder 持久化。
  * data.images 由 computeInputImages 派生会覆盖，所以顺序单独存在 upstreamOrder，
  * 见配套工具函数 {@link orderUpstream}。
  *
+ * 删除：传 onDelete(url) 时每项 hover 右上角显示 ×，点击后由调用方反查产出该 url 的连入边并删除。
+ *
  * @param {Object} props
  * @param {string[]} props.urls        当前（已按 upstreamOrder 排序的）上游连线图列表
  * @param {boolean} [props.sortable]   是否开启拖拽/上下移排序
- * @param {(next: string[]) => void} props.onChangeOrder  排序变化回调
- * @param {string} [props.itemLabel]   单项右侧标签文案（默认「第 N 帧」），传 '' 则不显示
+ * @param {(next: string[]) => void} [props.onChangeOrder]  排序变化回调
+ * @param {string|Function} [props.itemLabel]   单项右侧标签文案（默认「第 N 帧」），传 '' 则不显示
+ * @param {(url: string) => void} [props.onDelete]  删除单张上游图（断开对应连线）；不传则不显示删除按钮
+ * @param {string[]} [props.nonDeletableUrls]  不允许删除的图片 URL（分组「按上传素材执行」注入）
  */
-export default function UpstreamImageList({ urls, sortable, onChangeOrder, itemLabel }) {
+export default function UpstreamImageList({
+  urls, sortable, onChangeOrder, itemLabel, onDelete, nonDeletableUrls = [],
+}) {
   // draggingIdx 用 ref 保证 dragstart→dragover 之间同步读取（state 异步会读到 null）。
   // overIdx 用 state 仅驱动渲染高亮。
   const draggingRef = useRef(null);
   const [draggingIdx, setDraggingIdx] = useState(null);
   const [overIdx, setOverIdx] = useState(null);
+  const nonDeletableSet = new Set(nonDeletableUrls);
 
   const move = (from, to) => {
     if (from === to || from < 0 || to < 0 || from >= urls.length || to >= urls.length) return;
@@ -66,7 +75,7 @@ export default function UpstreamImageList({ urls, sortable, onChangeOrder, itemL
               onDragStart={sortable ? onDragStart(i) : undefined}
               onDragOver={sortable ? onDragOver(i) : undefined}
               onDragEnd={sortable ? onDragEnd : undefined}
-              className={`flex items-center gap-2 rounded border px-1.5 py-1 transition-colors ${
+              className={`group relative flex items-center gap-2 rounded border px-1.5 py-1 transition-colors ${
                 isDragging ? 'border-primary opacity-40'
                   : isOver ? 'border-primary border-t-2'
                   : 'border-primary/40 bg-muted/30'
@@ -87,6 +96,17 @@ export default function UpstreamImageList({ urls, sortable, onChangeOrder, itemL
                 <span className="flex-1 truncate text-[10px] text-muted-foreground">
                   {typeof itemLabel === 'function' ? itemLabel(i) : `第 ${i + 1} 帧`}
                 </span>
+              )}
+              {/* hover 删除按钮：点击断开产出该 url 的上游连线。 */}
+              {onDelete && !nonDeletableSet.has(url) && (
+                <button
+                  type="button"
+                  title="断开该上游连线"
+                  onClick={(e) => { e.stopPropagation(); onDelete(url); }}
+                  className="absolute -right-1.5 -top-1.5 flex h-4 w-4 items-center justify-center rounded-full border border-destructive/30 bg-background text-destructive opacity-0 shadow-sm transition hover:bg-destructive hover:text-destructive-foreground group-hover:opacity-100"
+                >
+                  <X className="h-2.5 w-2.5" />
+                </button>
               )}
               {sortable && (
                 <div className="flex shrink-0 flex-col">

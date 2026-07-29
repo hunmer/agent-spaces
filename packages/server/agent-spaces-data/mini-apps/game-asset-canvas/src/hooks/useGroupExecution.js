@@ -43,6 +43,13 @@ export default function useGroupExecution({ groups, nodes, edges, setGroups, set
     return result;
   }, [groups, nodes]);
 
+  const protectedImageUrls = useMemo(() => groups.flatMap((group) => {
+    const execution = group.batchExecution;
+    if (execution?.mode !== GROUP_EXECUTION_MODES.assets) return [];
+    const active = execution.assets?.runs?.find((run) => run.id === execution.assets.activeId);
+    return active?.url ? [active.url] : [];
+  }), [groups]);
+
   const commit = useCallback((groupId, execution, nodeStates = null) => {
     setGroups((prev) => prev.map((group) => (
       group.id === groupId ? { ...group, batchExecution: execution } : group
@@ -184,10 +191,18 @@ export default function useGroupExecution({ groups, nodes, edges, setGroups, set
 
   const removeAsset = useCallback((groupId, runId) => {
     const context = getContext(groupId);
-    if (!context || context.busy) return;
+    if (!context || context.busy) {
+      console.debug('[GroupExecutionDebug] remove asset ignored', {
+        groupId, runId, reason: context ? 'group-running' : 'group-missing',
+      });
+      return;
+    }
     let execution = context.execution;
     const index = execution.assets.runs.findIndex((run) => run.id === runId);
-    if (index < 0) return;
+    if (index < 0) {
+      console.debug('[GroupExecutionDebug] remove asset ignored', { groupId, runId, reason: 'run-missing' });
+      return;
+    }
     const runs = execution.assets.runs.filter((run) => run.id !== runId);
     let activeId = execution.assets.activeId;
     let targetStates = null;
@@ -202,12 +217,16 @@ export default function useGroupExecution({ groups, nodes, edges, setGroups, set
       ...execution,
       assets: { ...execution.assets, activeId, runs },
     };
+    console.debug('[GroupExecutionDebug] remove asset committed', {
+      groupId, runId, remaining: runs.length, activeId,
+    });
     commit(groupId, execution, targetStates);
   }, [commit, getContext]);
 
   return {
     inputSlotCounts,
     runningGroupIds,
+    protectedImageUrls,
     setMode,
     setCount,
     switchRun,

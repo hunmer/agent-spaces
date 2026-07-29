@@ -15,6 +15,7 @@ import { dedupeTags } from '../utils/canvas-constants';
  * @param {object} deps
  * @param {Array} deps.nodes
  * @param {Array} deps.edges
+ * @param {string[]} deps.protectedImageUrls 当前分组素材实例的只读 URL（兼容旧快照）
  * @param {number} deps.selectionCount
  * @param {object} deps.outputPreviewState 节点预览高度临时状态
  * @param {Function} deps.onOutputPreviewHeight 上报节点预览高度
@@ -27,12 +28,18 @@ import { dedupeTags } from '../utils/canvas-constants';
  * @returns {{ decoratedNodes: Array }}
  */
 export default function useDecoratedNodes({
-  nodes, edges, selectionCount, outputPreviewState,
+  nodes, edges, protectedImageUrls = [], selectionCount, outputPreviewState,
   onOutputPreviewHeight, onOutputPreviewModeChange, settings, callbacks,
 }) {
   const upstreamMap = useMemo(() => computeInputImages(nodes, edges), [nodes, edges]);
 
   const decoratedNodes = useMemo(() => {
+    const groupAssetUrls = new Set([
+      ...protectedImageUrls,
+      ...nodes.flatMap((node) => (
+        Array.isArray(node.data?.groupAssetInputUrls) ? node.data.groupAssetInputUrls : []
+      )),
+    ]);
     const {
       makeOnUpdate, onGenerate, onGenerateMedia, onExportImages,
       onProcessImage, onProcessLocal, onCutout, onCutoutCreate, onCancelProcess,
@@ -40,12 +47,14 @@ export default function useDecoratedNodes({
       onAddToAssets,
       onAddOutputImages, onRemoveOutputImage, onClearOutputImages, onReorderOutputImages,
       onSwitchVersion,
+      onDeleteUpstreamImage,
     } = callbacks || {};
     return nodes.map((nd) => {
       const up = upstreamMap.get(nd.id);
       const data = { ...nd.data };
       if (up) {
         data.images = up.images;
+        data.protectedUpstreamImageUrls = up.images.filter((url) => groupAssetUrls.has(url));
         if (up.isDisplay) {
           data.source = 'upstream';
           data.tags = dedupeTags([...(nd.data?.tags || []), IMAGE_TAGS.upstream]);
@@ -114,11 +123,13 @@ export default function useDecoratedNodes({
           onReorderImages: onReorderOutputImages ? (next) => onReorderOutputImages(nd.id, next) : undefined,
           // 版本切换（还原 params/output/status 到历史版本；节点 ImageResult 渲染版本标记）
           onSwitchVersion: onSwitchVersion ? (index) => onSwitchVersion(nd.id, index) : undefined,
+          // 删除一张上游输入图（断开产出该图的连入边）
+          onDeleteUpstreamImage: onDeleteUpstreamImage ? (url) => onDeleteUpstreamImage(nd.id, url) : undefined,
         },
       };
     });
   }, [
-    nodes, upstreamMap, selectionCount, outputPreviewState,
+    nodes, upstreamMap, protectedImageUrls, selectionCount, outputPreviewState,
     onOutputPreviewHeight, onOutputPreviewModeChange, settings, callbacks,
   ]);
 

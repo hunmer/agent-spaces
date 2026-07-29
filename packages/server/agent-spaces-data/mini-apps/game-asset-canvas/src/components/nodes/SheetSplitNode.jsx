@@ -100,9 +100,9 @@ export default function SheetSplitNode({ id, data, selected }) {
         <p className="text-[10px] text-red-500">上传失败：{data.uploadError}</p>
       )}
 
-      {/* 上游连线图（只读，多张） */}
+      {/* 上游连线图（hover 可删除断开连线，多张） */}
       {upstreamImages.length > 0 && (
-        <UpstreamImageList urls={upstreamImages} sortable onChangeOrder={(next) => onUpdate?.({ upstreamOrder: next })} />
+        <UpstreamImageList urls={upstreamImages} sortable onChangeOrder={(next) => onUpdate?.({ upstreamOrder: next })} onDelete={data?.onDeleteUpstreamImage} nonDeletableUrls={data?.protectedUpstreamImageUrls} />
       )}
 
       {/* 输入来源统计 */}

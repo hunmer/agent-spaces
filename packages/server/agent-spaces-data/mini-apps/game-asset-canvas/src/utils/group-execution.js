@@ -155,6 +155,7 @@ export function applyAssetToNodeStates(nodeStates, nodes, edges, nodeIds, assetU
   const incomingCount = countIncomingEdges(edges);
   for (const node of nodes) {
     if (!idSet.has(node.id) || !result[node.id]) continue;
+    delete result[node.id].groupAssetInputUrls;
     const incoming = incomingCount.get(node.id) || 0;
     if (node.type === NODE_TYPES.imageCompare) {
       if (incoming < 1) {
@@ -163,15 +164,18 @@ export function applyAssetToNodeStates(nodeStates, nodes, edges, nodeIds, assetU
       if (incoming < 2) {
         result[node.id].second = { ...(result[node.id].second || {}), uploadedImages: [assetUrl] };
       }
+      if (incoming < 2) result[node.id].groupAssetInputUrls = [assetUrl];
       continue;
     }
     if (node.type === NODE_TYPES.imageDisplay && incoming === 0) {
       result[node.id].images = [assetUrl];
       result[node.id].source = 'upload';
+      result[node.id].groupAssetInputUrls = [assetUrl];
       continue;
     }
     if (isManualUploadNode(node) && incoming === 0) {
       result[node.id].uploadedImages = [assetUrl];
+      result[node.id].groupAssetInputUrls = [assetUrl];
     }
   }
   return result;
@@ -192,4 +196,3 @@ function countIncomingEdges(edges) {
   for (const edge of edges) counts.set(edge.target, (counts.get(edge.target) || 0) + 1);
   return counts;
 }
-

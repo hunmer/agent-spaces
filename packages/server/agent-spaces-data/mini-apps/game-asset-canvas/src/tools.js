@@ -37,6 +37,7 @@ const NODE_TYPE_ENUM = [
   'directorDesk',
   'photopea',
   'workflowRunner',
+  'spineEditor',
   'note',
 ];
 
@@ -69,6 +70,7 @@ const NODE_TYPE_DESC = [
   'directorDesk=3D导演台（3D摆位+多视角截图）',
   'photopea=在线PS（Photopea云端，完整图层/蒙版/滤镜编辑）',
   'workflowRunner=执行工作流（选工作流+JSON参数→执行→提取URL展示，通用节点）',
+  'spineEditor=骨骼编辑器（Spine骨骼姿势编辑+动画预览，上传.skel/.atlas/.png）',
   'note=便签（纯文本备注）',
 ].join(' / ');
 

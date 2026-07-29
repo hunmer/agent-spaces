@@ -28,6 +28,7 @@ import CutoutNode from '../components/nodes/CutoutNode';
 import DirectorDeskNode from '../components/nodes/DirectorDeskNode';
 import PhotopeaNode from '../components/nodes/PhotopeaNode';
 import WorkflowRunnerNode, { PARAMS_SCHEMA as WORKFLOW_RUNNER_PARAMS } from '../components/nodes/WorkflowRunnerNode';
+import SpineEditorNode from '../components/nodes/SpineEditorNode';
 import NoteNode from '../components/nodes/NoteNode';
 
 // 节点类型 -> 渲染组件
@@ -61,6 +62,7 @@ export const NODE_COMPONENTS = {
   [NODE_TYPES.directorDesk]: DirectorDeskNode,
   [NODE_TYPES.photopea]: PhotopeaNode,
   [NODE_TYPES.workflowRunner]: WorkflowRunnerNode,
+  [NODE_TYPES.spineEditor]: SpineEditorNode,
   [NODE_TYPES.note]: NoteNode,
 };
 
@@ -103,6 +105,7 @@ export const ADD_NODE_ITEMS = [
   { type: NODE_TYPES.directorDesk },
   { type: NODE_TYPES.photopea },
   { type: NODE_TYPES.workflowRunner },
+  { type: NODE_TYPES.spineEditor },
   { type: NODE_TYPES.note },
 ];
 
@@ -119,6 +122,7 @@ export const DEFAULT_SIZE = {
   [NODE_TYPES.directorDesk]: { w: 300, h: 260 },
   [NODE_TYPES.photopea]: { w: 300, h: 260 },
   [NODE_TYPES.workflowRunner]: { w: 320, h: 340 },
+  [NODE_TYPES.spineEditor]: { w: 300, h: 260 },
   default: { w: 290, h: 240 },
 };
 
@@ -234,6 +238,18 @@ export function initialData(type) {
         count: 1,
         concurrency: 1,
       },
+    };
+  }
+  if (type === NODE_TYPES.spineEditor) {
+    // 骨骼编辑器：上传 .skel/.atlas/.png 三件套（持久化为 http URL），
+    // 打开 iframe 编辑器注入资源，导出姿势 JSON / 截图回传。
+    return {
+      status: 'idle',
+      output: { images: [] },
+      // 上传的 Spine 资源（http URL）：{ skel, atlas, png, name }
+      uploadedAssets: null,
+      // 导出的姿势 JSON（文本，供下游或查看）
+      exportedPose: null,
     };
   }
   if (type === NODE_TYPES.videoGenerator) {

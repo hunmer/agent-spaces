@@ -97,6 +97,8 @@ export default function PhotopeaNode({ id, data, selected }) {
           sortable
           onChangeOrder={(next) => onUpdate?.({ upstreamOrder: next })}
           itemLabel={(i) => `图 ${i + 1}`}
+          onDelete={data?.onDeleteUpstreamImage}
+          nonDeletableUrls={data?.protectedUpstreamImageUrls}
         />
       )}
 

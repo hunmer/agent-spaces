@@ -4,6 +4,7 @@ import NodeShell from './NodeShell';
 import { useNodeDialog } from './NodeDialogContext';
 import PickedPromptBadge from './PickedPromptBadge';
 import FileUpload from '../FileUpload';
+import { orderUpstream } from './UpstreamImageList';
 import CountAndConcurrency from './CountAndConcurrency';
 import { ASPECT_OPTIONS, DEFAULT_MODEL, MODEL_OPTIONS, NODE_TYPES, SIZE_OPTIONS, WORKFLOWS } from '../../utils/constants';
 import { normalizeImageUrls, resolveReferenceImages, promptHtmlToText, dedupeUrls } from '../../utils/workflow';
@@ -80,23 +81,33 @@ export default function EditImageNode({ id, data, selected }) {
   // 把参考图 + 连线图作为只读项整合进同一个 FileUpload 网格（带来源角标），上传图可删，只读项不可删。
   // 这样「输入图片」与「参考图」合并为单一区块，避免 UI 分组割裂。
   const refImages = Array.isArray(params.referenceImages) ? params.referenceImages : [];
+  const protectedUpstreamImages = new Set(data?.protectedUpstreamImageUrls || []);
   const removeReferenceImage = useCallback((idx) => {
     const next = refImages.filter((_, i) => i !== idx);
     set({ referenceImages: next.length ? next : undefined });
   }, [refImages, set]);
   const extraItems = [
     ...refImages.map((src, i) => ({ src, badge: '参考', onRemove: () => removeReferenceImage(i) })),
-    ...inputImages.map((src) => ({ src, badge: '连线' })),
+    ...inputImages.map((src) => ({
+      src,
+      badge: '连线',
+      onRemove: protectedUpstreamImages.has(src) ? undefined : () => data?.onDeleteUpstreamImage?.(src),
+    })),
   ];
 
   // 编辑指令的富文本 HTML（PromptTextEditor onChange 写入）。提交时转纯文本（@参考图 → R0/R1）。
   const promptHtml = params.promptHtml || '';
 
-  // 统一的输入图清单：参考图 + 上传图 + 连线图，去重保序。
+  // 统一的输入图清单：参考图 + 上传图 + 连线图，按用户拖拽顺序持久化。
   // @ 列表、key(R0/R1…)映射、提交 images 三处都用它，保证「上传后 @ 能选到新图」且 key 与提交顺序一致。
-  const allInputImages = useMemo(
+  const rawInputImages = useMemo(
     () => dedupeUrls([...refImages, ...uploadedImages, ...inputImages]),
     [refImages, uploadedImages, inputImages],
+  );
+  const inputImageOrder = Array.isArray(data?.inputImageOrder) ? data.inputImageOrder : null;
+  const allInputImages = useMemo(
+    () => orderUpstream(rawInputImages, inputImageOrder),
+    [rawInputImages, inputImageOrder],
   );
 
   // PromptTextEditor 的 references：全部输入图按顺序映射关键字 R0/R1/…（匹配 prompts.js 里「第一张图→R0」语义）
@@ -136,6 +147,8 @@ export default function EditImageNode({ id, data, selected }) {
           max={6}
           placeholder="点击或拖拽上传待编辑图片"
           extraItems={extraItems}
+          itemOrder={allInputImages}
+          onReorderItems={(next) => onUpdate?.({ inputImageOrder: next })}
         />
       </div>
 

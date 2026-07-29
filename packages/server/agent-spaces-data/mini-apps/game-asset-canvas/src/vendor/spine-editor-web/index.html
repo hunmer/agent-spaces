@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Spine 骨骼编辑器</title>
+  <script type="module" crossorigin src="./assets/index-BGVoB_Ia.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-BkgTpnPA.css">
+</head>
+<body>
+  <div id="app">
+    <!-- 顶部工具栏 -->
+    <header id="toolbar"></header>
+    <div id="main">
+      <!-- 左侧：角色库过滤 + 骨骼树（tab 切换） -->
+      <aside id="left-panel">
+        <div class="tab-bar">
+          <button class="tab-btn active" data-tab="library">角色库</button>
+          <button class="tab-btn" data-tab="bones">骨骼树</button>
+        </div>
+        <div id="tab-library" class="tab-panel active"></div>
+        <div id="tab-bones" class="tab-panel"></div>
+      </aside>
+      <!-- 中间：Pixi 画布 -->
+      <main id="canvas-container">
+        <canvas id="pixi-canvas"></canvas>
+        <div id="canvas-hint" class="canvas-hint">就绪：上传 .skel/.atlas/.png 或从角色库选择</div>
+      </main>
+      <!-- 右侧：变换面板 -->
+      <aside id="right-panel"></aside>
+    </div>
+    <!-- 底部状态栏 -->
+    <footer id="statusbar">就绪</footer>
+  </div>
+</body>
+</html>

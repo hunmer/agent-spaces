@@ -36,11 +36,17 @@ export function computeInputImages(nodes, edges) {
     || type === NODE_TYPES.directorDesk
     || type === NODE_TYPES.photopea;
 
-  // 取某节点「作为 source 时应给出的产出图」：output.images 优先，回退 data.images。
+  // 透传类节点：产出 = 输入（如 imageDisplay 仅展示转发，无独立执行动作）。
+  // 生成类节点（editImage/imageProcess/cutout/编辑器/拆分类等）未执行时不应把上游输入误当产出转发。
+  const PASSTHROUGH_TYPES = new Set([NODE_TYPES.imageDisplay]);
+
+  // 取某节点「作为 source 时应给出的产出图」：output.images 优先；
+  // 仅透传类节点在无 output 时回退到 data.images / 上游派生图，生成类节点无 output 则返回空。
   // derivedByNode 允许把上一轮 receiver 的派生图并入视图（解决多跳转发）。
   const sourceImages = (node, derivedByNode) => {
     const sd = node.data || {};
     if (sd.output?.images?.length) return sd.output.images;
+    if (!PASSTHROUGH_TYPES.has(node.type)) return [];
     const own = sd.images || [];
     const derived = derivedByNode.get(node.id);
     // 自身有手动图优先用；无手动图时才透传上游派生图（避免手动上传被连线图覆盖）

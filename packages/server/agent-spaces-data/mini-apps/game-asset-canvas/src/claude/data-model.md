@@ -41,6 +41,8 @@ interface NodeData {
   onAutoSizeToContent?: () => void;
   selectionCount?: number;       // 当前选中节点总数（多选时隐藏 NodeToolbar）
   agentConfig?: object;          // BBox/反推提示词 AI 配置（从 settings 注入）
+  groupAssetInputUrls?: string[]; // 分组「按上传素材执行」注入的只读输入 URL
+  protectedUpstreamImageUrls?: string[]; // 运行时派生：来自上述分组素材、不可断开的上游 URL
 }
 ```
 

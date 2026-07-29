@@ -6,6 +6,8 @@ import {
   clampExecutionCount,
 } from '../../utils/group-execution';
 
+const EMPTY_UPLOAD_FILES = [];
+
 export default function GroupExecutionToolbar({
   group,
   childNodes,
@@ -30,9 +32,9 @@ export default function GroupExecutionToolbar({
   const activeAssetId = execution?.assets?.activeId || assetRuns[0]?.id;
   const bounds = useMemo(() => getGroupBounds(group, childNodes), [childNodes, group]);
   const [countDraft, setCountDraft] = useState(String(target));
-  const [uploadFiles, setUploadFiles] = useState([]);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
+  const [hoveredAssetId, setHoveredAssetId] = useState(null);
 
   useEffect(() => setCountDraft(String(target)), [target]);
 
@@ -43,7 +45,6 @@ export default function GroupExecutionToolbar({
   };
 
   const handleUpload = async (items) => {
-    setUploadFiles(items);
     const files = items.map((item) => item?.file).filter(Boolean);
     if (!files.length) return;
     setUploading(true);
@@ -57,7 +58,6 @@ export default function GroupExecutionToolbar({
       for (const item of items) {
         if (item?.preview?.startsWith('blob:')) URL.revokeObjectURL(item.preview);
       }
-      setUploadFiles([]);
       setUploading(false);
     }
   };
@@ -69,6 +69,15 @@ export default function GroupExecutionToolbar({
       onPointerDown={(event) => event.stopPropagation()}
       onClick={(event) => event.stopPropagation()}
     >
+      <style>{`
+        .group-asset-file-upload { width: 64px; flex: 0 0 64px; }
+        .group-asset-file-upload > div:first-child {
+          width: 64px; height: 64px; min-height: 64px; padding: 4px; gap: 2px; border-radius: 6px;
+        }
+        .group-asset-file-upload > div:first-child > svg { width: 16px; height: 16px; }
+        .group-asset-file-upload > div:first-child > div > p:first-child { font-size: 10px; line-height: 12px; }
+        .group-asset-file-upload > div:first-child > div > p:not(:first-child) { display: none; }
+      `}</style>
       <div className="flex min-h-7 items-center gap-1.5">
         <div className="flex shrink-0 rounded border border-border bg-muted/40 p-0.5">
           <ModeButton
@@ -130,44 +139,62 @@ export default function GroupExecutionToolbar({
           ))}
         </div>
       ) : (
-        <div className="flex flex-col gap-1.5">
+        <div
+          className="flex items-start gap-2 overflow-x-auto pb-0.5"
+          style={{ minHeight: 80, paddingTop: 10, paddingRight: 10 }}
+        >
           <FileUpload
-            value={uploadFiles}
+            value={EMPTY_UPLOAD_FILES}
             onChange={handleUpload}
             accept={{ 'image/*': ['.png', '.jpg', '.jpeg', '.webp', '.gif'] }}
             maxFiles={0}
             disabled={busy || uploading || inputSlotCount === 0}
-            placeholder="点击或拖拽上传执行素材"
-            className="w-full"
+            placeholder="上传素材"
+            className="group-asset-file-upload"
           />
-          <div className="flex min-h-10 items-center gap-1 overflow-x-auto pb-0.5">
             {assetRuns.length === 0 ? (
               <span className="px-1 text-[10px] text-muted-foreground">上传图片后，每张图片会成为一个独立分组实例</span>
             ) : assetRuns.map((run, index) => (
-              <div key={run.id} className="group/asset relative h-10 w-10 shrink-0">
+              <div
+                key={run.id}
+                className="h-16 w-16 shrink-0"
+                style={{ position: 'relative' }}
+                onMouseEnter={() => {
+                  setHoveredAssetId(run.id);
+                  console.debug('[GroupExecutionDebug] asset thumbnail hover', { groupId: group.id, runId: run.id });
+                }}
+                onMouseLeave={() => setHoveredAssetId((current) => (current === run.id ? null : current))}
+              >
                 <button
                   type="button"
                   disabled={busy}
                   onClick={() => onSwitchRun(group.id, GROUP_EXECUTION_MODES.assets, run.id)}
-                  className={`h-10 w-10 overflow-hidden rounded border-2 bg-muted/40 transition ${
+                  className={`h-16 w-16 overflow-hidden rounded border-2 bg-muted/40 transition ${
                     activeAssetId === run.id ? 'border-primary' : 'border-transparent hover:border-primary/60'
                   }`}
                   title={`${index + 1}. ${run.name || '上传素材'}`}
                 >
                   <img src={run.url} alt={run.name || `素材 ${index + 1}`} draggable={false} className="h-full w-full object-cover" />
                 </button>
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={(event) => { event.stopPropagation(); onRemoveAsset(group.id, run.id); }}
-                  title="移除素材实例"
-                  className="absolute -right-1 -top-1 hidden h-4 w-4 items-center justify-center rounded-full bg-destructive text-destructive-foreground shadow group-hover/asset:flex"
-                >
-                  <X className="h-2.5 w-2.5" />
-                </button>
+                {hoveredAssetId === run.id && (
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onPointerDown={(event) => { event.preventDefault(); event.stopPropagation(); }}
+                    onClick={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      onRemoveAsset(group.id, run.id);
+                    }}
+                    title="移除素材实例"
+                    className="flex items-center justify-center rounded-full bg-destructive text-destructive-foreground shadow disabled:cursor-not-allowed disabled:opacity-50"
+                    style={{ position: 'absolute', top: -10, right: -10, zIndex: 20, width: 20, height: 20 }}
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                )}
               </div>
             ))}
-          </div>
         </div>
       )}
 
