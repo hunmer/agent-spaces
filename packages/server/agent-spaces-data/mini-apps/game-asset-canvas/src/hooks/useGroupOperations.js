@@ -46,11 +46,25 @@ export default function useGroupOperations({ groups, nodes, edges, setGroups, se
     [deleteGroupId, groups],
   );
 
-  // 请求删除：键盘 Delete 和 overlay 删除按钮统一打开确认框。
+  // 请求删除：空分组直接删除；非空分组由键盘 Delete 和 overlay 删除按钮统一打开确认框。
   const requestDeleteGroup = useCallback((groupId) => {
     if (!groupId) return;
+    const target = groupsRef.current.find((group) => group.id === groupId);
+    const isEmpty = target
+      && target.childNodeIds.length === 0
+      && target.childGroupIds.length === 0;
+    if (isEmpty) {
+      setGroups((prev) => prev
+        .filter((group) => group.id !== groupId)
+        .map((group) => ({
+          ...group,
+          childGroupIds: group.childGroupIds.filter((id) => id !== groupId),
+        })));
+      setSelectedGroupId((current) => (current === groupId ? null : current));
+      return;
+    }
     setDeleteGroupId(groupId);
-  }, []);
+  }, [setGroups]);
 
   const cancelDeleteGroup = useCallback(() => setDeleteGroupId(null), []);
 

@@ -5,6 +5,11 @@ import { useDropzone, type Accept, type FileRejection } from "react-dropzone";
 import { Upload, X, FileIcon, GripVertical } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+// 文件列表拖拽排序的互斥标记：写入 dataTransfer 表示当前在列表内排序。
+// 嵌入 mini-app（game-asset-canvas）时，画布 handleDrop 见此标记直接 return，
+// 防止排序松手落画布误建图片节点。字符串需与 mini-app 画布端识别的标记一致。
+const IMAGE_REORDER_MIME = "application/x-image-reorder";
+
 export interface FileUploadFileLike {
   name: string;
   size: number;
@@ -107,12 +112,16 @@ export function FileUpload<TFile extends FileUploadFileLike = File>({
 
   // 拖拽排序：拖起一项，悬停到另一项上时实时重排（受控 value 经 onChange 回写）。
   // drop 时清空状态。仅 sortable=true 启用。
-  const handleSortDragStart = useCallback(
-    (id: string) => {
-      setDraggingId(id);
-    },
-    [],
-  );
+  // 同时写入互斥标记 MIME：mini-app 画布 handleDrop 见此标记直接 return，
+  // 防止排序松手落画布时误建图片节点（浏览器会把可拖拽元素默认转成 dataTransfer.files）。
+  const handleSortDragStart = useCallback((e: React.DragEvent<HTMLDivElement>, id: string) => {
+    setDraggingId(id);
+    e.dataTransfer.effectAllowed = "move";
+    try {
+      e.dataTransfer.setData("text/plain", id);
+      e.dataTransfer.setData(IMAGE_REORDER_MIME, "1");
+    } catch {}
+  }, []);
 
   const handleSortDragOver = useCallback(
     (e: MouseEvent<HTMLDivElement>, overItemId: string) => {
@@ -202,7 +211,7 @@ export function FileUpload<TFile extends FileUploadFileLike = File>({
               <div
                 key={item.id}
                 draggable={sortable || undefined}
-                onDragStart={sortable ? () => handleSortDragStart(item.id) : undefined}
+                onDragStart={sortable ? (e) => handleSortDragStart(e, item.id) : undefined}
                 onDragOver={sortable ? (e) => handleSortDragOver(e, item.id) : undefined}
                 onDragEnd={sortable ? handleSortDragEnd : undefined}
                 onDrop={sortable ? handleSortDragEnd : undefined}
@@ -217,7 +226,7 @@ export function FileUpload<TFile extends FileUploadFileLike = File>({
                   <GripVertical className="size-4 shrink-0 text-muted-foreground" />
                 )}
                 {preview ? (
-                  <img src={preview} alt="" className="size-10 rounded-md object-cover" />
+                  <img src={preview} alt="" draggable={false} className="size-10 rounded-md object-cover" />
                 ) : (
                   <div className="flex size-10 items-center justify-center rounded-md bg-muted">
                     <FileIcon className="size-5 text-muted-foreground" />
