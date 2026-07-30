@@ -9,6 +9,8 @@
 - Dialog 已将 `gizmo.onSelect` 统一映射到 `selectedBone`，新增身体命中只需复用 `gizmo.selectBone`。
 - Region attachment 使用四边形命中，Mesh attachment 使用 triangles 命中；逆序 drawOrder 保证重叠材质选择视觉最上层骨骼。
 - 快捷工具通过 `getBoneScreenPosition()` 每帧更新 DOM transform，可跟随播放、视图缩放和平移，无需在 Pixi Graphics 中绘制图标。
+- 用户将第二个快捷按钮语义明确为“自由旋转模式”，两个按钮都应切换左键拖拽行为，不再执行离散水平翻转。
+- Gizmo 保存 `manipulationMode`，左键拖拽按 mode 进入 move/rotate；禁用拖拽时恢复 pointer，移动/旋转模式分别使用 move/crosshair 光标。
 
 ## 已确认服务契约
 - 服务目录：`G:/spine-animation-ai-workspace/spine-animation-ai/reskin-app/sam_server`。

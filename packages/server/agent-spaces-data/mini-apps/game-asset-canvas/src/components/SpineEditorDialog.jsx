@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Badge, Bone, Button, Camera, CircleStop, Dialog, DialogContent,
   DialogFooter, DialogHeader, DialogTitle, Download, DropdownMenu, DropdownMenuContent,
-  DropdownMenuItem, DropdownMenuTrigger, FlipHorizontal2, Loader, Maximize2, MoreVertical, Move, Play, Redo2,
+  DropdownMenuItem, DropdownMenuTrigger, Loader, Maximize2, MoreVertical, Move, Play, Redo2, RotateCw,
   ResizableHandle, ResizablePanel, ResizablePanelGroup,
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
   Tabs, TabsContent, TabsList, TabsTrigger, Undo2, Video,
@@ -47,6 +47,7 @@ export default function SpineEditorDialog({
   const assetsRef = useRef(assets);
   assetsRef.current = assets;
   const boneDragEnabledRef = useRef(false);
+  const boneManipulationModeRef = useRef('move');
   const assetsSignature = getSpineAssetsSignature(assets);
 
   const [canvasElement, setCanvasElement] = useState(null); // 实为承载 canvas 的容器 div
@@ -62,6 +63,7 @@ export default function SpineEditorDialog({
   const [skins, setSkins] = useState([]);
   const [mode, setMode] = useState('pose');
   const [boneDragEnabled, setBoneDragEnabled] = useState(false);
+  const [boneManipulationMode, setBoneManipulationMode] = useState('move');
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
   const [animation, setAnimation] = useState('');
   const [skin, setSkin] = useState('');
@@ -176,6 +178,7 @@ export default function SpineEditorDialog({
           return;
         }
         editorRef.current = editor;
+        editor.setBoneManipulationMode(boneManipulationModeRef.current);
         editor.setBoneDragEnabled(boneDragEnabledRef.current);
         visibilityRef.current = new BoneVisibility();
         recorderRef.current = new RecordManager(editor.canvasElement);
@@ -273,20 +276,16 @@ export default function SpineEditorDialog({
     editorRef.current?.setBoneDragEnabled(enabled && mode === 'pose');
   };
 
-  const activateSelectedBoneMove = () => {
+  const activateBoneManipulationMode = (nextMode) => {
     if (!selectedBone) return;
     setMode('pose');
     editorRef.current?.setMode('pose');
     boneDragEnabledRef.current = true;
     setBoneDragEnabled(true);
+    setBoneManipulationMode(nextMode);
+    boneManipulationModeRef.current = nextMode;
+    editorRef.current?.setBoneManipulationMode(nextMode);
     editorRef.current?.setBoneDragEnabled(true);
-  };
-
-  const flipSelectedBone = () => {
-    if (!selectedBone) return;
-    editorRef.current?.flip(selectedBone, 'x');
-    editorRef.current?.gizmo.flashBoneGroup(selectedBone);
-    touchRevision();
   };
 
   const handleAnimation = (value) => {
@@ -616,11 +615,11 @@ export default function SpineEditorDialog({
               <div className="relative h-full min-w-0 bg-muted">
                 <div ref={handleCanvasRef} className="block h-full w-full" />
                 <div ref={boneActionsRef} className="absolute left-0 top-0 z-10 hidden items-center gap-1 rounded-md border border-border bg-background p-1 shadow-sm">
-                  <Button type="button" variant={boneDragEnabled ? 'secondary' : 'ghost'} size="icon-sm" title="移动骨骼" aria-label="移动骨骼" onClick={activateSelectedBoneMove}>
+                  <Button type="button" variant={boneDragEnabled && boneManipulationMode === 'move' ? 'secondary' : 'ghost'} size="icon-sm" title="切换移动骨骼模式" aria-label="切换移动骨骼模式" aria-pressed={boneDragEnabled && boneManipulationMode === 'move'} onClick={() => activateBoneManipulationMode('move')}>
                     <Move className="h-4 w-4" />
                   </Button>
-                  <Button type="button" variant="ghost" size="icon-sm" title="水平翻转骨骼" aria-label="水平翻转骨骼" onClick={flipSelectedBone}>
-                    <FlipHorizontal2 className="h-4 w-4" />
+                  <Button type="button" variant={boneDragEnabled && boneManipulationMode === 'rotate' ? 'secondary' : 'ghost'} size="icon-sm" title="切换自由旋转模式" aria-label="切换自由旋转模式" aria-pressed={boneDragEnabled && boneManipulationMode === 'rotate'} onClick={() => activateBoneManipulationMode('rotate')}>
+                    <RotateCw className="h-4 w-4" />
                   </Button>
                 </div>
                 {!spine && ready && !loading ? (

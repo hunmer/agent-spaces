@@ -42,7 +42,9 @@ test('toolbar exposes an explicit bone drag toggle limited to pose mode', () => 
 test('viewer body selection activates the bone tree and exposes nearby quick actions', () => {
   assert.match(source, /if \(boneValue\) setLeftTab\('bones'\)/);
   assert.match(source, /ref=\{boneActionsRef\}/);
-  assert.match(source, /aria-label="移动骨骼"/);
-  assert.match(source, /aria-label="水平翻转骨骼"/);
+  assert.match(source, /aria-label="切换移动骨骼模式"/);
+  assert.match(source, /aria-label="切换自由旋转模式"/);
+  assert.match(source, /activateBoneManipulationMode\('move'\)/);
+  assert.match(source, /activateBoneManipulationMode\('rotate'\)/);
   assert.match(source, /gizmo\.flashBoneGroup\(boneValue\)/);
 });

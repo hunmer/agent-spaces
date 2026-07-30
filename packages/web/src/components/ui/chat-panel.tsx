@@ -37,6 +37,7 @@ export interface ChatMessage {
 }
 
 export interface ChatAgentInfo {
+  id?: string;
   name: string;
   role?: string;
   avatar?: string;
@@ -51,6 +52,10 @@ export interface ChatPanelMentionFile {
 export interface ChatPanelProps {
   onClose?: () => void;
   agent: ChatAgentInfo;
+  /** 可选：多 agent 场景下传入所有可选 agent，标题区改为可点击的 agent 图标列。传入时不再渲染单 agent 标题/副标题。 */
+  agents?: ChatAgentInfo[];
+  /** 多 agent 场景下点击某个 agent 图标时回调，回传该 agent（含 id 时一并传回）。 */
+  onAgentChange?: (agent: ChatAgentInfo) => void;
   messages: ChatMessage[];
   sending?: boolean;
   input: string;
@@ -111,6 +116,8 @@ function StatusDot({ status }: { status?: string }) {
 export function ChatPanel({
   onClose,
   agent,
+  agents,
+  onAgentChange,
   messages,
   sending = false,
   input,
@@ -322,23 +329,53 @@ export function ChatPanel({
     >
       <div className="relative overflow-hidden border-b border-border/40 bg-muted/30 p-4">
         <div className="relative z-10 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="relative">
-              <Avatar className="h-10 w-10 border-2 border-background shadow-sm">
-                {agent.avatar && <AvatarImage src={agent.avatar} alt={agent.name} />}
-                <AvatarFallback className="bg-primary/10 text-xs font-semibold text-primary">
-                  {agent.name.slice(0, 2).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-              <StatusDot status={agent.status} />
+          {agents && agents.length > 0 ? (
+            <div className="flex items-center gap-1.5">
+              {agents.map((a) => {
+                const isActive = a.id ? a.id === agent.id : a.name === agent.name;
+                return (
+                  <button
+                    key={a.id ?? a.name}
+                    type="button"
+                    onClick={() => onAgentChange?.(a)}
+                    title={a.name}
+                    aria-label={a.name}
+                    aria-pressed={isActive}
+                    className={cn(
+                      'relative rounded-full transition',
+                      isActive ? 'ring-2 ring-primary ring-offset-2 ring-offset-background' : 'opacity-60 hover:opacity-100',
+                    )}
+                  >
+                    <Avatar className="h-8 w-8 border-2 border-background shadow-sm">
+                      {a.avatar && <AvatarImage src={a.avatar} alt={a.name} />}
+                      <AvatarFallback className="bg-primary/10 text-[10px] font-semibold text-primary">
+                        {a.name.slice(0, 2).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <StatusDot status={a.status} />
+                  </button>
+                );
+              })}
             </div>
-            <div>
-              <h3 className="text-sm font-semibold text-foreground">{agent.name}</h3>
-              <div className="flex items-center gap-1.5">
-                <span className="text-xs text-muted-foreground">{agent.role || (sending ? 'typing...' : 'online')}</span>
+          ) : (
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <Avatar className="h-10 w-10 border-2 border-background shadow-sm">
+                  {agent.avatar && <AvatarImage src={agent.avatar} alt={agent.name} />}
+                  <AvatarFallback className="bg-primary/10 text-xs font-semibold text-primary">
+                    {agent.name.slice(0, 2).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <StatusDot status={agent.status} />
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold text-foreground">{agent.name}</h3>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs text-muted-foreground">{agent.role || (sending ? 'typing...' : 'online')}</span>
+                </div>
               </div>
             </div>
-          </div>
+          )}
           <div className="flex items-center gap-1">
             {headerActions}
             {menuItems ? (

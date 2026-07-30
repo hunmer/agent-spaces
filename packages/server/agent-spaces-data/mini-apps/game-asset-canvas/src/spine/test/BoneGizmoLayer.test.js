@@ -65,6 +65,7 @@ test('disabling bone dragging ends an active transform', () => {
     dragMode: 'move',
     dragBone: {},
     onTransformEnd: () => { ends += 1; },
+    _updateCursor() {},
     _endDrag: BoneGizmoLayer.prototype._endDrag,
   };
 
@@ -143,4 +144,23 @@ test('bone group highlight includes descendants', () => {
   BoneGizmoLayer.prototype.flashBoneGroup.call(gizmo, root, 1000);
   clearTimeout(gizmo.highlightTimer);
   assert.deepEqual([...gizmo.highlightedBones], [root, child]);
+});
+
+test('left drag follows the selected move or rotate manipulation mode', () => {
+  const cursors = [];
+  const gizmo = {
+    graphics: { set cursor(value) { cursors.push(value); } },
+    dragEnabled: true,
+    manipulationMode: 'move',
+    _updateCursor: BoneGizmoLayer.prototype._updateCursor,
+  };
+
+  BoneGizmoLayer.prototype.setManipulationMode.call(gizmo, 'rotate');
+  assert.equal(gizmo.manipulationMode, 'rotate');
+  assert.equal(cursors.at(-1), 'crosshair');
+
+  BoneGizmoLayer.prototype.setManipulationMode.call(gizmo, 'move');
+  assert.equal(gizmo.manipulationMode, 'move');
+  assert.equal(cursors.at(-1), 'move');
+  assert.match(source, /this\._startDrag\(bone, this\.manipulationMode\)/);
 });

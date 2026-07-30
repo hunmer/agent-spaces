@@ -201,6 +201,10 @@ export class SpineEditorApp {
     this.gizmo?.setDragEnabled(enabled);
   }
 
+  setBoneManipulationMode(mode) {
+    this.gizmo?.setManipulationMode(mode);
+  }
+
   getBoneScreenPosition(bone) {
     if (!bone || !this.spineContainer || !this.gizmo) return null;
     const local = this.gizmo._boneToContainer(bone);

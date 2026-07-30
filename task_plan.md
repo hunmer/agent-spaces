@@ -110,6 +110,11 @@
   - 左侧选择骨骼或分组时，Viewer 中对应骨骼短暂高亮。
   - 增加聚焦测试并运行 Spine/组件回归、Babel、diff check。
 
+- [completed] 19. 骨骼移动/自由旋转模式
+  - 快捷按钮改为移动模式和自由旋转模式，不再一键翻转。
+  - 左键拖拽按当前模式修改 x/y 或 rotation，并同步操作光标与按钮激活态。
+  - 补聚焦测试并运行 Spine/组件回归、Babel、diff check。
+
 ## 关键约束
 - 不修改 Python `site-packages/rembg`。
 - 不复用 rembg 的 `sam` model。
@@ -131,6 +136,7 @@
 | 读取 mini-app `package.json` 失败并导致并行输出丢失 | 1 | mini-app 无独立 package；改读仓库级配置，可选搜索允许无匹配 |
 | 新持久化字段使旧 `normalizeReskinEditorData` 深相等测试失败 | 1 | 实现输出正确；同步旧测试期望并保留新增回归断言 |
 | attachment 命中测试访问浏览器态 `PIXI.Point` | 1 | 改传 Pixi API 支持的普通 `{x,y}` 坐标对象，移除 Node 测试环境依赖 |
+| 旧拖拽禁用测试 mock 缺少新增 `_updateCursor` | 1 | 补齐测试夹具，生产实例始终具有该方法 |
 | 同步旧测试期望时补丁命中输入对象而非期望对象 | 1 | 使用包含 `assert.deepEqual(restored` 后文的精确上下文修正 |
 | 搜索 `runCutout` 测试无匹配返回 1，导致并行读取丢失 | 1 | 不重复搜索；直接读取目标测试并新增局部契约断言 |
 | `cutout.test.js` 直接导入被 `./image-ops` 目录型 ESM import 阻断 | 1 | 改用项目现有 Babel CommonJS harness 注入依赖，测试真实函数逻辑 |

@@ -944,7 +944,7 @@ function MiniAppAgentFilesDialog({ projectId, open, onOpenChange }: { projectId:
 /** ChatPanel 顶部工具区（切换会话 / agent / 设置），popover 与 dock 共用。 */
 function MiniAppAgentHeaderActions({ chat }: { chat: ReturnType<typeof useMiniAppAgentChat> }) {
   const t = useTranslations('mini-apps');
-  const { agents, agentId, setAgentId, openSettings,
+  const { agentId, openSettings,
     sessions, sessionId, handleSwitchSession, handleNewSession, handleDeleteSession } = chat;
   return (
     <>
@@ -982,20 +982,6 @@ function MiniAppAgentHeaderActions({ chat }: { chat: ReturnType<typeof useMiniAp
             {sessions.length === 0 && (
               <div className="px-2 py-1.5 text-[11px] text-muted-foreground">{t('agent.sessionEmpty')}</div>
             )}
-          </SelectContent>
-        </Select>
-      )}
-      {agents.length > 1 && (
-        <Select value={agentId} onValueChange={(v) => setAgentId(v ?? '')}>
-          <SelectTrigger className="h-7 w-[120px] text-xs">
-            <SelectValue className="min-w-0">
-              <span className="truncate">{agents.find((a) => a.id === agentId)?.name ?? agentId}</span>
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            {agents.map((a) => (
-              <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
-            ))}
           </SelectContent>
         </Select>
       )}
@@ -1084,7 +1070,8 @@ function MiniAppAgentPopover({ projectId }: { projectId: string }) {
   useEffect(() => { if (open) loadHistoryRef.current(); }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const { messages, input, setInput, sending, handleSend, handleStop, current, suggestions, agentFileMentions,
-    handleAnswerAskUserQuestion, handleDeleteMessage, handleRegenerateMessage, sessionDetailForMessage, introduction } = chat;
+    handleAnswerAskUserQuestion, handleDeleteMessage, handleRegenerateMessage, sessionDetailForMessage, introduction,
+    agents, agentId, setAgentId } = chat;
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -1095,10 +1082,13 @@ function MiniAppAgentPopover({ projectId }: { projectId: string }) {
         <ChatPanel
           onClose={() => setOpen(false)}
           agent={{
+            id: agentId,
             name: current?.name ?? 'Agent',
             avatar: current?.avatar,
             status: sending ? 'busy' : 'online',
           }}
+          agents={agents.length > 1 ? agents : undefined}
+          onAgentChange={(a) => a.id && setAgentId(a.id)}
           messages={messages}
           sending={sending}
           input={input}
@@ -1133,20 +1123,24 @@ function MiniAppAgentDock({ projectId, onClose }: { projectId: string; onClose: 
   useEffect(() => { loadHistoryRef.current(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const { messages, input, setInput, sending, handleSend, handleStop, current, suggestions, agentFileMentions,
-    handleAnswerAskUserQuestion, handleDeleteMessage, handleRegenerateMessage, sessionDetailForMessage, introduction } = chat;
+    handleAnswerAskUserQuestion, handleDeleteMessage, handleRegenerateMessage, sessionDetailForMessage, introduction,
+    agents, agentId, setAgentId } = chat;
 
   return (
     <div className="flex h-full w-full flex-col border-l bg-background">
-      <ChatPanel
-        onClose={onClose}
-        fillContainer
-        className="h-full w-full rounded-none border-0 shadow-none ring-0"
-        agent={{
-          name: current?.name ?? 'Agent',
-          avatar: current?.avatar,
-          status: sending ? 'busy' : 'online',
-        }}
-        messages={messages}
+        <ChatPanel
+          onClose={onClose}
+          fillContainer
+          className="h-full w-full rounded-none border-0 shadow-none ring-0"
+          agent={{
+            id: agentId,
+            name: current?.name ?? 'Agent',
+            avatar: current?.avatar,
+            status: sending ? 'busy' : 'online',
+          }}
+          agents={agents.length > 1 ? agents : undefined}
+          onAgentChange={(a) => a.id && setAgentId(a.id)}
+          messages={messages}
         sending={sending}
         input={input}
         onInputChange={setInput}
@@ -1262,6 +1256,8 @@ export function MiniAppPreview({ type, sourceCode, error, onError, projectId, pr
   });
   const dockLayoutSaveTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const handleDockLayoutChange = useCallback((layout: Record<string, number>) => {
+    // 关闭 dock 后 PanelGroup 只剩预览面板，不要用 100% 覆盖已保存的双栏布局。
+    if (layout['mini-app-agent-dock'] === undefined) return;
     setDockLayout(layout);
     if (dockLayoutSaveTimer.current) clearTimeout(dockLayoutSaveTimer.current);
     dockLayoutSaveTimer.current = setTimeout(() => {
@@ -1612,28 +1608,26 @@ export function MiniAppPreview({ type, sourceCode, error, onError, projectId, pr
 
           const showDock = enableAgents && !!projectId && chatDockOpen;
 
-          // dock 打开：用 ResizablePanelGroup 拖拽分隔
-          if (showDock) {
-            return (
-              <ResizablePanelGroup
-                orientation="horizontal"
-                className="min-h-0 flex-1"
-                defaultLayout={dockLayout}
-                onLayoutChange={handleDockLayoutChange}
-              >
-                <ResizablePanel id="mini-app-preview" defaultSize="70%" minSize="40%">
-                  {previewPane}
-                </ResizablePanel>
-                <ResizableHandle withHandle />
-                <ResizablePanel id="mini-app-agent-dock" defaultSize="30%" minSize="20%" maxSize="60%">
-                  <MiniAppAgentDock projectId={projectId!} onClose={() => setChatDockOpen(false)} />
-                </ResizablePanel>
-              </ResizablePanelGroup>
-            );
-          }
-
-          // dock 关闭：单列布局
-          return <div className="min-h-0 flex-1">{previewPane}</div>;
+          return (
+            <ResizablePanelGroup
+              orientation="horizontal"
+              className="min-h-0 flex-1"
+              defaultLayout={dockLayout}
+              onLayoutChange={handleDockLayoutChange}
+            >
+              <ResizablePanel id="mini-app-preview" defaultSize="70%" minSize="40%">
+                {previewPane}
+              </ResizablePanel>
+              {showDock && (
+                <>
+                  <ResizableHandle withHandle />
+                  <ResizablePanel id="mini-app-agent-dock" defaultSize="30%" minSize="20%" maxSize="60%">
+                    <MiniAppAgentDock projectId={projectId!} onClose={() => setChatDockOpen(false)} />
+                  </ResizablePanel>
+                </>
+              )}
+            </ResizablePanelGroup>
+          );
         })()}
       </div>
       {projectId && (

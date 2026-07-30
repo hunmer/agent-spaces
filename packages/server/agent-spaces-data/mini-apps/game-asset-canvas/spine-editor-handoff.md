@@ -117,7 +117,7 @@ Viewer 与右栏放在 `ResizablePanelGroup` 内。拖动宽度只触发 Pixi `r
 - 角色水平/竖直翻转作用于 Spine DisplayObject，并围绕当前可视中心补偿位置；禁止用 skeleton 负缩放，避免约束网格材质挤压。
 - 选中骨骼关节点半径为 10（普通为 4）；拖拽开始后对 Pixi canvas 使用 Pointer Capture，并设置 `touch-action: none`，兼容 macOS 触控板连续拖拽。
 - 点击角色 attachment 时按逆序 `drawOrder` 命中最上层 Region/Mesh 所属 slot bone，自动切换到左侧骨骼 Tab、展开祖先并滚动到对应行。
-- 选中骨骼附近显示移动与水平翻转快捷按钮；按钮位置每帧从骨骼坐标映射到 Viewer 屏幕坐标，跟随动画、缩放和平移。
+- 选中骨骼附近显示移动与自由旋转模式按钮；点击后左键拖拽分别修改 x/y 或 rotation，激活模式在骨骼操作点显示 move/crosshair 光标。按钮位置每帧从骨骼坐标映射到 Viewer 屏幕坐标，跟随动画、缩放和平移。
 - 从左侧选择叶子骨骼时短暂高亮该骨骼；选择带 children 的分组骨骼时短暂高亮整个子树。
 - 子骨骼拖拽的父级逆变换读取 Spine Bone 的 `a/b/c/d/worldX/worldY`，不能读取 Pixi DisplayObject 才有的 `worldTransform`。
 - `bone.rotation` 在 Spine runtime 中就是度数；变换面板、右键旋转和姿势导出禁止再做弧度换算。

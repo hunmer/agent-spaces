@@ -46,6 +46,7 @@ export class BoneGizmoLayer {
     this.highlightTimer = null;
     this.visible = true;        // 骨骼线显隐
     this.dragEnabled = false;   // 默认仅允许选择，显式开启后才能拖拽
+    this.manipulationMode = 'move';
 
     // 拖拽状态
     this.dragging = false;
@@ -72,7 +73,19 @@ export class BoneGizmoLayer {
 
   setDragEnabled(enabled) {
     this.dragEnabled = !!enabled;
+    this._updateCursor();
     if (!this.dragEnabled) this._endDrag();
+  }
+
+  setManipulationMode(mode) {
+    this.manipulationMode = mode === 'rotate' ? 'rotate' : 'move';
+    this._updateCursor();
+  }
+
+  _updateCursor() {
+    this.graphics.cursor = this.dragEnabled
+      ? (this.manipulationMode === 'rotate' ? 'crosshair' : 'move')
+      : 'pointer';
   }
 
   selectBone(bone) {
@@ -212,7 +225,7 @@ export class BoneGizmoLayer {
   _bindEvents() {
     // gizmo graphics 接收交互（pointerMode static）
     this.graphics.eventMode = 'static';
-    this.graphics.cursor = 'pointer';
+    this._updateCursor();
     // 注意：spine 本体也可能接收事件，gizmo 放在 spine 之后 addChild，
     // z-order 在上层，pointerdown 优先到 gizmo。
 
@@ -223,7 +236,7 @@ export class BoneGizmoLayer {
       if (button === 0) {
         // 左键始终允许选择；开启拖拽后才修改位置。
         this.selectBone(bone);
-        if (this._startDrag(bone, 'move')) this._capturePointer(e);
+        if (this._startDrag(bone, this.manipulationMode)) this._capturePointer(e);
       } else if (button === 2) {
         // 右键：选中 + 准备拖拽旋转（即使没精确命中也以当前选中骨骼为目标）
         const target = bone || this.selectedBone;

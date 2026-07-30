@@ -79,7 +79,7 @@
   "createdAt": 1785412727533,
   "updatedAt": 1785415838519,
   "published": false,
-  "lastOpenedAt": 1785413081719,
+  "lastOpenedAt": 1785429005255,
   "enabledPlugins": [
     "workflow.nano-banana",
     "workflow.ai-image"
