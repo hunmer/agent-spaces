@@ -44,3 +44,14 @@
 ## 已撤销
 - 已撤销 rembg 实际插件和模板中的 `box -> rectangle` 兼容层。
 - 已恢复 rembg README、换肤管线 helper/test、CLAUDE 和 handoff 的本轮契约修改。
+
+## 换肤日志与 Viewer 重载
+- 换肤表单持久化会更新节点数据并产生新的 `assets` 对象；原 Viewer 初始化 effect 直接依赖 `assets` 引用，导致 URL 未变时也 cleanup、destroy、重新初始化。
+- Viewer 应以 skeleton/atlas/texture URL 的稳定签名作为初始化依赖，并通过 ref 在真正初始化时读取最新 assets。
+- 素材替换日志的重要记录定义为：顶层 `data.images` 非空，或 region 级 `data.imageFlow.outputs` 非空。
+- `touchRevision` 是空依赖的稳定回调；画布容器位于换肤/变换 Tabs 外，二者不会因切换 Tab 或编辑换肤表单改变 Viewer 初始化依赖。
+
+## MaskPaint 蒙版重绘接入
+- `MaskPaintDialog` 已实现 fabric.js 绘制、上传与 `onUpdate` 回传，可直接作为日志蒙版编辑器复用，不需要新增服务端插件。
+- 日志当前完全封装在 `ReskinPanel` 内的 Dialog；要做右栏独立 Tab，需要把日志视图改为可嵌入组件，并由 `SpineEditorDialog` 控制右侧 Tabs 和日志数据。
+- 蒙版编辑后的目标不是替换日志缩略图，而是重新应用该 region 的 alpha、重建 atlas，再调用现有 `replaceAtlas` 热更新 Viewer。

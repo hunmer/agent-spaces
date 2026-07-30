@@ -161,28 +161,5 @@ export async function getImageCompression() {
   return window.imageCompression;
 }
 
-/**
- * img-comparison-slider：双图前后对比滑块 web component（{@link https://github.com/sneas/img-comparison-slider}）。
- *
- * 官方 dist 是 IIFE（`(()=>{...})()`），内部检查 window.document 后 `customElements.define`
- * 注册 <img-comparison-slider>，CSS 经 adoptedStyleSheets 内联（dist/styles.css 冗余，未加载）。
- *
- * 加载方式（与 fabric 同款）：fetch 源码 → `(0, eval)(code)` 全局求值，IIFE 立即自执行注册元素。
- * 用 `customElements.get` 守卫，重复调用不会触发 "already defined" 报错。
- * 注册后无需返回值——组件已全局可用，JSX 里直接 `<img-comparison-slider>` 即可。
- */
-export async function getImgComparisonSlider() {
-  if (window.customElements?.get('img-comparison-slider')) return;
-  const AS = window.AgentSpaces;
-  if (!AS?.srcFileUrl) throw new Error('宿主未提供 srcFileUrl 能力（需更新 web 服务）');
-  const url = AS.srcFileUrl(VENDOR_BASE + 'img-comparison-slider.js');
-  const resp = await fetch(url);
-  if (!resp.ok) throw new Error(`vendor 加载失败(${resp.status}): img-comparison-slider.js`);
-  const code = await resp.text();
-  // 间接 eval：全局作用域执行 IIFE，内部 customElements.define 注册元素
-  (0, eval)(code);
-  if (!window.customElements?.get('img-comparison-slider')) {
-    throw new Error('img-comparison-slider 加载后未注册（IIFE 初始化失败）');
-  }
-  console.log('[cdn] img-comparison-slider registered');
-}
+// img-comparison-slider web component 的 CDN 懒加载已移除：
+// 图片对比节点改用本地 react-compare-slider（经 @agent-spaces/ui 暴露），不再依赖 vendor IIFE。

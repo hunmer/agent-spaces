@@ -13,6 +13,9 @@
 - 2026-07-30：用 Python 3.13 + opencv backend 启动真实 SAM 服务；`/health`、双框 `/segment_with_boxes` 及新插件 action 端到端请求均成功，临时服务已停止。
 - 2026-07-30：完整验证通过：reskin 13/13、Spine 13/13、插件 2/2、Babel 2 文件、插件语法/JSON/索引/镜像一致性、server TypeScript build、`git diff --check`。
 - 2026-07-30：确认换皮管线旧 `rembg_sam_segment` 调用数为 0，新 `sam_segment_with_boxes` 调用数为 1；所有阶段完成。
+- 2026-07-30：新增日志图片输出过滤；Viewer 初始化依赖由 `assets` 对象引用改为三件套 URL 签名，避免换肤 Tab/表单状态变化重建 Viewer；开始回归验证。
+- 2026-07-30：阶段 7 验证完成：reskin 17/17、Spine 13/13、Viewer 专项 1/1；Babel 3/3、`git diff --check` 通过，无 `[DEBUG-*]` 遗留。
+- 2026-07-30：开始阶段 8；读取 MaskPaint 交接文档，确认复用现有 `MaskPaintDialog`，设计为右栏日志 Tab + region 蒙版重绘后重建 atlas 并热应用。
 
 ## 下一步
 从 `task_plan.md` 阶段 1 开始：先读取 sam_server route 和现有插件模板，创建 `workflow.sam` 插件，不要先改 UI。

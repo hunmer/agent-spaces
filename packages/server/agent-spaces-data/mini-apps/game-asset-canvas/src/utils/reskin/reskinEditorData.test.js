@@ -17,6 +17,17 @@ const fallbacks = {
   erosion: { enabled: true, pxSmall: 1 },
 };
 
+test('asset signature stays stable when node persistence clones the assets object', () => {
+  assert.equal(
+    getSpineAssetsSignature(assets),
+    getSpineAssetsSignature(structuredClone(assets)),
+  );
+  assert.notEqual(
+    getSpineAssetsSignature(assets),
+    getSpineAssetsSignature({ ...assets, png: 'https://example.com/changed.png' }),
+  );
+});
+
 test('restores generated image and reskin form fields for the same Spine assets', () => {
   const assetSignature = getSpineAssetsSignature(assets);
   const restored = normalizeReskinEditorData({

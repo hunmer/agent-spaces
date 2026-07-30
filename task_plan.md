@@ -47,6 +47,15 @@
   - 复现并区分图片下载与 SAM 上游请求失败。
   - 为两处 fetch 增加阶段、URL、底层 cause 的错误上下文与回归测试。
   - 启动当前可用 backend，重放真实插件请求验证。
+- [completed] 7. 收敛换肤日志并避免 Spine Viewer 被表单更新重建
+  - 日志仅保留 `images` 或 region `imageFlow.outputs` 非空的记录。
+  - Viewer 初始化仅依赖 Spine 三件套 URL 签名，不依赖 `assets` 对象引用。
+  - 运行日志过滤、Viewer 依赖、reskin/Spine 全量回归及静态检查。
+- [in_progress] 8. 右栏日志 Tab 与 MaskPaint 蒙版重绘
+  - 将素材替换日志从 Dialog 迁移为 Spine 编辑器右侧独立 Tab。
+  - 部件拆分日志的蒙版图提供重绘按钮，复用 `MaskPaintDialog`。
+  - MaskPaint 导出后以新蒙版重新生成对应部件与 atlas，并调用 `replaceAtlas` 即时应用到 Spine。
+  - 增加纯函数/交互契约测试，运行 reskin、Spine、Babel 和静态检查。
 
 ## 关键约束
 - 不修改 Python `site-packages/rembg`。

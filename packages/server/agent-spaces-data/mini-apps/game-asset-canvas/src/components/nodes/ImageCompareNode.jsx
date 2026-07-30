@@ -1,11 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { FileUpload } from '@agent-spaces/ui';
+import { useCallback } from 'react';
+import { FileUpload, ReactCompareSlider, ReactCompareSliderImage } from '@agent-spaces/ui';
 import NodeShell from './NodeShell';
 import { NODE_TYPES } from '../../utils/constants';
-import { getImgComparisonSlider } from '../../utils/image-ops/cdn';
 
 /**
- * 图片对比节点：双图前后对比滑块（基于 img-comparison-slider web component）。
+ * 图片对比节点：双图前后对比滑块（基于 react-compare-slider）。
  *
  * 两个图槽位（first/second），各自独立支持两种来源：
  * 1. FileUpload 用户上传（持久化在 data.first.uploadedImages / data.second.uploadedImages）
@@ -15,7 +14,7 @@ import { getImgComparisonSlider } from '../../utils/image-ops/cdn';
  * data.first / data.second 形如 { uploadedImages: string[], images: string[] }。
  * 节点本身不产图（纯展示对比），但挂 sourceHandle 让其他节点能连「下游」取 first 作为导出参考。
  *
- * web component 首次渲染前由 getImgComparisonSlider() 懒加载注册（vendor 本地 IIFE），断网时降级为并排显示。
+ * 组件经 @agent-spaces/ui 暴露（宿主 ui-exports），无需 CDN 懒加载。
  */
 const SLOT_META = {
   first: { label: '对比前', placeholder: '点击或拖入「对比前」图片' },
@@ -43,23 +42,6 @@ export default function ImageCompareNode({ id, data, selected }) {
   });
   const onUpdate = data?.onUpdate;
   const uploading = data?.uploading;
-  const [cmpReady, setCmpReady] = useState(false);
-  const [cmpError, setCmpError] = useState(null);
-  const sliderRef = useRef(null);
-
-  // 懒加载 web component：双图都就绪后注册一次
-  useEffect(() => {
-    if (!first.picked || !second.picked) return;
-    if (cmpReady || cmpError) return;
-    let cancelled = false;
-    getImgComparisonSlider()
-      .then(() => { if (!cancelled) setCmpReady(true); })
-      .catch((err) => {
-        console.error('img-comparison-slider load failed:', err);
-        if (!cancelled) setCmpError(err?.message || String(err));
-      });
-    return () => { cancelled = true; };
-  }, [first.picked, second.picked, cmpReady, cmpError]);
 
   const handleFilesChange = useCallback((slotKey) => async (files) => {
     const AS = window.AgentSpaces;
@@ -92,29 +74,15 @@ export default function ImageCompareNode({ id, data, selected }) {
 
   return (
     <NodeShell id={id} nodeType={NODE_TYPES.imageCompare} data={data} selected={selected} targetHandle sourceHandle>
-      {/* 对比视图：双图就绪 + 组件已注册时渲染 web component */}
-      {bothReady && cmpReady && (
+      {/* 对比视图：双图就绪时渲染 ReactCompareSlider（本地组件，无 CDN 依赖） */}
+      {bothReady && (
         <div className="nodrag nopan nowheel overflow-hidden rounded-md border border-border">
-          <img-comparison-slider ref={sliderRef} value={50} class="block w-full">
-            <img slot="first" src={first.picked} alt="对比前" draggable={false}
-                 style={{ width: '100%', display: 'block', objectFit: 'contain', maxHeight: '320px' }} />
-            <img slot="second" src={second.picked} alt="对比后" draggable={false}
-                 style={{ width: '100%', display: 'block', objectFit: 'contain', maxHeight: '320px' }} />
-          </img-comparison-slider>
-        </div>
-      )}
-      {/* 降级：双图就绪但组件加载失败时并排显示 */}
-      {bothReady && !cmpReady && (
-        <div className="nodrag nopan nowheel grid grid-cols-2 gap-1 rounded-md border border-border p-1">
-          <div className="overflow-hidden rounded">
-            <img src={first.picked} alt="对比前" draggable={false} className="block w-full object-contain" style={{ maxHeight: '160px' }} />
-          </div>
-          <div className="overflow-hidden rounded">
-            <img src={second.picked} alt="对比后" draggable={false} className="block w-full object-contain" style={{ maxHeight: '160px' }} />
-          </div>
-          <p className="col-span-2 text-center text-[10px] text-muted-foreground">
-            {cmpError ? `对比组件加载失败：${cmpError}` : '加载对比组件…'}
-          </p>
+          <ReactCompareSlider
+            position={50}
+            itemOne={<ReactCompareSliderImage src={first.picked} alt="对比前" />}
+            itemTwo={<ReactCompareSliderImage src={second.picked} alt="对比后" />}
+            style={{ width: '100%', display: 'block', maxHeight: '320px' }}
+          />
         </div>
       )}
 

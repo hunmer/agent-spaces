@@ -15,6 +15,7 @@ import {
   normalizeReskinEditorData,
 } from '../utils/reskin/reskinEditorData';
 import useSpineReskinHistory from '../hooks/useSpineReskinHistory';
+import { hasReskinLogImageOutput } from '../utils/reskin/reskinLogData';
 
 const RESKIN_MODEL_STORAGE_KEY = 'spine-editor:processing-model';
 const EROSION_STORAGE_KEY = 'spine-editor:erosion';
@@ -178,6 +179,7 @@ export default function ReskinPanel({
     processingModel, slotMode, selectedSlot, generatedImageUrl]);
 
   const addLog = useCallback((step, msg, data) => {
+    if (!hasReskinLogImageOutput(data)) return;
     setLogs((prev) => [...prev.slice(-499), { step, msg, data, ts: Date.now() }]);
   }, []);
 

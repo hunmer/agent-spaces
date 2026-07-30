@@ -19,6 +19,7 @@ import { getJSZip, loadSpineRuntime } from '../spine/runtime';
 import {
   SpineAssetLibrary, SpineBoneTree, SpineTransformPanel,
 } from '../spine/components/SpinePanels';
+import { getSpineAssetsSignature } from '../utils/reskin/reskinEditorData';
 
 const PLAYBACK_SPEEDS = ['0.25', '0.5', '1', '1.5', '2'];
 
@@ -37,6 +38,9 @@ export default function SpineEditorDialog({
   const recordingGizmoVisibleRef = useRef(true);
   const callbacksRef = useRef({ onSave, onPoseExport, onExportVideo, onReskinComplete });
   callbacksRef.current = { onSave, onPoseExport, onExportVideo, onReskinComplete };
+  const assetsRef = useRef(assets);
+  assetsRef.current = assets;
+  const assetsSignature = getSpineAssetsSignature(assets);
 
   const [canvasElement, setCanvasElement] = useState(null); // 实为承载 canvas 的容器 div
   const [ready, setReady] = useState(false);
@@ -179,7 +183,7 @@ export default function SpineEditorDialog({
         console.debug('[SpineEditor] editor ready');
         setReady(true);
         setStatus('编辑器已就绪');
-        const initialAssets = pendingAssetsRef.current || assets || initialReskinDataRef.current?.assets;
+        const initialAssets = pendingAssetsRef.current || assetsRef.current || initialReskinDataRef.current?.assets;
         if (initialAssets) console.debug('[SpineEditor] loading initial assets:', initialAssets.name || 'Spine');
         if (initialAssets) await loadAssets(initialAssets);
       } catch (err) {
@@ -198,7 +202,7 @@ export default function SpineEditorDialog({
       editorRef.current = null;
       editor?.destroy();
     };
-  }, [open, assets, canvasElement, loadAssets, touchRevision]);
+  }, [open, assetsSignature, canvasElement, loadAssets, touchRevision]);
 
   useEffect(() => {
     if (!open) return undefined;

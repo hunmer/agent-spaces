@@ -89,6 +89,7 @@ export { MediaGallery, openMediaGallery, NodeMediaPreview } from '@/components/u
 export type { MediaItem } from '@/components/ui/media-gallery';
 export * from 'lucide-react';
 export { default as Selecto } from 'selecto';
+export { ReactCompareSlider, ReactCompareSliderImage } from 'react-compare-slider';
 export { WorkflowListDialog } from '@/components/workflow/workflow-list-dialog';
 
 // 分组容器（ReactFlow 画布上的可视化分组 overlay，节点画布类 mini-app 复用）
