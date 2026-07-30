@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import type { MiniAppProject, MiniAppAgentConfig, MiniAppChatMessage } from '@agent-spaces/sdk';
 import type { FileNode, WorkflowAgentTimelineItem, PluginConfigField } from '@agent-spaces/shared';
 import { sdk } from '@/lib/sdk';
-import { pluginApi, type WorkflowPlugin } from '@/lib/workflow-plugin-api';
+import { pluginApi, pluginConfigSchemeApi, type WorkflowPlugin } from '@/lib/workflow-plugin-api';
 import { resolveServerAssetUrl } from '@/lib/server';
 import { getWS } from '@/lib/ws';
 import { cn } from '@/lib/utils';
@@ -21,7 +21,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DropdownMenuItem, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { ChatPanel, type ChatMessage, type ChatPanelMentionFile } from '@/components/ui/chat-panel';
-import { PanelRightOpen, FilesIcon, Loader2, Search, Sparkles, Settings2, Settings, Eraser, Smartphone, Monitor, Tablet, Info, AlertTriangle, MessageSquareText, UploadIcon, Trash2, RotateCcw } from 'lucide-react';
+import { PanelRightOpen, FilesIcon, Loader2, Search, Sparkles, Settings2, Eraser, Smartphone, Monitor, Tablet, Info, AlertTriangle, MessageSquareText, UploadIcon, Trash2, RotateCcw } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { AgentEditor } from '@/components/sidebar/agent-editor';
@@ -33,7 +33,8 @@ import { CommonCodeEditor } from '@/components/editor/common-code-editor';
 import { type OpenFile } from '@/stores/editor';
 import { getModel, getModelUri, getOrCreateModel } from '@/lib/monaco-models';
 import { PluginIcon } from '@/components/workflow/workflow-plugin-icon';
-import { WorkflowPluginConfigDialog } from '@/components/workflow/workflow-plugin-config-dialog';
+import { PluginConfigDialog } from '@/components/plugins/plugin-config-dialog';
+import { PluginConfigSchemeControl } from '@/components/plugins/plugin-config-scheme-control';
 import { WorkflowPluginsDialog } from '@/components/workflow/workflow-plugins-dialog';
 import type { Workflow, AgentUsageRecord, AgentUsageSessionDetail, AgentUsageSessionMessage } from '@agent-spaces/shared';
 
@@ -1237,6 +1238,7 @@ function MiniAppInfoDialog({ open, onOpenChange, projectId }: { open: boolean; o
 
 export function MiniAppPreview({ type, sourceCode, error, onError, projectId, projectName, hideHeader, enabledPlugins, files, mainFile, enableAgents, devices, allowScroll = false }: MiniAppPreviewProps) {
   const t = useTranslations('mini-apps');
+  const workflowT = useTranslations('workflows');
   const router = useRouter();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [infoOpen, setInfoOpen] = useState(false);
@@ -1268,6 +1270,9 @@ export function MiniAppPreview({ type, sourceCode, error, onError, projectId, pr
   const [projectsLoading, setProjectsLoading] = useState(false);
   const [search, setSearch] = useState('');
   const [allPlugins, setAllPlugins] = useState<WorkflowPlugin[]>([]);
+  const [pluginConfigSchemes, setPluginConfigSchemes] = useState<Record<string, string>>({});
+  const [newSchemePluginId, setNewSchemePluginId] = useState<string | null>(null);
+  const [newSchemeName, setNewSchemeName] = useState('');
   const [taskEvents, setTaskEvents] = useState<MiniAppTaskEvent[]>([]);
 
   // 设备外框：可选设备清单 + 当前选中（'none' 表示不套外框）
@@ -1303,6 +1308,9 @@ export function MiniAppPreview({ type, sourceCode, error, onError, projectId, pr
     pluginApi.list().then((list) => {
       setAllPlugins(list);
     }).catch(() => {});
+    sdk.miniApp.get(projectId).then((project) => {
+      setPluginConfigSchemes(project.pluginConfigSchemes || {});
+    }).catch(() => setPluginConfigSchemes({}));
   }, [projectId]);
 
   useEffect(() => {
@@ -1341,12 +1349,27 @@ export function MiniAppPreview({ type, sourceCode, error, onError, projectId, pr
   }, [enabledPluginsList]);
 
   // 插件配置弹窗（hover 卡片齿轮触发）
-  const [configPlugin, setConfigPlugin] = useState<{ id: string; name: string; config: PluginConfigField[] } | null>(null);
-  const openPluginConfig = useCallback((pluginId: string) => {
+  const [configPlugin, setConfigPlugin] = useState<{ id: string; name: string; config: PluginConfigField[]; schemeName?: string } | null>(null);
+  const openPluginConfig = useCallback((pluginId: string, schemeName?: string) => {
     const plugin = allPlugins.find(p => p.id === pluginId);
     if (!plugin?.config?.length) return;
-    setConfigPlugin({ id: plugin.id, name: plugin.name, config: plugin.config });
+    setConfigPlugin({ id: plugin.id, name: plugin.name, config: plugin.config, schemeName });
   }, [allPlugins]);
+  const selectPluginScheme = useCallback(async (pluginId: string, schemeName: string) => {
+    if (!projectId) return;
+    const next = { ...pluginConfigSchemes };
+    if (schemeName) next[pluginId] = schemeName;
+    else delete next[pluginId];
+    setPluginConfigSchemes(next);
+    await sdk.miniApp.update(projectId, { pluginConfigSchemes: next });
+  }, [pluginConfigSchemes, projectId]);
+  const createPluginScheme = useCallback(async () => {
+    const name = newSchemeName.trim();
+    if (!newSchemePluginId || !name) return;
+    await pluginConfigSchemeApi.create(newSchemePluginId, name);
+    await selectPluginScheme(newSchemePluginId, name);
+    setNewSchemePluginId(null);
+  }, [newSchemeName, newSchemePluginId, selectPluginScheme]);
 
   // 插件商店弹窗（未安装插件警示标签触发）：安装完成后重载本地清单，警示自动消失
   const [storeOpen, setStoreOpen] = useState(false);
@@ -1426,22 +1449,24 @@ export function MiniAppPreview({ type, sourceCode, error, onError, projectId, pr
                             <div className="text-[10px] text-muted-foreground">v{plugin.version}</div>
                           )}
                         </div>
-                        {hasConfig && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-6 w-6 shrink-0"
-                            title={t('pluginTools.config')}
-                            onClick={() => openPluginConfig(plugin.id)}
-                          >
-                            <Settings className="h-3.5 w-3.5" />
-                          </Button>
-                        )}
                       </div>
                       {plugin.description && (
                         <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground line-clamp-3">
                           {plugin.description}
                         </p>
+                      )}
+                      {hasConfig && (
+                        <PluginConfigSchemeControl
+                          pluginId={plugin.id}
+                          selectedScheme={pluginConfigSchemes[plugin.id]}
+                          onSelect={(schemeName) => selectPluginScheme(plugin.id, schemeName)}
+                          onEdit={(schemeName) => openPluginConfig(plugin.id, schemeName)}
+                          onCreateRequest={() => {
+                            setNewSchemeName('');
+                            setNewSchemePluginId(plugin.id);
+                          }}
+                          className="mt-2"
+                        />
                       )}
                     </div>
                   );
@@ -1633,12 +1658,26 @@ export function MiniAppPreview({ type, sourceCode, error, onError, projectId, pr
       {projectId && (
         <MiniAppInfoDialog open={infoOpen} onOpenChange={setInfoOpen} projectId={projectId} />
       )}
-      <WorkflowPluginConfigDialog
+      <AlertDialog open={Boolean(newSchemePluginId)} onOpenChange={(open) => { if (!open) setNewSchemePluginId(null); }}>
+        <AlertDialogContent className="sm:max-w-sm">
+          <AlertDialogHeader>
+            <AlertDialogTitle>{workflowT('sidebar.newSchemeTitle')}</AlertDialogTitle>
+            <AlertDialogDescription>{workflowT('sidebar.newSchemeDesc')}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <Input value={newSchemeName} onChange={(event) => setNewSchemeName(event.target.value)} placeholder={workflowT('sidebar.schemeNamePlaceholder')} className="text-sm" />
+          <AlertDialogFooter>
+            <AlertDialogCancel>{workflowT('sidebar.cancel')}</AlertDialogCancel>
+            <AlertDialogAction disabled={!newSchemeName.trim()} onClick={() => void createPluginScheme()}>{workflowT('sidebar.create')}</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <PluginConfigDialog
         open={Boolean(configPlugin)}
         onOpenChange={(o) => { if (!o) setConfigPlugin(null); }}
         pluginId={configPlugin?.id || null}
         pluginName={configPlugin?.name || ''}
         config={configPlugin?.config || []}
+        schemeName={configPlugin?.schemeName}
       />
       <WorkflowPluginsDialog
         open={storeOpen}

@@ -1807,9 +1807,17 @@ export class ExecutionManager {
     for (const pluginId of pluginIds) {
       try {
         const schemeName = schemes[pluginId];
-        config[pluginId] = schemeName
-          ? workflowStore.readPluginScheme(workflow.id, pluginId, schemeName)
-          : pluginService.getPluginConfig(pluginId);
+        if (!schemeName) {
+          config[pluginId] = pluginService.getPluginConfig(pluginId);
+          continue;
+        }
+        try {
+          config[pluginId] = pluginService.readPluginConfigScheme(pluginId, schemeName);
+        } catch {
+          const legacyConfig = workflowStore.readPluginScheme(workflow.id, pluginId, schemeName);
+          pluginService.savePluginConfigScheme(pluginId, schemeName, legacyConfig);
+          config[pluginId] = legacyConfig;
+        }
       } catch {
         config[pluginId] = pluginService.getPluginConfig(pluginId);
       }

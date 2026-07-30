@@ -4,7 +4,7 @@ import { randomUUID } from 'node:crypto';
 import { getProjectDir } from '../storage/mini-app-store.js';
 import * as miniAppStore from '../storage/mini-app-store.js';
 import { broadcastToWorkspace } from '../ws/connection-manager.js';
-import { executePluginTool } from './plugin.js';
+import { executePluginTool, getPluginConfigForScheme } from './plugin.js';
 import { createBuiltinPluginApi, runWithPluginSource } from './plugin-runtime-api.js';
 import { createAgentRuntime } from '../adapters/agent-runtime.js';
 import type { AgentRuntimeConfig, AgentRuntimeEvent, AgentFunctionTool, AgentRuntimeKind } from '../adapters/agent-runtime-types.js';
@@ -159,8 +159,11 @@ export function makeApiCtx(projectId: string): ApiCtx {
   return {
     projectId,
     broadcast: (event, data) => broadcastToWorkspace(projectId, event, data),
-    callPluginTool: (pluginId, toolName, args) =>
-      executePluginTool(pluginId, toolName, args, createBuiltinPluginApi({ pluginId })),
+    callPluginTool: (pluginId, toolName, args) => {
+      const project = miniAppStore.getProject(projectId);
+      const config = getPluginConfigForScheme(pluginId, project?.pluginConfigSchemes?.[pluginId]);
+      return executePluginTool(pluginId, toolName, args, createBuiltinPluginApi({ pluginId }), undefined, config);
+    },
     requestClient: (type, payload, timeoutMs) => requestMiniAppClient(projectId, type, payload, timeoutMs),
     readConfig: (path) => miniAppStore.readConfig(projectId, path),
     writeConfig: (path, value) => miniAppStore.writeConfig(projectId, path, value),
@@ -441,6 +444,7 @@ export async function runMiniAppAgent(input: MiniAppAgentRunInput): Promise<Mini
   if (toolsCfg.plugin) {
     functionTools.push(...createMiniAppFunctionTools({
       enabledPlugins: project.enabledPlugins ?? [],
+      pluginConfigSchemes: project.pluginConfigSchemes,
     }));
   }
   if (hasAgentFilePermission) {

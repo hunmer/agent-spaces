@@ -171,3 +171,21 @@ export const workflowPluginSchemeApi = {
     return sdk.workflowPlugin.deleteScheme(workflowId, pluginId, schemeName);
   },
 };
+
+export const pluginConfigSchemeApi = {
+  list(pluginId: string): Promise<string[]> {
+    return sdk.workflowPlugin.listConfigSchemes(pluginId);
+  },
+  create(pluginId: string, schemeName: string): Promise<void> {
+    return sdk.workflowPlugin.createConfigScheme(pluginId, schemeName);
+  },
+  read(pluginId: string, schemeName: string): Promise<Record<string, string>> {
+    return sdk.workflowPlugin.readConfigScheme(pluginId, schemeName);
+  },
+  save(pluginId: string, schemeName: string, data: Record<string, string>): Promise<void> {
+    return sdk.workflowPlugin.saveConfigScheme(pluginId, schemeName, data);
+  },
+  delete(pluginId: string, schemeName: string): Promise<void> {
+    return sdk.workflowPlugin.deleteConfigScheme(pluginId, schemeName);
+  },
+};

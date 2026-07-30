@@ -5,7 +5,7 @@ import { createAgentRuntime } from '../../adapters/agent-runtime.js';
 import type { AgentRuntimeConfig } from '../../adapters/agent-runtime-types.js';
 import type { AgentFunctionTool } from '../../adapters/agent-runtime-types.js';
 import { getThinkingRuntimeConfig } from '../llm-model-config.js';
-import { getPluginTools, executePluginTool } from '../plugin.js';
+import { getPluginConfigForScheme, getPluginTools, executePluginTool } from '../plugin.js';
 import { createBuiltinPluginApi } from '../plugin-runtime-api.js';
 import * as kbStore from '../../storage/knowledge-base-store.js';
 import * as llmStore from '../../storage/llm-store.js';
@@ -272,6 +272,7 @@ function listAgentSpacesUiComponentsByCategory(): Array<{ category: string; desc
 
 export interface MiniAppToolContext {
   enabledPlugins: string[];
+  pluginConfigSchemes?: Record<string, string>;
 }
 
 // ---- Built-in virtual plugin ----
@@ -993,7 +994,8 @@ export function createMiniAppFunctionTools(ctx: MiniAppToolContext): AgentFuncti
           }
         }
         try {
-          const result = await executePluginTool(pluginId, toolName, args, createBuiltinPluginApi({ pluginId }));
+          const config = getPluginConfigForScheme(pluginId, ctx.pluginConfigSchemes?.[pluginId]);
+          const result = await executePluginTool(pluginId, toolName, args, createBuiltinPluginApi({ pluginId }), undefined, config);
           return { success: true, result };
         } catch (error: any) {
           return { success: false, message: error.message };

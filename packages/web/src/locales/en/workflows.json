@@ -282,6 +282,7 @@
     "defaultConfig": "Default Config",
     "addScheme": "New Scheme",
     "deleteScheme": "Delete Current Scheme",
+    "editConfig": "Edit config",
     "newSchemeTitle": "New Config Scheme",
     "newSchemeDesc": "Enter a scheme name to create from default plugin config.",
     "schemeNamePlaceholder": "Scheme name",

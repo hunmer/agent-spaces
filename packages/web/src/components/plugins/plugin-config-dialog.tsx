@@ -11,24 +11,24 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
-import { pluginApi, workflowPluginSchemeApi } from '@/lib/workflow-plugin-api';
+import { pluginApi, pluginConfigSchemeApi, workflowPluginSchemeApi } from '@/lib/workflow-plugin-api';
 
-export function WorkflowPluginConfigDialog({
+export function PluginConfigDialog({
   open,
   onOpenChange,
   pluginId,
   pluginName,
   config,
-  workflowId,
   schemeName,
+  legacyWorkflowId,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   pluginId: string | null;
   pluginName: string;
   config: PluginConfigField[];
-  workflowId?: string;
   schemeName?: string;
+  legacyWorkflowId?: string;
 }) {
   const [values, setValues] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
@@ -39,17 +39,21 @@ export function WorkflowPluginConfigDialog({
     setError('');
     const load = async () => {
       try {
-        if (workflowId && schemeName) {
-          setValues(await workflowPluginSchemeApi.read(workflowId, pluginId, schemeName));
+        setValues(schemeName
+          ? await pluginConfigSchemeApi.read(pluginId, schemeName)
+          : await pluginApi.getConfig(pluginId));
+      } catch {
+        if (schemeName && legacyWorkflowId) {
+          const legacyValues = await workflowPluginSchemeApi.read(legacyWorkflowId, pluginId, schemeName);
+          await pluginConfigSchemeApi.save(pluginId, schemeName, legacyValues);
+          setValues(legacyValues);
         } else {
           setValues(await pluginApi.getConfig(pluginId));
         }
-      } catch {
-        setValues(await pluginApi.getConfig(pluginId));
       }
     };
     void load();
-  }, [open, pluginId, workflowId, schemeName]);
+  }, [legacyWorkflowId, open, pluginId, schemeName]);
 
   function setField(key: string, value: string) {
     setValues(prev => ({ ...prev, [key]: value }));
@@ -64,9 +68,7 @@ export function WorkflowPluginConfigDialog({
           return `"${field.label}" 不是合法 JSON`;
         }
       }
-      if (field.required && !values[field.key]?.trim()) {
-        return `"${field.label}" 不能为空`;
-      }
+      if (field.required && !values[field.key]?.trim()) return `"${field.label}" 不能为空`;
     }
     return null;
   }
@@ -81,8 +83,8 @@ export function WorkflowPluginConfigDialog({
     setSaving(true);
     setError('');
     try {
-      if (workflowId && schemeName) {
-        await workflowPluginSchemeApi.save(workflowId, pluginId, schemeName, values);
+      if (schemeName) {
+        await pluginConfigSchemeApi.save(pluginId, schemeName, values);
       } else {
         const result = await pluginApi.saveConfig(pluginId, values);
         if (!result.success) {

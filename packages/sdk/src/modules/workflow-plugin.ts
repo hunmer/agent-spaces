@@ -31,6 +31,21 @@ export function createWorkflowPluginApi(http: HttpClient) {
     saveConfig: (pluginId: string, data: Record<string, string>): Promise<PluginConfigSaveResult> =>
       http.put(`/api/plugins/${encodeURIComponent(pluginId)}/config`, data),
 
+    listConfigSchemes: (pluginId: string): Promise<string[]> =>
+      http.get(`/api/plugins/${encodeURIComponent(pluginId)}/config-schemes`),
+
+    createConfigScheme: (pluginId: string, schemeName: string): Promise<void> =>
+      http.postVoid(`/api/plugins/${encodeURIComponent(pluginId)}/config-schemes/${encodeURIComponent(schemeName)}`),
+
+    readConfigScheme: (pluginId: string, schemeName: string): Promise<Record<string, string>> =>
+      http.get(`/api/plugins/${encodeURIComponent(pluginId)}/config-schemes/${encodeURIComponent(schemeName)}`),
+
+    saveConfigScheme: (pluginId: string, schemeName: string, data: Record<string, string>): Promise<void> =>
+      http.putVoid(`/api/plugins/${encodeURIComponent(pluginId)}/config-schemes/${encodeURIComponent(schemeName)}`, data),
+
+    deleteConfigScheme: (pluginId: string, schemeName: string): Promise<void> =>
+      http.delete(`/api/plugins/${encodeURIComponent(pluginId)}/config-schemes/${encodeURIComponent(schemeName)}`),
+
     // ---- Plugin Schemes ----
     listSchemes: (workflowId: string, pluginId: string): Promise<string[]> =>
       http.get(`/api/workflows/${encodeURIComponent(workflowId)}/plugin-schemes/${encodeURIComponent(pluginId)}`),

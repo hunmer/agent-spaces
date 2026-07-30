@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { LocalPluginCard, StorePluginCard } from './workflow-plugin-card';
-import { WorkflowPluginConfigDialog } from './workflow-plugin-config-dialog';
+import { PluginConfigDialog } from '@/components/plugins/plugin-config-dialog';
 import { useLocale } from '@/components/layout/locale-provider';
 
 type PluginTab = 'local' | 'store';
@@ -613,7 +613,7 @@ export function WorkflowPluginsDialog({
         </DialogContent>
       </Dialog>
 
-      <WorkflowPluginConfigDialog
+      <PluginConfigDialog
         open={Boolean(configPlugin)}
         onOpenChange={(nextOpen) => { if (!nextOpen) setConfigPlugin(null); }}
         pluginId={configPlugin?.id || null}

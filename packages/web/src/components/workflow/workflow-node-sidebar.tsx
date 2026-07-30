@@ -9,7 +9,7 @@ import { LOOP_BREAK_NODE_TYPE } from '@agent-spaces/shared';
 const SIDEBAR_HIDDEN_NODE_TYPES = new Set<string>([LOOP_BREAK_NODE_TYPE]);
 import { useLocalizedNodeDefinitionsByCategory, useLocalizedSearchNodeDefinitions } from '@/lib/workflow-nodes';
 import { toPinyinSearchKey, copyToClipboard } from '@/lib/utils';
-import { pluginApi, workflowPluginSchemeApi, type WorkflowPlugin } from '@/lib/workflow-plugin-api';
+import { pluginApi, type WorkflowPlugin } from '@/lib/workflow-plugin-api';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -19,16 +19,9 @@ import {
 import {
   HoverCard, HoverCardContent, HoverCardTrigger,
 } from '@/components/ui/hover-card';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import {
-  Command, CommandGroup, CommandItem, CommandList,
-} from '@/components/ui/command';
-import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import { WorkflowPluginConfigDialog } from './workflow-plugin-config-dialog';
-import { Search, ChevronDown, ChevronRight, Plus, Settings, Trash2, LayoutList, LayoutGrid, Copy } from 'lucide-react';
+import { PluginConfigDialog } from '@/components/plugins/plugin-config-dialog';
+import { PluginConfigSchemeControl } from '@/components/plugins/plugin-config-scheme-control';
+import { Search, ChevronDown, ChevronRight, Plus, LayoutList, LayoutGrid, Copy } from 'lucide-react';
 import { toast } from 'sonner';
 import { WorkflowNodeDefinitionIcon } from './workflow-node-icon';
 import { JsonViewer, type JsonValue } from '@/components/viewers/json-viewer';
@@ -68,16 +61,12 @@ export function WorkflowNodeSidebar({
   const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({});
   const [workflowPlugins, setWorkflowPlugins] = useState<WorkflowPlugin[]>([]);
   const [categoryPluginMap, setCategoryPluginMap] = useState<Record<string, string>>({});
-  const [schemeMap, setSchemeMap] = useState<Record<string, string[]>>({});
   const [configPlugin, setConfigPlugin] = useState<{
     id: string;
     name: string;
     config: PluginConfigField[];
     schemeName?: string;
   } | null>(null);
-  const [newSchemeDialogOpen, setNewSchemeDialogOpen] = useState(false);
-  const [newSchemeName, setNewSchemeName] = useState('');
-  const [newSchemePluginId, setNewSchemePluginId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
   const t = useTranslations('workflows');
 
@@ -92,7 +81,6 @@ export function WorkflowNodeSidebar({
       if (!enabledPlugins.length) {
         setWorkflowPlugins([]);
         setCategoryPluginMap({});
-        setSchemeMap({});
         return;
       }
       const plugins = await pluginApi.listWorkflowPlugins();
@@ -116,24 +104,6 @@ export function WorkflowNodeSidebar({
     void loadPluginNodes();
     return () => { cancelled = true; };
   }, [enabledPlugins]);
-
-  const loadSchemes = useCallback(async () => {
-    if (!workflow?.id) return;
-    const pluginIds = Array.from(new Set(Object.values(categoryPluginMap)));
-    const next: Record<string, string[]> = {};
-    for (const pluginId of pluginIds) {
-      try {
-        next[pluginId] = await workflowPluginSchemeApi.list(workflow.id, pluginId);
-      } catch {
-        next[pluginId] = [];
-      }
-    }
-    setSchemeMap(next);
-  }, [workflow?.id, categoryPluginMap]);
-
-  useEffect(() => {
-    void loadSchemes();
-  }, [loadSchemes]);
 
   const categories = useMemo(() => {
     if (searchQuery.trim()) {
@@ -191,33 +161,16 @@ export function WorkflowNodeSidebar({
     onWorkflowChange({ ...workflow, pluginConfigSchemes: schemes });
   }, [workflow, onWorkflowChange]);
 
-  const openPluginConfig = useCallback((pluginId: string) => {
+  const openPluginConfig = useCallback((pluginId: string, schemeName?: string) => {
     const plugin = pluginById.get(pluginId);
     if (!plugin?.config?.length) return;
     setConfigPlugin({
       id: plugin.id,
       name: plugin.name,
       config: plugin.config,
-      schemeName: selectedScheme(plugin.id) || undefined,
+      schemeName,
     });
-  }, [pluginById, selectedScheme]);
-
-  const createScheme = useCallback(async () => {
-    if (!workflow?.id || !newSchemePluginId || !newSchemeName.trim()) return;
-    const name = newSchemeName.trim();
-    await workflowPluginSchemeApi.create(workflow.id, newSchemePluginId, name);
-    await loadSchemes();
-    selectScheme(newSchemePluginId, name);
-    setNewSchemeDialogOpen(false);
-  }, [workflow?.id, newSchemePluginId, newSchemeName, loadSchemes, selectScheme]);
-
-  const deleteCurrentScheme = useCallback(async (pluginId: string) => {
-    const schemeName = selectedScheme(pluginId);
-    if (!workflow?.id || !schemeName) return;
-    await workflowPluginSchemeApi.delete(workflow.id, pluginId, schemeName);
-    selectScheme(pluginId, '');
-    await loadSchemes();
-  }, [workflow?.id, selectedScheme, selectScheme, loadSchemes]);
+  }, [pluginById]);
 
   return (
     <div className="border-r border-border bg-background flex flex-col h-full w-full shrink-0">
@@ -267,55 +220,14 @@ export function WorkflowNodeSidebar({
                   <span className="truncate ml-1">{category}</span>
                   <span className="ml-auto flex items-center gap-1">
                     {categoryPluginMap[category] && pluginById.get(categoryPluginMap[category])?.config?.length ? (
-                      <>
-                        <Popover>
-                          <PopoverTrigger
-                            nativeButton={false}
-                            render={<span />}
-                            className="inline-flex h-5 max-w-[92px] items-center gap-0.5 rounded px-1.5 text-[10px] hover:bg-muted cursor-pointer"
-                            onClick={(event) => event.stopPropagation()}
-                          >
-                            <span className="truncate">{selectedScheme(categoryPluginMap[category]) || t('sidebar.defaultConfig')}</span>
-                            <ChevronDown className="h-2.5 w-2.5 shrink-0 opacity-50" />
-                          </PopoverTrigger>
-                          <PopoverContent className="w-44 p-0" align="end">
-                            <Command>
-                              <CommandList>
-                                <CommandGroup>
-                                  <CommandItem value="__default__" className="text-xs" onSelect={() => selectScheme(categoryPluginMap[category], '')}>
-                                    {t('sidebar.defaultConfig')}
-                                  </CommandItem>
-                                  {(schemeMap[categoryPluginMap[category]] || []).map(name => (
-                                    <CommandItem key={name} value={name} className="text-xs" onSelect={() => selectScheme(categoryPluginMap[category], name)}>
-                                      {name}
-                                    </CommandItem>
-                                  ))}
-                                </CommandGroup>
-                                <CommandGroup>
-                                  <CommandItem
-                                    className="text-xs text-primary"
-                                    onSelect={() => {
-                                      setNewSchemePluginId(categoryPluginMap[category]);
-                                      setNewSchemeName('');
-                                      setNewSchemeDialogOpen(true);
-                                    }}
-                                  >
-                                    <Plus className="mr-1 h-3 w-3" /> 新增方案
-                                  </CommandItem>
-                                  {selectedScheme(categoryPluginMap[category]) ? (
-                                    <CommandItem className="text-xs text-destructive" onSelect={() => deleteCurrentScheme(categoryPluginMap[category])}>
-                                      <Trash2 className="mr-1 h-3 w-3" /> 删除当前方案
-                                    </CommandItem>
-                                  ) : null}
-                                </CommandGroup>
-                              </CommandList>
-                            </Command>
-                          </PopoverContent>
-                        </Popover>
-                        <Button variant="ghost" size="icon" className="h-4 w-4" onClick={(event) => { event.stopPropagation(); openPluginConfig(categoryPluginMap[category]); }}>
-                          <Settings className="h-3 w-3" />
-                        </Button>
-                      </>
+                      <PluginConfigSchemeControl
+                        pluginId={categoryPluginMap[category]}
+                        selectedScheme={selectedScheme(categoryPluginMap[category])}
+                        onSelect={(schemeName) => selectScheme(categoryPluginMap[category], schemeName)}
+                        onEdit={(schemeName) => openPluginConfig(categoryPluginMap[category], schemeName)}
+                        className="max-w-[124px]"
+                        legacyWorkflowId={workflow?.id}
+                      />
                     ) : null}
                     <span className="text-[10px]">{nodes.length}</span>
                   </span>
@@ -409,27 +321,14 @@ export function WorkflowNodeSidebar({
           </div>
         </ScrollArea>
       </div>
-      <AlertDialog open={newSchemeDialogOpen} onOpenChange={setNewSchemeDialogOpen}>
-        <AlertDialogContent className="sm:max-w-sm">
-          <AlertDialogHeader>
-            <AlertDialogTitle>{t('sidebar.newSchemeTitle')}</AlertDialogTitle>
-            <AlertDialogDescription>{t('sidebar.newSchemeDesc')}</AlertDialogDescription>
-          </AlertDialogHeader>
-          <Input value={newSchemeName} onChange={(event) => setNewSchemeName(event.target.value)} placeholder={t('sidebar.schemeNamePlaceholder')} className="text-sm" />
-          <AlertDialogFooter>
-            <AlertDialogCancel>{t('sidebar.cancel')}</AlertDialogCancel>
-            <AlertDialogAction disabled={!newSchemeName.trim()} onClick={createScheme}>{t('sidebar.create')}</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-      <WorkflowPluginConfigDialog
+      <PluginConfigDialog
         open={Boolean(configPlugin)}
         onOpenChange={(open) => { if (!open) setConfigPlugin(null); }}
         pluginId={configPlugin?.id || null}
         pluginName={configPlugin?.name || ''}
         config={configPlugin?.config || []}
-        workflowId={workflow?.id}
         schemeName={configPlugin?.schemeName}
+        legacyWorkflowId={workflow?.id}
       />
     </div>
   );

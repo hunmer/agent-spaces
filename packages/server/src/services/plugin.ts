@@ -46,6 +46,7 @@ type PluginTranslator = (key: string, fallback?: string) => string;
 type PluginState = {
   enabled: Record<string, boolean>;
   config: Record<string, Record<string, string>>;
+  configSchemes?: Record<string, Record<string, Record<string, string>>>;
   installedMd5?: Record<string, string>;
   installedAt?: Record<string, number>;
 };
@@ -1132,6 +1133,52 @@ export function savePluginConfig(pluginId: string, data: Record<string, string>)
   return { success: true };
 }
 
+export function listPluginConfigSchemes(pluginId: string): string[] {
+  return Object.keys(readState().configSchemes?.[pluginId] || {}).sort();
+}
+
+export function readPluginConfigScheme(pluginId: string, schemeName: string): Record<string, string> {
+  const scheme = readState().configSchemes?.[pluginId]?.[schemeName];
+  if (!scheme) throw new Error(`Plugin config scheme ${schemeName} not found`);
+  return scheme;
+}
+
+export function getPluginConfigForScheme(pluginId: string, schemeName?: string): Record<string, string> {
+  if (!schemeName) return getPluginConfig(pluginId);
+  try {
+    return readPluginConfigScheme(pluginId, schemeName);
+  } catch {
+    return getPluginConfig(pluginId);
+  }
+}
+
+export function createPluginConfigScheme(pluginId: string, schemeName: string): void {
+  const state = readState();
+  state.configSchemes ||= {};
+  state.configSchemes[pluginId] ||= {};
+  if (state.configSchemes[pluginId][schemeName]) {
+    throw new Error(`Plugin config scheme ${schemeName} already exists`);
+  }
+  state.configSchemes[pluginId][schemeName] = getPluginConfig(pluginId);
+  writeState(state);
+}
+
+export function savePluginConfigScheme(pluginId: string, schemeName: string, data: Record<string, string>): void {
+  const state = readState();
+  state.configSchemes ||= {};
+  state.configSchemes[pluginId] ||= {};
+  state.configSchemes[pluginId][schemeName] = data;
+  writeState(state);
+}
+
+export function deletePluginConfigScheme(pluginId: string, schemeName: string): void {
+  const state = readState();
+  const schemes = state.configSchemes?.[pluginId];
+  if (!schemes) return;
+  delete schemes[schemeName];
+  writeState(state);
+}
+
 function getWorkflowEntryPath(pluginId: string): string | null {
   const manifest = getManifest(pluginId);
   if (!manifest) return null;
@@ -1178,13 +1225,14 @@ export async function executePluginTool(
   args: Record<string, any>,
   api: Record<string, any> = {},
   locale?: string,
+  configOverride?: Record<string, string>,
 ): Promise<any> {
   const plugin = listPlugins().find(item => item.id === pluginId);
   if (!plugin) throw new Error('Plugin not found');
 
   await ensurePluginStartupForTrigger(pluginId, 'first-request');
 
-  const pluginConfig = getPluginConfig(pluginId);
+  const pluginConfig = configOverride ?? getPluginConfig(pluginId);
   refreshPluginRuntimeConfig(plugin, pluginConfig);
 
   const actions = getRegisteredPluginActions(plugin, locale);

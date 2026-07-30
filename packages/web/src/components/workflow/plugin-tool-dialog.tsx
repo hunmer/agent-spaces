@@ -17,7 +17,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { resolveServerAssetUrl } from '@/lib/server';
 import { WorkflowPluginsDialog } from '@/components/workflow/workflow-plugins-dialog';
 import { MiniAppToolExecuteDialog } from '@/components/mini-apps/mini-app-tool-execute-dialog';
-import { WorkflowPluginConfigDialog } from '@/components/workflow/workflow-plugin-config-dialog';
+import { PluginConfigDialog } from '@/components/plugins/plugin-config-dialog';
 import { PluginIcon } from '@/components/workflow/workflow-plugin-icon';
 import { usePluginList } from '@/hooks/use-plugin-list';
 import { PluginToolsPanel, type PluginTool } from './plugin-tools-panel';
@@ -261,7 +261,7 @@ export function PluginToolDialog({
         tool={executeDialog?.tool ?? null}
       />
 
-      <WorkflowPluginConfigDialog
+      <PluginConfigDialog
         open={Boolean(configPlugin)}
         onOpenChange={(nextOpen) => { if (!nextOpen) setConfigPlugin(null); }}
         pluginId={configPlugin?.id || null}

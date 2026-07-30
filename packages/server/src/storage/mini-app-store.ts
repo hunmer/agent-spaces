@@ -12,6 +12,7 @@ export interface MiniAppProject {
   tags?: string[];
   extensions?: 'workspace'[];
   enabledPlugins?: string[];
+  pluginConfigSchemes?: Record<string, string>;
   agentPermissions?: string[];
   agentConfigId?: string;
   enableAgents?: boolean;
@@ -211,7 +212,7 @@ export function createProject(input: {
   return project;
 }
 
-export function updateProject(projectId: string, updates: Partial<Pick<MiniAppProject, 'name' | 'description' | 'tags' | 'enabledPlugins' | 'agentPermissions' | 'agentConfigId' | 'enableAgents' | 'mainFile' | 'icon' | 'avatarUrl' | 'backgroundUrl' | 'devices'>>): MiniAppProject {
+export function updateProject(projectId: string, updates: Partial<Pick<MiniAppProject, 'name' | 'description' | 'tags' | 'enabledPlugins' | 'pluginConfigSchemes' | 'agentPermissions' | 'agentConfigId' | 'enableAgents' | 'mainFile' | 'icon' | 'avatarUrl' | 'backgroundUrl' | 'devices'>>): MiniAppProject {
   if (updates.name !== undefined) assertNameUnique(updates.name, projectId);
   const projects = listProjects();
   const index = projects.findIndex(p => p.id === projectId);

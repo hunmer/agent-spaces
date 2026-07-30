@@ -282,6 +282,7 @@
     "defaultConfig": "默认配置",
     "addScheme": "新增方案",
     "deleteScheme": "删除当前方案",
+    "editConfig": "编辑配置",
     "newSchemeTitle": "新增配置方案",
     "newSchemeDesc": "输入方案名称，将基于插件默认配置创建新方案。",
     "schemeNamePlaceholder": "方案名称",

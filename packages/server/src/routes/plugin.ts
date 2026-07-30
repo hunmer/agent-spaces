@@ -114,6 +114,49 @@ router.put('/:pluginId/config', (req: Request<{ pluginId: string }>, res: Respon
   }
 });
 
+router.get('/:pluginId/config-schemes', (req: Request<{ pluginId: string }>, res: Response) => {
+  try {
+    res.json(pluginService.listPluginConfigSchemes(req.params.pluginId));
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+router.post('/:pluginId/config-schemes/:schemeName', (req: Request<{ pluginId: string; schemeName: string }>, res: Response) => {
+  try {
+    pluginService.createPluginConfigScheme(req.params.pluginId, req.params.schemeName);
+    res.status(201).json({ ok: true });
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+router.get('/:pluginId/config-schemes/:schemeName', (req: Request<{ pluginId: string; schemeName: string }>, res: Response) => {
+  try {
+    res.json(pluginService.readPluginConfigScheme(req.params.pluginId, req.params.schemeName));
+  } catch (error: any) {
+    res.status(404).json({ error: error.message });
+  }
+});
+
+router.put('/:pluginId/config-schemes/:schemeName', (req: Request<{ pluginId: string; schemeName: string }>, res: Response) => {
+  try {
+    pluginService.savePluginConfigScheme(req.params.pluginId, req.params.schemeName, req.body || {});
+    res.json({ ok: true });
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+router.delete('/:pluginId/config-schemes/:schemeName', (req: Request<{ pluginId: string; schemeName: string }>, res: Response) => {
+  try {
+    pluginService.deletePluginConfigScheme(req.params.pluginId, req.params.schemeName);
+    res.status(204).send();
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
 router.get('/:pluginId/workflow-nodes', (req: Request<{ pluginId: string }>, res: Response) => {
   try {
     res.json({ pluginId: req.params.pluginId, nodes: pluginService.getWorkflowNodes(req.params.pluginId, resolveLocale(req)) });
@@ -182,9 +225,18 @@ router.post('/:pluginId/tools/execute', async (req: Request<{ pluginId: string }
       if (track && effectiveTaskId) {
         req.on('close', () => { stopTask(effectiveTaskId!); });
       }
+      let configOverride: Record<string, string> | undefined;
+      if (typeof workspaceId === 'string' && workspaceId.length > 0 && pluginId !== BUILTIN_PLUGIN_ID) {
+        try {
+          const schemeName = getMiniAppProject(workspaceId).pluginConfigSchemes?.[pluginId];
+          if (schemeName) configOverride = pluginService.readPluginConfigScheme(pluginId, schemeName);
+        } catch {
+          // 非 mini-app workspace 或已删除的方案继续使用插件默认配置。
+        }
+      }
       const result = pluginId === BUILTIN_PLUGIN_ID
         ? await executeMiniAppBuiltinTool(name, args ?? {}, typeof workspaceId === 'string' ? workspaceId : undefined, effectiveTaskId ?? undefined)
-        : await pluginService.executePluginTool(pluginId, name, args ?? {}, createBuiltinPluginApi({ workspaceId: typeof workspaceId === 'string' ? workspaceId : undefined }), resolveLocale(req));
+        : await pluginService.executePluginTool(pluginId, name, args ?? {}, createBuiltinPluginApi({ workspaceId: typeof workspaceId === 'string' ? workspaceId : undefined }), resolveLocale(req), configOverride);
       if (track) {
         finishTask(workspaceId, effectiveTaskId!, result);
         broadcastToWorkspace(workspaceId, 'miniApp.taskFinished', {

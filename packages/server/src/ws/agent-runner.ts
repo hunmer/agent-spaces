@@ -266,6 +266,7 @@ export async function runMentionedAgent(
     ...createWorkspaceMiniAppFunctionTools(workspaceId),
     ...(miniAppRuntimeContext ? createMiniAppFunctionTools({
       enabledPlugins: miniAppRuntimeContext.enabledPlugins,
+      pluginConfigSchemes: miniAppRuntimeContext.pluginConfigSchemes,
     }) : []),
     ...(miniAppRuntimeContext?.agentFilesWorkspace ? createWorkspaceFileFunctionTools(
       miniAppRuntimeContext.agentFilesWorkspace.id,
@@ -755,6 +756,7 @@ function resolveMiniAppRuntimeContext(context: MiniAppMessageContext | undefined
   projectDir: string;
   projectType?: 'react' | 'html';
   enabledPlugins: string[];
+  pluginConfigSchemes?: Record<string, string>;
   agentFilesWorkspace?: ReturnType<typeof miniAppService.getAgentFilesWorkspace>;
 } | null {
   const projectId = context?.projectId?.trim();
@@ -769,6 +771,7 @@ function resolveMiniAppRuntimeContext(context: MiniAppMessageContext | undefined
       projectDir,
       projectType: project.type,
       enabledPlugins: project.enabledPlugins ?? [],
+      pluginConfigSchemes: project.pluginConfigSchemes,
       ...(miniAppService.hasMiniAppAgentFilesPermission(project) ? { agentFilesWorkspace: miniAppService.getAgentFilesWorkspace(project.id, 'editor') } : {}),
     };
   } catch {
