@@ -665,12 +665,6 @@ export default function ReskinPanel({
       <div className="flex h-full min-h-0 flex-col overflow-hidden">
       <ScrollArea className={panelTab === 'history' ? 'shrink-0 border-b border-border' : 'min-h-0 flex-1 border-b border-border'}>
         <div className="space-y-3 p-3">
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-xs font-medium">AI 换肤</span>
-            <div className="flex min-w-0 items-center gap-1.5">
-              <Badge variant="secondary" className="max-w-28 truncate">{assets ? spineName : '未加载'}</Badge>
-            </div>
-          </div>
         <Tabs
           value={panelTab}
           onValueChange={(value) => {

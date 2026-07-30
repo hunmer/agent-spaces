@@ -470,7 +470,6 @@ export default function SpineEditorDialog({
             <div className="flex min-w-0 items-center gap-2">
               <Bone className="h-5 w-5 shrink-0" />
               <DialogTitle className="truncate">骨骼编辑器</DialogTitle>
-              <Badge variant={modified ? 'outline' : 'secondary'}>{modified ? '已修改' : ready ? '就绪' : '加载中'}</Badge>
             </div>
             <div className="flex min-w-0 items-center gap-1.5">
               <Tabs value={mode} onValueChange={handleMode}>
