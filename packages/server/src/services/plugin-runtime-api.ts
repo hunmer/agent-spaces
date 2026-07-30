@@ -519,10 +519,32 @@ export function createBuiltinPluginApi(source: PluginSource = {}): Record<string
 
     // 取当前 mini-app 的 data 目录绝对路径（workspaceId 缺失时返回 null）。
     // 插件据此把产物写到该 mini-app 的隔离沙箱，而非全局 public/uploads。
+    // 注意：resolveDataPath 要求非空 filePath，这里传 '.' 表示 data 目录自身。
     getMiniAppDataDir(): string | null {
       const wsId = source.workspaceId;
       if (!wsId) return null;
-      return resolveDataPath(wsId, '');
+      return resolveDataPath(wsId, '.');
+    },
+
+    // 把输入路径规整为 ffmpeg 可处理的形态：
+    // - 完整 http(s) URL → 原样返回（ffmpeg 直接下载）
+    // - /static/xxx 或 /api/... 这类同站相对 URL → 映射到本地 public 目录绝对路径
+    // - 已是绝对路径 → 原样返回
+    // 这样插件无需关心宿主的静态资源目录布局。
+    resolveInputPath(inputPath: string): string {
+      if (!inputPath) return inputPath;
+      if (/^(https?):\/\//i.test(inputPath)) return inputPath;
+      if (/^[a-zA-Z]:[\\/]/.test(inputPath) || inputPath.startsWith('/')) {
+        // 绝对路径（Windows 盘符或 POSIX /）原样；但 /static /api 是同站路由，需映射
+        if (inputPath.startsWith('/static/') || inputPath.startsWith('/api/')) {
+          // /static/uploads/xxx → <dataDir>/public/uploads/xxx
+          const publicDir = path.join(getDataDir(), 'public');
+          const rel = inputPath.replace(/^\/static\//, '').replace(/^\/api\/[^/]+\//, '');
+          return path.join(publicDir, rel);
+        }
+        return inputPath;
+      }
+      return inputPath;
     },
 
     // 把 buffer 写入当前 mini-app 的 data 目录（relPath 相对 data/，如 'video-frames/x/f.jpg'），

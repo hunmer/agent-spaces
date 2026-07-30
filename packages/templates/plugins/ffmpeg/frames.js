@@ -1,6 +1,10 @@
 // 视频帧处理 action：按帧截取 + 自定义命令。
 // 产物写入当前 mini-app 的 data 目录（需 ctx.api.getMiniAppDataDir / saveMiniAppDataFile），
 // 返回可直接用于 <img>/<video> 的 httpPath。
+//
+// 截帧直接 spawn ffmpeg 进程（绕过 fluent-ffmpeg screenshots API 的怪异行为），
+// 能完整捕获 stderr 用于排错。
+const { execFile } = require('child_process')
 const ffmpeg = require('@ts-ffmpeg/fluent-ffmpeg')
 const path = require('path')
 const fs = require('fs')
@@ -9,17 +13,55 @@ function setFfmpegPath(ffmpegPath) {
   if (ffmpegPath) ffmpeg.setFfmpegPath(ffmpegPath)
 }
 
-// fluent-ffmpeg 的 size() 要求 "WxH"，"?x320" 表示宽度自适应、高度 320。
-function buildSizeOption(maxWidth, maxHeight) {
-  if (maxWidth && maxHeight) return `${maxWidth}x${maxHeight}`
-  if (maxWidth) return `${maxWidth}x?`
-  if (maxHeight) return `?x${maxHeight}`
-  return null
+function setFfprobePath(ffprobePath) {
+  if (ffprobePath) ffmpeg.setFfprobePath(ffprobePath)
 }
 
 function toNumber(value) {
   const n = Number(value)
   return Number.isFinite(n) ? n : null
+}
+
+// 取 fluent-ffmpeg 内部记录的 ffmpeg 可执行路径（被 setFfmpegPath 设过），
+// 兜底系统 PATH（直接用 'ffmpeg'）。
+function resolveFfmpegBin(args) {
+  const cfg = args.ffmpegPath || (ffmpeg._ffmpegPath)
+  return cfg || 'ffmpeg'
+}
+
+function resolveFfprobeBin(args) {
+  const cfg = args.ffprobePath || (ffmpeg._ffprobePath)
+  return cfg || 'ffprobe'
+}
+
+// spawn 一个命令并收集 stdout/stderr；非 0 退出抛错（带 stderr 尾部）
+function runBin(bin, runArgs, ctx) {
+  return new Promise((resolve, reject) => {
+    const proc = execFile(bin, runArgs, { maxBuffer: 10 * 1024 * 1024 }, (err, stdout, stderr) => {
+      if (err) {
+        const tail = (stderr || '').split('\n').slice(-8).join('\n')
+        ctx.logger.error(`${bin} 失败: ${tail || err.message}`)
+        reject(new Error(tail || err.message))
+        return
+      }
+      resolve({ stdout, stderr })
+    })
+    ctx.logger.info(`命令: ${bin} ${runArgs.join(' ')}`)
+  })
+}
+
+// 用 ffprobe 取时长（秒）
+async function probeDuration(inputPath, args, ctx) {
+  try {
+    const { stdout } = await runBin(resolveFfprobeBin(args), [
+      '-v', 'error', '-show_entries', 'format=duration', '-of',
+      'default=noprint_wrappers=1:nokey=1', inputPath,
+    ], ctx)
+    const d = toNumber(stdout.trim())
+    return (d && d > 0) ? d : null
+  } catch {
+    return null
+  }
 }
 
 module.exports = (t) => [
@@ -52,15 +94,15 @@ module.exports = (t) => [
       ] },
     ],
     run: async (ctx, args) => {
-      const inputPath = args.inputPath
+      let inputPath = args.inputPath
       if (!inputPath) return { success: false, message: t('message.inputRequired', 'inputPath is required') }
+      // 规整：/static/uploads/xxx → 本地绝对路径；http(s):// 原样
+      if (ctx.api.resolveInputPath) inputPath = ctx.api.resolveInputPath(inputPath)
 
       const dataDir = ctx.api.getMiniAppDataDir && ctx.api.getMiniAppDataDir()
       if (!dataDir) {
         return { success: false, message: t('message.noDataDir', 'Mini-app data directory unavailable (not called from a mini-app context).') }
       }
-
-      setFfmpegPath(args.ffmpegPath)
 
       const id = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
       const dir = path.join(dataDir, 'video-frames', id)
@@ -69,28 +111,57 @@ module.exports = (t) => [
       const mode = args.mode === 'fps' ? 'fps' : 'count'
       const count = Math.max(1, toNumber(args.count) || 8)
       const fps = Math.max(0.1, toNumber(args.fps) || 1)
-      const sizeOpt = buildSizeOption(toNumber(args.maxWidth), toNumber(args.maxHeight))
+      const maxW = toNumber(args.maxWidth)
+      const maxH = toNumber(args.maxHeight)
+
+      // scale 滤镜：W:H，-1 = 按比例自适应
+      const scalePart = (maxW || maxH) ? `,scale=${maxW || -1}:${maxH || -1}` : ''
+      // 逐帧 seek 时单独的 vf（scale 滤镜，无则不传 -vf）
+      const seekVf = (maxW || maxH) ? [`-vf`, `scale=${maxW || -1}:${maxH || -1}`] : []
+      const bin = resolveFfmpegBin(args)
+      const outPattern = path.join(dir, 'frame-%04d.jpg')
 
       ctx.logger.info(`按帧截取: ${inputPath} (mode=${mode}, count=${count}, fps=${fps}) -> ${dir}`)
 
       try {
-        const cmd = ffmpeg(inputPath)
-        if (sizeOpt) cmd.size(sizeOpt)
-
-        await new Promise((resolve, reject) => {
-          cmd
-            .on('start', (line) => ctx.logger.info(`命令: ${line}`))
-            .on('error', (err) => { ctx.logger.error(err.message); reject(err) })
-            .on('end', () => resolve())
-          if (mode === 'fps') {
-            cmd.outputOptions(`-vf fps=${fps}`)
-              .screenshots({ folder: dir, filename: 'frame-%04d.jpg', timestamps: [] })
-            // timestamps 为空 + -vf fps 会逐帧触发；fluent 在无 count/timemarks 时需显式触发
-            // 改用 on('end') 后 saveFrame 方式更稳，这里用 screenshots 的 count 兜底
+        let ffArgs
+        if (mode === 'fps') {
+          // 按帧率：-vf fps=N，ffmpeg 自动按该帧率抽帧
+          ffArgs = ['-y', '-i', inputPath, '-vf', `fps=${fps}${scalePart}`, '-q:v', '2', outPattern]
+        } else {
+          // 按数量：先探测时长，再用 timemarks 等间距取帧（逐个 -ss seek 最可靠，帧数精确）
+          const duration = await probeDuration(inputPath, args, ctx)
+          if (!duration) {
+            // 探测失败 → 回退 fps=1 估算法
+            ffArgs = ['-y', '-i', inputPath, '-vf', `fps=1${scalePart}`, '-q:v', '2', outPattern]
           } else {
-            cmd.screenshots({ count, folder: dir, filename: 'frame-%04d.jpg' })
+            // 逐帧 seek：count=1 取中点；count>1 等间距。
+            // 范围限制在 [1%, 99%] × duration，避免 seek 到 0（首帧未就绪）或精确末尾（EOF 无帧）
+            const marks = []
+            if (count === 1) {
+              marks.push(duration / 2)
+            } else {
+              for (let i = 0; i < count; i++) {
+                const pct = 0.01 + (i / (count - 1)) * 0.98
+                marks.push(Math.max(0, Math.min(duration, duration * pct)))
+              }
+            }
+            // 每个 mark 一个输出文件：-ss <t> -i input -frames:v 1 out
+            const idxFmt = (n) => String(n + 1).padStart(4, '0')
+            for (let i = 0; i < marks.length; i++) {
+              const outFile = path.join(dir, `frame-${idxFmt(i)}.jpg`)
+              await runBin(bin, [
+                '-y', '-ss', marks[i].toFixed(3), '-i', inputPath,
+                '-frames:v', '1', ...seekVf, '-q:v', '2', outFile,
+              ], ctx)
+            }
+            ffArgs = null // 已逐帧处理
           }
-        })
+        }
+
+        if (ffArgs) {
+          await runBin(bin, ffArgs, ctx)
+        }
 
         // 收集产物并转成 httpPath
         const entries = await fs.promises.readdir(dir)
@@ -107,7 +178,7 @@ module.exports = (t) => [
         }
 
         if (!frames.length) {
-          return { success: false, message: t('message.noFrames', 'No frames extracted. Check the video or ffmpeg path.') }
+          return { success: false, message: t('message.noFrames', 'No frames extracted. Check ffmpeg is installed (in PATH) and the video URL/path is valid. See server logs for ffmpeg stderr.') }
         }
 
         return {
@@ -120,6 +191,7 @@ module.exports = (t) => [
           },
         }
       } catch (err) {
+        ctx.logger.error(`截帧失败: ${err?.stack || err}`)
         return { success: false, message: t('message.extractFramesFailed', 'Frame extraction failed: {error}').replace('{error}', err.message) }
       }
     },
@@ -146,43 +218,31 @@ module.exports = (t) => [
       ] },
     ],
     run: async (ctx, args) => {
-      const inputPath = args.inputPath
+      let inputPath = args.inputPath
       const argStr = (args.args || '').trim()
       if (!inputPath) return { success: false, message: t('message.inputRequired', 'inputPath is required') }
       if (!argStr) return { success: false, message: t('message.argsRequired', 'args is required') }
+      if (ctx.api.resolveInputPath) inputPath = ctx.api.resolveInputPath(inputPath)
 
       const dataDir = ctx.api.getMiniAppDataDir && ctx.api.getMiniAppDataDir()
       if (!dataDir) {
         return { success: false, message: t('message.noDataDir', 'Mini-app data directory unavailable (not called from a mini-app context).') }
       }
 
-      setFfmpegPath(args.ffmpegPath)
       const id = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
       const dir = path.join(dataDir, 'video-output')
       await fs.promises.mkdir(dir, { recursive: true })
       const ext = (args.outputExt || 'mp4').replace(/^\.+/, '')
       const outFile = path.join(dir, `${id}.${ext}`)
+      const bin = resolveFfmpegBin(args)
 
-      ctx.logger.info(`自定义命令: ffmpeg ${argStr} -> ${outFile}`)
+      ctx.logger.info(`自定义命令: ${bin} -i ${inputPath} ${argStr} -> ${outFile}`)
 
       try {
-        await new Promise((resolve, reject) => {
-          const cmd = ffmpeg(inputPath)
-          const tokens = argStr.match(/(?:[^\s"]+|"[^"]*")+/g) || []
-          const outputArgs = []
-          for (const tok of tokens) {
-            const unquoted = tok.replace(/^"(.*)"$/, '$1')
-            outputArgs.push(unquoted)
-          }
-          if (outputArgs.length) cmd.outputOptions(outputArgs)
-
-          cmd
-            .on('start', (line) => ctx.logger.info(`命令: ${line}`))
-            .on('progress', (p) => ctx.logger.info(`进度: ${Math.round(p.percent || 0)}%`))
-            .on('error', (err) => { ctx.logger.error(err.message); reject(err) })
-            .on('end', () => resolve())
-            .save(outFile)
-        })
+        // 解析参数字符串为 token（支持引号）
+        const tokens = argStr.match(/(?:[^\s"]+|"[^"]*")+/g) || []
+        const outputArgs = tokens.map((tok) => tok.replace(/^"(.*)"$/, '$1'))
+        await runBin(bin, ['-y', '-i', inputPath, ...outputArgs, outFile], ctx)
 
         const rel = path.relative(dataDir, outFile).split(path.sep).join('/')
         const buffer = await fs.promises.readFile(outFile)
@@ -195,6 +255,7 @@ module.exports = (t) => [
           data: { httpPath, dir: `video-output/${id}.${ext}` },
         }
       } catch (err) {
+        ctx.logger.error(`自定义命令失败: ${err?.stack || err}`)
         return { success: false, message: t('message.customFailed', 'Custom command failed: {error}').replace('{error}', err.message) }
       }
     },

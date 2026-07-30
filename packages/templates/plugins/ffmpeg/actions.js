@@ -3,6 +3,14 @@ const path = require('path')
 const fs = require('fs')
 const frameActions = require('./frames')
 
+// 规整输入路径：复用宿主 ctx.api.resolveInputPath（/static/uploads/x → 本地绝对路径），
+// 兼容老调用方（无 ctx.api 时回退原值）。
+function normalizeInput(ctx, p) {
+  if (!p) return p
+  if (ctx?.api?.resolveInputPath) return ctx.api.resolveInputPath(p)
+  return p
+}
+
 function setFfmpegPath(ffmpegPath) {
   if (ffmpegPath) ffmpeg.setFfmpegPath(ffmpegPath)
 }
@@ -126,7 +134,7 @@ module.exports = (t) => [
       ] },
     ],
     run: async (ctx, args) => {
-      const inputPath = args.inputPath
+      const inputPath = normalizeInput(ctx, args.inputPath)
       if (!fs.existsSync(inputPath)) {
         return { success: false, message: t('message.inputFileNotFound', 'Input file not found: {path}').replace('{path}', inputPath) }
       }
@@ -184,17 +192,19 @@ module.exports = (t) => [
       ] },
     ],
     run: async (ctx, args) => {
-      if (!fs.existsSync(args.videoPath)) {
-        return { success: false, message: t('message.videoFileNotFound', 'Video file not found: {path}').replace('{path}', args.videoPath) }
+      const videoPath = normalizeInput(ctx, args.videoPath)
+      const audioPath = normalizeInput(ctx, args.audioPath)
+      if (!fs.existsSync(videoPath)) {
+        return { success: false, message: t('message.videoFileNotFound', 'Video file not found: {path}').replace('{path}', videoPath) }
       }
-      if (!fs.existsSync(args.audioPath)) {
-        return { success: false, message: t('message.audioFileNotFound', 'Audio file not found: {path}').replace('{path}', args.audioPath) }
+      if (!fs.existsSync(audioPath)) {
+        return { success: false, message: t('message.audioFileNotFound', 'Audio file not found: {path}').replace('{path}', audioPath) }
       }
       setFfmpegPath(args.ffmpegPath)
 
       let cmd = ffmpeg()
-        .input(args.videoPath)
-        .input(args.audioPath)
+        .input(videoPath)
+        .input(audioPath)
 
       if (args.shortest !== false) {
         cmd = cmd.outputOptions('-shortest')
@@ -251,23 +261,24 @@ module.exports = (t) => [
       ] },
     ],
     run: async (ctx, args) => {
-      if (!fs.existsSync(args.inputPath)) {
-        return { success: false, message: t('message.inputFileNotFound', 'Input file not found: {path}').replace('{path}', args.inputPath) }
+      const inputPath = normalizeInput(ctx, args.inputPath)
+      if (!fs.existsSync(inputPath)) {
+        return { success: false, message: t('message.inputFileNotFound', 'Input file not found: {path}').replace('{path}', inputPath) }
       }
       setFfmpegPath(args.ffmpegPath)
 
-      const dir = path.dirname(args.inputPath)
-      const base = path.basename(args.inputPath, path.extname(args.inputPath))
+      const dir = path.dirname(inputPath)
+      const base = path.basename(inputPath, path.extname(inputPath))
       const mode = args.mode || 'extract_audio'
       const audioExt = args.audioFormat || 'mp3'
       const audioOut = args.audioOutputPath || path.join(dir, `${base}.${audioExt}`)
-      const videoOut = args.videoOutputPath || path.join(dir, `${base}_noaudio${path.extname(args.inputPath)}`)
+      const videoOut = args.videoOutputPath || path.join(dir, `${base}_noaudio${path.extname(inputPath)}`)
 
       const tasks = []
 
       if (mode === 'extract_audio' || mode === 'extract_both') {
-        ctx.logger.info(`提取音频: ${args.inputPath} -> ${audioOut}`)
-        const audioCmd = ffmpeg(args.inputPath).noVideo().format(audioExt)
+        ctx.logger.info(`提取音频: ${inputPath} -> ${audioOut}`)
+        const audioCmd = ffmpeg(inputPath).noVideo().format(audioExt)
         tasks.push(
           runCommand(audioCmd, audioOut, ctx)
             .then(() => ({ audioOut }))
@@ -275,8 +286,8 @@ module.exports = (t) => [
       }
 
       if (mode === 'extract_video' || mode === 'extract_both') {
-        ctx.logger.info(`去除音频: ${args.inputPath} -> ${videoOut}`)
-        const videoCmd = ffmpeg(args.inputPath).noAudio().outputOptions('-c:v', 'copy')
+        ctx.logger.info(`去除音频: ${inputPath} -> ${videoOut}`)
+        const videoCmd = ffmpeg(inputPath).noAudio().outputOptions('-c:v', 'copy')
         tasks.push(
           runCommand(videoCmd, videoOut, ctx)
             .then(() => ({ videoOut }))
@@ -322,7 +333,7 @@ module.exports = (t) => [
       ] },
     ],
     run: async (ctx, args) => {
-      const inputPath = args.inputPath
+      const inputPath = normalizeInput(ctx, args.inputPath)
       const isUrl = /^(https?):\/\//i.test(inputPath || '')
       if (!isUrl && !fs.existsSync(inputPath)) {
         return { success: false, message: t('message.inputFileNotFound', 'Input file not found: {path}').replace('{path}', inputPath) }

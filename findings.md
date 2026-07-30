@@ -1,5 +1,15 @@
 # 发现
 
+## game-asset-canvas 分组成员拖拽
+
+- mini-app 仅复用 `WorkflowGroupOverlay`；成员加入/移出逻辑位于 Web `workflow-canvas.tsx`，未复用。
+- mini-app 的 `ReactFlow` 未绑定 `onNodeDragStart/onNodeDrag/onNodeDragStop`，`GroupOverlays` 也未传 `isDropTarget`。
+- 最小移植边界是：拖拽开始缓存未锁定分组屏幕矩形与原分组；拖拽中按节点中心判定最小容纳分组；放手时更新 `childNodeIds`。
+- 现有 `useGroupOperations` 已拥有 groups/nodes refs 和 `setGroups`，适合承载会话与成员更新；Canvas 只负责绑定事件。
+- 共享 `WorkflowGroupOverlay` 已根据 `isDropTarget` 渲染实线主色边框和阴影，mini-app 只需传值。
+- Web 的命中规则使用节点中心点，并在多个包含矩形中选择面积最小者；本地 helper 可保持同一语义。
+- Ctrl 拖出时使用拖拽开始捕获的原分组屏幕矩形判断越界，并冻结该成员的初始位置参与 overlay 包围盒计算。
+
 - 当前目标文件包含上一轮实时网格改动，本轮在其上增量修改。
 - 固定节流位于 `scheduleGridSplit` 的 `120 - elapsed`。
 - 动态公式采用 `min(1000, 80 + cols*rows*2)ms`：小网格保持灵敏，20×20 为 880ms。

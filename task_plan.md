@@ -20,6 +20,29 @@
 
 ---
 
+# 任务计划：game-asset-canvas 分组成员拖拽
+
+## 目标
+- 单节点拖入未锁定分组后加入 `childNodeIds`。
+- 组内节点按住 Ctrl 拖出原分组边界后移出。
+- 拖入过程中高亮目标分组。
+
+## 阶段
+- [x] 对比共享 overlay 与 workflow 画布协调逻辑
+- [x] 实施拖拽会话、命中计算与成员更新
+- [x] 接入 ReactFlow 事件和目标高亮
+- [x] 执行静态与针对性验证
+
+## 约束
+- 复用现有 `WorkflowGroupOverlay`，不移植 workflow 的撤销、碰撞、Alt 克隆和自动插边。
+- 仅单节点拖拽改变分组归属；锁定分组不可加入或移出。
+- 保留工作区现有改动。
+
+## 错误记录
+- 首次读取 `CanvasContextMenu.jsx` 时漏写 `components/canvas/` 路径；已由 `rg` 定位正确文件后继续。
+
+---
+
 # 任务计划：Spine 录制导出与本地节点加载修复
 
 ## 目标

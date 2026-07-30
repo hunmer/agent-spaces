@@ -198,7 +198,9 @@ export default function Canvas() {
   });
 
   // —— 分组操作 + overlay 移动/连线 ——
-  const groupOps = useGroupOperations({ groups, nodes, edges, setGroups, setNodes, setEdges, reactFlow });
+  const groupOps = useGroupOperations({
+    groups, nodes, edges, setGroups, setNodes, setEdges, reactFlow, canvasRef: wrappingRef,
+  });
   const groupExecution = useGroupExecution({ groups, nodes, edges, setGroups, setNodes });
 
   // —— ReactFlow 变更回调（逻辑简单，留在编排层）——
@@ -658,6 +660,9 @@ export default function Canvas() {
               onConnectEnd={onConnectEnd}
               onNodeMouseEnter={onNodeMouseEnter}
               onNodeMouseLeave={onNodeMouseLeave}
+              onNodeDragStart={groupOps.handleNodeDragStart}
+              onNodeDrag={groupOps.handleNodeDrag}
+              onNodeDragStop={groupOps.handleNodeDragStop}
               connectionLineComponent={ConnectionLine}
               connectionLineStyle={connectionLineStyle}
               connectionRadius={160}
@@ -701,6 +706,7 @@ export default function Canvas() {
               <GroupOverlays
                 items={groupOps.groupOverlayItems}
                 selectedGroupId={groupOps.selectedGroupId}
+                dropTargetGroupId={groupOps.dropTargetGroupId}
                 onSelect={groupOps.setSelectedGroupId}
                 onDelete={groupOps.requestDeleteGroup}
                 onUpdate={groupOps.updateGroup}

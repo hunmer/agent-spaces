@@ -13,6 +13,7 @@ import GroupExecutionToolbar from './GroupExecutionToolbar';
  * @param {object} props
  * @param {Array} props.items  groupOverlayItems：[{group, childNodes:[{id,position,width,height}]}]
  * @param {string|null} props.selectedGroupId  当前选中的分组 id
+ * @param {string|null} props.dropTargetGroupId 当前拖入命中的分组 id
  * @param {Function} props.onSelect     (groupId) => void
  * @param {Function} props.onDelete     (groupId) => void
  * @param {Function} props.onUpdate     (groupId, updates) => void
@@ -21,7 +22,7 @@ import GroupExecutionToolbar from './GroupExecutionToolbar';
  * @param {Function} props.screenDeltaToFlowDelta (delta) => flowDelta
  */
 export default function GroupOverlays({
-  items, selectedGroupId,
+  items, selectedGroupId, dropTargetGroupId,
   onSelect, onDelete, onUpdate, onMove, onConnect, screenDeltaToFlowDelta,
   inputSlotCounts, onSetExecutionMode, onSetExecutionCount,
   runningGroupIds,
@@ -35,6 +36,7 @@ export default function GroupOverlays({
             group={group}
             childNodes={childNodes}
             isSelected={selectedGroupId === group.id}
+            isDropTarget={dropTargetGroupId === group.id}
             onSelect={onSelect}
             onDelete={onDelete}
             onUpdate={onUpdate}

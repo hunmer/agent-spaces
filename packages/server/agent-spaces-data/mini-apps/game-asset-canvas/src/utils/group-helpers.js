@@ -41,3 +41,18 @@ export function findLeafNodeIds(groups, edges, groupId) {
     edges.some((e) => e.source === nodeId && groupIds.has(e.target));
   return [...groupIds].filter((id) => !hasInternalDownstream(id));
 }
+
+/**
+ * 返回包含指定屏幕坐标的最小矩形 id，用于嵌套/重叠分组的拖入命中。
+ */
+export function findSmallestContainingRectId(point, targets) {
+  return targets
+    .filter(({ rect }) => (
+      point.x >= rect.left && point.x <= rect.right
+      && point.y >= rect.top && point.y <= rect.bottom
+    ))
+    .sort((a, b) => (
+      (a.rect.right - a.rect.left) * (a.rect.bottom - a.rect.top)
+      - (b.rect.right - b.rect.left) * (b.rect.bottom - b.rect.top)
+    ))[0]?.id ?? null;
+}

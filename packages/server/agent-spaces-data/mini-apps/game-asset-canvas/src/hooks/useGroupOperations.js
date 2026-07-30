@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { addEdge, MarkerType } from '@xyflow/react';
 import { genId } from '../utils/canvas-id';
-import { collectGroupNodeIds, findLeafNodeIds } from '../utils/group-helpers';
+import {
+  collectGroupNodeIds, findLeafNodeIds, findSmallestContainingRectId,
+} from '../utils/group-helpers';
 
 /**
  * 分组（WorkflowGroup）数据操作 + overlay 交互。
@@ -22,10 +24,17 @@ import { collectGroupNodeIds, findLeafNodeIds } from '../utils/group-helpers';
  * @param {Function} deps.setNodes
  * @param {Function} deps.setEdges
  * @param {object} deps.reactFlow  useReactFlow() 返回值（screenToFlowPosition）
+ * @param {React.RefObject<HTMLElement>} deps.canvasRef 画布根元素（读取分组和节点屏幕矩形）
  */
-export default function useGroupOperations({ groups, nodes, edges, setGroups, setNodes, setEdges, reactFlow }) {
+export default function useGroupOperations({
+  groups, nodes, edges, setGroups, setNodes, setEdges, reactFlow, canvasRef,
+}) {
   const [selectedGroupId, setSelectedGroupId] = useState(null);
   const [deleteGroupId, setDeleteGroupId] = useState(null);
+  const [dropTargetGroupId, setDropTargetGroupId] = useState(null);
+  const [frozenGroupNode, setFrozenGroupNode] = useState(null);
+  const dropTargetGroupIdRef = useRef(null);
+  const nodeDragSessionRef = useRef(null);
 
   // nodes/groups 的 ref 镜像：让「读最新值」的 callback 去掉对 nodes/groups 的依赖
   const nodesRef = useRef(nodes);
@@ -39,8 +48,16 @@ export default function useGroupOperations({ groups, nodes, edges, setGroups, se
     group,
     childNodes: nodes
       .filter((n) => group.childNodeIds.includes(n.id))
-      .map((n) => ({ id: n.id, position: n.position, width: n.width, height: n.height })),
-  })), [groups, nodes]);
+      .map((n) => {
+        const displayNode = frozenGroupNode?.id === n.id ? frozenGroupNode : n;
+        return {
+          id: n.id,
+          position: displayNode.position,
+          width: displayNode.width,
+          height: displayNode.height,
+        };
+      }),
+  })), [frozenGroupNode, groups, nodes]);
   const deleteGroupNodeCount = useMemo(
     () => (deleteGroupId ? collectGroupNodeIds(groups, deleteGroupId).length : 0),
     [deleteGroupId, groups],
@@ -151,6 +168,95 @@ export default function useGroupOperations({ groups, nodes, edges, setGroups, se
       : n));
   }, [setNodes]);
 
+  const clearNodeDragSession = useCallback(() => {
+    nodeDragSessionRef.current = null;
+    dropTargetGroupIdRef.current = null;
+    setDropTargetGroupId(null);
+    setFrozenGroupNode(null);
+  }, []);
+
+  // 节点分组关系由画布拖拽协调：overlay 只负责展示，不负责修改 childNodeIds。
+  const handleNodeDragStart = useCallback((_event, node) => {
+    clearNodeDragSession();
+    const curNodes = nodesRef.current;
+    if (curNodes.filter((item) => item.selected).length > 1) return;
+
+    const curGroups = groupsRef.current;
+    const originGroup = curGroups.find((group) => group.childNodeIds.includes(node.id)) ?? null;
+    const unlockedGroupIds = new Set(curGroups.filter((group) => !group.locked).map((group) => group.id));
+    const groupRects = Array.from(
+      canvasRef.current?.querySelectorAll?.('[data-workflow-group-id]') ?? [],
+    ).flatMap((element) => {
+      const id = element.dataset.workflowGroupId;
+      if (!id || !unlockedGroupIds.has(id)) return [];
+      const rect = element.getBoundingClientRect();
+      return [{ id, rect: { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom } }];
+    });
+
+    nodeDragSessionRef.current = {
+      nodeId: node.id,
+      originGroupId: originGroup?.id ?? null,
+      originGroupLocked: originGroup?.locked ?? false,
+      detachOnDrop: false,
+      initialNode: {
+        id: node.id,
+        position: { ...node.position },
+        width: node.width,
+        height: node.height,
+      },
+      groupRects,
+    };
+  }, [canvasRef, clearNodeDragSession]);
+
+  const handleNodeDrag = useCallback((event, node) => {
+    const session = nodeDragSessionRef.current;
+    if (!session || session.nodeId !== node.id) return;
+    const nodeElement = Array.from(
+      canvasRef.current?.querySelectorAll?.('.react-flow__node') ?? [],
+    ).find((element) => element.dataset.id === node.id);
+    if (!nodeElement) return;
+
+    const rect = nodeElement.getBoundingClientRect();
+    const center = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+    const ctrlPressed = 'ctrlKey' in event && event.ctrlKey;
+    if (session.originGroupId) {
+      const originRect = session.groupRects.find((item) => item.id === session.originGroupId);
+      session.detachOnDrop = !session.originGroupLocked
+        && ctrlPressed
+        && (!originRect || findSmallestContainingRectId(center, [originRect]) === null);
+      setFrozenGroupNode(ctrlPressed ? session.initialNode : null);
+      return;
+    }
+
+    const nextGroupId = findSmallestContainingRectId(center, session.groupRects);
+    dropTargetGroupIdRef.current = nextGroupId;
+    setDropTargetGroupId((current) => (current === nextGroupId ? current : nextGroupId));
+  }, [canvasRef]);
+
+  const handleNodeDragStop = useCallback((event, node) => {
+    const session = nodeDragSessionRef.current;
+    if (!session || session.nodeId !== node.id) {
+      clearNodeDragSession();
+      return;
+    }
+
+    const targetGroupId = dropTargetGroupIdRef.current;
+    if (!session.originGroupId && targetGroupId) {
+      setGroups((prev) => prev.map((group) => (
+        group.id === targetGroupId && !group.locked && !group.childNodeIds.includes(node.id)
+          ? { ...group, childNodeIds: [...group.childNodeIds, node.id] }
+          : group
+      )));
+    } else if (session.originGroupId && !session.originGroupLocked && event.ctrlKey && session.detachOnDrop) {
+      setGroups((prev) => prev.map((group) => (
+        group.id === session.originGroupId
+          ? { ...group, childNodeIds: group.childNodeIds.filter((id) => id !== node.id) }
+          : group
+      )));
+    }
+    clearNodeDragSession();
+  }, [clearNodeDragSession, setGroups]);
+
   // 分组输出连线：从 group 手柄拖到 targetNodeId 松手时，把组内「末端叶子节点」的输出
   // 连到 targetNodeId。多选增强：一次建多条边（去重，已有连线不重复加）。
   // 用 groupsRef 读最新值。
@@ -184,10 +290,12 @@ export default function useGroupOperations({ groups, nodes, edges, setGroups, se
 
   return {
     selectedGroupId, setSelectedGroupId,
+    dropTargetGroupId,
     deleteGroupId, deleteGroupNodeCount,
     groupOverlayItems,
     requestDeleteGroup, cancelDeleteGroup, confirmDeleteGroup,
     updateGroup, createGroupFromSelection,
     screenDeltaToFlowDelta, handleGroupMove, handleGroupConnect,
+    handleNodeDragStart, handleNodeDrag, handleNodeDragStop,
   };
 }
