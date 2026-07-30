@@ -41,6 +41,8 @@ test('restores generated image and reskin form fields for the same Spine assets'
     processingModel: 'custom-model',
     slotMode: true,
     selectedSlot: 'helmet',
+    selectedSlots: ['helmet'],
+    slotResults: [],
     generatedImageUrl: 'https://example.com/generated.png',
   }, assets, fallbacks);
 
@@ -56,6 +58,8 @@ test('restores generated image and reskin form fields for the same Spine assets'
     processingModel: 'custom-model',
     slotMode: true,
     selectedSlot: 'helmet',
+    selectedSlots: ['helmet'],
+    slotResults: [],
     generatedImageUrl: 'https://example.com/generated.png',
   });
 });
@@ -80,4 +84,22 @@ test('restores library-selected Spine assets from the node snapshot', () => {
 
   assert.deepEqual(restored.assets, { ...assets, name: '' });
   assert.equal(restored.generatedImageUrl, 'https://example.com/generated.png');
+});
+
+test('restores persisted local repaint selections and serializable results for matching assets', () => {
+  const assets = { skel: 'hero.json', atlas: 'hero.atlas', png: 'hero.png' };
+  const signature = getSpineAssetsSignature(assets);
+  const result = normalizeReskinEditorData({
+    assetSignature: signature,
+    selectedSlots: ['head', 'body'],
+    slotResults: [{
+      id: 'result-1', slot: 'head', regionName: 'head-region', width: 40, height: 30,
+      imageUrl: 'https://example.com/head.png', scope: 'all', animation: '',
+    }],
+  }, assets);
+  assert.deepEqual(result.selectedSlots, ['head', 'body']);
+  assert.deepEqual(result.slotResults, [{
+    id: 'result-1', slot: 'head', attachment: '', regionName: 'head-region', width: 40, height: 30,
+    imageUrl: 'https://example.com/head.png', scope: 'all', animation: '',
+  }]);
 });

@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { FileUpload } from '@agent-spaces/ui';
+import { FileUpload, Sparkles } from '@agent-spaces/ui';
 import NodeShell from './NodeShell';
 import UpstreamImageList, { orderUpstream } from './UpstreamImageList';
 import PhotopeaDialog from '../PhotopeaDialog';
@@ -77,7 +77,17 @@ export default function PhotopeaNode({ id, data, selected }) {
   }));
 
   return (
-    <NodeShell id={id} nodeType={NODE_TYPES.photopea} data={data} selected={selected} targetHandle sourceHandle>
+    <NodeShell
+      id={id}
+      nodeType={NODE_TYPES.photopea}
+      data={data}
+      selected={selected}
+      targetHandle
+      sourceHandle
+      toolbarActions={[
+        { label: '在线PS', icon: <Sparkles className="h-3.5 w-3.5" />, title: '打开在线 PS', onClick: () => setEditorOpen(true), disabled: uploading },
+      ]}
+    >
       <FileUpload
         value={fileUploadValue}
         onChange={handleFilesChange}

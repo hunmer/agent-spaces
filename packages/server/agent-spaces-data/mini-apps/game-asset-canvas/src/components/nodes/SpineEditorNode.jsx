@@ -160,7 +160,17 @@ export default function SpineEditorNode({ id, data, selected }) {
   const canOpen = !!(effectiveAssets?.skel && effectiveAssets?.atlas && effectiveAssets?.png);
 
   return (
-    <NodeShell id={id} nodeType={NODE_TYPES.spineEditor} data={data} selected={selected} targetHandle sourceHandle>
+    <NodeShell
+      id={id}
+      nodeType={NODE_TYPES.spineEditor}
+      data={data}
+      selected={selected}
+      targetHandle
+      sourceHandle
+      toolbarActions={[
+        { label: '骨骼编辑器', icon: <Bone className="h-3.5 w-3.5" />, title: '打开骨骼编辑器', onClick: () => setEditorOpen(true), disabled: data?.uploading },
+      ]}
+    >
       <FileUpload
         value={fileUploadValue}
         onChange={handleFilesChange}

@@ -1,6 +1,7 @@
 const METHODS = new Set(['atlas', 'exploded']);
 const SEGMENT_METHODS = new Set(['sam', 'bg_components']);
 const IMAGE_SIZES = new Set(['auto', '1k', '2k', '4k']);
+const RESULT_SCOPES = new Set(['all', 'animation', 'preview']);
 
 const text = (value, fallback = '') => (typeof value === 'string' ? value : fallback);
 
@@ -18,6 +19,27 @@ export function normalizeReskinEditorData(value, assets, fallbacks = {}) {
   const savedErosion = saved.erosion && typeof saved.erosion === 'object'
     ? saved.erosion
     : {};
+  const matchingAssets = saved.assetSignature === assetSignature;
+  const selectedSlots = Array.isArray(saved.selectedSlots)
+    ? saved.selectedSlots.map((slot) => text(slot)).filter(Boolean)
+    : [text(saved.selectedSlot)].filter(Boolean);
+  const slotResults = matchingAssets && Array.isArray(saved.slotResults)
+    ? saved.slotResults.slice(0, 100).filter((result) => (
+      result && typeof result === 'object'
+      && text(result.id) && text(result.regionName) && text(result.imageUrl)
+      && Number(result.width) > 0 && Number(result.height) > 0
+    )).map((result) => ({
+      id: text(result.id),
+      slot: text(result.slot),
+      attachment: text(result.attachment),
+      regionName: text(result.regionName),
+      width: Number(result.width),
+      height: Number(result.height),
+      imageUrl: text(result.imageUrl),
+      scope: RESULT_SCOPES.has(result.scope) ? result.scope : null,
+      animation: text(result.animation),
+    }))
+    : [];
 
   return {
     assetSignature,
@@ -35,8 +57,10 @@ export function normalizeReskinEditorData(value, assets, fallbacks = {}) {
     erosion: { ...fallbackErosion, ...savedErosion },
     processingModel: text(saved.processingModel, fallbacks.processingModel || ''),
     slotMode: saved.slotMode === true,
-    selectedSlot: text(saved.selectedSlot),
-    generatedImageUrl: saved.assetSignature === assetSignature
+    selectedSlot: selectedSlots[0] || '',
+    selectedSlots,
+    slotResults,
+    generatedImageUrl: matchingAssets
       ? text(saved.generatedImageUrl)
       : '',
   };

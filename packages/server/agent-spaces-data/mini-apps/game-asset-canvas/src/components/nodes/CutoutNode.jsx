@@ -41,7 +41,7 @@ export default function CutoutNode({ id, type, data, selected }) {
   const upstreamOrder = Array.isArray(data?.upstreamOrder) ? data.upstreamOrder : [];
   const upstreamImages = orderUpstream(rawUpstream, upstreamOrder);
   const inputImages = dedupeUrls([...uploadedImages, ...upstreamImages]);
-  const colorPickerImage = inputImages[0] || images[0] || '';
+  const colorPickerImage = inputImages[0] || '';
   const status = data?.status || 'idle';
   const error = data?.error;
   const running = status === 'running';

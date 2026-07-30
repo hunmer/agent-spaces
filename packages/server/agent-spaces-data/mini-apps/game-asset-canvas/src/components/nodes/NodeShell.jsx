@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { NodeResizer, NodeToolbar, Position } from '@xyflow/react';
-import { Badge, FilePenLine, Images, Loader, RotateCcw } from '@agent-spaces/ui';
-import { NODE_META } from '../../utils/constants';
+import { Badge, Images, Loader, RotateCcw } from '@agent-spaces/ui';
+import { NODE_META, NODE_TYPES } from '../../utils/constants';
 import useViewportActivation from '../../hooks/useViewportActivation';
 import ImageResult from './ImageResult';
+import SpinePreviewViewer from './SpinePreviewViewer';
 import NodeOutput from './NodeOutput';
 import FloatingHandle from './FloatingHandle';
 import { FLOATING_HANDLE_OFFSET } from '../canvas/floating-edge-utils';
@@ -35,7 +36,7 @@ const STATUS_TEXT = {
  */
 export default function NodeShell({
   id, nodeType, data, selected, resizable = true,
-  targetHandle, sourceHandle, children,
+  targetHandle, sourceHandle, children, toolbarActions,
 }) {
   const meta = NODE_META[nodeType] || { label: '节点', icon: '🔹', color: '#64748b' };
   const status = data?.status || 'idle';
@@ -46,7 +47,10 @@ export default function NodeShell({
   // 产出图片：文生图/编辑节点存在 data.output.images；图片展示节点存在 data.images
   const outputImages = data?.output?.images?.length ? data.output.images : (data?.images || []);
   const previewImages = data?.output?.images || [];
-  const canPreviewOutput = previewImages.length > 0 || status === 'running';
+  // spineDisplay 的产出是 spineAssets（三件套），非 images，需单独判断
+  const hasSpineAssets = nodeType === NODE_TYPES.spineDisplay
+    && !!(data?.spineAssets?.skel && data?.spineAssets?.atlas && data?.spineAssets?.png);
+  const canPreviewOutput = previewImages.length > 0 || hasSpineAssets || status === 'running';
   const outputPreviewEnabled = data?.outputPreviewMode === true && canPreviewOutput;
   // 产出卡片 props（预览分支与正常分支共用）：图片/回调/版本/状态
   const outputProps = {
@@ -150,6 +154,81 @@ export default function NodeShell({
     return () => ro.disconnect();
   }, [viewportActivated, data?.onAutoSizeToContent, id, outputPreviewEnabled]);
 
+  // 统一的 toolbar 按钮组：预览/正常分支共用，避免进入预览后按钮消失。
+  // 切换预览 + 节点自定义按钮（toolbarActions）+ 编辑/抠图/放大/导出等通用操作。
+  const hasExtraButtons = (outputImages.length > 0 && onExportImages)
+    || showProcessButtons || showEditButton || showCutoutButton;
+  const shouldShowToolbar = canPreviewOutput || hasExtraButtons || toolbarActions?.length;
+  const toolbarButtons = (
+    <>
+      {/* 切换预览：始终展示，点击在表单/预览模式间切换 */}
+      <button
+        type="button"
+        title={outputPreviewEnabled ? '切换到表单' : '切换到预览'}
+        onClick={(event) => {
+          event.stopPropagation();
+          data?.onOutputPreviewModeChange?.(!outputPreviewEnabled);
+        }}
+        className="flex items-center gap-1.5 rounded-md border border-border bg-background px-2.5 py-1 text-xs font-medium text-foreground shadow-sm transition hover:border-primary hover:text-primary"
+      >
+        <Images className="h-3.5 w-3.5" />
+        切换预览
+      </button>
+      {/* 节点自定义 toolbar 按钮（如「打开骨骼编辑器」「打开图片编辑」等对话框入口） */}
+      {toolbarActions?.map((action, i) => (
+        <button
+          key={i}
+          type="button"
+          title={action.title || action.label}
+          disabled={action.disabled}
+          onClick={(e) => { e.stopPropagation(); action.onClick?.(); }}
+          className="flex items-center gap-1.5 rounded-md border border-border bg-background px-2.5 py-1 text-xs font-medium text-foreground shadow-sm transition hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {action.icon}
+          {action.label}
+        </button>
+      ))}
+      {showEditButton && (
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onEditImages(outputImages); }}
+          className="rounded-md border border-border bg-background px-2.5 py-1 text-xs font-medium text-foreground shadow-sm transition hover:border-primary hover:text-primary"
+        >
+          编辑
+        </button>
+      )}
+      {/* 抠图按钮：创建统一抠图节点并预填当前产出图作为输入（替换原直接调工作流） */}
+      {showCutoutButton && (
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onCutoutCreate(outputImages); }}
+          className="rounded-md border border-border bg-background px-2.5 py-1 text-xs font-medium text-foreground shadow-sm transition hover:border-primary hover:text-primary"
+        >
+          抠图
+        </button>
+      )}
+      {/* 放大按钮：保留原直接调工作流逻辑（放大未合并进统一抠图节点） */}
+      {showProcessButtons && (
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onProcessImage(outputImages, 'enhance'); }}
+          className="rounded-md border border-border bg-background px-2.5 py-1 text-xs font-medium text-foreground shadow-sm transition hover:border-primary hover:text-primary"
+        >
+          放大
+        </button>
+      )}
+      {outputImages.length > 0 && onExportImages && (
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onExportImages(outputImages); }}
+          className="rounded-md border border-border bg-background px-2.5 py-1 text-xs font-medium text-foreground shadow-sm transition hover:border-primary hover:text-primary"
+        >
+          导出图片
+        </button>
+      )}
+    </>
+  );
+
   if (outputPreviewEnabled) {
     return (
       <>
@@ -199,22 +278,11 @@ export default function NodeShell({
       >
         <NodeToolbar isVisible={toolbarVisible} position={Position.Top} align="center" offset={8}>
           <div
-            className="flex items-center justify-center"
+            className="flex items-center justify-center gap-1"
             onMouseEnter={showToolbar}
             onMouseLeave={hideToolbar}
           >
-            <button
-              type="button"
-              title="切换到表单"
-              onClick={(event) => {
-                event.stopPropagation();
-                data?.onOutputPreviewModeChange?.(false);
-              }}
-              className="nodrag nopan flex items-center justify-center gap-1.5 rounded-md border border-border bg-background px-2.5 py-1.5 text-xs font-medium text-foreground shadow-sm transition hover:border-primary hover:text-primary"
-            >
-              <FilePenLine className="h-3.5 w-3.5" />
-              表单
-            </button>
+            {toolbarButtons}
           </div>
         </NodeToolbar>
         {resizable && (
@@ -243,7 +311,15 @@ export default function NodeShell({
                 <span className="text-xs">{data?.statusMsg || '处理中…'}</span>
               </div>
             ) : viewportActivated ? (
-              <ImageResult images={previewImages} preview onImageLoad={reportOutputPreviewHeight} />
+              hasSpineAssets ? (
+                <SpinePreviewViewer
+                  spineAssets={data?.spineAssets}
+                  params={data?.params}
+                  onHeightChange={reportOutputPreviewHeight}
+                />
+              ) : (
+                <ImageResult images={previewImages} preview onImageLoad={reportOutputPreviewHeight} />
+              )
             ) : null}
           </div>
         </div>
@@ -267,65 +343,14 @@ export default function NodeShell({
       onMouseEnter={showToolbar}
       onMouseLeave={hideToolbar}
     >
-      {canPreviewOutput || (outputImages.length > 0 && onExportImages) || showProcessButtons || showEditButton || showCutoutButton ? (
+      {shouldShowToolbar ? (
         <NodeToolbar isVisible={toolbarVisible} position={Position.Top} align="center" offset={8}>
           <div
             className="flex items-center justify-center gap-1"
             onMouseEnter={showToolbar}
             onMouseLeave={hideToolbar}
           >
-            {canPreviewOutput && (
-              <button
-                type="button"
-                title="查看节点输出"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  data?.onOutputPreviewModeChange?.(true);
-                }}
-                className="flex items-center gap-1.5 rounded-md border border-border bg-background px-2.5 py-1 text-xs font-medium text-foreground shadow-sm transition hover:border-primary hover:text-primary"
-              >
-                <Images className="h-3.5 w-3.5" />
-                查看输出
-              </button>
-            )}
-            {showEditButton && (
-              <button
-                type="button"
-                onClick={(e) => { e.stopPropagation(); onEditImages(outputImages); }}
-                className="rounded-md border border-border bg-background px-2.5 py-1 text-xs font-medium text-foreground shadow-sm transition hover:border-primary hover:text-primary"
-              >
-                编辑
-              </button>
-            )}
-            {/* 抠图按钮：创建统一抠图节点并预填当前产出图作为输入（替换原直接调工作流） */}
-            {showCutoutButton && (
-              <button
-                type="button"
-                onClick={(e) => { e.stopPropagation(); onCutoutCreate(outputImages); }}
-                className="rounded-md border border-border bg-background px-2.5 py-1 text-xs font-medium text-foreground shadow-sm transition hover:border-primary hover:text-primary"
-              >
-                抠图
-              </button>
-            )}
-            {/* 放大按钮：保留原直接调工作流逻辑（放大未合并进统一抠图节点） */}
-            {showProcessButtons && (
-              <button
-                type="button"
-                onClick={(e) => { e.stopPropagation(); onProcessImage(outputImages, 'enhance'); }}
-                className="rounded-md border border-border bg-background px-2.5 py-1 text-xs font-medium text-foreground shadow-sm transition hover:border-primary hover:text-primary"
-              >
-                放大
-              </button>
-            )}
-            {outputImages.length > 0 && onExportImages && (
-              <button
-                type="button"
-                onClick={(e) => { e.stopPropagation(); onExportImages(outputImages); }}
-                className="rounded-md border border-border bg-background px-2.5 py-1 text-xs font-medium text-foreground shadow-sm transition hover:border-primary hover:text-primary"
-              >
-                导出图片
-              </button>
-            )}
+            {toolbarButtons}
           </div>
         </NodeToolbar>
       ) : null}

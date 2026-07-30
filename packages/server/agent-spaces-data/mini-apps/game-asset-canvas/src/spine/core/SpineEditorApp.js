@@ -197,6 +197,13 @@ export class SpineEditorApp {
     this.gizmo?.setDragEnabled(enabled);
   }
 
+  _bringGizmoToFront() {
+    const graphics = this.gizmo?.graphics;
+    const children = this.spineContainer?.children;
+    if (!graphics || !children?.includes(graphics)) return;
+    this.spineContainer.setChildIndex(graphics, children.length - 1);
+  }
+
   /** 适应视图：居中并适配画布 */
   fitView() {
     if (!this.spine) return;
@@ -276,6 +283,7 @@ export class SpineEditorApp {
     }
     // gizmo 挂在 spineContainer（与 spine 同级），redraw 时只应用 spine 的本地变换
     this.gizmo.setSkeleton(spine);
+    this._bringGizmoToFront();
     this.history.clear();
 
     // 默认状态：第一个动画（参考仓库逻辑）
@@ -446,7 +454,7 @@ export class SpineEditorApp {
     if (!bone) return;
     bone.x = values.x;
     bone.y = values.y;
-    bone.rotation = (values.rotation * Math.PI) / 180;
+    bone.rotation = values.rotation;
     bone.scaleX = values.scaleX;
     bone.scaleY = values.scaleY;
     this.spine.skeleton.updateWorldTransform();

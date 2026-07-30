@@ -36,12 +36,17 @@ export class CoordinateUtils {
       // root 骨骼：本地坐标 = 世界坐标（相对 spine 容器）
       return { x: containerX, y: containerY };
     }
-    // 把容器坐标转到父骨骼的本地坐标系。
-    // pixi-spine bone 没有直接的 worldToLocal，用 parent.appliedValid 判断，
-    // 这里用 parent 的 worldTransform 求逆。
-    const wt = parent.worldTransform;
-    // PIXI.Matrix: a b c d tx ty，逆变换
-    return CoordinateUtils.inverseTransformPoint(wt, containerX, containerY);
+    // Spine Bone 不是 Pixi DisplayObject，矩阵直接存放在 a/b/c/d/worldX/worldY。
+    // Spine 布局为 worldX = x*a + y*b + tx，worldY = x*c + y*d + ty；
+    // 转成 inverseTransformPoint 使用的 Pixi Matrix 字段布局。
+    return CoordinateUtils.inverseTransformPoint({
+      a: parent.a,
+      b: parent.c,
+      c: parent.b,
+      d: parent.d,
+      tx: parent.worldX,
+      ty: parent.worldY,
+    }, containerX, containerY);
   }
 
   /**

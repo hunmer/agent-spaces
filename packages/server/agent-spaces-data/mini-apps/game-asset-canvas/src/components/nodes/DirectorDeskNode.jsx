@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { FileUpload } from '@agent-spaces/ui';
+import { Camera, FileUpload } from '@agent-spaces/ui';
 import NodeShell from './NodeShell';
 import UpstreamImageList, { orderUpstream } from './UpstreamImageList';
 import DirectorDeskDialog from '../DirectorDeskDialog';
@@ -73,7 +73,17 @@ export default function DirectorDeskNode({ id, data, selected }) {
   }));
 
   return (
-    <NodeShell id={id} nodeType={NODE_TYPES.directorDesk} data={data} selected={selected} targetHandle sourceHandle>
+    <NodeShell
+      id={id}
+      nodeType={NODE_TYPES.directorDesk}
+      data={data}
+      selected={selected}
+      targetHandle
+      sourceHandle
+      toolbarActions={[
+        { label: '3D导演台', icon: <Camera className="h-3.5 w-3.5" />, title: '打开 3D 导演台', onClick: () => setDeskOpen(true), disabled: uploading },
+      ]}
+    >
       <FileUpload
         value={fileUploadValue}
         onChange={handleFilesChange}

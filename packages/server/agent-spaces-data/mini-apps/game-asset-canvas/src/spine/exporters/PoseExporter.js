@@ -11,7 +11,7 @@
  *   ]
  * }
  *
- * rotation 转成度数（Spine 编辑器习惯用度）。
+ * rotation 使用 Spine runtime 原生度数。
  */
 export class PoseExporter {
   static export(spine) {
@@ -22,7 +22,7 @@ export class PoseExporter {
       index: i,
       x: round(b.x),
       y: round(b.y),
-      rotation: round((b.rotation * 180) / Math.PI),
+      rotation: round(b.rotation),
       scaleX: round(b.scaleX),
       scaleY: round(b.scaleY),
     }));

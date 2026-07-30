@@ -602,6 +602,7 @@ export default function SpineEditorDialog({
                   <ReskinPanel
                     assets={currentAssets}
                     workflowId={canvasSettings.editImageWorkflowId}
+                    cutoutWorkflowId={canvasSettings.imageEnchanterWorkflowId}
                     editImageModels={canvasSettings.editImageModels}
                     replaceAtlas={replaceAtlas}
                     requestSnapshot={requestSnapshot}
@@ -611,6 +612,7 @@ export default function SpineEditorDialog({
                     onDataChange={onReskinDataChange}
                     logs={reskinLogs}
                     setLogs={setReskinLogs}
+                    currentAnimation={animation}
                   />
                 </TabsContent>
                 <TabsContent value="logs" className="mt-0 min-h-0 flex-1">

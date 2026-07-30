@@ -94,8 +94,11 @@ export default function useDecoratedNodes({
         }
       }
       const preview = outputPreviewState?.[nd.id];
+      // spineDisplay 的产出是 spineAssets（三件套），非 images，需单独判断
+      const hasSpineOutput = nd.type === NODE_TYPES.spineDisplay
+        && !!(data?.spineAssets?.skel && data?.spineAssets?.atlas && data?.spineAssets?.png);
       const previewEnabled = data?.outputPreviewMode === true
-        && (data?.output?.images?.length > 0 || data?.status === 'running');
+        && (data?.output?.images?.length > 0 || hasSpineOutput || data?.status === 'running');
       const previewHeight = previewEnabled ? preview?.height : null;
       return {
         ...nd,
@@ -143,8 +146,8 @@ export default function useDecoratedNodes({
             id: settings.promptOptimizeAgentConfigId || '',
             userPrompt: settings.promptOptimizeUserPrompt || '',
           } : undefined,
-          // BBox 查看器元素拆分抠图回调（仅 bboxViewer 用）
-          onCutout: nd.type === NODE_TYPES.bboxViewer ? onBBoxCutout : undefined,
+          // BBox 查看器元素拆分抠图回调：仅 bboxViewer 用 onBBoxCutout，其他节点保留上方已注入的 onCutout（cutout 节点需要）
+          ...(nd.type === NODE_TYPES.bboxViewer ? { onCutout: onBBoxCutout } : {}),
           // 重置参数回调：仅对有 params 的节点注入（imageDisplay/note/uiSplitter 等无 params 不注入）
           onResetParams: (data?.params != null && typeof data.params === 'object')
             ? () => onResetParams?.(nd.id, nd.type)

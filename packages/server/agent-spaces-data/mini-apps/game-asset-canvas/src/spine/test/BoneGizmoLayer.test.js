@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import test from 'node:test';
 
 import { BoneGizmoLayer } from '../core/BoneGizmoLayer.js';
+
+const source = fs.readFileSync(new URL('../core/BoneGizmoLayer.js', import.meta.url), 'utf8');
 
 test('bone coordinates stay local to the shared spine container', () => {
   const bone = { worldX: 10, worldY: 20 };
@@ -72,4 +75,9 @@ test('disabling bone dragging ends an active transform', () => {
   assert.equal(gizmo.dragMode, null);
   assert.equal(gizmo.dragBone, null);
   assert.equal(ends, 1);
+});
+
+test('right drag writes the degree angle returned by CoordinateUtils', () => {
+  assert.match(source, /this\.dragBone\.rotation = ang;/);
+  assert.doesNotMatch(source, /this\.dragBone\.rotation = ang \* \(Math\.PI \/ 180\)/);
 });

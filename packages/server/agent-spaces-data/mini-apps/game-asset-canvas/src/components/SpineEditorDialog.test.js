@@ -18,6 +18,11 @@ test('right sidebar exposes embedded reskin logs and binary mask repaint', () =>
   assert.match(source, /callbacksRef\.current\.onReskinComplete/);
 });
 
+test('reskin panel receives the current animation for scoped part replacement', () => {
+  assert.match(source, /currentAnimation=\{animation\}/);
+  assert.match(source, /cutoutWorkflowId=\{canvasSettings\.imageEnchanterWorkflowId\}/);
+});
+
 test('right sidebar is resizable and the log tab has no icon', () => {
   assert.match(source, /<ResizablePanelGroup direction="horizontal"/);
   assert.match(source, /<ResizableHandle withHandle/);

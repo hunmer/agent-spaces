@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { FileUpload } from '@agent-spaces/ui';
+import { FileUpload, Grid2x2 } from '@agent-spaces/ui';
 import NodeShell from './NodeShell';
 import UpstreamImageList, { orderUpstream } from './UpstreamImageList';
 import PixelEditorDialog from '../PixelEditorDialog';
@@ -85,7 +85,17 @@ export default function PixelEditorNode({ id, data, selected }) {
   }));
 
   return (
-    <NodeShell id={id} nodeType={NODE_TYPES.pixelEditor} data={data} selected={selected} targetHandle sourceHandle>
+    <NodeShell
+      id={id}
+      nodeType={NODE_TYPES.pixelEditor}
+      data={data}
+      selected={selected}
+      targetHandle
+      sourceHandle
+      toolbarActions={[
+        { label: '像素编辑', icon: <Grid2x2 className="h-3.5 w-3.5" />, title: '打开像素编辑器', onClick: () => setEditorOpen(true), disabled: uploading || allFrames.length < 1 },
+      ]}
+    >
       {/* 新建类型：多文件 / 动画关键帧 */}
       <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
         <span className="shrink-0">新建类型</span>

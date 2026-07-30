@@ -306,7 +306,7 @@ function boneValues(bone) {
   return {
     x: round(bone?.x || 0),
     y: round(bone?.y || 0),
-    rotation: round(((bone?.rotation || 0) * 180) / Math.PI),
+    rotation: round(bone?.rotation || 0),
     scaleX: round(bone?.scaleX ?? 1),
     scaleY: round(bone?.scaleY ?? 1),
   };

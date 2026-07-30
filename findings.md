@@ -74,3 +74,27 @@
 ## 右侧栏与日志缩略图
 - 项目现有 `ResizablePanelGroup/ResizablePanel/ResizableHandle` 已通过 `@agent-spaces/ui` 导出；右栏采用 18%–65% 范围，默认 28%。
 - 日志图片流与普通图片列表统一使用固定 `w-24` 卡片和 `h-20` 图片区域，点击仍进入原图媒体查看器。
+
+## 局部重绘多部件参考
+- CodeGraph 当前未索引 game-asset-canvas mini-app 的 Spine 换肤实现，后续改用 `rg` 精确定位。
+- 交接文档确认调用链为 `ReskinPanel → reskinPipeline → edit_image/rembg → atlas → SpineEditorApp.replaceAtlas`。
+- Pixi 热预览必须保持原 atlas region 坐标；导出产物可继续沿用现有 repack/new skin 流程。
+- `workflow.rembg` 已是 per-slot 局部重绘的既有依赖，应复用而非新增插件。
+- 工作树已有未提交的 SpineDisplay、Viewer 坐标、布局和测试改动；本阶段不得回退或覆盖这些改动。
+- 主要实现入口：`ReskinPanel.jsx` 的 slot 状态/UI/`handleSlotRun`，`reskinPipeline.js` 的 `runInpaintSlot`，以及 `ReskinPanel.test.js`/reskin 测试。
+- 当前 `runInpaintSlot` 仅处理一个 slot，并在生成后立即 repack 整张 atlas；它没有生成结果候选或按动画作用域状态。
+- `SpineEditorDialog` 已持有当前 `animation`，但尚未传给 `ReskinPanel`；`replaceAtlasTexture` 是整图替换，天然影响所有 attachment。
+- 可实现的按动作语义：结果保存 `animation`/`all` 作用域，动画切换时从默认 atlas 重新叠加当前适用的部件结果并热替换。
+- 项目 UI 已有 `DropdownMenu` 与 `MoreVertical`，结果缩略图菜单可直接复用现有组件体系。
+- `ReskinPanel` 在 `SpineEditorDialog` 中使用 `forceMount`，切换右侧 Tab 不会丢失局部结果状态；Dialog 可直接传入当前 `animation`。
+- 多部件参考图按原始部件宽高横向无缝拼接，记录每项 `{x,y,width,height}`；拆分时按工作流实际输出宽高分别缩放坐标，再恢复到部件原尺寸。
+- 所有动作替换可用原 atlas 文本 + 同尺寸 preview PNG 持久化；当前动作替换是编辑器会话预览状态，不能仅靠静态 Spine 三件套表达跨动画动态贴图规则。
+- 实现选择每个 slot 的 setup attachment（缺失时取 default skin 首项），并用 `path → name → attachment key` 匹配 atlas region。
+- 生成结果保留为独立 canvas；Viewer atlas 每次从原始 region 集合重建，当前动作结果优先于所有动作，临时预览优先级最高。
+
+## 局部重绘回归诊断
+- 压扁根因：`scalePartLayout` 分别使用 `outputWidth/layout.width` 与 `outputHeight/layout.height`，当工作流输出 aspect 与拼接图不同，裁区宽高比发生变化，再绘制回原尺寸时必然变形。
+- 抠图根因：局部重绘直接调用 `workflow.rembg/rembg_remove`，绕过项目统一 `utils/cutout.js::runCutout`；抠图节点默认 workflow 模式走 `image_enchanter` 的 `process_type=segment`。
+- 持久化根因：`slotResults` 仅为 React state，包含不可序列化 `HTMLCanvasElement`；`normalizeReskinEditorData` 也未接收局部结果字段。
+- 修复后只持久化最终抠图 PNG 的稳定 URL、尺寸、region、scope 和 animation；重开时加载 URL 并重建 canvas，避免把 DOM 对象写入节点数据。
+- 拼接图先按最近 workflow aspect 透明留白；输出拆分用统一 scale + 居中 offset，抠图结果再用 contain 回填，从两处阻止宽高比失真。

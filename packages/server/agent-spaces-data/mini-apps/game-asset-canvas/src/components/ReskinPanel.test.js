@@ -31,3 +31,22 @@ test('reskin log thumbnails have stable bounded dimensions and no log icon', () 
   assert.match(source, /className="w-24 shrink-0 overflow-hidden/);
   assert.doesNotMatch(source, /ScrollText/);
 });
+
+test('slot repaint supports multi-part references and scoped result actions', () => {
+  assert.match(source, /data-testid="slot-reference-strip"/);
+  assert.match(source, /selectedSlots\.includes\(part\.id\)/);
+  assert.match(source, /runInpaintParts/);
+  assert.match(source, /data-testid="slot-result-strip"/);
+  assert.match(source, />\s*替换当前动作\s*</);
+  assert.match(source, />\s*替换所有动作\s*</);
+  assert.match(source, />\s*删除\s*</);
+  assert.match(source, /toggleSlotResult\(result\)/);
+  assert.match(source, /item\.regionName === result\.regionName \? \{ \.\.\.item, scope: null \}/);
+});
+
+test('slot repaint results are serialized and hydrated from stable image URLs', () => {
+  assert.match(source, /slotResults: slotResults\.filter\(\(result\) => result\.imageUrl\)/);
+  assert.match(source, /imageUrl: result\.imageUrl/);
+  assert.match(source, /initialState\.slotResults/);
+  assert.match(source, /drawToCanvas\(image, result\.width, result\.height\)/);
+});

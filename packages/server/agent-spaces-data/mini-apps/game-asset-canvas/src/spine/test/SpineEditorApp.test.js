@@ -45,6 +45,45 @@ test('bone drag setting is delegated to the gizmo layer', () => {
   assert.equal(value, true);
 });
 
+test('transform panel writes Spine bone rotation in degrees', () => {
+  const bone = {};
+  const editor = {
+    spine: { skeleton: { updateWorldTransform() {} } },
+    gizmo: { redraw() {} },
+  };
+
+  SpineEditorApp.prototype.applyTransformLive.call(editor, bone, {
+    x: 1,
+    y: 2,
+    rotation: 180,
+    scaleX: 1,
+    scaleY: 1,
+  });
+
+  assert.equal(bone.rotation, 180);
+});
+
+test('bone gizmo is moved above the Spine display after loading', () => {
+  const spine = { name: 'character' };
+  const graphics = { name: 'gizmo' };
+  const children = [graphics, spine];
+  const editor = {
+    gizmo: { graphics },
+    spineContainer: {
+      children,
+      setChildIndex(child, index) {
+        const current = children.indexOf(child);
+        children.splice(current, 1);
+        children.splice(index, 0, child);
+      },
+    },
+  };
+
+  SpineEditorApp.prototype._bringGizmoToFront.call(editor);
+
+  assert.deepEqual(children, [spine, graphics]);
+});
+
 test('atlas texture replacement updates the existing resource repeatedly', async () => {
   const loadListeners = new Set();
   const source = {

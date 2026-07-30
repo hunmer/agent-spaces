@@ -199,9 +199,10 @@ export default function SpineDisplayNode({ id, data, selected }) {
   }, []);
 
   const handleTogglePlay = useCallback(() => {
-    const playing = !(paramsRef.current.playing !== false);
-    appRef.current?.setPlaying(!playing);
-    onUpdateRef.current?.({ params: { ...paramsRef.current, playing: !playing } });
+    const cur = paramsRef.current.playing !== false;
+    console.debug('[SpineDisplay] togglePlay', { curPlaying: cur, hasApp: !!appRef.current, hasSpine: !!appRef.current?.spine });
+    appRef.current?.setPlaying(!cur);
+    onUpdateRef.current?.({ params: { ...paramsRef.current, playing: !cur } });
   }, []);
 
   const handleSpeedChange = useCallback((e) => {
@@ -227,18 +228,23 @@ export default function SpineDisplayNode({ id, data, selected }) {
   return (
     <NodeShell id={id} nodeType={NODE_TYPES.spineDisplay} data={data} selected={selected} targetHandle sourceHandle>
       <div className="flex flex-col gap-2">
-        {/* PIXI canvas 容器（固定高度，溢出隐藏） */}
+        {/* PIXI canvas 容器（必须保持空 div——React 不管理其内部 DOM，
+            否则重渲染时 PIXI appendChild 进去的 canvas 会被 reconciliation 清掉）。
+            占位提示/加载动画用兄弟元素绝对定位叠在上面，不进入容器内部。
+            高度用内联 style 而非 Tailwind 任意值 class：嵌套 flex-col 布局下
+            h-[180px] 可能被压缩为 0，内联 style 优先级更高更可靠。 */}
         <div
-          ref={containerRefCb}
-          className="nodrag nopan nowheel h-[180px] w-full overflow-hidden rounded-md border border-border bg-[#eef0f3]"
+          className="nodrag nopan nowheel relative w-full overflow-hidden rounded-md border border-border bg-[#eef0f3]"
+          style={{ height: 180 }}
         >
+          <div ref={containerRefCb} className="absolute inset-0" />
           {!hasAssets && !data?.uploading && (
-            <div className="flex h-full items-center justify-center text-[11px] text-muted-foreground">
+            <div className="pointer-events-none absolute inset-0 flex items-center justify-center text-[11px] text-muted-foreground">
               上传三件套后预览
             </div>
           )}
           {data?.uploading && (
-            <div className="flex h-full items-center justify-center gap-1.5 text-[11px] text-primary">
+            <div className="pointer-events-none absolute inset-0 flex items-center justify-center gap-1.5 text-[11px] text-primary">
               <Loader className="h-3.5 w-3.5 animate-spin" /> 上传中…
             </div>
           )}

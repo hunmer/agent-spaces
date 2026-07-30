@@ -1,15 +1,19 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Badge, Button, ChevronDown, Columns2, Dialog, DialogContent, DialogHeader, DialogTitle,
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
   Input, Label, Loader, Paintbrush, ScrollArea,
+  MoreVertical,
   openMediaGallery,
   ReactCompareSlider, ReactCompareSliderImage,
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
   Switch, Tabs, TabsContent, TabsList, TabsTrigger, Textarea, Trash2, WandSparkles,
 } from '@agent-spaces/ui';
-import { runReskin, runInpaintSlot, DEFAULT_EROSION } from '../utils/reskin/reskinPipeline';
+import { runReskin, runInpaintParts, DEFAULT_EROSION } from '../utils/reskin/reskinPipeline';
 import { parseAtlas, safeFilename } from '../utils/reskin/atlasReader';
-import { cropRegionRotated, loadImage } from '../utils/reskin/canvasUtils';
+import { cropRegionRotated, drawToCanvas, loadImage } from '../utils/reskin/canvasUtils';
+import { buildPreviewAtlas } from '../utils/reskin/previewAtlas';
+import { collectSlotReferenceParts, selectApplicablePartResults } from '../utils/reskin/slotReference';
 import { DEFAULT_EDIT_IMAGE_MODELS } from '../utils/settings';
 import {
   getSpineAssetsSignature,
@@ -82,7 +86,8 @@ async function uploadCanvas(canvas, fileName) {
  */
 export default function ReskinPanel({
   assets, workflowId, editImageModels, replaceAtlas, requestSnapshot, requestSpineJson,
-  onReskinComplete, initialData, onDataChange, logs, setLogs,
+  onReskinComplete, initialData, onDataChange, logs, setLogs, currentAnimation = '',
+  cutoutWorkflowId,
 }) {
   const initialStateRef = useRef(null);
   if (!initialStateRef.current) {
@@ -111,8 +116,13 @@ export default function ReskinPanel({
   const [processingModel, setProcessingModel] = useState(initialState.processingModel);
   // per-slot 重绘
   const [slotMode, setSlotMode] = useState(initialState.slotMode); // 是否局部重绘模式
-  const [selectedSlot, setSelectedSlot] = useState(initialState.selectedSlot);
-  const [slots, setSlots] = useState([]);                // 可重绘的 slot 列表
+  const [selectedSlots, setSelectedSlots] = useState(initialState.selectedSlots);
+  const [slotParts, setSlotParts] = useState([]);
+  const [slotSource, setSlotSource] = useState(null);
+  const [slotResults, setSlotResults] = useState([]);
+  const [slotLoadError, setSlotLoadError] = useState('');
+  const slotResultsRef = useRef([]);
+  const slotRestoreSignatureRef = useRef('');
   const onDataChangeRef = useRef(onDataChange);
   onDataChangeRef.current = onDataChange;
   const persistenceEnabledRef = useRef(false);
@@ -194,13 +204,25 @@ export default function ReskinPanel({
       erosion: { ...erosion },
       processingModel,
       slotMode,
-      selectedSlot,
+      selectedSlot: selectedSlots[0] || '',
+      selectedSlots: [...selectedSlots],
+      slotResults: slotResults.filter((result) => result.imageUrl).map((result) => ({
+        id: result.id,
+        slot: result.slot,
+        attachment: result.attachment || '',
+        regionName: result.regionName,
+        width: result.width,
+        height: result.height,
+        imageUrl: result.imageUrl,
+        scope: result.scope,
+        animation: result.animation || '',
+      })),
       generatedImageUrl: generatedImageSignatureRef.current === assetSignature
         ? generatedImageUrl
         : '',
     });
   }, [assetSignature, prompt, skinName, method, segMethod, size, erosion,
-    processingModel, slotMode, selectedSlot, generatedImageUrl]);
+    processingModel, slotMode, selectedSlots, slotResults, generatedImageUrl]);
 
   const addLog = useCallback((step, msg, data) => {
     if (!hasReskinLogImageOutput(data)) return;
@@ -216,35 +238,85 @@ export default function ReskinPanel({
   const slug = (s) => s.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 32);
   const finalSkinName = skinName.trim() || slug(prompt) || 'reskin-1';
 
-  // 切换到局部重绘模式时，加载可用 slot 列表（从 spine JSON 的 default skin 取）
-  const loadSlots = useCallback(async () => {
+  // 加载当前 Spine 的默认部件缩略图，作为局部重绘参考候选。
+  const loadSlotParts = useCallback(async () => {
     if (!assets) return;
+    setSlotLoadError('');
     try {
       const AS = window.AgentSpaces;
       const proxy = (u) => (AS?.proxyImageUrl ? AS.proxyImageUrl(u) : u);
+      const [atlasText, atlasSheetImg] = await Promise.all([
+        fetch(proxy(assets.atlas)).then((response) => response.text()),
+        loadImage(proxy(assets.png)),
+      ]);
       let spineJson = null;
       if (assets.skel?.endsWith('.json')) {
         spineJson = await fetch(proxy(assets.skel)).then((r) => r.json()).catch(() => null);
       }
       if (!spineJson && requestSpineJson) spineJson = await requestSpineJson();
-      if (!spineJson) return;
-      const skins = spineJson.skins;
-      let atts;
-      if (Array.isArray(skins)) {
-        const def = skins.find((s) => s && s.name === 'default');
-        atts = (def || {}).attachments || {};
-      } else {
-        atts = (skins || {}).default || {};
+      if (!spineJson) throw new Error('无法获取 spine JSON');
+      const regions = parseAtlas(atlasText).regions;
+      const parts = collectSlotReferenceParts(spineJson, regions).map((part) => {
+        const regionCanvas = cropRegionRotated(
+          atlasSheetImg,
+          part.region.x, part.region.y, part.region.w, part.region.h, part.region.rotate,
+        );
+        return {
+          ...part,
+          width: regionCanvas.width,
+          height: regionCanvas.height,
+          regionCanvas,
+          thumbnail: regionCanvas.toDataURL('image/png'),
+        };
+      });
+      const baseParts = Object.fromEntries(regions.map((region) => [region.name, {
+        img: cropRegionRotated(atlasSheetImg, region.x, region.y, region.w, region.h, region.rotate),
+      }]));
+      setSlotSource({ atlasText, atlasSheetImg, spineJson, regions, baseParts });
+      setSlotParts(parts);
+      setSelectedSlots((current) => {
+        const available = new Set(parts.map((part) => part.id));
+        const kept = current.filter((id) => available.has(id));
+        return kept.length ? kept : (parts[0] ? [parts[0].id] : []);
+      });
+      if (slotRestoreSignatureRef.current !== assetSignature) {
+        slotRestoreSignatureRef.current = assetSignature;
+        const partByRegion = new Map(parts.map((part) => [part.regionName, part]));
+        const restored = (initialState.slotResults || []).filter((result) => (
+          partByRegion.has(result.regionName)
+        ));
+        const hydrated = await Promise.all(restored.map(async (result) => {
+          const image = await loadImage(proxy(result.imageUrl));
+          const imageCanvas = drawToCanvas(image, result.width, result.height);
+          return {
+            ...result,
+            region: partByRegion.get(result.regionName)?.region,
+            imageCanvas,
+            imageDataUrl: result.imageUrl,
+          };
+        }));
+        slotResultsRef.current = hydrated;
+        setSlotResults(hydrated);
       }
-      const slotNames = Object.keys(atts || {});
-      setSlots(slotNames);
-      setSelectedSlot((current) => (slotNames.includes(current) ? current : (slotNames[0] || '')));
-    } catch { /* ignore */ }
-  }, [assets, requestSpineJson]);
+    } catch (err) {
+      console.error('[inpaint] failed to load slot references:', err);
+      setSlotLoadError(err?.message || String(err));
+      setSlotParts([]);
+      setSlotSource(null);
+    }
+  }, [assetSignature, assets, initialState.slotResults, requestSpineJson]);
 
   useEffect(() => {
-    if (slotMode && assets) loadSlots();
-  }, [slotMode, assets, loadSlots]);
+    if (slotMode && assets) loadSlotParts();
+  }, [slotMode, assets, loadSlotParts]);
+
+  useEffect(() => {
+    slotResultsRef.current = [];
+    slotRestoreSignatureRef.current = '';
+    setSlotResults([]);
+    setSlotSource(null);
+    setSlotParts([]);
+  }, [assetSignature]);
 
   const applyHistory = useCallback(async (item) => {
     const previewUrl = item?.assets?.previewPngUrl
@@ -398,71 +470,94 @@ export default function ReskinPanel({
     }
   }, [prompt, assets, method, segMethod, size, erosion, finalSkinName, generatedImageUrl, requestSnapshot, requestSpineJson, replaceAtlas, onReskinComplete, addLog, workflowId, processingModel, handleGeneratedImage, saveHistory, setLogs, enablePersistence]);
 
-  /** per-slot 局部重绘 */
+  const buildSlotAtlas = useCallback((results, animation, onlyAll = false) => {
+    if (!slotSource) return null;
+    const candidates = onlyAll ? results.filter((result) => result.scope === 'all') : results;
+    const applicable = selectApplicablePartResults(candidates, animation);
+    if (!applicable.length) return null;
+    const parts = { ...slotSource.baseParts };
+    for (const result of applicable) parts[result.regionName] = { img: result.imageCanvas };
+    return buildPreviewAtlas(
+      slotSource.regions,
+      parts,
+      slotSource.atlasSheetImg.width,
+      slotSource.atlasSheetImg.height,
+    );
+  }, [slotSource]);
+
+  const renderSlotResults = useCallback(async (results, persistAll = false) => {
+    const preview = buildSlotAtlas(results, currentAnimation);
+    if (preview) {
+      await replaceAtlas?.(preview.toDataURL('image/png'), '局部重绘');
+      setActiveSkin('slot-repaint');
+    } else if (assets?.png) {
+      await replaceAtlas?.(assets.png, '默认皮肤');
+      setActiveSkin(null);
+    }
+    if (persistAll) {
+      const persistent = buildSlotAtlas(results, currentAnimation, true);
+      onReskinComplete?.({
+        skel: assets.skel,
+        atlas: slotSource.atlasText,
+        png: persistent ? persistent.toDataURL('image/png') : assets.png,
+        spineJson: slotSource.spineJson,
+      });
+    }
+  }, [assets, buildSlotAtlas, currentAnimation, onReskinComplete, replaceAtlas, slotSource]);
+
+  const commitSlotResults = useCallback(async (next, persistAll = false) => {
+    enablePersistence();
+    slotResultsRef.current = next;
+    setSlotResults(next);
+    await renderSlotResults(next, persistAll);
+  }, [enablePersistence, renderSlotResults]);
+
+  useEffect(() => {
+    if (!slotSource || !slotResultsRef.current.some((result) => result.scope)) return;
+    renderSlotResults(slotResultsRef.current).catch((err) => {
+      console.error('[inpaint] failed to switch animation-scoped parts:', err);
+    });
+  }, [currentAnimation, renderSlotResults, slotSource]);
+
+  /** 多部件局部重绘 */
   const handleInpaintSlot = useCallback(async () => {
-    if (!prompt.trim() || !assets || !selectedSlot) return;
+    const selectedParts = slotParts.filter((part) => selectedSlots.includes(part.id));
+    if (!prompt.trim() || !assets || !slotSource || !selectedParts.length) return;
+    enablePersistence();
     setRunning(true);
     try {
-      addLog('load', '加载原 atlas 与 spine JSON…');
-      const AS = window.AgentSpaces;
-      const proxy = (u) => (AS?.proxyImageUrl ? AS.proxyImageUrl(u) : u);
-      const [atlasText, atlasSheetImg] = await Promise.all([
-        fetch(proxy(assets.atlas)).then((r) => r.text()),
-        loadImage(proxy(assets.png)),
-      ]);
-      let spineJson = null;
-      if (assets.skel?.endsWith('.json')) {
-        spineJson = await fetch(proxy(assets.skel)).then((r) => r.json()).catch(() => null);
-      }
-      if (!spineJson && requestSpineJson) spineJson = await requestSpineJson();
-      if (!spineJson) throw new Error('无法获取 spine JSON');
-
-      const atlas = parseAtlas(atlasText);
-      const regions = atlas.regions;
-      // 找到目标 slot 的 region
-      const region2slot = {};
-      const skins = spineJson.skins;
-      let atts;
-      if (Array.isArray(skins)) {
-        const def = skins.find((s) => s && s.name === 'default');
-        atts = (def || {}).attachments || {};
-      } else atts = (skins || {}).default || {};
-      for (const [slotName, slotAtts] of Object.entries(atts)) {
-        if (!slotAtts) continue;
-        const [attKey, attMeta] = Object.entries(slotAtts)[0];
-        const region = (attMeta && attMeta.name) ? attMeta.name : attKey;
-        region2slot[region] = slotName;
-      }
-      const targetRegion = regions.find((r) => region2slot[r.name] === selectedSlot);
-      if (!targetRegion) throw new Error(`slot "${selectedSlot}" 无对应 region`);
-
-      // 裁出目标 region 当前 PNG
-      const regionCanvas = cropRegionRotated(atlasSheetImg, targetRegion.x, targetRegion.y, targetRegion.w, targetRegion.h, targetRegion.rotate);
-
-      const result = await runInpaintSlot({
-        slot: selectedSlot, skinName: finalSkinName, prompt,
-        regionCanvas, spineJson, regions, atlasSheet: atlasSheetImg,
+      const result = await runInpaintParts({
+        parts: selectedParts,
+        prompt,
       }, {
         size,
         erosion,
         workflowId,
+        cutoutWorkflowId,
         model: processingModel,
         onLog: (step, msg, data) => addLog(step, msg, data),
       });
-
-      const pngDataUrl = result.newAtlasCanvas.toDataURL('image/png');
-      const previewPngDataUrl = result.previewAtlasCanvas.toDataURL('image/png');
-      await replaceAtlas?.(previewPngDataUrl, finalSkinName);
-      setActiveSkin(finalSkinName);
-      onReskinComplete?.({ skel: assets.skel, atlas: result.newAtlasText, png: pngDataUrl, spineJson: result.newSpineJson });
-      const logImages = [
-        { label: `${selectedSlot} · 输入`, src: regionCanvas.toDataURL('image/png') },
-        { label: '最终 Atlas', src: pngDataUrl },
+      const batchId = Date.now();
+      const nextResults = [
+        ...slotResultsRef.current,
+        ...result.parts.map((part, index) => ({
+          ...part,
+          id: `${batchId}-${index}-${part.id}`,
+          scope: null,
+          animation: currentAnimation,
+        })),
       ];
-      addLog('done', `✓ 局部重绘完成：${selectedSlot}`, {
+      slotResultsRef.current = nextResults;
+      setSlotResults(nextResults);
+      const logImages = [
+        { label: '拼接参考', src: result.referenceCanvas.toDataURL('image/png') },
+        { label: '工作流生成', src: result.generatedUrl },
+        ...result.parts.map((part) => ({ label: `${part.slot} · 拆分`, src: part.imageDataUrl })),
+      ];
+      addLog('done', `✓ 局部重绘完成：${selectedParts.length} 个部件`, {
         images: logImages,
         imageCount: logImages.length,
-        stats: result.stats,
+        stats: { slots: selectedParts.map((part) => part.slot) },
       });
     } catch (err) {
       console.error('[inpaint] failed:', err);
@@ -470,7 +565,44 @@ export default function ReskinPanel({
     } finally {
       setRunning(false);
     }
-  }, [prompt, assets, selectedSlot, size, erosion, finalSkinName, requestSpineJson, replaceAtlas, onReskinComplete, addLog, workflowId, processingModel]);
+  }, [prompt, assets, slotSource, slotParts, selectedSlots, size, erosion, addLog, workflowId, cutoutWorkflowId, processingModel, currentAnimation, enablePersistence]);
+
+  const setResultScope = useCallback(async (result, scope) => {
+    const animationName = currentAnimation || '';
+    const next = slotResultsRef.current.map((item) => {
+      if (item.id === result.id) return { ...item, scope, animation: scope === 'all' ? '' : animationName };
+      if (item.regionName !== result.regionName) return item;
+      if (scope === 'all' && (item.scope === 'all' || item.scope === 'preview')) return { ...item, scope: null };
+      if (scope !== 'all' && item.scope === scope && item.animation === animationName) return { ...item, scope: null };
+      if (scope !== 'all' && item.scope === 'preview') return { ...item, scope: null };
+      return item;
+    });
+    await commitSlotResults(next, scope === 'all');
+  }, [commitSlotResults, currentAnimation]);
+
+  const toggleSlotResult = useCallback(async (result) => {
+    const activeIds = new Set(selectApplicablePartResults(slotResultsRef.current, currentAnimation).map((item) => item.id));
+    if (activeIds.has(result.id)) {
+      const next = slotResultsRef.current.map((item) => (
+        item.id === result.id ? { ...item, scope: null } : item
+      ));
+      await commitSlotResults(next, result.scope === 'all');
+      return;
+    }
+    await setResultScope(result, 'preview');
+  }, [commitSlotResults, currentAnimation, setResultScope]);
+
+  const deleteSlotResult = useCallback(async (result) => {
+    const persistAll = slotResultsRef.current.some((item) => (
+      item.regionName === result.regionName && item.scope === 'all'
+    ));
+    const next = slotResultsRef.current
+      .filter((item) => item.id !== result.id)
+      .map((item) => (
+        item.regionName === result.regionName ? { ...item, scope: null } : item
+      ));
+    await commitSlotResults(next, persistAll);
+  }, [commitSlotResults]);
 
   const handleDeleteHistory = useCallback(async (item, e) => {
     e?.stopPropagation();
@@ -492,6 +624,9 @@ export default function ReskinPanel({
   }, [addLog, enablePersistence]);
 
   const generationLocked = !slotMode && !!generatedImageUrl;
+  const activeSlotResultIds = useMemo(() => new Set(
+    selectApplicablePartResults(slotResults, currentAnimation).map((result) => result.id),
+  ), [slotResults, currentAnimation]);
 
   return (
     <>
@@ -510,7 +645,6 @@ export default function ReskinPanel({
             enablePersistence();
             const nextSlotMode = value === 'slot';
             setSlotMode(nextSlotMode);
-            if (nextSlotMode && assets) loadSlots();
           }}
         >
           <TabsList className="w-full">
@@ -586,14 +720,44 @@ export default function ReskinPanel({
             ]} />
           </>
         ) : (
-          <FieldSelect
-            label="重绘部位"
-            value={selectedSlot}
-            onValueChange={(value) => { enablePersistence(); setSelectedSlot(value); }}
-            disabled={running || !slots.length}
-            options={slots.map((slot) => [slot, slot])}
-            placeholder="无可用部位"
-          />
+          <div className="space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <Label className="text-xs">选择参考</Label>
+              <span className="text-[10px] text-muted-foreground">已选 {selectedSlots.length}</span>
+            </div>
+            <div className="flex min-h-20 gap-2 overflow-x-auto pb-1" data-testid="slot-reference-strip">
+              {slotParts.map((part) => {
+                const selected = selectedSlots.includes(part.id);
+                return (
+                  <button
+                    key={part.id}
+                    type="button"
+                    disabled={running}
+                    onClick={() => {
+                      enablePersistence();
+                      setSelectedSlots((current) => (
+                        current.includes(part.id)
+                          ? current.filter((id) => id !== part.id)
+                          : [...current, part.id]
+                      ));
+                    }}
+                    className={`w-20 shrink-0 overflow-hidden rounded border bg-muted text-left transition ${selected ? 'border-primary ring-1 ring-primary' : 'border-border hover:border-primary/60'}`}
+                    aria-pressed={selected}
+                    title={part.slot}
+                  >
+                    <img src={part.thumbnail} alt={part.slot} className="h-14 w-full object-contain" />
+                    <span className="block truncate border-t border-border px-1 py-0.5 text-[9px]">{part.slot}</span>
+                  </button>
+                );
+              })}
+              {!slotParts.length && !slotLoadError && (
+                <div className="flex h-20 min-w-full items-center justify-center text-[10px] text-muted-foreground">
+                  {slotSource ? '无可用部件' : '正在加载部件…'}
+                </div>
+              )}
+            </div>
+            {slotLoadError && <p className="text-[10px] text-destructive">{slotLoadError}</p>}
+          </div>
         )}
 
         <FieldSelect label="处理模型" value={processingModel} onValueChange={handleModelChange} disabled={running || generationLocked} options={processingModels.map((m) => [m, m])} placeholder="选择模型" />
@@ -647,11 +811,68 @@ export default function ReskinPanel({
           size="sm"
           className="h-8 gap-1 text-xs"
           onClick={slotMode ? handleInpaintSlot : handleRun}
-          disabled={running || !prompt.trim() || !assets || (slotMode && !selectedSlot)}
+          disabled={running || !prompt.trim() || !assets || (slotMode && (!selectedSlots.length || !slotSource))}
         >
           {running ? <Loader className="h-3.5 w-3.5" /> : slotMode ? <Paintbrush className="h-3.5 w-3.5" /> : <WandSparkles className="h-3.5 w-3.5" />}
           {running ? '处理中…' : slotMode ? '局部重绘' : '开始换肤'}
         </Button>
+
+        {slotMode && slotResults.length > 0 && (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <Label className="text-xs">重绘结果</Label>
+              <span className="text-[10px] text-muted-foreground">{slotResults.length}</span>
+            </div>
+            <div className="flex gap-2 overflow-x-auto pb-1" data-testid="slot-result-strip">
+              {slotResults.map((result) => {
+                const active = activeSlotResultIds.has(result.id);
+                return (
+                  <div
+                    key={result.id}
+                    className={`relative w-24 shrink-0 overflow-hidden rounded border bg-muted ${active ? 'border-primary ring-1 ring-primary' : 'border-border'}`}
+                  >
+                    <button
+                      type="button"
+                      className="block w-full text-left"
+                      onClick={() => toggleSlotResult(result)}
+                      aria-pressed={active}
+                      title={active ? '取消应用' : '应用到当前 Spine'}
+                    >
+                      <img src={result.imageDataUrl} alt={`${result.slot} 重绘结果`} className="h-16 w-full object-contain" />
+                      <span className="block truncate border-t border-border px-1 py-0.5 text-[9px]">{result.slot}</span>
+                    </button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger
+                        render={
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            size="icon-sm"
+                            className="absolute right-1 top-1 h-6 w-6"
+                            title="部件操作"
+                          />
+                        }
+                      >
+                        <MoreVertical className="h-3.5 w-3.5" />
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem disabled={!currentAnimation} onClick={() => setResultScope(result, 'animation')}>
+                          替换当前动作
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setResultScope(result, 'all')}>
+                          替换所有动作
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => deleteSlotResult(result)}>
+                          删除
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
         </div>
       </ScrollArea>
 

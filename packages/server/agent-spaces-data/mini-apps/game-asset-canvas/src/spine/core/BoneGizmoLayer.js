@@ -195,7 +195,7 @@ export class BoneGizmoLayer {
         this.dragBone.y = localPt.y;
       } else if (this.dragMode === 'rotate') {
         const ang = CoordinateUtils.angleFromParent(this.dragBone, spineLocal.x, spineLocal.y);
-        this.dragBone.rotation = ang * (Math.PI / 180);
+        this.dragBone.rotation = ang;
       }
       this.skeleton.updateWorldTransform();
       this.redraw();

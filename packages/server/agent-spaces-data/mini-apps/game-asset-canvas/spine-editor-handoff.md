@@ -113,6 +113,9 @@ Viewer 与右栏放在 `ResizablePanelGroup` 内。拖动宽度只触发 Pixi `r
 - `bone.worldX/worldY` 是 skeleton 空间坐标。
 - `_boneToContainer()` 只能应用 Spine 实例 `localTransform`；使用 `worldTransform` 会重复叠加 fit/zoom/pan。
 - 顶部“骨骼拖拽”开关默认关闭；关闭时关节点仍可选择但不能拖动，开启后在姿势模式下左键移动、右键旋转，拖拽结束写入撤销历史。
+- 每次 `setSpine()` 后必须把 Gizmo Graphics 调到 `spineContainer` 最上层，避免后加入的 Spine 实例遮住骨骼线和关节点。
+- 子骨骼拖拽的父级逆变换读取 Spine Bone 的 `a/b/c/d/worldX/worldY`，不能读取 Pixi DisplayObject 才有的 `worldTransform`。
+- `bone.rotation` 在 Spine runtime 中就是度数；变换面板、右键旋转和姿势导出禁止再做弧度换算。
 - `fitView()` 先恢复单位缩放/零平移，再读取 `spine.getBounds()`。
 - 编辑 Viewer padding 为 60px、缩放范围 `0.1x`–`5x`。
 - 展示节点使用轻量 `SpinePreviewApp`，无 Gizmo、HistoryManager 和编辑交互。
@@ -164,6 +167,16 @@ Viewer 与右栏放在 `ResizablePanelGroup` 内。拖动宽度只触发 Pixi `r
   - “Spine 对比”：`itemOne/itemTwo` 分别挂载两个真实 `SpineCompareViewer`，不是截图。
 - 每个对比 Viewer 独立加载三件套、选择默认/生成 skin；关闭弹窗必须 `destroy()` 两个 WebGL 实例。
 - 新记录保存 `spineBeforeAssets/spineAfterAssets`；旧记录可用当前原始 assets 与已有 `spineJsonUrl/atlasUrl/pngUrl` 回退。
+
+### 局部重绘多部件参考
+
+- “选择参考”从 default skin 的 setup attachment 解析当前部件图片，单行横向滚动并支持多选。
+- 选中部件保持各自实际裁剪尺寸横向拼接，并按 `edit_image` 支持的 aspect 透明留白后一次提交；工作流返回任意分辨率时使用统一缩放和居中偏移拆分，禁止 X/Y 分别缩放造成压扁。
+- 每个拆分结果自动复用统一抠图节点的 workflow 模式（`image_enchanter/process_type=segment`）去除假透明背景；抠图返回尺寸变化时按 contain 等比放入原部件画布。
+- 拆分结果以横向缩略图列表保留；点击临时激活/再次点击取消。右上角菜单支持“替换当前动作”“替换所有动作”“删除”。
+- 结果作用域优先级为：临时预览 > 当前动作 > 所有动作。动画切换时从原 atlas 重新合成当前适用部件并调用 `replaceAtlasTexture`。
+- 最终部件 PNG 上传为稳定 URL；`selectedSlots/slotResults/scope/animation` 写入当前节点 `reskinEditorData`，重新打开对话框会恢复缩略图、作用域与预览。
+- “替换所有动作”会用原 atlas 文本、原 Spine JSON 和同坐标 preview PNG 更新节点产物；“替换当前动作”持久化在节点编辑器配置中，因为静态 Spine 三件套无法表达按动画切换整张 atlas。
 
 ## 导出与持久化
 

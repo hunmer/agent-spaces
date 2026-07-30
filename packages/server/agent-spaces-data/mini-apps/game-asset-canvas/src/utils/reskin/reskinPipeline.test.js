@@ -175,3 +175,11 @@ test('grayscaleRgbaToMask reads grayscale RGB instead of opaque PNG alpha', () =
     [0, 255],
   );
 });
+
+test('multi-part repaint uses the unified workflow cutout and persists final result URLs', () => {
+  const source = fs.readFileSync(new URL('./reskinPipeline.js', import.meta.url), 'utf8');
+  assert.match(source, /runCutout\('workflow', \[splitUrl\]/);
+  assert.match(source, /runWorkflowFn: runWorkflow/);
+  assert.match(source, /slot-result-/);
+  assert.match(source, /imageUrl,/);
+});

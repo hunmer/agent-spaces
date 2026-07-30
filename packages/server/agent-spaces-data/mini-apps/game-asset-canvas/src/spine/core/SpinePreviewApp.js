@@ -38,7 +38,14 @@ export class SpinePreviewApp {
 
   /** 初始化 PIXI Application（自建 canvas，不接收外部 view） */
   async init() {
+    // 先读取容器尺寸：absolute/inset-0 容器在 NodeShell 视口门控下，
+    // 首次挂载时 resizeTo 的 ResizeObserver 可能拿到 0。故显式给定初值，再监听变化。
+    const rect = this.container.getBoundingClientRect();
+    const initWidth = Math.max(1, Math.floor(rect.width) || 300);
+    const initHeight = Math.max(1, Math.floor(rect.height) || 180);
     this.app = new PIXI.Application({
+      width: initWidth,
+      height: initHeight,
       background: '#eef0f3',
       antialias: true,
       preserveDrawingBuffer: true, // 截图需要（虽展示节点不强用，保留一致性）
@@ -132,6 +139,7 @@ export class SpinePreviewApp {
 
   /** 播放 / 暂停 */
   setPlaying(playing) {
+    console.debug('[SpinePreviewApp] setPlaying', playing, { hasSpine: !!this.spine, curAnim: this.currentAnimation });
     this.playing = playing;
     if (!this.spine) return;
     if (playing) {

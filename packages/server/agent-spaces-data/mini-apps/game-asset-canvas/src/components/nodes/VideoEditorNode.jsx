@@ -77,7 +77,17 @@ export default function VideoEditorNode({ id, data, selected }) {
   }, [onUpdate, videos]);
 
   return (
-    <NodeShell id={id} nodeType="videoEditor" data={data} selected={selected} targetHandle sourceHandle>
+    <NodeShell
+      id={id}
+      nodeType="videoEditor"
+      data={data}
+      selected={selected}
+      targetHandle
+      sourceHandle
+      toolbarActions={[
+        { label: '视频编辑器', icon: <Film className="h-3.5 w-3.5" />, title: '打开视频编辑器', onClick: handleOpen, disabled: videos.length === 0 },
+      ]}
+    >
       {videos.length === 0 ? (
         <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-md border-2 border-dashed border-border py-8 text-xs text-muted-foreground transition hover:border-primary hover:text-primary">
           <Upload className="h-6 w-6" />

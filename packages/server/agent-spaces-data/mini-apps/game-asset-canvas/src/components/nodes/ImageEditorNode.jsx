@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { FileUpload } from '@agent-spaces/ui';
+import { Brush, FileUpload } from '@agent-spaces/ui';
 import NodeShell from './NodeShell';
 import ImageEditorDialog from '../ImageEditorDialog';
 import { NODE_TYPES } from '../../utils/constants';
@@ -76,7 +76,17 @@ export default function ImageEditorNode({ id, data, selected }) {
   }));
 
   return (
-    <NodeShell id={id} nodeType={NODE_TYPES.imageEditor} data={data} selected={selected} targetHandle sourceHandle>
+    <NodeShell
+      id={id}
+      nodeType={NODE_TYPES.imageEditor}
+      data={data}
+      selected={selected}
+      targetHandle
+      sourceHandle
+      toolbarActions={[
+        { label: '编辑图片', icon: <Brush className="h-3.5 w-3.5" />, title: '打开图片编辑器', onClick: () => setDialogOpen(true), disabled: uploading || !inputImage },
+      ]}
+    >
       {/* 输入图：FileUpload 单图上传 */}
       <FileUpload
         value={fileUploadValue}

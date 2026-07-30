@@ -302,16 +302,18 @@ export default function Canvas() {
     updateNodeData(id, { outputPreviewMode: enabled === true });
   }, [updateNodeData]);
 
-  const enableAllNodePreviews = useCallback(() => {
-    setNodes((prev) => prev.map((node) => (
-      node.data?.outputPreviewMode === true
-        ? node
-        : { ...node, data: { ...(node.data || {}), outputPreviewMode: true } }
-    )));
-  }, [setNodes]);
-
   const allNodePreviewsEnabled = nodes.length > 0
     && nodes.every((node) => node.data?.outputPreviewMode === true);
+
+  const enableAllNodePreviews = useCallback(() => {
+    // 切换式：全部已开 → 全关；否则全开（修复原来只能开不能关的问题）
+    const turnOn = !allNodePreviewsEnabled;
+    setNodes((prev) => prev.map((node) => (
+      node.data?.outputPreviewMode === turnOn
+        ? node
+        : { ...node, data: { ...(node.data || {}), outputPreviewMode: turnOn } }
+    )));
+  }, [setNodes, allNodePreviewsEnabled]);
 
   // —— 注入到节点 data 的回调集合 ——
   // deps 逐个解构具体 callback（而非整个 executions/crud 对象），任一稳定则 nodeCallbacks 稳定，
@@ -688,8 +690,8 @@ export default function Canvas() {
               <Background variant={BackgroundVariant.Dots} gap={16} size={1} />
               <Controls>
                 <ControlButton
-                  title="设置画布的每个节点的预览模式为开"
-                  aria-label="设置画布的每个节点的预览模式为开"
+                  title={allNodePreviewsEnabled ? '关闭所有节点的预览模式' : '开启所有节点的预览模式'}
+                  aria-label={allNodePreviewsEnabled ? '关闭所有节点的预览模式' : '开启所有节点的预览模式'}
                   aria-pressed={allNodePreviewsEnabled}
                   onClick={enableAllNodePreviews}
                   style={{ background: allNodePreviewsEnabled ? 'var(--accent)' : undefined }}

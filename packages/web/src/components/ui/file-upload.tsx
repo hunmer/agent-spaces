@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useState, type MouseEvent } from "react";
 import { useDropzone, type Accept, type FileRejection } from "react-dropzone";
-import { Upload, X, FileIcon, GripVertical } from "lucide-react";
+import { Upload, X, GripVertical } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { FileCard, type FormatFileProps } from "@/components/file-card-collections";
 
 // 文件列表拖拽排序的互斥标记：写入 dataTransfer 表示当前在列表内排序。
 // 嵌入 mini-app（game-asset-canvas）时，画布 handleDrop 见此标记直接 return，
@@ -216,7 +217,7 @@ export function FileUpload<TFile extends FileUploadFileLike = File>({
                 onDragEnd={sortable ? handleSortDragEnd : undefined}
                 onDrop={sortable ? handleSortDragEnd : undefined}
                 className={cn(
-                  "flex items-center gap-3 rounded-lg border bg-background px-3 py-2 overflow-hidden transition-colors",
+                  "flex items-center gap-3 rounded-lg border bg-background px-3 py-2 transition-colors",
                   isDragging ? "border-primary opacity-40" : "border-border",
                   isOver && "border-primary border-t-2",
                   sortable && "cursor-grab active:cursor-grabbing",
@@ -226,10 +227,10 @@ export function FileUpload<TFile extends FileUploadFileLike = File>({
                   <GripVertical className="size-4 shrink-0 text-muted-foreground" />
                 )}
                 {preview ? (
-                  <img src={preview} alt="" draggable={false} className="size-10 rounded-md object-cover" />
+                  <img src={preview} alt="" draggable={false} className="size-10 shrink-0 rounded-md object-cover" />
                 ) : (
-                  <div className="flex size-10 items-center justify-center rounded-md bg-muted">
-                    <FileIcon className="size-5 text-muted-foreground" />
+                  <div className="shrink-0 py-0.5">
+                    <FileCard formatFile={detectFormat(item.file.name)} />
                   </div>
                 )}
                 <div className="w-0 flex-1">
@@ -280,6 +281,42 @@ export function FileUpload<TFile extends FileUploadFileLike = File>({
 function getFilePreview(item: FileUploadFile<FileUploadFileLike>): string | undefined {
   if (!item.file.type.startsWith("image/")) return undefined;
   return getUploadedFileUrl(item.file) || item.preview;
+}
+
+// 扩展名 → FormatFileProps 映射。与 file-display-view.tsx 的 detectFormat 保持一致，
+// 用于非图片文件的 FileCard 占位展示。
+const EXT_TO_FORMAT: Record<string, FormatFileProps> = {
+  doc: "doc", docx: "doc",
+  pdf: "pdf",
+  md: "md", markdown: "md",
+  mdx: "mdx",
+  txt: "txt", log: "txt",
+  csv: "csv", tsv: "csv",
+  xls: "xls",
+  xlsx: "xlsx",
+  ppt: "ppt",
+  pptx: "pptx",
+  zip: "zip",
+  rar: "rar",
+  tar: "tar",
+  gz: "gz", gzip: "gz",
+  html: "html", htm: "html",
+  js: "js", mjs: "js", cjs: "js",
+  jsx: "jsx",
+  tsx: "tsx",
+  ts: "code",
+  css: "css", scss: "css", less: "css",
+  json: "json",
+  // 图片/视频走真实 <img> 预览分支，这里仅作兜底
+  png: "png", jpg: "jpg", jpeg: "jpeg",
+  gif: "img", webp: "img", svg: "img", bmp: "img", ico: "img",
+  mp4: "video", mov: "video", avi: "video", mkv: "video", webm: "video", flv: "video",
+};
+
+function detectFormat(name: string): FormatFileProps {
+  const clean = name.toLowerCase().split("?")[0].split("#")[0];
+  const ext = clean.split(".").pop() || "";
+  return EXT_TO_FORMAT[ext] || "doc";
 }
 
 function getUploadedFileUrl(file: FileUploadFileLike): string | undefined {

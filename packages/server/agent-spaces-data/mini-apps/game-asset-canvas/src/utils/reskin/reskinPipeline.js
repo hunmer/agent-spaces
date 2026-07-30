@@ -31,7 +31,11 @@ import { buildPreviewAtlas } from './previewAtlas';
 import {
   loadImage, createCanvas, cropRegionRotated, drawToCanvas, erodeAlpha,
 } from './canvasUtils';
-import { generateImages, normalizeImageUrl } from '../workflow';
+import { generateImages, normalizeImageUrl, runWorkflow } from '../workflow';
+import { runCutout } from '../cutout';
+import {
+  buildHorizontalPartLayout, fitInside, padPartLayoutToAspect, scalePartLayout,
+} from './slotReference';
 
 const REMBG_PLUGIN = 'workflow.rembg';
 const SAM_PLUGIN = 'workflow.sam';
@@ -613,6 +617,92 @@ export async function runReskin(input, opts = {}) {
 const SLOT_PROMPT = (prompt) => `Redraw this single character body part in the new style: "${prompt}".
 CRITICAL CONSTRAINTS: keep the EXACT same silhouette/outline/shape; transparent background; match input dimensions exactly; no text/labels.`;
 const SLOT_NEGATIVE = 'do not change the silhouette; do not add background scenery; do not crop the part; do not render any text.';
+const MULTI_SLOT_PROMPT = (prompt) => `Redraw every character body part in this reference strip in the new style: "${prompt}".
+CRITICAL CONSTRAINTS: preserve the exact left-to-right layout and boundaries of every part; keep every silhouette; transparent background; no text or labels.`;
+
+/** Generate several selected parts from one stitched reference image, then split by the recorded layout. */
+export async function runInpaintParts(input, opts = {}) {
+  const { parts, prompt } = input;
+  if (!parts?.length) throw new Error('至少选择一个参考部件');
+  const {
+    workflowId, cutoutWorkflowId, model = 'gpt-image-1', size = '2k', onLog = () => {},
+  } = opts;
+  const log = (step, msg, data) => { try { onLog(step, msg, data); } catch { /* ignore */ } };
+  const rawLayout = buildHorizontalPartLayout(parts);
+  const aspect = closestEditAspect(rawLayout.width, rawLayout.height);
+  const aspectRatio = EDIT_ASPECTS.find(([name]) => name === aspect)?.[1] || 1;
+  const layout = padPartLayoutToAspect(rawLayout, aspectRatio);
+  const referenceCanvas = createCanvas(layout.width, layout.height);
+  const referenceCtx = referenceCanvas.getContext('2d');
+  for (const item of layout.items) referenceCtx.drawImage(item.regionCanvas, item.x, item.y, item.width, item.height);
+
+  const referenceUrl = await uploadDataUrl(
+    referenceCanvas.toDataURL('image/png'),
+    `slot-reference-${Date.now()}.png`,
+  );
+  const { url: generatedUrl } = await workflowRedraw(referenceUrl, MULTI_SLOT_PROMPT(prompt), {
+    workflowId,
+    model,
+    size,
+    aspect,
+  }, log);
+  const generatedImage = await loadImage(await urlToDataUrl(generatedUrl));
+  const splitLayout = scalePartLayout(layout, generatedImage.naturalWidth || generatedImage.width, generatedImage.naturalHeight || generatedImage.height);
+
+  const outputParts = await Promise.all(splitLayout.map(async (item) => {
+    const splitCanvas = createCanvas(item.width, item.height);
+    splitCanvas.getContext('2d').drawImage(
+      generatedImage,
+      item.sourceX, item.sourceY, item.sourceWidth, item.sourceHeight,
+      0, 0, item.width, item.height,
+    );
+    const splitUrl = await uploadDataUrl(
+      splitCanvas.toDataURL('image/png'),
+      `slot-${safeFilename(item.slot)}-${Date.now()}.png`,
+    );
+    const [cleanUrl] = await runCutout('workflow', [splitUrl], {}, {
+      workflowId: cutoutWorkflowId,
+      runWorkflowFn: runWorkflow,
+    });
+    if (!cleanUrl) throw new Error(`部件 ${item.slot} 抠图未返回图片`);
+    const cleanImage = await loadImage(await urlToDataUrl(cleanUrl));
+    let imageCanvas = createCanvas(item.width, item.height);
+    const fitted = fitInside(
+      cleanImage.naturalWidth || cleanImage.width,
+      cleanImage.naturalHeight || cleanImage.height,
+      item.width,
+      item.height,
+    );
+    imageCanvas.getContext('2d').drawImage(
+      cleanImage, fitted.x, fitted.y, fitted.width, fitted.height,
+    );
+    const px = pickErodePx(Math.max(item.width, item.height), opts);
+    if (px > 0) imageCanvas = erodeAlpha(imageCanvas, px);
+    const imageDataUrl = imageCanvas.toDataURL('image/png');
+    const imageUrl = await uploadDataUrl(
+      imageDataUrl,
+      `slot-result-${safeFilename(item.slot)}-${Date.now()}.png`,
+    );
+    return {
+      id: item.id,
+      slot: item.slot,
+      attachment: item.attachment,
+      regionName: item.regionName,
+      region: item.region,
+      width: item.width,
+      height: item.height,
+      imageCanvas,
+      imageDataUrl,
+      imageUrl,
+    };
+  }));
+
+  log('inpaint', `已拆分 ${outputParts.length} 个局部重绘结果`, {
+    images: outputParts.map((part) => ({ label: part.slot, src: part.imageDataUrl })),
+    imageCount: outputParts.length,
+  });
+  return { referenceCanvas, generatedUrl, layout, parts: outputParts };
+}
 
 /**
  * Per-slot 局部重绘（对译 server.py inpaint_slot）。
