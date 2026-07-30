@@ -214,6 +214,12 @@ export async function runWorkflow(workflowId, input, opts = {}) {
   const timedOut = !!data?.timedOut;
   const steps = Array.isArray(data?.steps) ? data.steps : [];
 
+  // 明确失败时必须先终止，不能把 start/中间节点残留的输入图片误当成生成结果。
+  if (status === 'error' || (status && status !== 'completed' && !timedOut)) {
+    const errStep = [...steps].reverse().find((s) => s?.error && s.status !== 'skipped');
+    throw new Error(errStep?.error || `工作流未完成: ${status}`);
+  }
+
   // 媒体节点（音频/视频）：直接拿 end 节点完整 output，不走图片专用提取
   if (opts.returnRawEndOutput) {
     const endStep = [...steps].reverse().find(
@@ -221,10 +227,6 @@ export async function runWorkflow(workflowId, input, opts = {}) {
     );
     if (endStep?.output) return endStep.output;
     if (timedOut) throw new Error('工作流执行超时（>10分钟），未返回结果');
-    if (status && status !== 'completed') {
-      const errStep = [...steps].reverse().find((s) => s?.error && s.status !== 'skipped');
-      throw new Error(errStep?.error || `工作流未完成: ${status}`);
-    }
     return {};
   }
 
@@ -235,11 +237,6 @@ export async function runWorkflow(workflowId, input, opts = {}) {
   // 没提取到结果，按状态报错
   if (timedOut) {
     throw new Error('工作流执行超时（>10分钟），未返回结果');
-  }
-  if (status && status !== 'completed') {
-    // 从 steps 找错误信息
-    const errStep = [...steps].reverse().find((s) => s?.error && s.status !== 'skipped');
-    throw new Error(errStep?.error || `工作流未完成: ${status}`);
   }
   // status=completed 但无 output，返回空让调用方处理
   return {};
@@ -293,7 +290,10 @@ function hasImages(out) {
  * @returns {Promise<string[]>}
  */
 export async function generateImages(workflowId, input, opts = {}) {
-  const output = await runWorkflow(workflowId, input, { meta: { mode: workflowId } });
+  const workflowInput = Array.isArray(input?.images)
+    ? { ...input, images: normalizeImageUrls(input.images) }
+    : input;
+  const output = await runWorkflow(workflowId, workflowInput, { meta: { mode: workflowId } });
   const result = output?.result;
   let urls;
   if (Array.isArray(result)) urls = result.filter(Boolean);

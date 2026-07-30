@@ -1,7 +1,10 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Upload, Film } from '@agent-spaces/ui';
 import NodeShell from './NodeShell';
 import VideoEditorDialog from '../VideoEditorDialog';
+
+const FFMPEG_PLUGIN_ID = 'workflow.ffmpeg';
+const FFMPEG_FIRST_FRAME = 'ffmpeg_first_frame';
 
 /**
  * 视频编辑器节点。
@@ -24,6 +27,26 @@ export default function VideoEditorNode({ id, data, selected }) {
   const animGroups = Array.isArray(data?.animGroups) ? data.animGroups : [];
   const onUpdate = data?.onUpdate;
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [thumbs, setThumbs] = useState({}); // { [videoUrl]: dataUrl }
+
+  // 获取视频首帧作为缩略图（节点本体展示用，复用 ffmpeg_first_frame）
+  useEffect(() => {
+    let cancelled = false;
+    const missing = videos.filter((url) => !thumbs[url]);
+    if (!missing.length) return;
+    const AS = window.AgentSpaces;
+    if (!AS?.callPluginTool) return;
+    missing.forEach(async (url) => {
+      try {
+        const ret = await AS.callPluginTool(FFMPEG_PLUGIN_ID, FFMPEG_FIRST_FRAME, { inputPath: url });
+        if (!cancelled && ret?.success && ret?.data?.dataUrl) {
+          setThumbs((prev) => ({ ...prev, [url]: ret.data.dataUrl }));
+        }
+      } catch { /* 静默失败，保留占位 */ }
+    });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [videos.join('|')]);
 
   const handleOpen = useCallback(() => setDialogOpen(true), []);
 
@@ -65,7 +88,15 @@ export default function VideoEditorNode({ id, data, selected }) {
         <div className="flex flex-col gap-2">
           <div className="flex flex-wrap gap-1.5">
             {videos.slice(0, 3).map((url, i) => (
-              <video key={url + i} src={url} className="h-12 w-20 rounded border border-border object-cover" muted />
+              <div key={url + i} className="h-12 w-20 overflow-hidden rounded border border-border bg-muted">
+                {thumbs[url] ? (
+                  <img src={thumbs[url]} alt={`视频 ${i + 1}`} className="h-full w-full object-cover" />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center text-muted-foreground">
+                    <Film className="h-4 w-4 opacity-40" />
+                  </div>
+                )}
+              </div>
             ))}
             {videos.length > 3 && (
               <div className="flex h-12 w-12 items-center justify-center rounded border border-border text-xs text-muted-foreground">

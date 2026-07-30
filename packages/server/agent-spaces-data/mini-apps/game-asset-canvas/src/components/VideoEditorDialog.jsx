@@ -46,7 +46,10 @@ export default function VideoEditorDialog({ open, data, onUpdate, onClose }) {
   const currentVideo = videos[Math.min(activeVideoIdx, videos.length - 1)] || videos[0] || '';
 
   // 获取单个视频的首帧作为缩略图（ffmpeg_first_frame → base64 dataUrl）
+  const fetchingRef = useRef(new Set()); // 正在请求的 url，防重复
   const fetchThumb = useCallback(async (url) => {
+    if (fetchingRef.current.has(url)) return;
+    fetchingRef.current.add(url);
     try {
       const ret = await window.AgentSpaces.callPluginTool(FFMPEG_PLUGIN_ID, FFMPEG_FIRST_FRAME, { inputPath: url });
       if (ret?.success && ret?.data?.dataUrl) {
@@ -54,16 +57,19 @@ export default function VideoEditorDialog({ open, data, onUpdate, onClose }) {
       }
     } catch (err) {
       console.warn('获取缩略图失败:', url, err?.message || err);
+    } finally {
+      fetchingRef.current.delete(url);
     }
   }, []);
 
-  // videos 变化时，为缺失缩略图的视频异步获取
+  // videos 变化时，为缺失缩略图的视频异步获取（已有/请求中跳过）
+  const videosKey = videos.join('|');
   useEffect(() => {
     for (const url of videos) {
       if (!thumbs[url]) fetchThumb(url);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [videos.join('|')]);
+  }, [videosKey]);
 
   useEffect(() => {
     if (activeVideoIdx > videos.length - 1) setActiveVideoIdx(Math.max(0, videos.length - 1));
@@ -256,6 +262,14 @@ export default function VideoEditorDialog({ open, data, onUpdate, onClose }) {
           .video-thumb-upload > div:first-child > svg { width: 16px; height: 16px; }
           .video-thumb-upload > div:first-child > div > p:first-child { font-size: 10px; line-height: 12px; }
           .video-thumb-upload > div:first-child > div > p:not(:first-child) { display: none; }
+          .video-thumb-delete {
+            position: absolute; top: 2px; right: 2px; z-index: 20;
+            display: flex; width: 20px; height: 20px; align-items: center; justify-content: center;
+            padding: 0; border: 0; border-radius: 4px; cursor: pointer;
+            color: #fff; background: rgba(0, 0, 0, 0.78); opacity: 1; visibility: visible;
+          }
+          .video-thumb-delete:hover { background: rgb(220, 38, 38); }
+          .video-thumb-delete > svg { width: 12px; height: 12px; }
         `}</style>
         <div className="flex items-center gap-2 overflow-x-auto border-b border-border bg-muted/20 px-3 py-2">
           {/* 上传入口：固定在最左侧，尺寸与缩略图一致 */}
@@ -269,10 +283,13 @@ export default function VideoEditorDialog({ open, data, onUpdate, onClose }) {
           />
           {videos.length === 0 ? (
             <span className="text-xs text-muted-foreground">从最左侧上传，或从上游连线接收</span>
-          ) : videos.map((url, i) => (
+          ) : videos.map((url, i) => {
+            // 上游接收的视频（source=upstream）不允许删除；其余（用户上传/历史）均可删
+            const canDelete = data?.source !== 'upstream';
+            return (
             <div
               key={url + i}
-              className={`group relative h-14 w-24 shrink-0 cursor-pointer overflow-hidden rounded border-2 transition ${i === activeVideoIdx ? 'border-primary' : 'border-transparent hover:border-border'}`}
+              className={`relative h-14 w-24 shrink-0 cursor-pointer overflow-hidden rounded border-2 transition ${i === activeVideoIdx ? 'border-primary' : 'border-transparent hover:border-border'}`}
               onClick={() => setActiveVideoIdx(i)}
             >
               {thumbs[url] ? (
@@ -285,16 +302,23 @@ export default function VideoEditorDialog({ open, data, onUpdate, onClose }) {
               <span className="absolute bottom-0 left-0 right-0 bg-black/60 px-1 py-0.5 text-[9px] text-white">
                 #{i + 1}
               </span>
-              <button
-                type="button"
-                onClick={(e) => { e.stopPropagation(); onUpdate?.({ videos: videos.filter((_, j) => j !== i) }); }}
-                className="absolute right-0.5 top-0.5 rounded bg-black/60 p-0.5 text-white opacity-0 transition group-hover:opacity-100"
-                title="移除"
-              >
-                <Trash2 className="h-3 w-3" />
-              </button>
+              {canDelete && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onUpdate?.({ videos: videos.filter((_, j) => j !== i) });
+                  }}
+                  className="video-thumb-delete"
+                  aria-label={`移除视频 ${i + 1}`}
+                  title="移除"
+                >
+                  <Trash2 />
+                </button>
+              )}
             </div>
-          ))}
+            );
+          })}
         </div>
 
         {/* 主体：左侧播放器+帧列表 / 右侧 tabs */}

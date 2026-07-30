@@ -77,7 +77,7 @@ export function buildAtlasComposite(snapshot, atlasSheet) {
     snapshotRect: { x: 0, y: snapOffY, w: sw, h: sh },
     atlasRect: { x: sw, y: atlasOffY, w: aw, h: ah },
   };
-  return { canvas, layout };
+  return { canvas: c, layout };
 }
 
 /**
