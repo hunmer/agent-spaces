@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { copyNodes, hasClipboard, pasteNodes } from '../utils/clipboard';
+import { copyNodes, hasClipboard, pasteNodes, serializeClipboard } from '../utils/clipboard';
 import { genId } from '../utils/canvas-id';
 import { computeAlignment } from '../utils/align-distribute';
 import { IMAGE_TAGS } from '../utils/constants';
+import { readClipboardImageFiles } from '../utils/clipboard-images';
 
 /**
  * 节点选中状态 + 多选对齐分布 + 批量删除 + 复制粘贴。
@@ -21,8 +22,12 @@ import { IMAGE_TAGS } from '../utils/constants';
  * @param {Function} deps.setGroups
  * @param {Function} deps.setSelectedId  外部 selectedId 的 setter
  * @param {Function} deps.addImageNodesFromUrls  生成记录「用作输入」复用
+ * @param {Function} deps.onPasteImageFiles 系统剪贴板图片上传到视口中心
  */
-export default function useSelectionClipboard({ nodes, edges, setNodes, setEdges, setGroups, setSelectedId, addImageNodesFromUrls }) {
+export default function useSelectionClipboard({
+  nodes, edges, setNodes, setEdges, setGroups, setSelectedId,
+  addImageNodesFromUrls, onPasteImageFiles,
+}) {
   const [selectionCount, setSelectionCount] = useState(0);
 
   // nodes/edges 的 ref 镜像：让「读最新选中态」的 callback 去掉对 nodes/edges 的依赖
@@ -74,15 +79,32 @@ export default function useSelectionClipboard({ nodes, edges, setNodes, setEdges
     const selected = curNodes.filter((n) => n.selected);
     if (!selected.length) return;
     copyNodes(selected, edgesRef.current);
+    const text = serializeClipboard();
+    if (text && typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+      void navigator.clipboard.writeText(text).catch(() => {});
+    }
   }, []);
 
-  const handlePaste = useCallback(() => {
+  const handlePaste = useCallback(async () => {
+    if (onPasteImageFiles && typeof navigator !== 'undefined' && navigator.clipboard?.read) {
+      let imageFiles = [];
+      try {
+        imageFiles = await readClipboardImageFiles(navigator.clipboard);
+      } catch {
+        // 系统剪贴板图片读取是可选能力；失败时继续粘贴内部节点剪贴板。
+      }
+      if (imageFiles.length) {
+        await onPasteImageFiles(imageFiles);
+        return;
+      }
+    }
+
     if (!hasClipboard()) return;
     const result = pasteNodes({ genId });
     if (!result) return;
     setNodes((prev) => [...prev, ...result.nodes]);
     setEdges((prev) => [...prev, ...result.edges]);
-  }, [setNodes, setEdges]);
+  }, [onPasteImageFiles, setNodes, setEdges]);
 
   // 全选节点（Ctrl/Cmd+A）：selected 由 ReactFlow 自管，直接置 true。
   const handleSelectAll = useCallback(() => {
@@ -116,7 +138,8 @@ export default function useSelectionClipboard({ nodes, edges, setNodes, setEdges
         const selected = nodesRef.current.filter((n) => n.selected);
         if (selected.length) { e.preventDefault(); handleCopy(); }
       } else if (e.key === 'v' || e.key === 'V') {
-        if (hasClipboard()) { e.preventDefault(); handlePaste(); }
+        e.preventDefault();
+        void handlePaste();
       }
     };
     window.addEventListener('keydown', onKeyDown);

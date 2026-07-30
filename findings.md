@@ -5,6 +5,15 @@
 - workflow editor 的 Ctrl+V 会先调用 `navigator.clipboard.read()` 查找 `image/*` ClipboardItem，再回退到文本/内部节点剪贴板。
 - mini-app 的 `useSelectionClipboard` 已占用 Ctrl/Cmd+V，但当前仅粘贴模块级内存中的节点剪贴板，并已跳过 input/textarea/contenteditable。
 - mini-app `useNodeCrud` 已有 `handleDropFiles(fileList, position)`，需确认其上传和图片节点落点可否直接服务剪贴板 Blob。
+- workflow canvas 不上传图片，而是把剪贴板 Blob 转 data URL 后创建 gallery；mini-app 没有 gallery 节点，应复用“图片优先读取”语义并接入自身 imageDisplay 上传链路。
+- `handleDropFiles` 已负责 loading 节点、`AgentSpaces.uploadFile`、成功 URL 回填和失败状态，适合复用；剪贴板 Blob 应包装为带稳定文件名的 `File`。
+- Canvas 中 `crud` 先于 `useSelectionClipboard` 创建，可直接注入 `crud.handleDropFiles`。
+- Canvas 的 `getViewportCenter()` 返回屏幕坐标，粘贴前需通过 `reactFlow.screenToFlowPosition()` 转为 flow 坐标。
+- Ctrl/Cmd+V 在非编辑控件内应始终进入异步 paste 流程：系统图片成功时终止，读取失败/无图片时回退内部节点剪贴板。
+- 为避免复制上传逻辑，新工具只负责 ClipboardItem -> File，节点 loading、上传和错误状态全部交给 `handleDropFiles`。
+- 实现使用 `clipboard-<timestamp>-<index>.<ext>` 命名 File；jpeg/svg 等 MIME 扩展名做规范化。
+- workflow `useClipboard.copy()` 会把节点 JSON 写入系统剪贴板，从而替换旧图片；mini-app 需要同步写入自身节点 payload，才能在图片优先策略下保留 Ctrl+C -> Ctrl+V 节点语义。
+- 最终行为：系统剪贴板有图片时上传为 imageDisplay；无图片/读取失败时粘贴内部节点；Ctrl+C 节点同步写系统文本以替换旧图片。
 
 ## game-asset-canvas 分组成员拖拽
 

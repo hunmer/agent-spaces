@@ -193,8 +193,14 @@ export default function Canvas() {
   });
 
   // —— 选中 + 复制粘贴 + 对齐分布 + 批量删除 ——
+  const handlePasteImageFiles = useCallback((files) => {
+    const screenCenter = getViewportCenter();
+    const position = screenCenter ? reactFlow.screenToFlowPosition(screenCenter) : null;
+    return crud.handleDropFiles(files, position);
+  }, [crud.handleDropFiles, getViewportCenter, reactFlow]);
   const selection = useSelectionClipboard({
     nodes, edges, setNodes, setEdges, setGroups, setSelectedId, addImageNodesFromUrls,
+    onPasteImageFiles: handlePasteImageFiles,
   });
 
   // —— 分组操作 + overlay 移动/连线 ——

@@ -2,6 +2,13 @@
 
 - 2026-07-30：开始为 game-asset-canvas 复用 workflow canvas 的 Ctrl+V 剪贴板图片粘贴能力。
 - 2026-07-30：确认 workflow 图片读取优先于内部节点粘贴；mini-app 现有 Ctrl+V 仅处理内部节点剪贴板。
+- 2026-07-30：确定复用边界为 workflow 的 ClipboardItem 图片读取顺序 + mini-app 的 `handleDropFiles` 上传节点流程。
+- 2026-07-30：确认依赖顺序可直接注入 `crud.handleDropFiles`，节点落点使用视口中心的 flow 坐标。
+- 2026-07-30：完成方案设计，准备实施 ClipboardItem -> File 工具、异步粘贴优先级和视口中心上传回调。
+- 2026-07-30：已实现剪贴板图片读取工具、异步图片优先粘贴、内部节点回退和视口中心上传回调，并新增工具单测。
+- 2026-07-30：正在核对 workflow 内部节点复制与系统剪贴板的优先级一致性，避免无意改变原功能语义。
+- 2026-07-30：确认 workflow 复制节点会同步写系统剪贴板；mini-app 将补同等写入以避免旧图片压过节点粘贴。
+- 2026-07-30：剪贴板图片测试 2/2、节点 payload 序列化、四文件 Babel 转译和 diff 格式检查均通过；任务完成。
 
 - 2026-07-30：开始补齐 game-asset-canvas 节点拖入分组、Ctrl 拖出和目标高亮；已确认仅视觉 overlay 被共享，画布拖拽协调逻辑缺失。
 - 2026-07-30：确定最小实现边界：本地拖拽会话 + 节点中心矩形命中 + `childNodeIds` 更新，直接复用 overlay 现有 `isDropTarget` 样式。

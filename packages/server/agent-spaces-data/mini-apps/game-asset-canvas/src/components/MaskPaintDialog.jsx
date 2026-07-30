@@ -76,6 +76,12 @@ export default function MaskPaintDialog({
   const [error, setError] = useState('');
   const [activeUrl, setActiveUrl] = useState('');
   const [thumbUrls, setThumbUrls] = useState([]);
+  // thumbUrls 的 ref 镜像：persist 读 ref 不依赖 state，避免 useCallback→useEffect 死循环
+  const thumbUrlsRef = useRef([]);
+  const setThumbUrlsSafe = useCallback((urls) => {
+    thumbUrlsRef.current = urls;
+    setThumbUrls(urls);
+  }, []);
   const [tool, setTool] = useState(TOOL_BRUSH);
   const [brushSize, setBrushSize] = useState(24);
   const [eraseSize, setEraseSize] = useState(36);
@@ -183,10 +189,10 @@ export default function MaskPaintDialog({
       perImage[url] = { imgW: st.imgW, imgH: st.imgH, ops: st.ops };
     }
     fn({
-      inputSignature: inputSignature(thumbUrls),
+      inputSignature: inputSignature(thumbUrlsRef.current),
       perImage,
     });
-  }, [thumbUrls]);
+  }, []);
 
   // ---- 工具切换 ----
   const switchTool = useCallback((t) => {
@@ -420,7 +426,7 @@ export default function MaskPaintDialog({
   useEffect(() => {
     if (!open) return;
     const urls = (inputImages || []).filter(Boolean);
-    setThumbUrls(urls);
+    setThumbUrlsSafe(urls);
     if (!urls.length) { setError('没有输入图片'); return; }
     let disposed = false;
     setLoading(true);
@@ -557,7 +563,7 @@ export default function MaskPaintDialog({
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) onClose?.(); }}>
-      <DialogContent className="flex max-h-[92vh] w-[94vw] max-w-[1100px] flex-col gap-2 p-3">
+      <DialogContent className="!w-[80vw] !max-w-[80vw] flex max-h-[92vh] flex-col gap-2 p-3">
         <DialogHeader className="flex-row items-center justify-between space-y-0">
           <div>
             <DialogTitle>蒙版绘制</DialogTitle>

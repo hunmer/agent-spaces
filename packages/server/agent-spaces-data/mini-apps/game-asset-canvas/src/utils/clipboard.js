@@ -9,6 +9,7 @@ const INJECTED_DATA_KEYS = [
 ];
 
 let clipboard = null; // { nodes: CleanNode[], edges: CleanEdge[] }
+const CLIPBOARD_KIND = 'agent-spaces/game-asset-canvas-nodes';
 
 /**
  * 序列化节点子图为干净数据（剥离函数回调 + 选中标记）。
@@ -47,6 +48,12 @@ export function copyNodes(selectedNodes, allEdges) {
 /** 剪贴板是否非空 */
 export function hasClipboard() {
   return !!(clipboard?.nodes?.length);
+}
+
+/** 写入系统剪贴板的文本 payload；与内存剪贴板保持同一份干净节点数据。 */
+export function serializeClipboard() {
+  if (!hasClipboard()) return '';
+  return JSON.stringify({ kind: CLIPBOARD_KIND, version: 1, ...clipboard });
 }
 
 /**

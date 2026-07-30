@@ -124,39 +124,30 @@ module.exports = (t) => [
       ctx.logger.info(`按帧截取: ${inputPath} (mode=${mode}, count=${count}, fps=${fps}) -> ${dir}`)
 
       try {
+        // 统一用 fps 滤镜抽帧（比逐帧 -ss seek 稳定，不会因 duration 偏差 EOF）：
+        // - fps 模式：直接用 fps 值
+        // - count 模式：探测 duration，算 fps = count / duration（探测失败回退 fps=1）
+        // - count=1 特殊处理：取中点单帧 seek（fps 滤镜不好控制只出 1 帧）
         let ffArgs
         if (mode === 'fps') {
-          // 按帧率：-vf fps=N，ffmpeg 自动按该帧率抽帧
           ffArgs = ['-y', '-i', inputPath, '-vf', `fps=${fps}${scalePart}`, '-q:v', '2', outPattern]
-        } else {
-          // 按数量：先探测时长，再用 timemarks 等间距取帧（逐个 -ss seek 最可靠，帧数精确）
+        } else if (count === 1) {
+          // 单帧：取视频中点（避免首末帧边界问题）
           const duration = await probeDuration(inputPath, args, ctx)
-          if (!duration) {
-            // 探测失败 → 回退 fps=1 估算法
-            ffArgs = ['-y', '-i', inputPath, '-vf', `fps=1${scalePart}`, '-q:v', '2', outPattern]
-          } else {
-            // 逐帧 seek：count=1 取中点；count>1 等间距。
-            // 范围限制在 [1%, 99%] × duration，避免 seek 到 0（首帧未就绪）或精确末尾（EOF 无帧）
-            const marks = []
-            if (count === 1) {
-              marks.push(duration / 2)
-            } else {
-              for (let i = 0; i < count; i++) {
-                const pct = 0.01 + (i / (count - 1)) * 0.98
-                marks.push(Math.max(0, Math.min(duration, duration * pct)))
-              }
-            }
-            // 每个 mark 一个输出文件：-ss <t> -i input -frames:v 1 out
-            const idxFmt = (n) => String(n + 1).padStart(4, '0')
-            for (let i = 0; i < marks.length; i++) {
-              const outFile = path.join(dir, `frame-${idxFmt(i)}.jpg`)
-              await runBin(bin, [
-                '-y', '-ss', marks[i].toFixed(3), '-i', inputPath,
-                '-frames:v', '1', ...seekVf, '-q:v', '2', outFile,
-              ], ctx)
-            }
-            ffArgs = null // 已逐帧处理
-          }
+          const t = duration ? duration / 2 : 1
+          await runBin(bin, [
+            '-y', '-ss', t.toFixed(3), '-i', inputPath,
+            '-frames:v', '1', ...seekVf, '-q:v', '2',
+            path.join(dir, 'frame-0001.jpg'),
+          ], ctx)
+          ffArgs = null
+        } else {
+          // count>1：算出等价 fps，让 ffmpeg 用 fps 滤镜均匀抽帧
+          const duration = await probeDuration(inputPath, args, ctx)
+          // 留 5% 余量算 fps，避免末尾帧取不到（fps 滤镜按时间均匀，末尾可能差一帧）
+          const effDur = duration ? duration * 0.95 : Math.max(1, count)
+          const targetFps = count / effDur
+          ffArgs = ['-y', '-i', inputPath, '-vf', `fps=${targetFps.toFixed(4)}${scalePart}`, '-q:v', '2', outPattern]
         }
 
         if (ffArgs) {
