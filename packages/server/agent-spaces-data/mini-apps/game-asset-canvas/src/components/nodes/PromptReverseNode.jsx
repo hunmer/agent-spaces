@@ -5,6 +5,7 @@ import NodeShell from './NodeShell';
 import UpstreamImageList, { orderUpstream } from './UpstreamImageList';
 import { NODE_TYPES } from '../../utils/constants';
 import { dedupeUrls } from '../../utils/workflow';
+import UploadSection from './UploadSection';
 
 /**
  * 反推提示词节点：上传/连线多张图 → 调视觉 AI（agent_run）→ 输出每张图的提示词文本。
@@ -107,14 +108,19 @@ export default function PromptReverseNode({ id, type, data, selected }) {
         多张图 → AI 反推每张图的文生图提示词（需在「设置 → 反推提示词 AI」配置模型）
       </p>
 
-      <FileUpload
+      <UploadSection>
+
+        <FileUpload
         value={fileUploadValue}
         onChange={handleFilesChange}
         accept={{ 'image/*': ['.png', '.jpg', '.jpeg', '.webp', '.gif'] }}
         maxFiles={0}
         sortable
         placeholder="点击或拖入多张图（可拖拽排序）"
-      />
+
+        />
+
+      </UploadSection>
       {uploading && <p className="text-[10px] text-primary">上传中…</p>}
       {data?.uploadError && (
         <p className="text-[10px] text-red-500">上传失败：{data.uploadError}</p>

@@ -5,6 +5,7 @@ import UpstreamImageList, { orderUpstream } from './UpstreamImageList';
 import DirectorDeskDialog from '../DirectorDeskDialog';
 import { NODE_TYPES } from '../../utils/constants';
 import { dedupeUrls } from '../../utils/workflow';
+import UploadSection from './UploadSection';
 
 /**
  * 3D导演台节点：iframe 加载本地 storyai-3d-director-desk 构建产物（vendor/director-desk-web），
@@ -84,14 +85,16 @@ export default function DirectorDeskNode({ id, data, selected }) {
         { label: '3D导演台', icon: <Camera className="h-3.5 w-3.5" />, title: '打开 3D 导演台', onClick: () => setDeskOpen(true), disabled: uploading },
       ]}
     >
-      <FileUpload
+      <UploadSection>
+        <FileUpload
         value={fileUploadValue}
         onChange={handleFilesChange}
         accept={{ 'image/*': ['.png', '.jpg', '.jpeg', '.webp'] }}
         maxFiles={0}
         sortable
         placeholder="可选：上传全景图作为场景背景"
-      />
+        />
+      </UploadSection>
       {uploading && <p className="text-[10px] text-primary">上传中…</p>}
       {data?.uploadError && (
         <p className="text-[10px] text-red-500">上传失败：{data.uploadError}</p>

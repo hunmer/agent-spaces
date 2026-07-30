@@ -50,3 +50,10 @@ test('slot repaint results are serialized and hydrated from stable image URLs', 
   assert.match(source, /initialState\.slotResults/);
   assert.match(source, /drawToCanvas\(image, result\.width, result\.height\)/);
 });
+
+test('slot repaint keeps error logs and renders the current failure in the panel', () => {
+  assert.match(source, /step !== 'error' && !hasReskinLogImageOutput\(data\)/);
+  assert.match(source, /const message = err\?\.message \|\| String\(err\)/);
+  assert.match(source, /setInpaintError\(message\)/);
+  assert.match(source, /<p role="alert"[\s\S]*?\{inpaintError\}[\s\S]*?<\/p>/);
+});

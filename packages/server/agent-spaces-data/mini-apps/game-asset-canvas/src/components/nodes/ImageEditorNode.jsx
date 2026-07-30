@@ -3,6 +3,7 @@ import { Brush, FileUpload } from '@agent-spaces/ui';
 import NodeShell from './NodeShell';
 import ImageEditorDialog from '../ImageEditorDialog';
 import { NODE_TYPES } from '../../utils/constants';
+import UploadSection from './UploadSection';
 
 /**
  * 图片编辑节点：浏览器端用 Painterro 编辑单张图片（画笔/文字/裁切/马赛克/旋转等）。
@@ -88,13 +89,15 @@ export default function ImageEditorNode({ id, data, selected }) {
       ]}
     >
       {/* 输入图：FileUpload 单图上传 */}
-      <FileUpload
+      <UploadSection>
+        <FileUpload
         value={fileUploadValue}
         onChange={handleFilesChange}
         accept={{ 'image/*': ['.png', '.jpg', '.jpeg', '.webp', '.gif'] }}
         maxFiles={1}
         placeholder="点击或拖入单张图片"
-      />
+        />
+      </UploadSection>
       {uploading && <p className="text-[10px] text-primary">上传中…</p>}
       {data?.uploadError && (
         <p className="text-[10px] text-red-500">上传失败：{data.uploadError}</p>

@@ -1,3 +1,4 @@
+import UploadSection from './UploadSection';
 import { useCallback } from 'react';
 import { FileUpload } from '@agent-spaces/ui';
 import NodeShell from './NodeShell';
@@ -188,13 +189,15 @@ export default function VideoGeneratorNode({ id, data, selected }) {
       </label>
 
       {/* 参考图片：FileUpload 上传 + 上游连线 */}
-      <FileUpload
+      <UploadSection>
+        <FileUpload
         value={fileUploadValue}
         onChange={handleFilesChange}
         accept={{ 'image/*': ['.png', '.jpg', '.jpeg', '.webp', '.gif'] }}
         maxFiles={0}
         placeholder="点击或拖入参考图（可选）"
-      />
+        />
+      </UploadSection>
       {uploading && <p className="text-[10px] text-primary">上传中…</p>}
       {data?.uploadError && (
         <p className="text-[10px] text-red-500">上传失败：{data.uploadError}</p>

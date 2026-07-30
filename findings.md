@@ -98,3 +98,10 @@
 - 持久化根因：`slotResults` 仅为 React state，包含不可序列化 `HTMLCanvasElement`；`normalizeReskinEditorData` 也未接收局部结果字段。
 - 修复后只持久化最终抠图 PNG 的稳定 URL、尺寸、region、scope 和 animation；重开时加载 URL 并重建 canvas，避免把 DOM 对象写入节点数据。
 - 拼接图先按最近 workflow aspect 透明留白；输出拆分用统一 scale + 居中 offset，抠图结果再用 contain 回填，从两处阻止宽高比失真。
+
+## 工作流抠图返回解析
+- CodeGraph 确认 `runWorkflow` 返回 `extractOutput(steps)` 的标准图片结构；`generateImages` 兼容 `result[]`、`images[]`、`image_urls[]` 和字符串 `result`。
+- `runWorkflowCutout` 仅读取 `out.urls`，因此工作流成功返回 `images` 时仍误报“工作流抠图未返回图片”。
+- `ReskinPanel.addLog` 当前先执行 `hasReskinLogImageOutput(data)`，错误数据 `{error:true}` 没有图片，会被直接丢弃。
+- 修复采用与 `generateImages` 一致的返回兼容范围，并保留旧 `urls`；空返回仅记录键名和类型，不输出完整响应或图片内容。
+- 错误日志过滤条件改为 `step !== 'error' && !hasReskinLogImageOutput(data)`，局部重绘另用 `role="alert"` 就地显示失败原因。

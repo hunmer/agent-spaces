@@ -1,3 +1,4 @@
+import UploadSection from './UploadSection';
 import { useCallback, useState } from 'react';
 import { FileUpload } from '@agent-spaces/ui';
 import ImageEditorDialog from '../ImageEditorDialog';
@@ -147,14 +148,16 @@ export default function CutoutNode({ id, type, data, selected }) {
       ))}
 
       {/* 输入图：FileUpload 多图（所有模式都支持批量） */}
-      <FileUpload
+      <UploadSection>
+        <FileUpload
         value={fileUploadValue}
         onChange={handleFilesChange}
         accept={{ 'image/*': ['.png', '.jpg', '.jpeg', '.webp', '.gif'] }}
         maxFiles={0}
         sortable
         placeholder="点击或拖入多张图（可拖拽排序）"
-      />
+        />
+      </UploadSection>
       {uploading && <p className="text-[10px] text-primary">上传中…</p>}
       {data?.uploadError && (
         <p className="text-[10px] text-red-500">上传失败：{data.uploadError}</p>

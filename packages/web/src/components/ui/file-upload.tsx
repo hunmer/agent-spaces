@@ -44,6 +44,8 @@ interface FileUploadProps<TFile extends FileUploadFileLike = File> {
   placeholder?: string;
   /** 文件列表项支持拖拽排序（GIF 合成 / Sprite Sheet 合成等顺序敏感场景）。原生 HTML5 拖拽，无额外依赖。 */
   sortable?: boolean;
+  /** 隐藏上传区域（dropzone），仅保留文件列表展示。用于节点折叠上传控件但保留已传文件预览的场景。 */
+  hideDropzone?: boolean;
 }
 
 let _fileId = 0;
@@ -61,6 +63,7 @@ export function FileUpload<TFile extends FileUploadFileLike = File>({
   className,
   placeholder,
   sortable = false,
+  hideDropzone = false,
 }: FileUploadProps<TFile>) {
   const [dragError, setDragError] = useState<string | null>(null);
   // 拖拽排序状态：draggingId = 被拖拽项 id，overId = 当前悬停项 id（用于占位指示）
@@ -173,30 +176,32 @@ export function FileUpload<TFile extends FileUploadFileLike = File>({
 
   return (
     <div className={cn("space-y-3", className)}>
-      {/* Drop zone */}
-      <div
-        {...getRootProps({ onClick: handleDropzoneClick })}
-        className={cn(
-          "relative flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed px-6 py-8 transition-colors cursor-pointer",
-          isDragActive
-            ? "border-primary bg-primary/5"
-            : "border-border hover:border-primary/50 hover:bg-accent/50",
-          disabled && "pointer-events-none opacity-50",
-        )}
-      >
-        <input {...getInputProps({ onClick: stopInputClickPropagation })} />
-        <Upload className="size-8 text-muted-foreground" />
-        <div className="text-center">
-          <p className="text-sm font-medium">
-            {placeholder ?? (isDragActive ? "松开即可上传" : "拖拽文件到此处，或点击选择")}
-          </p>
-          {!isDragActive && (
-            <p className="mt-1 text-xs text-muted-foreground">
-              支持多文件{maxSize ? `，单文件最大 ${(maxSize / 1024 / 1024).toFixed(0)}MB` : ""}
-            </p>
+      {/* Drop zone（hideDropzone 时隐藏，保留文件列表） */}
+      {!hideDropzone && (
+        <div
+          {...getRootProps({ onClick: handleDropzoneClick })}
+          className={cn(
+            "relative flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed px-6 py-8 transition-colors cursor-pointer",
+            isDragActive
+              ? "border-primary bg-primary/5"
+              : "border-border hover:border-primary/50 hover:bg-accent/50",
+            disabled && "pointer-events-none opacity-50",
           )}
+        >
+          <input {...getInputProps({ onClick: stopInputClickPropagation })} />
+          <Upload className="size-8 text-muted-foreground" />
+          <div className="text-center">
+            <p className="text-sm font-medium">
+              {placeholder ?? (isDragActive ? "松开即可上传" : "拖拽文件到此处，或点击选择")}
+            </p>
+            {!isDragActive && (
+              <p className="mt-1 text-xs text-muted-foreground">
+                支持多文件{maxSize ? `，单文件最大 ${(maxSize / 1024 / 1024).toFixed(0)}MB` : ""}
+              </p>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       {dragError && <p className="text-xs text-destructive">{dragError}</p>}
 

@@ -2,6 +2,7 @@ import { useCallback } from 'react';
 import { FileUpload, ReactCompareSlider, ReactCompareSliderImage } from '@agent-spaces/ui';
 import NodeShell from './NodeShell';
 import { NODE_TYPES } from '../../utils/constants';
+import UploadSection from './UploadSection';
 
 /**
  * 图片对比节点：双图前后对比滑块（基于 react-compare-slider）。
@@ -166,13 +167,15 @@ function SlotUpload({ slotKey, urls, onChange, onClear, uploading }) {
   return (
     <div className="flex flex-col gap-1">
       <span className="text-[10px] font-medium text-muted-foreground">{meta.label}</span>
-      <FileUpload
+      <UploadSection>
+        <FileUpload
         value={fileUploadValue}
         onChange={onChange}
         accept={{ 'image/*': ['.png', '.jpg', '.jpeg', '.webp', '.gif'] }}
         maxFiles={1}
         placeholder={meta.placeholder}
-      />
+        />
+      </UploadSection>
       {uploading && <p className="text-[10px] text-primary">上传中…</p>}
     </div>
   );

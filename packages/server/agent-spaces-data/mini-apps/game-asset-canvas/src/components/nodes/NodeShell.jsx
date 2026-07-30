@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { NodeResizer, NodeToolbar, Position } from '@xyflow/react';
-import { Badge, Images, Loader, RotateCcw } from '@agent-spaces/ui';
+import { Badge, Images, Loader, RotateCcw, Upload, EyeOff } from '@agent-spaces/ui';
 import { NODE_META, NODE_TYPES } from '../../utils/constants';
 import useViewportActivation from '../../hooks/useViewportActivation';
 import ImageResult from './ImageResult';
 import SpinePreviewViewer from './SpinePreviewViewer';
 import NodeOutput from './NodeOutput';
 import FloatingHandle from './FloatingHandle';
+import { UploadCollapseContext } from './UploadSection';
 import { FLOATING_HANDLE_OFFSET } from '../canvas/floating-edge-utils';
 
 const STATUS_TEXT = {
@@ -72,6 +73,22 @@ export default function NodeShell({
   const onCutoutCreate = data?.onCutoutCreate;
   const onEditImages = data?.onEditImages;
   const onResetParams = data?.onResetParams;
+  const onUpdate = data?.onUpdate;
+  // 上传控件折叠态（持久化到 data.uploadHidden）。首次 status 变 done 时自动折叠一次（用户手动切过则不再自动）。
+  const uploadHidden = data?.uploadHidden === true;
+  const userToggledUploadRef = useRef(false);
+  useEffect(() => {
+    if (userToggledUploadRef.current) return;
+    // 首次完成：status 从非 done → done 时自动折叠上传区
+    if (status === 'done' && !uploadHidden) {
+      userToggledUploadRef.current = true;
+      onUpdate?.({ uploadHidden: true });
+    }
+  }, [status, uploadHidden, onUpdate]);
+  const toggleUpload = useCallback(() => {
+    userToggledUploadRef.current = true;
+    onUpdate?.({ uploadHidden: !uploadHidden });
+  }, [uploadHidden, onUpdate]);
   // 多选（选中数 > 1）时隐藏节点 toolbar：避免每个被选节点都冒出一排按钮，干扰多选操作
   const selectionCount = data?.selectionCount ?? 1;
   const [toolbarHovered, setToolbarHovered] = useState(false);
@@ -403,13 +420,27 @@ export default function NodeShell({
               <RotateCcw className="h-3.5 w-3.5" />
             </button>
           )}
+          {/* 切换上传控件显隐：折叠态持久化到 data.uploadHidden */}
+          <button
+            type="button"
+            title={uploadHidden ? '显示上传区' : '隐藏上传区'}
+            onClick={(e) => { e.stopPropagation(); toggleUpload(); }}
+            className={
+              'rounded p-1 transition hover:bg-foreground/10 hover:text-foreground ' +
+              (uploadHidden ? 'text-foreground' : 'text-muted-foreground')
+            }
+          >
+            {uploadHidden ? <EyeOff className="h-3.5 w-3.5" /> : <Upload className="h-3.5 w-3.5" />}
+          </button>
         </div>
       </div>
       {/* nodrag/nopan/nowheel：ReactFlow 约定，带这些 class 的元素不触发节点拖拽、画布平移、滚轮缩放，
           避免在节点内滚动/选文本/操作输入框时误触画布 */}
       <div data-node-content className="scrollbar-none nodrag nopan nowheel flex min-h-0 flex-1 flex-col overflow-auto">
         <div ref={contentInnerRef} className="flex flex-col gap-2 p-3">
-          {viewportActivated ? children : null}
+          <UploadCollapseContext.Provider value={uploadHidden}>
+            {viewportActivated ? children : null}
+          </UploadCollapseContext.Provider>
         </div>
       </div>
       </div>

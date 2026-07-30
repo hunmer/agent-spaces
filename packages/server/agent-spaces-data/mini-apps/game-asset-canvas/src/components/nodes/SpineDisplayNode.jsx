@@ -6,6 +6,7 @@ import urlToDataUrl from '../../utils/spine-url';
 import { loadSpineRuntime } from '../../spine/runtime.js';
 import { loadSpine, getAnimations, getSkins } from '../../spine/loaders/SpineLoader.js';
 import SpinePreviewApp from '../../spine/core/SpinePreviewApp.js';
+import UploadSection from './UploadSection';
 
 /**
  * Spine 展示节点（只读预览）：
@@ -307,12 +308,14 @@ export default function SpineDisplayNode({ id, data, selected }) {
 
         {/* 上传区（上游注入时不显示上传，避免覆盖；用户可删上游连线后重新上传） */}
         {!isUpstream && (
-          <FileUpload
+          <UploadSection>
+            <FileUpload
             value={fileUploadValue}
             onChange={handleFilesChange}
             maxFiles={3}
             placeholder="上传 Spine 三件套（.skel + .atlas + .png）"
-          />
+            />
+          </UploadSection>
         )}
 
         {data?.uploadError && (

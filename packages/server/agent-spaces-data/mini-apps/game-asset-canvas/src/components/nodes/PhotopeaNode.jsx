@@ -5,6 +5,7 @@ import UpstreamImageList, { orderUpstream } from './UpstreamImageList';
 import PhotopeaDialog from '../PhotopeaDialog';
 import { NODE_TYPES } from '../../utils/constants';
 import { dedupeUrls } from '../../utils/workflow';
+import UploadSection from './UploadSection';
 
 /**
  * 在线PS节点（Photopea）：iframe 嵌入云端 Photopea（https://www.photopea.com），
@@ -88,14 +89,16 @@ export default function PhotopeaNode({ id, data, selected }) {
         { label: '在线PS', icon: <Sparkles className="h-3.5 w-3.5" />, title: '打开在线 PS', onClick: () => setEditorOpen(true), disabled: uploading },
       ]}
     >
-      <FileUpload
+      <UploadSection>
+        <FileUpload
         value={fileUploadValue}
         onChange={handleFilesChange}
         accept={{ 'image/*': ['.png', '.jpg', '.jpeg', '.webp', '.gif', '.psd'] }}
         maxFiles={0}
         sortable
         placeholder="可选：上传图片作为初始文档（PSD/PNG/JPG…）"
-      />
+        />
+      </UploadSection>
       {uploading && <p className="text-[10px] text-primary">上传中…</p>}
       {data?.uploadError && (
         <p className="text-[10px] text-red-500">上传失败：{data.uploadError}</p>

@@ -121,6 +121,7 @@ export default function ReskinPanel({
   const [slotSource, setSlotSource] = useState(null);
   const [slotResults, setSlotResults] = useState([]);
   const [slotLoadError, setSlotLoadError] = useState('');
+  const [inpaintError, setInpaintError] = useState('');
   const slotResultsRef = useRef([]);
   const slotRestoreSignatureRef = useRef('');
   const onDataChangeRef = useRef(onDataChange);
@@ -225,7 +226,7 @@ export default function ReskinPanel({
     processingModel, slotMode, selectedSlots, slotResults, generatedImageUrl]);
 
   const addLog = useCallback((step, msg, data) => {
-    if (!hasReskinLogImageOutput(data)) return;
+    if (step !== 'error' && !hasReskinLogImageOutput(data)) return;
     setLogs((prev) => [...prev.slice(-499), { step, msg, data, ts: Date.now() }]);
   }, [setLogs]);
 
@@ -524,6 +525,7 @@ export default function ReskinPanel({
     const selectedParts = slotParts.filter((part) => selectedSlots.includes(part.id));
     if (!prompt.trim() || !assets || !slotSource || !selectedParts.length) return;
     enablePersistence();
+    setInpaintError('');
     setRunning(true);
     try {
       const result = await runInpaintParts({
@@ -561,7 +563,9 @@ export default function ReskinPanel({
       });
     } catch (err) {
       console.error('[inpaint] failed:', err);
-      addLog('error', `局部重绘失败：${err?.message || String(err)}`, { error: true });
+      const message = err?.message || String(err);
+      setInpaintError(message);
+      addLog('error', `局部重绘失败：${message}`, { error: true, message });
     } finally {
       setRunning(false);
     }
@@ -816,6 +820,12 @@ export default function ReskinPanel({
           {running ? <Loader className="h-3.5 w-3.5" /> : slotMode ? <Paintbrush className="h-3.5 w-3.5" /> : <WandSparkles className="h-3.5 w-3.5" />}
           {running ? '处理中…' : slotMode ? '局部重绘' : '开始换肤'}
         </Button>
+
+        {slotMode && inpaintError && (
+          <p role="alert" className="rounded border border-destructive/50 bg-destructive/5 px-2 py-1.5 text-[11px] text-destructive">
+            {inpaintError}
+          </p>
+        )}
 
         {slotMode && slotResults.length > 0 && (
           <div className="space-y-2">

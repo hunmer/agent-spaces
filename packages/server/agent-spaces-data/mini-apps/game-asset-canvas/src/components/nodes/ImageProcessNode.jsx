@@ -1,3 +1,4 @@
+import UploadSection from './UploadSection';
 import { useCallback } from 'react';
 import { FileUpload } from '@agent-spaces/ui';
 import NodeShell from './NodeShell';
@@ -135,14 +136,16 @@ export default function ImageProcessNode({ id, type, data, selected }) {
 
       {/* 输入图：FileUpload 上传 + 上游连线。
           multipleIn（合成类）开启拖拽排序：帧序/图层序对产出敏感 */}
-      <FileUpload
+      <UploadSection>
+        <FileUpload
         value={fileUploadValue}
         onChange={handleFilesChange}
         accept={{ 'image/*': ['.png', '.jpg', '.jpeg', '.webp', '.gif'] }}
         maxFiles={multipleIn ? 0 : 1}
         sortable={multipleIn}
         placeholder={multipleIn ? '点击或拖入多张图（可拖拽排序）' : '点击或拖入图片'}
-      />
+        />
+      </UploadSection>
       {uploading && (
         <p className="text-[10px] text-primary">上传中…</p>
       )}

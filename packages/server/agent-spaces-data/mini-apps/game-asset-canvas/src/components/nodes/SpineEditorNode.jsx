@@ -3,6 +3,7 @@ import { Bone, Button, Download, FileUpload } from '@agent-spaces/ui';
 import NodeShell from './NodeShell';
 import SpineEditorDialog from '../SpineEditorDialog';
 import { NODE_TYPES } from '../../utils/constants';
+import UploadSection from './UploadSection';
 
 /**
  * 骨骼编辑器节点：上传 .skel/.atlas/.png 三件套（持久化 http URL），
@@ -171,12 +172,14 @@ export default function SpineEditorNode({ id, data, selected }) {
         { label: '骨骼编辑器', icon: <Bone className="h-3.5 w-3.5" />, title: '打开骨骼编辑器', onClick: () => setEditorOpen(true), disabled: data?.uploading },
       ]}
     >
-      <FileUpload
+      <UploadSection>
+        <FileUpload
         value={fileUploadValue}
         onChange={handleFilesChange}
         maxFiles={3}
         placeholder="上传 Spine 三件套（.skel + .atlas + .png，同名）"
-      />
+        />
+      </UploadSection>
       {data?.uploading && <p className="text-[10px] text-primary">上传中…</p>}
       {data?.uploadError && (
         <p className="text-[10px] text-red-500">{data.uploadError}</p>

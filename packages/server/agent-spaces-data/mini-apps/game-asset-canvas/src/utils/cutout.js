@@ -66,22 +66,51 @@ async function runWorkflowCutout(urls, ctx) {
   const results = await Promise.allSettled(
     urls.map((url) =>
       runWorkflowFn(workflowId, { image_url: url, process_type: 'segment' })
-        .then((out) => out?.urls || []),
+        .then((out) => ({ urls: extractWorkflowImageUrls(out), summary: summarizeWorkflowOutput(out) })),
     ),
   );
   const outUrls = [];
+  const emptySummaries = [];
   let failed = 0;
   for (const r of results) {
     if (r.status === 'fulfilled') {
-      for (const u of r.value) if (u) outUrls.push(u);
+      for (const u of r.value.urls) if (u) outUrls.push(u);
+      if (!r.value.urls.length) emptySummaries.push(r.value.summary);
     } else {
       failed += 1;
     }
   }
   if (!outUrls.length) {
-    throw new Error(failed ? `${failed} 张图片工作流抠图全部失败` : '工作流抠图未返回图片');
+    const detail = emptySummaries.length ? `；返回：${emptySummaries.join(' | ')}` : '';
+    console.error('[cutout] workflow returned no images', {
+      workflowId,
+      failed,
+      outputs: emptySummaries,
+    });
+    throw new Error(failed ? `${failed} 张图片工作流抠图全部失败${detail}` : `工作流抠图未返回图片${detail}`);
   }
-  return outUrls;
+  return normalizeImageUrls(outUrls);
+}
+
+function extractWorkflowImageUrls(output) {
+  if (Array.isArray(output)) return output.filter(Boolean);
+  if (Array.isArray(output?.urls)) return output.urls.filter(Boolean);
+  if (Array.isArray(output?.images)) return output.images.filter(Boolean);
+  if (Array.isArray(output?.image_urls)) return output.image_urls.filter(Boolean);
+  if (Array.isArray(output?.result)) return output.result.filter(Boolean);
+  if (typeof output?.result === 'string' && output.result) return [output.result];
+  return [];
+}
+
+function summarizeWorkflowOutput(output) {
+  if (output == null) return String(output);
+  if (Array.isArray(output)) return `array(${output.length})`;
+  if (typeof output !== 'object') return typeof output;
+  const keys = Object.keys(output).slice(0, 12);
+  const resultType = Array.isArray(output.result)
+    ? `array(${output.result.length})`
+    : typeof output.result;
+  return `keys=[${keys.join(',')}], result=${resultType}`;
 }
 
 /**

@@ -3,6 +3,7 @@ import { FileUpload } from '@agent-spaces/ui';
 import NodeShell from './NodeShell';
 import BBoxViewerDialog from '../BBoxViewerDialog';
 import { NODE_TYPES } from '../../utils/constants';
+import UploadSection from './UploadSection';
 
 /**
  * BBox 查看节点：接收上游单图或本地上传图片，弹出 fabric 编辑器
@@ -113,13 +114,15 @@ export default function BBoxViewerNode({ id, data, selected }) {
           </div>
         </div>
       ) : (
-        <FileUpload
+        <UploadSection>
+          <FileUpload
           value={fileUploadValue}
           onChange={handleFilesChange}
           accept={{ 'image/*': ['.png', '.jpg', '.jpeg', '.webp'] }}
           maxFiles={1}
           placeholder="点击或拖入背景图"
-        />
+          />
+        </UploadSection>
       )}
       {uploading && <p className="text-[10px] text-primary">上传中…</p>}
       {data?.uploadError && (

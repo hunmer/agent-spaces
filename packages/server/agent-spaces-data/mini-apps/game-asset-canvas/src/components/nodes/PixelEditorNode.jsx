@@ -5,6 +5,7 @@ import UpstreamImageList, { orderUpstream } from './UpstreamImageList';
 import PixelEditorDialog from '../PixelEditorDialog';
 import { NODE_TYPES } from '../../utils/constants';
 import { dedupeUrls } from '../../utils/workflow';
+import UploadSection from './UploadSection';
 
 /**
  * 像素编辑器节点：接收上游多图或本地上传图片，节点内展示「编辑」按钮，
@@ -108,14 +109,16 @@ export default function PixelEditorNode({ id, data, selected }) {
           <option value="frames">动画关键帧</option>
         </select>
       </div>
-      <FileUpload
+      <UploadSection>
+        <FileUpload
         value={fileUploadValue}
         onChange={handleFilesChange}
         accept={{ 'image/*': ['.png', '.jpg', '.jpeg', '.webp', '.gif'] }}
         maxFiles={0}
         sortable
         placeholder="点击或拖入多张图片（作为帧，可拖拽排序）"
-      />
+        />
+      </UploadSection>
       {uploading && <p className="text-[10px] text-primary">上传中…</p>}
       {data?.uploadError && (
         <p className="text-[10px] text-red-500">上传失败：{data.uploadError}</p>

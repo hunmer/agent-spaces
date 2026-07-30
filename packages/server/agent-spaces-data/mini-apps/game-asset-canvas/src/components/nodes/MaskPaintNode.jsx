@@ -5,6 +5,7 @@ import UpstreamImageList from './UpstreamImageList';
 import MaskPaintDialog from '../MaskPaintDialog';
 import { NODE_TYPES } from '../../utils/constants';
 import { dedupeUrls } from '../../utils/workflow';
+import UploadSection from './UploadSection';
 
 /**
  * 节点对话框数据持久化（见 handoff.md 约束 #15）：
@@ -88,14 +89,16 @@ export default function MaskPaintNode({ id, data, selected }) {
   return (
     <NodeShell id={id} nodeType={NODE_TYPES.maskPaint} data={data} selected={selected} targetHandle sourceHandle>
       {/* 输入图：FileUpload 多图上传 */}
-      <FileUpload
+      <UploadSection>
+        <FileUpload
         value={fileUploadValue}
         onChange={handleFilesChange}
         accept={{ 'image/*': ['.png', '.jpg', '.jpeg', '.webp', '.gif'] }}
         maxFiles={0}
         sortable
         placeholder="点击或拖入底图（可拖拽排序）"
-      />
+        />
+      </UploadSection>
       {uploading && <p className="text-[10px] text-primary">上传中…</p>}
       {data?.uploadError && (
         <p className="text-[10px] text-red-500">上传失败：{data.uploadError}</p>

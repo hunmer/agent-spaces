@@ -1,0 +1,88 @@
+{
+  "id": "0ceca4c6-8cf8-49e5-8261-5b841b442c1b",
+  "name": "gemini-test",
+  "type": "normal",
+  "folderId": null,
+  "nodes": [
+    {
+      "id": "node_1785412727530_start",
+      "type": "start",
+      "label": "开始",
+      "position": {
+        "x": 250,
+        "y": 50
+      },
+      "data": {}
+    },
+    {
+      "id": "node_1785412727530_end",
+      "type": "end",
+      "label": "结束",
+      "position": {
+        "x": 250,
+        "y": 400
+      },
+      "data": {}
+    },
+    {
+      "id": "node_1785413518204_hnkn27",
+      "type": "ai_image_generate",
+      "label": "AI Text to Image",
+      "position": {
+        "x": 615,
+        "y": 330
+      },
+      "data": {
+        "apiKey": "REDACTED_GCP_API_KEY",
+        "baseUrl": "http://localhost:8000/v1/responses",
+        "model": "gpt-image-2-all",
+        "aspectRatio": "1:1",
+        "n": 1,
+        "outputs": [
+          {
+            "key": "success",
+            "type": "boolean"
+          },
+          {
+            "key": "message",
+            "type": "string"
+          },
+          {
+            "key": "data",
+            "type": "object",
+            "children": [
+              {
+                "key": "images",
+                "type": "image[]"
+              },
+              {
+                "key": "taskId",
+                "type": "string"
+              },
+              {
+                "key": "model",
+                "type": "string"
+              },
+              {
+                "key": "created",
+                "type": "number"
+              }
+            ]
+          }
+        ],
+        "prompt": "画只小猫"
+      }
+    }
+  ],
+  "edges": [],
+  "createdAt": 1785412727533,
+  "updatedAt": 1785413800339,
+  "published": false,
+  "lastOpenedAt": 1785413081719,
+  "enabledPlugins": [
+    "workflow.nano-banana",
+    "workflow.ai-image"
+  ],
+  "groups": [],
+  "variables": []
+}

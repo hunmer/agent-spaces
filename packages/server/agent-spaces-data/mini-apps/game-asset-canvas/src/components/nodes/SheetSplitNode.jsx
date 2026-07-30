@@ -5,6 +5,7 @@ import UpstreamImageList from './UpstreamImageList';
 import UiSplitterDialog from '../UiSplitterDialog';
 import { NODE_TYPES } from '../../utils/constants';
 import { dedupeUrls } from '../../utils/workflow';
+import UploadSection from './UploadSection';
 
 /**
  * Sheet 拆分节点：表单只保留上传组件 + 「打开拆分编辑器」按钮。
@@ -87,14 +88,16 @@ export default function SheetSplitNode({ id, data, selected }) {
   return (
     <NodeShell id={id} nodeType={NODE_TYPES.ipSpriteSplit} data={data} selected={selected} targetHandle sourceHandle>
       {/* 输入图：FileUpload 多图上传 */}
-      <FileUpload
+      <UploadSection>
+        <FileUpload
         value={fileUploadValue}
         onChange={handleFilesChange}
         accept={{ 'image/*': ['.png', '.jpg', '.jpeg', '.webp', '.gif'] }}
         maxFiles={0}
         sortable
         placeholder="点击或拖入 Sprite Sheet 图（可多张）"
-      />
+        />
+      </UploadSection>
       {uploading && <p className="text-[10px] text-primary">上传中…</p>}
       {data?.uploadError && (
         <p className="text-[10px] text-red-500">上传失败：{data.uploadError}</p>

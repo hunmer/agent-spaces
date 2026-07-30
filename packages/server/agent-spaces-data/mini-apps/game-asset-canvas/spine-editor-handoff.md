@@ -173,6 +173,8 @@ Viewer 与右栏放在 `ResizablePanelGroup` 内。拖动宽度只触发 Pixi `r
 - “选择参考”从 default skin 的 setup attachment 解析当前部件图片，单行横向滚动并支持多选。
 - 选中部件保持各自实际裁剪尺寸横向拼接，并按 `edit_image` 支持的 aspect 透明留白后一次提交；工作流返回任意分辨率时使用统一缩放和居中偏移拆分，禁止 X/Y 分别缩放造成压扁。
 - 每个拆分结果自动复用统一抠图节点的 workflow 模式（`image_enchanter/process_type=segment`）去除假透明背景；抠图返回尺寸变化时按 contain 等比放入原部件画布。
+- 工作流抠图返回兼容 `urls/images/image_urls/result[]/result:string`；空结果错误附带返回键和 result 类型摘要。
+- 局部重绘错误不受“只保留图片日志”过滤，既写入日志 Tab，也在换肤表单内以错误提示直接展示。
 - 拆分结果以横向缩略图列表保留；点击临时激活/再次点击取消。右上角菜单支持“替换当前动作”“替换所有动作”“删除”。
 - 结果作用域优先级为：临时预览 > 当前动作 > 所有动作。动画切换时从原 atlas 重新合成当前适用部件并调用 `replaceAtlasTexture`。
 - 最终部件 PNG 上传为稳定 URL；`selectedSlots/slotResults/scope/animation` 写入当前节点 `reskinEditorData`，重新打开对话框会恢复缩略图、作用域与预览。

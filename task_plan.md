@@ -83,6 +83,11 @@
   - 复用统一 `runCutout` 工作流抠图路径，自动去掉生成图的假透明背景，并保存稳定图片 URL。
   - 将可序列化局部结果、作用域和选中部件写入 `reskinEditorData`，重新打开时恢复 canvas 与当前预览。
   - 运行聚焦测试、完整 reskin/Spine/组件回归、Babel 和 `git diff --check`。
+- [completed] 14. 修复工作流抠图返回解析与错误展示
+  - 复现 `runWorkflow` 返回 `images/image_urls/result` 时 `runCutout` 误报无图片。
+  - 新增统一返回解析和安全摘要，错误携带返回键/类型诊断信息。
+  - `ReskinPanel` 错误日志不再被图片过滤器丢弃，并在局部重绘表单直接展示失败原因。
+  - 补充回归测试并运行完整验证。
 
 ## 关键约束
 - 不修改 Python `site-packages/rembg`。
@@ -106,3 +111,4 @@
 | 新持久化字段使旧 `normalizeReskinEditorData` 深相等测试失败 | 1 | 实现输出正确；同步旧测试期望并保留新增回归断言 |
 | 同步旧测试期望时补丁命中输入对象而非期望对象 | 1 | 使用包含 `assert.deepEqual(restored` 后文的精确上下文修正 |
 | 搜索 `runCutout` 测试无匹配返回 1，导致并行读取丢失 | 1 | 不重复搜索；直接读取目标测试并新增局部契约断言 |
+| `cutout.test.js` 直接导入被 `./image-ops` 目录型 ESM import 阻断 | 1 | 改用项目现有 Babel CommonJS harness 注入依赖，测试真实函数逻辑 |

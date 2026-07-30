@@ -8,6 +8,7 @@ import { orderUpstream } from './UpstreamImageList';
 import CountAndConcurrency from './CountAndConcurrency';
 import { ASPECT_OPTIONS, DEFAULT_MODEL, MODEL_OPTIONS, NODE_TYPES, SIZE_OPTIONS, WORKFLOWS } from '../../utils/constants';
 import { normalizeImageUrls, resolveReferenceImages, promptHtmlToText, dedupeUrls } from '../../utils/workflow';
+import UploadSection from './UploadSection';
 
 /**
  * 编辑图片节点。
@@ -141,7 +142,8 @@ export default function EditImageNode({ id, data, selected }) {
     <NodeShell id={id} nodeType={NODE_TYPES.editImage} data={data} selected={selected} targetHandle sourceHandle>
       <div className="flex flex-col gap-1">
         <span className="text-xs font-medium text-muted-foreground">输入图片</span>
-        <FileUpload
+        <UploadSection>
+          <FileUpload
           value={uploadedImages}
           onChange={setUploadedImages}
           max={6}
@@ -149,7 +151,8 @@ export default function EditImageNode({ id, data, selected }) {
           extraItems={extraItems}
           itemOrder={allInputImages}
           onReorderItems={(next) => onUpdate?.({ inputImageOrder: next })}
-        />
+          />
+        </UploadSection>
       </div>
 
       <PickedPromptBadge
