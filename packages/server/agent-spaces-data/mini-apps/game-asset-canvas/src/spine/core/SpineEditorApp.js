@@ -372,31 +372,39 @@ export class SpineEditorApp {
 
   /**
    * 热加载新 atlas sheet 贴图（换肤预览）。
-   * 方案 A：替换 baseTexture 的底层 resource，UV/region 不动。
+   * 更新 baseTexture 已绑定 ImageResource 的 source，UV/region 不动。
    * 前提：新 sheet 的 region 布局与原 atlas 完全一致（同一套骨骼换贴图）。
    *
    * @param {string} pngDataUrl 新 atlas sheet 的 PNG dataUrl
    * @returns {Promise<void>}
    */
   async replaceAtlasTexture(pngDataUrl) {
-    if (!this.spine?._baseTexture) throw new Error('当前 spine 无 baseTexture，无法热加载');
-    const newBaseTex = PIXI.BaseTexture.from(pngDataUrl);
-    // 等待新贴图加载完成
-    if (!newBaseTex.valid) {
-      await new Promise((resolve) => {
-        const onLoaded = () => resolve();
-        newBaseTex.once('loaded', onLoaded);
-        newBaseTex.once('update', onLoaded);
-        // 兜底：500ms 后强制 resolve
-        setTimeout(resolve, 500);
+    const baseTexture = this.spine?._baseTexture;
+    if (!baseTexture) throw new Error('当前 spine 无 baseTexture，无法热加载');
+    const resource = baseTexture.resource;
+    const source = resource?.source;
+    if (!source || typeof source.addEventListener !== 'function' || !('src' in source)) {
+      throw new Error('当前 atlas 贴图资源不支持热加载');
+    }
+
+    if (source.src !== pngDataUrl) {
+      await new Promise((resolve, reject) => {
+        let timer;
+        const cleanup = () => {
+          source.removeEventListener('load', onLoaded);
+          source.removeEventListener('error', onError);
+          clearTimeout(timer);
+        };
+        const onLoaded = () => { cleanup(); resolve(); };
+        const onError = () => { cleanup(); reject(new Error('新 atlas 贴图加载失败')); };
+        source.addEventListener('load', onLoaded);
+        source.addEventListener('error', onError);
+        timer = setTimeout(onLoaded, 500);
+        source.src = pngDataUrl;
       });
     }
-    // 用新 resource 替换原 baseTexture 的底层资源
-    const newResource = newBaseTex.resource;
-    this.spine._baseTexture.setResource(newResource, 0);
-    this.spine._baseTexture.update();
-    // 销毁临时 baseTexture（保留 resource 给原 baseTexture 用）
-    newBaseTex.destroy(true);
+    resource.update?.();
+    baseTexture.update();
     // 强制刷新渲染
     this.app.render();
     this.gizmo.redraw();

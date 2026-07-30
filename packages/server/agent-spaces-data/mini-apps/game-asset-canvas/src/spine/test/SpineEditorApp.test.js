@@ -35,3 +35,43 @@ test('locking view interaction clears an active pan', () => {
   assert.equal(editor.spaceDown, false);
   assert.equal(editor.canvasElement.style.cursor, '');
 });
+
+test('atlas texture replacement updates the existing resource repeatedly', async () => {
+  const loadListeners = new Set();
+  const source = {
+    value: 'original.png',
+    addEventListener(type, listener) {
+      if (type === 'load') loadListeners.add(listener);
+    },
+    removeEventListener(type, listener) {
+      if (type === 'load') loadListeners.delete(listener);
+    },
+    set src(value) {
+      this.value = value;
+      queueMicrotask(() => [...loadListeners].forEach((listener) => listener()));
+    },
+    get src() { return this.value; },
+  };
+  let resourceUpdates = 0;
+  let baseTextureUpdates = 0;
+  let renders = 0;
+  const editor = {
+    spine: {
+      _baseTexture: {
+        resource: { source, update: () => { resourceUpdates += 1; } },
+        setResource: () => { throw new Error('Resource can be set only once'); },
+        update: () => { baseTextureUpdates += 1; },
+      },
+    },
+    app: { render: () => { renders += 1; } },
+    gizmo: { redraw: () => {} },
+  };
+
+  await SpineEditorApp.prototype.replaceAtlasTexture.call(editor, 'first.png');
+  await SpineEditorApp.prototype.replaceAtlasTexture.call(editor, 'second.png');
+
+  assert.equal(source.src, 'second.png');
+  assert.equal(resourceUpdates, 2);
+  assert.equal(baseTextureUpdates, 2);
+  assert.equal(renders, 2);
+});

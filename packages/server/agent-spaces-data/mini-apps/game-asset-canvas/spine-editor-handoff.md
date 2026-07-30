@@ -45,6 +45,9 @@ Spine 已从独立 Vite SPA 完整迁入 `game-asset-canvas`：
 - localStorage 皮肤历史与重新应用。
 - 右上角设置对话框选择处理模型；模型列表复用画布全局 `editImageModels`。
 - AI 重绘统一调用画布设置中的 `edit_image` workflow，不再直接调用 Nano Banana 插件。
+- `edit_image` 生成图会在换肤面板中展示，点击通过 Media Gallery 查看大图；生成图保留到手动删除，重复换肤直接复用并跳过再次生成。
+- SAM 返回图统一转为 Canvas 后再侵蚀，避免 `canvas.getContext is not a function`；atlas 热预览原位更新 Pixi ImageResource，可重复应用而不触发 `Resource can be set only once`。
+- 换肤表单使用独立滚动区域，pipeline 日志固定高度，不受生成图 Gallery 高度影响。
 
 ## 当前架构
 
@@ -185,6 +188,7 @@ https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js
 Canvas snapshot + 原 atlas sheet + .atlas + Spine JSON
   → atlas/exploded composite
   → edit_image workflow（模型由编辑器设置选择）
+  → 生成图回传 ReskinPanel Gallery（已有图时从此处复用）
   → sam 或 bg_components 分割
   → 可选 erodeAlpha
   → atlas repack + addSkin
@@ -295,7 +299,8 @@ Invalid timeline type for a bone: inherit (右腿2)
 3. 选择骨骼，验证拖拽、数值变换、撤销/重做和适应视图；播放模式切换 `0.25x`～`2x`。
 4. 停止 WebM 录制后确认出现预览 Dialog；分别验证“导出到画布”和“下载视频”。
 5. 点击右上角设置选择处理模型；在右侧换肤中分别验证 `edit_image` 全局换肤、局部重绘、热预览和历史重新应用。
-6. 检查节点 `output.images`、`output.videos`、`exportedPose`、`reskinAssets`。
+6. 确认生成图出现在 Gallery，点击可查看大图；再次换肤不重复生成，删除后才重新调用 `edit_image`。
+7. 检查节点 `output.images`、`output.videos`、`exportedPose`、`reskinAssets`。
 
 ## 后续接手建议
 

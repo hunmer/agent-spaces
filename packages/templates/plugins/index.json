@@ -462,8 +462,8 @@
     "hasWorkflow": true,
     "path": "ffmpeg",
     "iconUrl": "plugins/ffmpeg/icon.svg",
-    "md5": "478b512ffa45e5fea2a1a2f4aa5921b7",
-    "updatedAt": "2026-07-30T03:08:49.035Z",
+    "md5": "0ad66fdf26bba58f065eafc0957dc192",
+    "updatedAt": "2026-07-30T03:42:52.186Z",
     "files": [
       "actions.js",
       "frames.js",

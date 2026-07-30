@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Badge, Button, ChevronDown, Input, Label, Loader, Paintbrush, ScrollArea,
+  openMediaGallery,
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
   Switch, Tabs, TabsList, TabsTrigger, Textarea, Trash2, WandSparkles,
 } from '@agent-spaces/ui';
@@ -67,6 +68,7 @@ export default function ReskinPanel({
   const [logs, setLogs] = useState([]);
   const [history, setHistory] = useState([]);
   const [activeSkin, setActiveSkin] = useState(null);
+  const [generatedImageUrl, setGeneratedImageUrl] = useState('');
   const [processingModel, setProcessingModel] = useState(() => {
     try { return localStorage.getItem(RESKIN_MODEL_STORAGE_KEY) || ''; }
     catch { return ''; }
@@ -114,6 +116,10 @@ export default function ReskinPanel({
       setHistory(raw ? JSON.parse(raw) : []);
     } catch { setHistory([]); }
   }, [spineName]);
+
+  useEffect(() => {
+    setGeneratedImageUrl('');
+  }, [assets?.skel, assets?.atlas, assets?.png]);
 
   useEffect(() => {
     logEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
@@ -188,7 +194,7 @@ export default function ReskinPanel({
       addLog('pipeline', `开始 AI 换肤（${method} / ${segMethod} / ${size}）…`);
       const result = await runReskin({
         snapshot, atlasSheetUrl: assets.png, atlasText, spineJson,
-        skinName: finalSkinName, prompt,
+        skinName: finalSkinName, prompt, generatedImageUrl,
       }, {
         method, segMethod,
         size,
@@ -196,6 +202,7 @@ export default function ReskinPanel({
         workflowId,
         model: processingModel,
         onLog: (step, msg, data) => addLog(step, msg, data),
+        onGeneratedImage: setGeneratedImageUrl,
       });
 
       addLog('preview', '应用新皮肤到画布预览…');
@@ -221,7 +228,7 @@ export default function ReskinPanel({
     } finally {
       setRunning(false);
     }
-  }, [prompt, assets, method, segMethod, size, erosion, finalSkinName, requestSnapshot, requestSpineJson, replaceAtlas, onReskinComplete, addLog, spineName, workflowId, processingModel]);
+  }, [prompt, assets, method, segMethod, size, erosion, finalSkinName, generatedImageUrl, requestSnapshot, requestSpineJson, replaceAtlas, onReskinComplete, addLog, spineName, workflowId, processingModel]);
 
   /** per-slot 局部重绘 */
   const handleInpaintSlot = useCallback(async () => {
@@ -298,19 +305,27 @@ export default function ReskinPanel({
     });
   }, [spineName]);
 
+  const deleteGeneratedImage = useCallback(() => {
+    setGeneratedImageUrl('');
+    addLog('workflow', '已删除生成图，下次换肤将重新生成');
+  }, [addLog]);
+
   const stepLabel = (step) => ({
     snapshot: '截图', load: '加载', pipeline: '换肤', parse: '解析', compose: '合成',
     upload: '上传', workflow: '工作流', split: '裁切', segment: '分割', repack: '打包',
     skin: '皮肤', preview: '预览', apply: '应用', inpaint: '局部', done: '完成', error: '错误',
   }[step] || step);
 
+  const generationLocked = !slotMode && !!generatedImageUrl;
+
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden">
-      <div className="space-y-3 border-b border-border p-3">
-        <div className="flex items-center justify-between gap-2">
-          <span className="text-xs font-medium">AI 换肤</span>
-          <Badge variant="secondary" className="max-w-36 truncate">{assets ? spineName : '未加载'}</Badge>
-        </div>
+      <ScrollArea className="min-h-0 flex-1 border-b border-border">
+        <div className="space-y-3 p-3">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-xs font-medium">AI 换肤</span>
+            <Badge variant="secondary" className="max-w-36 truncate">{assets ? spineName : '未加载'}</Badge>
+          </div>
         <Tabs
           value={slotMode ? 'slot' : 'global'}
           onValueChange={(value) => {
@@ -330,9 +345,48 @@ export default function ReskinPanel({
           placeholder={slotMode ? '描述该部位新样式' : '描述新皮肤，如 "黑精灵，黑翅膀，金甲"'}
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
-          disabled={running}
+          disabled={running || generationLocked}
           className="resize-none text-xs"
         />
+
+        {!slotMode && generatedImageUrl && (
+          <div className="space-y-2 rounded border border-border p-2">
+            <div className="flex items-center justify-between gap-2">
+              <Label className="text-xs">生成图片</Label>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                disabled={running}
+                onClick={deleteGeneratedImage}
+                title="删除生成图片"
+                aria-label="删除生成图片"
+                className="h-7 w-7"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+            <button
+              type="button"
+              disabled={running}
+              onClick={() => openMediaGallery([{
+                src: generatedImageUrl,
+                type: 'image',
+                alt: `${finalSkinName} 生成图片`,
+                fileName: `${finalSkinName}-generated.png`,
+              }], 0)}
+              className="block w-full overflow-hidden rounded border border-border bg-muted transition hover:border-primary disabled:cursor-not-allowed"
+              title="点击查看大图"
+            >
+              <img
+                src={generatedImageUrl}
+                alt={`${finalSkinName} 生成图片`}
+                className="h-28 w-full object-contain"
+              />
+            </button>
+            <p className="text-[10px] text-muted-foreground">再次换肤将复用此图；删除后才会重新生成。</p>
+          </div>
+        )}
 
         {!slotMode ? (
           <>
@@ -343,7 +397,7 @@ export default function ReskinPanel({
               disabled={running}
               className="h-8 text-xs"
             />
-            <FieldSelect label="合成方法" value={method} onValueChange={setMethod} disabled={running} options={[
+            <FieldSelect label="合成方法" value={method} onValueChange={setMethod} disabled={running || generationLocked} options={[
               ['atlas', 'Atlas + 截图'],
               ['exploded', '爆炸图'],
             ]} />
@@ -363,8 +417,8 @@ export default function ReskinPanel({
           />
         )}
 
-        <FieldSelect label="处理模型" value={processingModel} onValueChange={handleModelChange} disabled={running} options={processingModels.map((m) => [m, m])} placeholder="选择模型" />
-        <FieldSelect label="输出尺寸" value={size} onValueChange={handleSizeChange} disabled={running} options={IMAGE_SIZES} />
+        <FieldSelect label="处理模型" value={processingModel} onValueChange={handleModelChange} disabled={running || generationLocked} options={processingModels.map((m) => [m, m])} placeholder="选择模型" />
+        <FieldSelect label="输出尺寸" value={size} onValueChange={handleSizeChange} disabled={running || generationLocked} options={IMAGE_SIZES} />
 
         <div className="rounded border border-border">
           <button
@@ -419,10 +473,11 @@ export default function ReskinPanel({
           {running ? <Loader className="h-3.5 w-3.5" /> : slotMode ? <Paintbrush className="h-3.5 w-3.5" /> : <WandSparkles className="h-3.5 w-3.5" />}
           {running ? '处理中…' : slotMode ? '局部重绘' : '开始换肤'}
         </Button>
-      </div>
+        </div>
+      </ScrollArea>
 
       {logs.length > 0 && (
-        <div className="flex min-h-0 flex-1 flex-col border-b border-border">
+        <div className="flex h-48 shrink-0 flex-col border-b border-border">
           <div className="px-3 py-2 text-xs font-medium">日志</div>
           <ScrollArea className="min-h-0 flex-1 px-3 pb-2 font-mono text-[10px] leading-relaxed">
             {logs.map((log, i) => {

@@ -66,6 +66,8 @@ graph TD
 - **覆盖率**：核心源码 100%，节点组件（19 个）和顶层 components（17 个）按文件名 + 关键代表性样本（NodeShell 不在本轮定点读取，但其约定已在 conventions/faq 提炼）
 - **2026-07-29 增量**：Spine 独立 Vite/iframe 项目已迁入 `src/spine/`，宿主 UI 在 `SpineEditorDialog.jsx` / `SpinePanels.jsx` / `ReskinPanel.jsx`，运行时固定 dist 在 `vendor/spine/`。
 - **2026-07-30 增量**：Spine loader 按 JSON 版本路由 3.8/4.2 runtime；4.2 使用本地 `spine-pixi-v7@4.2.119` IIFE。录制停止后先预览，再选择导出到画布或下载。
+- **2026-07-30 换肤生成图**：`ReskinPanel` 使用 Media Gallery 展示 `edit_image` 生成图；图片保留到手动删除，`runReskin` 支持复用并跳过重复生成。
+- **2026-07-30 换肤稳定性**：SAM 结果先转 Canvas 再侵蚀；Pixi atlas 热预览更新既有 ImageResource，支持重复替换；表单滚动且日志保持固定高度。
 - **建议下一步深挖**：
   - 如需精确节点组件实现细节，定点读 `components/nodes/<具体>.jsx`
   - 如需精确 image-ops 算法实现，定点读 `utils/image-ops/<具体>.js`（gif.js / matte.js / pixelate.js 等）

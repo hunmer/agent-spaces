@@ -26,7 +26,9 @@ import {
 import {
   buildOriginalSilhouettes, segmentByShapeIntersection, applyMaskToRegion,
 } from './shapeSegmenter';
-import { loadImage, createCanvas, cropRegionRotated, erodeAlpha } from './canvasUtils';
+import {
+  loadImage, createCanvas, cropRegionRotated, drawToCanvas, erodeAlpha,
+} from './canvasUtils';
 import { generateImages, normalizeImageUrl } from '../workflow';
 
 const REMBG_PLUGIN = 'workflow.rembg';
@@ -140,6 +142,37 @@ async function workflowRedraw(imageUrl, prompt, opts, log) {
   return { url, durationMs: ms };
 }
 
+async function resolveReskinnedImage({
+  generatedImageUrl, compositeCanvas, skinName, prompt, workflowId, model, size,
+  log, onGeneratedImage,
+}) {
+  if (generatedImageUrl) {
+    const url = normalizeImageUrl(generatedImageUrl);
+    log('workflow', '复用已有生成图，跳过 edit_image', { url, reused: true });
+    return { url, durationMs: 0, reused: true };
+  }
+
+  log('upload', '上传 composite 到宿主…');
+  const compositeUrl = await uploadDataUrl(
+    compositeCanvas.toDataURL('image/png'),
+    `composite-${skinName}-${Date.now()}.png`,
+  );
+  log('upload', 'composite 已上传');
+  const result = await workflowRedraw(
+    compositeUrl,
+    prompt,
+    {
+      workflowId,
+      model,
+      size,
+      aspect: closestEditAspect(compositeCanvas.width, compositeCanvas.height),
+    },
+    log,
+  );
+  try { onGeneratedImage?.(result.url); } catch { /* UI callback must not break pipeline */ }
+  return { ...result, reused: false };
+}
+
 /**
  * 执行完整换肤 pipeline。
  *
@@ -150,6 +183,7 @@ async function workflowRedraw(imageUrl, prompt, opts, log) {
  * @param {object} input.spineJson 原 Spine JSON 对象
  * @param {string} input.skinName 新皮肤名
  * @param {string} input.prompt 用户换肤描述
+ * @param {string} [input.generatedImageUrl] 已生成的 composite 图片；存在时跳过 edit_image
  * @param {Object} [opts]
  * @param {'atlas'|'exploded'} [opts.method='atlas'] 合成方法
  * @param {'sam'|'bg_components'} [opts.segMethod='sam'] 分割方法
@@ -159,15 +193,16 @@ async function workflowRedraw(imageUrl, prompt, opts, log) {
  * @param {boolean} [opts.erode] 是否侵蚀去白边（默认 false）
  * @param {number} [opts.erodePx] 侵蚀半径（默认按 region 边长缩放）
  * @param {(step:string, msg:string, data?:object) => void} [opts.onLog] 日志回调
+ * @param {(url:string) => void} [opts.onGeneratedImage] 新图生成后、分割前回调
  * @returns {Promise<Object>} { newAtlasCanvas, newAtlasText, newSpineJson, layout, stats }
  */
 export async function runReskin(input, opts = {}) {
   const {
-    snapshot, atlasSheetUrl, atlasText, spineJson, skinName, prompt,
+    snapshot, atlasSheetUrl, atlasText, spineJson, skinName, prompt, generatedImageUrl,
   } = input;
   const {
     method = 'atlas', segMethod = 'sam',
-    workflowId, model = 'gpt-image-1', size = '2k', onLog = () => {},
+    workflowId, model = 'gpt-image-1', size = '2k', onLog = () => {}, onGeneratedImage,
   } = opts;
 
   const log = (step, msg, data) => { try { onLog(step, msg, data); } catch { /* ignore */ } };
@@ -206,21 +241,20 @@ export async function runReskin(input, opts = {}) {
   }
   log('compose', `composite 合成完成: ${layout.compositeW}×${layout.compositeH}`, { layout, method });
 
-  // ④ 上传 composite → edit_image workflow 重绘
-  log('upload', '上传 composite 到宿主…');
-  const compositeUrl = await uploadDataUrl(compositeCanvas.toDataURL('image/png'), `composite-${skinName}-${Date.now()}.png`);
-  log('upload', 'composite 已上传');
-  const { url: reskinnedUrl, durationMs: editImageMs } = await workflowRedraw(
-    compositeUrl,
-    reskinPrompt,
-    {
-      workflowId,
-      model,
-      size,
-      aspect: closestEditAspect(compositeCanvas.width, compositeCanvas.height),
-    },
+  // ④ 复用已有生成图，或上传 composite → edit_image workflow 重绘
+  const {
+    url: reskinnedUrl, durationMs: editImageMs, reused: reusedGeneratedImage,
+  } = await resolveReskinnedImage({
+    generatedImageUrl,
+    compositeCanvas,
+    skinName,
+    prompt: reskinPrompt,
+    workflowId,
+    model,
+    size,
     log,
-  );
+    onGeneratedImage,
+  });
 
   // ⑤ 下载重绘图，确定分割源
   const reskinnedImg = await loadImage(await urlToDataUrl(reskinnedUrl));
@@ -289,12 +323,8 @@ export async function runReskin(input, opts = {}) {
         });
         const maskedUrl = samResult?.data?.imageUrl || samResult?.imageUrl;
         if (!maskedUrl) throw new Error('rembg 未返回抠图结果');
-        let maskedImg = await loadImage(await urlToDataUrl(maskedUrl));
-        if (maskedImg.width !== region.w || maskedImg.height !== region.h) {
-          const tmp = createCanvas(region.w, region.h);
-          tmp.getContext('2d').drawImage(maskedImg, 0, 0, region.w, region.h);
-          maskedImg = tmp;
-        }
+        const loadedMask = await loadImage(await urlToDataUrl(maskedUrl));
+        let maskedImg = drawToCanvas(loadedMask, region.w, region.h);
         const px = pickErodePx(Math.max(region.w, region.h), opts);
         if (px > 0) maskedImg = erodeAlpha(maskedImg, px);
         regionParts[region.name] = { img: maskedImg, width: region.w, height: region.h };
@@ -342,7 +372,7 @@ export async function runReskin(input, opts = {}) {
     newAtlasText: repackResult.atlasText,
     newSpineJson,
     layout,
-    stats: { totalMs, regionCount: regions.length, packedCount: Object.keys(repackResult.placements).length, slotCount: Object.keys(skinPlacements).length, editImageMs, method, segMethod },
+    stats: { totalMs, regionCount: regions.length, packedCount: Object.keys(repackResult.placements).length, slotCount: Object.keys(skinPlacements).length, editImageMs, reusedGeneratedImage, method, segMethod },
   };
 }
 
@@ -408,13 +438,9 @@ export async function runInpaintSlot(input, opts = {}) {
   } catch (err) {
     log('inpaint', `rembg 清背景失败，用原图: ${err?.message || err}`, { error: true });
   }
-  // 尺寸对齐
+  // 转为 canvas 并对齐尺寸，后续 erodeAlpha 只接受 canvas。
   const rw = regionCanvas.width, rh = regionCanvas.height;
-  if (maskedImg.width !== rw || maskedImg.height !== rh) {
-    const tmp = createCanvas(rw, rh);
-    tmp.getContext('2d').drawImage(maskedImg, 0, 0, rw, rh);
-    maskedImg = tmp;
-  }
+  maskedImg = drawToCanvas(maskedImg, rw, rh);
   const px = pickErodePx(Math.max(rw, rh), opts);
   if (px > 0) maskedImg = erodeAlpha(maskedImg, px);
 

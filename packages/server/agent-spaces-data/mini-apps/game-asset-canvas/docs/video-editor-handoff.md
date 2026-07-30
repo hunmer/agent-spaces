@@ -48,7 +48,8 @@ ffmpeg 插件（两份副本需同步！见下「ffmpeg 插件」）:
   }],
   videoInfo: object|null,  // ffprobe 解析信息
   params: { mode, count, fps, maxWidth },  // 截帧参数
-  output: { video: string|null },           // 尺寸调整产出
+  sheetLayout: { rows, cols },  // 精灵图输出网格布局
+  output: { video: string|null, images: string[] },  // video=尺寸调整产出；images=精灵图输出（下游消费）
 }
 ```
 
@@ -57,24 +58,30 @@ ffmpeg 插件（两份副本需同步！见下「ffmpeg 插件」）:
 ```
 ┌─────────────────────────────────────────────┐
 │ 标题栏 + busy 指示                            │
-├─────────────────────────────────────────────┤
-│ [FileUpload] [缩略图1][缩略图2]... 横向视频列表 │  顶栏
-├──────────────────────────┬──────────────────┤
-│                          │ [编辑][动画组]    │ tabs
-│      视频播放器           │ ─────────────    │
-│   <video controls>       │  右侧面板内容     │
-│                          │                   │
-├──────────────────────────┤                   │
-│ [帧1][帧2][帧3]...        │                   │
-│  横向帧图片列表            │                   │
-│  每帧右上角 ⋮ dropdown    │                   │
-└──────────────────────────┴──────────────────┘
+├─────┬──────────────────────┬────────────────┤
+│ 左  │                      │ [编辑][动画组]  │ tabs
+│ 侧  │   视频播放器          │ ─────────────  │
+│ 栏  │   <video controls>   │ 右侧面板内容    │
+│ 视  ├──────────────────────┤                │
+│ 频  │ [帧1][帧2][帧3]...    │                │
+│ 列  │  横向帧图片列表        │                │
+│ 表  │  每帧右上角 ⋮ dropdown│                │
+│ +上 │                      │                │
+│ 传  │                      │                │
+└─────┴──────────────────────┴────────────────┘
 ```
 
+- **视频缩略图列表属于左侧栏**（`<aside>`，纵向排列），不再占整行顶栏 / 不出现在右侧面板上方。FileUpload 在左侧栏顶部。
 - 视频缩略图：用 `ffmpeg_first_frame` 获取首帧 base64（不用 `<video>`）
 - FileUpload 用内联 `<style>` + `.video-thumb-upload` class 缩成缩略图尺寸（参考 GroupExecutionToolbar）
 - 帧的 ⋮ dropdown：「设置为起点」「设置为终点」→ 各有分组子菜单（DotsSubmenu 组件）
 - 切换视频时清空 frames/animGroups/videoInfo（useEffect 监听 currentVideo）
+
+### 动画组 tab（精灵图输出）
+- 顶部「精灵图布局」：行（rows）/ 列（cols）输入，持久化到 `data.sheetLayout`。
+- 每个动画组下方有「精灵图预览」（`GroupSheetPreview` 组件）：按起止帧取帧 → `composeSpriteSheet` 合成 → `imageDataToDataUrl` 展示。依赖起止帧/fps/cols 变化时刷新（切 fps 也会重算）。
+- 列表最下方【输出到画布】按钮：把每个有效动画组合成精灵图 → `imageDataToUrl` 上传 → 收集 URL 写入 `data.output.images`（节点统一输出约定，下游图片节点据此消费）。
+- sheet 合成能力复用 `utils/image-ops/spriteSheet.js` 的 `composeSpriteSheet`（同 sprite-merge 处理器），URL↔ImageData 用 `utils/image-ops/io.js`。
 
 ## ffmpeg 插件（7 个 action）
 
