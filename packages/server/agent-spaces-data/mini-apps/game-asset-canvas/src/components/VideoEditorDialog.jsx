@@ -219,7 +219,7 @@ export default function VideoEditorDialog({ open, data, onUpdate, onClose }) {
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose?.()}>
-      <DialogContent className="flex max-h-[92vh] w-[96vw] max-w-[1400px] flex-col gap-0 p-0 nodrag nopan nowheel">
+      <DialogContent className="!w-[80vw] !max-w-[80vw] flex max-h-[92vh] flex-col gap-0 p-0 nodrag nopan nowheel">
         <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
           <DialogTitle className="flex items-center gap-2 text-sm font-semibold">
             <Film className="h-4 w-4 text-primary" />

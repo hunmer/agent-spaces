@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { Handle } from '@xyflow/react';
 
-const HANDLE_SIZE = 24;
+const DOT_SIZE = 8;
 const HOVER_SIZE = 32;
 
 export default function FloatingHandle({ style, ...props }) {
   const [hovered, setHovered] = useState(false);
-  const size = hovered ? HOVER_SIZE : HANDLE_SIZE;
+  const size = hovered ? HOVER_SIZE : `var(--floating-handle-size, ${DOT_SIZE}px)`;
 
   return (
     <Handle

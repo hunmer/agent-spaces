@@ -100,6 +100,8 @@ export default function Canvas() {
   const [dropNodeMenu, setDropNodeMenu] = useState(null);
   const [edgePathStyle, setEdgePathStyle] = useState('bezier');
   const [edgeLineStyle, setEdgeLineStyle] = useState('solid');
+  const [hoveredNodeId, setHoveredNodeId] = useState(null);
+  const [isConnecting, setIsConnecting] = useState(false);
 
   const reactFlow = useReactFlow();
   const wrappingRef = useRef(null);
@@ -238,6 +240,7 @@ export default function Canvas() {
 
   // 连线拖到空白处放手：弹出「添加节点」菜单
   const onConnectEnd = useCallback((event, connectionState) => {
+    setIsConnecting(false);
     if (connectionState.isValid) return;
     if (!connectionState.fromNode) return;
     const { clientX, clientY } = 'changedTouches' in event ? event.changedTouches[0] : event;
@@ -551,6 +554,18 @@ export default function Canvas() {
     onOutputPreviewModeChange: handleOutputPreviewModeChange,
     settings, callbacks: nodeCallbacks,
   });
+  const renderedNodes = useMemo(() => decoratedNodes.map((node) => ({
+    ...node,
+    style: {
+      ...node.style,
+      '--floating-handle-size': (isConnecting || node.id === hoveredNodeId) ? '24px' : '8px',
+    },
+  })), [decoratedNodes, hoveredNodeId, isConnecting]);
+
+  const onNodeMouseEnter = useCallback((_event, node) => setHoveredNodeId(node.id), []);
+  const onNodeMouseLeave = useCallback((_event, node) => {
+    setHoveredNodeId((current) => (current === node.id ? null : current));
+  }, []);
 
   // —— 工作区操作（切换/创建/删除）——
   const handleSwitch = (id) => { if (id !== activeId) switchWorkspace(id); };
@@ -632,14 +647,17 @@ export default function Canvas() {
           >
             <ReactFlow
               key={activeId}
-              nodes={decoratedNodes}
+              nodes={renderedNodes}
               edges={floatingEdges}
               viewport={viewport}
               onViewportChange={setViewport}
               onNodesChange={onNodesChange}
               onEdgesChange={onEdgesChange}
               onConnect={onConnect}
+              onConnectStart={() => setIsConnecting(true)}
               onConnectEnd={onConnectEnd}
+              onNodeMouseEnter={onNodeMouseEnter}
+              onNodeMouseLeave={onNodeMouseLeave}
               connectionLineComponent={ConnectionLine}
               connectionLineStyle={connectionLineStyle}
               connectionRadius={160}
