@@ -62,6 +62,8 @@ export const NODE_TYPES = {
   videoDisplay: 'videoDisplay',
   // 视频编辑器节点：接收/上传多视频 → ffmpeg 按帧截取 → 帧拖拽到动画组循环播放 + 尺寸调整
   videoEditor: 'videoEditor',
+  // 蒙版绘制节点：fabric 画笔/套索/矩形选区，产出黑白蒙版图供下游 edit_image 等消费
+  maskPaint: 'maskPaint',
   // 注：分组不是节点，是 WorkflowGroupOverlay（由 groups 数据驱动，复用 workflow-editor 同源组件）
 };
 
@@ -236,6 +238,7 @@ export const NODE_META = {
   [NODE_TYPES.spineEditor]: { label: '骨骼编辑器', icon: '🦴', color: '#8b5cf6' },
   [NODE_TYPES.videoDisplay]: { label: '视频展示', icon: '🎬', color: '#ec4899' },
   [NODE_TYPES.videoEditor]: { label: '视频编辑器', icon: '🎞️', color: '#8b5cf6' },
+  [NODE_TYPES.maskPaint]: { label: '蒙版绘制', icon: '🎭', color: '#0ea5e9' },
 };
 
 // 图片展示节点的来源标签（不同来源传不同 tag 做区分）
@@ -258,6 +261,7 @@ export const IMAGE_TAGS = {
   cutout: '抠图',
   directorDesk: '3D导演台',
   photopea: '在线PS',
+  maskPaint: '蒙版绘制',
 };
 
 // 持久化配置文件名（工作区共享的顶层配置）

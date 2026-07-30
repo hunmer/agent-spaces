@@ -1,5 +1,8 @@
 # 进度
 
+- 2026-07-30：开始为 game-asset-canvas 复用 workflow canvas 的 Ctrl+V 剪贴板图片粘贴能力。
+- 2026-07-30：确认 workflow 图片读取优先于内部节点粘贴；mini-app 现有 Ctrl+V 仅处理内部节点剪贴板。
+
 - 2026-07-30：开始补齐 game-asset-canvas 节点拖入分组、Ctrl 拖出和目标高亮；已确认仅视觉 overlay 被共享，画布拖拽协调逻辑缺失。
 - 2026-07-30：确定最小实现边界：本地拖拽会话 + 节点中心矩形命中 + `childNodeIds` 更新，直接复用 overlay 现有 `isDropTarget` 样式。
 - 2026-07-30：确认 Ctrl 拖出还需冻结成员初始位置参与 overlay 边界计算，避免分组框跟随拖动节点扩张。

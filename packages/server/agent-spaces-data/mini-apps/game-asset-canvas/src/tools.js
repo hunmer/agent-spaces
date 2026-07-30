@@ -40,6 +40,7 @@ const NODE_TYPE_ENUM = [
   'spineEditor',
   'videoDisplay',
   'videoEditor',
+  'maskPaint',
   'note',
 ];
 
@@ -75,6 +76,7 @@ const NODE_TYPE_DESC = [
   'spineEditor=骨骼编辑器（Spine骨骼姿势编辑+动画预览，上传.skel/.atlas/.png）',
   'videoDisplay=视频展示（接收上游视频，上传/播放/导出）',
   'videoEditor=视频编辑器（接收/上传多视频，ffmpeg按帧截取，帧拖拽分组循环播放，调整尺寸）',
+  'maskPaint=蒙版绘制（fabric画笔/自由套索/矩形选区，产出黑白蒙版图供edit_image等消费）',
   'note=便签（纯文本备注）',
 ].join(' / ');
 

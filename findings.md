@@ -1,5 +1,11 @@
 # 发现
 
+## game-asset-canvas 剪贴板图片粘贴
+
+- workflow editor 的 Ctrl+V 会先调用 `navigator.clipboard.read()` 查找 `image/*` ClipboardItem，再回退到文本/内部节点剪贴板。
+- mini-app 的 `useSelectionClipboard` 已占用 Ctrl/Cmd+V，但当前仅粘贴模块级内存中的节点剪贴板，并已跳过 input/textarea/contenteditable。
+- mini-app `useNodeCrud` 已有 `handleDropFiles(fileList, position)`，需确认其上传和图片节点落点可否直接服务剪贴板 Blob。
+
 ## game-asset-canvas 分组成员拖拽
 
 - mini-app 仅复用 `WorkflowGroupOverlay`；成员加入/移出逻辑位于 Web `workflow-canvas.tsx`，未复用。

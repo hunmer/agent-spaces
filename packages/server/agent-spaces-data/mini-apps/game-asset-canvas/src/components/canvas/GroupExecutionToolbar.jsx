@@ -142,6 +142,14 @@ export default function GroupExecutionToolbar({
         <div
           className="flex items-start gap-2 overflow-x-auto pb-0.5"
           style={{ minHeight: 80, paddingTop: 10, paddingRight: 10 }}
+          onDragOver={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+          }}
+          onDrop={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+          }}
         >
           <FileUpload
             value={EMPTY_UPLOAD_FILES}

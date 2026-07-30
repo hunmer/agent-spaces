@@ -201,6 +201,7 @@ export default function Canvas() {
   const groupOps = useGroupOperations({
     groups, nodes, edges, setGroups, setNodes, setEdges, reactFlow, canvasRef: wrappingRef,
   });
+  const clearGroupSelection = useCallback(() => groupOps.setSelectedGroupId(null), [groupOps.setSelectedGroupId]);
   const groupExecution = useGroupExecution({ groups, nodes, edges, setGroups, setNodes });
 
   // —— ReactFlow 变更回调（逻辑简单，留在编排层）——
@@ -660,6 +661,9 @@ export default function Canvas() {
               onConnectEnd={onConnectEnd}
               onNodeMouseEnter={onNodeMouseEnter}
               onNodeMouseLeave={onNodeMouseLeave}
+              onPaneClick={clearGroupSelection}
+              onNodeClick={clearGroupSelection}
+              onEdgeClick={clearGroupSelection}
               onNodeDragStart={groupOps.handleNodeDragStart}
               onNodeDrag={groupOps.handleNodeDrag}
               onNodeDragStop={groupOps.handleNodeDragStop}

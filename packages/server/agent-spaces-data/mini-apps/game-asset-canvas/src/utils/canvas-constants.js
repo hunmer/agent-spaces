@@ -31,6 +31,7 @@ import WorkflowRunnerNode, { PARAMS_SCHEMA as WORKFLOW_RUNNER_PARAMS } from '../
 import SpineEditorNode from '../components/nodes/SpineEditorNode';
 import VideoDisplayNode from '../components/nodes/VideoDisplayNode';
 import VideoEditorNode from '../components/nodes/VideoEditorNode';
+import MaskPaintNode from '../components/nodes/MaskPaintNode';
 import NoteNode from '../components/nodes/NoteNode';
 
 // 节点类型 -> 渲染组件
@@ -67,6 +68,7 @@ export const NODE_COMPONENTS = {
   [NODE_TYPES.spineEditor]: SpineEditorNode,
   [NODE_TYPES.videoDisplay]: VideoDisplayNode,
   [NODE_TYPES.videoEditor]: VideoEditorNode,
+  [NODE_TYPES.maskPaint]: MaskPaintNode,
   [NODE_TYPES.note]: NoteNode,
 };
 
@@ -108,6 +110,7 @@ export const ADD_NODE_ITEMS = [
   { type: NODE_TYPES.cutout },
   { type: NODE_TYPES.directorDesk },
   { type: NODE_TYPES.photopea },
+  { type: NODE_TYPES.maskPaint },
   { type: NODE_TYPES.workflowRunner },
   { type: NODE_TYPES.spineEditor },
   { type: NODE_TYPES.videoDisplay },
@@ -131,6 +134,7 @@ export const DEFAULT_SIZE = {
   [NODE_TYPES.spineEditor]: { w: 300, h: 260 },
   [NODE_TYPES.videoDisplay]: { w: 320, h: 240 },
   [NODE_TYPES.videoEditor]: { w: 360, h: 280 },
+  [NODE_TYPES.maskPaint]: { w: 300, h: 240 },
   default: { w: 290, h: 240 },
 };
 
@@ -245,6 +249,17 @@ export function initialData(type) {
   if (type === NODE_TYPES.photopea) {
     // 在线PS（Photopea）：可选图输入 + 导出图产出
     return { status: 'idle', output: { images: [] }, uploadedImages: [], upstreamOrder: [] };
+  }
+  if (type === NODE_TYPES.maskPaint) {
+    // 蒙版绘制：fabric 画笔/套索/矩形选区，产出黑白蒙版图供 edit_image 等消费
+    // paintData 持久化每图蒙版笔触快照（遵守 handoff 约束 #15：业务数据存节点 data）
+    return {
+      status: 'idle',
+      output: { images: [] },
+      uploadedImages: [],
+      upstreamOrder: [],
+      paintData: null,
+    };
   }
   if (type === NODE_TYPES.workflowRunner) {
     // 执行工作流（通用）：选工作流 + JSON 参数 → 执行 → 提取 URL 展示

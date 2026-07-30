@@ -34,7 +34,8 @@ export function computeInputImages(nodes, edges) {
     || type === NODE_TYPES.imageCompare
     || type === NODE_TYPES.cutout
     || type === NODE_TYPES.directorDesk
-    || type === NODE_TYPES.photopea;
+    || type === NODE_TYPES.photopea
+    || type === NODE_TYPES.maskPaint;
 
   // 透传类节点：产出 = 输入（如 imageDisplay 仅展示转发，无独立执行动作）。
   // 生成类节点（editImage/imageProcess/cutout/编辑器/拆分类等）未执行时不应把上游输入误当产出转发。

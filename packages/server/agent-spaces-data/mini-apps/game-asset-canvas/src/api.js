@@ -42,6 +42,7 @@ const VALID_NODE_TYPES = [
   'spineEditor',   // 骨骼编辑器
   'videoDisplay',  // 视频展示
   'videoEditor',   // 视频编辑器
+  'maskPaint',     // 蒙版绘制（fabric 画笔/套索/矩形）
   'note',          // 便签
 ];
 
@@ -78,6 +79,7 @@ const NODE_LABELS = {
   videoDisplay: '视频展示',
   videoEditor: '视频编辑器',
   note: '便签',
+  maskPaint: '蒙版绘制',
 };
 
 function asString(v, def = '') {
