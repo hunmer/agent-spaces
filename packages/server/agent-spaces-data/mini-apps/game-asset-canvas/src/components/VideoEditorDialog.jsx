@@ -10,6 +10,7 @@ const FFMPEG_PLUGIN_ID = 'workflow.ffmpeg';
 const FFMPEG_PROBE = 'ffmpeg_probe';
 const FFMPEG_EXTRACT_FRAMES = 'ffmpeg_extract_frames';
 const FFMPEG_CUSTOM = 'ffmpeg_custom';
+const FFMPEG_FIRST_FRAME = 'ffmpeg_first_frame';
 
 /**
  * 视频编辑器大对话框。
@@ -39,9 +40,30 @@ export default function VideoEditorDialog({ open, data, onUpdate, onClose }) {
   const [busy, setBusy] = useState(false);
   const [busyMsg, setBusyMsg] = useState('');
   const [dotsFrameIdx, setDotsFrameIdx] = useState(null);
+  const [thumbs, setThumbs] = useState({}); // { [videoUrl]: dataUrl } 缩略图缓存
   const dotsRef = useRef(null);
 
   const currentVideo = videos[Math.min(activeVideoIdx, videos.length - 1)] || videos[0] || '';
+
+  // 获取单个视频的首帧作为缩略图（ffmpeg_first_frame → base64 dataUrl）
+  const fetchThumb = useCallback(async (url) => {
+    try {
+      const ret = await window.AgentSpaces.callPluginTool(FFMPEG_PLUGIN_ID, FFMPEG_FIRST_FRAME, { inputPath: url });
+      if (ret?.success && ret?.data?.dataUrl) {
+        setThumbs((prev) => ({ ...prev, [url]: ret.data.dataUrl }));
+      }
+    } catch (err) {
+      console.warn('获取缩略图失败:', url, err?.message || err);
+    }
+  }, []);
+
+  // videos 变化时，为缺失缩略图的视频异步获取
+  useEffect(() => {
+    for (const url of videos) {
+      if (!thumbs[url]) fetchThumb(url);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [videos.join('|')]);
 
   useEffect(() => {
     if (activeVideoIdx > videos.length - 1) setActiveVideoIdx(Math.max(0, videos.length - 1));
@@ -226,26 +248,40 @@ export default function VideoEditorDialog({ open, data, onUpdate, onClose }) {
         </div>
 
         {/* 顶部：横向视频缩略图列表（最左侧 FileUpload 接收上传） */}
+        <style>{`
+          .video-thumb-upload { width: 96px; flex: 0 0 96px; }
+          .video-thumb-upload > div:first-child {
+            width: 96px; height: 56px; min-height: 56px; padding: 4px; gap: 2px; border-radius: 6px;
+          }
+          .video-thumb-upload > div:first-child > svg { width: 16px; height: 16px; }
+          .video-thumb-upload > div:first-child > div > p:first-child { font-size: 10px; line-height: 12px; }
+          .video-thumb-upload > div:first-child > div > p:not(:first-child) { display: none; }
+        `}</style>
         <div className="flex items-center gap-2 overflow-x-auto border-b border-border bg-muted/20 px-3 py-2">
-          {/* 上传入口：固定在最左侧，尺寸与缩略图一致（h-14 w-24） */}
-          <div className="shrink-0 [&_div:first-child]:flex [&_div:first-child]:h-14 [&_div:first-child]:w-24 [&_div:first-child]:flex-col [&_div:first-child]:items-center [&_div:first-child]:justify-center [&_div:first-child]:gap-0 [&_div:first-child]:rounded [&_div:first-child]:border-2 [&_div:first-child]:px-0 [&_div:first-child]:py-0 [&_svg]:size-5 [&_p]:text-[10px] [&_p+p]:hidden">
-            <FileUpload
-              value={[]}
-              onChange={handleFilesChange}
-              accept={{ 'video/*': ['.mp4', '.webm', '.mov', '.avi', '.mkv'] }}
-              maxFiles={0}
-              placeholder="+ 视频"
-            />
-          </div>
+          {/* 上传入口：固定在最左侧，尺寸与缩略图一致 */}
+          <FileUpload
+            value={[]}
+            onChange={handleFilesChange}
+            accept={{ 'video/*': ['.mp4', '.webm', '.mov', '.avi', '.mkv'] }}
+            maxFiles={0}
+            placeholder="+ 视频"
+            className="video-thumb-upload"
+          />
           {videos.length === 0 ? (
             <span className="text-xs text-muted-foreground">从最左侧上传，或从上游连线接收</span>
           ) : videos.map((url, i) => (
             <div
               key={url + i}
-              className={`group relative shrink-0 cursor-pointer overflow-hidden rounded border-2 transition ${i === activeVideoIdx ? 'border-primary' : 'border-transparent hover:border-border'}`}
+              className={`group relative h-14 w-24 shrink-0 cursor-pointer overflow-hidden rounded border-2 transition ${i === activeVideoIdx ? 'border-primary' : 'border-transparent hover:border-border'}`}
               onClick={() => setActiveVideoIdx(i)}
             >
-              <video src={url} className="h-14 w-24 object-cover" muted preload="metadata" />
+              {thumbs[url] ? (
+                <img src={thumbs[url]} alt={`视频 ${i + 1}`} className="h-full w-full object-cover" />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center bg-muted text-muted-foreground">
+                  <Film className="h-4 w-4 opacity-40" />
+                </div>
+              )}
               <span className="absolute bottom-0 left-0 right-0 bg-black/60 px-1 py-0.5 text-[9px] text-white">
                 #{i + 1}
               </span>
