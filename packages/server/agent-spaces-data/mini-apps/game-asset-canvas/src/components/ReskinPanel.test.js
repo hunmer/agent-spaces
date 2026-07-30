@@ -21,5 +21,7 @@ test('reskin history comparison uses ReactCompareSlider with material and Spine 
   assert.match(source, /<ReactCompareSlider/);
   assert.match(source, /<TabsTrigger value="material">材质图对比<\/TabsTrigger>/);
   assert.match(source, /<TabsTrigger value="spine">Spine 对比<\/TabsTrigger>/);
-  assert.match(source, /spineAfterSnapshot/);
+  assert.match(source, /itemOne={<SpineCompareViewer assets={beforeAssets}/);
+  assert.match(source, /itemTwo={<SpineCompareViewer assets={afterAssets}/);
+  assert.doesNotMatch(source, /spineAfterSnapshot/);
 });

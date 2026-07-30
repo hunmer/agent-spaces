@@ -63,9 +63,10 @@
 - 当前删除生成记录只调用 `deletePersistedHistory(id)`，没有判断被删项是否正在应用，也没有恢复 `assets.png`。
 - `react-compare-slider` 当前 npm latest 为 4.0.0，官方描述支持比较任意两个 React 组件；具体导出 API继续从包 README/声明文件核对。
 - 仓库已经依赖 `react-compare-slider@^4.0.0`，并从 `@agent-spaces/ui` 导出 `ReactCompareSlider` 和 `ReactCompareSliderImage`；无需新增依赖。
-- 完整 Spine 对比需要在换肤前后各调用一次 `requestSnapshot`；材质对比使用原 atlas 与同坐标的 `previewPngUrl`，避免拿重新打包、布局不同的 atlas 做滑块比较。
+- 材质对比使用原 atlas 与同坐标的 `previewPngUrl`，避免拿重新打包、布局不同的 atlas 做滑块比较；Spine 对比使用两组真实资源分别初始化 Viewer，不生成截图。
 - 首次 HMR 的实际写路径是 `ReskinPanel` 初始 effect 调用 `onReskinDataChange → SpineEditorNode.onUpdate`；历史 Hook 初次只读配置。持久化现改为用户动作显式开启，异步配置纠正也不会写节点。
 
 ## Spine Viewer 组件对比
 - 用户明确要求 Spine Tab 比较两个真实 Viewer 组件，不是换肤前后截图；`ReactCompareSlider` 的 `itemOne/itemTwo` 支持任意 ReactNode。
 - `SpineEditorApp(container)`、`loadSpine`、`setSkin(name)` 足以构建只读对比 Viewer；每个 slider item 需要独立实例并在 effect cleanup 中 `destroy()`。
+- 新历史保存 `spineBeforeAssets/spineAfterAssets`；旧历史可从当前原始 assets 和已有 `spineJsonUrl/atlasUrl/pngUrl` 推导两侧 Viewer。

@@ -18,6 +18,7 @@ import {
 import useSpineReskinHistory from '../hooks/useSpineReskinHistory';
 import { hasReskinLogImageOutput } from '../utils/reskin/reskinLogData';
 import { resolveReskinComparison } from '../utils/reskin/reskinHistoryData';
+import SpineCompareViewer from './SpineCompareViewer';
 
 const RESKIN_MODEL_STORAGE_KEY = 'spine-editor:processing-model';
 const EROSION_STORAGE_KEY = 'spine-editor:erosion';
@@ -62,15 +63,6 @@ async function uploadCanvas(canvas, fileName) {
   const url = uploaded?.url || uploaded?.httpPath;
   if (!url) throw new Error('换肤历史图片上传失败');
   return url;
-}
-
-async function uploadImageSource(src, fileName) {
-  if (!src || !String(src).startsWith('data:')) return src || '';
-  const AS = window.AgentSpaces;
-  if (!AS?.uploadFile) return '';
-  const blob = await (await fetch(src)).blob();
-  const uploaded = await AS.uploadFile(new File([blob], fileName, { type: blob.type || 'image/png' }));
-  return uploaded?.url || uploaded?.httpPath || '';
 }
 
 /**
@@ -334,8 +326,6 @@ export default function ReskinPanel({
       }));
       await replaceAtlas?.(previewPngDataUrl, finalSkinName);
       setActiveSkin(finalSkinName);
-      await new Promise((resolve) => requestAnimationFrame(resolve));
-      const spineAfterSnapshot = await requestSnapshot?.();
 
       const persistedAssets = await onReskinComplete?.({
         skel: assets.skel,
@@ -344,13 +334,11 @@ export default function ReskinPanel({
         spineJson: result.newSpineJson,
       });
       const timestamp = Date.now();
-      const [pngUrl, previewPngUrl, spineBeforeUrl, spineAfterUrl] = await Promise.all([
+      const [pngUrl, previewPngUrl] = await Promise.all([
         persistedAssets?.png
           ? Promise.resolve(persistedAssets.png)
           : uploadCanvas(result.newAtlasCanvas, `${finalSkinName}-atlas-${timestamp}.png`),
         uploadCanvas(result.previewAtlasCanvas, `${finalSkinName}-preview-${timestamp}.png`),
-        uploadImageSource(snapshot, `${finalSkinName}-spine-before-${timestamp}.png`).catch(() => ''),
-        uploadImageSource(spineAfterSnapshot, `${finalSkinName}-spine-after-${timestamp}.png`).catch(() => ''),
       ]);
       const stages = [
         { label: '原 Atlas', src: assets.png },
@@ -374,8 +362,18 @@ export default function ReskinPanel({
         compare: {
           materialBefore: assets.png,
           materialAfter: previewPngUrl,
-          spineBefore: spineBeforeUrl,
-          spineAfter: spineAfterUrl,
+          spineBeforeAssets: {
+            skel: assets.skel,
+            atlas: assets.atlas,
+            png: assets.png,
+            skinName: 'default',
+          },
+          spineAfterAssets: persistedAssets ? {
+            skel: persistedAssets.spineJson || persistedAssets.skel,
+            atlas: persistedAssets.atlas,
+            png: persistedAssets.png,
+            skinName: finalSkinName,
+          } : null,
         },
         assets: {
           pngUrl,
@@ -721,13 +719,13 @@ export default function ReskinPanel({
         </div>
       )}
       </div>
-      <ReskinCompareDialog item={compareItem} onClose={() => setCompareItem(null)} />
+      <ReskinCompareDialog item={compareItem} originalAssets={assets} onClose={() => setCompareItem(null)} />
     </>
   );
 }
 
-function ReskinCompareDialog({ item, onClose }) {
-  const comparison = resolveReskinComparison(item);
+function ReskinCompareDialog({ item, originalAssets, onClose }) {
+  const comparison = resolveReskinComparison(item, originalAssets);
   return (
     <Dialog open={!!item} onOpenChange={(open) => { if (!open) onClose?.(); }}>
       <DialogContent className="flex h-[82vh] max-h-[92vh] !w-[80vw] !max-w-[80vw] flex-col gap-0 overflow-hidden p-0">
@@ -739,33 +737,62 @@ function ReskinCompareDialog({ item, onClose }) {
             <TabsTrigger value="material">材质图对比</TabsTrigger>
             <TabsTrigger value="spine">Spine 对比</TabsTrigger>
           </TabsList>
-          <CompareTab value="material" before={comparison.material.before} after={comparison.material.after} beforeLabel="原材质" afterLabel="换肤材质" />
-          <CompareTab value="spine" before={comparison.spine.before} after={comparison.spine.after} beforeLabel="原 Spine" afterLabel="换肤 Spine" />
+          <MaterialCompareTab before={comparison.material.before} after={comparison.material.after} />
+          <SpineCompareTab beforeAssets={comparison.spine.beforeAssets} afterAssets={comparison.spine.afterAssets} />
         </Tabs>
       </DialogContent>
     </Dialog>
   );
 }
 
-function CompareTab({ value, before, after, beforeLabel, afterLabel }) {
+function MaterialCompareTab({ before, after }) {
   return (
-    <TabsContent value={value} className="mt-0 min-h-0 flex-1 p-4">
+    <TabsContent value="material" className="mt-0 min-h-0 flex-1 p-4">
       {before && after ? (
         <div className="relative h-full min-h-72 overflow-hidden rounded border border-border bg-muted">
           <ReactCompareSlider
             className="h-full w-full"
-            itemOne={<ReactCompareSliderImage src={before} alt={beforeLabel} style={{ objectFit: 'contain' }} />}
-            itemTwo={<ReactCompareSliderImage src={after} alt={afterLabel} style={{ objectFit: 'contain' }} />}
+            itemOne={<ReactCompareSliderImage src={before} alt="原材质" style={{ objectFit: 'contain' }} />}
+            itemTwo={<ReactCompareSliderImage src={after} alt="换肤材质" style={{ objectFit: 'contain' }} />}
           />
-          <span className="pointer-events-none absolute left-3 top-3 rounded bg-background/85 px-2 py-1 text-[11px]">{beforeLabel}</span>
-          <span className="pointer-events-none absolute right-3 top-3 rounded bg-background/85 px-2 py-1 text-[11px]">{afterLabel}</span>
+          <CompareLabels before="原材质" after="换肤材质" />
         </div>
       ) : (
         <div className="flex h-full min-h-72 items-center justify-center text-sm text-muted-foreground">
-          此生成记录缺少{value === 'spine' ? '完整 Spine 截图' : '材质图'}，请重新执行一次换肤。
+          此生成记录缺少材质图，请重新执行一次换肤。
         </div>
       )}
     </TabsContent>
+  );
+}
+
+function SpineCompareTab({ beforeAssets, afterAssets }) {
+  return (
+    <TabsContent value="spine" className="mt-0 min-h-0 flex-1 p-4">
+      {beforeAssets && afterAssets ? (
+        <div className="relative h-full min-h-72 overflow-hidden rounded border border-border bg-muted">
+          <ReactCompareSlider
+            className="h-full w-full"
+            itemOne={<SpineCompareViewer assets={beforeAssets} label="原 Spine" />}
+            itemTwo={<SpineCompareViewer assets={afterAssets} label="换肤 Spine" />}
+          />
+          <CompareLabels before="原 Spine" after="换肤 Spine" />
+        </div>
+      ) : (
+        <div className="flex h-full min-h-72 items-center justify-center text-sm text-muted-foreground">
+          此生成记录缺少完整 Spine 资源，请重新执行一次换肤。
+        </div>
+      )}
+    </TabsContent>
+  );
+}
+
+function CompareLabels({ before, after }) {
+  return (
+    <>
+      <span className="pointer-events-none absolute left-3 top-3 rounded bg-background/85 px-2 py-1 text-[11px]">{before}</span>
+      <span className="pointer-events-none absolute right-3 top-3 rounded bg-background/85 px-2 py-1 text-[11px]">{after}</span>
+    </>
   );
 }
 

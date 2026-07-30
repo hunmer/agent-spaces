@@ -8,12 +8,15 @@ test('resolveReskinComparison uses explicit material and assembled Spine images'
     compare: {
       materialBefore: 'before-atlas.png',
       materialAfter: 'after-atlas.png',
-      spineBefore: 'before-spine.png',
-      spineAfter: 'after-spine.png',
+      spineBeforeAssets: { skel: 'before.json', atlas: 'before.atlas', png: 'before.png' },
+      spineAfterAssets: { skel: 'after.json', atlas: 'after.atlas', png: 'after.png', skinName: 'gold' },
     },
   }), {
     material: { before: 'before-atlas.png', after: 'after-atlas.png' },
-    spine: { before: 'before-spine.png', after: 'after-spine.png' },
+    spine: {
+      beforeAssets: { skel: 'before.json', atlas: 'before.atlas', png: 'before.png', skinName: '' },
+      afterAssets: { skel: 'after.json', atlas: 'after.atlas', png: 'after.png', skinName: 'gold' },
+    },
   });
 });
 
@@ -23,9 +26,16 @@ test('resolveReskinComparison keeps material comparison available for old record
       { label: '原 Atlas', src: 'old.png' },
       { label: '最终 Atlas', src: 'packed.png' },
     ],
-    assets: { previewPngUrl: 'preview.png' },
-  }), {
+    assets: {
+      previewPngUrl: 'preview.png',
+      spineJsonUrl: 'after.json', atlasUrl: 'after.atlas', pngUrl: 'after.png',
+    },
+    name: 'gold',
+  }, { skel: 'before.json', atlas: 'before.atlas', png: 'before.png' }), {
     material: { before: 'old.png', after: 'preview.png' },
-    spine: { before: '', after: '' },
+    spine: {
+      beforeAssets: { skel: 'before.json', atlas: 'before.atlas', png: 'before.png', skinName: 'default' },
+      afterAssets: { skel: 'after.json', atlas: 'after.atlas', png: 'after.png', skinName: 'gold' },
+    },
   });
 });
