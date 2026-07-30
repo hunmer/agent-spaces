@@ -18,8 +18,8 @@
     "hasWorkflow": true,
     "path": "ai-image",
     "iconUrl": "plugins/ai-image/icon.svg",
-    "md5": "6ada1c9bb22d4bd4a7000f5ac6dcadb1",
-    "updatedAt": "2026-06-18T01:06:04.297Z",
+    "md5": "bbf73067650c1d4fd7c9450bb360eeaa",
+    "updatedAt": "2026-07-30T12:48:44.789Z",
     "files": [
       "actions.js",
       "icon.svg",
@@ -999,8 +999,8 @@
     "hasWorkflow": true,
     "path": "sam",
     "iconUrl": "plugins/sam/icon.png",
-    "md5": "420ffb5997d79cba09c89ccc74585198",
-    "updatedAt": "2026-07-30T07:50:57.133Z",
+    "md5": "db271f7ea52a6b1eba7480f6aebe8532",
+    "updatedAt": "2026-07-30T12:50:03.485Z",
     "files": [
       "actions.js",
       "icon.png",
@@ -1009,6 +1009,11 @@
       "main.js",
       "package.json",
       "README.md",
+      "sam_server/.env.example",
+      "sam_server/.gitignore",
+      "sam_server/README.md",
+      "sam_server/requirements.txt",
+      "sam_server/sam_server.py",
       "shared.js",
       "tools.js",
       "workflow.js"

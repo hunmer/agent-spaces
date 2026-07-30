@@ -112,3 +112,9 @@
 - 当前动作应覆盖 setup attachment 和该动作 timeline 中出现的 attachments；所有动作应覆盖 default skin 中该 slot 的全部 region attachments。
 - `SpineJsonExporter` 对二进制资源只导出 skins/slots，不导出 animations；当前动作在无 timeline 时采用“scope 按动画门控 + slot 全 regions”降级，保证视觉语义正确。
 - `selectApplicablePartResults` 改为以 `slot || regionName` 为 key，防止同一 slot 的全局/动作/预览结果因 region 不同同时生效。
+
+## SAM 内置服务启动
+- 当前 `PluginInfo`/服务端 `PluginManifest` 没有外部脚本字段，仓库也没有已有 sidecar 启动协议；仅修改 `info.json` 不会生效。
+- 插件动作注册发生在 tools/workflow 元数据读取时，因此“首次请求”必须挂在实际 `executePluginTool`/workflow handler 执行前，不能挂在 `getPluginTools`/`getWorkflowNodes`。
+- 外部服务首次启动后立即请求会有端口和模型加载竞态；启动配置需要可选就绪 URL 与超时，并对同一插件复用一个启动 Promise。
+- 源目录真实 `.env` 与 `.env.example` 字段一致，按其注释不得提交；迁移 `.env.example`、Python 服务、依赖与服务 README。

@@ -7,6 +7,17 @@ import type { NodeProperty, NodeTypeDefinition } from './workflow.js'
 // ---- Plugin Info ----
 
 export type PluginRuntimeType = 'server' | 'client' | 'both'
+export type PluginStartupTrigger = 'server-load' | 'first-request'
+
+export interface PluginStartupConfig {
+  command: string
+  args?: string[]
+  cwd?: string
+  env?: Record<string, string>
+  trigger: PluginStartupTrigger
+  readyUrl?: string
+  readyTimeoutMs?: number
+}
 
 export interface PluginConfigField {
   key: string
@@ -38,6 +49,7 @@ export interface PluginInfo {
   hasView?: boolean
   hasWorkflow?: boolean
   type?: PluginRuntimeType
+  startup?: PluginStartupConfig
   config?: PluginConfigField[]
   entries?: {
     main?: string

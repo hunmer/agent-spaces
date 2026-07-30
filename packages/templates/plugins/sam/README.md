@@ -37,3 +37,20 @@
 ```
 
 mask 是灰度图，前景为白色。调用方应使用灰度值控制生成图 alpha，不能把 mask PNG 当作材质 RGB。
+
+## 内置服务与启动时机
+
+Python 服务位于 `sam_server/`。先执行：
+
+```bash
+pip install -r sam_server/requirements.txt
+```
+
+复制 `sam_server/.env.example` 为 `sam_server/.env` 后配置后端。真实 `.env` 不随插件分发。
+
+`info.json` 的 `startup.trigger` 可选择启动时机：
+
+- `first-request`：插件的 tools/workflow 第一次实际执行前启动（默认）。
+- `server-load`：Agent Spaces 服务器加载时启动。
+
+加载器会等待 `startup.readyUrl` 健康检查成功后再执行第一次请求，且同一插件只启动一个进程。

@@ -15,6 +15,14 @@
   "type": "server",
   "hasWorkflow": true,
   "hasView": false,
+  "startup": {
+    "command": "python",
+    "args": ["sam_server.py"],
+    "cwd": "sam_server",
+    "trigger": "first-request",
+    "readyUrl": "http://127.0.0.1:30231/health",
+    "readyTimeoutMs": 600000
+  },
   "entries": {
     "server": "main.js",
     "workflow": "workflow.js",

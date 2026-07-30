@@ -1,0 +1,18 @@
+# Flask web server + image I/O (always required)
+flask>=3.0
+python-dotenv>=1.0
+Pillow>=10.0
+numpy>=1.24
+
+# ─── SAM2 backend (recommended) ───────────────────────────────────────────
+# Install torch first matching your CUDA/CPU build from https://pytorch.org
+# torch>=2.5.4
+# sam-2>=1.0
+
+# ─── Original SAM backend ─────────────────────────────────────────────────
+# torch>=2.0
+# segment-anything>=1.0
+
+# The opencv backend only needs opencv-python (commented in by default so a
+# bare `pip install -r requirements.txt` works without torch):
+opencv-python>=4.8

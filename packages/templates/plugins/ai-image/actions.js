@@ -10,12 +10,13 @@
 
 const fs = require('fs')
 
-const DEFAULT_BASE_URL = 'https://ai.comfly.chat'
-const GENERATIONS_PATH = '/v1/images/generations'
-const EDITS_PATH = '/v1/images/edits'
-const TASK_PATH = '/v1/images/tasks'
-const CHAT_COMPLETIONS_PATH = '/v1/chat/completions'
-const RESPONSES_PATH = '/v1/responses'
+// 版本前缀 /v1 由 baseUrl 承担，路径常量不带 /v1，方便用户自定义。
+const DEFAULT_BASE_URL = 'https://ai.comfly.chat/v1'
+const GENERATIONS_PATH = '/images/generations'
+const EDITS_PATH = '/images/edits'
+const TASK_PATH = '/images/tasks'
+const CHAT_COMPLETIONS_PATH = '/chat/completions'
+const RESPONSES_PATH = '/responses'
 const POLL_INTERVAL = 5000
 const POLL_MAX_ATTEMPTS = 120 // 最长 ~10 分钟
 

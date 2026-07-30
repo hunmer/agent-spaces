@@ -58,6 +58,7 @@ import issueRouter from './routes/issue.js';
 import teamRouter, { teamInboxRouter, teamMessageRouter } from './routes/team.js';
 import workflowRouter, { setWorkflowTriggerService, setWorkflowExecutionManager as setRouteWorkflowExecutionManager } from './routes/workflow.js';
 import pluginRouter from './routes/plugin.js';
+import { startServerLoadPluginScripts } from './services/plugin.js';
 import agentRouter from './routes/agent.js';
 import gitRouter from './routes/git.js';
 import llmRouter from './routes/llm.js';
@@ -521,6 +522,7 @@ server.listen(PORT, HOST, () => {
   ensureAgentsConfigs();
   startServicesWatcher();
   registerAllMiniAppTools();
+  void startServerLoadPluginScripts();
   recoverRunningWorkOnStartup();
   triggerService.start().catch((err) => {
     console.error('[trigger] failed to start:', err);

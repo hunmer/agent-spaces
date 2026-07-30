@@ -9,6 +9,12 @@ import vm from 'node:vm';
 import AdmZip from 'adm-zip';
 import { createBuiltinPluginApi, runWithPluginSource } from './plugin-runtime-api.js';
 import { getNpmSettings } from '../storage/npm-settings-store.js';
+import {
+  ensurePluginSidecar,
+  stopPluginSidecar,
+  type PluginStartupConfig,
+  type PluginStartupTrigger,
+} from './plugin-sidecar.js';
 
 const require = createRequire(import.meta.url);
 
@@ -27,6 +33,7 @@ type PluginManifest = Partial<Omit<PluginMeta, 'enabled' | 'tags' | 'hasView'>> 
   hasView?: boolean;
   hasWorkflow?: boolean;
   enabled?: boolean;
+  startup?: PluginStartupConfig;
   config?: PluginConfigField[];
   workflowNodes?: NodeTypeDefinition[];
   entries?: { server?: string; workflow?: string; tools?: string | string[] };
@@ -117,6 +124,7 @@ function clearPluginModuleCache(entryPath: string, visited = new Set<string>()):
 }
 
 function resetPluginRuntime(pluginId: string): void {
+  stopPluginSidecar(pluginId);
   pluginRuntimeState.delete(pluginId);
 
   const manifest = getManifest(pluginId);
@@ -796,7 +804,33 @@ export function setPluginEnabled(pluginId: string, enabled: boolean): PluginMeta
   writeState(state);
   const plugin = listPlugins().find(item => item.id === pluginId);
   if (!plugin) throw new Error('Plugin not found');
+  if (enabled) {
+    void ensurePluginStartupForTrigger(pluginId, 'server-load').catch(error => {
+      console.error(`[plugin:${pluginId}] startup failed`, error);
+    });
+  } else {
+    stopPluginSidecar(pluginId);
+  }
   return plugin;
+}
+
+async function ensurePluginStartupForTrigger(pluginId: string, trigger: PluginStartupTrigger): Promise<void> {
+  const manifest = getManifest(pluginId);
+  const dir = resolvePluginDir(pluginId);
+  if (!manifest || !dir) return;
+  await ensurePluginSidecar(pluginId, dir, manifest.startup, trigger);
+}
+
+export async function startServerLoadPluginScripts(): Promise<void> {
+  const plugins = listPlugins().filter(plugin => plugin.enabled);
+  const results = await Promise.allSettled(
+    plugins.map(plugin => ensurePluginStartupForTrigger(plugin.id, 'server-load')),
+  );
+  results.forEach((result, index) => {
+    if (result.status === 'rejected') {
+      console.error(`[plugin:${plugins[index].id}] startup failed`, result.reason);
+    }
+  });
 }
 
 function findTemplatePluginDir(pluginId: string): string | null {
@@ -1148,6 +1182,8 @@ export async function executePluginTool(
   const plugin = listPlugins().find(item => item.id === pluginId);
   if (!plugin) throw new Error('Plugin not found');
 
+  await ensurePluginStartupForTrigger(pluginId, 'first-request');
+
   const pluginConfig = getPluginConfig(pluginId);
   refreshPluginRuntimeConfig(plugin, pluginConfig);
 
@@ -1227,6 +1263,8 @@ export async function executeWorkflowNode(
 ): Promise<any> {
   const executable = getExecutablePluginByNodeType(nodeType);
   if (!executable) throw new Error(`Plugin node is not enabled or has no executable handler: ${nodeType}`);
+
+  await ensurePluginStartupForTrigger(executable.plugin.id, 'first-request');
 
   return runWithPluginSource({ pluginId: executable.plugin.id, pluginName: executable.plugin.name }, () =>
     executable.handler(

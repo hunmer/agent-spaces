@@ -34,8 +34,8 @@
       },
       "data": {
         "apiKey": "REDACTED_GCP_API_KEY",
-        "baseUrl": "http://localhost:8000/v1/responses",
-        "model": "gpt-image-2-all",
+        "baseUrl": "http://localhost:8000",
+        "model": "gemini-3-flash",
         "aspectRatio": "1:1",
         "n": 1,
         "outputs": [
@@ -70,13 +70,14 @@
             ]
           }
         ],
-        "prompt": "画只小猫"
+        "prompt": "画只小猫",
+        "apiMode": "responses"
       }
     }
   ],
   "edges": [],
   "createdAt": 1785412727533,
-  "updatedAt": 1785413800339,
+  "updatedAt": 1785415838519,
   "published": false,
   "lastOpenedAt": 1785413081719,
   "enabledPlugins": [
