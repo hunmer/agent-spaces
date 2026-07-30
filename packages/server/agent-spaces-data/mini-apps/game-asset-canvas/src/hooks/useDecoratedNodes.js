@@ -63,11 +63,19 @@ export default function useDecoratedNodes({
           data.tags = dedupeTags([...(nd.data?.tags || []), IMAGE_TAGS.upstream]);
         }
       }
-      // 视频派生注入（对称图片逻辑）：videoDisplay 有连入边时用上游视频覆盖 data.videos
+      // 视频派生注入（对称图片逻辑）：
+      // - videoDisplay：有连入边时用上游视频覆盖 data.videos（纯展示节点）
+      // - videoEditor：编辑器场景，上游视频与用户上传去重合并（不覆盖用户数据）
       if (upVids) {
-        data.videos = upVids.videos;
-        if (upVids.isDisplay) {
-          data.source = 'upstream';
+        if (nd.type === NODE_TYPES.videoEditor) {
+          const own = Array.isArray(nd.data?.videos) ? nd.data.videos : [];
+          data.videos = Array.from(new Set([...own, ...upVids.videos]));
+          data.source = own.length ? (nd.data?.source || 'upload') : 'upstream';
+        } else {
+          data.videos = upVids.videos;
+          if (upVids.isDisplay) {
+            data.source = 'upstream';
+          }
         }
       }
       const preview = outputPreviewState?.[nd.id];

@@ -232,19 +232,39 @@ export class SpineEditorApp {
 
   /** 加载 Spine 实例并放入容器 */
   setSpine(spine) {
+    const dbg = (step, extra) => console.debug('[SpineEditor.setSpine]', step, {
+      version: spine?._spineVersion,
+      hasSkeleton: !!spine?.skeleton,
+      parent: !!spine?.parent,
+      hasNeverUpdated: spine?.hasNeverUpdated,
+      ...extra,
+    });
+    dbg('enter');
     // 清除旧的（不销毁 children：gizmo graphics 由 BoneGizmoLayer 自管理）
     if (this.spine) {
       this.spineContainer.removeChild(this.spine);
       this.spine.destroy();
     }
     this.spine = spine;
-    this.spineContainer.addChild(spine);
-    spine.state.timeScale = this.playbackSpeed;
-    // 确保新 spine 先更新一次（计算 mesh 顶点 + bounds），否则 fitView 拿到空 bounds
-    spine.skeleton.setToSetupPose();
-    spine.update(0);
-    // 强制更新 transform，确保 getBounds/fitView 读到最新值
-    this.spineContainer.updateTransform();
+    try {
+      this.spineContainer.addChild(spine);
+      dbg('addChild ok');
+      spine.state.timeScale = this.playbackSpeed;
+      // 确保新 spine 先更新一次（计算 mesh 顶点 + bounds），否则 fitView 拿到空 bounds
+      spine.skeleton.setToSetupPose();
+      dbg('setupPose ok');
+      spine.update(0);
+      dbg('update(0) ok');
+      // 强制更新 transform，确保 getBounds/fitView 读到最新值
+      this.spineContainer.updateTransform();
+      dbg('updateTransform ok');
+    } catch (err) {
+      console.error('[SpineEditor.setSpine] FAILED at transform stage', err);
+      // 失败时尽量移除已加入但未完成初始化的实例，避免后续渲染崩溃
+      try { this.spineContainer.removeChild(spine); } catch { /* ignore */ }
+      this.spine = null;
+      throw err;
+    }
     // gizmo 挂在 spineContainer（与 spine 同级），redraw 时只应用 spine 的本地变换
     this.gizmo.setSkeleton(spine);
     this.history.clear();
@@ -264,8 +284,10 @@ export class SpineEditorApp {
     this.viewX = 0;
     this.viewY = 0;
     this._applyView();
+    dbg('before fitView');
     // 初始视图：居中（spine 已 update + updateTransform，bounds 有效且准确）
     this.fitView();
+    dbg('fitView ok');
 
     // 记录初始快照
     this.history.push(spine.skeleton, 'init');

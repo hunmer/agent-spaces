@@ -59,8 +59,10 @@ useCanvasState(workspaceId)  ← nodes/edges/groups 的唯一 state
   └─ 多端同步经 onAnyConfigChanged 广播
         ↓
 computeInputImages(nodes, edges)  ← 上游产出图派生到下游 data.images（多跳转发）
+computeInputVideos(nodes, edges)  ← 上游产出视频派生到下游 data.videos
         ↓
 useDecoratedNodes({nodes, callbacks})  ← 注入 onUpdate/onGenerate/onProcessLocal 等回调
+  （videoEditor 的上游视频与用户上传去重合并，非覆盖）
         ↓
 ReactFlow nodes={decoratedNodes}
 ```
@@ -108,6 +110,9 @@ Agent → api.js handler → ctx.requestClient(type, payload, timeoutMs)
 | 暴露新第三方库到 mini-app | `react-renderer.tsx` + `ui-exports.ts` | allowlist + 顶部 import（两处都改，需重启 web） |
 | 加 host 能力 | `use-mini-app-host-api.tsx` | window.AgentSpaces 上挂方法（需重启 web） |
 | 改 vendor 资源 | `vendor/` + 对应 Dialog/Node | 见下「Vendor 资源」 |
+| 视频编辑器节点 | `components/nodes/VideoEditorNode.jsx` + `components/VideoEditorDialog.jsx` + `components/nodes/FramePlayer.jsx` | 节点外壳 + 大对话框（播放器/帧列表/动画组）+ Canvas 逐帧播放器 |
+| 视频帧截取/尺寸调整 | ffmpeg 插件（`ffmpeg_extract_frames` / `ffmpeg_custom` / `ffmpeg_probe`） | 经 `callPluginTool('workflow.ffmpeg', action, args)` 调用，产物落 mini-app data 目录 |
+| 插件访问 mini-app data 目录 | `plugin-runtime-api.ts`（getMiniAppDataDir/saveMiniAppDataFile）+ `routes/plugin.ts:187`（透传 workspaceId） | 打通了 workspaceId → 插件 api 断点，使 ffmpeg 产物能写到当前 mini-app 的 data 沙箱 |
 
 ## 核心约束 / 坑点（去重精选）
 
@@ -131,6 +136,8 @@ Agent → api.js handler → ctx.requestClient(type, payload, timeoutMs)
 18. **API 参数 schema = 节点即文档**：不要在 tools.js 内联枚举值/写 NODE_PARAMS_SPEC 注入提示词。枚举参数的 options 在节点组件 PARAMS_SCHEMA 里**直接引用 constants 的 OPTIONS**（单一数据源）。
 19. **工作区数据目录落地是「单写非双写」**：产图只产生**一份**文件。directory 设了 → 落工作区目录 `{historyId}/{index}.ext` + 返回指向该文件的 `localFileUrl`（走 `/local-file` 路由，被 `isBackendUrl` 识别为后端地址，下游/编辑不二次下载、不怕外链过期）；directory 没设 → 回退落 data 目录。**historyId 必须在调用 generateImages 前生成**（作落地子目录名，与 addHistory 共用同一 id）。改这套逻辑同时改两处调用点：`useWorkflow`（节点内生成）+ `useExecutionQueue.submit`（表单生成）。宿主能力 `saveImageToDir`/`localFileUrl`/`revealAbsolutePath` + 服务端 `write-absolute` 路由已具备，纯 mini-app 改动刷新即生效。
 20. **Spine gizmo 坐标只用本地变换**：角色和骨骼 Graphics 同挂 `spineContainer`，`_boneToContainer` 只能应用 `spine.transform.localTransform`；使用 `worldTransform` 会把父容器的 fit/zoom/pan 重复应用，导致首次加载骨骼偏到右下方。
+21. **videoEditor 上游视频是合并非覆盖**：videoEditor 是编辑器，用户会上传+编辑视频。`useDecoratedNodes` 对 videoEditor 的上游视频派生用**去重合并**（`[...own, ...upstream]`），不像 videoDisplay 那样覆盖。改这套逻辑见 `useDecoratedNodes.js` 的 upVids 分支。
+22. **ffmpeg 插件产物落 mini-app data 目录**：`routes/plugin.ts:187` 已把 workspaceId 透传给 `createBuiltinPluginApi`，插件 ctx.api 有 `getMiniAppDataDir()` / `saveMiniAppDataFile(relPath, buffer)`（返回 httpPath，走 `/api/mini-apps/:id/data/file`）。ffmpeg 的 extract_frames/custom/probe 都用这套，产物不落全局 public/uploads。
 
 ## 工作区数据目录（产图落本地）
 
