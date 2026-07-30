@@ -101,6 +101,7 @@
     "uninstallFailed": "插件卸载失败，已从本地列表移除",
     "installed": "已安装 {name}",
     "installFailed": "插件安装失败",
+    "reinstallUnavailable": "该插件未上架商店，无法重新安装",
     "updateSummary": "更新完成：成功 {success} 个，失败 {fail} 个",
     "updated": "已更新 {count} 个插件",
     "updateCancelled": "已取消 {count} 个等待更新的插件"

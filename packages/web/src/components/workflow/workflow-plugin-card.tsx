@@ -24,6 +24,8 @@ export function LocalPluginCard({
   onConfigAction,
   onUninstallAction,
   onUpdateAction,
+  onReinstallAction,
+  reinstalling,
   projectId,
   enabledPlugins,
   onEnabledPluginsChange,
@@ -39,6 +41,9 @@ export function LocalPluginCard({
   onConfigAction?: () => void;
   onUninstallAction?: () => void;
   onUpdateAction?: () => void;
+  /** 重新安装（覆盖安装），仅当本地插件在商店中有来源时由父组件传入 */
+  onReinstallAction?: () => void;
+  reinstalling?: boolean;
   /** 点击图标打开插件工具对话框（需同时传入 projectId / enabledPlugins / onEnabledPluginsChange） */
   projectId?: string;
   enabledPlugins?: string[];
@@ -80,6 +85,18 @@ export function LocalPluginCard({
             <Settings className="h-3.5 w-3.5" />
           </Button>
         ) : null}
+        {onReinstallAction && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-7 gap-1 text-xs"
+            disabled={reinstalling}
+            onClick={(e) => { e.stopPropagation(); onReinstallAction(); }}
+          >
+            <Download className={`h-3.5 w-3.5 ${reinstalling ? 'animate-bounce' : ''}`} />
+            {reinstalling ? t('pluginCard.installing') : t('pluginCard.reinstall')}
+          </Button>
+        )}
         {onUpdateAction && (needsUpdate || updateQueued) && (
           updateQueued ? (
             <Button variant="secondary" size="sm" className="h-7 gap-1 text-xs" disabled={updating} onClick={(e) => { e.stopPropagation(); onUpdateAction(); }}>

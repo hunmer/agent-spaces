@@ -101,6 +101,7 @@
     "uninstallFailed": "Plugin uninstall failed, removed from local list",
     "installed": "Installed {name}",
     "installFailed": "Plugin install failed",
+    "reinstallUnavailable": "This plugin is not in the store and cannot be reinstalled",
     "updateSummary": "Update complete: {success} succeeded, {fail} failed",
     "updated": "Updated {count} plugin(s)",
     "updateCancelled": "Cancelled {count} pending update(s)"

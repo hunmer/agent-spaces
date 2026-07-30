@@ -280,6 +280,19 @@ export function WorkflowPluginsDialog({
     }
   }
 
+  /**
+   * 重新安装本地插件：用本地插件的 id 在商店记录里查到来源，再走一次商店安装流程覆盖。
+   * 仅当本地插件在商店中有对应记录时才可触发；纯本地/未上架的插件不支持。
+   */
+  async function reinstallLocalPlugin(plugin: WorkflowPlugin) {
+    const sp = storePluginById.get(plugin.id);
+    if (!sp) {
+      toast.warning(t('reinstallUnavailable'));
+      return;
+    }
+    await installPlugin(sp);
+  }
+
   function syncUpdateState() {
     setPending([...pendingRef.current]);
     setInFlight(new Set(inFlightRef.current));
@@ -563,6 +576,8 @@ export function WorkflowPluginsDialog({
                   onConfigAction={() => setConfigPlugin(plugin)}
                   onUninstallAction={() => uninstallPlugin(plugin)}
                   onUpdateAction={() => handleUpdatePlugin(plugin)}
+                  onReinstallAction={storePluginById.has(plugin.id) ? () => reinstallLocalPlugin(plugin) : undefined}
+                  reinstalling={installingIds.has(plugin.id)}
                   projectId={workflow?.id}
                   enabledPlugins={workflow?.enabledPlugins}
                   onEnabledPluginsChange={(plugins) => {
