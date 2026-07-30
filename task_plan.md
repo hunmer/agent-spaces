@@ -8,11 +8,14 @@
 - [complete] 2. 确定最小下沉方案并实现
 - [complete] 3. 补充或调整测试，运行针对性验证
 - [complete] 4. 总结架构结论与验收步骤
+- [complete] 5. 在 Workflow 插件卡片接入插件方案切换并验证
+- [complete] 6. 为所有工作流执行入口增加本次执行级插件配置覆盖
 
 ## Decision
 - 插件状态持久化命名配置方案；宿主（Workflow/Mini App）仅保存每个插件当前选中的方案名。
 - 通用 UI 负责列出、新建、删除、选择与打开编辑；两种宿主复用。
 - 插件执行 API 接受可选配置覆盖，Mini App 按项目选择注入，Workflow 执行按选择加载插件方案。
+- 工作流执行新增 `pluginConfigs`：键支持插件 ID/显示名，值支持方案名或配置对象；只影响本次执行且优先级最高。
 
 ## Errors Encountered
 | Error | Attempt | Resolution |

@@ -449,6 +449,9 @@ async function executeWorkflowSyncForMiniApp(args: Record<string, any>) {
   const result = await manager.execute({
     workflowId,
     input: workflowObjectInput(args, 'input'),
+    pluginConfigs: (Object.keys(workflowObjectInput(args, 'plugin_configs')).length
+      ? workflowObjectInput(args, 'plugin_configs')
+      : workflowObjectInput(args, 'pluginConfigs')) as Record<string, string | Record<string, unknown>>,
     startNodeId: workflowStringInput(args, 'start_node_id', 'startNodeId') || undefined,
     faultTolerance: workflowStringInput(args, 'fault_tolerance', 'faultTolerance') === 'stop' ? 'stop' : 'ignore',
   }, 'mini-app');
@@ -757,6 +760,16 @@ const BUILTIN_TOOLS: BuiltinToolDefinition[] = [
         workflow_id: { type: 'string', description: 'Workflow ID. workflowId is also accepted.' },
         workflowId: { type: 'string', description: 'Workflow ID alias.' },
         input: { type: 'object', description: 'Workflow input object.' },
+        plugin_configs: {
+          type: 'object',
+          description: 'Per-execution plugin configs. Keys are plugin IDs or names; values are config scheme names or config objects.',
+          additionalProperties: { oneOf: [{ type: 'string' }, { type: 'object' }] },
+        },
+        pluginConfigs: {
+          type: 'object',
+          description: 'plugin_configs alias.',
+          additionalProperties: { oneOf: [{ type: 'string' }, { type: 'object' }] },
+        },
         start_node_id: { type: 'string', description: 'Optional start node ID.' },
         startNodeId: { type: 'string', description: 'Start node ID alias.' },
         max_wait_ms: { type: 'number', description: `Sync wait timeout. Defaults to ${DEFAULT_WORKFLOW_SYNC_TIMEOUT_MS}, max ${MAX_WORKFLOW_SYNC_TIMEOUT_MS}.` },

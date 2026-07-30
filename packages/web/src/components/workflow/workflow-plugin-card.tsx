@@ -6,11 +6,12 @@ import { Button } from '@/components/ui/button';
 import { resolveStoreUrl } from '@/lib/agent-store';
 import { resolveServerAssetUrl } from '@/lib/server';
 import type { StoreWorkflowPlugin, WorkflowPlugin } from '@/lib/workflow-plugin-api';
-import { Download, RefreshCw, Settings, Trash2 } from 'lucide-react';
+import { Download, RefreshCw, Trash2 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { PluginIcon } from './workflow-plugin-icon';
 import { PluginToolDialog } from './plugin-tool-dialog';
 import { PluginDetailDialog } from './plugin-detail-dialog';
+import { PluginConfigSchemeControl } from '@/components/plugins/plugin-config-scheme-control';
 
 export function LocalPluginCard({
   plugin,
@@ -22,6 +23,8 @@ export function LocalPluginCard({
   updateFailed,
   onToggleAction,
   onConfigAction,
+  selectedConfigScheme,
+  onConfigSchemeChange,
   onUninstallAction,
   onUpdateAction,
   onReinstallAction,
@@ -38,7 +41,9 @@ export function LocalPluginCard({
   updating?: boolean;
   updateFailed?: boolean;
   onToggleAction: () => void;
-  onConfigAction?: () => void;
+  onConfigAction?: (schemeName?: string) => void;
+  selectedConfigScheme?: string;
+  onConfigSchemeChange?: (schemeName: string) => void | Promise<void>;
   onUninstallAction?: () => void;
   onUpdateAction?: () => void;
   /** 重新安装（覆盖安装），仅当本地插件在商店中有来源时由父组件传入 */
@@ -81,9 +86,14 @@ export function LocalPluginCard({
         ) : undefined}
       >
         {plugin.config?.length ? (
-          <Button variant="ghost" size="sm" className="h-7 px-2" onClick={(e) => { e.stopPropagation(); onConfigAction?.(); }}>
-            <Settings className="h-3.5 w-3.5" />
-          </Button>
+          <PluginConfigSchemeControl
+            pluginId={plugin.id}
+            selectedScheme={selectedConfigScheme}
+            onSelect={(schemeName) => onConfigSchemeChange?.(schemeName)}
+            onEdit={(schemeName) => onConfigAction?.(schemeName)}
+            className="w-36"
+            legacyWorkflowId={projectId}
+          />
         ) : null}
         {onReinstallAction && (
           <Button

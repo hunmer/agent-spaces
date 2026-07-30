@@ -24,6 +24,16 @@ const executeWorkflowInputSchema = schema({
   workflow_id: { type: 'string', description: 'Workflow ID. workflowId is also accepted.' },
   workflowId: { type: 'string', description: 'Workflow ID alias.' },
   input: { type: 'object', description: 'Workflow input object.', properties: {} },
+  plugin_configs: {
+    type: 'object',
+    description: 'Per-execution plugin configs. Keys are plugin IDs or names; values are config scheme names or config objects. pluginConfigs is also accepted.',
+    additionalProperties: { oneOf: [{ type: 'string' }, { type: 'object' }] },
+  },
+  pluginConfigs: {
+    type: 'object',
+    description: 'plugin_configs alias.',
+    additionalProperties: { oneOf: [{ type: 'string' }, { type: 'object' }] },
+  },
   start_node_id: { type: 'string', description: 'Optional start node ID when the workflow has multiple start nodes.' },
   startNodeId: { type: 'string', description: 'Start node ID alias.' },
   max_wait_ms: { type: 'number', description: `Sync execution wait timeout. Defaults to ${DEFAULT_SYNC_TIMEOUT_MS}, max ${MAX_SYNC_TIMEOUT_MS}.` },
@@ -288,6 +298,9 @@ async function executeWorkflowAsync(input: unknown) {
   const result = await manager.execute({
     workflowId,
     input: objectInput(record, 'input'),
+    pluginConfigs: (Object.keys(objectInput(record, 'plugin_configs')).length
+      ? objectInput(record, 'plugin_configs')
+      : objectInput(record, 'pluginConfigs')) as Record<string, string | Record<string, unknown>>,
     startNodeId: stringInput(record, 'start_node_id') ?? stringInput(record, 'startNodeId'),
   }, 'agent-tools');
 
@@ -310,6 +323,9 @@ async function executeWorkflowSync(input: unknown) {
   const result = await manager.execute({
     workflowId,
     input: objectInput(record, 'input'),
+    pluginConfigs: (Object.keys(objectInput(record, 'plugin_configs')).length
+      ? objectInput(record, 'plugin_configs')
+      : objectInput(record, 'pluginConfigs')) as Record<string, string | Record<string, unknown>>,
     startNodeId: stringInput(record, 'start_node_id') ?? stringInput(record, 'startNodeId'),
   }, 'agent-tools');
 

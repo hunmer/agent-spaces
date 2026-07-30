@@ -330,6 +330,7 @@ export class ExecutionManager {
       executionId, workflow, ownerClientId, request.input || {}, executionSnapshot, request.context, request.env, eventSink, workspaceId,
       request.dryRun,
     );
+    session.pluginConfigs = request.pluginConfigs ? clone(request.pluginConfigs) : undefined;
     // 容错模式：请求显式指定时优先，否则回退到全局 workflow-settings
     const globalFaultTolerance = request.faultTolerance
       ? (request.faultTolerance === 'stop' ? 'stop' : 'ignore')
@@ -338,7 +339,7 @@ export class ExecutionManager {
     if (logSnapshot) session.logSnapshot = clone(logSnapshot);
     if (request.startNodeId) session.partialStartNodeId = request.startNodeId;
     this.recordContextPresetSteps(session);
-    session.context.__config__ = this.loadPluginConfigs(session);
+    session.context.__config__ = this.loadPluginConfigs(session, workflow, session.nodes, session.pluginConfigs);
 
     this.sessions.set(executionId, session);
     // Stamp last-run timestamp so the workflows page can sort by "last run".
@@ -1653,7 +1654,7 @@ export class ExecutionManager {
       const parentScope = this.subWorkflowExecutionScope.getStore() ?? [];
       const config = {
         ...this.getExecutionConfig(session),
-        ...this.loadPluginConfigs(session, target, target.nodes),
+        ...this.loadPluginConfigs(session, target, target.nodes, session.pluginConfigs),
       };
       const result = await this.subWorkflowExecutionScope.run(
         [...parentScope, execution.id],
@@ -1799,6 +1800,7 @@ export class ExecutionManager {
     session: ExecutionSession,
     workflow: Workflow = session.workflow,
     nodes: WorkflowNode[] = session.nodes,
+    overrides?: WorkflowExecuteRequest['pluginConfigs'],
   ): Record<string, Record<string, string>> {
     const pluginIds = this.getReferencedPluginIds(workflow, nodes);
     const schemes = workflow.pluginConfigSchemes || {};
@@ -1821,6 +1823,45 @@ export class ExecutionManager {
       } catch {
         config[pluginId] = pluginService.getPluginConfig(pluginId);
       }
+    }
+
+    if (!overrides) return config;
+
+    const installedPlugins = pluginService.listPlugins();
+    const localizedPlugins = [...pluginService.listPlugins('zh'), ...pluginService.listPlugins('en')];
+    for (const [pluginIdentifier, override] of Object.entries(overrides)) {
+      const idMatch = installedPlugins.find(plugin => plugin.id === pluginIdentifier);
+      const nameMatchIds = new Set(localizedPlugins.filter(plugin => plugin.name === pluginIdentifier).map(plugin => plugin.id));
+      if (!idMatch && nameMatchIds.size > 1) {
+        throw new Error(`Plugin name is ambiguous: ${pluginIdentifier}; use plugin ID instead`);
+      }
+      const nameMatchId = nameMatchIds.values().next().value as string | undefined;
+      const plugin = idMatch ?? installedPlugins.find(item => item.id === nameMatchId);
+      if (!plugin) throw new Error(`Plugin not found: ${pluginIdentifier}`);
+
+      if (typeof override === 'string') {
+        const schemeName = override.trim();
+        if (!schemeName) throw new Error(`Plugin config scheme is empty: ${pluginIdentifier}`);
+        config[plugin.id] = pluginService.readPluginConfigScheme(plugin.id, schemeName);
+        continue;
+      }
+      if (!override || typeof override !== 'object' || Array.isArray(override)) {
+        throw new Error(`Plugin config must be a scheme name or object: ${pluginIdentifier}`);
+      }
+      const normalized = Object.fromEntries(Object.entries(override).map(([key, value]) => [
+        key,
+        typeof value === 'string'
+          ? value
+          : value == null
+            ? ''
+            : typeof value === 'object'
+              ? JSON.stringify(value)
+              : String(value),
+      ]));
+      config[plugin.id] = {
+        ...(config[plugin.id] ?? pluginService.getPluginConfig(plugin.id)),
+        ...normalized,
+      };
     }
 
     return config;

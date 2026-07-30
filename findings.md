@@ -9,3 +9,5 @@
 - 因而当前多配置不是插件基础能力。正确闭环至少包含：插件级命名方案持久化/API、通用切换 UI、Mini App 的方案选择持久化、执行时应用所选方案；Workflow 应迁移为复用插件级方案。
 - 采用全局插件方案 + 宿主选择映射：方案可跨 Workflow/Mini App 复用，同时不同宿主可独立选择。
 - 旧 Workflow `plugin_configs/` 数据通过侧栏首次加载或执行时自动复制到插件级方案；旧接口暂留作兼容读取。
+- `LocalPluginCard` 由 `WorkflowPluginsDialog` 调用，父层已有 Workflow 方案映射，可直接绑定通用方案控件，无需新增存储/API。
+- 所有实时工作流执行最终进入 `ExecutionManager.execute(WorkflowExecuteRequest)`；在核心层解析 `pluginConfigs` 可覆盖 REST、WS、Agent 工具和 Mini App 内置入口，并可传递到子工作流。

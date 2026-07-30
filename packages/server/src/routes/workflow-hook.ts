@@ -23,7 +23,12 @@ export function createWorkflowHookRouter(
       return;
     }
 
-    const body: { workflowId?: string; input?: Record<string, unknown> } = req.body || {};
+    const body: {
+      workflowId?: string;
+      input?: Record<string, unknown>;
+      pluginConfigs?: Record<string, string | Record<string, unknown>>;
+      plugin_configs?: Record<string, string | Record<string, unknown>>;
+    } = req.body || {};
     console.log(`[workflow-hook] Bound workflow count for hook "${hookName}": ${bindings.length}`);
     let targets = bindings;
     if (body.workflowId) {
@@ -69,7 +74,11 @@ export function createWorkflowHookRouter(
     for (const binding of targets) {
       console.log(`[workflow-hook] Executing workflow ${binding.workflowId} from hook "${hookName}" (trigger=${binding.triggerId})`);
       executionManager.execute(
-        { workflowId: binding.workflowId, input: body.input || {} },
+        {
+          workflowId: binding.workflowId,
+          input: body.input || {},
+          ...((body.pluginConfigs || body.plugin_configs) ? { pluginConfigs: body.pluginConfigs || body.plugin_configs } : {}),
+        },
         '__hook__',
         (channel, payload) => sse(channel, payload),
       ).then(() => {

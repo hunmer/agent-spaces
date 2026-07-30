@@ -151,6 +151,8 @@ export interface ExecutionControlRequest {
 export interface WorkflowExecuteRequest {
   workflowId: string
   input?: Record<string, unknown>
+  /** 本次执行的插件配置覆盖。键支持插件 ID 或插件显示名；字符串值为配置方案名。 */
+  pluginConfigs?: Record<string, string | Record<string, unknown>>
   env?: Record<string, unknown>
   context?: Record<string, unknown>
   snapshot?: ExecutionSnapshot

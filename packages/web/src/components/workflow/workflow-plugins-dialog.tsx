@@ -68,7 +68,7 @@ export function WorkflowPluginsDialog({
   const [tag, setTag] = useState('__all__');
   const [status, setStatus] = useState<'all' | 'enabled' | 'disabled'>('all');
   const [sortBy, setSortBy] = useState<SortBy>('default');
-  const [configPlugin, setConfigPlugin] = useState<WorkflowPlugin | null>(null);
+  const [configPlugin, setConfigPlugin] = useState<(WorkflowPlugin & { schemeName?: string }) | null>(null);
   const [installingIds, setInstallingIds] = useState<Set<string>>(new Set());
   const [pending, setPending] = useState<string[]>([]);
   const [inFlight, setInFlight] = useState<Set<string>>(new Set());
@@ -573,7 +573,15 @@ export function WorkflowPluginsDialog({
                   updating={inFlight.has(plugin.id)}
                   updateFailed={failedIds.has(plugin.id)}
                   onToggleAction={() => togglePlugin(plugin)}
-                  onConfigAction={() => setConfigPlugin(plugin)}
+                  onConfigAction={(schemeName) => setConfigPlugin({ ...plugin, schemeName })}
+                  selectedConfigScheme={workflow?.pluginConfigSchemes?.[plugin.id]}
+                  onConfigSchemeChange={(schemeName) => {
+                    if (!workflow) return;
+                    const schemes = { ...(workflow.pluginConfigSchemes || {}) };
+                    if (schemeName) schemes[plugin.id] = schemeName;
+                    else delete schemes[plugin.id];
+                    onWorkflowChange({ ...workflow, pluginConfigSchemes: schemes });
+                  }}
                   onUninstallAction={() => uninstallPlugin(plugin)}
                   onUpdateAction={() => handleUpdatePlugin(plugin)}
                   onReinstallAction={storePluginById.has(plugin.id) ? () => reinstallLocalPlugin(plugin) : undefined}
@@ -619,6 +627,8 @@ export function WorkflowPluginsDialog({
         pluginId={configPlugin?.id || null}
         pluginName={configPlugin?.name || ''}
         config={configPlugin?.config || []}
+        schemeName={configPlugin?.schemeName}
+        legacyWorkflowId={workflow?.id}
       />
     </>
   );

@@ -418,6 +418,8 @@ router.post('/:workflowId/execute', async (req: Request<{ workflowId: string }>,
   const workflowId = req.params.workflowId;
   const body = (req.body || {}) as {
     input?: Record<string, unknown>;
+    pluginConfigs?: Record<string, string | Record<string, unknown>>;
+    plugin_configs?: Record<string, string | Record<string, unknown>>;
     snapshot?: { nodes: unknown[]; edges: unknown[]; groups?: unknown[] };
     startNodeId?: string;
     env?: Record<string, unknown>;
@@ -443,6 +445,7 @@ router.post('/:workflowId/execute', async (req: Request<{ workflowId: string }>,
       {
         workflowId,
         input: body.input || {},
+        ...((body.pluginConfigs || body.plugin_configs) ? { pluginConfigs: body.pluginConfigs || body.plugin_configs } : {}),
         ...(body.startNodeId ? { startNodeId: body.startNodeId } : {}),
         ...(body.env ? { env: body.env } : {}),
         ...(body.context ? { context: body.context } : {}),

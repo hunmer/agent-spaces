@@ -1,5 +1,5 @@
 import type { HttpClient } from '../client';
-import type { WorkflowTemplate, WorkflowNode, WorkflowFolder, WorkflowVersion, ExecutionLog, OperationEntry, StagedNode, WorkflowEdge, WorkflowAgentChatMessage } from '@agent-spaces/shared';
+import type { WorkflowTemplate, WorkflowNode, WorkflowFolder, WorkflowVersion, ExecutionLog, OperationEntry, StagedNode, WorkflowEdge, WorkflowAgentChatMessage, WorkflowExecuteRequest } from '@agent-spaces/shared';
 
 // Re-export from shared for convenience
 export type { OperationEntry, StagedNode };
@@ -31,7 +31,7 @@ export function createWorkflowApi(http: HttpClient) {
     recordOpen: (id: string): Promise<WorkflowTemplate> =>
       http.post(`/api/workflows/${id}/open`),
 
-    execute: (workflowId: string, body?: { input?: Record<string, unknown>; snapshot?: { nodes: WorkflowNode[]; edges: WorkflowTemplate['edges']; groups?: WorkflowTemplate['groups'] }; startNodeId?: string }): Promise<Response> =>
+    execute: (workflowId: string, body?: Omit<WorkflowExecuteRequest, 'workflowId'>): Promise<Response> =>
       http.sse(`/api/workflows/${workflowId}/execute`, body),
 
     // ---- Folders ----

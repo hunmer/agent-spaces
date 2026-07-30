@@ -13,6 +13,7 @@ import type {
   ExecutionBacklogEvent,
   ExecutionRecoveryResponse,
   WorkflowDryRunOptions,
+  WorkflowExecuteRequest,
 } from '@agent-spaces/shared';
 import type { InteractionManager } from './interaction-manager.js';
 import type { ClientNodeManager } from './client-node-manager.js';
@@ -39,6 +40,7 @@ export interface ExecutionSession {
     variables?: OutputField[]
   }
   partialStartNodeId?: string
+  pluginConfigs?: WorkflowExecuteRequest['pluginConfigs']
   context: Record<string, any>
   status: EngineStatus
   executionOrder: WorkflowNode[]
