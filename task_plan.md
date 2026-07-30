@@ -43,6 +43,10 @@
   - 使用真实角色执行 SAM 换肤；逐项比较“AI 生成图 RGB / mask / masked region / preview atlas / repack atlas”。
   - 确认一次换肤网络面板只有 1 次 `sam_segment_with_boxes`，没有 `rembg_sam_segment`。
   - 清理调试日志；保留必要的结构化执行日志和生成记录。
+- [in_progress] 6. 修复线上调用 `fetch failed`
+  - 复现并区分图片下载与 SAM 上游请求失败。
+  - 为两处 fetch 增加阶段、URL、底层 cause 的错误上下文与回归测试。
+  - 启动当前可用 backend，重放真实插件请求验证。
 
 ## 关键约束
 - 不修改 Python `site-packages/rembg`。

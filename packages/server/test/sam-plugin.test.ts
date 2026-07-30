@@ -10,6 +10,7 @@ const createActions = require(`${pluginRoot}/actions.js`) as (t: (key: string, f
   run: (ctx: unknown, args: unknown) => Promise<unknown>;
 }>;
 const shared = require(`${pluginRoot}/shared.js`) as {
+  resolveImage: (input: string) => Promise<{ buffer: Buffer }>;
   segmentWithBoxes: (input: {
     baseUrl: string;
     timeout: number;
@@ -17,6 +18,30 @@ const shared = require(`${pluginRoot}/shared.js`) as {
     boxes: unknown[];
   }) => Promise<unknown>;
 };
+
+test('SAM network failures identify the failing request boundary and URL', async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => {
+    throw new TypeError('fetch failed', { cause: new Error('connect ECONNREFUSED') });
+  };
+  try {
+    await assert.rejects(
+      shared.resolveImage('http://127.0.0.1:3000/source.png'),
+      /下载图片失败.*http:\/\/127\.0\.0\.1:3000\/source\.png.*fetch failed.*ECONNREFUSED/,
+    );
+    await assert.rejects(
+      shared.segmentWithBoxes({
+        baseUrl: 'http://127.0.0.1:30231',
+        timeout: 1000,
+        imageBuffer: Buffer.from('image'),
+        boxes: [{ slot_id: 'head', x_min: 0, y_min: 0, x_max: 10, y_max: 10 }],
+      }),
+      /SAM 服务请求失败.*http:\/\/127\.0\.0\.1:30231\/segment_with_boxes.*fetch failed.*ECONNREFUSED/,
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
 
 test('SAM action sends all boxes in one request and saves every returned mask', async () => {
   const originalFetch = globalThis.fetch;

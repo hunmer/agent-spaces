@@ -147,6 +147,16 @@ test('samBoxesFromRegions builds the standalone SAM batch contract', () => {
   );
 });
 
+test('scaleRegionsForOutput maps logical atlas regions to preserved workflow resolution', () => {
+  const { scaleRegionsForOutput } = loadPipeline();
+  assert.deepEqual(
+    scaleRegionsForOutput([
+      { name: 'head', x: 100, y: 50, w: 200, h: 80, rotate: 0 },
+    ], 2.5, 1.5),
+    [{ name: 'head', x: 250, y: 75, w: 500, h: 120, rotate: 0 }],
+  );
+});
+
 test('grayscaleRgbaToMask reads grayscale RGB instead of opaque PNG alpha', () => {
   const { grayscaleRgbaToMask } = loadPipeline();
   assert.deepEqual(

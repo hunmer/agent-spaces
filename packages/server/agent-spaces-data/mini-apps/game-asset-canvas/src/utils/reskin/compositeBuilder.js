@@ -82,30 +82,28 @@ export function buildAtlasComposite(snapshot, atlasSheet) {
 
 /**
  * 从重绘后的 composite 裁出 atlas 半边（对译 pipeline.py 的 atlas_half 裁剪）。
- * 若尺寸与期望不符，会 resize 对齐（对译 Python 的 LANCZOS resize）。
+ * layout 使用输入 composite 的逻辑坐标；工作流可能返回更高分辨率图片，
+ * 因此先映射到实际输出坐标再裁切，并保留实际分辨率。
  *
  * @param {HTMLImageElement|ImageBitmap|HTMLCanvasElement} composite 重绘后的合成图
  * @param {Object} layout buildAtlasComposite 返回的 layout
- * @param {number} expectedSheetW,expectedSheetH 期望的 atlas sheet 尺寸
  * @returns {HTMLCanvasElement} atlas 半边 canvas
  */
-export function cropAtlasHalf(composite, layout, expectedSheetW, expectedSheetH) {
+export function cropAtlasHalf(composite, layout) {
   const ar = layout.atlasRect;
+  const scaleX = composite.width / Math.max(1, layout.compositeW);
+  const scaleY = composite.height / Math.max(1, layout.compositeH);
+  const sourceX = Math.round(ar.x * scaleX);
+  const sourceY = Math.round(ar.y * scaleY);
+  const sourceW = Math.max(1, Math.round(ar.w * scaleX));
+  const sourceH = Math.max(1, Math.round(ar.h * scaleY));
   const c = document.createElement('canvas');
-  c.width = ar.w;
-  c.height = ar.h;
+  c.width = sourceW;
+  c.height = sourceH;
   c.getContext('2d').drawImage(
     composite,
-    ar.x, ar.y, ar.w, ar.h,
-    0, 0, ar.w, ar.h,
+    sourceX, sourceY, sourceW, sourceH,
+    0, 0, sourceW, sourceH,
   );
-  // 若与原 sheet 尺寸不符，resize 对齐
-  if (ar.w !== expectedSheetW || ar.h !== expectedSheetH) {
-    const resized = document.createElement('canvas');
-    resized.width = expectedSheetW;
-    resized.height = expectedSheetH;
-    resized.getContext('2d').drawImage(c, 0, 0, expectedSheetW, expectedSheetH);
-    return resized;
-  }
   return c;
 }

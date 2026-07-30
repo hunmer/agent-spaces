@@ -95,6 +95,16 @@ export function samBoxesFromRegions(regions) {
   }));
 }
 
+export function scaleRegionsForOutput(regions, scaleX, scaleY) {
+  return regions.map((region) => ({
+    ...region,
+    x: region.x * scaleX,
+    y: region.y * scaleY,
+    w: region.w * scaleX,
+    h: region.h * scaleY,
+  }));
+}
+
 export function grayscaleRgbaToMask(rgba) {
   const mask = new Uint8Array(Math.floor(rgba.length / 4));
   let max = 0;
@@ -107,6 +117,40 @@ export function grayscaleRgbaToMask(rgba) {
     for (let i = 0; i < mask.length; i++) mask[i] *= 255;
   }
   return mask;
+}
+
+function maskToRegionCanvas(fullMask, region, sheetW, sheetH) {
+  const width = Math.max(1, Math.round(region.w));
+  const height = Math.max(1, Math.round(region.h));
+  const canvas = createCanvas(width, height);
+  const ctx = canvas.getContext('2d');
+  const image = ctx.createImageData(width, height);
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const sx = Math.round(region.x) + x;
+      const sy = Math.round(region.y) + y;
+      const value = sx >= 0 && sy >= 0 && sx < sheetW && sy < sheetH
+        ? (fullMask?.[sy * sheetW + sx] || 0)
+        : 0;
+      const offset = (y * width + x) * 4;
+      image.data[offset] = value;
+      image.data[offset + 1] = value;
+      image.data[offset + 2] = value;
+      image.data[offset + 3] = 255;
+    }
+  }
+  ctx.putImageData(image, 0, 0);
+  return region.rotate
+    ? cropRegionRotated(canvas, 0, 0, width, height, region.rotate)
+    : canvas;
+}
+
+function canvasToLogDataUrl(canvas, maxSide = 192) {
+  const scale = Math.min(1, maxSide / Math.max(canvas.width, canvas.height, 1));
+  if (scale === 1) return canvas.toDataURL('image/png');
+  const preview = createCanvas(canvas.width * scale, canvas.height * scale);
+  preview.getContext('2d').drawImage(canvas, 0, 0, preview.width, preview.height);
+  return preview.toDataURL('image/png');
 }
 
 /**
@@ -286,22 +330,28 @@ export async function runReskin(input, opts = {}) {
   // ⑤ 下载重绘图，确定分割源
   const reskinnedImg = await loadImage(await urlToDataUrl(reskinnedUrl));
   let segmentSource; // 分割用的源 canvas
+  let regionScaleX = 1;
+  let regionScaleY = 1;
   if (method === 'atlas') {
     log('split', '裁取 atlas 半边…');
-    segmentSource = cropAtlasHalf(reskinnedImg, layout, atlas.sheetW, atlas.sheetH);
-    log('split', `atlas 半边已裁齐: ${segmentSource.width}×${segmentSource.height}`);
+    segmentSource = cropAtlasHalf(reskinnedImg, layout);
+    regionScaleX = segmentSource.width / Math.max(1, atlas.sheetW);
+    regionScaleY = segmentSource.height / Math.max(1, atlas.sheetH);
+    log('split', `atlas 半边已按工作流原分辨率裁出: ${segmentSource.width}×${segmentSource.height}`, {
+      workflowOutput: { width: reskinnedImg.width, height: reskinnedImg.height },
+      logicalComposite: { width: layout.compositeW, height: layout.compositeH },
+      logicalAtlasRect: layout.atlasRect,
+      regionScaleX,
+      regionScaleY,
+    });
   } else {
-    // exploded：分割源就是重绘后的 composite 本身
+    // exploded：保留工作流实际输出分辨率，region 坐标按输出比例映射。
     segmentSource = reskinnedImg;
-    // 尺寸对齐（工作流可能改尺寸）
-    if (segmentSource.width !== layout.compositeW || segmentSource.height !== layout.compositeH) {
-      const tmp = createCanvas(layout.compositeW, layout.compositeH);
-      tmp.getContext('2d').drawImage(segmentSource, 0, 0, layout.compositeW, layout.compositeH);
-      segmentSource = tmp;
-    }
+    regionScaleX = segmentSource.width / Math.max(1, layout.compositeW);
+    regionScaleY = segmentSource.height / Math.max(1, layout.compositeH);
   }
   if (typeof segmentSource?.getContext !== 'function') {
-    segmentSource = drawToCanvas(segmentSource, layout.compositeW, layout.compositeH);
+    segmentSource = drawToCanvas(segmentSource, segmentSource.width, segmentSource.height);
   }
 
   // ⑥ 分割（按 segMethod 分流）
@@ -312,20 +362,24 @@ export async function runReskin(input, opts = {}) {
   let cleanedSourceUrl = '';
   let samSourceUrl = '';
   let samMasks = [];
-  const segRegions = method === 'exploded'
+  const logicalSegRegions = method === 'exploded'
     ? Object.entries(layout.placements || {}).map(([name, p]) => ({
       name, x: p.x, y: p.y, w: p.w, h: p.h, rotate: 0,
     }))
     : regions;
+  const segRegions = scaleRegionsForOutput(logicalSegRegions, regionScaleX, regionScaleY);
+  const segRegionByName = new Map(segRegions.map((region) => [region.name, region]));
 
   if (segMethod === 'bg_components') {
     // 与参考项目一致：先对整张生成图去背景，再做连通域 + 原轮廓 IoU 匹配。
-    let silhouetteSource = atlasSheetImg;
+    let silhouetteSource = drawToCanvas(
+      atlasSheetImg, segmentSource.width, segmentSource.height,
+    );
     if (method === 'exploded') {
-      silhouetteSource = createCanvas(layout.compositeW, layout.compositeH);
+      silhouetteSource = createCanvas(segmentSource.width, segmentSource.height);
       const silhouetteCtx = silhouetteSource.getContext('2d');
       for (const region of regions) {
-        const placement = layout.placements?.[region.name];
+        const placement = segRegionByName.get(region.name);
         if (!placement) continue;
         const originalPart = cropRegionRotated(
           atlasSheetImg, region.x, region.y, region.w, region.h, region.rotate,
@@ -368,15 +422,41 @@ export async function runReskin(input, opts = {}) {
     const srcW = segmentSource.width, srcH = segmentSource.height;
     for (const region of segRegions) {
       const mask = masks[region.name] || fallbackMasks[region.name];
+      const inputImg = cropRegionRotated(
+        segmentSource, region.x, region.y, region.w, region.h, region.rotate,
+      );
+      const maskImg = maskToRegionCanvas(mask, region, srcW, srcH);
+      const px = pickErodePx(Math.max(region.w, region.h), opts);
+      let finalImg = inputImg;
       if (mask) {
-        const masked = applyMaskToRegion(segmentSource, region, mask, srcW, srcH);
-        let finalImg = masked;
-        const px = pickErodePx(Math.max(region.w, region.h), opts);
-        if (px > 0) finalImg = erodeAlpha(masked, px);
-        regionParts[region.name] = { img: finalImg, width: region.w, height: region.h };
-      } else {
-        regionParts[region.name] = { img: cropRegionRotated(segmentSource, region.x, region.y, region.w, region.h, region.rotate), width: region.w, height: region.h };
+        const masked = applyMaskToRegion(
+          segmentSource, { ...region, rotate: 0 }, mask, srcW, srcH,
+        );
+        finalImg = region.rotate
+          ? cropRegionRotated(masked, 0, 0, region.w, region.h, region.rotate)
+          : masked;
+        if (px > 0) finalImg = erodeAlpha(finalImg, px);
       }
+      regionParts[region.name] = { img: finalImg, width: region.w, height: region.h };
+      log('region_mask', `应用部件蒙版：${region.name}`, {
+        skinName,
+        regionName: region.name,
+        imageFlow: {
+          inputs: [
+            { label: '输入部件', src: canvasToLogDataUrl(inputImg) },
+            { label: '蒙版', src: canvasToLogDataUrl(maskImg) },
+          ],
+          outputs: [{ label: '输出', src: canvasToLogDataUrl(finalImg) }],
+        },
+        params: {
+          bbox: { x: region.x, y: region.y, w: region.w, h: region.h },
+          rotate: region.rotate || 0,
+          method: 'bg_components',
+          score: null,
+          erode_px: px,
+          had_mask: Boolean(mask),
+        },
+      });
       segDone += 1;
       log('segment', `分割进度 ${segDone}/${segRegions.length}`, { done: segDone, total: segRegions.length });
     }
@@ -413,12 +493,18 @@ export async function runReskin(input, opts = {}) {
     for (const region of segRegions) {
       try {
         const maskResult = maskByRegion.get(region.name);
+        const inputImg = cropRegionRotated(
+          segmentSource, region.x, region.y, region.w, region.h, region.rotate,
+        );
         const loadedMask = await loadImage(await urlToDataUrl(maskResult.maskUrl));
         const maskCanvas = drawToCanvas(loadedMask, segmentSource.width, segmentSource.height);
         const maskRgba = maskCanvas.getContext('2d').getImageData(
           0, 0, segmentSource.width, segmentSource.height,
         ).data;
         const fullMask = grayscaleRgbaToMask(maskRgba);
+        const maskImg = maskToRegionCanvas(
+          fullMask, region, segmentSource.width, segmentSource.height,
+        );
         let maskedImg = applyMaskToRegion(
           segmentSource, { ...region, rotate: 0 }, fullMask,
           segmentSource.width, segmentSource.height,
@@ -431,6 +517,25 @@ export async function runReskin(input, opts = {}) {
         const px = pickErodePx(Math.max(region.w, region.h), opts);
         if (px > 0) maskedImg = erodeAlpha(maskedImg, px);
         regionParts[region.name] = { img: maskedImg, width: region.w, height: region.h };
+        log('region_mask', `应用部件蒙版：${region.name}`, {
+          skinName,
+          regionName: region.name,
+          imageFlow: {
+            inputs: [
+              { label: '输入部件', src: canvasToLogDataUrl(inputImg) },
+              { label: '蒙版', src: canvasToLogDataUrl(maskImg) },
+            ],
+            outputs: [{ label: '输出', src: canvasToLogDataUrl(maskedImg) }],
+          },
+          params: {
+            bbox: { x: region.x, y: region.y, w: region.w, h: region.h },
+            rotate: region.rotate || 0,
+            method: 'sam',
+            score: maskResult.score,
+            erode_px: px,
+            had_mask: true,
+          },
+        });
       } catch (err) {
         const message = `region "${region.name}" SAM mask 应用失败: ${err?.message || err}`;
         log('segment', message, { region: region.name, error: true });

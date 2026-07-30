@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Badge, Button, ChevronDown, Input, Label, Loader, Paintbrush, ScrollArea,
+  Badge, Button, ChevronDown, Dialog, DialogContent, DialogHeader, DialogTitle,
+  Input, Label, Loader, Paintbrush, ScrollArea, ScrollText,
   openMediaGallery,
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
   Switch, Tabs, TabsList, TabsTrigger, Textarea, Trash2, WandSparkles,
@@ -94,6 +95,7 @@ export default function ReskinPanel({
   const [advancedOpen, setAdvancedOpen] = useState(false); // 侵蚀分档折叠
   const [running, setRunning] = useState(false);
   const [logs, setLogs] = useState([]);
+  const [logsOpen, setLogsOpen] = useState(false);
   const [activeSkin, setActiveSkin] = useState(null);
   const [generatedImageUrl, setGeneratedImageUrl] = useState(initialState.generatedImageUrl);
   const [processingModel, setProcessingModel] = useState(initialState.processingModel);
@@ -101,7 +103,6 @@ export default function ReskinPanel({
   const [slotMode, setSlotMode] = useState(initialState.slotMode); // 是否局部重绘模式
   const [selectedSlot, setSelectedSlot] = useState(initialState.selectedSlot);
   const [slots, setSlots] = useState([]);                // 可重绘的 slot 列表
-  const logEndRef = useRef(null);
   const onDataChangeRef = useRef(onDataChange);
   onDataChangeRef.current = onDataChange;
   const assetSignature = getSpineAssetsSignature(assets);
@@ -176,12 +177,8 @@ export default function ReskinPanel({
   }, [assetSignature, prompt, skinName, method, segMethod, size, erosion,
     processingModel, slotMode, selectedSlot, generatedImageUrl]);
 
-  useEffect(() => {
-    logEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
-  }, [logs]);
-
   const addLog = useCallback((step, msg, data) => {
-    setLogs((prev) => [...prev, { step, msg, data, ts: Date.now() }]);
+    setLogs((prev) => [...prev.slice(-499), { step, msg, data, ts: Date.now() }]);
   }, []);
 
   const handleGeneratedImage = useCallback((url) => {
@@ -228,7 +225,10 @@ export default function ReskinPanel({
       || item?.assets?.pngUrl
       || item?.assets?.pngDataUrl;
     if (!previewUrl) return;
-    addLog('apply', `应用历史皮肤：${item.name}`);
+    addLog('apply', `应用历史皮肤：${item.name}`, {
+      images: item.stages || [],
+      imageCount: item.stages?.length || 0,
+    });
     await replaceAtlas?.(previewUrl, item.name);
     setActiveSkin(item.name);
   }, [replaceAtlas, addLog]);
@@ -237,7 +237,6 @@ export default function ReskinPanel({
   const handleRun = useCallback(async () => {
     if (!prompt.trim() || !assets) return;
     setRunning(true);
-    setLogs([]);
     setActiveSkin(null);
     try {
       addLog('snapshot', '请求画布截图…');
@@ -299,6 +298,14 @@ export default function ReskinPanel({
         { label: '去背景', src: result.diagnostics?.cleanedSourceUrl },
         { label: '最终 Atlas', src: pngUrl },
       ].filter((stage) => stage.src);
+      const logImages = [
+        ...stages.slice(0, -1),
+        ...(result.diagnostics?.samMasks || []).map((mask) => ({
+          label: `SAM Mask · ${mask.slotId}`,
+          src: mask.maskUrl,
+        })),
+        stages[stages.length - 1],
+      ].filter((stage) => stage?.src);
       const historyItem = {
         id: `reskin-${timestamp}-${Math.random().toString(36).slice(2, 7)}`,
         name: finalSkinName, prompt, timestamp,
@@ -312,7 +319,11 @@ export default function ReskinPanel({
         },
       };
       await saveHistory(historyItem);
-      addLog('done', `✓ 换肤完成：${finalSkinName}`);
+      addLog('done', `✓ 换肤完成：${finalSkinName}`, {
+        images: logImages,
+        imageCount: logImages.length,
+        stats: result.stats,
+      });
     } catch (err) {
       console.error('[reskin] failed:', err);
       addLog('error', `换肤失败：${err?.message || String(err)}`, { error: true });
@@ -325,7 +336,6 @@ export default function ReskinPanel({
   const handleInpaintSlot = useCallback(async () => {
     if (!prompt.trim() || !assets || !selectedSlot) return;
     setRunning(true);
-    setLogs([]);
     try {
       addLog('load', '加载原 atlas 与 spine JSON…');
       const AS = window.AgentSpaces;
@@ -379,7 +389,15 @@ export default function ReskinPanel({
       await replaceAtlas?.(previewPngDataUrl, finalSkinName);
       setActiveSkin(finalSkinName);
       onReskinComplete?.({ skel: assets.skel, atlas: result.newAtlasText, png: pngDataUrl, spineJson: result.newSpineJson });
-      addLog('done', `✓ 局部重绘完成：${selectedSlot}`);
+      const logImages = [
+        { label: `${selectedSlot} · 输入`, src: regionCanvas.toDataURL('image/png') },
+        { label: '最终 Atlas', src: pngDataUrl },
+      ];
+      addLog('done', `✓ 局部重绘完成：${selectedSlot}`, {
+        images: logImages,
+        imageCount: logImages.length,
+        stats: result.stats,
+      });
     } catch (err) {
       console.error('[inpaint] failed:', err);
       addLog('error', `局部重绘失败：${err?.message || String(err)}`, { error: true });
@@ -404,18 +422,34 @@ export default function ReskinPanel({
   const stepLabel = (step) => ({
     snapshot: '截图', load: '加载', pipeline: '换肤', parse: '解析', compose: '合成',
     upload: '上传', workflow: '工作流', split: '裁切', segment: '分割', repack: '打包',
-    skin: '皮肤', preview: '预览', apply: '应用', inpaint: '局部', done: '完成', error: '错误',
+    region_mask: '部件蒙版', skin: '皮肤', preview: '预览', apply: '应用',
+    inpaint: '局部', done: '完成', error: '错误',
   }[step] || step);
 
   const generationLocked = !slotMode && !!generatedImageUrl;
 
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden">
+    <>
+      <div className="flex h-full min-h-0 flex-col overflow-hidden">
       <ScrollArea className="min-h-0 flex-1 border-b border-border">
         <div className="space-y-3 p-3">
           <div className="flex items-center justify-between gap-2">
             <span className="text-xs font-medium">AI 换肤</span>
-            <Badge variant="secondary" className="max-w-36 truncate">{assets ? spineName : '未加载'}</Badge>
+            <div className="flex min-w-0 items-center gap-1.5">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-7 gap-1 px-2 text-[11px]"
+                onClick={() => setLogsOpen(true)}
+                title="查看素材替换日志"
+              >
+                <ScrollText className="h-3.5 w-3.5" />
+                日志
+                {logs.length > 0 && <Badge variant="secondary" className="h-4 px-1 text-[9px]">{logs.length}</Badge>}
+              </Button>
+              <Badge variant="secondary" className="max-w-28 truncate">{assets ? spineName : '未加载'}</Badge>
+            </div>
           </div>
         <Tabs
           value={slotMode ? 'slot' : 'global'}
@@ -567,24 +601,6 @@ export default function ReskinPanel({
         </div>
       </ScrollArea>
 
-      {logs.length > 0 && (
-        <div className="flex h-48 shrink-0 flex-col border-b border-border">
-          <div className="px-3 py-2 text-xs font-medium">日志</div>
-          <ScrollArea className="min-h-0 flex-1 px-3 pb-2 font-mono text-[10px] leading-relaxed">
-            {logs.map((log, i) => {
-              const isError = log.data?.error || log.step === 'error';
-              const prog = log.data?.done != null && log.data?.total ? ` (${log.data.done}/${log.data.total})` : '';
-              return (
-                <div key={i} className={isError ? 'text-red-500' : 'text-muted-foreground'}>
-                  <span className="text-primary/60">[{stepLabel(log.step)}]</span> {log.msg}{prog}
-                </div>
-              );
-            })}
-            <div ref={logEndRef} />
-          </ScrollArea>
-        </div>
-      )}
-
       {history.length > 0 && (
         <div className="flex min-h-0 flex-1 flex-col">
           <div className="px-3 py-2 text-xs font-medium">生成记录（{history.length}）</div>
@@ -645,6 +661,250 @@ export default function ReskinPanel({
           </ScrollArea>
         </div>
       )}
+      </div>
+      <ReskinLogsDialog
+        open={logsOpen}
+        onOpenChange={setLogsOpen}
+        logs={logs}
+        onClear={() => setLogs([])}
+        stepLabel={stepLabel}
+      />
+    </>
+  );
+}
+
+function ReskinLogsDialog({ open, onOpenChange, logs, onClear, stepLabel }) {
+  const [stepFilter, setStepFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const endRef = useRef(null);
+  const steps = useMemo(() => Array.from(new Set(logs.map((log) => log.step))).sort(), [logs]);
+  const filtered = useMemo(() => logs.filter((log) => {
+    const isError = log.data?.error || log.step === 'error';
+    if (stepFilter !== 'all' && log.step !== stepFilter) return false;
+    if (statusFilter === 'error' && !isError) return false;
+    if (statusFilter === 'ok' && isError) return false;
+    return true;
+  }), [logs, statusFilter, stepFilter]);
+
+  useEffect(() => {
+    if (open) endRef.current?.scrollIntoView({ block: 'end' });
+  }, [filtered.length, open]);
+
+  const clearLogs = () => {
+    if (!logs.length || !window.confirm('清空当前编辑会话的全部素材替换日志？')) return;
+    onClear();
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="flex h-[80vh] max-h-[92vh] !w-[80vw] !max-w-[80vw] flex-col gap-0 overflow-hidden p-0">
+        <DialogHeader className="shrink-0 border-b border-border px-4 py-3 pr-12">
+          <DialogTitle className="flex items-center gap-2 text-sm">
+            <ScrollText className="h-4 w-4" />
+            素材替换日志
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-border px-4 py-2">
+          <Select value={stepFilter} onValueChange={setStepFilter}>
+            <SelectTrigger size="sm" className="w-40">
+              <SelectValue>{stepFilter === 'all' ? '全部步骤' : stepLabel(stepFilter)}</SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">全部步骤</SelectItem>
+              {steps.map((step) => <SelectItem key={step} value={step}>{stepLabel(step)}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger size="sm" className="w-32">
+              <SelectValue>{statusFilter === 'all' ? '全部状态' : statusFilter === 'error' ? '仅错误' : '仅正常'}</SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">全部状态</SelectItem>
+              <SelectItem value="ok">仅正常</SelectItem>
+              <SelectItem value="error">仅错误</SelectItem>
+            </SelectContent>
+          </Select>
+          <span className="ml-auto text-[11px] text-muted-foreground">
+            {filtered.length} / {logs.length}
+          </span>
+          <Button type="button" variant="outline" size="sm" className="h-7 gap-1 text-[11px]" disabled={!logs.length} onClick={clearLogs}>
+            <Trash2 className="h-3.5 w-3.5" />
+            清空
+          </Button>
+        </div>
+
+        <div className="min-h-0 flex-1 overflow-y-auto bg-muted/20 px-4 py-3">
+          {filtered.length === 0 ? (
+            <div className="flex h-48 items-center justify-center text-sm text-muted-foreground">
+              {logs.length ? '没有符合筛选条件的日志' : '暂无日志，执行换肤或局部重绘后将在这里显示'}
+            </div>
+          ) : (
+            <div className="space-y-2 pb-3">
+              {filtered.map((log, index) => {
+                const isError = log.data?.error || log.step === 'error';
+                const details = formatLogData(log.data);
+                const images = normalizeLogImages(log.data?.images);
+                const imageFlow = normalizeImageFlow(log.data?.imageFlow);
+                return (
+                  <div key={`${log.ts}-${index}`} className={`rounded-md border bg-background p-3 ${isError ? 'border-destructive/50' : 'border-border'}`}>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {imageFlow ? (
+                        <span className="min-w-0 flex-1 text-xs font-semibold">换皮 · {stepLabel(log.step)}</span>
+                      ) : (
+                        <>
+                          <Badge variant={isError ? 'destructive' : 'secondary'}>{stepLabel(log.step)}</Badge>
+                          <span className={`min-w-0 flex-1 text-xs ${isError ? 'text-destructive' : 'text-foreground'}`}>{log.msg}</span>
+                        </>
+                      )}
+                      {log.data?.skinName && <Badge variant="outline">skin: {log.data.skinName}</Badge>}
+                      {log.data?.regionName && <Badge variant="outline">part: {log.data.regionName}</Badge>}
+                      <time className="text-[10px] text-muted-foreground">{new Date(log.ts).toLocaleTimeString()}</time>
+                    </div>
+                    {log.data?.done != null && log.data?.total ? (
+                      <div className="mt-2 text-[10px] text-muted-foreground">进度：{log.data.done} / {log.data.total}</div>
+                    ) : null}
+                    {imageFlow && <LogImageFlow flow={imageFlow} params={log.data?.params} />}
+                    <LogImageList images={images} />
+                    {details && (
+                      <pre className="mt-2 max-h-36 overflow-auto whitespace-pre-wrap break-all rounded bg-muted px-2 py-1.5 font-mono text-[10px] leading-relaxed text-muted-foreground">{details}</pre>
+                    )}
+                  </div>
+                );
+              })}
+              <div ref={endRef} />
+            </div>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function formatLogData(data) {
+  if (!data || typeof data !== 'object') return '';
+  const entries = Object.entries(data).filter(([key]) => ![
+    'done', 'total', 'error', 'images', 'imageFlow', 'params', 'skinName', 'regionName',
+  ].includes(key));
+  if (!entries.length) return '';
+  try {
+    const value = JSON.stringify(Object.fromEntries(entries), null, 2);
+    return value.length > 2000 ? `${value.slice(0, 2000)}\n...` : value;
+  } catch {
+    return String(data);
+  }
+}
+
+function normalizeLogImages(images) {
+  if (!Array.isArray(images)) return [];
+  return images
+    .map((image, index) => (
+      typeof image === 'string'
+        ? { label: `图片 ${index + 1}`, src: image }
+        : { label: image?.label || `图片 ${index + 1}`, src: image?.src || image?.url }
+    ))
+    .filter((image) => image.src);
+}
+
+function normalizeImageFlow(flow) {
+  if (!flow || typeof flow !== 'object') return null;
+  const inputs = normalizeLogImages(flow.inputs);
+  const outputs = normalizeLogImages(flow.outputs);
+  return inputs.length || outputs.length ? { inputs, outputs } : null;
+}
+
+function LogImageFlow({ flow, params }) {
+  const images = [...flow.inputs, ...flow.outputs];
+  const media = images.map((image) => ({
+    src: image.src,
+    type: 'image',
+    alt: image.label,
+    fileName: `${safeFilename(image.label || 'region-mask')}.png`,
+  }));
+  return (
+    <div className="mt-3 flex flex-col gap-4 md:flex-row md:items-start">
+      <div className="flex min-w-0 items-end gap-3 overflow-x-auto pb-1">
+        <LogImageGroup label="INPUT" images={flow.inputs} media={media} startIndex={0} />
+        <span className="pb-10 text-lg text-muted-foreground">→</span>
+        <LogImageGroup label="OUTPUT" images={flow.outputs} media={media} startIndex={flow.inputs.length} />
+      </div>
+      <LogParams params={params} />
+    </div>
+  );
+}
+
+function LogImageGroup({ label, images, media, startIndex }) {
+  return (
+    <div className="min-w-0">
+      <div className="mb-1.5 text-[10px] font-medium tracking-wide text-muted-foreground">{label}</div>
+      <div className="flex gap-2">
+        {images.map((image, index) => (
+          <button
+            key={`${image.src}-${index}`}
+            type="button"
+            className="w-24 shrink-0 overflow-hidden rounded border border-border bg-muted text-left transition hover:border-primary"
+            onClick={() => openMediaGallery(media, startIndex + index)}
+            title={`查看 ${image.label}`}
+          >
+            <img src={image.src} alt={image.label} className="aspect-square w-full object-contain" />
+            <span className="block truncate border-t border-border px-1 py-0.5 text-[9px] text-muted-foreground">{image.label}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function LogParams({ params }) {
+  const entries = params && typeof params === 'object' ? Object.entries(params) : [];
+  if (!entries.length) return null;
+  return (
+    <div className="min-w-56 flex-1">
+      <div className="mb-1.5 text-[10px] font-medium tracking-wide text-muted-foreground">PARAMS</div>
+      <dl className="space-y-1 text-[11px]">
+        {entries.map(([key, value]) => (
+          <div key={key} className="grid grid-cols-[72px_minmax(0,1fr)] gap-2">
+            <dt className="text-muted-foreground">{key}</dt>
+            <dd className="break-all text-foreground">{formatParamValue(value)}</dd>
+          </div>
+        ))}
+      </dl>
+    </div>
+  );
+}
+
+function formatParamValue(value) {
+  if (value == null) return '-';
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+  try { return JSON.stringify(value); } catch { return String(value); }
+}
+
+function LogImageList({ images }) {
+  if (!images.length) return null;
+  const media = images.map((image) => ({
+    src: image.src,
+    type: 'image',
+    alt: image.label,
+    fileName: `${safeFilename(image.label || 'reskin-log')}.png`,
+  }));
+  return (
+    <div className="mt-3">
+      <div className="mb-1.5 text-[10px] font-medium text-muted-foreground">图片列表（{images.length}）</div>
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-6">
+        {images.map((image, index) => (
+          <button
+            key={`${image.src}-${index}`}
+            type="button"
+            className="min-w-0 overflow-hidden rounded border border-border bg-muted text-left transition hover:border-primary"
+            onClick={() => openMediaGallery(media, index)}
+            title={`查看 ${image.label}`}
+          >
+            <img src={image.src} alt={image.label} className="aspect-square w-full object-contain" />
+            <span className="block truncate border-t border-border px-1.5 py-1 text-[9px] text-muted-foreground">{image.label}</span>
+          </button>
+        ))}
+      </div>
     </div>
   );
 }

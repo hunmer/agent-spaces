@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { buildAtlasComposite } from './compositeBuilder.js';
+import { buildAtlasComposite, cropAtlasHalf } from './compositeBuilder.js';
 
 test('buildAtlasComposite returns the canvas it creates', () => {
   const drawCalls = [];
@@ -36,6 +36,35 @@ test('buildAtlasComposite returns the canvas it creates', () => {
       ['drawImage', snapshot, 0, 20],
       ['drawImage', atlasSheet, 100, 0],
     ]);
+  } finally {
+    globalThis.document = previousDocument;
+  }
+});
+
+test('cropAtlasHalf maps the logical atlas rect to the workflow output and preserves 4K size', () => {
+  const drawCalls = [];
+  const context = { drawImage: (...args) => drawCalls.push(args) };
+  const croppedCanvas = { width: 0, height: 0, getContext: () => context };
+  const previousDocument = globalThis.document;
+  globalThis.document = { createElement: () => croppedCanvas };
+
+  try {
+    const workflowOutput = { width: 800, height: 600 };
+    const layout = {
+      compositeW: 400,
+      compositeH: 200,
+      atlasRect: { x: 200, y: 0, w: 200, h: 200 },
+    };
+    const result = cropAtlasHalf(workflowOutput, layout);
+
+    assert.equal(result, croppedCanvas);
+    assert.equal(result.width, 400);
+    assert.equal(result.height, 600);
+    assert.deepEqual(drawCalls, [[
+      workflowOutput,
+      400, 0, 400, 600,
+      0, 0, 400, 600,
+    ]]);
   } finally {
     globalThis.document = previousDocument;
   }

@@ -1,10 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
-  Button, Label, Loader,
+  Button, Label, Loader, ColorPicker,
 } from '@agent-spaces/ui';
 import { Undo2, Redo2, Trash2, SquarePen, Eraser, Lasso, Square, Download } from '@agent-spaces/ui';
 import { getFabric } from '../utils/image-ops/cdn';
+
+// 绘制颜色预设（ColorPicker 色板）
+const COLOR_PRESETS = ['#ffffff', '#000000', '#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff'];
 
 // 工具枚举
 const TOOL_BRUSH = 'brush';
@@ -65,6 +68,8 @@ export default function MaskPaintDialog({
   const toolRef = useRef(TOOL_BRUSH);
   const brushSizeRef = useRef(24);
   const eraseSizeRef = useRef(36);
+  const colorRef = useRef('#ffffff');
+  const maskOverlayRef = useRef(null); // fabric Image：显示透明底蒙版预览层（叠加在底图上，橡皮实时挖洞可见）
   // 套索/矩形绘制临时状态
   const drawStateRef = useRef(null);      // { startX, startY, points, previewObj }
   // onUpdateRef/onSaveRef：避免闭包旧值
@@ -88,6 +93,7 @@ export default function MaskPaintDialog({
   const [tool, setTool] = useState(TOOL_BRUSH);
   const [brushSize, setBrushSize] = useState(24);
   const [eraseSize, setEraseSize] = useState(36);
+  const [color, setColor] = useState('#ffffff'); // 绘制颜色（画笔/套索/矩形填充）
   const [canUndo, setCanUndo] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
   const [hasContent, setHasContent] = useState(false);
@@ -120,63 +126,32 @@ export default function MaskPaintDialog({
   }, []);
 
   // ---- 重绘当前图所有 ops 为白色 fabric 对象 ----
+  // 用离屏 canvas 渲染所有 op（橡皮 destination-out 实时挖洞），再以 fabric.Image 覆盖在底图上显示。
+  // 这样橡皮擦除立即可见（所见即所得），导出复用同一渲染逻辑（blackBackground:true）。
   const renderOps = useCallback(() => {
     const fc = fcRef.current;
     const fabric = fabricLibRef.current;
     if (!fc || !fabric) return;
-    // 移除所有旧蒙版对象
-    const objs = fc.getObjects().slice();
-    for (const o of objs) {
-      if (o.isMask) fc.remove(o);
-    }
     const st = imgStatesRef.current[activeUrlRef.current];
-    if (!st) { fc.requestRenderAll(); return; }
     const bg = bgRef.current;
-    for (const op of st.ops) {
-      let obj = null;
-      if (op.type === 'brush' || op.type === 'lasso') {
-        // 转图片坐标 → fabric 坐标（fabric Polyline/Polygon 要求 points 为 [{x,y},...]）
-        const pts = op.points
-          .filter((p) => Array.isArray(p) && p.length >= 2 && Number.isFinite(p[0]) && Number.isFinite(p[1]))
-          .map(([px, py]) => {
-            const c = imgToCanvas(px, py);
-            return { x: c.x, y: c.y };
-          });
-        if (pts.length < 2) continue;
-        if (op.type === 'brush') {
-          // fabric Polyline：不闭合描边；橡皮用半透明红色区分，导出时挖洞
-          const isErase = !!op.erase;
-          obj = new fabric.Polyline(pts, {
-            stroke: isErase ? 'rgba(239,68,68,0.9)' : '#ffffff',
-            strokeWidth: (op.size || brushSizeRef.current) * bg.scaleX,
-            strokeLineCap: 'round',
-            strokeLineJoin: 'round',
-            fill: 'transparent',
-            selectable: false, evented: false,
-          });
-        } else {
-          // lasso：闭合多边形白色填充
-          obj = new fabric.Polygon(pts, {
-            fill: '#ffffff',
-            stroke: '#ffffff',
-            strokeWidth: 1,
-            selectable: false, evented: false,
-          });
-        }
-      } else if (op.type === 'rect') {
-        const tl = imgToCanvas(op.rect.x, op.rect.y);
-        const br = imgToCanvas(op.rect.x + op.rect.w, op.rect.y + op.rect.h);
-        obj = new fabric.Rect({
-          left: tl.x, top: tl.y,
-          width: Math.max(1, br.x - tl.x), height: Math.max(1, br.y - tl.y),
-          fill: '#ffffff', stroke: '#ffffff', strokeWidth: 1,
-          selectable: false, evented: false,
-        });
-      }
-      if (obj) { obj.isMask = true; fc.add(obj); }
-    }
-    fc.requestRenderAll();
-  }, [imgToCanvas]);
+    // 移除旧 overlay
+    const old = maskOverlayRef.current;
+    if (old) { fc.remove(old); maskOverlayRef.current = null; }
+    if (!st) { fc.requestRenderAll(); return; }
+    // 渲染透明底蒙版 canvas（橡皮实时挖洞）
+    const maskCanvas = renderMaskToCanvas(st, { blackBackground: false });
+    fabric.Image.fromURL(maskCanvas.toDataURL('image/png'), (img) => {
+      img.set({
+        left: bg.left, top: bg.top,
+        scaleX: bg.scaleX, scaleY: bg.scaleY,
+        selectable: false, evented: false,
+      });
+      img.isMask = true;
+      maskOverlayRef.current = img;
+      fc.add(img);
+      fc.requestRenderAll();
+    });
+  }, []);
 
   const updateHistoryButtons = useCallback(() => {
     const st = imgStatesRef.current[activeUrlRef.current];
@@ -206,12 +181,13 @@ export default function MaskPaintDialog({
     setTool(t);
     const fc = fcRef.current;
     if (!fc) return;
-    if (t === TOOL_BRUSH) {
+    // 画笔 & 橡皮都用 fabric 自由绘画模式（橡皮在导出时按 op.erase 挖洞）
+    if (t === TOOL_BRUSH || t === TOOL_ERASE) {
       fc.isDrawingMode = true;
       const fabric = fabricLibRef.current;
       fc.freeDrawingBrush = new fabric.PencilBrush(fc);
-      fc.freeDrawingBrush.color = '#ffffff';
-      fc.freeDrawingBrush.width = brushSizeRef.current * bgRef.current.scaleX;
+      fc.freeDrawingBrush.color = colorRef.current;
+      fc.freeDrawingBrush.width = (t === TOOL_ERASE ? eraseSizeRef.current : brushSizeRef.current) * bgRef.current.scaleX;
     } else {
       fc.isDrawingMode = false;
       fc.defaultCursor = (t === TOOL_LASSO || t === TOOL_RECT) ? 'crosshair' : 'default';
@@ -277,12 +253,13 @@ export default function MaskPaintDialog({
       if (pts.length < 2) return;
       const st = imgStatesRef.current[activeUrlRef.current];
       if (!st) return;
-      // 记录画笔粗细（导出时按 op 自身大小还原，与绘制时一致）
+      // 记录画笔粗细+颜色（导出时按 op 自身大小/颜色还原，与绘制时一致）
       const isErase = toolRef.current === TOOL_ERASE;
       st.ops.push({
         type: 'brush',
         points: pts,
         erase: isErase,
+        color: isErase ? '#ffffff' : colorRef.current,
         size: isErase ? eraseSizeRef.current : brushSizeRef.current,
       });
       st.redo = [];
@@ -294,17 +271,18 @@ export default function MaskPaintDialog({
     // 套索/矩形：自定义 mouse 事件
     let drawing = false;
     fc.on('mouse:down', (opt) => {
-      if (fc.isDrawingMode) return; // 画笔模式交给 path:created
+      if (fc.isDrawingMode) return; // 画笔/橡皮模式交给 path:created
       const t = toolRef.current;
       if (t !== TOOL_LASSO && t !== TOOL_RECT) return;
       drawing = true;
       const p = fc.getPointer(opt.e);
       const ip = canvasToImg(p.x, p.y);
+      // points 统一存 [x,y] 数组（与画笔 op 格式一致，renderMaskToCanvas/renderOps 直接用）
       drawStateRef.current = {
         tool: t,
         startX: p.x, startY: p.y,
-        startImg: ip,
-        points: [ip],
+        startImg: [ip.x, ip.y],
+        points: [[ip.x, ip.y]],
         previewObj: null,
       };
     });
@@ -316,16 +294,16 @@ export default function MaskPaintDialog({
       const p = fc.getPointer(opt.e);
       const ip = canvasToImg(p.x, p.y);
       if (ds.tool === TOOL_LASSO) {
-        ds.points.push(ip);
-        // 预览线（白色细线）
+        ds.points.push([ip.x, ip.y]);
+        // 预览线（半透明填充）
         if (ds.previewObj) fc.remove(ds.previewObj);
         const fabricLib = fabricLibRef.current;
-        const cvPts = ds.points.map((q) => {
-          const c = imgToCanvas(q[0], q[1]);
+        const cvPts = ds.points.map(([px, py]) => {
+          const c = imgToCanvas(px, py);
           return { x: c.x, y: c.y };
         });
-        ds.previewObj = new fabricLib.Polyline(cvPts, {
-          stroke: 'rgba(255,255,255,0.8)', strokeWidth: 2,
+        ds.previewObj = new fabricLib.Polygon(cvPts, {
+          stroke: 'rgba(255,255,255,0.9)', strokeWidth: 2,
           fill: 'rgba(255,255,255,0.25)',
           selectable: false, evented: false,
         });
@@ -360,20 +338,20 @@ export default function MaskPaintDialog({
       if (!st) return;
       if (ds.tool === TOOL_LASSO) {
         if (ds.points.length < 3) { fc.requestRenderAll(); return; }
-        st.ops.push({ type: 'lasso', points: ds.points });
+        st.ops.push({ type: 'lasso', points: ds.points, color: colorRef.current });
         st.redo = [];
       } else if (ds.tool === TOOL_RECT) {
         // 取真实终点（opt.pointer），避免依赖最后一次 move
         const p = fc.getPointer(opt.e);
         const endIp = canvasToImg(p.x, p.y);
-        const sx = ds.startImg.x, sy = ds.startImg.y;
+        const sx = ds.startImg[0], sy = ds.startImg[1];
         const ex = endIp.x, ey = endIp.y;
         const rect = {
           x: Math.min(sx, ex), y: Math.min(sy, ey),
           w: Math.abs(ex - sx), h: Math.abs(ey - sy),
         };
         if (rect.w < 2 || rect.h < 2) { fc.requestRenderAll(); return; }
-        st.ops.push({ type: 'rect', rect });
+        st.ops.push({ type: 'rect', rect, color: colorRef.current });
         st.redo = [];
       }
       renderOps();
@@ -555,6 +533,7 @@ export default function MaskPaintDialog({
       }
       if (!out.length) throw new Error('没有可导出的蒙版');
       onSaveRef.current?.(out);
+      onClose?.(); // 导出成功后关闭对话框
     } catch (err) {
       console.error('MaskPaint export failed:', err);
       setError(err?.message || String(err));
@@ -573,6 +552,15 @@ export default function MaskPaintDialog({
   }, [brushSize]);
   useEffect(() => { eraseSizeRef.current = eraseSize; }, [eraseSize]);
 
+  // ---- 颜色变化时同步 colorRef + fabric brush color ----
+  useEffect(() => {
+    colorRef.current = color;
+    const fc = fcRef.current;
+    if (fc && fc.isDrawingMode && fc.freeDrawingBrush) {
+      fc.freeDrawingBrush.color = color;
+    }
+  }, [color]);
+
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) onClose?.(); }}>
       <DialogContent
@@ -583,7 +571,7 @@ export default function MaskPaintDialog({
           <div>
             <DialogTitle>蒙版绘制</DialogTitle>
             <DialogDescription className="text-[11px]">
-              白色 = 蒙版区域。支持画笔（可调大小）/ 自由套索 / 矩形选区。导出为黑白蒙版图供下游使用。
+              支持画笔（可调大小）/ 自由套索 / 矩形选区，可选颜色填充/绘制。橡皮擦挖洞。导出蒙版图供下游使用。
             </DialogDescription>
           </div>
         </DialogHeader>
@@ -647,6 +635,13 @@ export default function MaskPaintDialog({
               <span className="w-7 text-center text-[11px] tabular-nums">
                 {tool === TOOL_ERASE ? eraseSize : brushSize}
               </span>
+            </Label>
+          )}
+
+          {tool !== TOOL_ERASE && (
+            <Label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              颜色
+              <ColorPicker colors={COLOR_PRESETS} value={color} onChange={setColor} />
             </Label>
           )}
 
@@ -714,9 +709,16 @@ function loadImage(url) {
 
 function cloneOp(op) {
   if (!op || typeof op !== 'object') return null;
-  if (op.type === 'rect') return { type: 'rect', rect: { ...op.rect } };
+  const color = typeof op.color === 'string' ? op.color : undefined;
+  if (op.type === 'rect') return { type: 'rect', rect: { ...op.rect }, ...(color ? { color } : {}) };
   if (op.type === 'brush' || op.type === 'lasso') {
-    return { type: op.type, points: (op.points || []).map((p) => [p[0], p[1]]) };
+    return {
+      type: op.type,
+      points: (op.points || []).map((p) => [p[0], p[1]]),
+      ...(op.erase ? { erase: true } : {}),
+      ...(op.size ? { size: op.size } : {}),
+      ...(color ? { color } : {}),
+    };
   }
   return null;
 }
@@ -733,25 +735,26 @@ function isValidOp(op) {
   return false;
 }
 
-// 把某图状态渲染为黑白蒙版 canvas（图片原始尺寸，黑底白蒙版）。
-// 两层合成：蒙版层（白色 ops，橡皮 destination-out 挖洞）→ 黑底上叠蒙版层。
-function renderMaskToCanvas(st) {
+// 把某图状态渲染为蒙版 canvas（图片原始尺寸）。
+// blackBackground=true → 导出用（黑底 + 蒙版）；false → 预览用（透明底蒙版，叠加在底图上）。
+// 蒙版层逻辑：source-over 画 ops，橡皮 destination-out 实时挖洞。
+function renderMaskToCanvas(st, { blackBackground = true } = {}) {
   const w = st.imgW || (st.img?.naturalWidth) || 1;
   const h = st.imgH || (st.img?.naturalHeight) || 1;
 
-  // 1. 蒙版层：透明底，白色画蒙版，橡皮挖洞
+  // 1. 蒙版层：透明底，按 op 顺序绘制，橡皮 destination-out 挖洞
   const maskCanvas = document.createElement('canvas');
   maskCanvas.width = w;
   maskCanvas.height = h;
   const mctx = maskCanvas.getContext('2d');
-  mctx.fillStyle = '#ffffff';
-  mctx.strokeStyle = '#ffffff';
   for (const op of st.ops) {
+    const opColor = op.color || '#ffffff';
     if (op.type === 'brush') {
       const pts = op.points;
       if (!pts || pts.length < 2) continue;
       const size = op.size || 24;
       mctx.globalCompositeOperation = op.erase ? 'destination-out' : 'source-over';
+      mctx.strokeStyle = opColor;
       mctx.lineWidth = size;
       mctx.lineCap = 'round';
       mctx.lineJoin = 'round';
@@ -763,6 +766,7 @@ function renderMaskToCanvas(st) {
       const pts = op.points;
       if (!pts || pts.length < 3) continue;
       mctx.globalCompositeOperation = 'source-over';
+      mctx.fillStyle = opColor;
       mctx.beginPath();
       mctx.moveTo(pts[0][0], pts[0][1]);
       for (let i = 1; i < pts.length; i++) mctx.lineTo(pts[i][0], pts[i][1]);
@@ -772,12 +776,15 @@ function renderMaskToCanvas(st) {
       const r = op.rect;
       if (!r) continue;
       mctx.globalCompositeOperation = 'source-over';
+      mctx.fillStyle = opColor;
       mctx.fillRect(r.x, r.y, r.w, r.h);
     }
   }
   mctx.globalCompositeOperation = 'source-over';
 
-  // 2. 黑底 + 叠蒙版层
+  // 2. 预览模式直接返回透明底蒙版层；导出模式叠黑底
+  if (!blackBackground) return maskCanvas;
+
   const out = document.createElement('canvas');
   out.width = w;
   out.height = h;
