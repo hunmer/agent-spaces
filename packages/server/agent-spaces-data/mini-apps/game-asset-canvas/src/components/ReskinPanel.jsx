@@ -9,6 +9,10 @@ import { runReskin, runInpaintSlot, DEFAULT_EROSION } from '../utils/reskin/resk
 import { parseAtlas, safeFilename } from '../utils/reskin/atlasReader';
 import { cropRegionRotated, loadImage } from '../utils/reskin/canvasUtils';
 import { DEFAULT_EDIT_IMAGE_MODELS } from '../utils/settings';
+import {
+  getSpineAssetsSignature,
+  normalizeReskinEditorData,
+} from '../utils/reskin/reskinEditorData';
 
 const RESKIN_MODEL_STORAGE_KEY = 'spine-editor:processing-model';
 const EROSION_STORAGE_KEY = 'spine-editor:erosion';
@@ -52,32 +56,46 @@ function loadJSON(key, fallback) {
  * @param {(assets:{skel,atlas,png,spineJson}) => void} [props.onReskinComplete] 换肤完成
  */
 export default function ReskinPanel({
-  assets, workflowId, editImageModels, replaceAtlas, requestSnapshot, requestSpineJson, onReskinComplete,
+  assets, workflowId, editImageModels, replaceAtlas, requestSnapshot, requestSpineJson,
+  onReskinComplete, initialData, onDataChange,
 }) {
-  const [prompt, setPrompt] = useState('');
-  const [skinName, setSkinName] = useState('');
-  const [method, setMethod] = useState('atlas');         // 'atlas' | 'exploded'
-  const [segMethod, setSegMethod] = useState('sam');     // 'sam' | 'bg_components'
-  const [size, setSize] = useState(() => {              // 输出尺寸 'auto'|'1k'|'2k'|'4k'
-    try { return localStorage.getItem(SIZE_STORAGE_KEY) || '2k'; }
-    catch { return '2k'; }
-  });
-  const [erosion, setErosion] = useState(() => loadJSON(EROSION_STORAGE_KEY, DEFAULT_EROSION));
+  const initialStateRef = useRef(null);
+  if (!initialStateRef.current) {
+    let fallbackSize = '2k';
+    let fallbackModel = '';
+    try { fallbackSize = localStorage.getItem(SIZE_STORAGE_KEY) || fallbackSize; } catch { /* ignore */ }
+    try { fallbackModel = localStorage.getItem(RESKIN_MODEL_STORAGE_KEY) || ''; } catch { /* ignore */ }
+    initialStateRef.current = normalizeReskinEditorData(initialData, assets, {
+      size: fallbackSize,
+      processingModel: fallbackModel,
+      erosion: loadJSON(EROSION_STORAGE_KEY, DEFAULT_EROSION),
+    });
+  }
+  const initialState = initialStateRef.current;
+  const [prompt, setPrompt] = useState(initialState.prompt);
+  const [skinName, setSkinName] = useState(initialState.skinName);
+  const [method, setMethod] = useState(initialState.method);         // 'atlas' | 'exploded'
+  const [segMethod, setSegMethod] = useState(initialState.segMethod); // 'sam' | 'bg_components'
+  const [size, setSize] = useState(initialState.size);               // 'auto'|'1k'|'2k'|'4k'
+  const [erosion, setErosion] = useState(initialState.erosion);
   const [advancedOpen, setAdvancedOpen] = useState(false); // 侵蚀分档折叠
   const [running, setRunning] = useState(false);
   const [logs, setLogs] = useState([]);
   const [history, setHistory] = useState([]);
   const [activeSkin, setActiveSkin] = useState(null);
-  const [generatedImageUrl, setGeneratedImageUrl] = useState('');
-  const [processingModel, setProcessingModel] = useState(() => {
-    try { return localStorage.getItem(RESKIN_MODEL_STORAGE_KEY) || ''; }
-    catch { return ''; }
-  });
+  const [generatedImageUrl, setGeneratedImageUrl] = useState(initialState.generatedImageUrl);
+  const [processingModel, setProcessingModel] = useState(initialState.processingModel);
   // per-slot 重绘
-  const [slotMode, setSlotMode] = useState(false);       // 是否局部重绘模式
-  const [selectedSlot, setSelectedSlot] = useState('');
+  const [slotMode, setSlotMode] = useState(initialState.slotMode); // 是否局部重绘模式
+  const [selectedSlot, setSelectedSlot] = useState(initialState.selectedSlot);
   const [slots, setSlots] = useState([]);                // 可重绘的 slot 列表
   const logEndRef = useRef(null);
+  const onDataChangeRef = useRef(onDataChange);
+  onDataChangeRef.current = onDataChange;
+  const assetSignature = getSpineAssetsSignature(assets);
+  const generatedImageSignatureRef = useRef(
+    initialState.generatedImageUrl ? initialState.assetSignature : '',
+  );
 
   // 模型候选列表：由父组件（SpineEditorDialog）从全局设置传入，含用户自定义；兜底内置默认
   const processingModels = useMemo(() => {
@@ -118,8 +136,35 @@ export default function ReskinPanel({
   }, [spineName]);
 
   useEffect(() => {
+    if (generatedImageSignatureRef.current === assetSignature) return;
+    generatedImageSignatureRef.current = '';
     setGeneratedImageUrl('');
-  }, [assets?.skel, assets?.atlas, assets?.png]);
+  }, [assetSignature]);
+
+  useEffect(() => {
+    onDataChangeRef.current?.({
+      assetSignature,
+      assets: assets ? {
+        skel: assets.skel || '',
+        atlas: assets.atlas || '',
+        png: assets.png || '',
+        name: assets.name || '',
+      } : null,
+      prompt,
+      skinName,
+      method,
+      segMethod,
+      size,
+      erosion: { ...erosion },
+      processingModel,
+      slotMode,
+      selectedSlot,
+      generatedImageUrl: generatedImageSignatureRef.current === assetSignature
+        ? generatedImageUrl
+        : '',
+    });
+  }, [assetSignature, prompt, skinName, method, segMethod, size, erosion,
+    processingModel, slotMode, selectedSlot, generatedImageUrl]);
 
   useEffect(() => {
     logEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
@@ -128,6 +173,11 @@ export default function ReskinPanel({
   const addLog = useCallback((step, msg, data) => {
     setLogs((prev) => [...prev, { step, msg, data, ts: Date.now() }]);
   }, []);
+
+  const handleGeneratedImage = useCallback((url) => {
+    generatedImageSignatureRef.current = url ? assetSignature : '';
+    setGeneratedImageUrl(url || '');
+  }, [assetSignature]);
 
   const slug = (s) => s.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 32);
   const finalSkinName = skinName.trim() || slug(prompt) || 'reskin-1';
@@ -154,9 +204,13 @@ export default function ReskinPanel({
       }
       const slotNames = Object.keys(atts || {});
       setSlots(slotNames);
-      if (slotNames.length && !selectedSlot) setSelectedSlot(slotNames[0]);
+      setSelectedSlot((current) => (slotNames.includes(current) ? current : (slotNames[0] || '')));
     } catch { /* ignore */ }
-  }, [assets, requestSpineJson, selectedSlot]);
+  }, [assets, requestSpineJson]);
+
+  useEffect(() => {
+    if (slotMode && assets) loadSlots();
+  }, [slotMode, assets, loadSlots]);
 
   const applyHistory = useCallback(async (item) => {
     if (!item?.assets?.pngDataUrl) return;
@@ -202,7 +256,7 @@ export default function ReskinPanel({
         workflowId,
         model: processingModel,
         onLog: (step, msg, data) => addLog(step, msg, data),
-        onGeneratedImage: setGeneratedImageUrl,
+        onGeneratedImage: handleGeneratedImage,
       });
 
       addLog('preview', '应用新皮肤到画布预览…');
@@ -228,7 +282,7 @@ export default function ReskinPanel({
     } finally {
       setRunning(false);
     }
-  }, [prompt, assets, method, segMethod, size, erosion, finalSkinName, generatedImageUrl, requestSnapshot, requestSpineJson, replaceAtlas, onReskinComplete, addLog, spineName, workflowId, processingModel]);
+  }, [prompt, assets, method, segMethod, size, erosion, finalSkinName, generatedImageUrl, requestSnapshot, requestSpineJson, replaceAtlas, onReskinComplete, addLog, spineName, workflowId, processingModel, handleGeneratedImage]);
 
   /** per-slot 局部重绘 */
   const handleInpaintSlot = useCallback(async () => {
@@ -306,6 +360,7 @@ export default function ReskinPanel({
   }, [spineName]);
 
   const deleteGeneratedImage = useCallback(() => {
+    generatedImageSignatureRef.current = '';
     setGeneratedImageUrl('');
     addLog('workflow', '已删除生成图，下次换肤将重新生成');
   }, [addLog]);

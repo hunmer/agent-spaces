@@ -23,7 +23,8 @@ import {
 const PLAYBACK_SPEEDS = ['0.25', '0.5', '1', '1.5', '2'];
 
 export default function SpineEditorDialog({
-  open, assets, onSave, onPoseExport, onExportVideo, onReskinComplete, onClose,
+  open, assets, onSave, onPoseExport, onExportVideo, onReskinComplete,
+  initialReskinData, onReskinDataChange, onClose,
 }) {
   const { settings: canvasSettings } = useSettings();
   const editorRef = useRef(null);
@@ -31,6 +32,8 @@ export default function SpineEditorDialog({
   const visibilityRef = useRef(null);
   const loadedRawRef = useRef(null);
   const pendingAssetsRef = useRef(null);
+  const initialReskinDataRef = useRef(initialReskinData);
+  initialReskinDataRef.current = initialReskinData;
   const recordingGizmoVisibleRef = useRef(true);
   const callbacksRef = useRef({ onSave, onPoseExport, onExportVideo, onReskinComplete });
   callbacksRef.current = { onSave, onPoseExport, onExportVideo, onReskinComplete };
@@ -41,7 +44,9 @@ export default function SpineEditorDialog({
   const [status, setStatus] = useState('正在加载本地 Spine 运行时');
   const [error, setError] = useState('');
   const [spine, setSpine] = useState(null);
-  const [currentAssets, setCurrentAssets] = useState(assets || null);
+  const [currentAssets, setCurrentAssets] = useState(
+    assets || initialReskinData?.assets || null,
+  );
   const [animations, setAnimations] = useState([]);
   const [skins, setSkins] = useState([]);
   const [mode, setMode] = useState('pose');
@@ -174,7 +179,7 @@ export default function SpineEditorDialog({
         console.debug('[SpineEditor] editor ready');
         setReady(true);
         setStatus('编辑器已就绪');
-        const initialAssets = pendingAssetsRef.current || assets;
+        const initialAssets = pendingAssetsRef.current || assets || initialReskinDataRef.current?.assets;
         if (initialAssets) console.debug('[SpineEditor] loading initial assets:', initialAssets.name || 'Spine');
         if (initialAssets) await loadAssets(initialAssets);
       } catch (err) {
@@ -506,6 +511,8 @@ export default function SpineEditorDialog({
                 requestSnapshot={requestSnapshot}
                 requestSpineJson={requestSpineJson}
                 onReskinComplete={(value) => callbacksRef.current.onReskinComplete?.(value)}
+                initialData={initialReskinData}
+                onDataChange={onReskinDataChange}
               />
             </TabsContent>
           </Tabs>

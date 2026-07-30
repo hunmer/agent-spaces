@@ -10,6 +10,13 @@
  * 不引入 opencv.js（~8MB 不值得），纯 Canvas 像素遍历。
  */
 
+import { drawToCanvas } from './canvasUtils.js';
+
+function toReadableCanvas(source) {
+  if (typeof source?.getContext === 'function') return source;
+  return drawToCanvas(source, source?.width, source?.height);
+}
+
 /**
  * 从源图（原 atlas sheet 或 exploded composite）构建每个 region 的「原轮廓」mask。
  * 轮廓 = 该 region 在源图 bbox 内、alpha > 阈值 的像素集合。
@@ -20,6 +27,7 @@
  * @returns {Object<string,Uint8Array>} region 名 → 整图尺寸的布尔 mask（1=轮廓内，0=外）
  */
 export function buildOriginalSilhouettes(sourceCanvas, regions, alphaThreshold = 16) {
+  sourceCanvas = toReadableCanvas(sourceCanvas);
   const { width: w, height: h } = sourceCanvas;
   const ctx = sourceCanvas.getContext('2d');
   const srcData = ctx.getImageData(0, 0, w, h).data;
@@ -52,6 +60,7 @@ export function buildOriginalSilhouettes(sourceCanvas, regions, alphaThreshold =
  * @returns {Object<string,Uint8Array>} region 名 → 整图尺寸 mask（255=保留，0=丢弃）
  */
 export function segmentByShapeIntersection(newCanvas, regions, silhouettes, alphaThreshold = 16) {
+  newCanvas = toReadableCanvas(newCanvas);
   const { width: w, height: h } = newCanvas;
   const ctx = newCanvas.getContext('2d');
   const newData = ctx.getImageData(0, 0, w, h).data;

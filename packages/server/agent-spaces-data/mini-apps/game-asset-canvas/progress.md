@@ -11,3 +11,12 @@
 - Implemented image-to-canvas conversion, in-place Pixi resource source updates, and fixed-height logs with a scrollable form.
 - Pixi repeated-replacement regression test passes; Babel compilation passes.
 - Final validation complete: 24/24 related tests, Babel compilation, `git diff --check`, Tailwind selector presence, and debug-log cleanup passed.
+- Started Spine editor node persistence fix; handoff confirms the generated-image cache is currently session-only.
+- Classified serializable form state and chose `data.reskinEditorData` with an asset signature; runtime logs/history remain outside node data.
+- Added a red regression test (missing state module), then implemented snapshot normalization, node/Dialog/Panel wiring, and asset-aware generated-image restore; focused tests now pass 2/2.
+- Added library-selected asset restoration and documented `data.reskinEditorData` in the handoff.
+- Final validation complete: 20/20 related tests, five-file Babel compilation, `git diff --check`, and debug-log cleanup passed.
+- Started diagnosing `bg_components` failure: `buildOriginalSilhouettes` received a non-canvas source.
+- Confirmed both original-atlas and same-size exploded sources can be image elements; preparing boundary-level regression tests.
+- Added two failing boundary tests, normalized CanvasImageSource inputs in `shapeSegmenter`, and turned both tests green.
+- Final validation complete: 22/22 related tests, Babel compilation, 157-file relative-import closure, `git diff --check`, and debug-log cleanup passed.

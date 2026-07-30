@@ -46,7 +46,9 @@ Spine 已从独立 Vite SPA 完整迁入 `game-asset-canvas`：
 - 右上角设置对话框选择处理模型；模型列表复用画布全局 `editImageModels`。
 - AI 重绘统一调用画布设置中的 `edit_image` workflow，不再直接调用 Nano Banana 插件。
 - `edit_image` 生成图会在换肤面板中展示，点击通过 Media Gallery 查看大图；生成图保留到手动删除，重复换肤直接复用并跳过再次生成。
+- 换肤生成图、当前角色资源和表单参数保存到节点 `data.reskinEditorData`；关闭并重新打开编辑器后恢复，角色资源变化时自动丢弃不兼容的生成图。
 - SAM 返回图统一转为 Canvas 后再侵蚀，避免 `canvas.getContext is not a function`；atlas 热预览原位更新 Pixi ImageResource，可重复应用而不触发 `Resource can be set only once`。
+- 形状交集分割在读取 alpha 前统一把原 atlas 和重绘图的 Image/ImageBitmap 转为 Canvas，避免 `sourceCanvas.getContext is not a function`。
 - 换肤表单使用独立滚动区域，pipeline 日志固定高度，不受生成图 Gallery 高度影响。
 
 ## 当前架构
@@ -217,6 +219,8 @@ Canvas snapshot + 原 atlas sheet + .atlas + Spine JSON
 | 录制 | 开始时自动适应视图并锁定缩放/平移，隐藏骨骼 Gizmo，将角色屏幕包围盒（含 32px 边距）逐帧裁剪为 WebM；停止后恢复交互并预览 |
 | 下载 Spine | 原始三件套由 JSZip 在浏览器打包并直接下载，不写节点 output |
 | AI 换肤 | 新 PNG、`.atlas`、Spine JSON 上传；写入 `data.reskinAssets`，PNG 写入 `data.output.images` |
+
+换肤编辑会话使用与其他节点对话框一致的 `initialData/onDataChange` 策略。`data.reskinEditorData` 保存当前角色三件套 URL、生成图 URL、提示词、皮肤名、合成/分割方法、输出尺寸、侵蚀配置、模型和局部重绘选择；不保存运行日志、执行中状态、派生 slot 列表或 localStorage 历史。
 
 换肤不会修改原始 `.skel`；`reskinAssets.skel` 保留原 URL，新增 Spine JSON 单独上传。
 

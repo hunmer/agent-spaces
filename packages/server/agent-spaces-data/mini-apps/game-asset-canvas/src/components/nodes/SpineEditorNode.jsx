@@ -17,6 +17,7 @@ import { NODE_TYPES } from '../../utils/constants';
  */
 export default function SpineEditorNode({ id, data, selected }) {
   const uploadedAssets = data?.uploadedAssets || null; // { skel, atlas, png, name }
+  const reskinEditorData = data?.reskinEditorData || null;
   const onUpdate = data?.onUpdate;
   const [editorOpen, setEditorOpen] = useState(false);
 
@@ -30,7 +31,7 @@ export default function SpineEditorNode({ id, data, selected }) {
     }
     const list = files || [];
     if (!list.length) {
-      onUpdate?.({ uploadedAssets: null });
+      onUpdate?.({ uploadedAssets: null, reskinEditorData: null });
       return;
     }
     onUpdate?.({ uploading: true, uploadError: undefined });
@@ -64,6 +65,7 @@ export default function SpineEditorNode({ id, data, selected }) {
       onUpdate?.({
         uploading: false,
         uploadedAssets: assets,
+        reskinEditorData: null,
         uploadError: complete ? undefined : '缺少资源：需同时上传 .skel + .atlas + .png',
         error: undefined,
       });
@@ -94,6 +96,10 @@ export default function SpineEditorNode({ id, data, selected }) {
   // 导出姿势 JSON 回调（文本，不经 uploadFile）
   const handlePoseExport = useCallback((poseJson) => {
     onUpdate?.({ exportedPose: poseJson });
+  }, [onUpdate]);
+
+  const handleReskinEditorDataChange = useCallback((next) => {
+    onUpdate?.({ reskinEditorData: next });
   }, [onUpdate]);
 
   // AI 换肤完成回调：把新三件套上传并回填节点产出
@@ -227,6 +233,8 @@ export default function SpineEditorNode({ id, data, selected }) {
         onExportVideo={handleExportVideo}
         onPoseExport={handlePoseExport}
         onReskinComplete={handleReskinComplete}
+        initialReskinData={reskinEditorData}
+        onReskinDataChange={handleReskinEditorDataChange}
         onClose={() => setEditorOpen(false)}
       />
     </NodeShell>
