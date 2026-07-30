@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Badge, Button, ChevronDown, Columns2, Dialog, DialogContent, DialogHeader, DialogTitle,
-  Input, Label, Loader, Paintbrush, ScrollArea, ScrollText,
+  Input, Label, Loader, Paintbrush, ScrollArea,
   openMediaGallery,
   ReactCompareSlider, ReactCompareSliderImage,
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -824,7 +824,6 @@ export function ReskinLogsPanel({
       <div className="flex h-full min-h-0 flex-col overflow-hidden bg-background">
         <div className="shrink-0 border-b border-border px-3 py-2">
           <div className="flex items-center gap-2 text-xs font-medium">
-            <ScrollText className="h-4 w-4" />
             素材替换日志
           </div>
         </div>
@@ -991,7 +990,7 @@ function LogImageGroup({ label, images, media, startIndex, log, applyingMask, on
                 onClick={() => openMediaGallery(media, startIndex + index)}
                 title={`查看 ${image.label}`}
               >
-                <img src={image.src} alt={image.label} className="aspect-square w-full object-contain" />
+                <img src={image.src} alt={image.label} className="h-20 w-full max-h-20 object-contain" />
                 <span className="block truncate border-t border-border px-1 py-0.5 text-[9px] text-muted-foreground">{image.label}</span>
               </button>
               {canRepaint && (
@@ -1051,16 +1050,16 @@ function LogImageList({ images }) {
   return (
     <div className="mt-3">
       <div className="mb-1.5 text-[10px] font-medium text-muted-foreground">图片列表（{images.length}）</div>
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-6">
+      <div className="flex flex-wrap gap-2">
         {images.map((image, index) => (
           <button
             key={`${image.src}-${index}`}
             type="button"
-            className="min-w-0 overflow-hidden rounded border border-border bg-muted text-left transition hover:border-primary"
+            className="w-24 shrink-0 overflow-hidden rounded border border-border bg-muted text-left transition hover:border-primary"
             onClick={() => openMediaGallery(media, index)}
             title={`查看 ${image.label}`}
           >
-            <img src={image.src} alt={image.label} className="aspect-square w-full object-contain" />
+            <img src={image.src} alt={image.label} className="h-20 w-full max-h-20 object-contain" />
             <span className="block truncate border-t border-border px-1.5 py-1 text-[9px] text-muted-foreground">{image.label}</span>
           </button>
         ))}

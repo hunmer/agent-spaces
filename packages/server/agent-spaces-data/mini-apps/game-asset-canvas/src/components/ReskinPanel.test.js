@@ -25,3 +25,9 @@ test('reskin history comparison uses ReactCompareSlider with material and Spine 
   assert.match(source, /itemTwo={<SpineCompareViewer assets={afterAssets}/);
   assert.doesNotMatch(source, /spineAfterSnapshot/);
 });
+
+test('reskin log thumbnails have stable bounded dimensions and no log icon', () => {
+  assert.match(source, /className="h-20 w-full max-h-20 object-contain"/);
+  assert.match(source, /className="w-24 shrink-0 overflow-hidden/);
+  assert.doesNotMatch(source, /ScrollText/);
+});

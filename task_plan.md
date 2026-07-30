@@ -61,11 +61,16 @@
   - 删除当前应用的生成记录后，恢复原始 atlas 默认皮肤。
   - 生成记录增加 ReactCompareSlider 对比弹窗，提供材质图与完整 Spine 两个 Tab。
   - 增加历史行为、对比数据和组件契约测试，运行完整回归与静态检查。
-- [in_progress] 10. Spine Viewer 组件对比
+- [completed] 10. Spine Viewer 组件对比
   - 移除 Spine 前后截图上传与图片滑块实现。
   - 历史记录保存原始/换肤后的 Spine 三件套与 skin 名称。
   - ReactCompareSlider 的两个 item 分别挂载独立 Spine Viewer，并保证销毁清理。
   - 增加对比资产解析和组件生命周期契约测试，运行完整回归。
+- [completed] 11. 右侧栏可调宽与日志缩略图约束
+  - 使用现有 ResizablePanel 组件替代右栏动态固定宽度。
+  - 移除日志 Tab/标题图标。
+  - 限制日志流与图片列表缩略图尺寸，不影响原图查看。
+  - 运行组件契约、Babel 与回归检查。
 
 ## 关键约束
 - 不修改 Python `site-packages/rembg`。
@@ -83,3 +88,4 @@
 | 组合读取末尾插件测试 `rg` 无匹配返回 1，工具整体标记失败 | 1 | 必读内容已成功读取；后续把可选搜索拆成独立命令并容忍无匹配 |
 | 当前 `python` 指向 Hermes venv，启动 SAM 服务时缺少 Flask | 1 | 查找项目已有 venv/系统 Python；无可用环境时使用临时最小依赖环境验证 opencv backend |
 | PowerShell 双引号截断 `rg` 的 JSX 属性正则，导致并行审查输出丢失 | 1 | 改用单引号固定字符串并拆开执行 |
+| 搜索包含不存在的 `packages/ui`，导致并行审查输出丢失 | 1 | 仅查询实际 `packages/web/src` 与 mini-app 目录 |

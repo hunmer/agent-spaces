@@ -58,6 +58,8 @@ export const NODE_TYPES = {
   // 骨骼编辑器节点：mini-app 直接加载本地 PixiJS/pixi-spine dist，
   // 支持 Spine 资源(.skel/.atlas/.png)的姿势编辑、动画预览、换肤和导出。
   spineEditor: 'spineEditor',
+  // Spine 展示节点：只读预览（动画播放/切换/皮肤切换），输出 spineAssets 供 spineEditor 消费
+  spineDisplay: 'spineDisplay',
   // 视频展示节点：展示/上传视频，支持连线接收上游视频产出（对标 imageDisplay）
   videoDisplay: 'videoDisplay',
   // 视频编辑器节点：接收/上传多视频 → ffmpeg 按帧截取 → 帧拖拽到动画组循环播放 + 尺寸调整
@@ -236,6 +238,7 @@ export const NODE_META = {
   [NODE_TYPES.photopea]: { label: '在线PS', icon: '🖌️', color: '#0ea5e9' },
   [NODE_TYPES.workflowRunner]: { label: '执行工作流', icon: '⚙️', color: '#0ea5e9' },
   [NODE_TYPES.spineEditor]: { label: '骨骼编辑器', icon: '🦴', color: '#8b5cf6' },
+  [NODE_TYPES.spineDisplay]: { label: 'Spine展示', icon: '🦴', color: '#8b5cf6' },
   [NODE_TYPES.videoDisplay]: { label: '视频展示', icon: '🎬', color: '#ec4899' },
   [NODE_TYPES.videoEditor]: { label: '视频编辑器', icon: '🎞️', color: '#8b5cf6' },
   [NODE_TYPES.maskPaint]: { label: '蒙版绘制', icon: '🎭', color: '#0ea5e9' },

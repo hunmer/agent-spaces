@@ -3,7 +3,8 @@ import {
   Badge, Bone, Button, Camera, CircleStop, Dialog, DialogContent,
   DialogFooter, DialogHeader, DialogTitle, Download, DropdownMenu, DropdownMenuContent,
   DropdownMenuItem, DropdownMenuTrigger, Loader, Maximize2, MoreVertical, Play, Redo2,
-  Save, ScrollText, Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  ResizableHandle, ResizablePanel, ResizablePanelGroup,
+  Save, Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
   Tabs, TabsContent, TabsList, TabsTrigger, Undo2, Video,
 } from '@agent-spaces/ui';
 import ReskinPanel, { ReskinLogsPanel, reskinStepLabel } from './ReskinPanel';
@@ -21,6 +22,7 @@ import {
   SpineAssetLibrary, SpineBoneTree, SpineTransformPanel,
 } from '../spine/components/SpinePanels';
 import { getSpineAssetsSignature } from '../utils/reskin/reskinEditorData';
+import urlToDataUrl from '../utils/spine-url';
 import { repaintRegionMask } from '../utils/reskin/maskRepaint';
 
 const PLAYBACK_SPEEDS = ['0.25', '0.5', '1', '1.5', '2'];
@@ -75,22 +77,6 @@ export default function SpineEditorDialog({
     // element 是承载 PIXI canvas 的容器 div（PIXI 自建 canvas 并 append 进去）
     setCanvasElement(element);
     console.debug('[SpineEditor] canvas container', element ? 'attached' : 'detached');
-  }, []);
-
-  const urlToDataUrl = useCallback(async (url) => {
-    if (!url) throw new Error('Spine 资源 URL 为空');
-    if (url.startsWith('data:')) return url;
-    const AS = window.AgentSpaces;
-    const requestUrl = AS?.proxyImageUrl ? AS.proxyImageUrl(url) : url;
-    const response = await fetch(requestUrl);
-    if (!response.ok) throw new Error(`资源加载失败 (${response.status}): ${url}`);
-    const blob = await response.blob();
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result);
-      reader.onerror = () => reject(new Error('资源转 data URL 失败'));
-      reader.readAsDataURL(blob);
-    });
   }, []);
 
   const loadAssets = useCallback(async (source) => {
@@ -152,7 +138,7 @@ export default function SpineEditorDialog({
     } finally {
       setLoading(false);
     }
-  }, [touchRevision, urlToDataUrl]);
+  }, [touchRevision]);
 
   useEffect(() => {
     if (!open || !canvasElement) return undefined;
@@ -558,56 +544,64 @@ export default function SpineEditorDialog({
             </TabsContent>
           </Tabs>
 
-          <div className="relative min-w-0 flex-1 bg-muted">
-            <div ref={handleCanvasRef} className="block h-full w-full" />
-            {!spine && ready && !loading ? (
-              <div className="pointer-events-none absolute inset-0 flex items-center justify-center text-sm text-muted-foreground">
-                从左侧选择角色或在节点中上传 Spine 三件套
+          <ResizablePanelGroup direction="horizontal" className="min-w-0 flex-1">
+            <ResizablePanel id="spine-viewer" order={1} minSize="35%">
+              <div className="relative h-full min-w-0 bg-muted">
+                <div ref={handleCanvasRef} className="block h-full w-full" />
+                {!spine && ready && !loading ? (
+                  <div className="pointer-events-none absolute inset-0 flex items-center justify-center text-sm text-muted-foreground">
+                    从左侧选择角色或在节点中上传 Spine 三件套
+                  </div>
+                ) : null}
               </div>
-            ) : null}
-          </div>
+            </ResizablePanel>
 
-          <Tabs
-            value={rightTab}
-            onValueChange={setRightTab}
-            className={`flex shrink-0 flex-col border-l border-border bg-background ${rightTab === 'logs' ? 'w-[min(58vw,760px)]' : 'w-72'}`}
-          >
-            <TabsList className="w-full rounded-none border-b border-border">
-              <TabsTrigger value="transform" className="flex-1">变换</TabsTrigger>
-              <TabsTrigger value="reskin" className="flex-1">换肤</TabsTrigger>
-              <TabsTrigger value="logs" className="flex-1">
-                <ScrollText className="h-3.5 w-3.5" />日志
-                {reskinLogs.length > 0 && <Badge variant="secondary" className="h-4 px-1 text-[9px]">{reskinLogs.length}</Badge>}
-              </TabsTrigger>
-            </TabsList>
-            <TabsContent value="transform" className="mt-0 min-h-0 flex-1">
-              <SpineTransformPanel bone={selectedBone} editor={editor} revision={revision} onChanged={touchRevision} />
-            </TabsContent>
-            <TabsContent forceMount value="reskin" className="mt-0 min-h-0 flex-1 data-[state=inactive]:hidden">
-              <ReskinPanel
-                assets={currentAssets}
-                workflowId={canvasSettings.editImageWorkflowId}
-                editImageModels={canvasSettings.editImageModels}
-                replaceAtlas={replaceAtlas}
-                requestSnapshot={requestSnapshot}
-                requestSpineJson={requestSpineJson}
-                onReskinComplete={(value) => callbacksRef.current.onReskinComplete?.(value)}
-                initialData={initialReskinData}
-                onDataChange={onReskinDataChange}
-                logs={reskinLogs}
-                setLogs={setReskinLogs}
-              />
-            </TabsContent>
-            <TabsContent value="logs" className="mt-0 min-h-0 flex-1">
-              <ReskinLogsPanel
-                logs={reskinLogs}
-                onClear={() => setReskinLogs([])}
-                onRepaintMask={openMaskPaint}
-                applyingMask={applyingMask}
-                stepLabel={reskinStepLabel}
-              />
-            </TabsContent>
-          </Tabs>
+            <ResizableHandle withHandle />
+
+            <ResizablePanel id="spine-right-panel" order={2} minSize="18%" maxSize="65%" defaultSize="28%">
+              <Tabs
+                value={rightTab}
+                onValueChange={setRightTab}
+                className="flex h-full min-w-0 flex-col border-l border-border bg-background"
+              >
+                <TabsList className="w-full rounded-none border-b border-border">
+                  <TabsTrigger value="transform" className="flex-1">变换</TabsTrigger>
+                  <TabsTrigger value="reskin" className="flex-1">换肤</TabsTrigger>
+                  <TabsTrigger value="logs" className="flex-1">
+                    日志
+                    {reskinLogs.length > 0 && <Badge variant="secondary" className="h-4 px-1 text-[9px]">{reskinLogs.length}</Badge>}
+                  </TabsTrigger>
+                </TabsList>
+                <TabsContent value="transform" className="mt-0 min-h-0 flex-1">
+                  <SpineTransformPanel bone={selectedBone} editor={editor} revision={revision} onChanged={touchRevision} />
+                </TabsContent>
+                <TabsContent forceMount value="reskin" className="mt-0 min-h-0 flex-1 data-[state=inactive]:hidden">
+                  <ReskinPanel
+                    assets={currentAssets}
+                    workflowId={canvasSettings.editImageWorkflowId}
+                    editImageModels={canvasSettings.editImageModels}
+                    replaceAtlas={replaceAtlas}
+                    requestSnapshot={requestSnapshot}
+                    requestSpineJson={requestSpineJson}
+                    onReskinComplete={(value) => callbacksRef.current.onReskinComplete?.(value)}
+                    initialData={initialReskinData}
+                    onDataChange={onReskinDataChange}
+                    logs={reskinLogs}
+                    setLogs={setReskinLogs}
+                  />
+                </TabsContent>
+                <TabsContent value="logs" className="mt-0 min-h-0 flex-1">
+                  <ReskinLogsPanel
+                    logs={reskinLogs}
+                    onClear={() => setReskinLogs([])}
+                    onRepaintMask={openMaskPaint}
+                    applyingMask={applyingMask}
+                    stepLabel={reskinStepLabel}
+                  />
+                </TabsContent>
+              </Tabs>
+            </ResizablePanel>
+          </ResizablePanelGroup>
         </div>
       </DialogContent>
       <RecordingPreviewDialog

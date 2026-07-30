@@ -22,6 +22,9 @@
 - 2026-07-30：阶段 9 验证完成：reskin 22/22、Spine 13/13、组件契约 6/6、历史服务 2/2、Babel 5/5、`git diff --check` 通过，无 `[DEBUG-*]` 遗留。
 - 2026-07-30：用户纠正 Spine 对比语义，开始阶段 10：改为 ReactCompareSlider 内嵌两个真实 Spine Viewer，移除截图对比链路。
 - 2026-07-30：阶段 10 实现完成：新增只读 `SpineCompareViewer`，滑块两侧分别加载原始/换肤 Spine 资源并选择对应皮肤；截图上传链路已删除，旧历史支持资源字段回退。
+- 2026-07-30：阶段 10 验证完成：reskin 22/22、Spine 13/13、组件 8/8、服务 2/2、Babel 6/6、`git diff --check` 通过，无 `[DEBUG-*]` 遗留。
+- 2026-07-30：开始阶段 11；确认 `@agent-spaces/ui` 已导出 ResizablePanelGroup/ResizablePanel/ResizableHandle。
+- 2026-07-30：阶段 11 完成：右栏改为可拖动 ResizablePanel，移除日志 Tab/标题图标，日志缩略图固定尺寸并换行。验证组件 10/10、reskin 22/22、Spine 13/13、Babel 3/3、`git diff --check` 通过。
 
 ## 下一步
 从 `task_plan.md` 阶段 1 开始：先读取 sam_server route 和现有插件模板，创建 `workflow.sam` 插件，不要先改 UI。

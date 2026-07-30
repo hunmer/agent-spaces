@@ -70,3 +70,7 @@
 - 用户明确要求 Spine Tab 比较两个真实 Viewer 组件，不是换肤前后截图；`ReactCompareSlider` 的 `itemOne/itemTwo` 支持任意 ReactNode。
 - `SpineEditorApp(container)`、`loadSpine`、`setSkin(name)` 足以构建只读对比 Viewer；每个 slider item 需要独立实例并在 effect cleanup 中 `destroy()`。
 - 新历史保存 `spineBeforeAssets/spineAfterAssets`；旧历史可从当前原始 assets 和已有 `spineJsonUrl/atlasUrl/pngUrl` 推导两侧 Viewer。
+
+## 右侧栏与日志缩略图
+- 项目现有 `ResizablePanelGroup/ResizablePanel/ResizableHandle` 已通过 `@agent-spaces/ui` 导出；右栏采用 18%–65% 范围，默认 28%。
+- 日志图片流与普通图片列表统一使用固定 `w-24` 卡片和 `h-20` 图片区域，点击仍进入原图媒体查看器。

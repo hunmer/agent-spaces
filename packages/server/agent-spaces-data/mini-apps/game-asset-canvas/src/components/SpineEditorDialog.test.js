@@ -17,3 +17,10 @@ test('right sidebar exposes embedded reskin logs and binary mask repaint', () =>
   assert.match(source, /repaintRegionMask/);
   assert.match(source, /callbacksRef\.current\.onReskinComplete/);
 });
+
+test('right sidebar is resizable and the log tab has no icon', () => {
+  assert.match(source, /<ResizablePanelGroup direction="horizontal"/);
+  assert.match(source, /<ResizableHandle withHandle/);
+  assert.match(source, /id="spine-right-panel"/);
+  assert.doesNotMatch(source, /<ScrollText/);
+});

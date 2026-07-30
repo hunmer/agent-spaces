@@ -17,6 +17,9 @@ import { NODE_TYPES } from '../../utils/constants';
  */
 export default function SpineEditorNode({ id, data, selected }) {
   const uploadedAssets = data?.uploadedAssets || null; // { skel, atlas, png, name }
+  // 上游注入的 spineAssets（自身未上传时复用，实现 spineDisplay → spineEditor 联动）
+  const upstreamAssets = data?.source === 'upstream' ? data?.spineAssets : null;
+  const effectiveAssets = uploadedAssets || upstreamAssets;
   const reskinEditorData = data?.reskinEditorData || null;
   const onUpdate = data?.onUpdate;
   const [editorOpen, setEditorOpen] = useState(false);
@@ -144,17 +147,17 @@ export default function SpineEditorNode({ id, data, selected }) {
   // 产出视频（output.videos）
   const videos = Array.isArray(data?.output?.videos) ? data.output.videos : [];
 
-  // FileUpload value：把已有资源 URL 还原成 FileUpload 格式（仅展示用）
+  // FileUpload value：把已有资源 URL 还原成 FileUpload 格式（自身上传或上游注入）
   const fileUploadValue = (() => {
-    if (!uploadedAssets) return [];
+    if (!effectiveAssets) return [];
     const out = [];
-    if (uploadedAssets.skel) out.push(makeFUItem(uploadedAssets.skel, `${uploadedAssets.name}.skel`));
-    if (uploadedAssets.atlas) out.push(makeFUItem(uploadedAssets.atlas, `${uploadedAssets.name}.atlas`));
-    if (uploadedAssets.png) out.push(makeFUItem(uploadedAssets.png, `${uploadedAssets.name}.png`));
+    if (effectiveAssets.skel) out.push(makeFUItem(effectiveAssets.skel, `${effectiveAssets.name || 'spine'}.skel`));
+    if (effectiveAssets.atlas) out.push(makeFUItem(effectiveAssets.atlas, `${effectiveAssets.name || 'spine'}.atlas`));
+    if (effectiveAssets.png) out.push(makeFUItem(effectiveAssets.png, `${effectiveAssets.name || 'spine'}.png`));
     return out;
   })();
 
-  const canOpen = !!(uploadedAssets?.skel && uploadedAssets?.atlas && uploadedAssets?.png);
+  const canOpen = !!(effectiveAssets?.skel && effectiveAssets?.atlas && effectiveAssets?.png);
 
   return (
     <NodeShell id={id} nodeType={NODE_TYPES.spineEditor} data={data} selected={selected} targetHandle sourceHandle>
@@ -171,7 +174,7 @@ export default function SpineEditorNode({ id, data, selected }) {
 
       <div className="text-[11px] text-muted-foreground">
         {canOpen
-          ? `资源就绪：${uploadedAssets.name}（可打开编辑器）`
+          ? `资源就绪：${effectiveAssets.name || 'spine'}${upstreamAssets ? '（上游）' : '（可打开编辑器）'}`
           : '上传 .skel + .atlas + .png 后可编辑'}
       </div>
 
@@ -231,7 +234,7 @@ export default function SpineEditorNode({ id, data, selected }) {
 
       <SpineEditorDialog
         open={editorOpen}
-        assets={canOpen ? uploadedAssets : null}
+        assets={canOpen ? effectiveAssets : null}
         onSave={handleSave}
         onExportVideo={handleExportVideo}
         onPoseExport={handlePoseExport}

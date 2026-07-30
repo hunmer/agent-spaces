@@ -45,6 +45,7 @@ const ADD_ITEMS = [
   { type: NODE_TYPES.photopea, label: '在线PS', category: 'edit' },
   { type: NODE_TYPES.maskPaint, label: '蒙版绘制', category: 'edit' },
   { type: NODE_TYPES.spineEditor, label: '骨骼编辑器', category: 'edit' },
+  { type: NODE_TYPES.spineDisplay, label: 'Spine展示', category: 'edit' },
   // 工具
   { type: NODE_TYPES.uiSplitter, label: '雪碧图拆分', category: 'util' },
   { type: NODE_TYPES.bboxViewer, label: 'UI拆分', category: 'util' },

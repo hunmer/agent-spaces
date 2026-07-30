@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { NODE_TYPES, IMAGE_TAGS } from '../utils/constants';
-import { computeInputImages, computeInputVideos } from '../utils/input-images';
+import { computeInputImages, computeInputVideos, computeInputSpineAssets } from '../utils/input-images';
 import { dedupeTags } from '../utils/canvas-constants';
 
 /**
@@ -33,6 +33,7 @@ export default function useDecoratedNodes({
 }) {
   const upstreamMap = useMemo(() => computeInputImages(nodes, edges), [nodes, edges]);
   const upstreamVideosMap = useMemo(() => computeInputVideos(nodes, edges), [nodes, edges]);
+  const upstreamSpineMap = useMemo(() => computeInputSpineAssets(nodes, edges), [nodes, edges]);
 
   const decoratedNodes = useMemo(() => {
     const groupAssetUrls = new Set([
@@ -54,6 +55,7 @@ export default function useDecoratedNodes({
     return nodes.map((nd) => {
       const up = upstreamMap.get(nd.id);
       const upVids = upstreamVideosMap.get(nd.id);
+      const upSpine = upstreamSpineMap.get(nd.id);
       const data = { ...nd.data };
       if (up) {
         data.images = up.images;
@@ -76,6 +78,19 @@ export default function useDecoratedNodes({
           if (upVids.isDisplay) {
             data.source = 'upstream';
           }
+        }
+      }
+      // Spine 三件套派生注入：
+      // - 节点自身已上传（data.spineAssets 完整）→ 保留自身，不覆盖
+      // - 自身无资源但有上游 → 注入上游 spineAssets + source='upstream'
+      if (upSpine) {
+        const ownAssets = nd.data?.spineAssets;
+        const ownComplete = ownAssets?.skel && ownAssets?.atlas && ownAssets?.png;
+        if (ownComplete) {
+          data.spineAssets = ownAssets;
+        } else if (upSpine.spineAssets) {
+          data.spineAssets = upSpine.spineAssets;
+          data.source = 'upstream';
         }
       }
       const preview = outputPreviewState?.[nd.id];

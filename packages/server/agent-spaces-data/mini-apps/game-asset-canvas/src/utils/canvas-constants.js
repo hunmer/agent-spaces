@@ -29,6 +29,7 @@ import DirectorDeskNode from '../components/nodes/DirectorDeskNode';
 import PhotopeaNode from '../components/nodes/PhotopeaNode';
 import WorkflowRunnerNode, { PARAMS_SCHEMA as WORKFLOW_RUNNER_PARAMS } from '../components/nodes/WorkflowRunnerNode';
 import SpineEditorNode from '../components/nodes/SpineEditorNode';
+import SpineDisplayNode from '../components/nodes/SpineDisplayNode';
 import VideoDisplayNode from '../components/nodes/VideoDisplayNode';
 import VideoEditorNode from '../components/nodes/VideoEditorNode';
 import MaskPaintNode from '../components/nodes/MaskPaintNode';
@@ -66,6 +67,7 @@ export const NODE_COMPONENTS = {
   [NODE_TYPES.photopea]: PhotopeaNode,
   [NODE_TYPES.workflowRunner]: WorkflowRunnerNode,
   [NODE_TYPES.spineEditor]: SpineEditorNode,
+  [NODE_TYPES.spineDisplay]: SpineDisplayNode,
   [NODE_TYPES.videoDisplay]: VideoDisplayNode,
   [NODE_TYPES.videoEditor]: VideoEditorNode,
   [NODE_TYPES.maskPaint]: MaskPaintNode,
@@ -113,6 +115,7 @@ export const ADD_NODE_ITEMS = [
   { type: NODE_TYPES.maskPaint },
   { type: NODE_TYPES.workflowRunner },
   { type: NODE_TYPES.spineEditor },
+  { type: NODE_TYPES.spineDisplay },
   { type: NODE_TYPES.videoDisplay },
   { type: NODE_TYPES.videoEditor },
   { type: NODE_TYPES.note },
@@ -132,6 +135,7 @@ export const DEFAULT_SIZE = {
   [NODE_TYPES.photopea]: { w: 300, h: 260 },
   [NODE_TYPES.workflowRunner]: { w: 320, h: 340 },
   [NODE_TYPES.spineEditor]: { w: 300, h: 260 },
+  [NODE_TYPES.spineDisplay]: { w: 320, h: 360 },
   [NODE_TYPES.videoDisplay]: { w: 320, h: 240 },
   [NODE_TYPES.videoEditor]: { w: 360, h: 280 },
   [NODE_TYPES.maskPaint]: { w: 300, h: 240 },
@@ -289,6 +293,16 @@ export function initialData(type) {
       uploadedAssets: null,
       // 导出的姿势 JSON（文本，供下游或查看）
       exportedPose: null,
+    };
+  }
+  if (type === NODE_TYPES.spineDisplay) {
+    // Spine 展示节点：上传三件套 → 节点内 PIXI 预览（只读）
+    // spineAssets 是输出（下游 spineEditor 消费 data.spineAssets，非 output.images）
+    return {
+      status: 'idle',
+      // 上传/上游注入的三件套 http URL：{ skel, atlas, png, name }
+      spineAssets: null,
+      params: { animation: '', skin: '', playbackSpeed: 1, playing: true },
     };
   }
   if (type === NODE_TYPES.videoGenerator) {

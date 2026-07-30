@@ -148,3 +148,63 @@ export function computeInputVideos(nodes, edges) {
   }
   return map;
 }
+
+/**
+ * 计算 Spine 三件套的派生转发（与 computeInputImages/computeInputVideos 对称的第三套）。
+ *
+ * spineAssets 是一个对象 { skel, atlas, png, name }，非数组。
+ * - 源产出：spineDisplay/spineEditor 的 data.spineAssets（三件套 URL）
+ * - 接收器：spineDisplay（透传，可串联预览）/ spineEditor（自动填充三件套）
+ *
+ * @param {Array} nodes
+ * @param {Array} edges
+ * @returns {Map<string, {spineAssets: object|null, isDisplay: boolean}>} nodeId -> 派生输入
+ */
+export function computeInputSpineAssets(nodes, edges) {
+  const SPINE_RECEIVER_TYPES = new Set([NODE_TYPES.spineDisplay, NODE_TYPES.spineEditor]);
+  const SPINE_PASSTHROUGH_TYPES = new Set([NODE_TYPES.spineDisplay]);
+
+  // 取某节点「作为 source 时应给出的 spineAssets」
+  const sourceSpineAssets = (node, derivedByNode) => {
+    const sd = node.data || {};
+    if (sd.spineAssets?.skel && sd.spineAssets?.atlas && sd.spineAssets?.png) return sd.spineAssets;
+    if (!SPINE_PASSTHROUGH_TYPES.has(node.type)) return null;
+    return derivedByNode.get(node.id) || null;
+  };
+
+  const incomingByTarget = new Map();
+  for (const e of edges) {
+    if (!incomingByTarget.has(e.target)) incomingByTarget.set(e.target, []);
+    incomingByTarget.get(e.target).push(e);
+  }
+  const byId = new Map(nodes.map((n) => [n.id, n]));
+  const map = new Map();
+  const derived = new Map();
+
+  const assetsKey = (a) => (a ? `${a.skel}|${a.atlas}|${a.png}` : '');
+
+  for (let iter = 0; iter < nodes.length; iter++) {
+    let changed = false;
+    for (const node of nodes) {
+      if (!SPINE_RECEIVER_TYPES.has(node.type)) continue;
+      const incoming = incomingByTarget.get(node.id);
+      if (!incoming || !incoming.length) continue;
+      // 三件套是整体，取首个有效上游（不像 images/videos 做数组聚合）
+      let upstreamAssets = null;
+      for (const e of incoming) {
+        const src = byId.get(e.source);
+        if (!src) continue;
+        const a = sourceSpineAssets(src, derived);
+        if (a) { upstreamAssets = a; break; }
+      }
+      const prev = derived.get(node.id);
+      if (assetsKey(prev) !== assetsKey(upstreamAssets)) {
+        derived.set(node.id, upstreamAssets);
+        map.set(node.id, { spineAssets: upstreamAssets, isDisplay: node.type === NODE_TYPES.spineDisplay });
+        changed = true;
+      }
+    }
+    if (!changed) break;
+  }
+  return map;
+}
