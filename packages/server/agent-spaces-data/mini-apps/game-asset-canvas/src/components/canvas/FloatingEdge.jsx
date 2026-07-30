@@ -1,19 +1,10 @@
-import { getBezierPath } from '@xyflow/react';
-
 export default function FloatingEdge({
   id,
   sourceX, sourceY, sourcePosition,
   targetX, targetY, targetPosition,
   markerStart, markerEnd, style, className, interactionWidth,
 }) {
-  const [path] = getBezierPath({
-    sourceX,
-    sourceY,
-    sourcePosition,
-    targetX,
-    targetY,
-    targetPosition,
-  });
+  const path = `M ${sourceX},${sourceY}L ${targetX},${targetY}`;
   return (
     <>
       <path

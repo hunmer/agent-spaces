@@ -1,4 +1,4 @@
-import { getBezierPath, useNodes, useReactFlow } from '@xyflow/react';
+import { useNodes, useReactFlow } from '@xyflow/react';
 
 /**
  * 自定义连接线预览：
@@ -23,7 +23,12 @@ export default function ConnectionLine({ fromX, fromY, toX, toY, fromPosition, t
     : [];
 
   // 主线（fromNode）一定渲染，单选/多选都靠它保证拖拽时看得到线
-  const segments = [{ key: fromNode?.id || 'main', x: fromX, y: fromY, position: fromPosition }];
+  const segments = [{
+    key: fromNode?.id || 'main',
+    x: fromX,
+    y: fromY,
+    position: fromPosition,
+  }];
 
   // 多选：每个附加选中节点都从其 source handle 起一条
   for (const id of extraIds) {
@@ -43,18 +48,12 @@ export default function ConnectionLine({ fromX, fromY, toX, toY, fromPosition, t
   }
 
   return segments.map(({ key, x, y, position }) => {
-    const [d] = getBezierPath({
-      sourceX: x,
-      sourceY: y,
-      sourcePosition: position,
-      targetX: toX,
-      targetY: toY,
-      targetPosition: toPosition,
-    });
+    const params = { sx: x, sy: y, tx: toX, ty: toY, sourcePos: position, targetPos: toPosition };
+    const d = `M ${params.sx},${params.sy}L ${params.tx},${params.ty}`;
     return (
       <g key={key}>
         <path fill="none" strokeWidth={1.5} stroke="#6366f1" d={d} />
-        <circle cx={toX} cy={toY} fill="#fff" r={4} stroke="#6366f1" strokeWidth={1.5} />
+        <circle cx={params.tx} cy={params.ty} fill="#fff" r={4} stroke="#6366f1" strokeWidth={1.5} />
       </g>
     );
   });

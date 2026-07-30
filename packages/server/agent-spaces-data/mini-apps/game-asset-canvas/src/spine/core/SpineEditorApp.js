@@ -17,8 +17,14 @@ import { HistoryManager } from './HistoryManager.js';
 import { calculateFitTransform } from './ViewUtils.js';
 
 export class SpineEditorApp {
-  constructor(canvasElement) {
-    this.canvasElement = canvasElement;
+  /**
+   * @param {HTMLElement} container 承载 canvas 的容器元素。
+   *   PIXI 自己创建 canvas 并 append 进容器，避免把 React 管理的 <canvas> 作为
+   *   `view` 传入导致的 WebGL context 初始化异常（checkMaxIfStatementsInShader 收到 0）。
+   */
+  constructor(container) {
+    this.container = container;
+    this.canvasElement = null; // PIXI 创建并挂载的真实 canvas（app.view），供 RecordManager/截图使用
     this.app = null;
     this.spine = null;          // Spine 实例
     this.spineContainer = null; // 持有 spine + gizmo 的容器
@@ -48,16 +54,21 @@ export class SpineEditorApp {
     this._tickerBound = null;
   }
 
-  /** 初始化 PIXI Application */
+  /** 初始化 PIXI Application（自建 canvas，不接收外部 view） */
   async init() {
     this.app = new PIXI.Application({
-      view: this.canvasElement,
       background: '#eef0f3',
       antialias: true,
       // 录制 WebGL canvas 需保留绘图缓冲区，否则 captureStream 会抓到黑屏/残帧
       preserveDrawingBuffer: true,
-      resizeTo: this.canvasElement.parentElement,
+      resizeTo: this.container,
     });
+    // PIXI 自建的 canvas：挂到容器，并保持与原样式一致（撑满）
+    this.canvasElement = this.app.view;
+    this.canvasElement.style.width = '100%';
+    this.canvasElement.style.height = '100%';
+    this.canvasElement.style.display = 'block';
+    this.container.appendChild(this.canvasElement);
 
     // spine 容器（缩放/平移作用于此）
     this.spineContainer = new PIXI.Container();
@@ -391,8 +402,8 @@ export class SpineEditorApp {
   _onSelectBone(bone) { /* 由 setCallbacks 覆盖 */ }
   _onLiveTransform(bone) { /* 由 setCallbacks 覆盖 */ }
 
-  /** 应用变换面板的数值到选中骨骼 */
-  applyTransform(bone, values) {
+  /** 把数值写入骨骼并刷新显示，但不记录历史（用于滑条拖动等实时预览） */
+  applyTransformLive(bone, values) {
     if (!bone) return;
     bone.x = values.x;
     bone.y = values.y;
@@ -401,8 +412,21 @@ export class SpineEditorApp {
     bone.scaleY = values.scaleY;
     this.spine.skeleton.updateWorldTransform();
     this.gizmo.redraw();
-    this.history.push(this.spine.skeleton, 'apply');
+  }
+
+  /** 固化一次变换到历史（交互结束后调用，避免实时拖动产生大量快照） */
+  commitTransform(label = 'liveTransform') {
+    if (!this.spine) return;
+    this.spine.skeleton.updateWorldTransform();
+    this.gizmo.redraw();
+    this.history.push(this.spine.skeleton, label);
     this._setModified(true);
+  }
+
+  /** 一次性应用并记录历史（按钮触发的离散操作，如外部脚本调用） */
+  applyTransform(bone, values) {
+    this.applyTransformLive(bone, values);
+    this.commitTransform('apply');
   }
 
   /** 水平/竖直翻转选中骨骼及其子级 */

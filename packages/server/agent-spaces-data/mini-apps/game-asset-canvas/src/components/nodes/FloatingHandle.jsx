@@ -12,6 +12,7 @@ export default function FloatingHandle({ style, ...props }) {
     <Handle
       {...props}
       data-floating-handle
+      isConnectableStart={props.type === 'target' ? false : props.isConnectableStart}
       onMouseEnter={(event) => {
         event.stopPropagation();
         setHovered(true);
@@ -26,13 +27,13 @@ export default function FloatingHandle({ style, ...props }) {
         height: size,
         minWidth: size,
         minHeight: size,
-        cursor: 'crosshair',
-        zIndex: 50,
         border: `2px solid ${hovered ? 'var(--primary)' : 'var(--muted-foreground)'}`,
         background: 'var(--background)',
         boxShadow: hovered
           ? '0 4px 12px rgb(0 0 0 / 0.24)'
           : '0 1px 4px rgb(0 0 0 / 0.18)',
+        zIndex: 50,
+        cursor: 'crosshair',
         transition: 'width 150ms ease, height 150ms ease, min-width 150ms ease, min-height 150ms ease, border-color 150ms ease, box-shadow 150ms ease',
       }}
     />

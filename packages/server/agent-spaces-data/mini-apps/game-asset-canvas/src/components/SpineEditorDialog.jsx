@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Badge, Bone, Button, Camera, CircleStop, Dialog, DialogContent,
-  DialogFooter, DialogHeader, DialogTitle, Download, Loader, Maximize2, Play, Redo2,
-  Save, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Settings2,
+  DialogFooter, DialogHeader, DialogTitle, Download, DropdownMenu, DropdownMenuContent,
+  DropdownMenuItem, DropdownMenuTrigger, Loader, Maximize2, MoreVertical, Play, Redo2,
+  Save, Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
   Tabs, TabsContent, TabsList, TabsTrigger, Undo2, Video,
 } from '@agent-spaces/ui';
 import ReskinPanel from './ReskinPanel';
 import useSettings from '../hooks/useSettings';
-import { DEFAULT_EDIT_IMAGE_MODELS } from '../utils/settings';
 import { SpineEditorApp } from '../spine/core/SpineEditorApp';
 import { RecordManager } from '../spine/core/RecordManager';
 import { PoseExporter } from '../spine/exporters/PoseExporter';
@@ -21,7 +21,6 @@ import {
 } from '../spine/components/SpinePanels';
 
 const PLAYBACK_SPEEDS = ['0.25', '0.5', '1', '1.5', '2'];
-const RESKIN_MODEL_STORAGE_KEY = 'spine-editor:processing-model';
 
 export default function SpineEditorDialog({
   open, assets, onSave, onPoseExport, onExportVideo, onReskinComplete, onClose,
@@ -36,7 +35,7 @@ export default function SpineEditorDialog({
   const callbacksRef = useRef({ onSave, onPoseExport, onExportVideo, onReskinComplete });
   callbacksRef.current = { onSave, onPoseExport, onExportVideo, onReskinComplete };
 
-  const [canvasElement, setCanvasElement] = useState(null);
+  const [canvasElement, setCanvasElement] = useState(null); // 实为承载 canvas 的容器 div
   const [ready, setReady] = useState(false);
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState('正在加载本地 Spine 运行时');
@@ -54,28 +53,12 @@ export default function SpineEditorDialog({
   const [recording, setRecording] = useState(false);
   const [recordPreview, setRecordPreview] = useState(null);
   const [revision, setRevision] = useState(0);
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const [processingModel, setProcessingModel] = useState(() => {
-    try { return localStorage.getItem(RESKIN_MODEL_STORAGE_KEY) || ''; }
-    catch { return ''; }
-  });
-
-  const processingModels = useMemo(() => {
-    const values = Array.isArray(canvasSettings.editImageModels)
-      ? canvasSettings.editImageModels.map((value) => String(value).trim()).filter(Boolean)
-      : [];
-    return values.length ? [...new Set(values)] : [...DEFAULT_EDIT_IMAGE_MODELS];
-  }, [canvasSettings.editImageModels]);
-
-  useEffect(() => {
-    if (processingModels.includes(processingModel)) return;
-    setProcessingModel(processingModels[0] || 'gpt-image-1');
-  }, [processingModel, processingModels]);
 
   const touchRevision = useCallback(() => setRevision((value) => value + 1), []);
   const handleCanvasRef = useCallback((element) => {
+    // element 是承载 PIXI canvas 的容器 div（PIXI 自建 canvas 并 append 进去）
     setCanvasElement(element);
-    console.debug('[SpineEditor] canvas', element ? 'attached' : 'detached');
+    console.debug('[SpineEditor] canvas container', element ? 'attached' : 'detached');
   }, []);
 
   const urlToDataUrl = useCallback(async (url) => {
@@ -176,7 +159,7 @@ export default function SpineEditorDialog({
         }
         editorRef.current = editor;
         visibilityRef.current = new BoneVisibility();
-        recorderRef.current = new RecordManager(canvasElement);
+        recorderRef.current = new RecordManager(editor.canvasElement);
         editor.setCallbacks({
           onSelect: (boneValue) => {
             setSelectedBone(boneValue);
@@ -248,11 +231,6 @@ export default function SpineEditorDialog({
     const speed = Number(value);
     setPlaybackSpeed(speed);
     editorRef.current?.setPlaybackSpeed(speed);
-  };
-
-  const handleProcessingModel = (value) => {
-    setProcessingModel(value);
-    try { localStorage.setItem(RESKIN_MODEL_STORAGE_KEY, value); } catch { /* ignore */ }
   };
 
   const handleSkin = (value) => {
@@ -442,10 +420,32 @@ export default function SpineEditorDialog({
               <Button type="button" variant={recording ? 'destructive' : 'ghost'} size="icon-sm" title={recording ? '停止录制' : '录制'} disabled={!spine || !RecordManager.isSupported()} onClick={toggleRecord}>
                 {recording ? <CircleStop className="h-4 w-4" /> : <Video className="h-4 w-4" />}
               </Button>
-              <Button type="button" variant="ghost" size="icon-sm" title="导出姿势" disabled={!spine} onClick={exportPose}><Save className="h-4 w-4" /></Button>
-              <Button type="button" variant="ghost" size="icon-sm" title="导出截图" disabled={!spine || loading} onClick={exportScreenshot}><Camera className="h-4 w-4" /></Button>
-              <Button type="button" variant="ghost" size="icon-sm" title="下载 Spine" disabled={!loadedRawRef.current || loading} onClick={downloadSpine}><Download className="h-4 w-4" /></Button>
-              <Button type="button" variant="ghost" size="icon-sm" title="设置" onClick={() => setSettingsOpen(true)}><Settings2 className="h-4 w-4" /></Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger
+                  render={
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-sm"
+                      title="导出 / 下载"
+                      disabled={!spine && !loadedRawRef.current}
+                    />
+                  }
+                >
+                  <MoreVertical className="h-4 w-4" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={exportPose} disabled={!spine}>
+                    <Save className="h-4 w-4" /> 导出姿势
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={exportScreenshot} disabled={!spine || loading}>
+                    <Camera className="h-4 w-4" /> 导出截图
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={downloadSpine} disabled={!loadedRawRef.current || loading}>
+                    <Download className="h-4 w-4" /> 下载 Spine
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -481,7 +481,7 @@ export default function SpineEditorDialog({
           </Tabs>
 
           <div className="relative min-w-0 flex-1 bg-muted">
-            <canvas ref={handleCanvasRef} className="block h-full w-full" />
+            <div ref={handleCanvasRef} className="block h-full w-full" />
             {!spine && ready && !loading ? (
               <div className="pointer-events-none absolute inset-0 flex items-center justify-center text-sm text-muted-foreground">
                 从左侧选择角色或在节点中上传 Spine 三件套
@@ -501,7 +501,7 @@ export default function SpineEditorDialog({
               <ReskinPanel
                 assets={currentAssets}
                 workflowId={canvasSettings.editImageWorkflowId}
-                processingModel={processingModel}
+                editImageModels={canvasSettings.editImageModels}
                 replaceAtlas={replaceAtlas}
                 requestSnapshot={requestSnapshot}
                 requestSpineJson={requestSpineJson}
@@ -511,13 +511,6 @@ export default function SpineEditorDialog({
           </Tabs>
         </div>
       </DialogContent>
-      <SpineSettingsDialog
-        open={settingsOpen}
-        models={processingModels}
-        model={processingModel}
-        onModelChange={handleProcessingModel}
-        onClose={() => setSettingsOpen(false)}
-      />
       <RecordingPreviewDialog
         preview={recordPreview}
         exporting={loading}
@@ -575,29 +568,5 @@ function CompactSelect({ value, onValueChange, options, placeholder, disabled, f
         {options.map((option) => <SelectItem key={option} value={option}>{formatOption(option)}</SelectItem>)}
       </SelectContent>
     </Select>
-  );
-}
-
-function SpineSettingsDialog({ open, models, model, onModelChange, onClose }) {
-  return (
-    <Dialog open={open} onOpenChange={(nextOpen) => { if (!nextOpen) onClose?.(); }}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle>骨骼编辑器设置</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-2 py-2">
-          <label htmlFor="spine-processing-model" className="text-sm font-medium">处理模型</label>
-          <Select value={model || null} onValueChange={onModelChange}>
-            <SelectTrigger id="spine-processing-model" className="w-full">
-              <SelectValue>{model || '选择模型'}</SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              {models.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <p className="text-xs text-muted-foreground">模型列表来自画布全局设置中的编辑图片模型。</p>
-        </div>
-      </DialogContent>
-    </Dialog>
   );
 }

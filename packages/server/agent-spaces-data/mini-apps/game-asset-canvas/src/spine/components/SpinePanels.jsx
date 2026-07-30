@@ -211,7 +211,19 @@ export function SpineTransformPanel({ bone, editor, revision, onChanged }) {
     setValues(boneValues(bone));
   }, [bone, revision]);
 
-  const update = (key, value) => setValues((current) => ({ ...current, [key]: Number(value) }));
+  // 实时改值：滑条拖动 / 数字输入时逐次写入骨骼并刷新画布，但不记历史。
+  const liveUpdate = (key, value) => {
+    if (!bone || !editor) return;
+    const next = { ...values, [key]: Number(value) };
+    setValues(next);
+    editor.applyTransformLive?.(bone, next);
+  };
+  // 交互结束（松手 / 失焦）：固化一次到历史。
+  const commit = () => {
+    if (!bone || !editor) return;
+    editor.commitTransform?.('liveTransform');
+    onChanged?.();
+  };
   const act = (callback) => {
     callback();
     setValues(boneValues(bone));
@@ -224,19 +236,11 @@ export function SpineTransformPanel({ bone, editor, revision, onChanged }) {
         {bone ? (
           <>
             <Badge variant="secondary">{bone.data.name}</Badge>
-            {[
-              ['x', 'X', 0.01],
-              ['y', 'Y', 0.01],
-              ['rotation', '旋转', 0.1],
-              ['scaleX', 'Scale X', 0.01],
-              ['scaleY', 'Scale Y', 0.01],
-            ].map(([key, label, step]) => (
-              <div key={key} className="grid grid-cols-[64px_1fr] items-center gap-2">
-                <Label className="text-xs">{label}</Label>
-                <Input type="number" step={step} value={values[key]} onChange={(event) => update(key, event.target.value)} className="h-8 text-xs" />
-              </div>
-            ))}
-            <Button type="button" size="sm" className="w-full" onClick={() => act(() => editor?.applyTransform(bone, values))}>应用变换</Button>
+            <NumberField label="X" step={0.01} value={values.x} onLive={liveUpdate.bind(null, 'x')} onCommit={commit} />
+            <NumberField label="Y" step={0.01} value={values.y} onLive={liveUpdate.bind(null, 'y')} onCommit={commit} />
+            <SliderField label="旋转" unit="°" min={-180} max={180} step={0.1} value={values.rotation} onLive={liveUpdate.bind(null, 'rotation')} onCommit={commit} />
+            <SliderField label="Scale X" min={0} max={3} step={0.01} value={values.scaleX} onLive={liveUpdate.bind(null, 'scaleX')} onCommit={commit} />
+            <SliderField label="Scale Y" min={0} max={3} step={0.01} value={values.scaleY} onLive={liveUpdate.bind(null, 'scaleY')} onCommit={commit} />
             <div className="grid grid-cols-2 gap-2">
               <Button type="button" variant="outline" size="sm" onClick={() => act(() => editor?.flip(bone, 'x'))}><FlipHorizontal2 className="h-4 w-4" />水平</Button>
               <Button type="button" variant="outline" size="sm" onClick={() => act(() => editor?.flip(bone, 'y'))}><FlipVertical2 className="h-4 w-4" />竖直</Button>
@@ -251,6 +255,50 @@ export function SpineTransformPanel({ bone, editor, revision, onChanged }) {
         <Button type="button" variant="destructive" size="sm" className="w-full" onClick={() => act(() => editor?.resetAll())}>全部重置</Button>
       </div>
     </ScrollArea>
+  );
+}
+
+/** 数字输入：onChange 实时预览，onBlur/Enter 提交历史 */
+function NumberField({ label, step, value, onLive, onCommit }) {
+  return (
+    <div className="grid grid-cols-[56px_1fr] items-center gap-2">
+      <Label className="text-xs">{label}</Label>
+      <Input
+        type="number"
+        step={step}
+        value={value}
+        onChange={(event) => onLive?.(event.target.value)}
+        onBlur={onCommit}
+        onKeyDown={(event) => { if (event.key === 'Enter') event.target.blur(); }}
+        className="h-8 text-xs"
+      />
+    </div>
+  );
+}
+
+/**
+ * 滑条 + 数值显示：拖动时 onChange 实时刷新画布，松手 onPointerUp/onBlur 提交一次历史。
+ * 用原生 input[range] 以拿到稳定的拖动流；外观按已有手柄风格轻量适配。
+ */
+function SliderField({ label, min, max, step, value, unit = '', onLive, onCommit }) {
+  return (
+    <div className="space-y-1">
+      <div className="flex items-center justify-between">
+        <Label className="text-xs">{label}</Label>
+        <span className="font-mono text-[11px] text-muted-foreground">{value}{unit}</span>
+      </div>
+      <input
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        onChange={(event) => onLive?.(event.target.value)}
+        onPointerUp={onCommit}
+        onBlur={onCommit}
+        className="slider-sm h-4 w-full cursor-pointer accent-primary"
+      />
+    </div>
   );
 }
 

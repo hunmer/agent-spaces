@@ -47,12 +47,15 @@ import { WORKFLOWS } from '../utils/constants';
 import useCanvasAgentRpc from '../hooks/useCanvasAgentRpc';
 import useDecoratedNodes from '../hooks/useDecoratedNodes';
 
-import { IMAGE_TAGS, NODE_TYPES, NODE_META, dedupeTags } from '../utils/constants';
-import { NODE_COMPONENTS, PANEL_ID_MAIN, PANEL_ID_RIGHT } from '../utils/canvas-constants';
+import { IMAGE_TAGS, NODE_TYPES, NODE_META } from '../utils/constants';
+import { NODE_COMPONENTS, PANEL_ID_MAIN, PANEL_ID_RIGHT, dedupeTags } from '../utils/canvas-constants';
 import { genId } from '../utils/canvas-id';
 
 const EDGE_TYPES = { floating: FloatingEdge };
-const DEFAULT_EDGE_OPTIONS = { type: 'floating' };
+const DEFAULT_EDGE_OPTIONS = {
+  type: 'floating',
+  markerEnd: { type: MarkerType.ArrowClosed },
+};
 
 /**
  * 游戏资产生成画布主组件（编排层）。
@@ -617,6 +620,7 @@ export default function Canvas() {
               onConnect={onConnect}
               onConnectEnd={onConnectEnd}
               connectionLineComponent={ConnectionLine}
+              connectionRadius={160}
               onSelectionChange={selection.onSelectionChange}
               onNodesDelete={onNodesDelete}
               deleteKeyCode={(groupOps.selectedGroupId || groupOps.deleteGroupId) ? null : deleteKeyCode}

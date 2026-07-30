@@ -1,44 +1,110 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Badge, Button, Input, Label, Loader, Paintbrush, ScrollArea,
+  Badge, Button, ChevronDown, Input, Label, Loader, Paintbrush, ScrollArea,
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
   Switch, Tabs, TabsList, TabsTrigger, Textarea, Trash2, WandSparkles,
 } from '@agent-spaces/ui';
-import { runReskin, runInpaintSlot } from '../utils/reskin/reskinPipeline';
+import { runReskin, runInpaintSlot, DEFAULT_EROSION } from '../utils/reskin/reskinPipeline';
 import { parseAtlas, safeFilename } from '../utils/reskin/atlasReader';
 import { cropRegionRotated, loadImage } from '../utils/reskin/canvasUtils';
+import { DEFAULT_EDIT_IMAGE_MODELS } from '../utils/settings';
+
+const RESKIN_MODEL_STORAGE_KEY = 'spine-editor:processing-model';
+const EROSION_STORAGE_KEY = 'spine-editor:erosion';
+const SIZE_STORAGE_KEY = 'spine-editor:reskin-size';
+
+const IMAGE_SIZES = [
+  ['auto', 'Auto'],
+  ['1k', '1K'],
+  ['2k', '2K'],
+  ['4k', '4K'],
+];
+
+const EROSION_FIELDS = [
+  { key: 'pxSmall', label: '极小', hint: (s) => `边长 < ${s.smallThreshold}px` },
+  { key: 'pxMedium', label: '小', hint: (s) => `边长 < ${s.mediumThreshold}px` },
+  { key: 'pxLarge', label: '中', hint: (s) => `边长 < ${s.largeThreshold}px` },
+  { key: 'pxXlarge', label: '大', hint: (s) => `边长 ≥ ${s.largeThreshold}px` },
+];
+
+/** 从 localStorage 读 JSON，失败返回 fallback */
+function loadJSON(key, fallback) {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? { ...fallback, ...JSON.parse(raw) } : { ...fallback };
+  } catch { return { ...fallback }; }
+}
 
 /**
  * AI 换肤面板（内嵌在骨骼编辑器对话框）。
  *
  * 支持两种合成方法（atlas/exploded）、两种分割方法（sam/bg_components）、
- * 侵蚀去白边开关、per-slot 局部重绘。
+ * 按部件尺寸分档的侵蚀去白边、per-slot 局部重绘。
+ *
+ * 处理模型、输出尺寸、侵蚀设置由本面板自行管理并持久化到 localStorage。
  *
  * @param {object} props
  * @param {object|null} props.assets 当前 spine 三件套 {skel, atlas, png, name}
  * @param {(pngDataUrl:string, name:string) => Promise<void>|void} props.replaceAtlas 热加载 atlas
- * @param {Promise<string|null>} props.requestSnapshot 请求 iframe 截图
+ * @param {Promise<string|null>} props.requestSnapshot 请求画布截图
  * @param {Promise<object|null>} props.requestSpineJson 从当前编辑器实例导出 spine JSON（支持 .skel）
  * @param {(assets:{skel,atlas,png,spineJson}) => void} [props.onReskinComplete] 换肤完成
  */
 export default function ReskinPanel({
-  assets, workflowId, processingModel, replaceAtlas, requestSnapshot, requestSpineJson, onReskinComplete,
+  assets, workflowId, editImageModels, replaceAtlas, requestSnapshot, requestSpineJson, onReskinComplete,
 }) {
   const [prompt, setPrompt] = useState('');
   const [skinName, setSkinName] = useState('');
   const [method, setMethod] = useState('atlas');         // 'atlas' | 'exploded'
   const [segMethod, setSegMethod] = useState('sam');     // 'sam' | 'bg_components'
-  const [erode, setErode] = useState(false);             // 侵蚀去白边
-  const [erodePx, setErodePx] = useState(2);             // 侵蚀半径
+  const [size, setSize] = useState(() => {              // 输出尺寸 'auto'|'1k'|'2k'|'4k'
+    try { return localStorage.getItem(SIZE_STORAGE_KEY) || '2k'; }
+    catch { return '2k'; }
+  });
+  const [erosion, setErosion] = useState(() => loadJSON(EROSION_STORAGE_KEY, DEFAULT_EROSION));
+  const [advancedOpen, setAdvancedOpen] = useState(false); // 侵蚀分档折叠
   const [running, setRunning] = useState(false);
   const [logs, setLogs] = useState([]);
   const [history, setHistory] = useState([]);
   const [activeSkin, setActiveSkin] = useState(null);
+  const [processingModel, setProcessingModel] = useState(() => {
+    try { return localStorage.getItem(RESKIN_MODEL_STORAGE_KEY) || ''; }
+    catch { return ''; }
+  });
   // per-slot 重绘
   const [slotMode, setSlotMode] = useState(false);       // 是否局部重绘模式
   const [selectedSlot, setSelectedSlot] = useState('');
   const [slots, setSlots] = useState([]);                // 可重绘的 slot 列表
   const logEndRef = useRef(null);
+
+  // 模型候选列表：由父组件（SpineEditorDialog）从全局设置传入，含用户自定义；兜底内置默认
+  const processingModels = useMemo(() => {
+    const values = Array.isArray(editImageModels)
+      ? editImageModels.map((value) => String(value).trim()).filter(Boolean)
+      : [];
+    return values.length ? [...new Set(values)] : [...DEFAULT_EDIT_IMAGE_MODELS];
+  }, [editImageModels]);
+
+  useEffect(() => {
+    if (processingModels.includes(processingModel)) return;
+    setProcessingModel(processingModels[0] || 'gpt-image-1');
+  }, [processingModel, processingModels]);
+
+  const handleModelChange = useCallback((value) => {
+    setProcessingModel(value);
+    try { localStorage.setItem(RESKIN_MODEL_STORAGE_KEY, value); } catch { /* ignore */ }
+  }, []);
+  const handleSizeChange = useCallback((value) => {
+    setSize(value);
+    try { localStorage.setItem(SIZE_STORAGE_KEY, value); } catch { /* ignore */ }
+  }, []);
+  const updateErosion = useCallback((patch) => {
+    setErosion((cur) => {
+      const next = { ...cur, ...patch };
+      try { localStorage.setItem(EROSION_STORAGE_KEY, JSON.stringify(next)); } catch { /* ignore */ }
+      return next;
+    });
+  }, []);
 
   const spineName = assets?.name || 'spine';
 
@@ -119,12 +185,14 @@ export default function ReskinPanel({
       }
       if (!spineJson) throw new Error('无法获取 spine JSON');
 
-      addLog('pipeline', `开始 AI 换肤（${method} / ${segMethod}）…`);
+      addLog('pipeline', `开始 AI 换肤（${method} / ${segMethod} / ${size}）…`);
       const result = await runReskin({
         snapshot, atlasSheetUrl: assets.png, atlasText, spineJson,
         skinName: finalSkinName, prompt,
       }, {
-        method, segMethod, erode, erodePx,
+        method, segMethod,
+        size,
+        erosion,
         workflowId,
         model: processingModel,
         onLog: (step, msg, data) => addLog(step, msg, data),
@@ -153,7 +221,7 @@ export default function ReskinPanel({
     } finally {
       setRunning(false);
     }
-  }, [prompt, assets, method, segMethod, erode, erodePx, finalSkinName, requestSnapshot, requestSpineJson, replaceAtlas, onReskinComplete, addLog, spineName, workflowId, processingModel]);
+  }, [prompt, assets, method, segMethod, size, erosion, finalSkinName, requestSnapshot, requestSpineJson, replaceAtlas, onReskinComplete, addLog, spineName, workflowId, processingModel]);
 
   /** per-slot 局部重绘 */
   const handleInpaintSlot = useCallback(async () => {
@@ -201,7 +269,8 @@ export default function ReskinPanel({
         slot: selectedSlot, skinName: finalSkinName, prompt,
         regionCanvas, spineJson, regions, atlasSheet: atlasSheetImg,
       }, {
-        erode, erodePx,
+        size,
+        erosion,
         workflowId,
         model: processingModel,
         onLog: (step, msg, data) => addLog(step, msg, data),
@@ -218,7 +287,7 @@ export default function ReskinPanel({
     } finally {
       setRunning(false);
     }
-  }, [prompt, assets, selectedSlot, erode, erodePx, finalSkinName, requestSpineJson, replaceAtlas, onReskinComplete, addLog, workflowId, processingModel]);
+  }, [prompt, assets, selectedSlot, size, erosion, finalSkinName, requestSpineJson, replaceAtlas, onReskinComplete, addLog, workflowId, processingModel]);
 
   const deleteHistory = useCallback((name, e) => {
     e?.stopPropagation();
@@ -294,13 +363,50 @@ export default function ReskinPanel({
           />
         )}
 
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <Switch checked={erode} onCheckedChange={setErode} disabled={running} />
-            <Label className="text-xs">去白边</Label>
-          </div>
-          {erode && (
-            <Input type="number" min={1} max={20} value={erodePx} onChange={(e) => setErodePx(Math.max(1, Number(e.target.value)))} disabled={running} className="h-8 w-20 text-xs" />
+        <FieldSelect label="处理模型" value={processingModel} onValueChange={handleModelChange} disabled={running} options={processingModels.map((m) => [m, m])} placeholder="选择模型" />
+        <FieldSelect label="输出尺寸" value={size} onValueChange={handleSizeChange} disabled={running} options={IMAGE_SIZES} />
+
+        <div className="rounded border border-border">
+          <button
+            type="button"
+            disabled={running}
+            onClick={() => setAdvancedOpen((v) => !v)}
+            className="flex w-full items-center justify-between px-2 py-1.5 text-xs"
+          >
+            <span className="flex items-center gap-2">
+              <Switch
+                checked={erosion.enabled}
+                onCheckedChange={(checked) => { updateErosion({ enabled: checked }); }}
+                disabled={running}
+                onClick={(e) => e.stopPropagation()}
+              />
+              <span>侵蚀去白边（按部件分档）</span>
+            </span>
+            <ChevronDown className={`h-3.5 w-3.5 transition-transform ${advancedOpen ? '' : '-rotate-90'}`} />
+          </button>
+          {advancedOpen && erosion.enabled && (
+            <div className="space-y-2 border-t border-border px-2 py-2">
+              {EROSION_FIELDS.map((f) => (
+                <div key={f.key} className="grid grid-cols-[44px_1fr_56px] items-center gap-2">
+                  <Label className="text-[11px] text-muted-foreground">{f.label}</Label>
+                  <span className="truncate text-[10px] text-muted-foreground">{f.hint(erosion)}</span>
+                  <div className="flex items-center gap-1">
+                    <Input
+                      type="number"
+                      min={0}
+                      max={20}
+                      step={1}
+                      value={erosion[f.key]}
+                      onChange={(e) => updateErosion({ [f.key]: Math.max(0, parseInt(e.target.value || '0', 10)) })}
+                      disabled={running}
+                      className="h-7 text-[11px]"
+                    />
+                    <span className="text-[10px] text-muted-foreground">px</span>
+                  </div>
+                </div>
+              ))}
+              <p className="text-[10px] leading-relaxed text-muted-foreground">按部件边长落入对应档位，侵蚀半径用于收缩 SAM mask 去除边缘白边。设为 0px 跳过该档。</p>
+            </div>
           )}
         </div>
 

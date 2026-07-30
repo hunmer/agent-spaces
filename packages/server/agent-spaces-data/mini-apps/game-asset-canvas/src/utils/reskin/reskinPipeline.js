@@ -80,6 +80,48 @@ function closestEditAspect(width, height) {
   ))[0];
 }
 
+/**
+ * 侵蚀半径默认配置（对齐参考 SettingsModal 的 DEFAULT_EROSION）。
+ * 按部件边长分四档：tiny / small / medium / large，每档独立半径。
+ */
+export const DEFAULT_EROSION = {
+  enabled: true,
+  pxSmall: 0,
+  pxMedium: 1,
+  pxLarge: 2,
+  pxXlarge: 3,
+  smallThreshold: 60,
+  mediumThreshold: 200,
+  largeThreshold: 500,
+};
+
+/**
+ * 选取某个部件的侵蚀半径（px）。
+ *
+ * 优先级：
+ *   1. opts.erosion（分档对象）→ 按边长落入 tiny/small/medium/large 档
+ *   2. opts.erodePx（单一半径）→ 所有部件统一
+ *   3. 兜底 → side / 60（保留原动态行为）
+ *
+ * 当 erosion.enabled === false 或计算出的 px <= 0 时返回 0（不侵蚀）。
+ */
+function pickErodePx(side, opts) {
+  if (!opts) return 0;
+  const erosion = opts.erosion;
+  if (erosion && typeof erosion === 'object') {
+    if (erosion.enabled === false) return 0;
+    const s = side || 0;
+    let px;
+    if (s < (erosion.smallThreshold ?? 60)) px = erosion.pxSmall ?? 0;
+    else if (s < (erosion.mediumThreshold ?? 200)) px = erosion.pxMedium ?? 1;
+    else if (s < (erosion.largeThreshold ?? 500)) px = erosion.pxLarge ?? 2;
+    else px = erosion.pxXlarge ?? 3;
+    return Math.max(0, Math.round(px));
+  }
+  if (!opts.erode) return 0;
+  return opts.erodePx ?? Math.max(1, Math.round((side || 0) / 60));
+}
+
 /** 调 edit_image workflow 重绘一张图，返回重绘后的 http URL */
 async function workflowRedraw(imageUrl, prompt, opts, log) {
   const {
@@ -125,7 +167,7 @@ export async function runReskin(input, opts = {}) {
   } = input;
   const {
     method = 'atlas', segMethod = 'sam',
-    workflowId, model = 'gpt-image-1', size = '2k', erode = false, onLog = () => {},
+    workflowId, model = 'gpt-image-1', size = '2k', onLog = () => {},
   } = opts;
 
   const log = (step, msg, data) => { try { onLog(step, msg, data); } catch { /* ignore */ } };
@@ -223,11 +265,8 @@ export async function runReskin(input, opts = {}) {
       if (mask) {
         const masked = applyMaskToRegion(segmentSource, region, mask, srcW, srcH);
         let finalImg = masked;
-        if (erode) {
-          const side = Math.max(region.w, region.h);
-          const px = opts.erodePx ?? Math.max(1, Math.round(side / 60));
-          finalImg = erodeAlpha(masked, px);
-        }
+        const px = pickErodePx(Math.max(region.w, region.h), opts);
+        if (px > 0) finalImg = erodeAlpha(masked, px);
         regionParts[region.name] = { img: finalImg, width: region.w, height: region.h };
       } else {
         regionParts[region.name] = { img: cropRegionRotated(segmentSource, region.x, region.y, region.w, region.h, region.rotate), width: region.w, height: region.h };
@@ -256,11 +295,8 @@ export async function runReskin(input, opts = {}) {
           tmp.getContext('2d').drawImage(maskedImg, 0, 0, region.w, region.h);
           maskedImg = tmp;
         }
-        if (erode) {
-          const side = Math.max(region.w, region.h);
-          const px = opts.erodePx ?? Math.max(1, Math.round(side / 60));
-          maskedImg = erodeAlpha(maskedImg, px);
-        }
+        const px = pickErodePx(Math.max(region.w, region.h), opts);
+        if (px > 0) maskedImg = erodeAlpha(maskedImg, px);
         regionParts[region.name] = { img: maskedImg, width: region.w, height: region.h };
       } catch (err) {
         log('segment', `region "${region.name}" 抠图失败，降级用原始裁切: ${err?.message || err}`, { region: region.name, error: true });
@@ -335,7 +371,7 @@ const SLOT_NEGATIVE = 'do not change the silhouette; do not add background scene
 export async function runInpaintSlot(input, opts = {}) {
   const { slot, skinName, prompt, regionCanvas, spineJson, regions, atlasSheet } = input;
   const {
-    workflowId, model = 'gpt-image-1', size = '2k', erode = false, onLog = () => {},
+    workflowId, model = 'gpt-image-1', size = '2k', onLog = () => {},
   } = opts;
   const log = (step, msg, data) => { try { onLog(step, msg, data); } catch { /* ignore */ } };
   const t0 = performance.now();
@@ -379,11 +415,8 @@ export async function runInpaintSlot(input, opts = {}) {
     tmp.getContext('2d').drawImage(maskedImg, 0, 0, rw, rh);
     maskedImg = tmp;
   }
-  if (erode) {
-    const side = Math.max(rw, rh);
-    const px = opts.erodePx ?? Math.max(1, Math.round(side / 60));
-    maskedImg = erodeAlpha(maskedImg, px);
-  }
+  const px = pickErodePx(Math.max(rw, rh), opts);
+  if (px > 0) maskedImg = erodeAlpha(maskedImg, px);
 
   // ③ 收集所有 region（目标 slot 用新图，其余用原 atlas sheet 裁出）
   log('inpaint', '组装新 atlas…');
