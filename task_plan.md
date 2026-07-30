@@ -55,6 +55,9 @@
 - [x] 确定冲突优先级和节点落点语义
 - [x] 实施图片读取、上传与节点创建
 - [x] 执行静态和针对性验证
+- [x] 根据运行反馈诊断 Async Clipboard API 失效原因
+- [x] 改用原生 paste 事件并增加回归测试
+- [x] 重新执行运行路径验证
 
 ## 约束
 - 优先复用 mini-app 现有上传与图片节点创建 API。
@@ -62,7 +65,9 @@
 - 保留工作区已有改动。
 
 ## 错误记录
-无。
+- 首版仅依赖 `navigator.clipboard.read()`；静态与工具测试通过，但用户运行时 Ctrl+V 无法粘贴图片，说明测试未覆盖 mini-app 的真实浏览器剪贴板事件路径。
+- `packages/web` 未安装可直接解析的 Playwright/Puppeteer；本机 Chrome 可用，继续查找 Codex 工作区自带浏览器依赖。
+- 已用 Codex Playwright + 本机 Chrome 访问真实前端，但 `localhost:3100` 跳转登录页，无法进入 mini-app 完成端到端 Ctrl+V；保留 `[ClipboardPaste]` 定向日志供登录态验收。
 
 ---
 

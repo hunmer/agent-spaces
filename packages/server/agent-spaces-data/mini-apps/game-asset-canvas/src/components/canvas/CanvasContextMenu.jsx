@@ -25,8 +25,14 @@ import AddNodeMenuItems from './AddNodeMenuItems';
  * @param {Function} props.onPick  (type, dataPatch?) => void  右键选中节点类型后在右键位置建节点
  */
 export default function CanvasContextMenu({ triggerElement, children, onPick }) {
+  const handleOpenChange = (open, eventDetails) => {
+    if (open && eventDetails.event?.target?.closest?.('[data-slot="dialog-content"]')) {
+      eventDetails.cancel();
+    }
+  };
+
   return (
-    <ContextMenu>
+    <ContextMenu onOpenChange={handleOpenChange}>
       <ContextMenuTrigger render={triggerElement}>
         {children}
       </ContextMenuTrigger>

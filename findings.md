@@ -14,6 +14,11 @@
 - 实现使用 `clipboard-<timestamp>-<index>.<ext>` 命名 File；jpeg/svg 等 MIME 扩展名做规范化。
 - workflow `useClipboard.copy()` 会把节点 JSON 写入系统剪贴板，从而替换旧图片；mini-app 需要同步写入自身节点 payload，才能在图片优先策略下保留 Ctrl+C -> Ctrl+V 节点语义。
 - 最终行为：系统剪贴板有图片时上传为 imageDisplay；无图片/读取失败时粘贴内部节点；Ctrl+C 节点同步写系统文本以替换旧图片。
+- 运行反馈：首版 Ctrl+V 没有创建图片节点。应优先使用无需 `clipboard-read` 权限的原生 `paste` 事件 `clipboardData.items/files`，不能只依赖 Async Clipboard API。
+- 首版 keydown 在调用 Async Clipboard 前执行 `preventDefault()`，会直接取消浏览器原生 paste 事件；修复后 keydown 不处理 V，由 window paste listener 接管。
+- 原生 paste 先读 `clipboardData.files`，为空时回退 `clipboardData.items[].getAsFile()`，覆盖截图和复制图片两类浏览器表现。
+- Playwright 访问 `localhost:3000` 只得到未完成的 Next Suspense 壳且 body 无可交互内容；当前前端可能运行在 `3100`，需改用正确入口验证。
+- `localhost:3100` 是前端入口，但自动化上下文跳转 `/login.html`，没有现成登录态；端到端验证受登录阻断。
 
 ## game-asset-canvas 分组成员拖拽
 

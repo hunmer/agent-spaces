@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Dialog, DialogContent, DialogTitle,
-  Upload, Film, Trash2, MoreVertical, FolderPlus, Loader,
+  FileUpload, Film, Trash2, MoreVertical, FolderPlus, Loader,
 } from '@agent-spaces/ui';
 import FramePlayer from './nodes/FramePlayer';
 import { FRAME_EXTRACT_MODE_OPTIONS } from '../utils/constants';
@@ -38,10 +38,7 @@ export default function VideoEditorDialog({ open, data, onUpdate, onClose }) {
   const [activeVideoIdx, setActiveVideoIdx] = useState(0);
   const [busy, setBusy] = useState(false);
   const [busyMsg, setBusyMsg] = useState('');
-  const [dropTargetGroup, setDropTargetGroup] = useState(null);
-  const [dragFrame, setDragFrame] = useState(null);
   const [dotsFrameIdx, setDotsFrameIdx] = useState(null);
-  const fileRef = useRef(null);
   const dotsRef = useRef(null);
 
   const currentVideo = videos[Math.min(activeVideoIdx, videos.length - 1)] || videos[0] || '';
@@ -49,6 +46,12 @@ export default function VideoEditorDialog({ open, data, onUpdate, onClose }) {
   useEffect(() => {
     if (activeVideoIdx > videos.length - 1) setActiveVideoIdx(Math.max(0, videos.length - 1));
   }, [videos.length, activeVideoIdx]);
+
+  // 切换视频时清空上一个视频的帧列表 / 动画组 / 探测信息（帧与视频绑定，不跨视频残留）
+  useEffect(() => {
+    onUpdate?.({ frames: [], framesDir: '', animGroups: [], videoInfo: null, error: undefined });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentVideo]);
 
   // 点击外部关闭 dots dropdown
   useEffect(() => {
@@ -64,27 +67,41 @@ export default function VideoEditorDialog({ open, data, onUpdate, onClose }) {
     onUpdate?.({ params: { ...params, ...patch } });
   }, [onUpdate, params]);
 
-  // 上传视频（追加，去重）
-  const handleUpload = useCallback(async (e) => {
-    const files = Array.from(e.target.files || []);
-    e.target.value = '';
-    if (!files.length) return;
+  // 上传视频（FileUpload onChange：接收已上传或待上传的文件列表，追加去重）
+  const handleFilesChange = useCallback(async (files) => {
     const AS = window.AgentSpaces;
-    if (!AS?.uploadFile) return;
-    setBusy(true); setBusyMsg('上传视频中…');
-    try {
-      const urls = [];
-      for (const f of files) {
-        const up = await AS.uploadFile(f);
-        const httpUrl = up?.url || up?.httpPath;
-        if (httpUrl) urls.push(httpUrl);
+    if (!AS?.uploadFile) {
+      onUpdate?.({ error: '宿主 uploadFile 不可用' });
+      return;
+    }
+    const urls = [];
+    const pending = [];
+    for (const item of files || []) {
+      const f = item?.file;
+      if (!f) continue;
+      // 已上传过的（带 url/httpPath）直接复用
+      const existing = f.uploadedUrl || f.uploadedHttpPath || f.url || f.httpPath;
+      if (existing) { urls.push(existing); continue; }
+      if (f instanceof File) pending.push(f);
+    }
+    if (pending.length) {
+      setBusy(true); setBusyMsg('上传视频中…');
+      try {
+        for (const f of pending) {
+          const up = await AS.uploadFile(f);
+          const httpUrl = up?.url || up?.httpPath;
+          if (httpUrl) urls.push(httpUrl);
+        }
+      } catch (err) {
+        onUpdate?.({ error: `上传失败：${err?.message || err}` });
+        return;
+      } finally {
+        setBusy(false); setBusyMsg('');
       }
+    }
+    if (urls.length) {
       const merged = Array.from(new Set([...videos, ...urls]));
       onUpdate?.({ videos: merged });
-    } catch (err) {
-      onUpdate?.({ error: `上传失败：${err?.message || err}` });
-    } finally {
-      setBusy(false); setBusyMsg('');
     }
   }, [videos, onUpdate]);
 
@@ -186,36 +203,11 @@ export default function VideoEditorDialog({ open, data, onUpdate, onClose }) {
     onUpdate?.({ animGroups: animGroups.filter((g) => g.id !== id) });
   }, [animGroups, onUpdate]);
 
-  // 帧拖入动画组
-  const handleGroupDrop = useCallback((groupId, e) => {
-    e.preventDefault();
-    setDropTargetGroup(null);
-    const url = e.dataTransfer.getData('text/x-frame-url');
-    if (!url) return;
-    const group = animGroups.find((g) => g.id === groupId);
-    if (!group) return;
-    if (group.frames.includes(url)) return;
-    const newFrames = [...group.frames, url];
-    const idx = frames.indexOf(url);
-    const next = {
-      frames: newFrames,
-      startFrame: group.frames.length === 0 ? Math.max(0, idx) : group.startFrame,
-      endFrame: Math.max(0, idx),
-    };
-    updateGroup(groupId, next);
-  }, [animGroups, frames, updateGroup]);
-
-  // dots dropdown：设起止帧到分组
+  // dots dropdown：设起止帧到分组（点帧右上角 ⋮ → 选起点/终点 → 选分组）
   const setFrameBoundary = useCallback((frameIdx, groupId, which) => {
     updateGroup(groupId, which === 'start' ? { startFrame: frameIdx } : { endFrame: frameIdx });
     setDotsFrameIdx(null);
   }, [updateGroup]);
-
-  const onDragStartFrame = useCallback((e, url) => {
-    e.dataTransfer.setData('text/x-frame-url', url);
-    e.dataTransfer.effectAllowed = 'copy';
-    setDragFrame(url);
-  }, []);
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose?.()}>
@@ -225,28 +217,28 @@ export default function VideoEditorDialog({ open, data, onUpdate, onClose }) {
             <Film className="h-4 w-4 text-primary" />
             视频编辑器
           </DialogTitle>
-          <div className="flex items-center gap-2">
-            {busy && (
-              <span className="flex items-center gap-1.5 text-xs text-primary">
-                <Loader className="h-3 w-3 animate-spin" />
-                {busyMsg || '处理中…'}
-              </span>
-            )}
-            <button
-              type="button"
-              onClick={() => fileRef.current?.click()}
-              className="flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs transition hover:border-primary hover:text-primary"
-            >
-              <Upload className="h-3.5 w-3.5" /> 添加视频
-            </button>
-            <input ref={fileRef} type="file" accept="video/*" multiple className="hidden" onChange={handleUpload} />
-          </div>
+          {busy && (
+            <span className="flex items-center gap-1.5 text-xs text-primary">
+              <Loader className="h-3 w-3 animate-spin" />
+              {busyMsg || '处理中…'}
+            </span>
+          )}
         </div>
 
-        {/* 顶部：横向视频缩略图列表 */}
+        {/* 顶部：横向视频缩略图列表（最左侧 FileUpload 接收上传） */}
         <div className="flex items-center gap-2 overflow-x-auto border-b border-border bg-muted/20 px-3 py-2">
+          {/* 上传入口：固定在最左侧，尺寸与缩略图一致（h-14 w-24） */}
+          <div className="shrink-0 [&_div:first-child]:flex [&_div:first-child]:h-14 [&_div:first-child]:w-24 [&_div:first-child]:flex-col [&_div:first-child]:items-center [&_div:first-child]:justify-center [&_div:first-child]:gap-0 [&_div:first-child]:rounded [&_div:first-child]:border-2 [&_div:first-child]:px-0 [&_div:first-child]:py-0 [&_svg]:size-5 [&_p]:text-[10px] [&_p+p]:hidden">
+            <FileUpload
+              value={[]}
+              onChange={handleFilesChange}
+              accept={{ 'video/*': ['.mp4', '.webm', '.mov', '.avi', '.mkv'] }}
+              maxFiles={0}
+              placeholder="+ 视频"
+            />
+          </div>
           {videos.length === 0 ? (
-            <span className="text-xs text-muted-foreground">暂无视频，点击右上「添加视频」或从上游连线接收</span>
+            <span className="text-xs text-muted-foreground">从最左侧上传，或从上游连线接收</span>
           ) : videos.map((url, i) => (
             <div
               key={url + i}
@@ -260,7 +252,7 @@ export default function VideoEditorDialog({ open, data, onUpdate, onClose }) {
               <button
                 type="button"
                 onClick={(e) => { e.stopPropagation(); onUpdate?.({ videos: videos.filter((_, j) => j !== i) }); }}
-                className="absolute right-0.5 top-0.5 hidden rounded bg-black/60 p-0.5 text-white group-hover:block"
+                className="absolute right-0.5 top-0.5 rounded bg-black/60 p-0.5 text-white opacity-0 transition group-hover:opacity-100"
                 title="移除"
               >
                 <Trash2 className="h-3 w-3" />
@@ -288,7 +280,7 @@ export default function VideoEditorDialog({ open, data, onUpdate, onClose }) {
                 <span className="text-xs font-medium text-muted-foreground">
                   帧列表 {frames.length > 0 && `（${frames.length}）`}
                 </span>
-                <span className="text-[10px] text-muted-foreground">拖拽帧到右侧动画组</span>
+                <span className="text-[10px] text-muted-foreground">点帧右上角 ⋮ 设为动画组起点/终点</span>
               </div>
               <div className="flex flex-1 gap-1.5 overflow-x-auto overflow-y-hidden p-2">
                 {frames.length === 0 ? (
@@ -298,14 +290,11 @@ export default function VideoEditorDialog({ open, data, onUpdate, onClose }) {
                 ) : frames.map((url, i) => (
                   <div
                     key={url + i}
-                    className="group relative shrink-0 cursor-grab"
-                    draggable
-                    onDragStart={(e) => onDragStartFrame(e, url)}
-                    onDragEnd={() => setDragFrame(null)}
+                    className="group relative shrink-0"
                   >
                     <img src={url} alt={`frame ${i}`} className="h-20 w-28 rounded border border-border object-cover" />
                     <span className="absolute bottom-0 left-0 bg-black/60 px-1 text-[9px] text-white">{i}</span>
-                    {/* 右上角 dots dropdown */}
+                    {/* 右上角 dots dropdown：设为起点/终点 → 选分组 */}
                     <div className="absolute right-0.5 top-0.5" ref={dotsFrameIdx === i ? dotsRef : null}>
                       <button
                         type="button"
@@ -367,12 +356,9 @@ export default function VideoEditorDialog({ open, data, onUpdate, onClose }) {
                 <AnimTab
                   groups={animGroups}
                   frames={frames}
-                  dropTargetGroup={dropTargetGroup}
-                  onDropTarget={setDropTargetGroup}
                   onAddGroup={addGroup}
                   onUpdateGroup={updateGroup}
                   onDeleteGroup={deleteGroup}
-                  onGroupDrop={handleGroupDrop}
                 />
               )}
             </div>
@@ -532,8 +518,8 @@ function InfoRow({ label, value }) {
   );
 }
 
-/** 动画组 tab：分组列表 + 拖拽接收 + 循环播放器 */
-function AnimTab({ groups, frames, dropTargetGroup, onDropTarget, onAddGroup, onUpdateGroup, onDeleteGroup, onGroupDrop }) {
+/** 动画组 tab：分组列表 + 循环播放器（起止帧由帧列表 ⋮ 菜单设置） */
+function AnimTab({ groups, frames, onAddGroup, onUpdateGroup, onDeleteGroup }) {
   return (
     <div className="flex flex-col gap-3">
       <button
@@ -553,10 +539,7 @@ function AnimTab({ groups, frames, dropTargetGroup, onDropTarget, onAddGroup, on
         return (
           <div
             key={g.id}
-            onDragOver={(e) => { e.preventDefault(); onDropTarget(g.id); }}
-            onDragLeave={() => onDropTarget(null)}
-            onDrop={(e) => onGroupDrop(g.id, e)}
-            className={`flex flex-col gap-2 rounded-md border p-2 transition ${dropTargetGroup === g.id ? 'border-primary bg-primary/5' : 'border-border'}`}
+            className="flex flex-col gap-2 rounded-md border border-border p-2"
           >
             <div className="flex items-center gap-1.5">
               <input
@@ -616,7 +599,7 @@ function AnimTab({ groups, frames, dropTargetGroup, onDropTarget, onAddGroup, on
               </div>
             )}
             {(!g.frames || g.frames.length === 0) && (
-              <p className="text-center text-[10px] text-muted-foreground">从下方帧列表拖入帧，或用 ⋮ 设起止帧</p>
+              <p className="text-center text-[10px] text-muted-foreground">在帧列表点 ⋮ → 设为起点/终点 → 选本组</p>
             )}
           </div>
         );

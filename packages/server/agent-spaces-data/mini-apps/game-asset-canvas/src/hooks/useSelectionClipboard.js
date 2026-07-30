@@ -3,7 +3,7 @@ import { copyNodes, hasClipboard, pasteNodes, serializeClipboard } from '../util
 import { genId } from '../utils/canvas-id';
 import { computeAlignment } from '../utils/align-distribute';
 import { IMAGE_TAGS } from '../utils/constants';
-import { readClipboardImageFiles } from '../utils/clipboard-images';
+import { imageFilesFromClipboardData, readClipboardImageFiles } from '../utils/clipboard-images';
 
 /**
  * 节点选中状态 + 多选对齐分布 + 批量删除 + 复制粘贴。
@@ -90,7 +90,8 @@ export default function useSelectionClipboard({
       let imageFiles = [];
       try {
         imageFiles = await readClipboardImageFiles(navigator.clipboard);
-      } catch {
+      } catch (error) {
+        console.debug('[ClipboardPaste] async clipboard read unavailable', error);
         // 系统剪贴板图片读取是可选能力；失败时继续粘贴内部节点剪贴板。
       }
       if (imageFiles.length) {
@@ -124,27 +125,49 @@ export default function useSelectionClipboard({
   // keydown：Ctrl/Cmd+A/C/V，跳过 input/textarea/contenteditable。
   // 用 nodesRef 读最新值，deps 不含 nodes → effect 只订阅一次（避免每次 nodes 变重新绑监听）。
   useEffect(() => {
+    const isEditableTarget = (target) => {
+      const tag = target?.tagName;
+      return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT'
+        || target?.isContentEditable;
+    };
     const onKeyDown = (e) => {
-      const t = e.target;
-      const tag = t?.tagName;
-      const isEditable = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT'
-        || t?.isContentEditable;
       const mod = e.ctrlKey || e.metaKey;
-      if (!mod || isEditable) return;
+      if (!mod || isEditableTarget(e.target)) return;
       if (e.key === 'a' || e.key === 'A') {
         e.preventDefault();
         handleSelectAll();
       } else if (e.key === 'c' || e.key === 'C') {
         const selected = nodesRef.current.filter((n) => n.selected);
         if (selected.length) { e.preventDefault(); handleCopy(); }
-      } else if (e.key === 'v' || e.key === 'V') {
-        e.preventDefault();
-        void handlePaste();
+      }
+    };
+    const onPaste = (event) => {
+      if (isEditableTarget(event.target)) return;
+      const imageFiles = imageFilesFromClipboardData(event.clipboardData);
+      console.debug('[ClipboardPaste] native paste', {
+        types: Array.from(event.clipboardData?.types || []),
+        imageCount: imageFiles.length,
+      });
+      if (imageFiles.length && onPasteImageFiles) {
+        event.preventDefault();
+        void onPasteImageFiles(imageFiles);
+        return;
+      }
+      if (hasClipboard()) {
+        event.preventDefault();
+        const result = pasteNodes({ genId });
+        if (!result) return;
+        setNodes((prev) => [...prev, ...result.nodes]);
+        setEdges((prev) => [...prev, ...result.edges]);
       }
     };
     window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [handleCopy, handlePaste, handleSelectAll]);
+    window.addEventListener('paste', onPaste);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('paste', onPaste);
+    };
+  }, [handleCopy, handleSelectAll, onPasteImageFiles, setEdges, setNodes]);
 
   return {
     selectionCount, setSelectionCount,

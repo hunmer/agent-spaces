@@ -251,4 +251,63 @@ module.exports = (t) => [
       }
     },
   },
+  {
+    // 取视频第一帧，输出到 stdout 并转 base64 返回（用于缩略图，不落盘）。
+    // 前端可直接 <img src="data:image/jpeg;base64,...">，避免用 <video> 渲染缩略图。
+    name: 'ffmpeg_first_frame',
+    label: t('action.firstFrame.label', 'Get First Frame'),
+    category: t('category', 'FFmpeg'),
+    icon: 'Image',
+    description: t('action.firstFrame.description', 'Extract the first frame of a video as a base64 data URL (for thumbnails).'),
+    tool: false,
+    properties: [
+      { key: 'inputPath', label: t('field.inputPath.label', 'Video URL or Path'), type: 'text', dataType: 'string', required: true },
+      { key: 'ffmpegPath', label: t('field.ffmpegPath.label', 'FFmpeg Path'), type: 'text', dataType: 'string', default: '{{ __config__["workflow.ffmpeg"]["ffmpegPath"] }}' },
+    ],
+    outputs: [
+      { key: 'success', type: 'boolean', dataType: 'boolean' },
+      { key: 'message', type: 'string' },
+      { key: 'data', type: 'object', dataType: 'object', children: [
+        { key: 'dataUrl', type: 'string' },
+      ] },
+    ],
+    run: async (ctx, args) => {
+      let inputPath = args.inputPath
+      if (!inputPath) return { success: false, message: t('message.inputRequired', 'inputPath is required') }
+      if (ctx.api.resolveInputPath) inputPath = ctx.api.resolveInputPath(inputPath)
+      const bin = resolveFfmpegBin(args)
+      ctx.logger.info(`取首帧: ${inputPath}`)
+
+      try {
+        // 输出到 stdout（image2pipe），用 jpeg 控制体积。maxBuffer 留足（10MB）。
+        const { stdout } = await new Promise((resolve, reject) => {
+          execFile(bin, [
+            '-y', '-i', inputPath, '-frames:v', '1', '-f', 'image2pipe',
+            '-vcodec', 'png', '-vf', 'scale=160:-1', 'pipe:1',
+          ], { maxBuffer: 20 * 1024 * 1024, encoding: 'buffer' }, (err, stdout, stderr) => {
+            if (err) {
+              const tail = (stderr || '').toString().split('\n').slice(-6).join('\n')
+              ctx.logger.error(`取首帧失败: ${tail || err.message}`)
+              reject(new Error(tail || err.message))
+              return
+            }
+            resolve({ stdout })
+          })
+          ctx.logger.info(`命令: ${bin} -i ${inputPath} ... pipe:1`)
+        })
+
+        if (!stdout || !stdout.length) {
+          return { success: false, message: t('message.noFrames', 'No frame extracted.') }
+        }
+        const dataUrl = `data:image/png;base64,${stdout.toString('base64')}`
+        return {
+          success: true,
+          message: t('message.firstFrameDone', 'First frame extracted.'),
+          data: { dataUrl },
+        }
+      } catch (err) {
+        return { success: false, message: t('message.extractFramesFailed', 'Frame extraction failed: {error}').replace('{error}', err.message) }
+      }
+    },
+  },
 ]

@@ -10,6 +10,18 @@ export function extensionForImageMime(mimeType) {
   return IMAGE_EXTENSION_OVERRIDES[subtype] || subtype.replace(/[^a-z0-9]/g, '') || 'png';
 }
 
+/** 从原生 ClipboardEvent.clipboardData 提取图片文件，无需 clipboard-read 权限。 */
+export function imageFilesFromClipboardData(clipboardData) {
+  const directFiles = Array.from(clipboardData?.files || [])
+    .filter((file) => file.type?.startsWith('image/'));
+  if (directFiles.length) return directFiles;
+
+  return Array.from(clipboardData?.items || [])
+    .filter((item) => item.kind === 'file' && item.type?.startsWith('image/'))
+    .map((item) => item.getAsFile?.())
+    .filter(Boolean);
+}
+
 /**
  * 按 workflow canvas 的规则读取系统剪贴板：每个 ClipboardItem 取首个 image/* 类型。
  */

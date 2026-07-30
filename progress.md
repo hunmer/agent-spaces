@@ -9,6 +9,11 @@
 - 2026-07-30：正在核对 workflow 内部节点复制与系统剪贴板的优先级一致性，避免无意改变原功能语义。
 - 2026-07-30：确认 workflow 复制节点会同步写系统剪贴板；mini-app 将补同等写入以避免旧图片压过节点粘贴。
 - 2026-07-30：剪贴板图片测试 2/2、节点 payload 序列化、四文件 Babel 转译和 diff 格式检查均通过；任务完成。
+- 2026-07-30：用户反馈实际 Ctrl+V 无法粘贴；开始将反馈环从 Async Clipboard 工具测试扩展到原生 ClipboardEvent 数据提取与事件绑定。
+- 2026-07-30：已接入 window paste 事件，移除 keydown 对 Ctrl+V 的提前阻断，新增 files/items 两条原生 clipboardData 测试和定向日志。
+- 2026-07-30：准备真实浏览器验证；仓库 workspace 无 Playwright/Puppeteer，本机 Chrome 路径可用。
+- 2026-07-30：已使用 Codex 自带 Playwright 驱动本机 Chrome；3000 入口未渲染可交互应用，转查 3100 前端入口。
+- 2026-07-30：3100 确认为前端但被登录页阻断；保留定向日志，继续完成原生 paste 事件绑定、测试和静态验证。
 
 - 2026-07-30：开始补齐 game-asset-canvas 节点拖入分组、Ctrl 拖出和目标高亮；已确认仅视觉 overlay 被共享，画布拖拽协调逻辑缺失。
 - 2026-07-30：确定最小实现边界：本地拖拽会话 + 节点中心矩形命中 + `childNodeIds` 更新，直接复用 overlay 现有 `isDropTarget` 样式。
