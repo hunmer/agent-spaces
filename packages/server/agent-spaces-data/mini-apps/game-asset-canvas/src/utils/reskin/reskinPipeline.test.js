@@ -133,10 +133,35 @@ test('resolveReskinnedImage reports a newly generated image before segmentation'
   }
 });
 
-test('samBoxPrompt uses rembg rectangle type with full-image bbox coordinates', () => {
-  const { samBoxPrompt } = loadPipeline();
+test('samBoxesFromRegions builds the standalone SAM batch contract', () => {
+  const { samBoxesFromRegions } = loadPipeline();
   assert.deepEqual(
-    samBoxPrompt({ x: 10.4, y: 20.6, w: 30.2, h: 40.1 }),
-    { type: 'rectangle', data: [10, 21, 41, 61], label: 1 },
+    samBoxesFromRegions([
+      { name: 'head', x: 10.4, y: 20.6, w: 30.2, h: 40.1 },
+      { name: 'body', x: 2, y: 3, w: 5, h: 7 },
+    ]),
+    [
+      { slot_id: 'head', x_min: 10, y_min: 21, x_max: 41, y_max: 61 },
+      { slot_id: 'body', x_min: 2, y_min: 3, x_max: 7, y_max: 10 },
+    ],
+  );
+});
+
+test('grayscaleRgbaToMask reads grayscale RGB instead of opaque PNG alpha', () => {
+  const { grayscaleRgbaToMask } = loadPipeline();
+  assert.deepEqual(
+    [...grayscaleRgbaToMask(new Uint8ClampedArray([
+      0, 0, 0, 255,
+      127, 127, 127, 255,
+      255, 255, 255, 255,
+    ]))],
+    [0, 127, 255],
+  );
+  assert.deepEqual(
+    [...grayscaleRgbaToMask(new Uint8ClampedArray([
+      0, 0, 0, 255,
+      1, 1, 1, 255,
+    ]))],
+    [0, 255],
   );
 });

@@ -53,6 +53,9 @@ export default function MaskPaintDialog({
   const fcRef = useRef(null);             // fabric.Canvas 实例
   const fabricLibRef = useRef(null);      // fabric 命名空间
   const roRef = useRef(null);             // ResizeObserver
+  // inputImages/initialData ref 镜像：避免父组件 onUpdate 导致引用变化触发 init effect 重跑（视图重置）
+  const inputImagesRef = useRef(inputImages);
+  inputImagesRef.current = inputImages;
   // 每图状态：imgStatesRef.current[url] = { img, imgW, imgH, ops, undo, redo }
   const imgStatesRef = useRef({});
   const activeUrlRef = useRef('');
@@ -132,11 +135,14 @@ export default function MaskPaintDialog({
     for (const op of st.ops) {
       let obj = null;
       if (op.type === 'brush' || op.type === 'lasso') {
-        // 转图片坐标 → fabric 坐标
-        const pts = op.points.map(([px, py]) => {
-          const c = imgToCanvas(px, py);
-          return [c.x, c.y];
-        });
+        // 转图片坐标 → fabric 坐标（fabric Polyline/Polygon 要求 points 为 [{x,y},...]）
+        const pts = op.points
+          .filter((p) => Array.isArray(p) && p.length >= 2 && Number.isFinite(p[0]) && Number.isFinite(p[1]))
+          .map(([px, py]) => {
+            const c = imgToCanvas(px, py);
+            return { x: c.x, y: c.y };
+          });
+        if (pts.length < 2) continue;
         if (op.type === 'brush') {
           // fabric Polyline：不闭合描边；橡皮用半透明红色区分，导出时挖洞
           const isErase = !!op.erase;
@@ -422,10 +428,10 @@ export default function MaskPaintDialog({
     switchTool(toolRef.current);
   }, [fitBg, renderOps, updateHistoryButtons, switchTool]);
 
-  // ---- 打开对话框：加载 fabric + 所有图 ----
+  // ---- 打开对话框：加载 fabric + 所有图（只在 open 切换时跑，读 ref 避免父 onUpdate 引用抖动重跑）----
   useEffect(() => {
     if (!open) return;
-    const urls = (inputImages || []).filter(Boolean);
+    const urls = (inputImagesRef.current || []).filter(Boolean);
     setThumbUrlsSafe(urls);
     if (!urls.length) { setError('没有输入图片'); return; }
     let disposed = false;
@@ -524,7 +530,8 @@ export default function MaskPaintDialog({
       activeUrlRef.current = '';
       imgStatesRef.current = {};
     };
-  }, [open, inputImages, bindFabricEvents, fitBg, renderOps, switchImage, switchTool]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   // ---- 导出黑白蒙版 ----
   const handleExport = useCallback(async () => {

@@ -191,7 +191,7 @@ Canvas snapshot + 原 atlas sheet + .atlas + Spine JSON
   → atlas/exploded composite
   → edit_image workflow（模型由编辑器设置选择）
   → 生成图回传 ReskinPanel Gallery（已有图时从此处复用）
-  → sam 或 bg_components 分割
+  → workflow.sam 批量 boxes 分割，或 bg_components 分割
   → 可选 erodeAlpha
   → atlas repack + addSkin
   → replaceAtlasTexture 热预览
@@ -232,13 +232,15 @@ Canvas snapshot + 原 atlas sheet + .atlas + Spine JSON
 {
   "enabledPlugins": [
     "@agent-spaces/builtin",
-    "workflow.rembg"
+    "workflow.rembg",
+    "workflow.sam"
   ]
 }
 ```
 
 - `@agent-spaces/builtin`：通过 `execute_workflow_sync` 执行画布设置中的 `edit_image` workflow。
-- `workflow.rembg`：`rembg_sam_segment` / `rembg_remove`，需要插件侧 baseUrl。
+- `workflow.sam`：`sam_segment_with_boxes`，一次上传整张分割源和全部 region boxes，返回灰度 mask URL。
+- `workflow.rembg`：仅供 `bg_components` 和局部重绘调用 `rembg_remove` 去背景。
 
 ## 节点注册位置
 
@@ -272,7 +274,7 @@ Canvas snapshot + 原 atlas sheet + .atlas + Spine JSON
 1. 角色索引在本地，但 `.skel/.atlas/.png` 仍从 jsDelivr 上固定的 `FrankoFPM/Spine-Viewer-Web@gh-pages` 分支加载，依赖网络和远端 CDN。
 2. 当前支持 Spine 3.8 二进制/JSON 和 4.2 JSON；Spine 4.2 二进制及其他 major.minor 版本尚未路由。
 3. `bg_components` 会先调用 rembg 去背景，再按连通域与原轮廓 IoU 匹配；部件明显移出原轮廓时仍可能匹配失败并降级为 alpha 交集。
-4. SAM 使用整张分割源的 region bbox；调用 rembg 时 prompt 类型必须是 `rectangle`（不是 `box`），与参考 `sam_server` 的 box 语义一致。
+4. SAM 通过 `workflow.sam/sam_segment_with_boxes` 一次提交整张分割源和全部 region bbox；mask 灰度只控制 AI 生成图 alpha，不作为材质 RGB。
 5. atlas 热预览仍复用当前 UV，因此使用保持原 region 坐标的专用预览图；导出资产继续使用 repack PNG + 新 `.atlas`。
 6. ZIP 下载当前统一把骨架文件命名为 `<name>.skel`，即使输入源是 `.json`。
 7. MediaRecorder/canvas.captureStream 依赖 Chromium 等现代浏览器，Safari 兼容性有限。

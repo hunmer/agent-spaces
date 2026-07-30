@@ -1,0 +1,34 @@
+{
+  "zh": {
+    "category": "SAM 分割",
+    "action.segment.label": "按区域框分割",
+    "action.segment.description": "一次提交整张图片和多个区域框，复用同一次 SAM 图片 embedding。",
+    "field.baseUrl.label": "SAM 服务地址",
+    "field.baseUrl.tooltip": "SAM HTTP 服务地址，例如 http://127.0.0.1:30231",
+    "field.timeout.label": "请求超时(ms)",
+    "field.timeout.tooltip": "一次批量分割请求的超时时间。",
+    "field.image.label": "图片",
+    "field.image.tooltip": "图片 URL / 本地路径 / data URI",
+    "field.boxes.label": "区域框",
+    "field.boxes.tooltip": "JSON 数组，每项包含 slot_id、x_min、y_min、x_max、y_max。",
+    "message.needImage": "请提供图片输入。",
+    "message.needBoxes": "请至少提供一个区域框。",
+    "message.segmented": "已分割 {total} 个区域。"
+  },
+  "en": {
+    "category": "SAM Segmentation",
+    "action.segment.label": "Segment with Boxes",
+    "action.segment.description": "Submit one image and multiple boxes while reusing one SAM image embedding.",
+    "field.baseUrl.label": "SAM Base URL",
+    "field.baseUrl.tooltip": "SAM HTTP service URL, e.g. http://127.0.0.1:30231",
+    "field.timeout.label": "Timeout (ms)",
+    "field.timeout.tooltip": "Timeout for one batched segmentation request.",
+    "field.image.label": "Image",
+    "field.image.tooltip": "Image URL / local path / data URI",
+    "field.boxes.label": "Boxes",
+    "field.boxes.tooltip": "JSON array containing slot_id, x_min, y_min, x_max and y_max.",
+    "message.needImage": "Provide an image input.",
+    "message.needBoxes": "Provide at least one box.",
+    "message.segmented": "Segmented {total} regions."
+  }
+}

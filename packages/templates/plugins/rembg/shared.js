@@ -139,29 +139,10 @@ function buildParams(args) {
 
   // SAM prompt 等额外参数（对象或 JSON 字符串）
   if (args.extras) {
-    params.extras = normalizeExtras(args.extras)
+    params.extras = typeof args.extras === 'string' ? args.extras : JSON.stringify(args.extras)
   }
 
   return params
-}
-
-// rembg 2.0.77 原生只识别 rectangle；兼容旧文档/客户端使用的 box 别名。
-function normalizeExtras(extras) {
-  let value = extras
-  if (typeof value === 'string') {
-    try {
-      value = JSON.parse(value)
-    } catch {
-      return extras
-    }
-  }
-  if (!value || typeof value !== 'object') return JSON.stringify(value)
-  const prompt = Array.isArray(value.sam_prompt)
-    ? value.sam_prompt.map((mark) => (
-        mark && mark.type === 'box' ? { ...mark, type: 'rectangle' } : mark
-      ))
-    : value.sam_prompt
-  return JSON.stringify({ ...value, ...(prompt ? { sam_prompt: prompt } : {}) })
 }
 
 // 颜色归一化为 "R,G,B,A"
@@ -312,7 +293,6 @@ module.exports = {
   resolveImage,
   toImageArray,
   buildParams,
-  normalizeExtras,
   normalizeColor,
   buildMultipart,
   removeBackgroundFromFile,

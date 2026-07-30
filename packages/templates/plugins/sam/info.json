@@ -1,0 +1,41 @@
+{
+  "id": "workflow.sam",
+  "name": "SAM Box 分割",
+  "name_zh": "SAM Box 分割",
+  "name_en": "SAM Box Segmentation",
+  "icon": "icon.png",
+  "version": "1.0.0",
+  "description": "调用独立 SAM HTTP 服务，一次提交整张图片和多个区域框，返回各区域的灰度掩码",
+  "description_zh": "调用独立 SAM HTTP 服务，一次提交整张图片和多个区域框，返回各区域的灰度掩码",
+  "description_en": "Call a standalone SAM HTTP service with one image and multiple boxes, returning a grayscale mask for each region.",
+  "author": { "name": "workflow" },
+  "tags": ["图片处理", "分割", "SAM"],
+  "tags_zh": ["图片处理", "分割", "SAM"],
+  "tags_en": ["Image", "Segmentation", "SAM"],
+  "type": "server",
+  "hasWorkflow": true,
+  "hasView": false,
+  "entries": {
+    "server": "main.js",
+    "workflow": "workflow.js",
+    "tools": "tools.js"
+  },
+  "config": [
+    {
+      "key": "baseUrl",
+      "label": "SAM Base URL",
+      "desc": "SAM HTTP service URL / SAM HTTP 服务地址",
+      "type": "string",
+      "value": "http://127.0.0.1:30231",
+      "placeholder": "http://127.0.0.1:30231",
+      "required": true
+    },
+    {
+      "key": "timeout",
+      "label": "Timeout (ms) / 超时(ms)",
+      "desc": "Segmentation request timeout / 分割请求超时时间",
+      "type": "number",
+      "value": 600000
+    }
+  ]
+}

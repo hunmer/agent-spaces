@@ -295,6 +295,7 @@ export default function ReskinPanel({
       const stages = [
         { label: '原 Atlas', src: assets.png },
         { label: 'AI 生成', src: result.diagnostics?.generatedImageUrl },
+        { label: 'SAM 分割源', src: result.diagnostics?.samSourceUrl },
         { label: '去背景', src: result.diagnostics?.cleanedSourceUrl },
         { label: '最终 Atlas', src: pngUrl },
       ].filter((stage) => stage.src);
@@ -629,6 +630,13 @@ export default function ReskinPanel({
                   {stages.length > 2 && (
                     <div className="mt-1 truncate text-[9px] text-muted-foreground">
                       {stages.map((stage) => stage.label).join(' → ')}
+                    </div>
+                  )}
+                  {item.stats?.samMaskCount > 0 && (
+                    <div className="mt-1 truncate text-[9px] text-muted-foreground">
+                      SAM masks: {item.stats.samMaskCount}; scores: {(item.stats.samScores || [])
+                        .map(({ slotId, score }) => `${slotId}=${Number(score).toFixed(3)}`)
+                        .join(', ')}
                     </div>
                   )}
                 </div>

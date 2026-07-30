@@ -6,7 +6,7 @@
  *   - exploded：每个 region 按 attachment 位置摆放成爆炸图
  *
  * 支持两种分割方法：
- *   - sam（默认）：逐 region 调 rembg SAM 抠图（精确但慢，N 次网络往返）
+ *   - sam（默认）：一次提交整图和全部 region boxes 到独立 SAM 服务
  *   - bg_components：形状交集法（原轮廓 ∩ 新alpha，纯前端像素遍历，快）
  *
  * 另含 per-slot 局部重绘（runInpaintSlot）。
@@ -34,6 +34,7 @@ import {
 import { generateImages, normalizeImageUrl } from '../workflow';
 
 const REMBG_PLUGIN = 'workflow.rembg';
+const SAM_PLUGIN = 'workflow.sam';
 const EDIT_ASPECTS = [
   ['16:9', 16 / 9],
   ['9:16', 9 / 16],
@@ -84,16 +85,28 @@ function closestEditAspect(width, height) {
   ))[0];
 }
 
-export function samBoxPrompt(region) {
-  return {
-    // rembg 2.0.77 的 get_input_points() 只识别 point / rectangle。
-    type: 'rectangle',
-    data: [
-      Math.round(region.x), Math.round(region.y),
-      Math.round(region.x + region.w), Math.round(region.y + region.h),
-    ],
-    label: 1,
-  };
+export function samBoxesFromRegions(regions) {
+  return regions.map((region) => ({
+    slot_id: region.name,
+    x_min: Math.round(region.x),
+    y_min: Math.round(region.y),
+    x_max: Math.round(region.x + region.w),
+    y_max: Math.round(region.y + region.h),
+  }));
+}
+
+export function grayscaleRgbaToMask(rgba) {
+  const mask = new Uint8Array(Math.floor(rgba.length / 4));
+  let max = 0;
+  for (let i = 0; i < mask.length; i++) {
+    mask[i] = rgba[i * 4];
+    if (mask[i] > max) max = mask[i];
+  }
+  // sam_server 的 OpenCV fallback 当前可能输出 0/1 灰度 PNG。
+  if (max === 1) {
+    for (let i = 0; i < mask.length; i++) mask[i] *= 255;
+  }
+  return mask;
 }
 
 /**
@@ -297,6 +310,8 @@ export async function runReskin(input, opts = {}) {
   let segDone = 0;
   let processedSourceCanvas = segmentSource;
   let cleanedSourceUrl = '';
+  let samSourceUrl = '';
+  let samMasks = [];
   const segRegions = method === 'exploded'
     ? Object.entries(layout.placements || {}).map(([name, p]) => ({
       name, x: p.x, y: p.y, w: p.w, h: p.h, rotate: 0,
@@ -366,31 +381,60 @@ export async function runReskin(input, opts = {}) {
       log('segment', `分割进度 ${segDone}/${segRegions.length}`, { done: segDone, total: segRegions.length });
     }
   } else {
-    // SAM 模式：对整张图使用 bbox prompt，与参考 sam_server 的语义保持一致。
-    const segmentSourceUrl = await uploadDataUrl(
+    // SAM 模式：整图和全部 bbox 一次提交，服务端只计算一次 image embedding。
+    samSourceUrl = await uploadDataUrl(
       segmentSource.toDataURL('image/png'),
       `sam-source-${skinName}-${Date.now()}.png`,
     );
+    const boxes = samBoxesFromRegions(segRegions);
+    let samResult;
+    try {
+      samResult = await callPlugin(SAM_PLUGIN, 'sam_segment_with_boxes', {
+        image: samSourceUrl,
+        boxes,
+      });
+    } catch (err) {
+      log('segment', `SAM 批量分割失败: ${err?.message || err}`, { error: true });
+      throw err;
+    }
+    samMasks = Array.isArray(samResult?.data?.masks) ? samResult.data.masks : [];
+    const maskByRegion = new Map(samMasks.map((mask) => [mask?.slotId, mask]));
+    const missing = segRegions
+      .filter((region) => !maskByRegion.get(region.name)?.maskUrl)
+      .map((region) => region.name);
+    if (missing.length) {
+      const message = `SAM 返回缺少 ${missing.length} 个 region mask: ${missing.join(', ')}`;
+      log('segment', message, { error: true, missing });
+      throw new Error(message);
+    }
+    log('segment', `SAM 一次返回 ${samMasks.length}/${segRegions.length} 个 mask`, {
+      masks: samMasks.map(({ slotId, score }) => ({ slotId, score })),
+    });
     for (const region of segRegions) {
-      const regionCanvas = cropRegionRotated(segmentSource, region.x, region.y, region.w, region.h, region.rotate);
       try {
-        const samResult = await callPlugin(REMBG_PLUGIN, 'rembg_sam_segment', {
-          image: segmentSourceUrl,
-          extras: { sam_prompt: [samBoxPrompt(region)] },
-        });
-        const maskedUrl = samResult?.data?.imageUrl || samResult?.imageUrl;
-        if (!maskedUrl) throw new Error('rembg 未返回抠图结果');
-        const loadedMask = await loadImage(await urlToDataUrl(maskedUrl));
-        const maskedSheet = drawToCanvas(loadedMask, segmentSource.width, segmentSource.height);
-        let maskedImg = cropRegionRotated(
-          maskedSheet, region.x, region.y, region.w, region.h, region.rotate,
+        const maskResult = maskByRegion.get(region.name);
+        const loadedMask = await loadImage(await urlToDataUrl(maskResult.maskUrl));
+        const maskCanvas = drawToCanvas(loadedMask, segmentSource.width, segmentSource.height);
+        const maskRgba = maskCanvas.getContext('2d').getImageData(
+          0, 0, segmentSource.width, segmentSource.height,
+        ).data;
+        const fullMask = grayscaleRgbaToMask(maskRgba);
+        let maskedImg = applyMaskToRegion(
+          segmentSource, { ...region, rotate: 0 }, fullMask,
+          segmentSource.width, segmentSource.height,
         );
+        if (region.rotate) {
+          maskedImg = cropRegionRotated(
+            maskedImg, 0, 0, region.w, region.h, region.rotate,
+          );
+        }
         const px = pickErodePx(Math.max(region.w, region.h), opts);
         if (px > 0) maskedImg = erodeAlpha(maskedImg, px);
         regionParts[region.name] = { img: maskedImg, width: region.w, height: region.h };
       } catch (err) {
-        log('segment', `region "${region.name}" 抠图失败，降级用原始裁切: ${err?.message || err}`, { region: region.name, error: true });
-        regionParts[region.name] = { img: regionCanvas, width: region.w, height: region.h };
+        const message = `region "${region.name}" SAM mask 应用失败: ${err?.message || err}`;
+        log('segment', message, { region: region.name, error: true });
+        throw new Error(message);
       }
       segDone += 1;
       log('segment', `分割进度 ${segDone}/${segRegions.length}`, { done: segDone, total: segRegions.length });
@@ -441,8 +485,21 @@ export async function runReskin(input, opts = {}) {
     diagnostics: {
       generatedImageUrl: reskinnedUrl,
       cleanedSourceUrl,
+      samSourceUrl,
+      samMasks,
     },
-    stats: { totalMs, regionCount: regions.length, packedCount: Object.keys(repackResult.placements).length, slotCount: Object.keys(skinPlacements).length, editImageMs, reusedGeneratedImage, method, segMethod },
+    stats: {
+      totalMs,
+      regionCount: regions.length,
+      packedCount: Object.keys(repackResult.placements).length,
+      slotCount: Object.keys(skinPlacements).length,
+      editImageMs,
+      reusedGeneratedImage,
+      method,
+      segMethod,
+      samMaskCount: samMasks.length,
+      samScores: samMasks.map(({ slotId, score }) => ({ slotId, score })),
+    },
   };
 }
 

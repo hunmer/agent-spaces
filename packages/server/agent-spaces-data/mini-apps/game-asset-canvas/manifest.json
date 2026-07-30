@@ -7,6 +7,7 @@
   "enabledPlugins": [
     "@agent-spaces/builtin",
     "workflow.rembg",
+    "workflow.sam",
     "workflow.ffmpeg"
   ],
   "agentPermissions": [
@@ -61,5 +62,5 @@
     }
   ],
   "createdAt": "2026-07-22T00:00:00.000Z",
-  "updatedAt": "2026-07-30T07:25:01.375Z"
+  "updatedAt": "2026-07-30T07:56:44.912Z"
 }

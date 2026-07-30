@@ -933,8 +933,8 @@
     "hasWorkflow": true,
     "path": "rembg",
     "iconUrl": "plugins/rembg/icon.png",
-    "md5": "1c04c9882a499f4f71bb20009900f607",
-    "updatedAt": "2026-07-30T07:22:21.539Z",
+    "md5": "eca9c974800a034ca926938701363cda",
+    "updatedAt": "2026-07-30T07:36:20.618Z",
     "files": [
       "actions.js",
       "icon.png",
@@ -976,6 +976,39 @@
       "info.json",
       "lang.json",
       "main.js",
+      "shared.js",
+      "tools.js",
+      "workflow.js"
+    ]
+  },
+  {
+    "id": "workflow.sam",
+    "name": "SAM Box Segmentation",
+    "version": "1.0.0",
+    "description": "Call a standalone SAM HTTP service with one image and multiple boxes, returning a grayscale mask for each region.",
+    "author": {
+      "name": "workflow"
+    },
+    "tags": [
+      "Image",
+      "Segmentation",
+      "SAM"
+    ],
+    "type": "server",
+    "hasView": false,
+    "hasWorkflow": true,
+    "path": "sam",
+    "iconUrl": "plugins/sam/icon.png",
+    "md5": "420ffb5997d79cba09c89ccc74585198",
+    "updatedAt": "2026-07-30T07:50:57.133Z",
+    "files": [
+      "actions.js",
+      "icon.png",
+      "info.json",
+      "lang.json",
+      "main.js",
+      "package.json",
+      "README.md",
       "shared.js",
       "tools.js",
       "workflow.js"
