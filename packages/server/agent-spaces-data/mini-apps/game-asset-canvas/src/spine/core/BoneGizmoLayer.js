@@ -42,6 +42,8 @@ export class BoneGizmoLayer {
     this.skeleton = null;       // spine.skeleton
     this.spine = null;          // Spine 实例
     this.selectedBone = null;
+    this.highlightedBones = new Set();
+    this.highlightTimer = null;
     this.visible = true;        // 骨骼线显隐
     this.dragEnabled = false;   // 默认仅允许选择，显式开启后才能拖拽
 
@@ -49,11 +51,14 @@ export class BoneGizmoLayer {
     this.dragging = false;
     this.dragMode = null;       // 'move' | 'rotate'
     this.dragBone = null;
+    this.pointerCaptureTarget = null;
+    this.pointerCaptureId = null;
 
     this._bindEvents();
   }
 
   setSkeleton(spine) {
+    this._clearHighlight();
     this.spine = spine;
     this.skeleton = spine?.skeleton || null;
     this.selectedBone = null;
@@ -74,6 +79,27 @@ export class BoneGizmoLayer {
     this.selectedBone = bone;
     this.redraw();
     this.onSelect(bone);
+  }
+
+  flashBoneGroup(bone, duration = 800) {
+    if (!bone) return;
+    const bones = [];
+    const visit = (current) => {
+      bones.push(current);
+      for (const child of current.children || []) visit(child);
+    };
+    visit(bone);
+    this.highlightedBones = new Set(bones);
+    clearTimeout(this.highlightTimer);
+    this.highlightTimer = setTimeout(() => this._clearHighlight(), duration);
+    this.redraw();
+  }
+
+  _clearHighlight() {
+    clearTimeout(this.highlightTimer);
+    this.highlightTimer = null;
+    this.highlightedBones.clear();
+    this.redraw();
   }
 
   /**
@@ -104,19 +130,21 @@ export class BoneGizmoLayer {
       const parent = bone.parent;
       if (!parent) continue;
       const isSel = bone === this.selectedBone;
+      const isHighlighted = this.highlightedBones.has(bone);
       const p = this._boneToContainer(parent);
       const c = this._boneToContainer(bone);
-      g.lineStyle(isSel ? 2 : 1, isSel ? 0x4c6ef5 : 0x868e96, 0.85);
+      g.lineStyle(isHighlighted ? 4 : (isSel ? 2 : 1), isHighlighted ? 0xffb020 : (isSel ? 0x4c6ef5 : 0x868e96), 0.9);
       g.moveTo(p.x, p.y);
       g.lineTo(c.x, c.y);
     }
     // 再画关节圆点（选中在上层）
     for (const bone of bones) {
       const isSel = bone === this.selectedBone;
+      const isHighlighted = this.highlightedBones.has(bone);
       const c = this._boneToContainer(bone);
-      g.lineStyle(1, 0x212529, 0.7);
-      g.beginFill(isSel ? 0x4c6ef5 : 0x868e96, 0.95);
-      g.drawCircle(c.x, c.y, isSel ? 6 : 4);
+      g.lineStyle(isHighlighted ? 3 : 1, isHighlighted ? 0xffffff : 0x212529, 0.9);
+      g.beginFill(isHighlighted ? 0xffb020 : (isSel ? 0x4c6ef5 : 0x868e96), 0.95);
+      g.drawCircle(c.x, c.y, isHighlighted ? 11 : (isSel ? 10 : 4));
       g.endFill();
     }
   }
@@ -140,6 +168,25 @@ export class BoneGizmoLayer {
     return best;
   }
 
+  /** 命中当前最上层可见 attachment，并返回其 slot 绑定骨骼。 */
+  hitTestAttachments(globalX, globalY) {
+    if (!this.spine?.skeleton) return null;
+    const local = this.spine.toLocal({ x: globalX, y: globalY });
+    const slots = this.spine.skeleton.drawOrder || this.spine.skeleton.slots || [];
+    for (let index = slots.length - 1; index >= 0; index -= 1) {
+      const slot = slots[index];
+      const attachment = slot?.attachment;
+      const vertices = attachmentWorldVertices(slot);
+      if (!vertices) continue;
+      if (attachment.triangles?.length) {
+        if (pointInTriangles(local.x, local.y, vertices, attachment.triangles)) return slot.bone;
+      } else if (pointInPolygon(local.x, local.y, vertices)) {
+        return slot.bone;
+      }
+    }
+    return null;
+  }
+
   _startDrag(bone, mode) {
     if (!this.dragEnabled || !bone || !this.skeleton) return false;
     this.dragging = true;
@@ -151,6 +198,11 @@ export class BoneGizmoLayer {
 
   _endDrag() {
     if (!this.dragging) return;
+    if (this.pointerCaptureTarget && this.pointerCaptureId != null) {
+      try { this.pointerCaptureTarget.releasePointerCapture(this.pointerCaptureId); } catch { /* ignore */ }
+    }
+    this.pointerCaptureTarget = null;
+    this.pointerCaptureId = null;
     this.dragging = false;
     this.dragMode = null;
     this.dragBone = null;
@@ -171,13 +223,13 @@ export class BoneGizmoLayer {
       if (button === 0) {
         // 左键始终允许选择；开启拖拽后才修改位置。
         this.selectBone(bone);
-        this._startDrag(bone, 'move');
+        if (this._startDrag(bone, 'move')) this._capturePointer(e);
       } else if (button === 2) {
         // 右键：选中 + 准备拖拽旋转（即使没精确命中也以当前选中骨骼为目标）
         const target = bone || this.selectedBone;
         if (this.dragEnabled && target) {
           this.selectBone(target);
-          this._startDrag(target, 'rotate');
+          if (this._startDrag(target, 'rotate')) this._capturePointer(e);
         }
       }
     });
@@ -205,13 +257,73 @@ export class BoneGizmoLayer {
     const endDrag = () => this._endDrag();
     this.graphics.on('pointerup', endDrag);
     this.graphics.on('pointerupoutside', endDrag);
+    this.graphics.on('pointercancel', endDrag);
+  }
+
+  _capturePointer(event) {
+    const nativeEvent = event?.nativeEvent || event?.originalEvent;
+    const target = nativeEvent?.target;
+    const pointerId = nativeEvent?.pointerId;
+    if (!target?.setPointerCapture || pointerId == null) return;
+    try {
+      target.setPointerCapture(pointerId);
+      this.pointerCaptureTarget = target;
+      this.pointerCaptureId = pointerId;
+    } catch { /* unsupported pointer capture */ }
   }
 
   destroy() {
+    this._clearHighlight();
+    this._endDrag();
     this.graphics.removeAllListeners();
     if (this.graphics.parent) this.graphics.parent.removeChild(this.graphics);
     this.graphics.destroy();
   }
+}
+
+export function attachmentWorldVertices(slot) {
+  const attachment = slot?.attachment;
+  if (!attachment?.computeWorldVertices) return null;
+  try {
+    if (attachment.triangles?.length && attachment.worldVerticesLength > 0) {
+      const vertices = new Float32Array(attachment.worldVerticesLength);
+      attachment.computeWorldVertices(slot, 0, attachment.worldVerticesLength, vertices, 0, 2);
+      return vertices;
+    }
+    if (attachment.region || attachment.offset?.length === 8) {
+      const vertices = new Float32Array(8);
+      attachment.computeWorldVertices(slot.bone, vertices, 0, 2);
+      return vertices;
+    }
+  } catch { /* unsupported attachment type */ }
+  return null;
+}
+
+export function pointInPolygon(x, y, vertices) {
+  let inside = false;
+  for (let i = 0, j = vertices.length - 2; i < vertices.length; j = i, i += 2) {
+    const xi = vertices[i], yi = vertices[i + 1];
+    const xj = vertices[j], yj = vertices[j + 1];
+    if (((yi > y) !== (yj > y)) && (x < ((xj - xi) * (y - yi)) / (yj - yi) + xi)) inside = !inside;
+  }
+  return inside;
+}
+
+function pointInTriangles(x, y, vertices, triangles) {
+  for (let index = 0; index < triangles.length; index += 3) {
+    const a = triangles[index] * 2;
+    const b = triangles[index + 1] * 2;
+    const c = triangles[index + 2] * 2;
+    if (pointInTriangle(x, y, vertices[a], vertices[a + 1], vertices[b], vertices[b + 1], vertices[c], vertices[c + 1])) return true;
+  }
+  return false;
+}
+
+function pointInTriangle(px, py, ax, ay, bx, by, cx, cy) {
+  const d1 = (px - bx) * (ay - by) - (ax - bx) * (py - by);
+  const d2 = (px - cx) * (by - cy) - (bx - cx) * (py - cy);
+  const d3 = (px - ax) * (cy - ay) - (cx - ax) * (py - ay);
+  return !((d1 < 0 || d2 < 0 || d3 < 0) && (d1 > 0 || d2 > 0 || d3 > 0));
 }
 
 export default BoneGizmoLayer;

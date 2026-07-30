@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import test from 'node:test';
 
-import { BoneGizmoLayer } from '../core/BoneGizmoLayer.js';
+import { attachmentWorldVertices, BoneGizmoLayer, pointInPolygon } from '../core/BoneGizmoLayer.js';
 
 const source = fs.readFileSync(new URL('../core/BoneGizmoLayer.js', import.meta.url), 'utf8');
 
@@ -80,4 +80,67 @@ test('disabling bone dragging ends an active transform', () => {
 test('right drag writes the degree angle returned by CoordinateUtils', () => {
   assert.match(source, /this\.dragBone\.rotation = ang;/);
   assert.doesNotMatch(source, /this\.dragBone\.rotation = ang \* \(Math\.PI \/ 180\)/);
+});
+
+test('pointer capture keeps trackpad dragging active outside the gizmo hit area', () => {
+  let captured = null;
+  const target = { setPointerCapture: (id) => { captured = id; } };
+  const gizmo = { pointerCaptureTarget: null, pointerCaptureId: null };
+
+  BoneGizmoLayer.prototype._capturePointer.call(gizmo, {
+    nativeEvent: { target, pointerId: 7 },
+  });
+
+  assert.equal(captured, 7);
+  assert.equal(gizmo.pointerCaptureTarget, target);
+  assert.equal(gizmo.pointerCaptureId, 7);
+});
+
+test('selected bone handle is enlarged', () => {
+  assert.match(source, /isSel \? 10 : 4/);
+});
+
+test('attachment hit testing selects the topmost slot bone', () => {
+  const backBone = { data: { name: 'back' } };
+  const frontBone = { data: { name: 'front' } };
+  const region = (bone, left) => ({
+    bone,
+    attachment: {
+      region: {},
+      computeWorldVertices(_bone, output) {
+        output.set([left, 0, left + 20, 0, left + 20, 20, left, 20]);
+      },
+    },
+  });
+  const gizmo = {
+    spine: {
+      toLocal: (point) => point,
+      skeleton: { drawOrder: [region(backBone, 0), region(frontBone, 5)] },
+    },
+  };
+
+  assert.equal(BoneGizmoLayer.prototype.hitTestAttachments.call(gizmo, 10, 10), frontBone);
+  assert.equal(BoneGizmoLayer.prototype.hitTestAttachments.call(gizmo, 30, 30), null);
+});
+
+test('mesh attachment vertices and polygon helper support body hit geometry', () => {
+  const slot = {
+    bone: {},
+    attachment: {
+      triangles: [0, 1, 2],
+      worldVerticesLength: 6,
+      computeWorldVertices(_slot, _start, _count, output) { output.set([0, 0, 20, 0, 10, 20]); },
+    },
+  };
+  assert.deepEqual([...attachmentWorldVertices(slot)], [0, 0, 20, 0, 10, 20]);
+  assert.equal(pointInPolygon(5, 5, new Float32Array([0, 0, 10, 0, 10, 10, 0, 10])), true);
+});
+
+test('bone group highlight includes descendants', () => {
+  const child = { children: [] };
+  const root = { children: [child] };
+  const gizmo = { highlightedBones: new Set(), highlightTimer: null, redraw() {} };
+  BoneGizmoLayer.prototype.flashBoneGroup.call(gizmo, root, 1000);
+  clearTimeout(gizmo.highlightTimer);
+  assert.deepEqual([...gizmo.highlightedBones], [root, child]);
 });

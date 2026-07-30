@@ -1,5 +1,15 @@
 # 独立 SAM 插件调研发现
 
+## Spine 双向选择任务（2026-07-30）
+- 点击身体按 attachment 所属 slot 的 bone 反查，不做像素级贴图分析。
+- 快捷图标只跟随当前骨骼；分组选择按其包含骨骼集合高亮。
+- 沿用现有 Pixi Gizmo 与 React 骨骼树，不新增第三方依赖。
+- `SpineBoneTree` 每行对应一个 runtime bone；有 children 的 bone 即现有 UI 中的分组语义。
+- Viewer 当前只在 `BoneGizmoLayer.graphics` 命中关节点，Spine attachment 没有反向选骨逻辑。
+- Dialog 已将 `gizmo.onSelect` 统一映射到 `selectedBone`，新增身体命中只需复用 `gizmo.selectBone`。
+- Region attachment 使用四边形命中，Mesh attachment 使用 triangles 命中；逆序 drawOrder 保证重叠材质选择视觉最上层骨骼。
+- 快捷工具通过 `getBoneScreenPosition()` 每帧更新 DOM transform，可跟随播放、视图缩放和平移，无需在 Pixi Graphics 中绘制图标。
+
 ## 已确认服务契约
 - 服务目录：`G:/spine-animation-ai-workspace/spine-animation-ai/reskin-app/sam_server`。
 - 健康检查：`GET /health`。

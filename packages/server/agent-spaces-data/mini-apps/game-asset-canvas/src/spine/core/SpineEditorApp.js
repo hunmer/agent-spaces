@@ -68,6 +68,7 @@ export class SpineEditorApp {
     this.canvasElement.style.width = '100%';
     this.canvasElement.style.height = '100%';
     this.canvasElement.style.display = 'block';
+    this.canvasElement.style.touchAction = 'none';
     this.container.appendChild(this.canvasElement);
 
     // spine 容器（缩放/平移作用于此）
@@ -124,6 +125,9 @@ export class SpineEditorApp {
         this.panning = true;
         this.panStart = { x: e.global.x, y: e.global.y, vx: this.viewX, vy: this.viewY };
         // 抑制 gizmo 拖拽：临时不处理（gizmo pointerdown 检查 button===0 且非中键）
+      } else if (e.button === 0 && e.target !== this.gizmo.graphics) {
+        const bone = this.gizmo.hitTestAttachments(e.global.x, e.global.y);
+        if (bone) this.gizmo.selectBone(bone);
       }
     });
     stage.on('globalpointermove', (e) => {
@@ -195,6 +199,13 @@ export class SpineEditorApp {
 
   setBoneDragEnabled(enabled) {
     this.gizmo?.setDragEnabled(enabled);
+  }
+
+  getBoneScreenPosition(bone) {
+    if (!bone || !this.spineContainer || !this.gizmo) return null;
+    const local = this.gizmo._boneToContainer(bone);
+    const point = this.spineContainer.toGlobal(local);
+    return { x: point.x, y: point.y, width: this.app.screen.width, height: this.app.screen.height };
   }
 
   _bringGizmoToFront() {
@@ -487,18 +498,23 @@ export class SpineEditorApp {
     this._setModified(true);
   }
 
-  /**
-   * 翻转整个角色（镜像）。通过 skeleton.scaleX/scaleY 取反，
-   * 影响所有骨骼及 attachment，视觉上整体翻转。
-   */
+  /** 翻转整个角色（镜像），只改显示实例，避免负骨骼缩放挤压网格材质。 */
   flipCharacter(axis) {
     if (!this.spine) return;
-    if (axis === 'x') this.spine.skeleton.scaleX *= -1;
-    else this.spine.skeleton.scaleY *= -1;
-    this.spine.skeleton.updateWorldTransform();
+    const bounds = this.spine.getLocalBounds();
+    if (axis === 'x') {
+      const scale = this.spine.scale.x;
+      this.spine.position.x += 2 * scale * (bounds.x + bounds.width / 2);
+      this.spine.scale.x = -scale;
+    } else if (axis === 'y') {
+      const scale = this.spine.scale.y;
+      this.spine.position.y += 2 * scale * (bounds.y + bounds.height / 2);
+      this.spine.scale.y = -scale;
+    } else {
+      return;
+    }
     this.spineContainer.updateTransform();
     this.gizmo.redraw();
-    this.history.push(this.spine.skeleton, 'flipChar');
     this._setModified(true);
   }
 

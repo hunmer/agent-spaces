@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Badge, Button, ChevronDown, ChevronLeft, ChevronRight, Eye, EyeOff,
   FlipHorizontal2, FlipVertical2, Input, Label, RotateCcw, ScrollArea,
@@ -124,6 +124,7 @@ function NativeFilter({ value, onChange, options, label }) {
 export function SpineBoneTree({ spine, visibility, selectedBone, onSelect, onVisibilityChange }) {
   const [expanded, setExpanded] = useState(() => new Set());
   const [, forceRender] = useState(0);
+  const treeRef = useRef(null);
   const tree = useMemo(() => getBoneTree(spine), [spine]);
 
   useEffect(() => {
@@ -135,6 +136,25 @@ export function SpineBoneTree({ spine, visibility, selectedBone, onSelect, onVis
     visit(tree);
     setExpanded(next);
   }, [tree]);
+
+  useEffect(() => {
+    if (!selectedBone) return undefined;
+    setExpanded((current) => {
+      const next = new Set(current);
+      let parent = selectedBone.parent;
+      while (parent) {
+        next.add(parent.data.name);
+        parent = parent.parent;
+      }
+      return next;
+    });
+    const frame = requestAnimationFrame(() => {
+      const row = [...(treeRef.current?.querySelectorAll?.('[data-bone-name]') || [])]
+        .find((element) => element.dataset.boneName === selectedBone.data.name);
+      row?.scrollIntoView?.({ block: 'nearest' });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [selectedBone]);
 
   const toggleExpanded = (name) => {
     setExpanded((current) => {
@@ -152,7 +172,7 @@ export function SpineBoneTree({ spine, visibility, selectedBone, onSelect, onVis
 
   return (
     <ScrollArea className="h-full">
-      <div className="space-y-0.5 p-2">
+      <div ref={treeRef} className="space-y-0.5 p-2">
         {tree.length ? tree.map((node) => (
           <BoneRow
             key={node.bone.data.name}
@@ -177,7 +197,7 @@ function BoneRow({ node, expanded, selectedBone, visibility, onToggleExpanded, o
   const hidden = visibility?.isHidden(node.bone);
   return (
     <>
-      <div className={`flex items-center rounded px-1 py-0.5 ${selectedBone === node.bone ? 'bg-accent text-accent-foreground' : 'hover:bg-muted'}`} style={{ paddingLeft: `${node.depth * 12 + 4}px` }}>
+      <div data-bone-name={name} className={`flex items-center rounded px-1 py-0.5 ${selectedBone === node.bone ? 'bg-accent text-accent-foreground' : 'hover:bg-muted'}`} style={{ paddingLeft: `${node.depth * 12 + 4}px` }}>
         <Button type="button" variant="ghost" size="icon-sm" disabled={!hasChildren} onClick={() => onToggleExpanded(name)} className="h-6 w-6">
           {hasChildren ? <ChevronDown className={`h-3 w-3 transition-transform ${isExpanded ? '' : '-rotate-90'}`} /> : null}
         </Button>

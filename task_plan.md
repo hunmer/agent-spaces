@@ -104,6 +104,12 @@
   - 服务端插件加载器在服务器加载时启动对应脚本；延迟模式仅在 tools/workflow 首次实际执行前启动一次。
   - 增加进程幂等、就绪检查、退出日志与聚焦测试，重建模板索引并通过 TypeScript/JSON 校验。
 
+- [completed] 18. Spine 画布与骨骼树双向选择
+  - 点击 attachment 解析所属 slot/bone，选中并滚动左侧骨骼树。
+  - 当前骨骼附近显示移动/翻转快捷操作。
+  - 左侧选择骨骼或分组时，Viewer 中对应骨骼短暂高亮。
+  - 增加聚焦测试并运行 Spine/组件回归、Babel、diff check。
+
 ## 关键约束
 - 不修改 Python `site-packages/rembg`。
 - 不复用 rembg 的 `sam` model。
@@ -124,6 +130,7 @@
 | 追加阶段 12 findings 时锚点少了“媒体”二字 | 1 | 读取文件尾部后使用精确锚点追加 |
 | 读取 mini-app `package.json` 失败并导致并行输出丢失 | 1 | mini-app 无独立 package；改读仓库级配置，可选搜索允许无匹配 |
 | 新持久化字段使旧 `normalizeReskinEditorData` 深相等测试失败 | 1 | 实现输出正确；同步旧测试期望并保留新增回归断言 |
+| attachment 命中测试访问浏览器态 `PIXI.Point` | 1 | 改传 Pixi API 支持的普通 `{x,y}` 坐标对象，移除 Node 测试环境依赖 |
 | 同步旧测试期望时补丁命中输入对象而非期望对象 | 1 | 使用包含 `assert.deepEqual(restored` 后文的精确上下文修正 |
 | 搜索 `runCutout` 测试无匹配返回 1，导致并行读取丢失 | 1 | 不重复搜索；直接读取目标测试并新增局部契约断言 |
 | `cutout.test.js` 直接导入被 `./image-ops` 目录型 ESM import 阻断 | 1 | 改用项目现有 Babel CommonJS harness 注入依赖，测试真实函数逻辑 |

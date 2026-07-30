@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import {
   getSpineAssetsSignature,
   normalizeReskinEditorData,
+  restoreReskinLogs,
+  serializeReskinLogs,
 } from './reskinEditorData.js';
 
 const assets = {
@@ -102,4 +104,29 @@ test('restores persisted local repaint selections and serializable results for m
     id: 'result-1', slot: 'head', attachment: '', regionName: 'head-region', width: 40, height: 30,
     imageUrl: 'https://example.com/head.png', scope: 'all', animation: '',
   }]);
+});
+
+test('reskin logs persist by asset signature without runtime canvas context', () => {
+  const canvas = Object.create({ getContext() {} });
+  const saved = serializeReskinLogs([{
+    step: 'done',
+    msg: '完成',
+    ts: 123,
+    data: {
+      images: [{ label: '输出', src: '/result.png' }],
+      editContext: { previewAtlasCanvas: canvas, spineJson: { bones: [1, 2, 3] } },
+    },
+  }], 'assets-a');
+
+  assert.deepEqual(saved, {
+    assetSignature: 'assets-a',
+    items: [{
+      step: 'done',
+      msg: '完成',
+      ts: 123,
+      data: { images: [{ label: '输出', src: '/result.png' }] },
+    }],
+  });
+  assert.deepEqual(restoreReskinLogs(saved, 'assets-a'), saved.items);
+  assert.deepEqual(restoreReskinLogs(saved, 'assets-b'), []);
 });

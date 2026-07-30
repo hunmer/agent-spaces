@@ -10,9 +10,8 @@ import UploadSection from './UploadSection';
  * 点击「打开骨骼编辑器」后在 mini-app 对话框内直接加载本地 PixiJS+pixi-spine dist，
  * 资源经 fetch→dataUrl 注入编辑核心。
  *
- * 编辑器内导出（姿势 JSON / 截图 PNG / Spine 文件包）直接回传节点：
+ * 编辑器内导出（截图 PNG / Spine 文件包）直接回传节点：
  * - 截图/Spine 文件经 uploadFile 转 http URL → data.output.images（下游可连线）
- * - 姿势 JSON 存 data.exportedPose（文本，供查看/下游引用）
  *
  * 源码由宿主 renderer 即时编译，刷新即生效。
  */
@@ -22,6 +21,7 @@ export default function SpineEditorNode({ id, data, selected }) {
   const upstreamAssets = data?.source === 'upstream' ? data?.spineAssets : null;
   const effectiveAssets = uploadedAssets || upstreamAssets;
   const reskinEditorData = data?.reskinEditorData || null;
+  const reskinLogs = data?.reskinLogs || null;
   const onUpdate = data?.onUpdate;
   const [editorOpen, setEditorOpen] = useState(false);
 
@@ -35,7 +35,7 @@ export default function SpineEditorNode({ id, data, selected }) {
     }
     const list = files || [];
     if (!list.length) {
-      onUpdate?.({ uploadedAssets: null, reskinEditorData: null });
+      onUpdate?.({ uploadedAssets: null, reskinEditorData: null, reskinLogs: null });
       return;
     }
     onUpdate?.({ uploading: true, uploadError: undefined });
@@ -70,6 +70,7 @@ export default function SpineEditorNode({ id, data, selected }) {
         uploading: false,
         uploadedAssets: assets,
         reskinEditorData: null,
+        reskinLogs: null,
         uploadError: complete ? undefined : '缺少资源：需同时上传 .skel + .atlas + .png',
         error: undefined,
       });
@@ -97,13 +98,12 @@ export default function SpineEditorNode({ id, data, selected }) {
     data?.onExportVideos?.([url]);
   }, [onUpdate, data?.output, data?.onExportVideos]);
 
-  // 导出姿势 JSON 回调（文本，不经 uploadFile）
-  const handlePoseExport = useCallback((poseJson) => {
-    onUpdate?.({ exportedPose: poseJson });
-  }, [onUpdate]);
-
   const handleReskinEditorDataChange = useCallback((next) => {
     onUpdate?.({ reskinEditorData: next });
+  }, [onUpdate]);
+
+  const handleReskinLogsChange = useCallback((next) => {
+    onUpdate?.({ reskinLogs: next });
   }, [onUpdate]);
 
   // AI 换肤完成回调：把新三件套上传并回填节点产出
@@ -203,13 +203,6 @@ export default function SpineEditorNode({ id, data, selected }) {
         打开骨骼编辑器
       </Button>
 
-      {data?.exportedPose && (
-        <details className="rounded-md border border-border p-1.5 text-[10px]">
-          <summary className="cursor-pointer text-muted-foreground">已导出姿势 JSON</summary>
-          <pre className="mt-1 max-h-24 overflow-auto whitespace-pre-wrap break-all text-muted-foreground">{data.exportedPose}</pre>
-        </details>
-      )}
-
       {videos.length > 0 && (
         <div className="flex flex-col gap-1.5">
           <span className="text-xs font-medium text-muted-foreground">
@@ -250,10 +243,11 @@ export default function SpineEditorNode({ id, data, selected }) {
         assets={canOpen ? effectiveAssets : null}
         onSave={handleSave}
         onExportVideo={handleExportVideo}
-        onPoseExport={handlePoseExport}
         onReskinComplete={handleReskinComplete}
         initialReskinData={reskinEditorData}
         onReskinDataChange={handleReskinEditorDataChange}
+        initialReskinLogs={reskinLogs}
+        onReskinLogsChange={handleReskinLogsChange}
         onClose={() => setEditorOpen(false)}
       />
     </NodeShell>

@@ -1,5 +1,10 @@
 # 执行进度
 
+- 2026-07-30：开始阶段 18，定位 Spine attachment 命中、骨骼树滚动和短暂高亮的数据流。
+- 2026-07-30：确认骨骼树/Viewer 共用 selectedBone；开始设计 attachment 几何命中、树滚动和 Gizmo 快捷层。
+- 2026-07-30：完成首轮实现；组件契约/Babel 通过，修正 attachment 命中测试的 PIXI.Point 环境依赖。
+- 2026-07-30：阶段 18 完成；Spine 28/28、组件 20/20、reskin 32/32，UI 图标导出、Babel、`git diff --check` 全部通过。
+
 - 2026-07-30：用户否决 rembg SAM 效果，决定改接原项目独立 SAM 服务。
 - 2026-07-30：撤销本轮所有 rembg box/rectangle 修改。
 - 2026-07-30：确认原 SAM 服务批量 boxes 请求/响应契约，建立后续实施计划。

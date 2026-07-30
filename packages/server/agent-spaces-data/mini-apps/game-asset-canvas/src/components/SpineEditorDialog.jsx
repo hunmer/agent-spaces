@@ -2,9 +2,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Badge, Bone, Button, Camera, CircleStop, Dialog, DialogContent,
   DialogFooter, DialogHeader, DialogTitle, Download, DropdownMenu, DropdownMenuContent,
-  DropdownMenuItem, DropdownMenuTrigger, Loader, Maximize2, MoreVertical, Play, Redo2,
+  DropdownMenuItem, DropdownMenuTrigger, FlipHorizontal2, Loader, Maximize2, MoreVertical, Move, Play, Redo2,
   ResizableHandle, ResizablePanel, ResizablePanelGroup,
-  Save, Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
   Tabs, TabsContent, TabsList, TabsTrigger, Undo2, Video,
 } from '@agent-spaces/ui';
 import ReskinPanel, { ReskinLogsPanel, reskinStepLabel } from './ReskinPanel';
@@ -12,7 +12,6 @@ import MaskPaintDialog from './MaskPaintDialog';
 import useSettings from '../hooks/useSettings';
 import { SpineEditorApp } from '../spine/core/SpineEditorApp';
 import { RecordManager } from '../spine/core/RecordManager';
-import { PoseExporter } from '../spine/exporters/PoseExporter';
 import { SpineJsonExporter } from '../spine/exporters/SpineJsonExporter';
 import {
   BoneVisibility, getAnimations, getSkins, loadSpine,
@@ -21,15 +20,17 @@ import { getJSZip, loadSpineRuntime } from '../spine/runtime';
 import {
   SpineAssetLibrary, SpineBoneTree, SpineTransformPanel,
 } from '../spine/components/SpinePanels';
-import { getSpineAssetsSignature } from '../utils/reskin/reskinEditorData';
+import {
+  getSpineAssetsSignature, restoreReskinLogs, serializeReskinLogs,
+} from '../utils/reskin/reskinEditorData';
 import urlToDataUrl from '../utils/spine-url';
 import { repaintRegionMask } from '../utils/reskin/maskRepaint';
 
 const PLAYBACK_SPEEDS = ['0.25', '0.5', '1', '1.5', '2'];
 
 export default function SpineEditorDialog({
-  open, assets, onSave, onPoseExport, onExportVideo, onReskinComplete,
-  initialReskinData, onReskinDataChange, onClose,
+  open, assets, onSave, onExportVideo, onReskinComplete,
+  initialReskinData, onReskinDataChange, initialReskinLogs, onReskinLogsChange, onClose,
 }) {
   const { settings: canvasSettings } = useSettings();
   const editorRef = useRef(null);
@@ -40,8 +41,9 @@ export default function SpineEditorDialog({
   const initialReskinDataRef = useRef(initialReskinData);
   initialReskinDataRef.current = initialReskinData;
   const recordingGizmoVisibleRef = useRef(true);
-  const callbacksRef = useRef({ onSave, onPoseExport, onExportVideo, onReskinComplete });
-  callbacksRef.current = { onSave, onPoseExport, onExportVideo, onReskinComplete };
+  const boneActionsRef = useRef(null);
+  const callbacksRef = useRef({ onSave, onExportVideo, onReskinComplete });
+  callbacksRef.current = { onSave, onExportVideo, onReskinComplete };
   const assetsRef = useRef(assets);
   assetsRef.current = assets;
   const boneDragEnabledRef = useRef(false);
@@ -69,10 +71,22 @@ export default function SpineEditorDialog({
   const [recordPreview, setRecordPreview] = useState(null);
   const [revision, setRevision] = useState(0);
   const [rightTab, setRightTab] = useState('transform');
-  const [reskinLogs, setReskinLogs] = useState([]);
+  const [leftTab, setLeftTab] = useState('library');
+  const [reskinLogs, setReskinLogs] = useState(() => (
+    restoreReskinLogs(initialReskinLogs, assetsSignature)
+  ));
   const [maskPaintRequest, setMaskPaintRequest] = useState(null);
   const [maskPaintData, setMaskPaintData] = useState(null);
   const [applyingMask, setApplyingMask] = useState(false);
+  const persistedLogsRef = useRef(JSON.stringify(serializeReskinLogs(reskinLogs, assetsSignature)));
+
+  useEffect(() => {
+    const persisted = serializeReskinLogs(reskinLogs, assetsSignature);
+    const signature = JSON.stringify(persisted);
+    if (signature === persistedLogsRef.current) return;
+    persistedLogsRef.current = signature;
+    onReskinLogsChange?.(persisted);
+  }, [assetsSignature, onReskinLogsChange, reskinLogs]);
 
   const touchRevision = useCallback(() => setRevision((value) => value + 1), []);
   const handleCanvasRef = useCallback((element) => {
@@ -168,6 +182,7 @@ export default function SpineEditorDialog({
         editor.setCallbacks({
           onSelect: (boneValue) => {
             setSelectedBone(boneValue);
+            if (boneValue) setLeftTab('bones');
             touchRevision();
           },
           onLiveTransform: (boneValue) => {
@@ -222,6 +237,29 @@ export default function SpineEditorDialog({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [open, touchRevision]);
 
+  useEffect(() => {
+    const element = boneActionsRef.current;
+    if (!element || !selectedBone || !spine || recording) {
+      if (element) element.style.display = 'none';
+      return undefined;
+    }
+    let frame;
+    const updatePosition = () => {
+      const point = editorRef.current?.getBoneScreenPosition(selectedBone);
+      if (point) {
+        const x = Math.max(4, Math.min(point.width - 72, point.x + 14));
+        const y = Math.max(4, Math.min(point.height - 34, point.y - 38));
+        element.style.display = 'flex';
+        element.style.transform = `translate(${x}px, ${y}px)`;
+      } else {
+        element.style.display = 'none';
+      }
+      frame = requestAnimationFrame(updatePosition);
+    };
+    updatePosition();
+    return () => cancelAnimationFrame(frame);
+  }, [recording, selectedBone, spine]);
+
   const handleMode = (value) => {
     setMode(value);
     editorRef.current?.setMode(value);
@@ -233,6 +271,22 @@ export default function SpineEditorDialog({
     boneDragEnabledRef.current = enabled;
     setBoneDragEnabled(enabled);
     editorRef.current?.setBoneDragEnabled(enabled && mode === 'pose');
+  };
+
+  const activateSelectedBoneMove = () => {
+    if (!selectedBone) return;
+    setMode('pose');
+    editorRef.current?.setMode('pose');
+    boneDragEnabledRef.current = true;
+    setBoneDragEnabled(true);
+    editorRef.current?.setBoneDragEnabled(true);
+  };
+
+  const flipSelectedBone = () => {
+    if (!selectedBone) return;
+    editorRef.current?.flip(selectedBone, 'x');
+    editorRef.current?.gizmo.flashBoneGroup(selectedBone);
+    touchRevision();
   };
 
   const handleAnimation = (value) => {
@@ -343,13 +397,6 @@ export default function SpineEditorDialog({
     } finally {
       setLoading(false);
     }
-  };
-
-  const exportPose = () => {
-    const value = PoseExporter.toJson(editorRef.current?.spine);
-    if (!value) return;
-    callbacksRef.current.onPoseExport?.(value);
-    setStatus('已导出姿势 JSON');
   };
 
   const toggleRecord = async () => {
@@ -521,9 +568,6 @@ export default function SpineEditorDialog({
                   <MoreVertical className="h-4 w-4" />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={exportPose} disabled={!spine}>
-                    <Save className="h-4 w-4" /> 导出姿势
-                  </DropdownMenuItem>
                   <DropdownMenuItem onClick={exportScreenshot} disabled={!spine || loading}>
                     <Camera className="h-4 w-4" /> 导出截图
                   </DropdownMenuItem>
@@ -543,7 +587,7 @@ export default function SpineEditorDialog({
         {error ? <div className="border-b border-destructive/30 bg-destructive/10 px-4 py-2 text-xs text-destructive">{error}</div> : null}
 
         <div className="flex min-h-0 flex-1">
-          <Tabs defaultValue="library" className="flex w-60 shrink-0 flex-col border-r border-border bg-card">
+          <Tabs value={leftTab} onValueChange={setLeftTab} className="flex w-60 shrink-0 flex-col border-r border-border bg-card">
             <TabsList className="w-full rounded-none border-b border-border">
               <TabsTrigger value="library" className="flex-1">角色库</TabsTrigger>
               <TabsTrigger value="bones" className="flex-1">骨骼</TabsTrigger>
@@ -558,6 +602,7 @@ export default function SpineEditorDialog({
                 selectedBone={selectedBone}
                 onSelect={(boneValue) => {
                   editor?.gizmo.selectBone(boneValue);
+                  editor?.gizmo.flashBoneGroup(boneValue);
                   setSelectedBone(boneValue);
                   touchRevision();
                 }}
@@ -570,6 +615,14 @@ export default function SpineEditorDialog({
             <ResizablePanel id="spine-viewer" order={1} minSize="35%">
               <div className="relative h-full min-w-0 bg-muted">
                 <div ref={handleCanvasRef} className="block h-full w-full" />
+                <div ref={boneActionsRef} className="absolute left-0 top-0 z-10 hidden items-center gap-1 rounded-md border border-border bg-background p-1 shadow-sm">
+                  <Button type="button" variant={boneDragEnabled ? 'secondary' : 'ghost'} size="icon-sm" title="移动骨骼" aria-label="移动骨骼" onClick={activateSelectedBoneMove}>
+                    <Move className="h-4 w-4" />
+                  </Button>
+                  <Button type="button" variant="ghost" size="icon-sm" title="水平翻转骨骼" aria-label="水平翻转骨骼" onClick={flipSelectedBone}>
+                    <FlipHorizontal2 className="h-4 w-4" />
+                  </Button>
+                </div>
                 {!spine && ready && !loading ? (
                   <div className="pointer-events-none absolute inset-0 flex items-center justify-center text-sm text-muted-foreground">
                     从左侧选择角色或在节点中上传 Spine 三件套

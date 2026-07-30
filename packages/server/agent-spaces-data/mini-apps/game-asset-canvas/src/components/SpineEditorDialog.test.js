@@ -16,6 +16,8 @@ test('right sidebar exposes embedded reskin logs and binary mask repaint', () =>
   assert.match(source, /mode="binary-mask"/);
   assert.match(source, /repaintRegionMask/);
   assert.match(source, /callbacksRef\.current\.onReskinComplete/);
+  assert.match(source, /restoreReskinLogs\(initialReskinLogs, assetsSignature\)/);
+  assert.match(source, /onReskinLogsChange\?\.\(persisted\)/);
 });
 
 test('reskin panel receives the current animation for scoped part replacement', () => {
@@ -35,4 +37,12 @@ test('toolbar exposes an explicit bone drag toggle limited to pose mode', () => 
   assert.match(source, /开启骨骼拖拽/);
   assert.match(source, /setBoneDragEnabled\(enabled && mode === 'pose'\)/);
   assert.match(source, /disabled=\{!spine \|\| mode !== 'pose' \|\| recording\}/);
+});
+
+test('viewer body selection activates the bone tree and exposes nearby quick actions', () => {
+  assert.match(source, /if \(boneValue\) setLeftTab\('bones'\)/);
+  assert.match(source, /ref=\{boneActionsRef\}/);
+  assert.match(source, /aria-label="移动骨骼"/);
+  assert.match(source, /aria-label="水平翻转骨骼"/);
+  assert.match(source, /gizmo\.flashBoneGroup\(boneValue\)/);
 });

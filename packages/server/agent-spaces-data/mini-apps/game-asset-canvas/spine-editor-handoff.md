@@ -114,6 +114,11 @@ Viewer 与右栏放在 `ResizablePanelGroup` 内。拖动宽度只触发 Pixi `r
 - `_boneToContainer()` 只能应用 Spine 实例 `localTransform`；使用 `worldTransform` 会重复叠加 fit/zoom/pan。
 - 顶部“骨骼拖拽”开关默认关闭；关闭时关节点仍可选择但不能拖动，开启后在姿势模式下左键移动、右键旋转，拖拽结束写入撤销历史。
 - 每次 `setSpine()` 后必须把 Gizmo Graphics 调到 `spineContainer` 最上层，避免后加入的 Spine 实例遮住骨骼线和关节点。
+- 角色水平/竖直翻转作用于 Spine DisplayObject，并围绕当前可视中心补偿位置；禁止用 skeleton 负缩放，避免约束网格材质挤压。
+- 选中骨骼关节点半径为 10（普通为 4）；拖拽开始后对 Pixi canvas 使用 Pointer Capture，并设置 `touch-action: none`，兼容 macOS 触控板连续拖拽。
+- 点击角色 attachment 时按逆序 `drawOrder` 命中最上层 Region/Mesh 所属 slot bone，自动切换到左侧骨骼 Tab、展开祖先并滚动到对应行。
+- 选中骨骼附近显示移动与水平翻转快捷按钮；按钮位置每帧从骨骼坐标映射到 Viewer 屏幕坐标，跟随动画、缩放和平移。
+- 从左侧选择叶子骨骼时短暂高亮该骨骼；选择带 children 的分组骨骼时短暂高亮整个子树。
 - 子骨骼拖拽的父级逆变换读取 Spine Bone 的 `a/b/c/d/worldX/worldY`，不能读取 Pixi DisplayObject 才有的 `worldTransform`。
 - `bone.rotation` 在 Spine runtime 中就是度数；变换面板、右键旋转和姿势导出禁止再做弧度换算。
 - `fitView()` 先恢复单位缩放/零平移，再读取 `spine.getBounds()`。
@@ -150,6 +155,7 @@ Viewer 与右栏放在 `ResizablePanelGroup` 内。拖动宽度只触发 Pixi `r
 ### 日志与蒙版重绘
 
 - 日志状态由 `SpineEditorDialog` 持有，在右侧“日志”Tab 展示。
+- 日志按当前三件套 URL 签名写入节点 `data.reskinLogs`，最多 500 条；写入前移除 Canvas、Spine JSON 等运行时 `editContext`，关闭或刷新后可恢复展示。
 - 只保留有图片输出的记录：`data.images` 或 `data.imageFlow.outputs` 非空。
 - region 日志展示 `输入部件 + 蒙版 → 输出 + PARAMS`。
 - 缩略图固定 `w-24` 卡片和 `h-20` 图片区域，点击仍打开原图 Gallery。
@@ -189,11 +195,11 @@ Viewer 与右栏放在 `ResizablePanelGroup` 内。拖动宽度只触发 Pixi `r
 | 操作 | 行为 |
 |---|---|
 | 截图 | Viewer PNG → `uploadFile` → `data.output.images` |
-| 姿势 | JSON → `data.exportedPose` |
 | 录制 | 隐藏 Gizmo、锁视图、按角色包围盒裁 WebM；停止后恢复交互 |
 | 下载 Spine | 原始三件套通过 JSZip 打包下载 |
 | AI 换肤 | 上传 PNG/atlas/Spine JSON，写 `data.reskinAssets` 与 `output.images` |
 | 换肤表单 | `data.reskinEditorData`，只在用户修改后写入 |
+| 素材替换日志 | `data.reskinLogs`，按三件套签名隔离，最多 500 条 |
 | 换肤历史 | `configs/spine-reskin-history.json`，图片仅保存 URL |
 
 ## 插件依赖

@@ -123,3 +123,27 @@ test('atlas texture replacement updates the existing resource repeatedly', async
   assert.equal(baseTextureUpdates, 2);
   assert.equal(renders, 2);
 });
+
+test('character flip mirrors the display around its visual center without scaling bones', () => {
+  const editor = {
+    spine: {
+      getLocalBounds: () => ({ x: 10, y: 20, width: 100, height: 200 }),
+      scale: { x: 2, y: 3 },
+      position: { x: 5, y: 7 },
+      skeleton: { scaleX: 1, scaleY: 1 },
+    },
+    spineContainer: { updateTransform() {} },
+    gizmo: { redraw() {} },
+    _setModified() {},
+  };
+
+  SpineEditorApp.prototype.flipCharacter.call(editor, 'x');
+  assert.equal(editor.spine.scale.x, -2);
+  assert.equal(editor.spine.position.x, 245);
+  assert.equal(editor.spine.skeleton.scaleX, 1);
+
+  SpineEditorApp.prototype.flipCharacter.call(editor, 'y');
+  assert.equal(editor.spine.scale.y, -3);
+  assert.equal(editor.spine.position.y, 727);
+  assert.equal(editor.spine.skeleton.scaleY, 1);
+});
