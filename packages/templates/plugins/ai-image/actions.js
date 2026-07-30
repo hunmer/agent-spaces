@@ -14,8 +14,16 @@ const DEFAULT_BASE_URL = 'https://ai.comfly.chat'
 const GENERATIONS_PATH = '/v1/images/generations'
 const EDITS_PATH = '/v1/images/edits'
 const TASK_PATH = '/v1/images/tasks'
+const CHAT_COMPLETIONS_PATH = '/v1/chat/completions'
+const RESPONSES_PATH = '/v1/responses'
 const POLL_INTERVAL = 5000
 const POLL_MAX_ATTEMPTS = 120 // 最长 ~10 分钟
+
+const API_MODES = [
+  { label: '异步任务 (Images API)', value: 'async_task' },
+  { label: 'Chat Completions', value: 'chat_completions' },
+  { label: 'Responses', value: 'responses' },
+]
 
 const CONFIG_APIKEY = '{{ __config__["workflow.ai-image"]["apiKey"] }}'
 const CONFIG_BASEURL = '{{ __config__["workflow.ai-image"]["baseUrl"] }}'
@@ -30,6 +38,145 @@ function getHeaders(args) {
   const apiKey = args.apiKey
   if (!apiKey) throw new Error('缺少 apiKey（请填写 Bearer Token）')
   return { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` }
+}
+
+// ── 同步接口模式（chat / responses）工具 ─────────────────────
+
+function getApiMode(args) {
+  const mode = (args.apiMode || 'async_task').toString()
+  return API_MODES.some((m) => m.value === mode) ? mode : 'async_task'
+}
+
+// buffer → data URI（用于 chat image_url / responses input_image）
+function bufferToDataUri(img) {
+  const mime = (img && img.mime) || 'image/png'
+  const buf = img && img.buffer
+  if (!Buffer.isBuffer(buf)) throw new Error('无效的图片 buffer')
+  return `data:${mime};base64,${buf.toString('base64')}`
+}
+
+// 比例 → Responses API 标准尺寸（非标准比例返回 ''，交由模型默认处理）
+function aspectRatioToSize(ratio) {
+  const map = {
+    '1:1': '1024x1024',
+    '16:9': '1536x1024',
+    '9:16': '1024x1536',
+  }
+  return map[ratio] || ''
+}
+
+// 从 chat/completions 的 message.content 提取图片
+// content 可能是字符串（markdown/url/data-uri）或多模态数组（image_url）
+function extractImagesFromChatContent(content, ctx) {
+  const images = []
+  const collect = (raw) => {
+    if (!raw) return
+    // http(s) 图片 URL（非页面 URL：不含 html/htm 后缀，避免把网页链接当图片）
+    if (/^https?:\/\/\S+\.(png|jpe?g|webp|gif|bmp)(\?\S*)?$/i.test(raw)) {
+      images.push(raw)
+      return
+    }
+    // data:image/...;base64,xxxx
+    const dataMatch = /^data:([^;,]+)?(;base64)?,(.*)$/is.exec(raw)
+    if (dataMatch) {
+      const mime = (dataMatch[1] || 'image/png').split(';')[0]
+      const buf = Buffer.from(dataMatch[3], 'base64')
+      const { httpPath } = ctx.api.savePublicFile(buf, extFromMime(mime))
+      images.push(httpPath)
+      return
+    }
+  }
+
+  if (Array.isArray(content)) {
+    for (const part of content) {
+      if (!part || typeof part !== 'object') continue
+      // 常见写法 { type:'image_url', image_url:{ url } } 或 { type:'image', image:{ url } }
+      const url =
+        (part.image_url && (part.image_url.url || part.image_url)) ||
+        (part.image && (part.image.url || part.image)) ||
+        part.url
+      collect(typeof url === 'string' ? url : '')
+    }
+  } else if (typeof content === 'string') {
+    // 1) markdown 图片 ![..](url)
+    const mdRe = /!\[[^\]]*\]\(([^)\s]+)(?:\s+"[^"]*")?\)/g
+    let mdHit = false
+    let m
+    while ((m = mdRe.exec(content))) {
+      mdHit = true
+      collect(m[1])
+    }
+    if (mdHit && images.length) return images
+    // 2) content 整体就是 url / data-uri
+    const trimmed = content.trim()
+    if (/^(https?:|data:)/i.test(trimmed)) {
+      collect(trimmed)
+      if (images.length) return images
+    }
+    // 3) 文本里散落的 url / data-uri
+    const re = /(https?:\/\/\S+\.(?:png|jpe?g|webp|gif|bmp)(?:\?\S*)?|data:[^;\s]+;base64,[A-Za-z0-9+/=]+)/gi
+    while ((m = re.exec(content))) collect(m[1])
+  }
+  return images
+}
+
+// 从 /v1/responses 的 output 数组提取图片
+// output 项 type === 'image_generation_call' → result(b64_json)，兜底取 image_url
+function extractImagesFromResponsesOutput(output, ctx) {
+  const images = []
+  const items = Array.isArray(output) ? output : []
+  for (const item of items) {
+    if (!item || typeof item !== 'object') continue
+    if (item.type === 'image_generation_call' || item.type === 'image_generation') {
+      if (typeof item.result === 'string' && item.result) {
+        const { httpPath } = ctx.api.savePublicFile(Buffer.from(item.result, 'base64'), 'png')
+        images.push(httpPath)
+      } else if (typeof item.image_url === 'string') {
+        images.push(item.image_url)
+      } else if (item.url) {
+        images.push(item.url)
+      }
+    }
+  }
+  return images
+}
+
+// 通用同步 POST + 返回 { images, model, created }
+async function runChatCompletions(ctx, args, body) {
+  const baseUrl = getBaseUrl(args)
+  const headers = getHeaders(args)
+  ctx.logger.info(`chat/completions model=${body.model} 同步请求`)
+  const resp = await ctx.api.postJson(`${baseUrl}${CHAT_COMPLETIONS_PATH}`, {
+    headers,
+    body,
+    timeout: 180000,
+  })
+  const choice = resp && resp.choices && resp.choices[0]
+  if (!choice) throw new Error(`chat/completions 响应异常: ${JSON.stringify(resp).slice(0, 200)}`)
+  // content：字符串（markdown/url/data-uri）或多模态数组（image_url）
+  const content = choice.message && choice.message.content
+  const images = extractImagesFromChatContent(content, ctx)
+  if (!images.length) {
+    throw new Error(`未从 chat/completions 响应解析到图片: ${JSON.stringify(content).slice(0, 200)}`)
+  }
+  return { images, model: resp.model || body.model, created: resp.created }
+}
+
+async function runResponses(ctx, args, body) {
+  const baseUrl = getBaseUrl(args)
+  const headers = getHeaders(args)
+  ctx.logger.info(`/v1/responses model=${body.model} 同步请求`)
+  const resp = await ctx.api.postJson(`${baseUrl}${RESPONSES_PATH}`, {
+    headers,
+    body,
+    timeout: 180000,
+  })
+  const output = (resp && resp.output) || []
+  const images = extractImagesFromResponsesOutput(output, ctx)
+  if (!images.length) {
+    throw new Error(`未从 /v1/responses 响应解析到图片: ${JSON.stringify(resp).slice(0, 200)}`)
+  }
+  return { images, model: resp.model || body.model, created: resp.created }
 }
 
 function mimeFromExt(file) {
@@ -237,6 +384,18 @@ module.exports = (t) => [
         tooltip: t('field.baseUrl.tooltip', 'OpenAI-compatible image API base URL.'),
       },
       {
+        key: 'apiMode',
+        label: t('field.apiMode.label', 'API Mode'),
+        type: 'select',
+        dataType: 'string',
+        default: 'async_task',
+        options: API_MODES,
+        tooltip: t(
+          'field.apiMode.tooltip',
+          'async_task: /v1/images/generations 轮询；chat_completions: /v1/chat/completions 同步；responses: /v1/responses 同步。',
+        ),
+      },
+      {
         key: 'prompt',
         label: t('field.prompt.label', 'Image Description'),
         type: 'textarea',
@@ -300,16 +459,53 @@ module.exports = (t) => [
       },
     ],
     run: async (ctx, args) => {
+      const model = args.model || 'gpt-image-2-all'
+      const prompt = args.prompt
+      const mode = getApiMode(args)
+      ctx.logger.info(`文生图 mode=${mode} model=${model} ratio=${args.aspectRatio || '默认'} n=${args.n || 1}`)
+      ctx.logger.info(`提示词: ${prompt}`)
+
+      // ── chat/completions：同步，messages 取图 ──
+      if (mode === 'chat_completions') {
+        const body = {
+          model,
+          messages: [{ role: 'user', content: prompt }],
+          ...(args.n && { n: Number(args.n) }),
+        }
+        const out = await runChatCompletions(ctx, args, body)
+        return {
+          success: true,
+          message: t('message.generated', 'Generated {count} image(s)').replace('{count}', out.images.length),
+          data: { images: out.images, taskId: '', model: out.model, created: out.created },
+        }
+      }
+
+      // ── responses：同步，image_generation 工具 ──
+      if (mode === 'responses') {
+        const size = aspectRatioToSize(args.aspectRatio)
+        const tool = { type: 'image_generation', ...(size && { size }) }
+        const body = {
+          model,
+          input: prompt,
+          tools: [tool],
+        }
+        const out = await runResponses(ctx, args, body)
+        return {
+          success: true,
+          message: t('message.generated', 'Generated {count} image(s)').replace('{count}', out.images.length),
+          data: { images: out.images, taskId: '', model: out.model, created: out.created },
+        }
+      }
+
+      // ── async_task：现有异步任务逻辑（默认，兼容旧配置）──
       const baseUrl = getBaseUrl(args)
       const headers = getHeaders(args)
       const body = {
-        prompt: args.prompt,
-        model: args.model || 'gpt-image-2-all',
+        prompt,
+        model,
         ...(args.aspectRatio && { aspect_ratio: args.aspectRatio }),
         ...(args.n && { n: Number(args.n) }),
       }
-      ctx.logger.info(`文生图 model=${body.model} ratio=${body.aspect_ratio || '默认'} n=${body.n || 1}`)
-      ctx.logger.info(`提示词: ${body.prompt}`)
       const out = await submitAndPoll(ctx, args, async () => {
         const r = await ctx.api.postJson(`${baseUrl}${GENERATIONS_PATH}?async=true`, {
           headers,
@@ -361,6 +557,18 @@ module.exports = (t) => [
         dataType: 'string',
         default: CONFIG_BASEURL,
         tooltip: t('field.baseUrl.tooltip', 'OpenAI-compatible image API base URL.'),
+      },
+      {
+        key: 'apiMode',
+        label: t('field.apiMode.label', 'API Mode'),
+        type: 'select',
+        dataType: 'string',
+        default: 'async_task',
+        options: API_MODES,
+        tooltip: t(
+          'field.apiMode.tooltip',
+          'async_task: /v1/images/edits 轮询；chat_completions: /v1/chat/completions 多模态同步；responses: /v1/responses input_image 同步。',
+        ),
       },
       {
         key: 'image',
@@ -442,8 +650,6 @@ module.exports = (t) => [
       },
     ],
     run: async (ctx, args) => {
-      const baseUrl = getBaseUrl(args)
-      const headers = getHeaders(args)
       const inputs = toImageArray(args.image)
       if (!inputs.length) {
         return { success: false, message: t('message.imageRequired', 'At least one reference image is required.') }
@@ -452,13 +658,62 @@ module.exports = (t) => [
       const files = []
       for (const src of inputs) files.push(await resolveImage(src))
 
+      const model = args.model || 'gpt-image-1'
+      const prompt = args.prompt
+      const mode = getApiMode(args)
+
+      // ── chat/completions：多模态 messages 同步取图 ──
+      if (mode === 'chat_completions') {
+        const content = [{ type: 'text', text: prompt }]
+        for (const f of files) {
+          content.push({ type: 'image_url', image_url: { url: bufferToDataUri(f) } })
+        }
+        if (args.mask) {
+          const maskFile = await resolveImage(args.mask)
+          content.push({ type: 'image_url', image_url: { url: bufferToDataUri(maskFile) } })
+        }
+        ctx.logger.info(`图片编辑 chat/completions model=${model} 输入图片=${files.length} 蒙版=${args.mask ? '有' : '无'}`)
+        ctx.logger.info(`编辑指令: ${prompt}`)
+        const body = { model, messages: [{ role: 'user', content }], ...(args.n && { n: Number(args.n) }) }
+        const out = await runChatCompletions(ctx, args, body)
+        return {
+          success: true,
+          message: t('message.edited', 'Edited {count} image(s)').replace('{count}', out.images.length),
+          data: { images: out.images, taskId: '', model: out.model },
+        }
+      }
+
+      // ── responses：input 数组多模态同步取图 ──
+      if (mode === 'responses') {
+        const content = [{ type: 'input_text', text: prompt }]
+        for (const f of files) {
+          content.push({ type: 'input_image', image_url: bufferToDataUri(f) })
+        }
+        if (args.mask) {
+          const maskFile = await resolveImage(args.mask)
+          content.push({ type: 'input_image', image_url: bufferToDataUri(maskFile) })
+        }
+        ctx.logger.info(`图片编辑 /v1/responses model=${model} 输入图片=${files.length} 蒙版=${args.mask ? '有' : '无'}`)
+        ctx.logger.info(`编辑指令: ${prompt}`)
+        const body = { model, input: [{ role: 'user', content }], tools: [{ type: 'image_generation' }] }
+        const out = await runResponses(ctx, args, body)
+        return {
+          success: true,
+          message: t('message.edited', 'Edited {count} image(s)').replace('{count}', out.images.length),
+          data: { images: out.images, taskId: '', model: out.model },
+        }
+      }
+
+      // ── async_task：现有异步任务逻辑（默认，兼容旧配置）──
+      const baseUrl = getBaseUrl(args)
+      const headers = getHeaders(args)
       const fields = {}
       // 多图用 image[]，单图用 image（OpenAI / gpt-image-1 多参考图约定）
       const fileField = files.length > 1 ? 'image[]' : 'image'
       fields[fileField] = files.map((f) => ({ buffer: f.buffer, filename: f.filename, mime: f.mime }))
 
-      fields.prompt = args.prompt
-      fields.model = args.model || 'gpt-image-1'
+      fields.prompt = prompt
+      fields.model = model
       if (args.aspectRatio) fields.aspect_ratio = args.aspectRatio
       if (args.n) fields.n = String(args.n)
       if (args.mask) {
@@ -468,7 +723,7 @@ module.exports = (t) => [
 
       const mp = buildMultipart(fields)
       ctx.logger.info(`图片编辑 model=${fields.model} 输入图片=${files.length} 蒙版=${args.mask ? '有' : '无'}`)
-      ctx.logger.info(`编辑指令: ${args.prompt}`)
+      ctx.logger.info(`编辑指令: ${prompt}`)
 
       const out = await submitAndPoll(ctx, args, async () => {
         const resp = await globalThis.fetch(`${baseUrl}${EDITS_PATH}?async=true`, {

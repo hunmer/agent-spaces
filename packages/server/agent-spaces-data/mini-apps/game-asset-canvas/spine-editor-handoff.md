@@ -159,6 +159,7 @@ Viewer 与右栏放在 `ResizablePanelGroup` 内。拖动宽度只触发 Pixi `r
 
 ### 生成记录
 
+- 换肤面板内部使用“全局换肤 / 局部重绘 / 生成记录”三个 Tab；历史列表不再与生成表单同时展示，记录数量显示在 Tab 徽标中。
 - 历史写入服务端 `configs/spine-reskin-history.json`，按三件套 URL 签名隔离，最多 20 条。
 - 点击记录应用 `previewPngUrl`。
 - 删除记录后立即重新应用当前原始 `assets.png`，恢复默认皮肤。
@@ -177,6 +178,9 @@ Viewer 与右栏放在 `ResizablePanelGroup` 内。拖动宽度只触发 Pixi `r
 - 局部重绘错误不受“只保留图片日志”过滤，既写入日志 Tab，也在换肤表单内以错误提示直接展示。
 - 拆分结果以横向缩略图列表保留；点击临时激活/再次点击取消。右上角菜单支持“替换当前动作”“替换所有动作”“删除”。
 - 结果作用域优先级为：临时预览 > 当前动作 > 所有动作。动画切换时从原 atlas 重新合成当前适用部件并调用 `replaceAtlasTexture`。
+- 结果冲突按 slot 计算，不按生成时 region 计算。当前动作会覆盖 setup attachment 与该动作 attachment timeline 涉及的全部 regions；所有动作覆盖该 slot 在 default skin 下的全部 attachment regions。
+- `.skel` 反向导出的最小 JSON 不含 animation timeline，此时当前动作 scope 在目标动作激活期间覆盖该 slot 全部 regions，切换动作后恢复；所有动作行为不变。
+- 每次应用输出 `[SpineEditor][slot-repaint] applying atlas regions`，包含 animation 与实际 target regionNames，供跨动作映射诊断。
 - 最终部件 PNG 上传为稳定 URL；`selectedSlots/slotResults/scope/animation` 写入当前节点 `reskinEditorData`，重新打开对话框会恢复缩略图、作用域与预览。
 - “替换所有动作”会用原 atlas 文本、原 Spine JSON 和同坐标 preview PNG 更新节点产物；“替换当前动作”持久化在节点编辑器配置中，因为静态 Spine 三件套无法表达按动画切换整张 atlas。
 

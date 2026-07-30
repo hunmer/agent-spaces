@@ -6,6 +6,7 @@ import {
   collectSlotReferenceParts,
   fitInside,
   padPartLayoutToAspect,
+  resolveSlotTargetRegionNames,
   scalePartLayout,
   selectApplicablePartResults,
 } from './slotReference.js';
@@ -25,6 +26,38 @@ test('collectSlotReferenceParts uses setup attachments and atlas regions', () =>
     { id: 'head', regionName: 'head-region', width: 44, height: 32 },
     { id: 'body', regionName: 'body-region', width: 60, height: 80 },
   ]);
+});
+
+test('slot target regions follow attachment timelines and all-scope covers every attachment', () => {
+  const spineJson = {
+    slots: [{ name: 'face', attachment: 'idle' }],
+    skins: { default: { face: {
+      idle: { path: 'face-idle' },
+      run: { path: 'face-run' },
+      blink: { path: 'face-blink' },
+    } } },
+    animations: {
+      idle: {},
+      walk: { slots: { face: { attachment: [{ time: 0, name: 'run' }, { time: 0.2, name: 'blink' }] } } },
+    },
+  };
+  const regions = ['face-idle', 'face-run', 'face-blink'].map((name) => ({ name }));
+  assert.deepEqual(
+    resolveSlotTargetRegionNames(spineJson, regions, 'face', 'walk', 'animation'),
+    ['face-idle', 'face-run', 'face-blink'],
+  );
+  assert.deepEqual(
+    resolveSlotTargetRegionNames(spineJson, regions, 'face', 'idle', 'animation'),
+    ['face-idle'],
+  );
+  assert.deepEqual(
+    resolveSlotTargetRegionNames(spineJson, regions, 'face', 'walk', 'all'),
+    ['face-idle', 'face-run', 'face-blink'],
+  );
+  assert.deepEqual(
+    resolveSlotTargetRegionNames({ ...spineJson, animations: undefined }, regions, 'face', 'walk', 'animation'),
+    ['face-idle', 'face-run', 'face-blink'],
+  );
 });
 
 test('cutout output is contained without stretching', () => {
@@ -74,12 +107,12 @@ test('split coordinates preserve each part aspect ratio when workflow output asp
 
 test('current animation replacement overrides all-animation and preview overrides both', () => {
   const results = [
-    { id: 'all', regionName: 'head', scope: 'all' },
-    { id: 'walk', regionName: 'head', scope: 'animation', animation: 'walk' },
-    { id: 'idle', regionName: 'head', scope: 'animation', animation: 'idle' },
-    { id: 'preview', regionName: 'head', scope: 'preview', animation: 'walk' },
+    { id: 'all', slot: 'face', regionName: 'face-idle', scope: 'all' },
+    { id: 'walk', slot: 'face', regionName: 'face-walk', scope: 'animation', animation: 'walk' },
+    { id: 'idle', slot: 'face', regionName: 'face-idle', scope: 'animation', animation: 'idle' },
+    { id: 'preview', slot: 'face', regionName: 'face-preview', scope: 'preview', animation: 'walk' },
   ];
-  assert.equal(selectApplicablePartResults(results, 'walk')[0].id, 'preview');
-  assert.equal(selectApplicablePartResults(results, 'idle')[0].id, 'idle');
-  assert.equal(selectApplicablePartResults(results, 'jump')[0].id, 'all');
+  assert.deepEqual(selectApplicablePartResults(results, 'walk').map((item) => item.id), ['preview']);
+  assert.deepEqual(selectApplicablePartResults(results, 'idle').map((item) => item.id), ['idle']);
+  assert.deepEqual(selectApplicablePartResults(results, 'jump').map((item) => item.id), ['all']);
 });

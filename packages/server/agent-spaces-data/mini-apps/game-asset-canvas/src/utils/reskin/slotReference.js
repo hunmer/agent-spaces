@@ -6,6 +6,42 @@ function defaultAttachments(spineJson) {
   return skins?.default || {};
 }
 
+function slotAttachmentRegionMap(spineJson, regions, slot) {
+  const regionNames = new Set((regions || []).map((region) => region.name));
+  const attachments = defaultAttachments(spineJson)?.[slot] || {};
+  const map = new Map();
+  for (const [attachment, meta = {}] of Object.entries(attachments)) {
+    const regionName = [meta.path, meta.name, attachment].find((name) => regionNames.has(name));
+    if (!regionName) continue;
+    map.set(attachment, regionName);
+    if (meta.path) map.set(meta.path, regionName);
+    if (meta.name) map.set(meta.name, regionName);
+  }
+  return map;
+}
+
+/** Resolve atlas regions displayed by a slot for one animation or for all animations. */
+export function resolveSlotTargetRegionNames(spineJson, regions, slot, animation, scope) {
+  const attachmentRegions = slotAttachmentRegionMap(spineJson, regions, slot);
+  const allRegions = [...new Set(attachmentRegions.values())];
+  if (scope === 'all') return allRegions;
+
+  const animations = spineJson?.animations;
+  // Binary Spine export has no timelines. Scope gating still limits these regions to one animation.
+  if (!animations || typeof animations !== 'object') return allRegions;
+
+  const setupAttachment = (spineJson?.slots || []).find((item) => item.name === slot)?.attachment;
+  const attachmentNames = new Set(setupAttachment ? [setupAttachment] : []);
+  const timeline = animations?.[animation]?.slots?.[slot]?.attachment;
+  if (Array.isArray(timeline)) {
+    for (const keyframe of timeline) if (keyframe?.name) attachmentNames.add(keyframe.name);
+  }
+  const targetRegions = [...attachmentNames]
+    .map((name) => attachmentRegions.get(name))
+    .filter(Boolean);
+  return [...new Set(targetRegions.length ? targetRegions : allRegions.slice(0, 1))];
+}
+
 /** Resolve one current/default attachment image for every Spine slot. */
 export function collectSlotReferenceParts(spineJson, regions) {
   const regionMap = new Map((regions || []).map((region) => [region.name, region]));
@@ -101,7 +137,7 @@ export function fitInside(sourceWidth, sourceHeight, targetWidth, targetHeight) 
   };
 }
 
-/** Pick the effective result for each region: preview > current animation > all animations. */
+/** Pick the effective result for each slot: preview > current animation > all animations. */
 export function selectApplicablePartResults(results, animation) {
   const selected = new Map();
   const rank = { all: 1, animation: 2, preview: 3 };
@@ -109,8 +145,9 @@ export function selectApplicablePartResults(results, animation) {
     const scope = result.scope;
     if (!rank[scope]) continue;
     if ((scope === 'animation' || scope === 'preview') && result.animation !== animation) continue;
-    const current = selected.get(result.regionName);
-    if (!current || rank[scope] >= rank[current.scope]) selected.set(result.regionName, result);
+    const key = result.slot || result.regionName;
+    const current = selected.get(key);
+    if (!current || rank[scope] >= rank[current.scope]) selected.set(key, result);
   }
   return [...selected.values()];
 }

@@ -36,6 +36,11 @@
 - 2026-07-30：阶段 13 完整验证通过：reskin 30/30、Spine 22/22、组件/服务 17/17、Babel 5/5、`git diff --check`；交接文档已同步。
 - 2026-07-30：开始阶段 14；已确认抠图工作流 `images` 返回被误按 `urls` 解析，且 error 日志被图片过滤器丢弃。
 - 2026-07-30：阶段 14 完成：抠图返回兼容 urls/images/image_urls/result；空返回增加安全摘要与结构化错误输出；局部错误在表单和日志中展示。验证工作流/换肤 33/33、Spine 22/22、组件/服务 18/18、Babel 3/3、`git diff --check`。
+- 2026-07-30：开始阶段 15；定位为 scope 已切换但 atlas 始终只替换生成时 setup region，未展开动作 attachment timeline。
+- 2026-07-30：阶段 15 实现完成：结果选择改为按 slot；当前动作解析 setup + attachment timeline regions，所有动作覆盖该 slot 全部 default-skin regions；无 animation JSON 时按 scope 门控覆盖全部 regions；聚焦测试 15/15。
+- 2026-07-30：阶段 15 完整验证通过：工作流/换肤 34/34、Spine 22/22、组件/服务 19/19、Babel 2/2、`git diff --check`；新增结构化 region 应用诊断。
+- 2026-07-30：开始阶段 16；将生成记录从换肤表单底部迁移为面板内部独立 Tab。
+- 2026-07-30：阶段 16 完成：换肤面板增加“生成记录”第三 Tab、数量徽标和空状态；组件/服务 20/20、reskin 31/31、Babel、`git diff --check` 通过。
 
 ## 下一步
 在运行中的 game-asset-canvas 手动验证一次真实 `edit_image + rembg` 多部件生成，并切换两个动画确认当前动作作用域。

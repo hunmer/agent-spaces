@@ -105,3 +105,10 @@
 - `ReskinPanel.addLog` 当前先执行 `hasReskinLogImageOutput(data)`，错误数据 `{error:true}` 没有图片，会被直接丢弃。
 - 修复采用与 `generateImages` 一致的返回兼容范围，并保留旧 `urls`；空返回仅记录键名和类型，不输出完整响应或图片内容。
 - 错误日志过滤条件改为 `step !== 'error' && !hasReskinLogImageOutput(data)`，局部重绘另用 `role="alert"` 就地显示失败原因。
+
+## 跨动作 attachment 应用
+- 当前 `buildSlotAtlas` 只执行 `parts[result.regionName] = result.imageCanvas`；scope 虽会随动画重算，但目标 atlas region 永远是提交生成时的 setup region。
+- Spine 动画可通过 `animations.<animation>.slots.<slot>.attachment[]` 切换 attachment，同一 slot 在不同动作中可能使用不同 atlas regions。
+- 当前动作应覆盖 setup attachment 和该动作 timeline 中出现的 attachments；所有动作应覆盖 default skin 中该 slot 的全部 region attachments。
+- `SpineJsonExporter` 对二进制资源只导出 skins/slots，不导出 animations；当前动作在无 timeline 时采用“scope 按动画门控 + slot 全 regions”降级，保证视觉语义正确。
+- `selectApplicablePartResults` 改为以 `slot || regionName` 为 key，防止同一 slot 的全局/动作/预览结果因 region 不同同时生效。

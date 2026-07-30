@@ -41,7 +41,14 @@ test('slot repaint supports multi-part references and scoped result actions', ()
   assert.match(source, />\s*替换所有动作\s*</);
   assert.match(source, />\s*删除\s*</);
   assert.match(source, /toggleSlotResult\(result\)/);
-  assert.match(source, /item\.regionName === result\.regionName \? \{ \.\.\.item, scope: null \}/);
+  assert.match(source, /item\.slot === result\.slot \? \{ \.\.\.item, scope: null \}/);
+});
+
+test('slot repaint expands scoped results to the attachment regions used by animations', () => {
+  assert.match(source, /resolveSlotTargetRegionNames\(/);
+  assert.match(source, /for \(const regionName of resolvedNames\) parts\[regionName\]/);
+  assert.match(source, /\[SpineEditor\]\[slot-repaint\] applying atlas regions/);
+  assert.match(source, /item\.slot !== result\.slot/);
 });
 
 test('slot repaint results are serialized and hydrated from stable image URLs', () => {
@@ -56,4 +63,13 @@ test('slot repaint keeps error logs and renders the current failure in the panel
   assert.match(source, /const message = err\?\.message \|\| String\(err\)/);
   assert.match(source, /setInpaintError\(message\)/);
   assert.match(source, /<p role="alert"[\s\S]*?\{inpaintError\}[\s\S]*?<\/p>/);
+});
+
+test('reskin generation history is displayed as an independent panel tab', () => {
+  assert.match(source, /const \[panelTab, setPanelTab\] = useState/);
+  assert.match(source, /<TabsTrigger value="history"[^>]*>/);
+  assert.match(source, /\{panelTab !== 'history' && \(/);
+  assert.match(source, /\{panelTab === 'history' && \(/);
+  assert.match(source, />暂无生成记录</);
+  assert.doesNotMatch(source, /生成记录（\{history\.length\}）/);
 });

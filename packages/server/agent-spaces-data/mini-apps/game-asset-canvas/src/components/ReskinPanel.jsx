@@ -13,7 +13,9 @@ import { runReskin, runInpaintParts, DEFAULT_EROSION } from '../utils/reskin/res
 import { parseAtlas, safeFilename } from '../utils/reskin/atlasReader';
 import { cropRegionRotated, drawToCanvas, loadImage } from '../utils/reskin/canvasUtils';
 import { buildPreviewAtlas } from '../utils/reskin/previewAtlas';
-import { collectSlotReferenceParts, selectApplicablePartResults } from '../utils/reskin/slotReference';
+import {
+  collectSlotReferenceParts, resolveSlotTargetRegionNames, selectApplicablePartResults,
+} from '../utils/reskin/slotReference';
 import { DEFAULT_EDIT_IMAGE_MODELS } from '../utils/settings';
 import {
   getSpineAssetsSignature,
@@ -116,6 +118,7 @@ export default function ReskinPanel({
   const [processingModel, setProcessingModel] = useState(initialState.processingModel);
   // per-slot 重绘
   const [slotMode, setSlotMode] = useState(initialState.slotMode); // 是否局部重绘模式
+  const [panelTab, setPanelTab] = useState(initialState.slotMode ? 'slot' : 'global');
   const [selectedSlots, setSelectedSlots] = useState(initialState.selectedSlots);
   const [slotParts, setSlotParts] = useState([]);
   const [slotSource, setSlotSource] = useState(null);
@@ -477,19 +480,44 @@ export default function ReskinPanel({
     const applicable = selectApplicablePartResults(candidates, animation);
     if (!applicable.length) return null;
     const parts = { ...slotSource.baseParts };
-    for (const result of applicable) parts[result.regionName] = { img: result.imageCanvas };
-    return buildPreviewAtlas(
-      slotSource.regions,
-      parts,
-      slotSource.atlasSheetImg.width,
-      slotSource.atlasSheetImg.height,
-    );
+    const targets = [];
+    for (const result of applicable) {
+      const regionNames = resolveSlotTargetRegionNames(
+        slotSource.spineJson,
+        slotSource.regions,
+        result.slot,
+        animation,
+        result.scope,
+      );
+      const resolvedNames = regionNames.length ? regionNames : [result.regionName];
+      for (const regionName of resolvedNames) parts[regionName] = { img: result.imageCanvas };
+      targets.push({
+        resultId: result.id,
+        slot: result.slot,
+        scope: result.scope,
+        animation: result.animation || '',
+        regionNames: resolvedNames,
+      });
+    }
+    return {
+      canvas: buildPreviewAtlas(
+        slotSource.regions,
+        parts,
+        slotSource.atlasSheetImg.width,
+        slotSource.atlasSheetImg.height,
+      ),
+      targets,
+    };
   }, [slotSource]);
 
   const renderSlotResults = useCallback(async (results, persistAll = false) => {
     const preview = buildSlotAtlas(results, currentAnimation);
     if (preview) {
-      await replaceAtlas?.(preview.toDataURL('image/png'), '局部重绘');
+      console.debug('[SpineEditor][slot-repaint] applying atlas regions', {
+        animation: currentAnimation,
+        targets: preview.targets,
+      });
+      await replaceAtlas?.(preview.canvas.toDataURL('image/png'), '局部重绘');
       setActiveSkin('slot-repaint');
     } else if (assets?.png) {
       await replaceAtlas?.(assets.png, '默认皮肤');
@@ -500,7 +528,7 @@ export default function ReskinPanel({
       onReskinComplete?.({
         skel: assets.skel,
         atlas: slotSource.atlasText,
-        png: persistent ? persistent.toDataURL('image/png') : assets.png,
+        png: persistent ? persistent.canvas.toDataURL('image/png') : assets.png,
         spineJson: slotSource.spineJson,
       });
     }
@@ -575,7 +603,7 @@ export default function ReskinPanel({
     const animationName = currentAnimation || '';
     const next = slotResultsRef.current.map((item) => {
       if (item.id === result.id) return { ...item, scope, animation: scope === 'all' ? '' : animationName };
-      if (item.regionName !== result.regionName) return item;
+      if (item.slot !== result.slot) return item;
       if (scope === 'all' && (item.scope === 'all' || item.scope === 'preview')) return { ...item, scope: null };
       if (scope !== 'all' && item.scope === scope && item.animation === animationName) return { ...item, scope: null };
       if (scope !== 'all' && item.scope === 'preview') return { ...item, scope: null };
@@ -598,12 +626,12 @@ export default function ReskinPanel({
 
   const deleteSlotResult = useCallback(async (result) => {
     const persistAll = slotResultsRef.current.some((item) => (
-      item.regionName === result.regionName && item.scope === 'all'
+      item.slot === result.slot && item.scope === 'all'
     ));
     const next = slotResultsRef.current
       .filter((item) => item.id !== result.id)
       .map((item) => (
-        item.regionName === result.regionName ? { ...item, scope: null } : item
+        item.slot === result.slot ? { ...item, scope: null } : item
       ));
     await commitSlotResults(next, persistAll);
   }, [commitSlotResults]);
@@ -635,7 +663,7 @@ export default function ReskinPanel({
   return (
     <>
       <div className="flex h-full min-h-0 flex-col overflow-hidden">
-      <ScrollArea className="min-h-0 flex-1 border-b border-border">
+      <ScrollArea className={panelTab === 'history' ? 'shrink-0 border-b border-border' : 'min-h-0 flex-1 border-b border-border'}>
         <div className="space-y-3 p-3">
           <div className="flex items-center justify-between gap-2">
             <span className="text-xs font-medium">AI 换肤</span>
@@ -644,8 +672,10 @@ export default function ReskinPanel({
             </div>
           </div>
         <Tabs
-          value={slotMode ? 'slot' : 'global'}
+          value={panelTab}
           onValueChange={(value) => {
+            setPanelTab(value);
+            if (value === 'history') return;
             enablePersistence();
             const nextSlotMode = value === 'slot';
             setSlotMode(nextSlotMode);
@@ -654,9 +684,15 @@ export default function ReskinPanel({
           <TabsList className="w-full">
             <TabsTrigger value="global" disabled={running} className="flex-1">全局换肤</TabsTrigger>
             <TabsTrigger value="slot" disabled={running || !assets} className="flex-1">局部重绘</TabsTrigger>
+            <TabsTrigger value="history" disabled={running} className="flex-1 gap-1">
+              生成记录
+              {history.length > 0 && <Badge variant="secondary" className="h-4 px-1 text-[9px]">{history.length}</Badge>}
+            </TabsTrigger>
           </TabsList>
         </Tabs>
 
+        {panelTab !== 'history' && (
+        <>
         <Textarea
           rows={3}
           placeholder={slotMode ? '描述该部位新样式' : '描述新皮肤，如 "黑精灵，黑翅膀，金甲"'}
@@ -883,13 +919,17 @@ export default function ReskinPanel({
             </div>
           </div>
         )}
+        </>
+        )}
         </div>
       </ScrollArea>
 
-      {history.length > 0 && (
+      {panelTab === 'history' && (
         <div className="flex min-h-0 flex-1 flex-col">
-          <div className="px-3 py-2 text-xs font-medium">生成记录（{history.length}）</div>
-          <ScrollArea className="min-h-0 flex-1 px-2 pb-2">
+          <ScrollArea className="min-h-0 flex-1 px-2 py-2">
+            {!history.length && (
+              <div className="flex h-40 items-center justify-center text-xs text-muted-foreground">暂无生成记录</div>
+            )}
             {history.map((item) => {
               const stages = item.stages?.length ? item.stages : [
                 { label: '结果', src: item.thumbnailUrl },

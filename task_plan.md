@@ -88,6 +88,16 @@
   - 新增统一返回解析和安全摘要，错误携带返回键/类型诊断信息。
   - `ReskinPanel` 错误日志不再被图片过滤器丢弃，并在局部重绘表单直接展示失败原因。
   - 补充回归测试并运行完整验证。
+- [completed] 15. 修复跨动作 attachment region 应用
+  - 用两个动画切换不同 attachment 的 Spine JSON 夹具复现当前 region-only 应用失败。
+  - 解析 slot 的 setup attachment、指定动画 attachment timeline 和全部 skin attachment 对应 atlas regions。
+  - 当前动作/临时预览展开到该动画实际 region；所有动作展开到该 slot 全部 regions。
+  - 结果冲突与删除按 slot 分组，不再仅按生成时 region 分组。
+  - 应用时输出 animation、scope、slot、targetRegions 结构化诊断，并运行完整回归。
+- [completed] 16. 生成记录独立 Tab
+  - 将换肤面板内部导航改为“全局换肤 / 局部重绘 / 生成记录”。
+  - 生成记录仅在对应 Tab 展示，保留应用、对比、删除与空状态。
+  - 补组件契约测试并运行相关回归。
 
 ## 关键约束
 - 不修改 Python `site-packages/rembg`。
@@ -112,3 +122,4 @@
 | 同步旧测试期望时补丁命中输入对象而非期望对象 | 1 | 使用包含 `assert.deepEqual(restored` 后文的精确上下文修正 |
 | 搜索 `runCutout` 测试无匹配返回 1，导致并行读取丢失 | 1 | 不重复搜索；直接读取目标测试并新增局部契约断言 |
 | `cutout.test.js` 直接导入被 `./image-ops` 目录型 ESM import 阻断 | 1 | 改用项目现有 Babel CommonJS harness 注入依赖，测试真实函数逻辑 |
+| 搜索 attachment timeline JSON 无匹配返回 1，导致并行读取丢失 | 1 | 不重复组合搜索；直接读取实现并在测试中构造最小 Spine JSON |
