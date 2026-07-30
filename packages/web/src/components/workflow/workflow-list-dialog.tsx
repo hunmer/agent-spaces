@@ -7,7 +7,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Plus } from 'lucide-react';
+import { Plus, Settings } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import {
   WorkflowFilterToolbar,
@@ -24,6 +24,8 @@ interface WorkflowListDialogProps {
   selectedWorkflowIds?: string[];
   onSelectedWorkflowIdsChange?: (workflowIds: string[]) => void;
   showCreate?: boolean;
+  selectionDisabled?: boolean;
+  onConfigure?: (workflow: WorkflowTemplate) => void;
 }
 
 export function WorkflowListDialog({
@@ -36,6 +38,8 @@ export function WorkflowListDialog({
   selectedWorkflowIds = [],
   onSelectedWorkflowIdsChange,
   showCreate = true,
+  selectionDisabled = false,
+  onConfigure,
 }: WorkflowListDialogProps) {
   const t = useTranslations('workflows');
   const filters = useWorkflowFilters({ workflows });
@@ -68,9 +72,11 @@ export function WorkflowListDialog({
             <div
               key={workflow.id}
               role="button"
-              tabIndex={0}
+              tabIndex={selectionDisabled ? -1 : 0}
+              aria-disabled={selectionDisabled}
               className="flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm transition-colors hover:bg-accent"
               onClick={() => {
+                if (selectionDisabled) return;
                 if (selectable) {
                   toggleWorkflow(workflow.id);
                   return;
@@ -80,6 +86,7 @@ export function WorkflowListDialog({
               onKeyDown={(e) => {
                 if (e.key !== 'Enter' && e.key !== ' ') return;
                 e.preventDefault();
+                if (selectionDisabled) return;
                 if (selectable) {
                   toggleWorkflow(workflow.id);
                   return;
@@ -91,7 +98,8 @@ export function WorkflowListDialog({
                 {selectable ? (
                   <Checkbox
                     checked={selectedSet.has(workflow.id)}
-                    onCheckedChange={() => toggleWorkflow(workflow.id)}
+                    disabled={selectionDisabled}
+                    onCheckedChange={() => { if (!selectionDisabled) toggleWorkflow(workflow.id); }}
                     onClick={(e) => e.stopPropagation()}
                   />
                 ) : null}
@@ -102,7 +110,23 @@ export function WorkflowListDialog({
                   </div>
                 </div>
               </div>
-              <div className="text-[10px] text-muted-foreground">{workflow.id.slice(0, 8)}</div>
+              <div className="flex shrink-0 items-center gap-1">
+                <div className="text-[10px] text-muted-foreground">{workflow.id.slice(0, 8)}</div>
+                {onConfigure ? (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
+                    title={t('sidebar.editConfig')}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onConfigure(workflow);
+                    }}
+                  >
+                    <Settings className="h-3.5 w-3.5" />
+                  </Button>
+                ) : null}
+              </div>
             </div>
           ))}
         </div>

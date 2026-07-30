@@ -122,6 +122,9 @@ export function createMiniAppApi(http: HttpClient) {
     writeDataFile: (id: string, filePath: string, content: string, encoding?: 'base64'): Promise<{ ok: true; path: string; size: number }> =>
       http.put(`/api/mini-apps/${encodeURIComponent(id)}/data/content`, { path: filePath, content, encoding }),
 
+    readDataFile: (id: string, filePath: string): Promise<{ content: string }> =>
+      http.get(`/api/mini-apps/${encodeURIComponent(id)}/data/content?path=${encodeURIComponent(filePath)}`),
+
     getAgentFilesTree: (id: string, path = '', depth = 1, scope: 'preview' | 'editor' = 'preview'): Promise<FileNode[]> =>
       http.get(`/api/mini-apps/${encodeURIComponent(id)}/agent-files/tree?path=${encodeURIComponent(path)}&depth=${depth}&scope=${encodeURIComponent(scope)}`),
 

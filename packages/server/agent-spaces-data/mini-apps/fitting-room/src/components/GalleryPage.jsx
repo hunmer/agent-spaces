@@ -1,6 +1,5 @@
 import Style from "./Style";
 import GenerateDialog from "./GenerateDialog";
-import { normalizeWorkflow } from "../utils/helpers";
 
 const {
   Button,
@@ -10,7 +9,6 @@ const {
   History,
   Workflow,
   Sparkles,
-  WorkflowListDialog,
   ImageOff,
 } = window.AgentSpacesUI;
 
@@ -32,9 +30,6 @@ export default function GalleryPage({ kind, onSubmitTask }) {
   const [history, setHistory] = React.useState([]);
   const [config, setConfig] = React.useState(defaultConfig);
   const [dialogOpen, setDialogOpen] = React.useState(false);
-  const [workflowOpen, setWorkflowOpen] = React.useState(false);
-  const [workflows, setWorkflows] = React.useState([]);
-  const [workflowLoading, setWorkflowLoading] = React.useState(false);
 
   const workflowId = isHair ? config.hairstyleWorkflowId : config.outfitWorkflowId;
   const workflowName = isHair ? config.hairstyleWorkflowName : config.outfitWorkflowName;
@@ -56,16 +51,11 @@ export default function GalleryPage({ kind, onSubmitTask }) {
   }, []);
 
   const openWorkflowDialog = async () => {
-    setWorkflowOpen(true);
-    setWorkflowLoading(true);
     try {
-      const resp = await AS.callPluginTool("@agent-spaces/builtin", "list_workflows", { page_size: 50 });
-      const list = resp?.data?.workflows || resp?.result?.data?.workflows || resp?.result?.workflows || resp?.workflows || [];
-      setWorkflows(Array.isArray(list) ? list : []);
+      const workflow = await AS.openWorkflowListDialog();
+      if (workflow) await selectWorkflow(workflow);
     } catch (err) {
       console.error("list_workflows failed", err);
-    } finally {
-      setWorkflowLoading(false);
     }
   };
 
@@ -77,7 +67,6 @@ export default function GalleryPage({ kind, onSubmitTask }) {
       outfitWorkflowName: !isHair ? (workflow.title || workflow.name || "未命名工作流") : config.outfitWorkflowName,
     };
     setConfig(next);
-    setWorkflowOpen(false);
     await AS.invokeService("save_shared_config", next);
   };
 
@@ -171,21 +160,6 @@ export default function GalleryPage({ kind, onSubmitTask }) {
         onSubmit={onSubmitTask}
       />
 
-      <WorkflowListDialog
-        open={workflowOpen}
-        workflows={workflows.map(normalizeWorkflow)}
-        onSelect={selectWorkflow}
-        onCreate={() => window.open("/workflows", "_blank")}
-        onClose={() => setWorkflowOpen(false)}
-      />
-      {workflowOpen && workflowLoading && (
-        <div style={{
-          position: "fixed", right: 18, bottom: 18, zIndex: 80,
-          background: "#18181b", color: "#fff", borderRadius: 7, padding: "8px 12px", fontSize: 13,
-        }}>
-          工作流加载中...
-        </div>
-      )}
     </div>
   );
 }

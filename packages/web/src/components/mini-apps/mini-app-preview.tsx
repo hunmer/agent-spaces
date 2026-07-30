@@ -21,7 +21,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DropdownMenuItem, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { ChatPanel, type ChatMessage, type ChatPanelMentionFile } from '@/components/ui/chat-panel';
-import { PanelRightOpen, FilesIcon, Loader2, Search, Sparkles, Settings2, Eraser, Smartphone, Monitor, Tablet, Info, AlertTriangle, MessageSquareText, UploadIcon, Trash2, RotateCcw } from 'lucide-react';
+import { PanelRightOpen, FilesIcon, Loader2, Search, Sparkles, Settings2, Eraser, Smartphone, Monitor, Tablet, Info, AlertTriangle, MessageSquareText, UploadIcon, Trash2, RotateCcw, Workflow as WorkflowIcon } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { AgentEditor } from '@/components/sidebar/agent-editor';
@@ -36,6 +36,9 @@ import { PluginIcon } from '@/components/workflow/workflow-plugin-icon';
 import { PluginConfigDialog } from '@/components/plugins/plugin-config-dialog';
 import { PluginConfigSchemeControl } from '@/components/plugins/plugin-config-scheme-control';
 import { WorkflowPluginsDialog } from '@/components/workflow/workflow-plugins-dialog';
+import { WorkflowListDialog } from '@/components/workflow/workflow-list-dialog';
+import { MiniAppWorkflowConfigDialog } from './mini-app-workflow-config-dialog';
+import { listMiniAppWorkflowConfigs } from '@/lib/mini-app-workflow-config';
 import type { Workflow, AgentUsageRecord, AgentUsageSessionDetail, AgentUsageSessionMessage } from '@agent-spaces/shared';
 
 interface MiniAppPreviewProps {
@@ -1271,6 +1274,9 @@ export function MiniAppPreview({ type, sourceCode, error, onError, projectId, pr
   const [search, setSearch] = useState('');
   const [allPlugins, setAllPlugins] = useState<WorkflowPlugin[]>([]);
   const [pluginConfigSchemes, setPluginConfigSchemes] = useState<Record<string, string>>({});
+  const [workflowConfigsOpen, setWorkflowConfigsOpen] = useState(false);
+  const [configuredWorkflows, setConfiguredWorkflows] = useState<Workflow[]>([]);
+  const [configWorkflow, setConfigWorkflow] = useState<Workflow | null>(null);
   const [newSchemePluginId, setNewSchemePluginId] = useState<string | null>(null);
   const [newSchemeName, setNewSchemeName] = useState('');
   const [taskEvents, setTaskEvents] = useState<MiniAppTaskEvent[]>([]);
@@ -1370,6 +1376,16 @@ export function MiniAppPreview({ type, sourceCode, error, onError, projectId, pr
     await selectPluginScheme(newSchemePluginId, name);
     setNewSchemePluginId(null);
   }, [newSchemeName, newSchemePluginId, selectPluginScheme]);
+  const openWorkflowConfigs = useCallback(async () => {
+    if (!projectId) return;
+    const [configs, workflows] = await Promise.all([
+      listMiniAppWorkflowConfigs(projectId),
+      sdk.workflow.list(),
+    ]);
+    const configuredIds = new Set(configs.map(config => config.workflowId));
+    setConfiguredWorkflows(workflows.filter(workflow => configuredIds.has(workflow.id)));
+    setWorkflowConfigsOpen(true);
+  }, [projectId]);
 
   // 插件商店弹窗（未安装插件警示标签触发）：安装完成后重载本地清单，警示自动消失
   const [storeOpen, setStoreOpen] = useState(false);
@@ -1536,6 +1552,18 @@ export function MiniAppPreview({ type, sourceCode, error, onError, projectId, pr
                 variant="ghost"
                 size="icon"
                 className="h-7 w-7"
+                onClick={() => void openWorkflowConfigs()}
+                title={t('workflowConfig.open')}
+                aria-label={t('workflowConfig.open')}
+              >
+                <WorkflowIcon className="h-4 w-4" />
+              </Button>
+            )}
+            {projectId && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
                 onClick={() => setInfoOpen(true)}
                 title={t('preview.info')}
                 aria-label={t('preview.info')}
@@ -1658,6 +1686,24 @@ export function MiniAppPreview({ type, sourceCode, error, onError, projectId, pr
       {projectId && (
         <MiniAppInfoDialog open={infoOpen} onOpenChange={setInfoOpen} projectId={projectId} />
       )}
+      <WorkflowListDialog
+        open={workflowConfigsOpen}
+        workflows={configuredWorkflows}
+        onSelect={() => {}}
+        onCreate={() => {}}
+        onClose={() => setWorkflowConfigsOpen(false)}
+        showCreate={false}
+        selectionDisabled
+        onConfigure={(workflow) => setConfigWorkflow(workflow)}
+      />
+      {projectId ? (
+        <MiniAppWorkflowConfigDialog
+          open={Boolean(configWorkflow)}
+          projectId={projectId}
+          workflow={configWorkflow}
+          onOpenChange={(open) => { if (!open) setConfigWorkflow(null); }}
+        />
+      ) : null}
       <AlertDialog open={Boolean(newSchemePluginId)} onOpenChange={(open) => { if (!open) setNewSchemePluginId(null); }}>
         <AlertDialogContent className="sm:max-w-sm">
           <AlertDialogHeader>

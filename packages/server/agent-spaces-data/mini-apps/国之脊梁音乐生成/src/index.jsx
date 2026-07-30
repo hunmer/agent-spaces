@@ -22,7 +22,6 @@ const {
   Download,
   Play,
   Pause,
-  WorkflowListDialog,
 } = window.AgentSpacesUI;
 
 // 目标工作流（国之脊梁音乐生成）
@@ -122,9 +121,6 @@ function App() {
   }));
   const [history, setHistory] = React.useState([]);
   const [sharedConfig, setSharedConfig] = React.useState({ workflowId: DEFAULT_WORKFLOW_ID, workflowName: DEFAULT_WORKFLOW_NAME });
-  const [workflowOpen, setWorkflowOpen] = React.useState(false);
-  const [workflows, setWorkflows] = React.useState([]);
-  const [workflowLoading, setWorkflowLoading] = React.useState(false);
   const [running, setRunning] = React.useState(false);
   const [uploadingReference, setUploadingReference] = React.useState(false);
   const [status, setStatus] = React.useState('');
@@ -187,16 +183,11 @@ function App() {
   };
 
   const openWorkflowDialog = async () => {
-    setWorkflowOpen(true);
-    setWorkflowLoading(true);
     try {
-      const resp = await AS.callPluginTool('@agent-spaces/builtin', 'list_workflows', { page_size: 50 });
-      const list = resp?.data?.workflows || resp?.result?.data?.workflows || resp?.result?.workflows || resp?.workflows || [];
-      setWorkflows(Array.isArray(list) ? list : []);
+      const workflow = await AS.openWorkflowListDialog();
+      if (workflow) await selectWorkflow(workflow);
     } catch (err) {
       setError(err?.message || String(err));
-    } finally {
-      setWorkflowLoading(false);
     }
   };
 
@@ -206,7 +197,6 @@ function App() {
       workflowName: workflow.title || workflow.name || '未命名工作流',
     };
     setSharedConfig(next);
-    setWorkflowOpen(false);
     await AS.invokeService('save_shared_config', next);
   };
 
@@ -486,14 +476,6 @@ function App() {
         </section>
       </main>
 
-      <WorkflowListDialog
-        open={workflowOpen}
-        workflows={workflows.map(normalizeWorkflow)}
-        onSelect={selectWorkflow}
-        onCreate={() => window.open('/workflows', '_blank')}
-        onClose={() => setWorkflowOpen(false)}
-      />
-      {workflowOpen && workflowLoading && <div className="mg-floating-status">工作流加载中...</div>}
       {running && <div className="mg-floating-status">{status || '生成中...'}</div>}
     </div>
   );
@@ -547,16 +529,6 @@ function persistableReferences(references) {
       };
     })
     .filter(Boolean);
-}
-
-function normalizeWorkflow(workflow) {
-  return {
-    ...workflow,
-    id: workflow.id || workflow.workflow_id,
-    name: workflow.name || workflow.title || '未命名工作流',
-    updatedAt: workflow.updatedAt || 0,
-    nodes: workflow.nodes || [],
-  };
 }
 
 // 层层解包 execute_workflow_sync 的返回，定位到 { status, steps, ... } 这一格

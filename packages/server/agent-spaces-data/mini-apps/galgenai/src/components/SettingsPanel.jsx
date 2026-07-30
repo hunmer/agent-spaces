@@ -1,38 +1,23 @@
 // 设置面板：
 // - 用户资料（称呼、背景）
 // - AI 角色：多个 agent 配置，通过宿主 openAgentEditor 创建/编辑，radio 切换当前角色
-// - 语音合成：provider + voiceId + 工作流（经 WorkflowListDialog 选择）
+// - 语音合成：provider + voiceId + 工作流（经宿主选择器选择）
 //
 // 参考 stickerGenerator/src/components/SettingsDialog.jsx 的 openAgentEditor +
-// WorkflowListDialog 模式。人设（prompts）区块已按需求移除。
+// 宿主工作流选择模式。人设（prompts）区块已按需求移除。
 import React, { useState } from 'react';
-import { AGENT_INIT_NAME, AGENT_INIT_PROMPT, BUILTIN_PLUGIN } from '../utils/constants';
+import { AGENT_INIT_NAME, AGENT_INIT_PROMPT } from '../utils/constants';
 
 const {
   Label, Button, Input, Switch,
   Workflow, Bot, Check, Plus, Pencil, Trash2, Loader2, RotateCcw,
-  WorkflowListDialog,
 } = window.AgentSpacesUI;
 const AS = window.AgentSpaces;
-
-// 工作流列表项归一化（list_workflows 返回的字段名差异）
-function normalizeWorkflow(workflow) {
-  return {
-    ...workflow,
-    id: workflow.id || workflow.workflow_id,
-    name: workflow.name || workflow.title || '未命名工作流',
-    updatedAt: workflow.updatedAt || 0,
-    nodes: workflow.nodes || [],
-  };
-}
 
 export default function SettingsPanel({ store }) {
   const { settings, updateSettings, setView, ttsProviders } = store;
   const [error, setError] = useState('');
   const [agentBusy, setAgentBusy] = useState(false); // openAgentEditor 进行中
-  const [workflowOpen, setWorkflowOpen] = useState(false);
-  const [workflowLoading, setWorkflowLoading] = useState(false);
-  const [workflows, setWorkflows] = useState([]);
 
   const agents = settings.agents || [];
 
@@ -76,30 +61,16 @@ export default function SettingsPanel({ store }) {
 
   // ===== TTS 工作流选择 =====
   const openWorkflowPicker = async () => {
-    setWorkflowOpen(true);
-    setWorkflowLoading(true);
     try {
-      const resp = await AS.callPluginTool(BUILTIN_PLUGIN, 'list_workflows', { page_size: 50 });
-      const list =
-        resp?.data?.workflows ||
-        resp?.result?.data?.workflows ||
-        resp?.result?.workflows ||
-        resp?.workflows ||
-        [];
-      setWorkflows(Array.isArray(list) ? list : []);
+      const workflow = await AS.openWorkflowListDialog();
+      if (!workflow) return;
+      updateSettings({
+        ttsWorkflowId: workflow.id || workflow.workflow_id,
+        ttsWorkflowName: workflow.name || workflow.title || '未命名工作流',
+      });
     } catch (e) {
       setError('加载工作流列表失败：' + (e?.message || e));
-    } finally {
-      setWorkflowLoading(false);
     }
-  };
-
-  const onPickWorkflow = (wf) => {
-    updateSettings({
-      ttsWorkflowId: wf.id || wf.workflow_id,
-      ttsWorkflowName: wf.name || wf.title || '未命名工作流',
-    });
-    setWorkflowOpen(false);
   };
 
   return (
@@ -291,19 +262,6 @@ export default function SettingsPanel({ store }) {
         {error && <div className="text-sm text-red-400">{error}</div>}
       </div>
 
-      {/* 工作流选择对话框（宿主组件） */}
-      <WorkflowListDialog
-        open={workflowOpen}
-        workflows={workflows.map(normalizeWorkflow)}
-        onSelect={onPickWorkflow}
-        onCreate={() => window.open('/workflows', '_blank')}
-        onClose={() => setWorkflowOpen(false)}
-      />
-      {workflowOpen && workflowLoading && (
-        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[60] text-sm bg-black/70 text-white px-3 py-1 rounded">
-          工作流加载中…
-        </div>
-      )}
     </div>
   );
 }

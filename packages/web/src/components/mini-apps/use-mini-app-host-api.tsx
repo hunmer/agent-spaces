@@ -3,10 +3,12 @@ import { authHeaders, fetchWithAuth, getToken } from '@/lib/auth';
 import { getActiveServerUrl } from '@/lib/server';
 import { sdk } from '@/lib/sdk';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { WorkflowListDialog } from '@/components/workflow/workflow-list-dialog';
 import { AgentEditor } from '@/components/sidebar/agent-editor';
 import { newEmptyAgent, normalizeAgent, type AgentPreset } from '@/components/sidebar/agent-shared';
 import { miniAppConfigToAgentPreset, agentPresetToMiniAppConfig } from './mini-app-agent-adapter';
 import type { MiniAppAgentConfig } from '@agent-spaces/sdk';
+import type { WorkflowTemplate } from '@agent-spaces/shared';
 import * as AgentSpacesUI from '@/lib/ui-exports';
 import { useEditorStore } from '@/stores/editor';
 import { getWS } from '@/lib/ws';
@@ -15,6 +17,7 @@ import {
   requestNotificationPermission,
   sendNativeNotification,
 } from '@/lib/native-notification';
+import { ensureMiniAppWorkflowConfig, readMiniAppWorkflowConfig } from '@/lib/mini-app-workflow-config';
 
 const LAST_SELECTION_CONFIG = 'last-selection.json';
 
@@ -288,6 +291,29 @@ export function useMiniAppHostApi(projectId: string, runtimeContext?: MiniAppRun
   const [editorMigratedGlobalAgentId, setEditorMigratedGlobalAgentId] = useState<string | null>(null);
   const [editorKey, setEditorKey] = useState(0);
   const editorResolverRef = useRef<((v: AgentPreset | null) => void) | null>(null);
+  const [workflowPickerOpen, setWorkflowPickerOpen] = useState(false);
+  const [workflowPickerItems, setWorkflowPickerItems] = useState<WorkflowTemplate[]>([]);
+  const workflowPickerResolverRef = useRef<((workflow: WorkflowTemplate | null) => void) | null>(null);
+  const workflowPickerRequestRef = useRef(0);
+
+  const closeWorkflowPicker = (workflow: WorkflowTemplate | null) => {
+    setWorkflowPickerOpen(false);
+    workflowPickerResolverRef.current?.(workflow);
+    workflowPickerResolverRef.current = null;
+  };
+
+  const openWorkflowListDialog = async (): Promise<WorkflowTemplate | null> => {
+    const requestId = ++workflowPickerRequestRef.current;
+    workflowPickerResolverRef.current?.(null);
+    workflowPickerResolverRef.current = null;
+    const workflows = await sdk.workflow.list();
+    if (requestId !== workflowPickerRequestRef.current) return null;
+    setWorkflowPickerItems(workflows);
+    setWorkflowPickerOpen(true);
+    return new Promise(resolve => {
+      workflowPickerResolverRef.current = resolve;
+    });
+  };
 
   const closeEditor = (result: AgentPreset | null) => {
     setEditorOpen(false);
@@ -353,7 +379,26 @@ export function useMiniAppHostApi(projectId: string, runtimeContext?: MiniAppRun
         return { error: `Plugin "${pluginId}" is not enabled in this mini-app` };
       }
 
-      const body: Record<string, unknown> = { name: toolName, args, workspaceId: projectId, executorId };
+      let effectiveArgs = args;
+      if (pluginId === '@agent-spaces/builtin' && toolName === 'execute_workflow_sync') {
+        const workflowId = String(args.workflow_id || args.workflowId || '').trim();
+        if (workflowId) {
+          const stored = await readMiniAppWorkflowConfig(projectId, workflowId);
+          if (stored) {
+            const explicit = (args.plugin_configs && typeof args.plugin_configs === 'object' && !Array.isArray(args.plugin_configs))
+              ? args.plugin_configs
+              : (args.pluginConfigs && typeof args.pluginConfigs === 'object' && !Array.isArray(args.pluginConfigs))
+                ? args.pluginConfigs
+                : {};
+            effectiveArgs = {
+              ...args,
+              plugin_configs: { ...stored.pluginConfigs, ...explicit },
+            };
+          }
+        }
+      }
+
+      const body: Record<string, unknown> = { name: toolName, args: effectiveArgs, workspaceId: projectId, executorId };
       // agent_run 的 taskId：
       // - 调用方显式传 options.taskId → 用它（调用方自管，多调用方并发互不覆盖）
       // - 未传但 toolName=agent_run → 自动生成，并记入 lastAgentTaskIdRef 作兜底（单调用方场景 stopAgentRun() 不传参时用）
@@ -993,6 +1038,7 @@ export function useMiniAppHostApi(projectId: string, runtimeContext?: MiniAppRun
       stopWorkflow,
       stopAgentRun,
       loadCdnModule,
+      openWorkflowListDialog,
     };
 
     const fileApi = {
@@ -1091,6 +1137,9 @@ export function useMiniAppHostApi(projectId: string, runtimeContext?: MiniAppRun
     window.addEventListener('agent-spaces:open-file', handleOpenFile);
 
     return () => {
+      workflowPickerRequestRef.current += 1;
+      workflowPickerResolverRef.current?.(null);
+      workflowPickerResolverRef.current = null;
       configCacheRef.current = new Map();
       configReadyRef.current = false;
       enabledPluginsRef.current = null;
@@ -1106,28 +1155,48 @@ export function useMiniAppHostApi(projectId: string, runtimeContext?: MiniAppRun
     };
   }, [projectId]);
 
-  return editorAgent ? (
-    <Dialog open={editorOpen} onOpenChange={(o) => { if (!o) closeEditor(null); }}>
-      <DialogContent className="!w-[80vw] !max-w-[80vw] max-h-[85vh] gap-0 p-0 overflow-hidden flex flex-col">
-        <AgentEditor
-          key={editorKey}
-          agent={editorAgent}
-          onSaved={(saved) => closeEditor(saved)}
-          onBack={() => closeEditor(null)}
-          fixedValues={{ hideInAgentList: true }}
-          commit={async (draft) => {
-            const original = editorOriginalConfig ?? agentPresetToMiniAppConfig(draft, { id: draft.id, name: draft.name });
-            const config = agentPresetToMiniAppConfig(draft, original);
-            const saved = await sdk.miniApp.updateAgent(projectId, config.id, config);
-            if (editorMigratedGlobalAgentId) {
-              await sdk.agent.updatePreset(editorMigratedGlobalAgentId, { hideInAgentList: true });
-            }
-            return miniAppConfigToAgentPreset(saved);
-          }}
-        />
-      </DialogContent>
-    </Dialog>
-  ) : null;
+  return (
+    <>
+      {editorAgent ? (
+        <Dialog open={editorOpen} onOpenChange={(o) => { if (!o) closeEditor(null); }}>
+          <DialogContent className="!w-[80vw] !max-w-[80vw] max-h-[85vh] gap-0 p-0 overflow-hidden flex flex-col">
+            <AgentEditor
+              key={editorKey}
+              agent={editorAgent}
+              onSaved={(saved) => closeEditor(saved)}
+              onBack={() => closeEditor(null)}
+              fixedValues={{ hideInAgentList: true }}
+              commit={async (draft) => {
+                const original = editorOriginalConfig ?? agentPresetToMiniAppConfig(draft, { id: draft.id, name: draft.name });
+                const config = agentPresetToMiniAppConfig(draft, original);
+                const saved = await sdk.miniApp.updateAgent(projectId, config.id, config);
+                if (editorMigratedGlobalAgentId) {
+                  await sdk.agent.updatePreset(editorMigratedGlobalAgentId, { hideInAgentList: true });
+                }
+                return miniAppConfigToAgentPreset(saved);
+              }}
+            />
+          </DialogContent>
+        </Dialog>
+      ) : null}
+      <WorkflowListDialog
+        open={workflowPickerOpen}
+        workflows={workflowPickerItems}
+        onSelect={async (workflow) => {
+          try {
+            await ensureMiniAppWorkflowConfig(projectId, workflow);
+            closeWorkflowPicker(workflow);
+          } catch (error) {
+            console.error('Failed to create mini-app workflow config:', error);
+            closeWorkflowPicker(null);
+          }
+        }}
+        onCreate={() => {}}
+        onClose={() => closeWorkflowPicker(null)}
+        showCreate={false}
+      />
+    </>
+  );
 }
 
 function createMiniAppAgentId(name?: string): string {

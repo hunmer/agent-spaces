@@ -160,6 +160,14 @@
     "pluginsTab": "Plugins",
     "toolsTab": "Tools"
   },
+  "workflowConfig": {
+    "title": "Workflow plugin config",
+    "open": "Workflow configs",
+    "noPlugins": "This workflow has no enabled plugins",
+    "noConfig": "No configuration",
+    "followWorkflow": "Use workflow config",
+    "customConfig": "Custom config"
+  },
   "toolExecute": {
     "noParams": "This tool requires no parameters",
     "reset": "Reset",

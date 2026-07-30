@@ -2,11 +2,11 @@ import { useCallback, useState } from 'react';
 import { Workflow } from '@agent-spaces/ui';
 import NodeShell from './NodeShell';
 import CountAndConcurrency from './CountAndConcurrency';
-import { NODE_TYPES, BUILTIN_PLUGIN } from '../../utils/constants';
+import { NODE_TYPES } from '../../utils/constants';
 import { runWorkflow, normalizeImageUrls } from '../../utils/workflow';
 
 // 宿主侧组件（已通过 ui-exports 暴露）
-const { MonacoCodeEditor, WorkflowListDialog } = window.AgentSpacesUI || {};
+const { MonacoCodeEditor } = window.AgentSpacesUI || {};
 
 /**
  * 执行工作流节点（通用）。
@@ -61,41 +61,11 @@ export default function WorkflowRunnerNode({ id, data, selected }) {
   const onUpdate = data?.onUpdate;
   const outputImages = Array.isArray(data?.output?.images) ? data.output.images : [];
 
-  // 工作流选择器状态（节点内自管，参考 SettingsDialog 模式）
-  const [pickerOpen, setPickerOpen] = useState(false);
-  const [workflowList, setWorkflowList] = useState([]);
-  const [workflowLoading, setWorkflowLoading] = useState(false);
   const [pickerError, setPickerError] = useState('');
 
   const set = useCallback((patch) => {
     onUpdate?.({ params: { ...params, ...patch } });
   }, [onUpdate, params]);
-
-  // 打开工作流选择器：拉取已保存工作流列表
-  const openPicker = useCallback(async () => {
-    setPickerOpen(true);
-    setPickerError('');
-    setWorkflowLoading(true);
-    try {
-      const AS = window.AgentSpaces;
-      const resp = await AS.callPluginTool(BUILTIN_PLUGIN, 'list_workflows', { page_size: 50 });
-      const list = resp?.data?.workflows || resp?.result?.data?.workflows || resp?.result?.workflows || resp?.workflows || [];
-      // 归一化：summarizeWorkflowForTool 返回 workflow_id/title，WorkflowListDialog 需要 id/name
-      // （否则 workflow.id 为 undefined，内部 workflow.id.slice(0,8) 会报错）
-      const normalized = (Array.isArray(list) ? list : []).map((wf) => ({
-        ...wf,
-        id: wf.id || wf.workflow_id,
-        name: wf.name || wf.title || '未命名工作流',
-        updatedAt: wf.updatedAt || 0,
-        nodes: wf.nodes || [],
-      }));
-      setWorkflowList(normalized);
-    } catch (err) {
-      setPickerError(err?.message || String(err));
-    } finally {
-      setWorkflowLoading(false);
-    }
-  }, []);
 
   const onPickWorkflow = useCallback((workflow) => {
     const wfId = workflow.workflow_id || workflow.id;
@@ -128,8 +98,17 @@ export default function WorkflowRunnerNode({ id, data, selected }) {
       nextPatch.lastTemplate = templateText;
     }
     set(nextPatch);
-    setPickerOpen(false);
   }, [set, params.inputText, params.lastTemplate]);
+
+  const openPicker = useCallback(async () => {
+    setPickerError('');
+    try {
+      const workflow = await window.AgentSpaces.openWorkflowListDialog();
+      if (workflow) onPickWorkflow(workflow);
+    } catch (err) {
+      setPickerError(err?.message || String(err));
+    }
+  }, [onPickWorkflow]);
 
   // 解析 JSON 输入：非法时返回 null + 通过节点 error 提示
   const parseInput = useCallback(() => {
@@ -245,6 +224,9 @@ export default function WorkflowRunnerNode({ id, data, selected }) {
           </span>
         </button>
       </div>
+      {pickerError && (
+        <p className="text-xs text-red-500">加载失败：{pickerError}</p>
+      )}
 
       {/* JSON 参数编辑器 */}
       <div className="flex flex-col gap-1">
@@ -347,24 +329,6 @@ export default function WorkflowRunnerNode({ id, data, selected }) {
         <p className="rounded-md bg-red-500/10 px-2 py-1 text-xs text-red-500">{error}</p>
       )}
 
-      {/* 工作流选择器对话框 */}
-      {WorkflowListDialog && (
-        <div className="nodrag nopan nowheel" onClick={(e) => e.stopPropagation()}>
-          <WorkflowListDialog
-            open={pickerOpen}
-            workflows={workflowList}
-            onSelect={onPickWorkflow}
-            onClose={() => setPickerOpen(false)}
-            showCreate={false}
-          />
-          {pickerOpen && workflowLoading && (
-            <p className="mt-1 text-xs text-muted-foreground">加载工作流列表…</p>
-          )}
-          {pickerError && (
-            <p className="mt-1 text-xs text-red-500">加载失败：{pickerError}</p>
-          )}
-        </div>
-      )}
     </NodeShell>
   );
 }

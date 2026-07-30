@@ -21,6 +21,8 @@ export function PluginConfigDialog({
   config,
   schemeName,
   legacyWorkflowId,
+  loadValues,
+  saveValues,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -29,6 +31,8 @@ export function PluginConfigDialog({
   config: PluginConfigField[];
   schemeName?: string;
   legacyWorkflowId?: string;
+  loadValues?: () => Promise<Record<string, string>>;
+  saveValues?: (values: Record<string, string>) => Promise<void>;
 }) {
   const [values, setValues] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
@@ -39,9 +43,11 @@ export function PluginConfigDialog({
     setError('');
     const load = async () => {
       try {
-        setValues(schemeName
-          ? await pluginConfigSchemeApi.read(pluginId, schemeName)
-          : await pluginApi.getConfig(pluginId));
+        setValues(loadValues
+          ? await loadValues()
+          : schemeName
+            ? await pluginConfigSchemeApi.read(pluginId, schemeName)
+            : await pluginApi.getConfig(pluginId));
       } catch {
         if (schemeName && legacyWorkflowId) {
           const legacyValues = await workflowPluginSchemeApi.read(legacyWorkflowId, pluginId, schemeName);
@@ -53,7 +59,7 @@ export function PluginConfigDialog({
       }
     };
     void load();
-  }, [legacyWorkflowId, open, pluginId, schemeName]);
+  }, [legacyWorkflowId, loadValues, open, pluginId, schemeName]);
 
   function setField(key: string, value: string) {
     setValues(prev => ({ ...prev, [key]: value }));
@@ -83,7 +89,9 @@ export function PluginConfigDialog({
     setSaving(true);
     setError('');
     try {
-      if (schemeName) {
+      if (saveValues) {
+        await saveValues(values);
+      } else if (schemeName) {
         await pluginConfigSchemeApi.save(pluginId, schemeName, values);
       } else {
         const result = await pluginApi.saveConfig(pluginId, values);

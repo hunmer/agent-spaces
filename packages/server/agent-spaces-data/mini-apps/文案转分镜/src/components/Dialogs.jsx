@@ -22,17 +22,6 @@ const WORKFLOW_SLOTS = [
   { key: 'voice', idKey: 'voiceWorkflowId', nameKey: 'voiceWorkflowName', label: '语音合成工作流', desc: '分镜旁白文本生成语音' },
 ];
 
-// 工作流列表元素归一化为 WorkflowListDialog 期望的结构
-function normalizeWorkflow(workflow) {
-  return {
-    ...workflow,
-    id: workflow.id || workflow.workflow_id,
-    name: workflow.name || workflow.title || '未命名工作流',
-    updatedAt: workflow.updatedAt || 0,
-    nodes: workflow.nodes || [],
-  };
-}
-
 // 通用 dialog 外壳（使用 AgentSpacesUI 自带 Dialog，避免 Select 浮层层级异常）
 function Modal({ open, onClose, title, children, width, className = '', bodyClassName = '' }) {
   const { Dialog, DialogContent, DialogHeader, DialogTitle } = window.AgentSpacesUI;
@@ -395,15 +384,11 @@ export function ImportDialog({ open, onClose, actions, agentConfigId }) {
 
 // 工作流设置对话框：为三个用途分别指定工作流
 export function SettingsDialog({ open, value, onClose, onSave }) {
-  const { Button, Label, Workflow, WorkflowListDialog } = window.AgentSpacesUI;
+  const { Button, Label, Workflow } = window.AgentSpacesUI;
   const AS = window.AgentSpaces;
 
   const [cfg, setCfg] = useState(value || {});
-  const [workflows, setWorkflows] = useState([]);
-  const [workflowLoading, setWorkflowLoading] = useState(false);
   const [error, setError] = useState('');
-  // 当前正在挑选工作流的槽位 key（用于复用同一个 WorkflowListDialog）
-  const [pickingSlot, setPickingSlot] = useState(null);
 
   useEffect(() => {
     if (open) {
@@ -412,28 +397,19 @@ export function SettingsDialog({ open, value, onClose, onSave }) {
     }
   }, [open, value]);
 
-  // 打开槽位选择：拉取工作流列表后弹出 WorkflowListDialog
+  // 打开宿主工作流选择器
   const openPicker = async (slotKey) => {
-    setPickingSlot(slotKey);
-    setWorkflowLoading(true);
     try {
-      const resp = await AS.callPluginTool(BUILTIN_PLUGIN, 'list_workflows', { page_size: 50 });
-      const list = resp?.data?.workflows || resp?.result?.data?.workflows || resp?.result?.workflows || resp?.workflows || [];
-      setWorkflows(Array.isArray(list) ? list : []);
+      const workflow = await AS.openWorkflowListDialog();
+      if (!workflow) return;
+      const slot = WORKFLOW_SLOTS.find((item) => item.key === slotKey);
+      if (!slot) return;
+      const id = workflow.id || workflow.workflow_id;
+      const name = workflow.name || workflow.title || '未命名工作流';
+      setCfg((prev) => ({ ...prev, [slot.idKey]: id, [slot.nameKey]: name }));
     } catch (err) {
       setError(err?.message || String(err));
-    } finally {
-      setWorkflowLoading(false);
     }
-  };
-
-  const onPickWorkflow = (workflow) => {
-    const slot = WORKFLOW_SLOTS.find((s) => s.key === pickingSlot);
-    if (!slot) return;
-    const id = workflow.workflow_id || workflow.id;
-    const name = workflow.title || workflow.name || '未命名工作流';
-    setCfg((prev) => ({ ...prev, [slot.idKey]: id, [slot.nameKey]: name }));
-    setPickingSlot(null);
   };
 
   return (
@@ -473,14 +449,6 @@ export function SettingsDialog({ open, value, onClose, onSave }) {
         <Button onClick={() => onSave(cfg)}>保存</Button>
       </div>
 
-      <WorkflowListDialog
-        open={!!pickingSlot}
-        workflows={workflows.map(normalizeWorkflow)}
-        onSelect={onPickWorkflow}
-        onCreate={() => window.open('/workflows', '_blank')}
-        onClose={() => setPickingSlot(null)}
-      />
-      {pickingSlot && workflowLoading && <div className="sb-floating-status">工作流加载中...</div>}
     </Modal>
   );
 }

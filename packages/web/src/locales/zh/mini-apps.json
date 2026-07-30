@@ -160,6 +160,14 @@
     "pluginsTab": "插件",
     "toolsTab": "工具"
   },
+  "workflowConfig": {
+    "title": "工作流插件配置",
+    "open": "工作流配置",
+    "noPlugins": "此工作流未启用插件",
+    "noConfig": "无需配置",
+    "followWorkflow": "使用工作流配置",
+    "customConfig": "独立配置"
+  },
   "toolExecute": {
     "noParams": "此工具无需参数",
     "reset": "重置",

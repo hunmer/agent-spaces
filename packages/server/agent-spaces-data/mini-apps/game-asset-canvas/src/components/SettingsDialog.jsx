@@ -1,28 +1,17 @@
 // 设置对话框：为每种节点类型配置执行时调用的目标工作流
-// 参考 stickerGenerator/SettingsDialog.jsx + WorkflowListDialog 工作流选择模式
+// 参考 stickerGenerator/SettingsDialog.jsx 的工作流选择模式
 // 修改即保存（无保存/取消按钮）：cfg 变化时自动 onSave，用 JSON 比较避免与父组件回传 value 死循环。
 import { useEffect, useRef, useState } from 'react';
 import {
-  WORKFLOW_SLOTS, BUILTIN_PLUGIN,
+  WORKFLOW_SLOTS,
   DEFAULT_TEXT_TO_IMAGE_MODELS, DEFAULT_EDIT_IMAGE_MODELS,
 } from '../utils/settings';
 import { BBOX_AGENT_INIT_NAME, BBOX_AI_SYSTEM_PROMPT, BBOX_AI_USER_PROMPT, PROMPT_REVERSE_AGENT_INIT_NAME, PROMPT_REVERSE_SYSTEM_PROMPT, PROMPT_REVERSE_USER_PROMPT, PROMPT_OPTIMIZE_AGENT_INIT_NAME, PROMPT_OPTIMIZE_SYSTEM_PROMPT, PROMPT_OPTIMIZE_USER_PROMPT } from '../utils/constants';
 
 const {
   Dialog, DialogContent, DialogHeader, DialogTitle,
-  Button, Label, Input, NumberInput, Textarea, WorkflowListDialog, Workflow, RotateCcw, Bot, Sparkles, Search, TagInput, Switch, Wand2,
+  Button, Label, Input, NumberInput, Textarea, Workflow, RotateCcw, Bot, Sparkles, Search, TagInput, Switch, Wand2,
 } = window.AgentSpacesUI;
-
-// 工作流列表归一化（兼容 workflow_id/id、title/name）
-function normalizeWorkflow(workflow) {
-  return {
-    ...workflow,
-    id: workflow.id || workflow.workflow_id,
-    name: workflow.name || workflow.title || '未命名工作流',
-    updatedAt: workflow.updatedAt || 0,
-    nodes: workflow.nodes || [],
-  };
-}
 
 // 工作流槽位行
 function WorkflowSlot({ slot, value, onPick, onReset }) {
@@ -59,9 +48,6 @@ function WorkflowSlot({ slot, value, onPick, onReset }) {
 export default function SettingsDialog({ open, value, onClose, onSave }) {
   const AS = window.AgentSpaces;
   const [cfg, setCfg] = useState(value || {});
-  const [workflows, setWorkflows] = useState([]);
-  const [workflowLoading, setWorkflowLoading] = useState(false);
-  const [pickingSlot, setPickingSlot] = useState(null);
   const [error, setError] = useState('');
   const [agentBusy, setAgentBusy] = useState(false);
 
@@ -190,28 +176,19 @@ export default function SettingsDialog({ open, value, onClose, onSave }) {
     }));
   };
 
-  // 打开工作流选择器：拉取列表
+  // 打开宿主工作流选择器
   const openPicker = async (slotKey) => {
-    setPickingSlot(slotKey);
-    setWorkflowLoading(true);
     try {
-      const resp = await AS.callPluginTool(BUILTIN_PLUGIN, 'list_workflows', { page_size: 50 });
-      const list = resp?.data?.workflows || resp?.result?.data?.workflows || resp?.result?.workflows || resp?.workflows || [];
-      setWorkflows(Array.isArray(list) ? list : []);
+      const workflow = await AS.openWorkflowListDialog();
+      if (!workflow) return;
+      const slot = WORKFLOW_SLOTS.find((item) => item.key === slotKey);
+      if (!slot) return;
+      const id = workflow.id || workflow.workflow_id;
+      const name = workflow.name || workflow.title || '未命名工作流';
+      setCfg((prev) => ({ ...prev, [slot.idKey]: id, [slot.nameKey]: name }));
     } catch (err) {
       setError(err?.message || String(err));
-    } finally {
-      setWorkflowLoading(false);
     }
-  };
-
-  const onPickWorkflow = (workflow) => {
-    const slot = WORKFLOW_SLOTS.find((s) => s.key === pickingSlot);
-    if (!slot) return;
-    const id = workflow.workflow_id || workflow.id;
-    const name = workflow.title || workflow.name || '未命名工作流';
-    setCfg((prev) => ({ ...prev, [slot.idKey]: id, [slot.nameKey]: name }));
-    setPickingSlot(null);
   };
 
   const resetSlot = (slot) => {
@@ -470,18 +447,6 @@ export default function SettingsDialog({ open, value, onClose, onSave }) {
         </div>
       </DialogContent>
 
-      <WorkflowListDialog
-        open={!!pickingSlot}
-        workflows={workflows.map(normalizeWorkflow)}
-        onSelect={onPickWorkflow}
-        onCreate={() => window.open('/workflows', '_blank')}
-        onClose={() => setPickingSlot(null)}
-      />
-      {pickingSlot && workflowLoading && (
-        <div className="fixed bottom-4 left-1/2 z-50 -translate-x-1/2 rounded-md bg-card px-4 py-2 text-sm shadow-lg">
-          工作流加载中...
-        </div>
-      )}
     </Dialog>
   );
 }

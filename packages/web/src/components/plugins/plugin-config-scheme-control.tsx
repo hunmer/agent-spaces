@@ -22,6 +22,8 @@ export function PluginConfigSchemeControl({
   className,
   legacyWorkflowId,
   onCreateRequest,
+  defaultLabel,
+  selectedLabel,
 }: {
   pluginId: string;
   selectedScheme?: string;
@@ -30,6 +32,8 @@ export function PluginConfigSchemeControl({
   className?: string;
   legacyWorkflowId?: string;
   onCreateRequest?: () => void;
+  defaultLabel?: string;
+  selectedLabel?: string;
 }) {
   const t = useTranslations('workflows');
   const [schemes, setSchemes] = useState<string[]>([]);
@@ -83,7 +87,7 @@ export function PluginConfigSchemeControl({
           render={<span />}
           className="inline-flex h-6 min-w-0 flex-1 items-center gap-0.5 rounded px-1.5 text-[10px] hover:bg-muted cursor-pointer"
         >
-          <span className="truncate">{selectedScheme || t('sidebar.defaultConfig')}</span>
+          <span className="truncate">{selectedLabel || selectedScheme || defaultLabel || t('sidebar.defaultConfig')}</span>
           <ChevronDown className="h-2.5 w-2.5 shrink-0 opacity-50" />
         </PopoverTrigger>
         <PopoverContent className="w-44 p-0" align="end">
@@ -91,7 +95,7 @@ export function PluginConfigSchemeControl({
             <CommandList>
               <CommandGroup>
                 <CommandItem value="__default__" className="text-xs" onSelect={() => void onSelect('')}>
-                  {t('sidebar.defaultConfig')}
+                  {defaultLabel || t('sidebar.defaultConfig')}
                 </CommandItem>
                 {schemes.map(name => (
                   <CommandItem key={name} value={name} className="text-xs" onSelect={() => void onSelect(name)}>

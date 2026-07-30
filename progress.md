@@ -13,3 +13,8 @@
 - 追加需求更新：工作流执行核心支持本次调用级插件配置，而非仅 Mini App 入口。
 - 已完成 `pluginConfigs` 核心解析及 REST/WS/Webhook/SDK/Agent/Mini App 入口透传；覆盖会传递到子工作流。
 - shared、SDK、server build 均通过；对象覆盖、插件名解析、方案名读取的核心冒烟测试通过；`git diff --check` 通过。
+- 开始实现 Mini App 工作流选择、data 配置文件和执行自动注入。
+- 已恢复本轮上下文并确认剩余两个直接使用 `WorkflowListDialog` 的 Mini App 调用点，准备迁移并清理遗留状态。
+- 已完成全部 8 个 Mini App 的 Host API 迁移；Host API 增加重复打开、卸载和配置写入失败清理；进入静态验证阶段。
+- 验证进展：shared、SDK、server build 通过；Web 针对性 ESLint 0 errors；全量 tsc 仅命中仓库既有错误，本次文件未报错。
+- 8 个迁移后的 Mini App JSX 均通过 esbuild 语法编译；直接渲染 `WorkflowListDialog` 的引用已清零；任务实现完成。

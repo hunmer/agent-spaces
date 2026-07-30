@@ -11,3 +11,11 @@
 - 旧 Workflow `plugin_configs/` 数据通过侧栏首次加载或执行时自动复制到插件级方案；旧接口暂留作兼容读取。
 - `LocalPluginCard` 由 `WorkflowPluginsDialog` 调用，父层已有 Workflow 方案映射，可直接绑定通用方案控件，无需新增存储/API。
 - 所有实时工作流执行最终进入 `ExecutionManager.execute(WorkflowExecuteRequest)`；在核心层解析 `pluginConfigs` 可覆盖 REST、WS、Agent 工具和 Mini App 内置入口，并可传递到子工作流。
+- `WorkflowListDialog` 当前通过 `ui-exports.ts` 暴露给 Mini App，至少 8 个 Mini App 源文件直接渲染它。
+- `useMiniAppHostApi` 已集中挂载 `window.AgentSpaces`，适合新增 Promise 式工作流选择方法并在宿主层渲染对话框。
+- Mini App 源码中仍有两个直接渲染点：`game-asset-canvas/.../WorkflowRunnerNode.jsx` 与 `fitting-room/.../GalleryPage.jsx`；其余命中多为执行常量或迁移后遗留注释/归一化函数。
+- 当前工作区包含用户已有的 `game-asset-canvas` manifest、布局和 Mini App 索引变更，后续不触碰这些文件。
+- `WorkflowRunnerNode` 选中工作流后还会从 start 节点生成 JSON 输入模板；迁移时保留该逻辑，仅替换列表获取和弹窗托管方式。
+- `fitting-room/GalleryPage` 选中后会调用 `save_shared_config`；迁移时继续等待保存完成。
+- `sdk.workflow.list()` 返回完整 `WorkflowTemplate[]`，可同时满足选择、插件列表展示与 start 节点输入模板生成。
+- Mini App data 读取最终使用 `safeProjectSubdirPath(projectId, 'data', filePath)`，新增 GET 路由沿用现有目录边界校验。

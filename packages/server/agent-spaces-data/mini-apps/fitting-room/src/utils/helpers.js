@@ -52,16 +52,6 @@ export function persistableFiles(items) {
     .filter(Boolean);
 }
 
-export function normalizeWorkflow(workflow) {
-  return {
-    ...workflow,
-    id: workflow.id || workflow.workflow_id,
-    name: workflow.name || workflow.title || '未命名工作流',
-    updatedAt: workflow.updatedAt || 0,
-    nodes: workflow.nodes || [],
-  };
-}
-
 // 多层 unwrap：拿到真正承载 steps/status 的那层 payload
 export function unwrapWorkflowPayload(value) {
   let payload = value;

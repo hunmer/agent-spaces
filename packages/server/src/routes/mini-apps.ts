@@ -173,6 +173,16 @@ router.post('/:id/services/invoke', async (req: Request<{ id: string }>, res: Re
   }
 });
 
+router.get('/:id/data/content', (req: Request<{ id: string }, any, any, { path?: string }>, res: Response) => {
+  try {
+    const filePath = req.query.path as string;
+    if (!filePath) { res.status(400).json({ error: 'path query parameter is required' }); return; }
+    const content = svc.readDataFile(req.params.id, filePath);
+    if (!content) { res.status(404).json({ error: 'File not found' }); return; }
+    res.json({ content: content.toString('utf-8') });
+  } catch (error: any) { res.status(500).json({ error: error.message }); }
+});
+
 router.put('/:id/data/content', (req: Request<{ id: string }>, res: Response) => {
   try {
     const { path: filePath, content, encoding } = req.body;

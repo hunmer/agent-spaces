@@ -1,26 +1,15 @@
 // 设置对话框：文生图 / 图生图工作流选择 + 默认模型 + Agent 配置
 // 参考 文案转分镜/Dialogs.jsx 的 SettingsDialog + AgentConfigButton 模式
 import {
-  WORKFLOW_SLOTS, MODEL_OPTIONS, BUILTIN_PLUGIN,
+  WORKFLOW_SLOTS, MODEL_OPTIONS,
   AGENT_INIT_NAME, AGENT_INIT_PROMPT,
 } from '../utils/settings';
 
 const {
   Dialog, DialogContent, DialogHeader, DialogTitle,
   Button, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-  Workflow, WorkflowListDialog, Bot, Check, Loader2, RotateCcw,
+  Workflow, Bot, Check, Loader2, RotateCcw,
 } = window.AgentSpacesUI;
-
-// 工作流列表归一化
-function normalizeWorkflow(workflow) {
-  return {
-    ...workflow,
-    id: workflow.id || workflow.workflow_id,
-    name: workflow.name || workflow.title || '未命名工作流',
-    updatedAt: workflow.updatedAt || 0,
-    nodes: workflow.nodes || [],
-  };
-}
 
 // 工作流槽位行
 function WorkflowSlot({ slot, value, onPick }) {
@@ -43,9 +32,6 @@ function WorkflowSlot({ slot, value, onPick }) {
 export default function SettingsDialog({ open, value, onClose, onSave }) {
   const AS = window.AgentSpaces;
   const [cfg, setCfg] = React.useState(value || {});
-  const [workflows, setWorkflows] = React.useState([]);
-  const [workflowLoading, setWorkflowLoading] = React.useState(false);
-  const [pickingSlot, setPickingSlot] = React.useState(null);
   const [error, setError] = React.useState('');
   const [agentBusy, setAgentBusy] = React.useState(false);
 
@@ -56,28 +42,19 @@ export default function SettingsDialog({ open, value, onClose, onSave }) {
     }
   }, [open, value]);
 
-  // 打开工作流选择器：拉取列表
+  // 打开宿主工作流选择器
   const openPicker = async (slotKey) => {
-    setPickingSlot(slotKey);
-    setWorkflowLoading(true);
     try {
-      const resp = await AS.callPluginTool(BUILTIN_PLUGIN, 'list_workflows', { page_size: 50 });
-      const list = resp?.data?.workflows || resp?.result?.data?.workflows || resp?.result?.workflows || resp?.workflows || [];
-      setWorkflows(Array.isArray(list) ? list : []);
+      const workflow = await AS.openWorkflowListDialog();
+      if (!workflow) return;
+      const slot = WORKFLOW_SLOTS.find((item) => item.key === slotKey);
+      if (!slot) return;
+      const id = workflow.id || workflow.workflow_id;
+      const name = workflow.name || workflow.title || '未命名工作流';
+      setCfg((prev) => ({ ...prev, [slot.idKey]: id, [slot.nameKey]: name }));
     } catch (err) {
       setError(err?.message || String(err));
-    } finally {
-      setWorkflowLoading(false);
     }
-  };
-
-  const onPickWorkflow = (workflow) => {
-    const slot = WORKFLOW_SLOTS.find((s) => s.key === pickingSlot);
-    if (!slot) return;
-    const id = workflow.workflow_id || workflow.id;
-    const name = workflow.title || workflow.name || '未命名工作流';
-    setCfg((prev) => ({ ...prev, [slot.idKey]: id, [slot.nameKey]: name }));
-    setPickingSlot(null);
   };
 
   // 配置 Agent：调用宿主 openAgentEditor
@@ -178,14 +155,6 @@ export default function SettingsDialog({ open, value, onClose, onSave }) {
         </div>
       </DialogContent>
 
-      <WorkflowListDialog
-        open={!!pickingSlot}
-        workflows={workflows.map(normalizeWorkflow)}
-        onSelect={onPickWorkflow}
-        onCreate={() => window.open('/workflows', '_blank')}
-        onClose={() => setPickingSlot(null)}
-      />
-      {pickingSlot && workflowLoading && <div className="sg-floating-status">工作流加载中...</div>}
     </Dialog>
   );
 }
