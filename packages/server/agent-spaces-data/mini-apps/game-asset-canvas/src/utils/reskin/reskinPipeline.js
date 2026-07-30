@@ -27,7 +27,7 @@ import {
   buildOriginalSilhouettes, segmentByShapeIntersection, applyMaskToRegion,
 } from './shapeSegmenter';
 import { loadImage, createCanvas, cropRegionRotated, erodeAlpha } from './canvasUtils';
-import { generateImages } from '../workflow';
+import { generateImages, normalizeImageUrl } from '../workflow';
 
 const REMBG_PLUGIN = 'workflow.rembg';
 const EDIT_ASPECTS = [
@@ -70,7 +70,7 @@ async function uploadDataUrl(dataUrl, filename) {
   const blob = await (await fetch(dataUrl)).blob();
   const file = new File([blob], filename, { type: blob.type || 'image/png' });
   const uploaded = await AS.uploadFile(file);
-  return uploaded?.url || uploaded?.httpPath;
+  return normalizeImageUrl(uploaded?.url || uploaded?.httpPath);
 }
 
 function closestEditAspect(width, height) {

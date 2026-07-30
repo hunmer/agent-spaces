@@ -181,7 +181,8 @@ export function initialData(type) {
       animGroups: [],
       videoInfo: null,
       params: { mode: 'count', count: 8, fps: 1, maxWidth: 320 },
-      output: { video: null },
+      sheetLayout: { rows: 1, cols: 4 },
+      output: { video: null, images: [] },
     };
   }
   if (type === NODE_TYPES.imageProcess) {

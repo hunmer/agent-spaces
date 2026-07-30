@@ -1,6 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Button, Checkbox, NumberInput, ScrollArea, Loader } from '@agent-spaces/ui';
-import { Play, Pause, Repeat, Repeat1, Download, Save } from '@agent-spaces/ui';
+import {
+  Play, Pause, Repeat, Repeat1, Download, Save, MoreVertical, FolderArchive,
+  DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
+} from '@agent-spaces/ui';
+import { getJSZip } from '../spine/runtime';
 
 /**
  * 把一组帧 url 横向拼接成一张 sheet 图（各帧等高左对齐，宽度=帧宽之和）。
@@ -161,6 +165,48 @@ export default function GridAnimationPreview({ previews, cols, rows, initialDire
     }
   };
 
+  // 把单帧 url 转成 Blob（兼容 dataURL/http URL）
+  const frameUrlToBlob = async (url) => {
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    return res.blob();
+  };
+
+  // 下载为序列帧 zip：每个动画分组一个文件夹，文件夹下按索引命名图片
+  const handleDownloadSequence = async () => {
+    setComposing(true);
+    try {
+      const JSZip = await getJSZip();
+      const zip = new JSZip();
+      let total = 0;
+      for (let i = 0; i < groups.length; i++) {
+        if (!selectedGroups.has(i)) continue;
+        const frames = groups[i];
+        const folderName = `anim_${String(i + 1).padStart(2, '0')}`;
+        const folder = zip.folder(folderName);
+        for (let j = 0; j < frames.length; j++) {
+          const blob = await frameUrlToBlob(frames[j]);
+          if (!blob) continue;
+          const ext = (blob.type.split('/')[1] || 'png').replace('jpeg', 'jpg');
+          folder.file(`${String(j).padStart(3, '0')}.${ext}`, blob);
+          total++;
+        }
+      }
+      if (!total) return;
+      const blob = await zip.generateAsync({ type: 'blob' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `sequence_frames_${Date.now()}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } finally {
+      setComposing(false);
+    }
+  };
+
   if (!groups.length) {
     return (
       <p className="px-2 py-8 text-center text-xs text-muted-foreground">
@@ -230,25 +276,43 @@ export default function GridAnimationPreview({ previews, cols, rows, initialDire
         <span className="text-[11px] text-muted-foreground">
           已选 {selectedGroups.size}/{groups.length} 个动画
         </span>
-        <div className="flex items-center gap-1.5">
+        <div className="inline-flex overflow-hidden rounded-md border border-border">
           <Button
-            size="sm" variant="outline" className="h-8"
-            disabled={composing || selectedGroups.size === 0}
-            onClick={handleDownloadSheets}
-            title="把选中动画组的帧拼接成横向长图，浏览器逐张下载"
-          >
-            {composing ? <Loader className="mr-1 h-4 w-4" /> : <Download className="mr-1 h-4 w-4" />}
-            下载为多张 sheet
-          </Button>
-          <Button
-            size="sm" className="h-8"
+            size="sm" className="h-8 rounded-none border-r border-border"
             disabled={composing || selectedGroups.size === 0}
             onClick={handleSaveSheets}
             title="把选中动画组合成 sheet 图并上传，写入节点产出"
           >
-            <Save className="mr-1 h-4 w-4" />
+            {composing ? <Loader className="mr-1 h-4 w-4" /> : <Save className="mr-1 h-4 w-4" />}
             保存为多张 sheet
           </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              render={
+                <Button
+                  size="sm" variant="default" className="h-8 rounded-none px-2"
+                  disabled={composing || selectedGroups.size === 0}
+                  title="更多下载方式"
+                />
+              }
+            >
+              <MoreVertical className="h-4 w-4" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                onClick={handleDownloadSheets}
+                disabled={composing || selectedGroups.size === 0}
+              >
+                <Download className="mr-2 h-4 w-4" /> 下载为多张 sheet
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={handleDownloadSequence}
+                disabled={composing || selectedGroups.size === 0}
+              >
+                <FolderArchive className="mr-2 h-4 w-4" /> 下载序列帧
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
     </div>

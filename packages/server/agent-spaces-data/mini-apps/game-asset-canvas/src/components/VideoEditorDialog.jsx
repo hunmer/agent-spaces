@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Dialog, DialogContent, DialogTitle,
-  FileUpload, Film, Trash2, MoreVertical, FolderPlus, Loader,
+  FileUpload, Film, Trash2, MoreVertical, FolderPlus, Loader, Download,
 } from '@agent-spaces/ui';
 import FramePlayer from './nodes/FramePlayer';
 import { FRAME_EXTRACT_MODE_OPTIONS } from '../utils/constants';
+import { composeSpriteSheet } from '../utils/image-ops/spriteSheet';
+import { urlToImageData, imageDataToDataUrl, imageDataToUrl } from '../utils/image-ops/io';
 
 const FFMPEG_PLUGIN_ID = 'workflow.ffmpeg';
 const FFMPEG_PROBE = 'ffmpeg_probe';
@@ -237,6 +239,69 @@ export default function VideoEditorDialog({ open, data, onUpdate, onClose }) {
     setDotsFrameIdx(null);
   }, [updateGroup]);
 
+  // —— 精灵图合成（sheet）——
+  // 行/列布局：持久化到 data.sheetLayout，作为输出精灵图的全局网格设置
+  const sheetLayout = data?.sheetLayout || { rows: 1, cols: 4 };
+  const setSheetLayout = useCallback((patch) => {
+    onUpdate?.({ sheetLayout: { ...sheetLayout, ...patch } });
+  }, [sheetLayout, onUpdate]);
+
+  // 取某动画组实际参与的帧（startFrame..endFrame 闭区间，按序截取）
+  const groupFrames = useCallback((g) => {
+    if (!frames.length) return [];
+    const s = Math.max(0, Math.min(g.startFrame ?? 0, frames.length - 1));
+    const e = Math.max(0, Math.min(g.endFrame ?? 0, frames.length - 1));
+    if (e < s) return [];
+    return frames.slice(s, e + 1);
+  }, [frames]);
+
+  // 合成精灵图预览（DataURL，不上传）：用于动画组下方实时展示
+  // 输入帧 URL → ImageData → composeSpriteSheet → dataUrl
+  const [sheetBusyId, setSheetBusyId] = useState(null);
+  const composeSheetDataUrl = useCallback(async (g) => {
+    const fs = groupFrames(g);
+    if (fs.length < 1) return null;
+    setSheetBusyId(g.id);
+    try {
+      const imgs = await Promise.all(fs.map((u) => urlToImageData(u)));
+      const cols = Math.max(1, Math.floor(sheetLayout.cols || 4));
+      const sheet = composeSpriteSheet(imgs, { columns: cols });
+      return imageDataToDataUrl(sheet);
+    } catch (err) {
+      console.warn('精灵图预览合成失败:', err?.message || err);
+      return null;
+    } finally {
+      setSheetBusyId(null);
+    }
+  }, [groupFrames, sheetLayout.cols]);
+
+  // 输出到画布：把每个有效动画组合成精灵图并上传，收集 URL 写入 data.output.images（节点统一输出约定）
+  const handleExportSheets = useCallback(async () => {
+    const valid = animGroups.filter((g) => groupFrames(g).length > 0);
+    if (!valid.length) {
+      onUpdate?.({ error: '没有可导出的动画组（需先设置起止帧）' });
+      return;
+    }
+    setBusy(true); setBusyMsg('合成精灵图并输出…');
+    try {
+      const urls = [];
+      for (const g of valid) {
+        const fs = groupFrames(g);
+        const imgs = await Promise.all(fs.map((u) => urlToImageData(u)));
+        const cols = Math.max(1, Math.floor(sheetLayout.cols || 4));
+        const sheet = composeSpriteSheet(imgs, { columns: cols });
+        const url = await imageDataToUrl(sheet);
+        urls.push(url);
+      }
+      // output.images 是节点输出的统一约定（下游图片节点据此消费）
+      onUpdate?.({ output: { images: urls }, status: 'done', error: undefined });
+    } catch (err) {
+      onUpdate?.({ error: `输出失败：${err?.message || err}` });
+    } finally {
+      setBusy(false); setBusyMsg('');
+    }
+  }, [animGroups, groupFrames, sheetLayout.cols, onUpdate]);
+
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose?.()}>
       <DialogContent className="!w-[80vw] !max-w-[80vw] flex max-h-[92vh] flex-col gap-0 p-0 nodrag nopan nowheel">
@@ -253,7 +318,7 @@ export default function VideoEditorDialog({ open, data, onUpdate, onClose }) {
           )}
         </div>
 
-        {/* 顶部：横向视频缩略图列表（最左侧 FileUpload 接收上传） */}
+        {/* 缩略图列表样式（视频列表已移入左侧栏，不再占整行顶栏） */}
         <style>{`
           .video-thumb-upload { width: 96px; flex: 0 0 96px; }
           .video-thumb-upload > div:first-child {
@@ -271,59 +336,65 @@ export default function VideoEditorDialog({ open, data, onUpdate, onClose }) {
           .video-thumb-delete:hover { background: rgb(220, 38, 38); }
           .video-thumb-delete > svg { width: 12px; height: 12px; }
         `}</style>
-        <div className="flex items-center gap-2 overflow-x-auto border-b border-border bg-muted/20 px-3 py-2">
-          {/* 上传入口：固定在最左侧，尺寸与缩略图一致 */}
-          <FileUpload
-            value={[]}
-            onChange={handleFilesChange}
-            accept={{ 'video/*': ['.mp4', '.webm', '.mov', '.avi', '.mkv'] }}
-            maxFiles={0}
-            placeholder="+ 视频"
-            className="video-thumb-upload"
-          />
-          {videos.length === 0 ? (
-            <span className="text-xs text-muted-foreground">从最左侧上传，或从上游连线接收</span>
-          ) : videos.map((url, i) => {
-            // 上游接收的视频（source=upstream）不允许删除；其余（用户上传/历史）均可删
-            const canDelete = data?.source !== 'upstream';
-            return (
-            <div
-              key={url + i}
-              className={`relative h-14 w-24 shrink-0 cursor-pointer overflow-hidden rounded border-2 transition ${i === activeVideoIdx ? 'border-primary' : 'border-transparent hover:border-border'}`}
-              onClick={() => setActiveVideoIdx(i)}
-            >
-              {thumbs[url] ? (
-                <img src={thumbs[url]} alt={`视频 ${i + 1}`} className="h-full w-full object-cover" />
-              ) : (
-                <div className="flex h-full w-full items-center justify-center bg-muted text-muted-foreground">
-                  <Film className="h-4 w-4 opacity-40" />
-                </div>
-              )}
-              <span className="absolute bottom-0 left-0 right-0 bg-black/60 px-1 py-0.5 text-[9px] text-white">
-                #{i + 1}
-              </span>
-              {canDelete && (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onUpdate?.({ videos: videos.filter((_, j) => j !== i) });
-                  }}
-                  className="video-thumb-delete"
-                  aria-label={`移除视频 ${i + 1}`}
-                  title="移除"
-                >
-                  <Trash2 />
-                </button>
-              )}
-            </div>
-            );
-          })}
-        </div>
 
-        {/* 主体：左侧播放器+帧列表 / 右侧 tabs */}
+        {/* 主体：左侧栏（视频列表 + 播放器 + 帧列表）/ 右侧 tabs */}
         <div className="flex min-h-0 flex-1">
-          {/* 左侧 */}
+          {/* 左侧栏：纵向视频缩略图列表（属于左侧栏，不占整行/不在右侧面板上方） */}
+          <aside className="flex w-[132px] shrink-0 flex-col overflow-y-auto border-r border-border bg-muted/20 p-2">
+            {/* 上传入口 */}
+            <FileUpload
+              value={[]}
+              onChange={handleFilesChange}
+              accept={{ 'video/*': ['.mp4', '.webm', '.mov', '.avi', '.mkv'] }}
+              maxFiles={0}
+              placeholder="+ 视频"
+              className="video-thumb-upload mb-2"
+            />
+            {videos.length === 0 ? (
+              <span className="text-[10px] leading-tight text-muted-foreground">上传或从上游连线接收</span>
+            ) : (
+              <div className="flex flex-col gap-1.5">
+                {videos.map((url, i) => {
+                  // 上游接收的视频（source=upstream）不允许删除；其余（用户上传/历史）均可删
+                  const canDelete = data?.source !== 'upstream';
+                  return (
+                    <div
+                      key={url + i}
+                      className={`relative h-14 w-full cursor-pointer overflow-hidden rounded border-2 transition ${i === activeVideoIdx ? 'border-primary' : 'border-transparent hover:border-border'}`}
+                      onClick={() => setActiveVideoIdx(i)}
+                    >
+                      {thumbs[url] ? (
+                        <img src={thumbs[url]} alt={`视频 ${i + 1}`} className="h-full w-full object-cover" />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center bg-muted text-muted-foreground">
+                          <Film className="h-4 w-4 opacity-40" />
+                        </div>
+                      )}
+                      <span className="absolute bottom-0 left-0 right-0 bg-black/60 px-1 py-0.5 text-[9px] text-white">
+                        #{i + 1}
+                      </span>
+                      {canDelete && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onUpdate?.({ videos: videos.filter((_, j) => j !== i) });
+                          }}
+                          className="video-thumb-delete"
+                          aria-label={`移除视频 ${i + 1}`}
+                          title="移除"
+                        >
+                          <Trash2 />
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </aside>
+
+          {/* 中部：播放器 + 帧列表 */}
           <div className="flex min-w-0 flex-1 flex-col">
             {/* 视频播放器 */}
             <div className="flex items-center justify-center bg-black/90 p-3" style={{ minHeight: 240 }}>
@@ -416,6 +487,12 @@ export default function VideoEditorDialog({ open, data, onUpdate, onClose }) {
                 <AnimTab
                   groups={animGroups}
                   frames={frames}
+                  sheetLayout={sheetLayout}
+                  onSetSheetLayout={setSheetLayout}
+                  onComposeSheetDataUrl={composeSheetDataUrl}
+                  sheetBusyId={sheetBusyId}
+                  onExportSheets={handleExportSheets}
+                  exporting={busy}
                   onAddGroup={addGroup}
                   onUpdateGroup={updateGroup}
                   onDeleteGroup={deleteGroup}
@@ -578,10 +655,51 @@ function InfoRow({ label, value }) {
   );
 }
 
-/** 动画组 tab：分组列表 + 循环播放器（起止帧由帧列表 ⋮ 菜单设置） */
-function AnimTab({ groups, frames, onAddGroup, onUpdateGroup, onDeleteGroup }) {
+/**
+ * 动画组 tab：
+ * - 顶部：行/列设置（精灵图输出网格布局）+ 新建动画组
+ * - 每个动画组：名称/起止帧/fps + 循环播放器 + 实时精灵图预览（按 cols 合成）
+ * - 列表最下方：【输出到画布】按钮，把每个动画组的精灵图输出到节点 data.output.images
+ *
+ * 起止帧由帧列表 ⋮ 菜单设置。
+ */
+function AnimTab({
+  groups, frames,
+  sheetLayout, onSetSheetLayout,
+  onComposeSheetDataUrl, sheetBusyId,
+  onExportSheets, exporting,
+  onAddGroup, onUpdateGroup, onDeleteGroup,
+}) {
+  const exportableCount = groups.filter((g) => {
+    const s = Math.max(0, g.startFrame ?? 0);
+    const e = Math.max(0, g.endFrame ?? 0);
+    return e >= s && frames.length > 0;
+  }).length;
+
   return (
     <div className="flex flex-col gap-3">
+      {/* 顶部：行/列设置 + 新建动画组 */}
+      <div className="flex flex-col gap-2 rounded-md border border-border p-2">
+        <h4 className="text-[11px] font-semibold text-foreground">精灵图布局</h4>
+        <div className="grid grid-cols-2 gap-1.5">
+          <label className="flex flex-col gap-0.5">
+            <span className="text-[10px] text-muted-foreground">行（rows）</span>
+            <input type="number" min="1" value={sheetLayout.rows ?? 1}
+              onChange={(e) => onSetSheetLayout({ rows: Math.max(1, Number(e.target.value) || 1) })}
+              className="w-full rounded border border-border px-1.5 py-1 text-xs outline-none focus:border-primary" />
+          </label>
+          <label className="flex flex-col gap-0.5">
+            <span className="text-[10px] text-muted-foreground">列（cols）</span>
+            <input type="number" min="1" value={sheetLayout.cols ?? 4}
+              onChange={(e) => onSetSheetLayout({ cols: Math.max(1, Number(e.target.value) || 1) })}
+              className="w-full rounded border border-border px-1.5 py-1 text-xs outline-none focus:border-primary" />
+          </label>
+        </div>
+        <p className="text-[10px] leading-tight text-muted-foreground">
+          列数决定精灵图横向排布；调整任意参数（含 fps）会在动画下方刷新预览。
+        </p>
+      </div>
+
       <button
         type="button"
         onClick={onAddGroup}
@@ -643,27 +761,67 @@ function AnimTab({ groups, frames, onAddGroup, onUpdateGroup, onDeleteGroup }) {
               fps={g.fps ?? 10}
             />
 
-            {/* 已加入的帧缩略 */}
-            {g.frames && g.frames.length > 0 && (
-              <div className="flex flex-wrap gap-1">
-                {g.frames.map((url, i) => (
-                  <div key={url + i} className="relative">
-                    <img src={url} alt="" className="h-8 w-10 rounded border border-border object-cover" />
-                    <button type="button"
-                      onClick={() => onUpdateGroup(g.id, { frames: g.frames.filter((u) => u !== url) })}
-                      className="absolute -right-1 -top-1 hidden rounded-full bg-red-500 p-0.5 text-white group-hover:block">
-                      <Trash2 className="h-2 w-2" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-            {(!g.frames || g.frames.length === 0) && (
-              <p className="text-center text-[10px] text-muted-foreground">在帧列表点 ⋮ → 设为起点/终点 → 选本组</p>
-            )}
+            {/* 实时精灵图预览（按 cols 合成；fps/起止帧/列变化时刷新） */}
+            <GroupSheetPreview
+              group={g}
+              cols={sheetLayout.cols ?? 4}
+              busy={sheetBusyId === g.id}
+              onCompose={onComposeSheetDataUrl}
+            />
           </div>
         );
       })}
+
+      {/* 列表最下方：输出到画布 */}
+      <button
+        type="button"
+        onClick={onExportSheets}
+        disabled={exporting || exportableCount === 0}
+        className="mt-1 flex items-center justify-center gap-1.5 rounded-md bg-primary px-3 py-2 text-xs font-medium text-primary-foreground transition hover:bg-primary/90 disabled:opacity-50"
+      >
+        <Download className="h-3.5 w-3.5" />
+        输出到画布{exportableCount > 0 ? `（${exportableCount} 张）` : ''}
+      </button>
+    </div>
+  );
+}
+
+/**
+ * 单个动画组的精灵图预览。
+ * 依赖 group（起止帧/fps）、cols 变化时异步重算 dataUrl 并展示。
+ */
+function GroupSheetPreview({ group, cols, busy, onCompose }) {
+  const [dataUrl, setDataUrl] = useState(null);
+  const [err, setErr] = useState('');
+
+  // 依赖：起止帧、fps、列数、合成函数 —— 任一变化（含切 fps）触发重算
+  const depKey = `${group.startFrame}-${group.endFrame}-${group.fps}-${cols}`;
+  useEffect(() => {
+    let cancelled = false;
+    const s = Math.max(0, group.startFrame ?? 0);
+    const e = Math.max(0, group.endFrame ?? 0);
+    if (e < s) { setDataUrl(null); setErr('起止帧无效'); return; }
+    setErr('');
+    onCompose?.(group).then((url) => {
+      if (!cancelled) setDataUrl(url);
+    });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [depKey, onCompose]);
+
+  if (err) return <p className="text-center text-[10px] text-red-500">{err}</p>;
+  return (
+    <div className="flex flex-col gap-1">
+      <span className="text-[10px] text-muted-foreground">精灵图预览</span>
+      <div className="flex items-center justify-center rounded border border-border bg-[conic-gradient(#8882_25%,_transparent_0_50%,_#8882_0_75%,_transparent_0)] bg-[length:12px_12px] p-1">
+        {busy ? (
+          <Loader className="h-4 w-4 animate-spin text-muted-foreground" />
+        ) : dataUrl ? (
+          <img src={dataUrl} alt="精灵图预览" className="max-h-28 max-w-full object-contain" />
+        ) : (
+          <span className="text-[10px] text-muted-foreground">设置起止帧后显示</span>
+        )}
+      </div>
     </div>
   );
 }

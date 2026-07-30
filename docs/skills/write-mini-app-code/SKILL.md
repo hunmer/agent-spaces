@@ -184,6 +184,41 @@ Use Tailwind utility classes through `className` for ordinary styling.
 - Size full-height app roots against the renderer parent with `h-full min-h-0` or `height: 100%`; never use `h-screen` or `height: 100vh`. The standalone preview includes a host toolbar, so viewport height exceeds the available render area and the overflow is clipped.
 - Put scrolling on a `min-h-0 overflow-auto` child inside the full-height root.
 
+### Tailwind build boundary
+
+Workflow UI JSX is compiled at runtime, after the host Tailwind stylesheet has already been built. Project files under the mini-app's `src/` directory are **not Tailwind content sources**. A utility in `className` only works when the host stylesheet already contains that selector, usually because the same utility appears under `packages/web/src/`. Babel compilation does not generate missing CSS.
+
+Follow these rules:
+
+- Reuse common host utilities and semantic theme tokens, but do not assume a project-only, arbitrary-value, or dynamically constructed class exists. For example, `bg-${color}-500`, `right-[2px]`, or a rarely used opacity/background utility may render no CSS at all.
+- Do not make behavior-critical visibility, positioning, stacking, size, or contrast depend on an unverified utility. If the selector may be absent, use an inline `style` for a one-off element or a narrowly scoped `<style>` class for repeated or pseudo-state styling.
+- Keep scoped CSS names project-specific and set every critical property explicitly. Do not rely on a missing utility to provide part of the rule.
+- When JSX is present in the DOM but an element looks missing, inspect computed styles or search the built host CSS for the escaped selector before changing React state, hover handlers, or permission conditions.
+
+Example for a critical overlay control:
+
+```jsx
+<style>{`
+  .asset-thumb-delete {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    z-index: 20;
+    display: flex;
+    width: 20px;
+    height: 20px;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    background: rgb(0 0 0 / 0.78);
+  }
+`}</style>
+
+<button className="asset-thumb-delete" aria-label="Delete asset">
+  <Trash2 style={{ width: 12, height: 12 }} />
+</button>
+```
+
 Prefer theme-aware tokens:
 
 - `bg-background`
@@ -219,7 +254,7 @@ Do not:
 - Override global theme CSS variables such as `--background`, `--foreground`, `--card-*`, or `--popover-*`.
 - Hard-code text colors like `text-white`, `text-black`, `text-slate-*`, `text-gray-*`, or one-off hex colors unless they are explicit semantic status states with matching `dark:` variants.
 - Hard-code only a background color while letting text inherit unrelated theme tokens.
-- Use inline `style` objects or `<style>` blocks for normal UI styling.
+- Use inline `style` objects or `<style>` blocks for normal UI styling, except for critical rules that may be absent because of the Tailwind build boundary above.
 - Create a separate CSS file for simple Tailwind styling.
 
 When custom surface, border, or muted text styling is necessary, verify it is readable in both light and dark themes. Prefer semantic tokens; use paired `dark:` utilities only when semantic tokens are insufficient.
@@ -654,6 +689,7 @@ Before finishing, inspect the changed files for these invariants:
 - Overlay triggers (`Tooltip`/`Popover`/`Select`/`DropdownMenu`/`Menu`) use the Base UI `render` prop, never `asChild`. There must be no `asChild` anywhere in `src/` — it leaks to the DOM and nests buttons inside buttons.
 - Full-height roots use parent-relative height (`h-full` / `height: 100%`), not viewport height (`h-screen` / `100vh`).
 - Styling uses Tailwind `className` and theme tokens where practical.
+- Project-only, arbitrary-value, and dynamically constructed Tailwind utilities are not trusted for critical styles unless the selector is confirmed in the host stylesheet; critical fallback styles use inline `style` or a narrowly scoped `<style>` class.
 - Light and dark themes remain readable.
 - Plugin tool responses are read according to their documented output shape.
 - Credentials are not collected, stored, or passed from preview UI unless explicitly required.
