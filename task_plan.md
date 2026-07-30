@@ -51,11 +51,21 @@
   - 日志仅保留 `images` 或 region `imageFlow.outputs` 非空的记录。
   - Viewer 初始化仅依赖 Spine 三件套 URL 签名，不依赖 `assets` 对象引用。
   - 运行日志过滤、Viewer 依赖、reskin/Spine 全量回归及静态检查。
-- [in_progress] 8. 右栏日志 Tab 与 MaskPaint 蒙版重绘
+- [completed] 8. 右栏日志 Tab 与 MaskPaint 蒙版重绘
   - 将素材替换日志从 Dialog 迁移为 Spine 编辑器右侧独立 Tab。
   - 部件拆分日志的蒙版图提供重绘按钮，复用 `MaskPaintDialog`。
   - MaskPaint 导出后以新蒙版重新生成对应部件与 atlas，并调用 `replaceAtlas` 即时应用到 Spine。
   - 增加纯函数/交互契约测试，运行 reskin、Spine、Babel 和静态检查。
+- [completed] 9. 首次 HMR、默认皮肤恢复与生成记录对比
+  - 避免首次进入骨骼编辑器时提前挂载换肤历史服务并触发开发热更新。
+  - 删除当前应用的生成记录后，恢复原始 atlas 默认皮肤。
+  - 生成记录增加 ReactCompareSlider 对比弹窗，提供材质图与完整 Spine 两个 Tab。
+  - 增加历史行为、对比数据和组件契约测试，运行完整回归与静态检查。
+- [in_progress] 10. Spine Viewer 组件对比
+  - 移除 Spine 前后截图上传与图片滑块实现。
+  - 历史记录保存原始/换肤后的 Spine 三件套与 skin 名称。
+  - ReactCompareSlider 的两个 item 分别挂载独立 Spine Viewer，并保证销毁清理。
+  - 增加对比资产解析和组件生命周期契约测试，运行完整回归。
 
 ## 关键约束
 - 不修改 Python `site-packages/rembg`。
@@ -72,3 +82,4 @@
 | 并行读取中 `rg` 无匹配返回 1，导致整组输出丢失 | 1 | 分开读取，不再将可选搜索与必读文件绑定 |
 | 组合读取末尾插件测试 `rg` 无匹配返回 1，工具整体标记失败 | 1 | 必读内容已成功读取；后续把可选搜索拆成独立命令并容忍无匹配 |
 | 当前 `python` 指向 Hermes venv，启动 SAM 服务时缺少 Flask | 1 | 查找项目已有 venv/系统 Python；无可用环境时使用临时最小依赖环境验证 opencv backend |
+| PowerShell 双引号截断 `rg` 的 JSX 属性正则，导致并行审查输出丢失 | 1 | 改用单引号固定字符串并拆开执行 |

@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Badge, Button, ChevronDown, Dialog, DialogContent, DialogHeader, DialogTitle,
+  Badge, Button, ChevronDown, Columns2, Dialog, DialogContent, DialogHeader, DialogTitle,
   Input, Label, Loader, Paintbrush, ScrollArea, ScrollText,
   openMediaGallery,
+  ReactCompareSlider, ReactCompareSliderImage,
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-  Switch, Tabs, TabsList, TabsTrigger, Textarea, Trash2, WandSparkles,
+  Switch, Tabs, TabsContent, TabsList, TabsTrigger, Textarea, Trash2, WandSparkles,
 } from '@agent-spaces/ui';
 import { runReskin, runInpaintSlot, DEFAULT_EROSION } from '../utils/reskin/reskinPipeline';
 import { parseAtlas, safeFilename } from '../utils/reskin/atlasReader';
@@ -16,6 +17,7 @@ import {
 } from '../utils/reskin/reskinEditorData';
 import useSpineReskinHistory from '../hooks/useSpineReskinHistory';
 import { hasReskinLogImageOutput } from '../utils/reskin/reskinLogData';
+import { resolveReskinComparison } from '../utils/reskin/reskinHistoryData';
 
 const RESKIN_MODEL_STORAGE_KEY = 'spine-editor:processing-model';
 const EROSION_STORAGE_KEY = 'spine-editor:erosion';
@@ -34,6 +36,13 @@ const EROSION_FIELDS = [
   { key: 'pxLarge', label: '中', hint: (s) => `边长 < ${s.largeThreshold}px` },
   { key: 'pxXlarge', label: '大', hint: (s) => `边长 ≥ ${s.largeThreshold}px` },
 ];
+
+export const reskinStepLabel = (step) => ({
+  snapshot: '截图', load: '加载', pipeline: '换肤', parse: '解析', compose: '合成',
+  upload: '上传', workflow: '工作流', split: '裁切', segment: '分割', repack: '打包',
+  region_mask: '部件蒙版', skin: '皮肤', preview: '预览', apply: '应用',
+  inpaint: '局部', done: '完成', error: '错误',
+}[step] || step);
 
 /** 从 localStorage 读 JSON，失败返回 fallback */
 function loadJSON(key, fallback) {
@@ -55,6 +64,15 @@ async function uploadCanvas(canvas, fileName) {
   return url;
 }
 
+async function uploadImageSource(src, fileName) {
+  if (!src || !String(src).startsWith('data:')) return src || '';
+  const AS = window.AgentSpaces;
+  if (!AS?.uploadFile) return '';
+  const blob = await (await fetch(src)).blob();
+  const uploaded = await AS.uploadFile(new File([blob], fileName, { type: blob.type || 'image/png' }));
+  return uploaded?.url || uploaded?.httpPath || '';
+}
+
 /**
  * AI 换肤面板（内嵌在骨骼编辑器对话框）。
  *
@@ -72,7 +90,7 @@ async function uploadCanvas(canvas, fileName) {
  */
 export default function ReskinPanel({
   assets, workflowId, editImageModels, replaceAtlas, requestSnapshot, requestSpineJson,
-  onReskinComplete, initialData, onDataChange,
+  onReskinComplete, initialData, onDataChange, logs, setLogs,
 }) {
   const initialStateRef = useRef(null);
   if (!initialStateRef.current) {
@@ -95,9 +113,8 @@ export default function ReskinPanel({
   const [erosion, setErosion] = useState(initialState.erosion);
   const [advancedOpen, setAdvancedOpen] = useState(false); // 侵蚀分档折叠
   const [running, setRunning] = useState(false);
-  const [logs, setLogs] = useState([]);
-  const [logsOpen, setLogsOpen] = useState(false);
   const [activeSkin, setActiveSkin] = useState(null);
+  const [compareItem, setCompareItem] = useState(null);
   const [generatedImageUrl, setGeneratedImageUrl] = useState(initialState.generatedImageUrl);
   const [processingModel, setProcessingModel] = useState(initialState.processingModel);
   // per-slot 重绘
@@ -106,6 +123,7 @@ export default function ReskinPanel({
   const [slots, setSlots] = useState([]);                // 可重绘的 slot 列表
   const onDataChangeRef = useRef(onDataChange);
   onDataChangeRef.current = onDataChange;
+  const persistenceEnabledRef = useRef(false);
   const assetSignature = getSpineAssetsSignature(assets);
   const {
     history,
@@ -115,6 +133,9 @@ export default function ReskinPanel({
   const generatedImageSignatureRef = useRef(
     initialState.generatedImageUrl ? initialState.assetSignature : '',
   );
+  const enablePersistence = useCallback(() => {
+    persistenceEnabledRef.current = true;
+  }, []);
 
   // 模型候选列表：由父组件（SpineEditorDialog）从全局设置传入，含用户自定义；兜底内置默认
   const processingModels = useMemo(() => {
@@ -130,20 +151,23 @@ export default function ReskinPanel({
   }, [processingModel, processingModels]);
 
   const handleModelChange = useCallback((value) => {
+    enablePersistence();
     setProcessingModel(value);
     try { localStorage.setItem(RESKIN_MODEL_STORAGE_KEY, value); } catch { /* ignore */ }
-  }, []);
+  }, [enablePersistence]);
   const handleSizeChange = useCallback((value) => {
+    enablePersistence();
     setSize(value);
     try { localStorage.setItem(SIZE_STORAGE_KEY, value); } catch { /* ignore */ }
-  }, []);
+  }, [enablePersistence]);
   const updateErosion = useCallback((patch) => {
+    enablePersistence();
     setErosion((cur) => {
       const next = { ...cur, ...patch };
       try { localStorage.setItem(EROSION_STORAGE_KEY, JSON.stringify(next)); } catch { /* ignore */ }
       return next;
     });
-  }, []);
+  }, [enablePersistence]);
 
   const spineName = assets?.name || 'spine';
 
@@ -154,6 +178,14 @@ export default function ReskinPanel({
   }, [assetSignature]);
 
   useEffect(() => {
+    persistenceEnabledRef.current = false;
+  }, [assetSignature]);
+
+  useEffect(() => {
+    if (!persistenceEnabledRef.current) {
+      console.debug('[SpineEditor] skipped initial reskin form persistence');
+      return;
+    }
     onDataChangeRef.current?.({
       assetSignature,
       assets: assets ? {
@@ -181,12 +213,13 @@ export default function ReskinPanel({
   const addLog = useCallback((step, msg, data) => {
     if (!hasReskinLogImageOutput(data)) return;
     setLogs((prev) => [...prev.slice(-499), { step, msg, data, ts: Date.now() }]);
-  }, []);
+  }, [setLogs]);
 
   const handleGeneratedImage = useCallback((url) => {
+    enablePersistence();
     generatedImageSignatureRef.current = url ? assetSignature : '';
     setGeneratedImageUrl(url || '');
-  }, [assetSignature]);
+  }, [assetSignature, enablePersistence]);
 
   const slug = (s) => s.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 32);
   const finalSkinName = skinName.trim() || slug(prompt) || 'reskin-1';
@@ -238,6 +271,8 @@ export default function ReskinPanel({
   /** 全局换肤 */
   const handleRun = useCallback(async () => {
     if (!prompt.trim() || !assets) return;
+    enablePersistence();
+    const runId = `reskin-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
     setRunning(true);
     setActiveSkin(null);
     try {
@@ -270,15 +305,37 @@ export default function ReskinPanel({
         erosion,
         workflowId,
         model: processingModel,
-        onLog: (step, msg, data) => addLog(step, msg, data),
+        onLog: (step, msg, data) => addLog(step, msg, { ...data, runId }),
         onGeneratedImage: handleGeneratedImage,
       });
 
       addLog('preview', '应用新皮肤到画布预览…');
       const pngDataUrl = result.newAtlasCanvas.toDataURL('image/png');
       const previewPngDataUrl = result.previewAtlasCanvas.toDataURL('image/png');
+      setLogs((current) => current.map((log) => {
+        if (log.step !== 'region_mask' || log.data?.runId !== runId) return log;
+        const bbox = log.data?.params?.bbox;
+        return {
+          ...log,
+          data: {
+            ...log.data,
+            editContext: bbox ? {
+              runId,
+              previewAtlasCanvas: result.previewAtlasCanvas,
+              region: { ...bbox, rotate: log.data?.params?.rotate || 0 },
+              spineAssets: {
+                skel: assets.skel,
+                atlas: atlasText,
+                spineJson,
+              },
+            } : null,
+          },
+        };
+      }));
       await replaceAtlas?.(previewPngDataUrl, finalSkinName);
       setActiveSkin(finalSkinName);
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+      const spineAfterSnapshot = await requestSnapshot?.();
 
       const persistedAssets = await onReskinComplete?.({
         skel: assets.skel,
@@ -287,11 +344,13 @@ export default function ReskinPanel({
         spineJson: result.newSpineJson,
       });
       const timestamp = Date.now();
-      const [pngUrl, previewPngUrl] = await Promise.all([
+      const [pngUrl, previewPngUrl, spineBeforeUrl, spineAfterUrl] = await Promise.all([
         persistedAssets?.png
           ? Promise.resolve(persistedAssets.png)
           : uploadCanvas(result.newAtlasCanvas, `${finalSkinName}-atlas-${timestamp}.png`),
         uploadCanvas(result.previewAtlasCanvas, `${finalSkinName}-preview-${timestamp}.png`),
+        uploadImageSource(snapshot, `${finalSkinName}-spine-before-${timestamp}.png`).catch(() => ''),
+        uploadImageSource(spineAfterSnapshot, `${finalSkinName}-spine-after-${timestamp}.png`).catch(() => ''),
       ]);
       const stages = [
         { label: '原 Atlas', src: assets.png },
@@ -312,6 +371,12 @@ export default function ReskinPanel({
         id: `reskin-${timestamp}-${Math.random().toString(36).slice(2, 7)}`,
         name: finalSkinName, prompt, timestamp,
         thumbnailUrl: previewPngUrl, stages, stats: result.stats,
+        compare: {
+          materialBefore: assets.png,
+          materialAfter: previewPngUrl,
+          spineBefore: spineBeforeUrl,
+          spineAfter: spineAfterUrl,
+        },
         assets: {
           pngUrl,
           previewPngUrl,
@@ -322,6 +387,7 @@ export default function ReskinPanel({
       };
       await saveHistory(historyItem);
       addLog('done', `✓ 换肤完成：${finalSkinName}`, {
+        runId,
         images: logImages,
         imageCount: logImages.length,
         stats: result.stats,
@@ -332,7 +398,7 @@ export default function ReskinPanel({
     } finally {
       setRunning(false);
     }
-  }, [prompt, assets, method, segMethod, size, erosion, finalSkinName, generatedImageUrl, requestSnapshot, requestSpineJson, replaceAtlas, onReskinComplete, addLog, workflowId, processingModel, handleGeneratedImage, saveHistory]);
+  }, [prompt, assets, method, segMethod, size, erosion, finalSkinName, generatedImageUrl, requestSnapshot, requestSpineJson, replaceAtlas, onReskinComplete, addLog, workflowId, processingModel, handleGeneratedImage, saveHistory, setLogs, enablePersistence]);
 
   /** per-slot 局部重绘 */
   const handleInpaintSlot = useCallback(async () => {
@@ -408,25 +474,24 @@ export default function ReskinPanel({
     }
   }, [prompt, assets, selectedSlot, size, erosion, finalSkinName, requestSpineJson, replaceAtlas, onReskinComplete, addLog, workflowId, processingModel]);
 
-  const handleDeleteHistory = useCallback((id, e) => {
+  const handleDeleteHistory = useCallback(async (item, e) => {
     e?.stopPropagation();
-    deletePersistedHistory(id).catch((err) => {
+    try {
+      await deletePersistedHistory(item.id);
+      if (assets?.png) await replaceAtlas?.(assets.png, '默认皮肤');
+      setActiveSkin(null);
+      console.debug('[SpineEditor] restored default atlas after deleting reskin history');
+    } catch (err) {
       addLog('error', `删除生成记录失败：${err?.message || err}`, { error: true });
-    });
-  }, [deletePersistedHistory, addLog]);
+    }
+  }, [deletePersistedHistory, assets?.png, replaceAtlas, addLog]);
 
   const deleteGeneratedImage = useCallback(() => {
+    enablePersistence();
     generatedImageSignatureRef.current = '';
     setGeneratedImageUrl('');
     addLog('workflow', '已删除生成图，下次换肤将重新生成');
-  }, [addLog]);
-
-  const stepLabel = (step) => ({
-    snapshot: '截图', load: '加载', pipeline: '换肤', parse: '解析', compose: '合成',
-    upload: '上传', workflow: '工作流', split: '裁切', segment: '分割', repack: '打包',
-    region_mask: '部件蒙版', skin: '皮肤', preview: '预览', apply: '应用',
-    inpaint: '局部', done: '完成', error: '错误',
-  }[step] || step);
+  }, [addLog, enablePersistence]);
 
   const generationLocked = !slotMode && !!generatedImageUrl;
 
@@ -438,24 +503,13 @@ export default function ReskinPanel({
           <div className="flex items-center justify-between gap-2">
             <span className="text-xs font-medium">AI 换肤</span>
             <div className="flex min-w-0 items-center gap-1.5">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-7 gap-1 px-2 text-[11px]"
-                onClick={() => setLogsOpen(true)}
-                title="查看素材替换日志"
-              >
-                <ScrollText className="h-3.5 w-3.5" />
-                日志
-                {logs.length > 0 && <Badge variant="secondary" className="h-4 px-1 text-[9px]">{logs.length}</Badge>}
-              </Button>
               <Badge variant="secondary" className="max-w-28 truncate">{assets ? spineName : '未加载'}</Badge>
             </div>
           </div>
         <Tabs
           value={slotMode ? 'slot' : 'global'}
           onValueChange={(value) => {
+            enablePersistence();
             const nextSlotMode = value === 'slot';
             setSlotMode(nextSlotMode);
             if (nextSlotMode && assets) loadSlots();
@@ -471,7 +525,7 @@ export default function ReskinPanel({
           rows={3}
           placeholder={slotMode ? '描述该部位新样式' : '描述新皮肤，如 "黑精灵，黑翅膀，金甲"'}
           value={prompt}
-          onChange={(e) => setPrompt(e.target.value)}
+          onChange={(e) => { enablePersistence(); setPrompt(e.target.value); }}
           disabled={running || generationLocked}
           className="resize-none text-xs"
         />
@@ -520,15 +574,15 @@ export default function ReskinPanel({
             <Input
               placeholder={slug(prompt) || '皮肤名'}
               value={skinName}
-              onChange={(e) => setSkinName(e.target.value)}
+              onChange={(e) => { enablePersistence(); setSkinName(e.target.value); }}
               disabled={running}
               className="h-8 text-xs"
             />
-            <FieldSelect label="合成方法" value={method} onValueChange={setMethod} disabled={running || generationLocked} options={[
+            <FieldSelect label="合成方法" value={method} onValueChange={(value) => { enablePersistence(); setMethod(value); }} disabled={running || generationLocked} options={[
               ['atlas', 'Atlas + 截图'],
               ['exploded', '爆炸图'],
             ]} />
-            <FieldSelect label="分割方法" value={segMethod} onValueChange={setSegMethod} disabled={running} options={[
+            <FieldSelect label="分割方法" value={segMethod} onValueChange={(value) => { enablePersistence(); setSegMethod(value); }} disabled={running} options={[
               ['sam', 'SAM 精确'],
               ['bg_components', '形状交集'],
             ]} />
@@ -537,7 +591,7 @@ export default function ReskinPanel({
           <FieldSelect
             label="重绘部位"
             value={selectedSlot}
-            onValueChange={setSelectedSlot}
+            onValueChange={(value) => { enablePersistence(); setSelectedSlot(value); }}
             disabled={running || !slots.length}
             options={slots.map((slot) => [slot, slot])}
             placeholder="无可用部位"
@@ -627,7 +681,10 @@ export default function ReskinPanel({
                       <div className="truncate text-[11px] font-medium">{item.name}</div>
                       <div className="truncate text-[9px] text-muted-foreground">{item.prompt}</div>
                     </button>
-                    <Button type="button" variant="ghost" size="icon-sm" onClick={(e) => handleDeleteHistory(item.id, e)} title="删除" className="h-7 w-7 opacity-0 group-hover:opacity-100">
+                    <Button type="button" variant="ghost" size="icon-sm" onClick={(e) => { e.stopPropagation(); setCompareItem(item); }} title="对比" className="h-7 w-7 opacity-70 group-hover:opacity-100">
+                      <Columns2 className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button type="button" variant="ghost" size="icon-sm" onClick={(e) => handleDeleteHistory(item, e)} title="删除" className="h-7 w-7 opacity-0 group-hover:opacity-100">
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
                   </div>
@@ -664,18 +721,57 @@ export default function ReskinPanel({
         </div>
       )}
       </div>
-      <ReskinLogsDialog
-        open={logsOpen}
-        onOpenChange={setLogsOpen}
-        logs={logs}
-        onClear={() => setLogs([])}
-        stepLabel={stepLabel}
-      />
+      <ReskinCompareDialog item={compareItem} onClose={() => setCompareItem(null)} />
     </>
   );
 }
 
-function ReskinLogsDialog({ open, onOpenChange, logs, onClear, stepLabel }) {
+function ReskinCompareDialog({ item, onClose }) {
+  const comparison = resolveReskinComparison(item);
+  return (
+    <Dialog open={!!item} onOpenChange={(open) => { if (!open) onClose?.(); }}>
+      <DialogContent className="flex h-[82vh] max-h-[92vh] !w-[80vw] !max-w-[80vw] flex-col gap-0 overflow-hidden p-0">
+        <DialogHeader className="shrink-0 border-b border-border px-4 py-3 pr-12">
+          <DialogTitle className="text-sm">生成记录对比 · {item?.name || ''}</DialogTitle>
+        </DialogHeader>
+        <Tabs defaultValue="material" className="flex min-h-0 flex-1 flex-col">
+          <TabsList className="mx-4 mt-3 w-fit shrink-0">
+            <TabsTrigger value="material">材质图对比</TabsTrigger>
+            <TabsTrigger value="spine">Spine 对比</TabsTrigger>
+          </TabsList>
+          <CompareTab value="material" before={comparison.material.before} after={comparison.material.after} beforeLabel="原材质" afterLabel="换肤材质" />
+          <CompareTab value="spine" before={comparison.spine.before} after={comparison.spine.after} beforeLabel="原 Spine" afterLabel="换肤 Spine" />
+        </Tabs>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function CompareTab({ value, before, after, beforeLabel, afterLabel }) {
+  return (
+    <TabsContent value={value} className="mt-0 min-h-0 flex-1 p-4">
+      {before && after ? (
+        <div className="relative h-full min-h-72 overflow-hidden rounded border border-border bg-muted">
+          <ReactCompareSlider
+            className="h-full w-full"
+            itemOne={<ReactCompareSliderImage src={before} alt={beforeLabel} style={{ objectFit: 'contain' }} />}
+            itemTwo={<ReactCompareSliderImage src={after} alt={afterLabel} style={{ objectFit: 'contain' }} />}
+          />
+          <span className="pointer-events-none absolute left-3 top-3 rounded bg-background/85 px-2 py-1 text-[11px]">{beforeLabel}</span>
+          <span className="pointer-events-none absolute right-3 top-3 rounded bg-background/85 px-2 py-1 text-[11px]">{afterLabel}</span>
+        </div>
+      ) : (
+        <div className="flex h-full min-h-72 items-center justify-center text-sm text-muted-foreground">
+          此生成记录缺少{value === 'spine' ? '完整 Spine 截图' : '材质图'}，请重新执行一次换肤。
+        </div>
+      )}
+    </TabsContent>
+  );
+}
+
+export function ReskinLogsPanel({
+  logs, onClear, onRepaintMask, applyingMask = false, stepLabel = reskinStepLabel,
+}) {
   const [stepFilter, setStepFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const endRef = useRef(null);
@@ -689,8 +785,8 @@ function ReskinLogsDialog({ open, onOpenChange, logs, onClear, stepLabel }) {
   }), [logs, statusFilter, stepFilter]);
 
   useEffect(() => {
-    if (open) endRef.current?.scrollIntoView({ block: 'end' });
-  }, [filtered.length, open]);
+    endRef.current?.scrollIntoView({ block: 'end' });
+  }, [filtered.length]);
 
   const clearLogs = () => {
     if (!logs.length || !window.confirm('清空当前编辑会话的全部素材替换日志？')) return;
@@ -698,16 +794,15 @@ function ReskinLogsDialog({ open, onOpenChange, logs, onClear, stepLabel }) {
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex h-[80vh] max-h-[92vh] !w-[80vw] !max-w-[80vw] flex-col gap-0 overflow-hidden p-0">
-        <DialogHeader className="shrink-0 border-b border-border px-4 py-3 pr-12">
-          <DialogTitle className="flex items-center gap-2 text-sm">
+      <div className="flex h-full min-h-0 flex-col overflow-hidden bg-background">
+        <div className="shrink-0 border-b border-border px-3 py-2">
+          <div className="flex items-center gap-2 text-xs font-medium">
             <ScrollText className="h-4 w-4" />
             素材替换日志
-          </DialogTitle>
-        </DialogHeader>
+          </div>
+        </div>
 
-        <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-border px-4 py-2">
+        <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-border px-3 py-2">
           <Select value={stepFilter} onValueChange={setStepFilter}>
             <SelectTrigger size="sm" className="w-40">
               <SelectValue>{stepFilter === 'all' ? '全部步骤' : stepLabel(stepFilter)}</SelectValue>
@@ -736,7 +831,7 @@ function ReskinLogsDialog({ open, onOpenChange, logs, onClear, stepLabel }) {
           </Button>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto bg-muted/20 px-4 py-3">
+        <div className="min-h-0 flex-1 overflow-y-auto bg-muted/20 px-3 py-3">
           {filtered.length === 0 ? (
             <div className="flex h-48 items-center justify-center text-sm text-muted-foreground">
               {logs.length ? '没有符合筛选条件的日志' : '暂无日志，执行换肤或局部重绘后将在这里显示'}
@@ -766,7 +861,15 @@ function ReskinLogsDialog({ open, onOpenChange, logs, onClear, stepLabel }) {
                     {log.data?.done != null && log.data?.total ? (
                       <div className="mt-2 text-[10px] text-muted-foreground">进度：{log.data.done} / {log.data.total}</div>
                     ) : null}
-                    {imageFlow && <LogImageFlow flow={imageFlow} params={log.data?.params} />}
+                    {imageFlow && (
+                      <LogImageFlow
+                        flow={imageFlow}
+                        params={log.data?.params}
+                        log={log}
+                        applyingMask={applyingMask}
+                        onRepaintMask={onRepaintMask}
+                      />
+                    )}
                     <LogImageList images={images} />
                     {details && (
                       <pre className="mt-2 max-h-36 overflow-auto whitespace-pre-wrap break-all rounded bg-muted px-2 py-1.5 font-mono text-[10px] leading-relaxed text-muted-foreground">{details}</pre>
@@ -778,8 +881,7 @@ function ReskinLogsDialog({ open, onOpenChange, logs, onClear, stepLabel }) {
             </div>
           )}
         </div>
-      </DialogContent>
-    </Dialog>
+      </div>
   );
 }
 
@@ -787,6 +889,7 @@ function formatLogData(data) {
   if (!data || typeof data !== 'object') return '';
   const entries = Object.entries(data).filter(([key]) => ![
     'done', 'total', 'error', 'images', 'imageFlow', 'params', 'skinName', 'regionName',
+    'runId', 'editContext',
   ].includes(key));
   if (!entries.length) return '';
   try {
@@ -815,7 +918,7 @@ function normalizeImageFlow(flow) {
   return inputs.length || outputs.length ? { inputs, outputs } : null;
 }
 
-function LogImageFlow({ flow, params }) {
+function LogImageFlow({ flow, params, log, applyingMask, onRepaintMask }) {
   const images = [...flow.inputs, ...flow.outputs];
   const media = images.map((image) => ({
     src: image.src,
@@ -826,7 +929,15 @@ function LogImageFlow({ flow, params }) {
   return (
     <div className="mt-3 flex flex-col gap-4 md:flex-row md:items-start">
       <div className="flex min-w-0 items-end gap-3 overflow-x-auto pb-1">
-        <LogImageGroup label="INPUT" images={flow.inputs} media={media} startIndex={0} />
+        <LogImageGroup
+          label="INPUT"
+          images={flow.inputs}
+          media={media}
+          startIndex={0}
+          log={log}
+          applyingMask={applyingMask}
+          onRepaintMask={onRepaintMask}
+        />
         <span className="pb-10 text-lg text-muted-foreground">→</span>
         <LogImageGroup label="OUTPUT" images={flow.outputs} media={media} startIndex={flow.inputs.length} />
       </div>
@@ -835,23 +946,43 @@ function LogImageFlow({ flow, params }) {
   );
 }
 
-function LogImageGroup({ label, images, media, startIndex }) {
+function LogImageGroup({ label, images, media, startIndex, log, applyingMask, onRepaintMask }) {
   return (
     <div className="min-w-0">
       <div className="mb-1.5 text-[10px] font-medium tracking-wide text-muted-foreground">{label}</div>
       <div className="flex gap-2">
-        {images.map((image, index) => (
-          <button
-            key={`${image.src}-${index}`}
-            type="button"
-            className="w-24 shrink-0 overflow-hidden rounded border border-border bg-muted text-left transition hover:border-primary"
-            onClick={() => openMediaGallery(media, startIndex + index)}
-            title={`查看 ${image.label}`}
-          >
-            <img src={image.src} alt={image.label} className="aspect-square w-full object-contain" />
-            <span className="block truncate border-t border-border px-1 py-0.5 text-[9px] text-muted-foreground">{image.label}</span>
-          </button>
-        ))}
+        {images.map((image, index) => {
+          const canRepaint = label === 'INPUT'
+            && image.label.includes('蒙版')
+            && Boolean(log.data?.editContext)
+            && typeof onRepaintMask === 'function';
+          return (
+            <div key={`${image.src}-${index}`} className="relative w-24 shrink-0">
+              <button
+                type="button"
+                className="w-full overflow-hidden rounded border border-border bg-muted text-left transition hover:border-primary"
+                onClick={() => openMediaGallery(media, startIndex + index)}
+                title={`查看 ${image.label}`}
+              >
+                <img src={image.src} alt={image.label} className="aspect-square w-full object-contain" />
+                <span className="block truncate border-t border-border px-1 py-0.5 text-[9px] text-muted-foreground">{image.label}</span>
+              </button>
+              {canRepaint && (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="icon-sm"
+                  className="absolute right-1 top-1 h-6 w-6 shadow"
+                  disabled={applyingMask}
+                  onClick={() => onRepaintMask(log, image)}
+                  title="重绘部件蒙版"
+                >
+                  {applyingMask ? <Loader className="h-3.5 w-3.5 animate-spin" /> : <Paintbrush className="h-3.5 w-3.5" />}
+                </Button>
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );

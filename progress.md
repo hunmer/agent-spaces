@@ -16,6 +16,11 @@
 - 2026-07-30：新增日志图片输出过滤；Viewer 初始化依赖由 `assets` 对象引用改为三件套 URL 签名，避免换肤 Tab/表单状态变化重建 Viewer；开始回归验证。
 - 2026-07-30：阶段 7 验证完成：reskin 17/17、Spine 13/13、Viewer 专项 1/1；Babel 3/3、`git diff --check` 通过，无 `[DEBUG-*]` 遗留。
 - 2026-07-30：开始阶段 8；读取 MaskPaint 交接文档，确认复用现有 `MaskPaintDialog`，设计为右栏日志 Tab + region 蒙版重绘后重建 atlas 并热应用。
+- 2026-07-30：阶段 8 完成：日志迁移到右侧 Tab；SAM 蒙版支持二值模式白笔/橡皮重绘；导出后重合成 region、热更新 Viewer 并持久化节点 Spine 输出。验证 reskin 20/20、Spine 13/13、组件契约 3/3、Babel 4/4、`git diff --check` 通过，无 `[DEBUG-*]` 遗留。
+- 2026-07-30：开始阶段 9；初步定位首次 HMR 与换肤 Tab `forceMount` 导致历史服务提前挂载相关，确认删除记录缺少恢复默认 atlas，查询到 react-compare-slider latest 4.0.0。
+- 2026-07-30：阶段 9 实现完成：换肤表单只在用户动作后持久化；删除历史后热应用原 atlas；历史保存前后完整 Spine 截图，并增加 ReactCompareSlider 材质/Spine 双 Tab 对比弹窗。
+- 2026-07-30：阶段 9 验证完成：reskin 22/22、Spine 13/13、组件契约 6/6、历史服务 2/2、Babel 5/5、`git diff --check` 通过，无 `[DEBUG-*]` 遗留。
+- 2026-07-30：用户纠正 Spine 对比语义，开始阶段 10：改为 ReactCompareSlider 内嵌两个真实 Spine Viewer，移除截图对比链路。
 
 ## 下一步
 从 `task_plan.md` 阶段 1 开始：先读取 sam_server route 和现有插件模板，创建 `workflow.sam` 插件，不要先改 UI。

@@ -9,3 +9,11 @@ test('viewer initialization depends on the asset URL signature, not the assets o
   assert.match(source, /\[open, assetsSignature, canvasElement, loadAssets, touchRevision\]/);
   assert.doesNotMatch(source, /\[open, assets, canvasElement, loadAssets, touchRevision\]/);
 });
+
+test('right sidebar exposes embedded reskin logs and binary mask repaint', () => {
+  assert.match(source, /<TabsTrigger value="logs"/);
+  assert.match(source, /<ReskinLogsPanel/);
+  assert.match(source, /mode="binary-mask"/);
+  assert.match(source, /repaintRegionMask/);
+  assert.match(source, /callbacksRef\.current\.onReskinComplete/);
+});

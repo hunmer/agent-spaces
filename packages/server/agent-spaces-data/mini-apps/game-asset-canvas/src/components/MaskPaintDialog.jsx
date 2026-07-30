@@ -45,13 +45,17 @@ const inputSignature = (urls) => (urls || []).filter(Boolean).join('|');
  * @param {boolean} props.open
  * @param {string[]} props.inputImages 输入图 URL
  * @param {object} [props.initialData] 节点持久化快照 { inputSignature, perImage: { [url]: {imgW,imgH,ops} } }
+ * @param {'default'|'binary-mask'} [props.mode] 二值蒙版模式会把输入图作为初始蒙版并锁定白色绘制
  * @param {(data:object)=>void} [props.onDataChange]
  * @param {(urls:string[])=>void} props.onSave 蒙版上传完成回调
  * @param {()=>void} props.onClose
  */
 export default function MaskPaintDialog({
-  open, inputImages, initialData, onDataChange, onSave, onClose,
+  open, inputImages, initialData, mode = 'default', onDataChange, onSave, onClose,
 }) {
+  const binaryMaskMode = mode === 'binary-mask';
+  const binaryMaskModeRef = useRef(binaryMaskMode);
+  binaryMaskModeRef.current = binaryMaskMode;
   const stageRef = useRef(null);          // fabric 容器 DOM
   const fcRef = useRef(null);             // fabric.Canvas 实例
   const fabricLibRef = useRef(null);      // fabric 命名空间
@@ -139,7 +143,10 @@ export default function MaskPaintDialog({
     if (old) { fc.remove(old); maskOverlayRef.current = null; }
     if (!st) { fc.requestRenderAll(); return; }
     // 渲染透明底蒙版 canvas（橡皮实时挖洞）
-    const maskCanvas = renderMaskToCanvas(st, { blackBackground: false });
+    const maskCanvas = renderMaskToCanvas(st, {
+      blackBackground: false,
+      includeSource: binaryMaskModeRef.current,
+    });
     fabric.Image.fromURL(maskCanvas.toDataURL('image/png'), (img) => {
       img.set({
         left: bg.left, top: bg.top,
@@ -157,7 +164,7 @@ export default function MaskPaintDialog({
     const st = imgStatesRef.current[activeUrlRef.current];
     setCanUndo(!!st && st.ops.length > 0);
     setCanRedo(!!st && st.redo && st.redo.length > 0);
-    setHasContent(!!st && st.ops.length > 0);
+    setHasContent(!!st && (binaryMaskModeRef.current || st.ops.length > 0));
   }, []);
 
   // ---- 持久化写回节点 ----
@@ -390,6 +397,14 @@ export default function MaskPaintDialog({
     fitBg();
     // 换背景图：直接用 options 的 scaleX/scaleY（背景图 fromURL 默认 1:1 像素，fitBg 已算好缩放）
     await new Promise((resolve) => {
+      if (binaryMaskModeRef.current) {
+        fc.backgroundColor = '#000000';
+        fc.setBackgroundImage(null, () => {
+          fc.renderAll();
+          resolve();
+        });
+        return;
+      }
       fabric.Image.fromURL(url, (img) => {
         const bg = bgRef.current;
         fc.setBackgroundImage(img, () => {
@@ -470,7 +485,10 @@ export default function MaskPaintDialog({
             // 背景图重定位
             const url = activeUrlRef.current;
             const st = imgStatesRef.current[url];
-            if (st) {
+            if (st && binaryMaskModeRef.current) {
+              f.backgroundColor = '#000000';
+              f.setBackgroundImage(null, () => f.renderAll());
+            } else if (st) {
               const bg = bgRef.current;
               const img = st.img;
               fabric.Image.fromURL(url, (im) => {
@@ -523,7 +541,9 @@ export default function MaskPaintDialog({
       for (const url of urls) {
         const st = imgStatesRef.current[url];
         if (!st) continue;
-        const canvas = renderMaskToCanvas(st);
+        const canvas = renderMaskToCanvas(st, {
+          includeSource: binaryMaskModeRef.current,
+        });
         const dataUrl = canvas.toDataURL('image/png');
         const blob = dataURLToBlob(dataUrl);
         const file = new File([blob], `mask-${out.length + 1}.png`, { type: 'image/png' });
@@ -532,7 +552,7 @@ export default function MaskPaintDialog({
         if (httpUrl) out.push(httpUrl);
       }
       if (!out.length) throw new Error('没有可导出的蒙版');
-      onSaveRef.current?.(out);
+      await onSaveRef.current?.(out);
       onClose?.(); // 导出成功后关闭对话框
     } catch (err) {
       console.error('MaskPaint export failed:', err);
@@ -560,6 +580,13 @@ export default function MaskPaintDialog({
       fc.freeDrawingBrush.color = color;
     }
   }, [color]);
+  useEffect(() => {
+    if (!binaryMaskMode) return;
+    colorRef.current = '#ffffff';
+    setColor('#ffffff');
+    const fc = fcRef.current;
+    if (fc?.freeDrawingBrush) fc.freeDrawingBrush.color = '#ffffff';
+  }, [binaryMaskMode]);
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) onClose?.(); }}>
@@ -569,9 +596,11 @@ export default function MaskPaintDialog({
       >
         <DialogHeader className="flex-row items-center justify-between space-y-0">
           <div>
-            <DialogTitle>蒙版绘制</DialogTitle>
+            <DialogTitle>{binaryMaskMode ? '重绘部件蒙版' : '蒙版绘制'}</DialogTitle>
             <DialogDescription className="text-[11px]">
-              支持画笔（可调大小）/ 自由套索 / 矩形选区，可选颜色填充/绘制。橡皮擦挖洞。导出蒙版图供下游使用。
+              {binaryMaskMode
+                ? '白色为保留区域。使用白色画笔、套索或矩形补画，使用橡皮删除区域。'
+                : '支持画笔（可调大小）/ 自由套索 / 矩形选区，可选颜色填充/绘制。橡皮擦挖洞。导出蒙版图供下游使用。'}
             </DialogDescription>
           </div>
         </DialogHeader>
@@ -638,7 +667,7 @@ export default function MaskPaintDialog({
             </Label>
           )}
 
-          {tool !== TOOL_ERASE && (
+          {tool !== TOOL_ERASE && !binaryMaskMode && (
             <Label className="flex items-center gap-1.5 text-xs text-muted-foreground">
               颜色
               <ColorPicker colors={COLOR_PRESETS} value={color} onChange={setColor} />
@@ -653,7 +682,7 @@ export default function MaskPaintDialog({
           <Button variant="ghost" size="sm" onClick={redo} disabled={!canRedo} title="重做">
             <Redo2 className="h-4 w-4" />
           </Button>
-          <Button variant="ghost" size="sm" onClick={clearAll} disabled={!hasContent} title="清空当前图">
+          <Button variant="ghost" size="sm" onClick={clearAll} disabled={!hasContent} title={binaryMaskMode ? '重置修改' : '清空当前图'}>
             <Trash2 className="h-4 w-4" />
           </Button>
         </div>
@@ -679,7 +708,7 @@ export default function MaskPaintDialog({
         <div className="nodrag nopan nowheel flex items-center justify-between gap-2">
           <div className="text-[11px] text-muted-foreground">
             {activeUrl ? `当前：${thumbUrls.indexOf(activeUrl) + 1} / ${thumbUrls.length}` : ''}
-            {hasContent ? ' · 已绘制蒙版' : ' · 尚未绘制'}
+            {hasContent ? (binaryMaskMode ? ' · 可编辑原蒙版' : ' · 已绘制蒙版') : ' · 尚未绘制'}
           </div>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={() => onClose?.()} disabled={exporting}>
@@ -738,7 +767,7 @@ function isValidOp(op) {
 // 把某图状态渲染为蒙版 canvas（图片原始尺寸）。
 // blackBackground=true → 导出用（黑底 + 蒙版）；false → 预览用（透明底蒙版，叠加在底图上）。
 // 蒙版层逻辑：source-over 画 ops，橡皮 destination-out 实时挖洞。
-function renderMaskToCanvas(st, { blackBackground = true } = {}) {
+function renderMaskToCanvas(st, { blackBackground = true, includeSource = false } = {}) {
   const w = st.imgW || (st.img?.naturalWidth) || 1;
   const h = st.imgH || (st.img?.naturalHeight) || 1;
 
@@ -747,6 +776,7 @@ function renderMaskToCanvas(st, { blackBackground = true } = {}) {
   maskCanvas.width = w;
   maskCanvas.height = h;
   const mctx = maskCanvas.getContext('2d');
+  if (includeSource && st.img) mctx.drawImage(st.img, 0, 0, w, h);
   for (const op of st.ops) {
     const opColor = op.color || '#ffffff';
     if (op.type === 'brush') {

@@ -3,10 +3,11 @@ import {
   Badge, Bone, Button, Camera, CircleStop, Dialog, DialogContent,
   DialogFooter, DialogHeader, DialogTitle, Download, DropdownMenu, DropdownMenuContent,
   DropdownMenuItem, DropdownMenuTrigger, Loader, Maximize2, MoreVertical, Play, Redo2,
-  Save, Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Save, ScrollText, Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
   Tabs, TabsContent, TabsList, TabsTrigger, Undo2, Video,
 } from '@agent-spaces/ui';
-import ReskinPanel from './ReskinPanel';
+import ReskinPanel, { ReskinLogsPanel, reskinStepLabel } from './ReskinPanel';
+import MaskPaintDialog from './MaskPaintDialog';
 import useSettings from '../hooks/useSettings';
 import { SpineEditorApp } from '../spine/core/SpineEditorApp';
 import { RecordManager } from '../spine/core/RecordManager';
@@ -20,6 +21,7 @@ import {
   SpineAssetLibrary, SpineBoneTree, SpineTransformPanel,
 } from '../spine/components/SpinePanels';
 import { getSpineAssetsSignature } from '../utils/reskin/reskinEditorData';
+import { repaintRegionMask } from '../utils/reskin/maskRepaint';
 
 const PLAYBACK_SPEEDS = ['0.25', '0.5', '1', '1.5', '2'];
 
@@ -62,6 +64,11 @@ export default function SpineEditorDialog({
   const [recording, setRecording] = useState(false);
   const [recordPreview, setRecordPreview] = useState(null);
   const [revision, setRevision] = useState(0);
+  const [rightTab, setRightTab] = useState('transform');
+  const [reskinLogs, setReskinLogs] = useState([]);
+  const [maskPaintRequest, setMaskPaintRequest] = useState(null);
+  const [maskPaintData, setMaskPaintData] = useState(null);
+  const [applyingMask, setApplyingMask] = useState(false);
 
   const touchRevision = useCallback(() => setRevision((value) => value + 1), []);
   const handleCanvasRef = useCallback((element) => {
@@ -253,6 +260,68 @@ export default function SpineEditorDialog({
     await editorRef.current?.replaceAtlasTexture(pngDataUrl);
     setStatus(`已应用皮肤 ${name || ''}`);
   }, []);
+
+  const openMaskPaint = useCallback((log, image) => {
+    setMaskPaintData(null);
+    setMaskPaintRequest({ log, image });
+  }, []);
+
+  const applyPaintedMask = useCallback(async (urls) => {
+    const maskUrl = urls?.[0];
+    const log = maskPaintRequest?.log;
+    const context = log?.data?.editContext;
+    const inputImage = log?.data?.imageFlow?.inputs?.find((image) => !String(image?.label).includes('蒙版'));
+    if (!maskUrl || !context || !inputImage?.src) throw new Error('部件蒙版重绘上下文不完整');
+    setApplyingMask(true);
+    try {
+      const result = await repaintRegionMask({
+        inputSrc: inputImage.src,
+        maskSrc: maskUrl,
+        previewAtlasCanvas: context.previewAtlasCanvas,
+        region: context.region,
+      });
+      const outputUrl = result.partCanvas.toDataURL('image/png');
+      const previewUrl = result.previewAtlasCanvas.toDataURL('image/png');
+      await replaceAtlas(previewUrl, log.data?.skinName || '蒙版重绘');
+      if (context.spineAssets) {
+        await callbacksRef.current.onReskinComplete?.({
+          ...context.spineAssets,
+          png: previewUrl,
+        });
+      }
+      setReskinLogs((current) => current.map((entry) => {
+        if (entry.data?.editContext?.runId !== context.runId) return entry;
+        const nextContext = {
+          ...entry.data.editContext,
+          previewAtlasCanvas: result.previewAtlasCanvas,
+        };
+        if (entry.data?.regionName !== log.data?.regionName) {
+          return { ...entry, data: { ...entry.data, editContext: nextContext } };
+        }
+        const inputs = (entry.data?.imageFlow?.inputs || []).map((image) => (
+          String(image?.label).includes('蒙版') ? { ...image, src: maskUrl } : image
+        ));
+        return {
+          ...entry,
+          msg: `已重绘并应用部件蒙版：${entry.data?.regionName || ''}`,
+          ts: Date.now(),
+          data: {
+            ...entry.data,
+            editContext: nextContext,
+            imageFlow: {
+              ...entry.data.imageFlow,
+              inputs,
+              outputs: [{ label: '输出', src: outputUrl }],
+            },
+          },
+        };
+      }));
+      setMaskPaintRequest(null);
+      setMaskPaintData(null);
+    } finally {
+      setApplyingMask(false);
+    }
+  }, [maskPaintRequest, replaceAtlas]);
 
   const uploadDataUrl = useCallback(async (dataUrl, fileName, fallbackType) => {
     const AS = window.AgentSpaces;
@@ -498,15 +567,23 @@ export default function SpineEditorDialog({
             ) : null}
           </div>
 
-          <Tabs defaultValue="transform" className="flex w-72 shrink-0 flex-col border-l border-border bg-background">
+          <Tabs
+            value={rightTab}
+            onValueChange={setRightTab}
+            className={`flex shrink-0 flex-col border-l border-border bg-background ${rightTab === 'logs' ? 'w-[min(58vw,760px)]' : 'w-72'}`}
+          >
             <TabsList className="w-full rounded-none border-b border-border">
               <TabsTrigger value="transform" className="flex-1">变换</TabsTrigger>
               <TabsTrigger value="reskin" className="flex-1">换肤</TabsTrigger>
+              <TabsTrigger value="logs" className="flex-1">
+                <ScrollText className="h-3.5 w-3.5" />日志
+                {reskinLogs.length > 0 && <Badge variant="secondary" className="h-4 px-1 text-[9px]">{reskinLogs.length}</Badge>}
+              </TabsTrigger>
             </TabsList>
             <TabsContent value="transform" className="mt-0 min-h-0 flex-1">
               <SpineTransformPanel bone={selectedBone} editor={editor} revision={revision} onChanged={touchRevision} />
             </TabsContent>
-            <TabsContent value="reskin" className="mt-0 min-h-0 flex-1">
+            <TabsContent forceMount value="reskin" className="mt-0 min-h-0 flex-1 data-[state=inactive]:hidden">
               <ReskinPanel
                 assets={currentAssets}
                 workflowId={canvasSettings.editImageWorkflowId}
@@ -517,6 +594,17 @@ export default function SpineEditorDialog({
                 onReskinComplete={(value) => callbacksRef.current.onReskinComplete?.(value)}
                 initialData={initialReskinData}
                 onDataChange={onReskinDataChange}
+                logs={reskinLogs}
+                setLogs={setReskinLogs}
+              />
+            </TabsContent>
+            <TabsContent value="logs" className="mt-0 min-h-0 flex-1">
+              <ReskinLogsPanel
+                logs={reskinLogs}
+                onClear={() => setReskinLogs([])}
+                onRepaintMask={openMaskPaint}
+                applyingMask={applyingMask}
+                stepLabel={reskinStepLabel}
               />
             </TabsContent>
           </Tabs>
@@ -528,6 +616,19 @@ export default function SpineEditorDialog({
         onExport={exportRecordingToCanvas}
         onDownload={downloadRecording}
         onClose={() => setRecordPreview(null)}
+      />
+      <MaskPaintDialog
+        open={!!maskPaintRequest}
+        mode="binary-mask"
+        inputImages={maskPaintRequest?.image?.src ? [maskPaintRequest.image.src] : []}
+        initialData={maskPaintData}
+        onDataChange={setMaskPaintData}
+        onSave={applyPaintedMask}
+        onClose={() => {
+          if (applyingMask) return;
+          setMaskPaintRequest(null);
+          setMaskPaintData(null);
+        }}
       />
     </Dialog>
   );
