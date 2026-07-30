@@ -272,7 +272,7 @@ Canvas snapshot + 原 atlas sheet + .atlas + Spine JSON
 1. 角色索引在本地，但 `.skel/.atlas/.png` 仍从 jsDelivr 上固定的 `FrankoFPM/Spine-Viewer-Web@gh-pages` 分支加载，依赖网络和远端 CDN。
 2. 当前支持 Spine 3.8 二进制/JSON 和 4.2 JSON；Spine 4.2 二进制及其他 major.minor 版本尚未路由。
 3. `bg_components` 会先调用 rembg 去背景，再按连通域与原轮廓 IoU 匹配；部件明显移出原轮廓时仍可能匹配失败并降级为 alpha 交集。
-4. SAM 使用整张分割源的 region bbox box prompt，与参考 `sam_server` 的 box 语义一致。
+4. SAM 使用整张分割源的 region bbox；调用 rembg 时 prompt 类型必须是 `rectangle`（不是 `box`），与参考 `sam_server` 的 box 语义一致。
 5. atlas 热预览仍复用当前 UV，因此使用保持原 region 坐标的专用预览图；导出资产继续使用 repack PNG + 新 `.atlas`。
 6. ZIP 下载当前统一把骨架文件命名为 `<name>.skel`，即使输入源是 `.json`。
 7. MediaRecorder/canvas.captureStream 依赖 Chromium 等现代浏览器，Safari 兼容性有限。

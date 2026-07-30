@@ -133,10 +133,10 @@ test('resolveReskinnedImage reports a newly generated image before segmentation'
   }
 });
 
-test('samBoxPrompt uses full-image bbox coordinates', () => {
+test('samBoxPrompt uses rembg rectangle type with full-image bbox coordinates', () => {
   const { samBoxPrompt } = loadPipeline();
   assert.deepEqual(
     samBoxPrompt({ x: 10.4, y: 20.6, w: 30.2, h: 40.1 }),
-    { type: 'box', data: [10, 21, 41, 61], label: 1 },
+    { type: 'rectangle', data: [10, 21, 41, 61], label: 1 },
   );
 });

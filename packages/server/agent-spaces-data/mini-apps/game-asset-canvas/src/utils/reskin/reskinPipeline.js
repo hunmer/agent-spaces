@@ -86,7 +86,8 @@ function closestEditAspect(width, height) {
 
 export function samBoxPrompt(region) {
   return {
-    type: 'box',
+    // rembg 2.0.77 的 get_input_points() 只识别 point / rectangle。
+    type: 'rectangle',
     data: [
       Math.round(region.x), Math.round(region.y),
       Math.round(region.x + region.w), Math.round(region.y + region.h),
