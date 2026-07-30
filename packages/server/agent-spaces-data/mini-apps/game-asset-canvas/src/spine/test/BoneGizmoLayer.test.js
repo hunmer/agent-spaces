@@ -30,3 +30,46 @@ test('bone coordinates include only the spine local transform', () => {
 
   assert.deepEqual(point, { x: 8, y: 14 });
 });
+
+test('bone dragging only starts after it is enabled', () => {
+  let starts = 0;
+  const gizmo = {
+    dragEnabled: false,
+    dragging: false,
+    dragMode: null,
+    dragBone: null,
+    skeleton: {},
+    onTransformStart: () => { starts += 1; },
+  };
+  const bone = { name: 'root' };
+
+  assert.equal(BoneGizmoLayer.prototype._startDrag.call(gizmo, bone, 'move'), false);
+  assert.equal(gizmo.dragging, false);
+
+  gizmo.dragEnabled = true;
+  assert.equal(BoneGizmoLayer.prototype._startDrag.call(gizmo, bone, 'move'), true);
+  assert.equal(gizmo.dragging, true);
+  assert.equal(gizmo.dragMode, 'move');
+  assert.equal(gizmo.dragBone, bone);
+  assert.equal(starts, 1);
+});
+
+test('disabling bone dragging ends an active transform', () => {
+  let ends = 0;
+  const gizmo = {
+    dragEnabled: true,
+    dragging: true,
+    dragMode: 'move',
+    dragBone: {},
+    onTransformEnd: () => { ends += 1; },
+    _endDrag: BoneGizmoLayer.prototype._endDrag,
+  };
+
+  BoneGizmoLayer.prototype.setDragEnabled.call(gizmo, false);
+
+  assert.equal(gizmo.dragEnabled, false);
+  assert.equal(gizmo.dragging, false);
+  assert.equal(gizmo.dragMode, null);
+  assert.equal(gizmo.dragBone, null);
+  assert.equal(ends, 1);
+});

@@ -193,6 +193,10 @@ export class SpineEditorApp {
     }
   }
 
+  setBoneDragEnabled(enabled) {
+    this.gizmo?.setDragEnabled(enabled);
+  }
+
   /** 适应视图：居中并适配画布 */
   fitView() {
     if (!this.spine) return;

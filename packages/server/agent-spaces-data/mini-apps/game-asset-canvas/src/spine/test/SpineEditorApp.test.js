@@ -36,6 +36,15 @@ test('locking view interaction clears an active pan', () => {
   assert.equal(editor.canvasElement.style.cursor, '');
 });
 
+test('bone drag setting is delegated to the gizmo layer', () => {
+  let value = null;
+  const editor = { gizmo: { setDragEnabled: (enabled) => { value = enabled; } } };
+
+  SpineEditorApp.prototype.setBoneDragEnabled.call(editor, true);
+
+  assert.equal(value, true);
+});
+
 test('atlas texture replacement updates the existing resource repeatedly', async () => {
   const loadListeners = new Set();
   const source = {

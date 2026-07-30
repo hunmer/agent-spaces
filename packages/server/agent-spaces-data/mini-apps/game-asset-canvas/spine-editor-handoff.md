@@ -112,6 +112,7 @@ Viewer 与右栏放在 `ResizablePanelGroup` 内。拖动宽度只触发 Pixi `r
 - Spine 实例和 Gizmo Graphics 同挂 `spineContainer`。
 - `bone.worldX/worldY` 是 skeleton 空间坐标。
 - `_boneToContainer()` 只能应用 Spine 实例 `localTransform`；使用 `worldTransform` 会重复叠加 fit/zoom/pan。
+- 顶部“骨骼拖拽”开关默认关闭；关闭时关节点仍可选择但不能拖动，开启后在姿势模式下左键移动、右键旋转，拖拽结束写入撤销历史。
 - `fitView()` 先恢复单位缩放/零平移，再读取 `spine.getBounds()`。
 - 编辑 Viewer padding 为 60px、缩放范围 `0.1x`–`5x`。
 - 展示节点使用轻量 `SpinePreviewApp`，无 Gizmo、HistoryManager 和编辑交互。

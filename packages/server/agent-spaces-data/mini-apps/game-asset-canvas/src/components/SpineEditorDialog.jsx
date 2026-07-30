@@ -44,6 +44,7 @@ export default function SpineEditorDialog({
   callbacksRef.current = { onSave, onPoseExport, onExportVideo, onReskinComplete };
   const assetsRef = useRef(assets);
   assetsRef.current = assets;
+  const boneDragEnabledRef = useRef(false);
   const assetsSignature = getSpineAssetsSignature(assets);
 
   const [canvasElement, setCanvasElement] = useState(null); // 实为承载 canvas 的容器 div
@@ -58,6 +59,7 @@ export default function SpineEditorDialog({
   const [animations, setAnimations] = useState([]);
   const [skins, setSkins] = useState([]);
   const [mode, setMode] = useState('pose');
+  const [boneDragEnabled, setBoneDragEnabled] = useState(false);
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
   const [animation, setAnimation] = useState('');
   const [skin, setSkin] = useState('');
@@ -160,6 +162,7 @@ export default function SpineEditorDialog({
           return;
         }
         editorRef.current = editor;
+        editor.setBoneDragEnabled(boneDragEnabledRef.current);
         visibilityRef.current = new BoneVisibility();
         recorderRef.current = new RecordManager(editor.canvasElement);
         editor.setCallbacks({
@@ -222,6 +225,14 @@ export default function SpineEditorDialog({
   const handleMode = (value) => {
     setMode(value);
     editorRef.current?.setMode(value);
+    editorRef.current?.setBoneDragEnabled(boneDragEnabledRef.current && value === 'pose');
+  };
+
+  const toggleBoneDrag = () => {
+    const enabled = !boneDragEnabledRef.current;
+    boneDragEnabledRef.current = enabled;
+    setBoneDragEnabled(enabled);
+    editorRef.current?.setBoneDragEnabled(enabled && mode === 'pose');
   };
 
   const handleAnimation = (value) => {
@@ -478,6 +489,18 @@ export default function SpineEditorDialog({
                 formatOption={(value) => `${value}x`}
               />
               <CompactSelect value={skin} onValueChange={handleSkin} options={skins} placeholder="皮肤" disabled={!spine} />
+              <Button
+                type="button"
+                variant={boneDragEnabled ? 'secondary' : 'ghost'}
+                size="icon-sm"
+                title={boneDragEnabled ? '关闭骨骼拖拽' : '开启骨骼拖拽'}
+                aria-label={boneDragEnabled ? '关闭骨骼拖拽' : '开启骨骼拖拽'}
+                aria-pressed={boneDragEnabled}
+                disabled={!spine || mode !== 'pose' || recording}
+                onClick={toggleBoneDrag}
+              >
+                <Bone className="h-4 w-4" />
+              </Button>
               <Button type="button" variant="ghost" size="icon-sm" title="撤销" disabled={!canUndo} onClick={() => { editor?.undo(); touchRevision(); }}><Undo2 className="h-4 w-4" /></Button>
               <Button type="button" variant="ghost" size="icon-sm" title="重做" disabled={!canRedo} onClick={() => { editor?.redo(); touchRevision(); }}><Redo2 className="h-4 w-4" /></Button>
               <Button type="button" variant="ghost" size="icon-sm" title="适应视图" disabled={!spine || recording} onClick={() => editor?.fitView()}><Maximize2 className="h-4 w-4" /></Button>

@@ -43,6 +43,7 @@ export class BoneGizmoLayer {
     this.spine = null;          // Spine 实例
     this.selectedBone = null;
     this.visible = true;        // 骨骼线显隐
+    this.dragEnabled = false;   // 默认仅允许选择，显式开启后才能拖拽
 
     // 拖拽状态
     this.dragging = false;
@@ -62,6 +63,11 @@ export class BoneGizmoLayer {
   setVisible(v) {
     this.visible = v;
     this.graphics.visible = v;
+  }
+
+  setDragEnabled(enabled) {
+    this.dragEnabled = !!enabled;
+    if (!this.dragEnabled) this._endDrag();
   }
 
   selectBone(bone) {
@@ -134,6 +140,23 @@ export class BoneGizmoLayer {
     return best;
   }
 
+  _startDrag(bone, mode) {
+    if (!this.dragEnabled || !bone || !this.skeleton) return false;
+    this.dragging = true;
+    this.dragMode = mode;
+    this.dragBone = bone;
+    this.onTransformStart();
+    return true;
+  }
+
+  _endDrag() {
+    if (!this.dragging) return;
+    this.dragging = false;
+    this.dragMode = null;
+    this.dragBone = null;
+    this.onTransformEnd();
+  }
+
   _bindEvents() {
     // gizmo graphics 接收交互（pointerMode static）
     this.graphics.eventMode = 'static';
@@ -146,30 +169,22 @@ export class BoneGizmoLayer {
       const gp = e.global;
       const bone = this.hitTestBones(gp.x, gp.y);
       if (button === 0) {
-        // 左键：选中 + 准备拖拽移动
+        // 左键始终允许选择；开启拖拽后才修改位置。
         this.selectBone(bone);
-        if (bone && this.skeleton) {
-          this.dragging = true;
-          this.dragMode = 'move';
-          this.dragBone = bone;
-          this.onTransformStart();
-        }
+        this._startDrag(bone, 'move');
       } else if (button === 2) {
         // 右键：选中 + 准备拖拽旋转（即使没精确命中也以当前选中骨骼为目标）
         const target = bone || this.selectedBone;
-        if (target) {
+        if (this.dragEnabled && target) {
           this.selectBone(target);
-          this.dragging = true;
-          this.dragMode = 'rotate';
-          this.dragBone = target;
-          this.onTransformStart();
+          this._startDrag(target, 'rotate');
         }
       }
     });
 
     // 全局 pointermove（拖拽中跟随鼠标）
     this.graphics.on('globalpointermove', (e) => {
-      if (!this.dragging || !this.dragBone || !this.spine) return;
+      if (!this.dragEnabled || !this.dragging || !this.dragBone || !this.spine) return;
       const gp = e.global;
       // 鼠标坐标转到 spine 实例本地坐标（skeleton 空间）
       const spineLocal = this.spine.toLocal(new PIXI.Point(gp.x, gp.y));
@@ -187,14 +202,7 @@ export class BoneGizmoLayer {
       this.onLiveTransform(this.dragBone);
     });
 
-    const endDrag = () => {
-      if (this.dragging) {
-        this.dragging = false;
-        this.dragMode = null;
-        this.dragBone = null;
-        this.onTransformEnd();
-      }
-    };
+    const endDrag = () => this._endDrag();
     this.graphics.on('pointerup', endDrag);
     this.graphics.on('pointerupoutside', endDrag);
   }

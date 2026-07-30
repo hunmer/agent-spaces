@@ -24,3 +24,10 @@ test('right sidebar is resizable and the log tab has no icon', () => {
   assert.match(source, /id="spine-right-panel"/);
   assert.doesNotMatch(source, /<ScrollText/);
 });
+
+test('toolbar exposes an explicit bone drag toggle limited to pose mode', () => {
+  assert.match(source, /aria-pressed=\{boneDragEnabled\}/);
+  assert.match(source, /开启骨骼拖拽/);
+  assert.match(source, /setBoneDragEnabled\(enabled && mode === 'pose'\)/);
+  assert.match(source, /disabled=\{!spine \|\| mode !== 'pose' \|\| recording\}/);
+});
