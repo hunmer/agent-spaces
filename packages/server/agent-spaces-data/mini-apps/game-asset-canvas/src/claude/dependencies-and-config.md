@@ -66,6 +66,7 @@ configs/
   settings.json                  # 全局共享（用户级偏好）
   prompt-library.json            # 全局共享（自定义提示词库，数组）
   panel-layout.json              # 全局共享（{layout:{panelId:pct}, showMinimap, savedAt}）
+  spine-reskin-history.json      # Spine 换肤记录（按 assetSignature 分组，URL-only）
   workspaces.json                # 全局共享（{activeId, workspaces:[{id,name,createdAt}]}）
   workspaces/
     <id>/
@@ -75,6 +76,9 @@ configs/
 ```
 
 > 旧版顶层 `canvas.json` / `generation-history.json` 仍存在（迁移前数据），新数据全走 `workspaces/<id>/`。
+
+Spine 换肤记录通过 `save_spine_reskin_history` / `delete_spine_reskin_history` 原子更新。
+预览 PNG、最终 atlas PNG、`.atlas` 和 Spine JSON 先经 `uploadFile` 保存，配置文件只保存 URL 和处理元数据，不保存 data URL。
 
 ### settings.json 字段（utils/settings.js DEFAULT_SETTINGS）
 - 工作流槽位：`textToImageWorkflowId/Name` / `editImageWorkflowId/Name` / `imageEnchanterWorkflowId/Name` / `textToVoiceWorkflowId/Name` / `videoGeneratorWorkflowId/Name`

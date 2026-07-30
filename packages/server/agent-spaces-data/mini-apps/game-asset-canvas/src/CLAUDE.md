@@ -68,6 +68,8 @@ graph TD
 - **2026-07-30 增量**：Spine loader 按 JSON 版本路由 3.8/4.2 runtime；4.2 使用本地 `spine-pixi-v7@4.2.119` IIFE。录制停止后先预览，再选择导出到画布或下载。
 - **2026-07-30 换肤生成图**：`ReskinPanel` 使用 Media Gallery 展示 `edit_image` 生成图；图片保留到手动删除，`runReskin` 支持复用并跳过重复生成。
 - **2026-07-30 换肤稳定性**：SAM 结果先转 Canvas 再侵蚀；Pixi atlas 热预览更新既有 ImageResource，支持重复替换；表单滚动且日志保持固定高度。
+- **2026-07-30 换肤白图修复**：热预览使用保持原 region 坐标的 atlas（旧 UV 不采样 repack 布局）；SAM 对整图使用 bbox prompt；形状交集先 rembg 去背景，再做连通域 + 原轮廓 IoU；生成记录展示原图、生成/去背景阶段与最终 Atlas 前后对比。
+- **2026-07-30 换肤记录持久化**：生成记录迁移到 `configs/spine-reskin-history.json`，按资源签名隔离并通过 `services/canvas.js` 单写；图片和三件套先上传，JSON 仅保存 URL，支持刷新恢复与多端同步。
 - **建议下一步深挖**：
   - 如需精确节点组件实现细节，定点读 `components/nodes/<具体>.jsx`
   - 如需精确 image-ops 算法实现，定点读 `utils/image-ops/<具体>.js`（gif.js / matte.js / pixelate.js 等）

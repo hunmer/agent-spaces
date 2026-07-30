@@ -122,19 +122,22 @@ export default function SpineEditorNode({ id, data, selected }) {
         uploadText(AS, JSON.stringify(reskinAssets.spineJson, null, 2), `${baseName}-reskin.json`),
       ]);
       const [atlasUrl, spineJsonUrl] = uploads;
+      const persistedAssets = {
+        skel: reskinAssets.skel,
+        atlas: atlasUrl,
+        png: pngUrl,
+        spineJson: spineJsonUrl,
+      };
       onUpdate?.({
         status: 'done',
-        reskinAssets: {
-          skel: reskinAssets.skel,            // 原 .skel/.json 不变
-          atlas: atlasUrl,
-          png: pngUrl,
-          spineJson: spineJsonUrl,
-        },
+        reskinAssets: persistedAssets,
         output: { images: [pngUrl] },
         error: undefined,
       });
+      return persistedAssets;
     } catch (err) {
       console.error('[SpineEditor] reskin upload failed:', err);
+      return null;
     }
   }, [onUpdate, uploadedAssets]);
 

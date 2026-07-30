@@ -7,7 +7,9 @@ const SETTINGS_CONFIG = 'settings.json';
 const PROMPT_CONFIG = 'prompt-library.json';
 const WORKSPACES_CONFIG = 'workspaces.json';
 const ASSET_LIBRARY_FILE = 'asset-library.json';
+const SPINE_RESKIN_HISTORY_FILE = 'spine-reskin-history.json';
 const HISTORY_MAX = 200;
+const SPINE_RESKIN_HISTORY_MAX = 20;
 const ASSET_MAX_PER_CATEGORY = 500; // 单分类资产上限，避免无限膨胀
 
 // 素材库文件路径（工作区隔离）
@@ -94,6 +96,31 @@ export default {
   // 清空生成记录
   clear_history: ({ workspaceId }, ctx) => {
     ctx.writeConfig(wsPath(workspaceId, HISTORY_FILE), []);
+    return { ok: true };
+  },
+
+  // —— Spine 换肤生成记录（按 Spine 资源签名隔离，项目级共享）——
+
+  save_spine_reskin_history: ({ assetSignature, item }, ctx) => {
+    if (!assetSignature || !item?.id) return { ok: false };
+    ctx.updateConfig(SPINE_RESKIN_HISTORY_FILE, (prev) => {
+      const map = prev && typeof prev === 'object' && !Array.isArray(prev) ? prev : {};
+      const list = Array.isArray(map[assetSignature]) ? map[assetSignature] : [];
+      const next = [item, ...list.filter((entry) => (
+        entry.id !== item.id && entry.name !== item.name
+      ))].slice(0, SPINE_RESKIN_HISTORY_MAX);
+      return { ...map, [assetSignature]: next };
+    });
+    return { ok: true };
+  },
+
+  delete_spine_reskin_history: ({ assetSignature, id }, ctx) => {
+    if (!assetSignature || !id) return { ok: false };
+    ctx.updateConfig(SPINE_RESKIN_HISTORY_FILE, (prev) => {
+      const map = prev && typeof prev === 'object' && !Array.isArray(prev) ? prev : {};
+      const list = Array.isArray(map[assetSignature]) ? map[assetSignature] : [];
+      return { ...map, [assetSignature]: list.filter((entry) => entry.id !== id) };
+    });
     return { ok: true };
   },
 

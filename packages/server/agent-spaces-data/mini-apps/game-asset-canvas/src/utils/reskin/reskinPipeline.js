@@ -24,8 +24,10 @@ import {
   buildExplodedComposite, EXPLODED_RESKIN_PROMPT, EXPLODED_RESKIN_NEGATIVE,
 } from './explodedComposer';
 import {
-  buildOriginalSilhouettes, segmentByShapeIntersection, applyMaskToRegion,
+  buildOriginalSilhouettes, segmentByConnectedComponents, segmentByShapeIntersection,
+  applyMaskToRegion,
 } from './shapeSegmenter';
+import { buildPreviewAtlas } from './previewAtlas';
 import {
   loadImage, createCanvas, cropRegionRotated, drawToCanvas, erodeAlpha,
 } from './canvasUtils';
@@ -80,6 +82,17 @@ function closestEditAspect(width, height) {
   return EDIT_ASPECTS.reduce((best, option) => (
     Math.abs(option[1] - ratio) < Math.abs(best[1] - ratio) ? option : best
   ))[0];
+}
+
+export function samBoxPrompt(region) {
+  return {
+    type: 'box',
+    data: [
+      Math.round(region.x), Math.round(region.y),
+      Math.round(region.x + region.w), Math.round(region.y + region.h),
+    ],
+    label: 1,
+  };
 }
 
 /**
@@ -273,29 +286,72 @@ export async function runReskin(input, opts = {}) {
       segmentSource = tmp;
     }
   }
+  if (typeof segmentSource?.getContext !== 'function') {
+    segmentSource = drawToCanvas(segmentSource, layout.compositeW, layout.compositeH);
+  }
 
   // ⑥ 分割（按 segMethod 分流）
   log('segment', `开始分割（方法: ${segMethod}，共 ${regions.length} 个 region）…`, { segMethod });
   const regionParts = {};       // region 名 → {img, width, height}
   let segDone = 0;
+  let processedSourceCanvas = segmentSource;
+  let cleanedSourceUrl = '';
+  const segRegions = method === 'exploded'
+    ? Object.entries(layout.placements || {}).map(([name, p]) => ({
+      name, x: p.x, y: p.y, w: p.w, h: p.h, rotate: 0,
+    }))
+    : regions;
 
   if (segMethod === 'bg_components') {
-    // 形状交集法：原轮廓 ∩ 新alpha
-    // atlas 模式：原轮廓从原 atlas sheet 取；exploded：从原 composite 取（但原 composite 没存，用原 atlas sheet 近似）
-    const silhouettes = buildOriginalSilhouettes(atlasSheetImg, regions);
-    // 对于 exploded，silhouettes 的坐标系是原 atlas 的，但 segmentSource 是 composite 的 placements 坐标系
-    // 需要把 segmentSource 按 placement 裁出（exploded 的 region bbox 来自 layout.placements）
-    const segRegions = method === 'exploded'
-      ? Object.entries(layout.placements || {}).map(([name, p]) => ({ name, x: p.x, y: p.y, w: p.w, h: p.h, rotate: 0 }))
-      : regions;
-    // exploded 的 silhouettes 要从 segmentSource 自身重建（它的轮廓就是原 region alpha）
-    const useSilhouettes = method === 'exploded'
-      ? buildOriginalSilhouettes(segmentSource, segRegions)
-      : silhouettes;
-    const masks = segmentByShapeIntersection(segmentSource, segRegions, useSilhouettes);
+    // 与参考项目一致：先对整张生成图去背景，再做连通域 + 原轮廓 IoU 匹配。
+    let silhouetteSource = atlasSheetImg;
+    if (method === 'exploded') {
+      silhouetteSource = createCanvas(layout.compositeW, layout.compositeH);
+      const silhouetteCtx = silhouetteSource.getContext('2d');
+      for (const region of regions) {
+        const placement = layout.placements?.[region.name];
+        if (!placement) continue;
+        const originalPart = cropRegionRotated(
+          atlasSheetImg, region.x, region.y, region.w, region.h, region.rotate,
+        );
+        silhouetteCtx.drawImage(
+          originalPart, placement.x, placement.y, placement.w, placement.h,
+        );
+      }
+    }
+    const useSilhouettes = buildOriginalSilhouettes(
+      silhouetteSource,
+      segRegions,
+    );
+    let masks = {};
+    try {
+      const sourceUrl = await uploadDataUrl(
+        segmentSource.toDataURL('image/png'),
+        `segment-source-${skinName}-${Date.now()}.png`,
+      );
+      const cleanResult = await callPlugin(REMBG_PLUGIN, 'rembg_remove', { image: sourceUrl });
+      cleanedSourceUrl = cleanResult?.data?.imageUrl || cleanResult?.imageUrl || '';
+      if (!cleanedSourceUrl) throw new Error('rembg 未返回去背景结果');
+      const cleanedImg = await loadImage(await urlToDataUrl(cleanedSourceUrl));
+      processedSourceCanvas = drawToCanvas(cleanedImg, segmentSource.width, segmentSource.height);
+      const rgba = processedSourceCanvas.getContext('2d').getImageData(
+        0, 0, processedSourceCanvas.width, processedSourceCanvas.height,
+      ).data;
+      const alpha = new Uint8Array(processedSourceCanvas.width * processedSourceCanvas.height);
+      for (let i = 0; i < alpha.length; i++) alpha[i] = rgba[i * 4 + 3];
+      masks = segmentByConnectedComponents(
+        alpha, processedSourceCanvas.width, processedSourceCanvas.height, useSilhouettes,
+      );
+      log('segment', `去背景并匹配到 ${Object.keys(masks).length}/${segRegions.length} 个连通部件`);
+    } catch (err) {
+      log('segment', `去背景/连通域失败，降级为 alpha 交集: ${err?.message || err}`, { error: true });
+    }
+    const fallbackMasks = segmentByShapeIntersection(
+      processedSourceCanvas, segRegions, useSilhouettes,
+    );
     const srcW = segmentSource.width, srcH = segmentSource.height;
     for (const region of segRegions) {
-      const mask = masks[region.name];
+      const mask = masks[region.name] || fallbackMasks[region.name];
       if (mask) {
         const masked = applyMaskToRegion(segmentSource, region, mask, srcW, srcH);
         let finalImg = masked;
@@ -309,22 +365,25 @@ export async function runReskin(input, opts = {}) {
       log('segment', `分割进度 ${segDone}/${segRegions.length}`, { done: segDone, total: segRegions.length });
     }
   } else {
-    // SAM 模式：逐 region rembg 抠图
-    for (const region of regions) {
-      const safe = safeFilename(region.name);
+    // SAM 模式：对整张图使用 bbox prompt，与参考 sam_server 的语义保持一致。
+    const segmentSourceUrl = await uploadDataUrl(
+      segmentSource.toDataURL('image/png'),
+      `sam-source-${skinName}-${Date.now()}.png`,
+    );
+    for (const region of segRegions) {
       const regionCanvas = cropRegionRotated(segmentSource, region.x, region.y, region.w, region.h, region.rotate);
       try {
-        const regionUrl = await uploadDataUrl(regionCanvas.toDataURL('image/png'), `region-${safe}-${Date.now()}.png`);
-        const cx = Math.round(region.w / 2);
-        const cy = Math.round(region.h / 2);
         const samResult = await callPlugin(REMBG_PLUGIN, 'rembg_sam_segment', {
-          image: regionUrl,
-          extras: { sam_prompt: [{ type: 'point', data: [cx, cy], label: 1 }] },
+          image: segmentSourceUrl,
+          extras: { sam_prompt: [samBoxPrompt(region)] },
         });
         const maskedUrl = samResult?.data?.imageUrl || samResult?.imageUrl;
         if (!maskedUrl) throw new Error('rembg 未返回抠图结果');
         const loadedMask = await loadImage(await urlToDataUrl(maskedUrl));
-        let maskedImg = drawToCanvas(loadedMask, region.w, region.h);
+        const maskedSheet = drawToCanvas(loadedMask, segmentSource.width, segmentSource.height);
+        let maskedImg = cropRegionRotated(
+          maskedSheet, region.x, region.y, region.w, region.h, region.rotate,
+        );
         const px = pickErodePx(Math.max(region.w, region.h), opts);
         if (px > 0) maskedImg = erodeAlpha(maskedImg, px);
         regionParts[region.name] = { img: maskedImg, width: region.w, height: region.h };
@@ -333,7 +392,7 @@ export async function runReskin(input, opts = {}) {
         regionParts[region.name] = { img: regionCanvas, width: region.w, height: region.h };
       }
       segDone += 1;
-      log('segment', `分割进度 ${segDone}/${regions.length}`, { done: segDone, total: regions.length });
+      log('segment', `分割进度 ${segDone}/${segRegions.length}`, { done: segDone, total: segRegions.length });
     }
   }
   log('segment', `分割完成，成功 ${Object.keys(regionParts).length}/${regions.length} 个 region`);
@@ -367,11 +426,21 @@ export async function runReskin(input, opts = {}) {
   const totalMs = Math.round(performance.now() - t0);
   log('done', `换肤完成，总耗时 ${totalMs}ms`, { totalMs });
 
+  // 当前 Pixi 实例仍使用原 atlas UV；热预览必须保持原 region 坐标。
+  const previewAtlasCanvas = buildPreviewAtlas(
+    regions, regionParts, atlas.sheetW, atlas.sheetH,
+  );
+
   return {
     newAtlasCanvas: repackResult.canvas,
+    previewAtlasCanvas,
     newAtlasText: repackResult.atlasText,
     newSpineJson,
     layout,
+    diagnostics: {
+      generatedImageUrl: reskinnedUrl,
+      cleanedSourceUrl,
+    },
     stats: { totalMs, regionCount: regions.length, packedCount: Object.keys(repackResult.placements).length, slotCount: Object.keys(skinPlacements).length, editImageMs, reusedGeneratedImage, method, segMethod },
   };
 }
@@ -473,8 +542,13 @@ export async function runInpaintSlot(input, opts = {}) {
   const totalMs = Math.round(performance.now() - t0);
   log('inpaint', `局部重绘完成（${totalMs}ms）`, { totalMs });
 
+  const previewAtlasCanvas = buildPreviewAtlas(
+    regions, regionParts, atlasSheet.width, atlasSheet.height,
+  );
+
   return {
     newAtlasCanvas: repackResult.canvas,
+    previewAtlasCanvas,
     newAtlasText: repackResult.atlasText,
     newSpineJson,
     stats: { totalMs, slot, region: targetRegionName },

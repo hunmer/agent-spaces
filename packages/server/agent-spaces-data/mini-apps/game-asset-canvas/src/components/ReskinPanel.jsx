@@ -13,6 +13,7 @@ import {
   getSpineAssetsSignature,
   normalizeReskinEditorData,
 } from '../utils/reskin/reskinEditorData';
+import useSpineReskinHistory from '../hooks/useSpineReskinHistory';
 
 const RESKIN_MODEL_STORAGE_KEY = 'spine-editor:processing-model';
 const EROSION_STORAGE_KEY = 'spine-editor:erosion';
@@ -38,6 +39,18 @@ function loadJSON(key, fallback) {
     const raw = localStorage.getItem(key);
     return raw ? { ...fallback, ...JSON.parse(raw) } : { ...fallback };
   } catch { return { ...fallback }; }
+}
+
+async function uploadCanvas(canvas, fileName) {
+  const AS = window.AgentSpaces;
+  if (!AS?.uploadFile) throw new Error('宿主 uploadFile 不可用');
+  const blob = await new Promise((resolve, reject) => {
+    canvas.toBlob((value) => (value ? resolve(value) : reject(new Error('Canvas 转 Blob 失败'))), 'image/png');
+  });
+  const uploaded = await AS.uploadFile(new File([blob], fileName, { type: 'image/png' }));
+  const url = uploaded?.url || uploaded?.httpPath;
+  if (!url) throw new Error('换肤历史图片上传失败');
+  return url;
 }
 
 /**
@@ -81,7 +94,6 @@ export default function ReskinPanel({
   const [advancedOpen, setAdvancedOpen] = useState(false); // 侵蚀分档折叠
   const [running, setRunning] = useState(false);
   const [logs, setLogs] = useState([]);
-  const [history, setHistory] = useState([]);
   const [activeSkin, setActiveSkin] = useState(null);
   const [generatedImageUrl, setGeneratedImageUrl] = useState(initialState.generatedImageUrl);
   const [processingModel, setProcessingModel] = useState(initialState.processingModel);
@@ -93,6 +105,11 @@ export default function ReskinPanel({
   const onDataChangeRef = useRef(onDataChange);
   onDataChangeRef.current = onDataChange;
   const assetSignature = getSpineAssetsSignature(assets);
+  const {
+    history,
+    saveHistory,
+    deleteHistory: deletePersistedHistory,
+  } = useSpineReskinHistory(assetSignature);
   const generatedImageSignatureRef = useRef(
     initialState.generatedImageUrl ? initialState.assetSignature : '',
   );
@@ -127,13 +144,6 @@ export default function ReskinPanel({
   }, []);
 
   const spineName = assets?.name || 'spine';
-
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(`spine-reskin-history:${spineName}`);
-      setHistory(raw ? JSON.parse(raw) : []);
-    } catch { setHistory([]); }
-  }, [spineName]);
 
   useEffect(() => {
     if (generatedImageSignatureRef.current === assetSignature) return;
@@ -213,9 +223,13 @@ export default function ReskinPanel({
   }, [slotMode, assets, loadSlots]);
 
   const applyHistory = useCallback(async (item) => {
-    if (!item?.assets?.pngDataUrl) return;
+    const previewUrl = item?.assets?.previewPngUrl
+      || item?.assets?.previewPngDataUrl
+      || item?.assets?.pngUrl
+      || item?.assets?.pngDataUrl;
+    if (!previewUrl) return;
     addLog('apply', `应用历史皮肤：${item.name}`);
-    await replaceAtlas?.(item.assets.pngDataUrl, item.name);
+    await replaceAtlas?.(previewUrl, item.name);
     setActiveSkin(item.name);
   }, [replaceAtlas, addLog]);
 
@@ -261,20 +275,42 @@ export default function ReskinPanel({
 
       addLog('preview', '应用新皮肤到画布预览…');
       const pngDataUrl = result.newAtlasCanvas.toDataURL('image/png');
-      await replaceAtlas?.(pngDataUrl, finalSkinName);
+      const previewPngDataUrl = result.previewAtlasCanvas.toDataURL('image/png');
+      await replaceAtlas?.(previewPngDataUrl, finalSkinName);
       setActiveSkin(finalSkinName);
 
-      const historyItem = {
-        name: finalSkinName, prompt, timestamp: Date.now(),
-        thumbnailUrl: pngDataUrl, stats: result.stats,
-        assets: { pngDataUrl, atlasText: result.newAtlasText, spineJson: result.newSpineJson, skelUrl: assets.skel },
-      };
-      setHistory((prev) => {
-        const next = [historyItem, ...prev.filter((h) => h.name !== finalSkinName)].slice(0, 20);
-        try { localStorage.setItem(`spine-reskin-history:${spineName}`, JSON.stringify(next)); } catch { /* 配额满 */ }
-        return next;
+      const persistedAssets = await onReskinComplete?.({
+        skel: assets.skel,
+        atlas: result.newAtlasText,
+        png: pngDataUrl,
+        spineJson: result.newSpineJson,
       });
-      onReskinComplete?.({ skel: assets.skel, atlas: historyItem.assets.atlasText, png: pngDataUrl, spineJson: historyItem.assets.spineJson });
+      const timestamp = Date.now();
+      const [pngUrl, previewPngUrl] = await Promise.all([
+        persistedAssets?.png
+          ? Promise.resolve(persistedAssets.png)
+          : uploadCanvas(result.newAtlasCanvas, `${finalSkinName}-atlas-${timestamp}.png`),
+        uploadCanvas(result.previewAtlasCanvas, `${finalSkinName}-preview-${timestamp}.png`),
+      ]);
+      const stages = [
+        { label: '原 Atlas', src: assets.png },
+        { label: 'AI 生成', src: result.diagnostics?.generatedImageUrl },
+        { label: '去背景', src: result.diagnostics?.cleanedSourceUrl },
+        { label: '最终 Atlas', src: pngUrl },
+      ].filter((stage) => stage.src);
+      const historyItem = {
+        id: `reskin-${timestamp}-${Math.random().toString(36).slice(2, 7)}`,
+        name: finalSkinName, prompt, timestamp,
+        thumbnailUrl: previewPngUrl, stages, stats: result.stats,
+        assets: {
+          pngUrl,
+          previewPngUrl,
+          atlasUrl: persistedAssets?.atlas || '',
+          spineJsonUrl: persistedAssets?.spineJson || '',
+          skelUrl: persistedAssets?.skel || assets.skel,
+        },
+      };
+      await saveHistory(historyItem);
       addLog('done', `✓ 换肤完成：${finalSkinName}`);
     } catch (err) {
       console.error('[reskin] failed:', err);
@@ -282,7 +318,7 @@ export default function ReskinPanel({
     } finally {
       setRunning(false);
     }
-  }, [prompt, assets, method, segMethod, size, erosion, finalSkinName, generatedImageUrl, requestSnapshot, requestSpineJson, replaceAtlas, onReskinComplete, addLog, spineName, workflowId, processingModel, handleGeneratedImage]);
+  }, [prompt, assets, method, segMethod, size, erosion, finalSkinName, generatedImageUrl, requestSnapshot, requestSpineJson, replaceAtlas, onReskinComplete, addLog, workflowId, processingModel, handleGeneratedImage, saveHistory]);
 
   /** per-slot 局部重绘 */
   const handleInpaintSlot = useCallback(async () => {
@@ -338,7 +374,8 @@ export default function ReskinPanel({
       });
 
       const pngDataUrl = result.newAtlasCanvas.toDataURL('image/png');
-      await replaceAtlas?.(pngDataUrl, finalSkinName);
+      const previewPngDataUrl = result.previewAtlasCanvas.toDataURL('image/png');
+      await replaceAtlas?.(previewPngDataUrl, finalSkinName);
       setActiveSkin(finalSkinName);
       onReskinComplete?.({ skel: assets.skel, atlas: result.newAtlasText, png: pngDataUrl, spineJson: result.newSpineJson });
       addLog('done', `✓ 局部重绘完成：${selectedSlot}`);
@@ -350,14 +387,12 @@ export default function ReskinPanel({
     }
   }, [prompt, assets, selectedSlot, size, erosion, finalSkinName, requestSpineJson, replaceAtlas, onReskinComplete, addLog, workflowId, processingModel]);
 
-  const deleteHistory = useCallback((name, e) => {
+  const handleDeleteHistory = useCallback((id, e) => {
     e?.stopPropagation();
-    setHistory((prev) => {
-      const next = prev.filter((h) => h.name !== name);
-      try { localStorage.setItem(`spine-reskin-history:${spineName}`, JSON.stringify(next)); } catch { /* ignore */ }
-      return next;
+    deletePersistedHistory(id).catch((err) => {
+      addLog('error', `删除生成记录失败：${err?.message || err}`, { error: true });
     });
-  }, [spineName]);
+  }, [deletePersistedHistory, addLog]);
 
   const deleteGeneratedImage = useCallback(() => {
     generatedImageSignatureRef.current = '';
@@ -551,24 +586,54 @@ export default function ReskinPanel({
 
       {history.length > 0 && (
         <div className="flex min-h-0 flex-1 flex-col">
-          <div className="px-3 py-2 text-xs font-medium">皮肤历史（{history.length}）</div>
+          <div className="px-3 py-2 text-xs font-medium">生成记录（{history.length}）</div>
           <ScrollArea className="min-h-0 flex-1 px-2 pb-2">
-            {history.map((item) => (
-              <div
-                key={item.name + item.timestamp}
-                onClick={() => applyHistory(item)}
-                className={`group mb-1 flex cursor-pointer items-center gap-2 rounded border px-2 py-1 transition hover:border-primary ${activeSkin === item.name ? 'border-primary bg-primary/5' : 'border-border'}`}
-              >
-                <img src={item.thumbnailUrl} alt={item.name} className="h-8 w-8 flex-shrink-0 rounded border border-border object-cover" />
-                <div className="min-w-0 flex-1">
-                  <div className="truncate text-[11px] font-medium">{item.name}</div>
-                  <div className="truncate text-[9px] text-muted-foreground">{item.prompt}</div>
+            {history.map((item) => {
+              const stages = item.stages?.length ? item.stages : [
+                { label: '结果', src: item.thumbnailUrl },
+              ];
+              const before = stages[0];
+              const after = stages[stages.length - 1];
+              const media = stages.map((stage) => ({
+                src: stage.src, type: 'image', alt: `${item.name} ${stage.label}`,
+                fileName: `${item.name}-${stage.label}.png`,
+              }));
+              return (
+                <div
+                  key={item.name + item.timestamp}
+                  className={`group mb-2 rounded border p-2 ${activeSkin === item.name ? 'border-primary bg-primary/5' : 'border-border'}`}
+                >
+                  <div className="mb-2 flex items-center gap-2">
+                    <button type="button" onClick={() => applyHistory(item)} className="min-w-0 flex-1 text-left">
+                      <div className="truncate text-[11px] font-medium">{item.name}</div>
+                      <div className="truncate text-[9px] text-muted-foreground">{item.prompt}</div>
+                    </button>
+                    <Button type="button" variant="ghost" size="icon-sm" onClick={(e) => handleDeleteHistory(item.id, e)} title="删除" className="h-7 w-7 opacity-0 group-hover:opacity-100">
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {[before, after].map((stage, stageIndex) => (
+                      <button
+                        key={`${stage.label}-${stageIndex}`}
+                        type="button"
+                        onClick={() => openMediaGallery(media, stageIndex ? media.length - 1 : 0)}
+                        className="min-w-0 overflow-hidden rounded border border-border bg-muted"
+                        title={`查看${stage.label}`}
+                      >
+                        <img src={stage.src} alt={`${item.name} ${stage.label}`} className="h-16 w-full object-contain" />
+                        <span className="block truncate border-t border-border px-1 py-0.5 text-[9px] text-muted-foreground">{stage.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                  {stages.length > 2 && (
+                    <div className="mt-1 truncate text-[9px] text-muted-foreground">
+                      {stages.map((stage) => stage.label).join(' → ')}
+                    </div>
+                  )}
                 </div>
-                <Button type="button" variant="ghost" size="icon-sm" onClick={(e) => deleteHistory(item.name, e)} title="删除" className="h-7 w-7 opacity-0 group-hover:opacity-100">
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
-              </div>
-            ))}
+              );
+            })}
           </ScrollArea>
         </div>
       )}

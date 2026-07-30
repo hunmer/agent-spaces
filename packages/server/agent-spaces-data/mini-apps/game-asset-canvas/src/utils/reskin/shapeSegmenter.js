@@ -81,6 +81,70 @@ export function segmentByShapeIntersection(newCanvas, regions, silhouettes, alph
 }
 
 /**
+ * 对去背景后的整图 alpha 做 8 邻域连通域标记，再按原始轮廓 IoU 匹配部件。
+ * 与参考项目 ComponentSegmenter 的核心语义一致，避免把不透明白底当作材质。
+ */
+export function segmentByConnectedComponents(
+  alpha, width, height, silhouettes, { minPixels = 64, minIou = 0.05 } = {},
+) {
+  const total = width * height;
+  if (!alpha || alpha.length !== total) throw new Error('连通域 alpha 尺寸不匹配');
+  const labels = new Int32Array(total);
+  const components = [];
+  const queue = new Int32Array(total);
+  let nextLabel = 0;
+
+  for (let start = 0; start < total; start++) {
+    if (alpha[start] <= 16 || labels[start]) continue;
+    nextLabel += 1;
+    let head = 0, tail = 0;
+    queue[tail++] = start;
+    labels[start] = nextLabel;
+    const pixels = [];
+    while (head < tail) {
+      const index = queue[head++];
+      pixels.push(index);
+      const x = index % width;
+      const y = Math.floor(index / width);
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          if (dx === 0 && dy === 0) continue;
+          const nx = x + dx, ny = y + dy;
+          if (nx < 0 || ny < 0 || nx >= width || ny >= height) continue;
+          const ni = ny * width + nx;
+          if (alpha[ni] <= 16 || labels[ni]) continue;
+          labels[ni] = nextLabel;
+          queue[tail++] = ni;
+        }
+      }
+    }
+    if (pixels.length >= minPixels) components.push(pixels);
+  }
+
+  const out = {};
+  for (const [name, silhouette] of Object.entries(silhouettes || {})) {
+    if (!silhouette || silhouette.length !== total) continue;
+    let silhouetteSize = 0;
+    for (let i = 0; i < total; i++) if (silhouette[i]) silhouetteSize += 1;
+    if (!silhouetteSize) continue;
+    let best = null;
+    let bestIou = 0;
+    for (const pixels of components) {
+      let intersection = 0;
+      for (const index of pixels) if (silhouette[index]) intersection += 1;
+      if (!intersection) continue;
+      const iou = intersection / Math.max(1, silhouetteSize + pixels.length - intersection);
+      if (iou > bestIou) { bestIou = iou; best = pixels; }
+    }
+    if (!best || bestIou < minIou) continue;
+    const mask = new Uint8Array(total);
+    for (const index of best) mask[index] = 255;
+    out[name] = mask;
+  }
+  return out;
+}
+
+/**
  * 把整图尺寸的 mask 应用到 region crop 上（裁出 + 蒙版）。
  *
  * @param {HTMLCanvasElement} sheet 源图

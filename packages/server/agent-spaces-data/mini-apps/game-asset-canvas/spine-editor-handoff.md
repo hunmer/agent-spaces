@@ -220,7 +220,7 @@ Canvas snapshot + 原 atlas sheet + .atlas + Spine JSON
 | 下载 Spine | 原始三件套由 JSZip 在浏览器打包并直接下载，不写节点 output |
 | AI 换肤 | 新 PNG、`.atlas`、Spine JSON 上传；写入 `data.reskinAssets`，PNG 写入 `data.output.images` |
 
-换肤编辑会话使用与其他节点对话框一致的 `initialData/onDataChange` 策略。`data.reskinEditorData` 保存当前角色三件套 URL、生成图 URL、提示词、皮肤名、合成/分割方法、输出尺寸、侵蚀配置、模型和局部重绘选择；不保存运行日志、执行中状态、派生 slot 列表或 localStorage 历史。
+换肤编辑会话使用与其他节点对话框一致的 `initialData/onDataChange` 策略。`data.reskinEditorData` 保存当前角色三件套 URL、生成图 URL、提示词、皮肤名、合成/分割方法、输出尺寸、侵蚀配置、模型和局部重绘选择；不保存运行日志、执行中状态或派生 slot 列表。生成记录写入服务端 `configs/spine-reskin-history.json`，图片先上传后仅保存 URL，不再使用 localStorage。
 
 换肤不会修改原始 `.skel`；`reskinAssets.skel` 保留原 URL，新增 Spine JSON 单独上传。
 
@@ -271,9 +271,9 @@ Canvas snapshot + 原 atlas sheet + .atlas + Spine JSON
 
 1. 角色索引在本地，但 `.skel/.atlas/.png` 仍从 jsDelivr 上固定的 `FrankoFPM/Spine-Viewer-Web@gh-pages` 分支加载，依赖网络和远端 CDN。
 2. 当前支持 Spine 3.8 二进制/JSON 和 4.2 JSON；Spine 4.2 二进制及其他 major.minor 版本尚未路由。
-3. `bg_components` 要求新图与原 pose/轮廓接近，部件明显位移时精度有限。
-4. SAM 当前使用 region bbox 中心点 prompt，复杂部件可考虑升级为 box prompt。
-5. atlas 热预览复用当前 UV，要求新 sheet 布局与当前 atlas 兼容；导出的新 `.atlas` 才是最终布局依据。
+3. `bg_components` 会先调用 rembg 去背景，再按连通域与原轮廓 IoU 匹配；部件明显移出原轮廓时仍可能匹配失败并降级为 alpha 交集。
+4. SAM 使用整张分割源的 region bbox box prompt，与参考 `sam_server` 的 box 语义一致。
+5. atlas 热预览仍复用当前 UV，因此使用保持原 region 坐标的专用预览图；导出资产继续使用 repack PNG + 新 `.atlas`。
 6. ZIP 下载当前统一把骨架文件命名为 `<name>.skel`，即使输入源是 `.json`。
 7. MediaRecorder/canvas.captureStream 依赖 Chromium 等现代浏览器，Safari 兼容性有限。
 

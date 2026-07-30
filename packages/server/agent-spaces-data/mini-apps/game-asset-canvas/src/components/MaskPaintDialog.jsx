@@ -457,7 +457,9 @@ export default function MaskPaintDialog({
             redo: [],
           };
         }
-        // 初始化 fabric.Canvas
+        // 初始化 fabric.Canvas（等一帧确保 Dialog 布局完成，取到正确尺寸）
+        await new Promise((r) => requestAnimationFrame(() => r()));
+        if (disposed) return;
         const el = stageRef.current?.querySelector('canvas');
         if (!el) throw new Error('画布 DOM 未就绪');
         try { fcRef.current?.dispose?.(); } catch {}
@@ -468,8 +470,11 @@ export default function MaskPaintDialog({
         });
         fcRef.current = fc;
         const stageEl = stageRef.current;
-        fc.setWidth(stageEl?.clientWidth || 0);
-        fc.setHeight(stageEl?.clientHeight || 0);
+        // 兜底：首次取不到尺寸时用一个安全值，后续 ResizeObserver 会修正
+        const w0 = stageEl?.clientWidth || 800;
+        const h0 = stageEl?.clientHeight || 500;
+        fc.setWidth(w0);
+        fc.setHeight(h0);
         // ResizeObserver
         if (stageEl && typeof ResizeObserver !== 'undefined') {
           const ro = new ResizeObserver(() => {
@@ -563,7 +568,10 @@ export default function MaskPaintDialog({
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) onClose?.(); }}>
-      <DialogContent className="!w-[80vw] !max-w-[80vw] flex max-h-[92vh] flex-col gap-2 p-3">
+      <DialogContent
+        className="!w-[80vw] !max-w-[80vw] flex flex-col gap-2 overflow-hidden p-3"
+        style={{ height: '92vh', maxHeight: '92vh' }}
+      >
         <DialogHeader className="flex-row items-center justify-between space-y-0">
           <div>
             <DialogTitle>蒙版绘制</DialogTitle>
@@ -649,7 +657,7 @@ export default function MaskPaintDialog({
         </div>
 
         {/* 画布区 */}
-        <div className="nodrag nopan nowheel relative min-h-[300px] flex-1 overflow-hidden rounded-md border border-border bg-[#0f172a]">
+        <div className="nodrag nopan nowheel relative h-full min-h-0 flex-1 overflow-hidden rounded-md border border-border bg-[#0f172a]">
           {loading && (
             <div className="absolute inset-0 z-10 flex items-center justify-center gap-2 bg-background/60 text-sm text-muted-foreground">
               <Loader className="h-4 w-4 animate-spin" /> 加载编辑器…

@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import {
   buildOriginalSilhouettes,
+  segmentByConnectedComponents,
   segmentByShapeIntersection,
 } from './shapeSegmenter.js';
 
@@ -73,4 +74,16 @@ test('segmentByShapeIntersection accepts an image source', () => {
   } finally {
     env.restore();
   }
+});
+
+test('segmentByConnectedComponents matches the coloured foreground instead of opaque white background', () => {
+  const alpha = [0, 255, 0, 0, 255, 0];
+  const masks = segmentByConnectedComponents(
+    alpha,
+    3,
+    2,
+    { body: new Uint8Array([0, 1, 0, 0, 1, 0]) },
+    { minPixels: 1, minIou: 0.05 },
+  );
+  assert.deepEqual([...masks.body], [0, 255, 0, 0, 255, 0]);
 });

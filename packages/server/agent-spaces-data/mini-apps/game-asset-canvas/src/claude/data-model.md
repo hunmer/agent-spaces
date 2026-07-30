@@ -228,6 +228,33 @@ interface HistoryItem {
 }
 ```
 
+## Spine 换肤生成记录
+
+存 `configs/spine-reskin-history.json`，按 Spine 三件套资源签名隔离；每组最多 20 条，同名 skin 原子替换：
+
+```typescript
+type SpineReskinHistoryFile = Record<string, SpineReskinHistoryItem[]>;
+
+interface SpineReskinHistoryItem {
+  id: string;
+  name: string;
+  prompt: string;
+  timestamp: number;
+  thumbnailUrl: string;          // 原布局预览 PNG 的服务端 URL
+  stages: Array<{ label: string; src: string }>;
+  stats: object;
+  assets: {
+    pngUrl: string;              // repack atlas PNG
+    previewPngUrl: string;       // 保持旧 UV 布局的热预览 PNG
+    atlasUrl: string;
+    spineJsonUrl: string;
+    skelUrl: string;
+  };
+}
+```
+
+记录由 `useSpineReskinHistory` 使用 `getConfig/onConfigReady/onConfigChanged` 订阅，多预览实例自动同步。
+
 ## 设置（Settings）
 
 存 `configs/settings.json`（全局共享）。结构见 `utils/settings.js DEFAULT_SETTINGS`，前端读时用 `mergeSettings` 补默认值。
