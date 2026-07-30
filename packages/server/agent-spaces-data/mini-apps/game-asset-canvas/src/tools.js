@@ -39,6 +39,7 @@ const NODE_TYPE_ENUM = [
   'workflowRunner',
   'spineEditor',
   'videoDisplay',
+  'videoEditor',
   'note',
 ];
 
@@ -73,6 +74,7 @@ const NODE_TYPE_DESC = [
   'workflowRunner=执行工作流（选工作流+JSON参数→执行→提取URL展示，通用节点）',
   'spineEditor=骨骼编辑器（Spine骨骼姿势编辑+动画预览，上传.skel/.atlas/.png）',
   'videoDisplay=视频展示（接收上游视频，上传/播放/导出）',
+  'videoEditor=视频编辑器（接收/上传多视频，ffmpeg按帧截取，帧拖拽分组循环播放，调整尺寸）',
   'note=便签（纯文本备注）',
 ].join(' / ');
 

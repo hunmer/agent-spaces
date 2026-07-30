@@ -122,12 +122,26 @@
       }
     }
   ],
-  "edges": [],
+  "edges": [
+    {
+      "id": "e-node_1785226640983_gvs2q9-source-node_1785226309770_end-target",
+      "source": "node_1785226640983_gvs2q9",
+      "target": "node_1785226309770_end",
+      "edgeKind": "runtime",
+      "sourceHandle": "source",
+      "targetHandle": "target"
+    }
+  ],
   "createdAt": 1785226309789,
-  "updatedAt": 1785227160259,
+  "updatedAt": 1785377244845,
   "published": false,
-  "lastOpenedAt": 1785226309808,
+  "lastOpenedAt": 1785377045136,
   "enabledPlugins": [
-    "workflow.runninghub"
-  ]
+    "workflow.runninghub",
+    "workflow.ffmpeg"
+  ],
+  "layoutSnapshot": {
+    "edgePathType": "straight",
+    "edgeLineStyle": "dashed"
+  }
 }

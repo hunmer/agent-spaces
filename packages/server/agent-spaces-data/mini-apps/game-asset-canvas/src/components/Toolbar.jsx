@@ -5,6 +5,9 @@ import {
   MenubarContent,
   MenubarItem,
   MenubarSeparator,
+  MenubarSub,
+  MenubarSubTrigger,
+  MenubarSubContent,
 } from '@agent-spaces/ui';
 
 /**
@@ -14,11 +17,13 @@ import {
  *   文件▾(导出/导入) | 画布▾(自动布局/清空) | 工具▾(像素编辑器/3D导演台/在线PS/提示词管理/设置) | 选择▾(全选/反选/取消选择)
  *
  * @param {{ onClear, onAutoLayout, onExport, onImport, onOpenSettings, onOpenPromptManager,
+ *           edgePathStyle, edgeLineStyle, edgePathStyles, edgeLineStyles, onEdgePathStyleChange, onEdgeLineStyleChange,
  *           onSelectAll, onInvertSelect, onClearSelection,
  *           count, queueSlot, workspaceSlot }} props
  */
 export default function Toolbar({
   onClear, onAutoLayout, onExport, onImport, onOpenSettings, onOpenPromptManager,
+  edgePathStyle, edgeLineStyle, edgePathStyles, edgeLineStyles, onEdgePathStyleChange, onEdgeLineStyleChange,
   onSelectAll, onInvertSelect, onClearSelection,
   count, queueSlot, workspaceSlot,
 }) {
@@ -60,6 +65,29 @@ export default function Toolbar({
           <MenubarTrigger>画布</MenubarTrigger>
           <MenubarContent>
             <MenubarItem onClick={onAutoLayout}>自动布局</MenubarItem>
+            <MenubarSeparator />
+            <MenubarSub>
+              <MenubarSubTrigger>连线</MenubarSubTrigger>
+              <MenubarSubContent>
+                {(edgePathStyles || []).map((style) => (
+                  <MenubarItem key={style} onClick={() => onEdgePathStyleChange?.(style)}>
+                    {edgePathStyle === style ? '✓ ' : ''}{style}
+                  </MenubarItem>
+                ))}
+              </MenubarSubContent>
+            </MenubarSub>
+            <MenubarSeparator />
+            <MenubarSub>
+              <MenubarSubTrigger>线条</MenubarSubTrigger>
+              <MenubarSubContent>
+                {(edgeLineStyles || []).map((style) => (
+                  <MenubarItem key={style} onClick={() => onEdgeLineStyleChange?.(style)}>
+                    {edgeLineStyle === style ? '✓ ' : ''}{style === 'dashed' ? '虚线' : '实线'}
+                  </MenubarItem>
+                ))}
+              </MenubarSubContent>
+            </MenubarSub>
+            <MenubarSeparator />
             <MenubarItem onClick={onClear} variant="destructive">清空</MenubarItem>
           </MenubarContent>
         </MenubarMenu>

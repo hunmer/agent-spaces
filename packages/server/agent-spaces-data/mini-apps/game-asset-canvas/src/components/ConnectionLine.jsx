@@ -1,4 +1,5 @@
 import { useNodes, useReactFlow } from '@xyflow/react';
+import { getEdgePath } from './canvas/FloatingEdge';
 
 /**
  * 自定义连接线预览：
@@ -12,7 +13,9 @@ import { useNodes, useReactFlow } from '@xyflow/react';
  *
  * @param {{ fromX:number, fromY:number, toX:number, toY:number, fromNode?:object }} props
  */
-export default function ConnectionLine({ fromX, fromY, toX, toY, fromPosition, toPosition, fromNode }) {
+export default function ConnectionLine({
+  fromX, fromY, toX, toY, fromPosition, toPosition, fromNode, connectionLineStyle,
+}) {
   const { getInternalNode } = useReactFlow();
   const nodes = useNodes();
 
@@ -48,12 +51,25 @@ export default function ConnectionLine({ fromX, fromY, toX, toY, fromPosition, t
   }
 
   return segments.map(({ key, x, y, position }) => {
-    const params = { sx: x, sy: y, tx: toX, ty: toY, sourcePos: position, targetPos: toPosition };
-    const d = `M ${params.sx},${params.sy}L ${params.tx},${params.ty}`;
+    const d = getEdgePath({
+      sourceX: x,
+      sourceY: y,
+      sourcePosition: position,
+      targetX: toX,
+      targetY: toY,
+      targetPosition: toPosition,
+      pathStyle: connectionLineStyle?.pathStyle,
+    });
     return (
       <g key={key}>
-        <path fill="none" strokeWidth={1.5} stroke="#6366f1" d={d} />
-        <circle cx={params.tx} cy={params.ty} fill="#fff" r={4} stroke="#6366f1" strokeWidth={1.5} />
+        <path
+          fill="none"
+          strokeWidth={1.5}
+          stroke="#6366f1"
+          strokeDasharray={connectionLineStyle?.strokeDasharray || 'none'}
+          d={d}
+        />
+        <circle cx={toX} cy={toY} fill="#fff" r={4} stroke="#6366f1" strokeWidth={1.5} />
       </g>
     );
   });

@@ -1,6 +1,7 @@
 const ffmpeg = require('@ts-ffmpeg/fluent-ffmpeg')
 const path = require('path')
 const fs = require('fs')
+const frameActions = require('./frames')
 
 function setFfmpegPath(ffmpegPath) {
   if (ffmpegPath) ffmpeg.setFfmpegPath(ffmpegPath)
@@ -362,4 +363,6 @@ module.exports = (t) => [
       }
     },
   },
+  // 帧处理 action（按帧截取 + 自定义命令），产物写入 mini-app data 目录
+  ...(frameActions(t)),
 ]

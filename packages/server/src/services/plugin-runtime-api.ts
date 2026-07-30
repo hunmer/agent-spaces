@@ -9,6 +9,15 @@ import { URL } from 'node:url';
 import { PassThrough, Readable } from 'node:stream';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { getDataDir } from '../storage/json-store.js';
+import { resolveDataPath, writeDataFile } from './mini-apps.js';
+
+// 拼服务端 origin（供插件产物转 httpPath），与 savePublicFile 原逻辑一致。
+function serverOrigin(): string {
+  const port = process.env.PORT || '3100';
+  const host = process.env.HTTP_HOST || 'localhost';
+  const protocol = process.env.HTTPS ? 'https' : 'http';
+  return `${protocol}://${host === '0.0.0.0' ? 'localhost' : host}:${port}`;
+}
 
 export type FetchOptions = {
   headers?: Record<string, string>;
@@ -23,9 +32,11 @@ export type PostOptions = FetchOptions & {
 };
 
 // 插件来源标识，用于在 HTTP 调试日志中标注请求由哪个插件发起。
+// workspaceId 命中 mini-app 时携带，使插件能访问该 mini-app 的 data 目录。
 export type PluginSource = {
   pluginId?: string;
   pluginName?: string;
+  workspaceId?: string;
 };
 
 // 跨 async/await 透传当前调用栈的插件来源，供 httpDebug / wrapFetchWithDebug 读取。
@@ -503,11 +514,26 @@ export function createBuiltinPluginApi(source: PluginSource = {}): Record<string
       const filename = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`;
       const filePath = path.join(uploadsDir, filename);
       fsSync.writeFileSync(filePath, buffer);
-      const port = process.env.PORT || '3100';
-      const host = process.env.HTTP_HOST || 'localhost';
-      const protocol = process.env.HTTPS ? 'https' : 'http';
-      const origin = `${protocol}://${host === '0.0.0.0' ? 'localhost' : host}:${port}`;
-      return { filePath, httpPath: `${origin}/static/uploads/${filename}` };
+      return { filePath, httpPath: `${serverOrigin()}/static/uploads/${filename}` };
+    },
+
+    // 取当前 mini-app 的 data 目录绝对路径（workspaceId 缺失时返回 null）。
+    // 插件据此把产物写到该 mini-app 的隔离沙箱，而非全局 public/uploads。
+    getMiniAppDataDir(): string | null {
+      const wsId = source.workspaceId;
+      if (!wsId) return null;
+      return resolveDataPath(wsId, '');
+    },
+
+    // 把 buffer 写入当前 mini-app 的 data 目录（relPath 相对 data/，如 'video-frames/x/f.jpg'），
+    // 返回可直接用于 <img>/<video> src 的 httpPath。复用 /api/mini-apps/:id/data/file 路由。
+    saveMiniAppDataFile(relPath: string, buffer: Buffer): { filePath: string; httpPath: string } | null {
+      const wsId = source.workspaceId;
+      if (!wsId) return null;
+      const filePath = resolveDataPath(wsId, relPath);
+      writeDataFile(wsId, relPath, buffer);
+      const rel = relPath.replace(/^\/+/, '');
+      return { filePath, httpPath: `${serverOrigin()}/api/mini-apps/${encodeURIComponent(wsId)}/data/file?path=${encodeURIComponent(rel)}` };
     },
   };
 

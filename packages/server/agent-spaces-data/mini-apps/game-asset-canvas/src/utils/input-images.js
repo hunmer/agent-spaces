@@ -100,8 +100,8 @@ export function computeInputImages(nodes, edges) {
  * @returns {Map<string, {videos: string[], isDisplay: boolean}>} nodeId -> 派生输入
  */
 export function computeInputVideos(nodes, edges) {
-  const VIDEO_RECEIVER_TYPES = new Set([NODE_TYPES.videoDisplay, NODE_TYPES.videoGenerator]);
-  const VIDEO_PASSTHROUGH_TYPES = new Set([NODE_TYPES.videoDisplay]);
+  const VIDEO_RECEIVER_TYPES = new Set([NODE_TYPES.videoDisplay, NODE_TYPES.videoGenerator, NODE_TYPES.videoEditor]);
+  const VIDEO_PASSTHROUGH_TYPES = new Set([NODE_TYPES.videoDisplay, NODE_TYPES.videoEditor]);
 
   // 取某节点「作为 source 时应给出的产出视频」
   const sourceVideos = (node, derivedByNode) => {

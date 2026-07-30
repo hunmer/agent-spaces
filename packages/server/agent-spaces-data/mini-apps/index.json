@@ -409,7 +409,8 @@
     "mainFile": "index.jsx",
     "enabledPlugins": [
       "@agent-spaces/builtin",
-      "workflow.rembg"
+      "workflow.rembg",
+      "workflow.ffmpeg"
     ],
     "agentPermissions": [
       "Files"
@@ -463,6 +464,6 @@
       }
     ],
     "createdAt": "2026-07-22T00:00:00.000Z",
-    "updatedAt": "2026-07-30T01:47:32.826Z"
+    "updatedAt": "2026-07-30T02:28:14.332Z"
   }
 ]

@@ -41,6 +41,7 @@ const VALID_NODE_TYPES = [
   'workflowRunner',// 执行工作流（通用）
   'spineEditor',   // 骨骼编辑器
   'videoDisplay',  // 视频展示
+  'videoEditor',   // 视频编辑器
   'note',          // 便签
 ];
 
@@ -75,6 +76,7 @@ const NODE_LABELS = {
   workflowRunner: '执行工作流',
   spineEditor: '骨骼编辑器',
   videoDisplay: '视频展示',
+  videoEditor: '视频编辑器',
   note: '便签',
 };
 

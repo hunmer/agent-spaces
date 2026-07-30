@@ -60,6 +60,8 @@ export const NODE_TYPES = {
   spineEditor: 'spineEditor',
   // 视频展示节点：展示/上传视频，支持连线接收上游视频产出（对标 imageDisplay）
   videoDisplay: 'videoDisplay',
+  // 视频编辑器节点：接收/上传多视频 → ffmpeg 按帧截取 → 帧拖拽到动画组循环播放 + 尺寸调整
+  videoEditor: 'videoEditor',
   // 注：分组不是节点，是 WorkflowGroupOverlay（由 groups 数据驱动，复用 workflow-editor 同源组件）
 };
 
@@ -192,6 +194,13 @@ export function isAliyunVideoModel(model) {
   return true;
 }
 
+// ============ 视频编辑器（videoEditor 节点，ffmpeg_extract_frames）============
+// 帧截取模式（对应 ffmpeg plugin action mode select）
+export const FRAME_EXTRACT_MODE_OPTIONS = [
+  { value: 'count', label: '按数量' },
+  { value: 'fps', label: '按帧率' },
+];
+
 // 节点显示配置
 export const NODE_META = {
   [NODE_TYPES.textToImage]: { label: '文字生成图片', icon: '✍️', color: '#6366f1' },
@@ -226,6 +235,7 @@ export const NODE_META = {
   [NODE_TYPES.workflowRunner]: { label: '执行工作流', icon: '⚙️', color: '#0ea5e9' },
   [NODE_TYPES.spineEditor]: { label: '骨骼编辑器', icon: '🦴', color: '#8b5cf6' },
   [NODE_TYPES.videoDisplay]: { label: '视频展示', icon: '🎬', color: '#ec4899' },
+  [NODE_TYPES.videoEditor]: { label: '视频编辑器', icon: '🎞️', color: '#8b5cf6' },
 };
 
 // 图片展示节点的来源标签（不同来源传不同 tag 做区分）

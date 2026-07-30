@@ -56,6 +56,8 @@ const DEFAULT_EDGE_OPTIONS = {
   type: 'floating',
   markerEnd: { type: MarkerType.ArrowClosed },
 };
+const EDGE_PATH_STYLES = ['bezier', 'straight', 'step', 'smoothstep'];
+const EDGE_LINE_STYLES = ['solid', 'dashed'];
 
 /**
  * 游戏资产生成画布主组件（编排层）。
@@ -96,6 +98,8 @@ export default function Canvas() {
   const [contextMenu, setContextMenu] = useState(null);
   // 拖拽连线到空白处放手的「添加节点」菜单：{ clientX, clientY, source, sourceHandle } | null
   const [dropNodeMenu, setDropNodeMenu] = useState(null);
+  const [edgePathStyle, setEdgePathStyle] = useState('bezier');
+  const [edgeLineStyle, setEdgeLineStyle] = useState('solid');
 
   const reactFlow = useReactFlow();
   const wrappingRef = useRef(null);
@@ -222,14 +226,15 @@ export default function Canvas() {
           {
             source, target: conn.target,
             sourceHandle: conn.sourceHandle, targetHandle: conn.targetHandle,
-            markerEnd: { type: MarkerType.ArrowClosed }, animated: true,
+            markerEnd: { type: MarkerType.ArrowClosed },
+            data: { pathStyle: edgePathStyle, lineStyle: edgeLineStyle },
           },
           next,
         );
       }
       return next;
     });
-  }, [setEdges]);
+  }, [edgeLineStyle, edgePathStyle, setEdges]);
 
   // 连线拖到空白处放手：弹出「添加节点」菜单
   const onConnectEnd = useCallback((event, connectionState) => {
@@ -257,9 +262,19 @@ export default function Canvas() {
   const deleteKeyCode = useMemo(() => (['Backspace', 'Delete']), []);
   const nodeTypes = useMemo(() => NODE_COMPONENTS, []);
   const floatingEdges = useMemo(
-    () => edges.map((edge) => (edge.type === 'floating' ? edge : { ...edge, type: 'floating' })),
-    [edges],
+    () => edges.map((edge) => ({
+      ...edge,
+      type: 'floating',
+      animated: false,
+      data: { ...(edge.data || {}), pathStyle: edgePathStyle, lineStyle: edgeLineStyle },
+      style: stripEdgeDashStyle(edge.style),
+    })),
+    [edgeLineStyle, edgePathStyle, edges],
   );
+  const connectionLineStyle = useMemo(() => ({
+    pathStyle: edgePathStyle,
+    strokeDasharray: edgeLineStyle === 'dashed' ? '6 4' : 'none',
+  }), [edgeLineStyle, edgePathStyle]);
 
   const handleOutputPreviewHeight = useCallback((id, height) => {
     if (!id || !Number.isFinite(height) || height <= 0) return;
@@ -571,6 +586,12 @@ export default function Canvas() {
             onImport={crud.handleImport}
             onOpenSettings={() => setSettingsOpen(true)}
             onOpenPromptManager={() => setPromptManagerOpen(true)}
+            edgePathStyle={edgePathStyle}
+            edgeLineStyle={edgeLineStyle}
+            edgePathStyles={EDGE_PATH_STYLES}
+            edgeLineStyles={EDGE_LINE_STYLES}
+            onEdgePathStyleChange={setEdgePathStyle}
+            onEdgeLineStyleChange={setEdgeLineStyle}
             onSelectAll={selection.handleSelectAll}
             onInvertSelect={selection.handleInvertSelect}
             onClearSelection={selection.handleClearSelection}
@@ -620,6 +641,7 @@ export default function Canvas() {
               onConnect={onConnect}
               onConnectEnd={onConnectEnd}
               connectionLineComponent={ConnectionLine}
+              connectionLineStyle={connectionLineStyle}
               connectionRadius={160}
               onSelectionChange={selection.onSelectionChange}
               onNodesDelete={onNodesDelete}
@@ -802,4 +824,12 @@ export default function Canvas() {
       />
     </ResizablePanelGroup>
   );
+}
+
+function stripEdgeDashStyle(style) {
+  if (!style?.strokeDasharray && !style?.['stroke-dasharray']) return style;
+  const next = { ...style };
+  delete next.strokeDasharray;
+  delete next['stroke-dasharray'];
+  return next;
 }
