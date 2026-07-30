@@ -255,7 +255,12 @@ export class SpineEditorApp {
       dbg('setupPose ok');
       spine.update(0);
       dbg('update(0) ok');
-      // 强制更新 transform，确保 getBounds/fitView 读到最新值
+      // 让 PIXI 完整渲染一帧，驱动 4.2 spine-pixi 首次 renderMeshes 建立 mesh 子树，
+      // 避免直接调 updateTransform() 时 mesh 的 parent 链尚未稳定导致
+      // 'Cannot read properties of null (reading transform)'。
+      this.app.render();
+      dbg('app.render() ok');
+      // 渲染后 transform 已就绪，再同步一次确保 getBounds/fitView 读到准确值
       this.spineContainer.updateTransform();
       dbg('updateTransform ok');
     } catch (err) {
