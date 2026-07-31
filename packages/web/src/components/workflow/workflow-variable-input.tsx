@@ -57,7 +57,7 @@ type VariableField = OutputField & {
 
 const PURE_VARIABLE_PATTERN = /^\s*\{\{\s*([^{}]*?)\s*\}\}\s*$/;
 const NODE_VARIABLE_PATTERN = /^__(?:data|inputs)__\["([^"]+)"\]\.?(.*)$/;
-const CONFIG_VARIABLE_PATTERN = /^__config__\["([^"]+)"\]\["([^"]+)"\]$/;
+const CONFIG_VARIABLE_PATTERN = /^__config__\["([^"]+)"\]\["([^"]+)"\](?:\["([^"]+)"\])?$/;
 const LOOP_VARIABLE_PATTERN = /^__loop__\.?(.*)$/;
 const VARIABLE_TOKEN_PATTERN = /\{\{\s*[^{}]+?\s*\}\}/g;
 const variableHighlightPluginKey = new PluginKey('workflowVariableHighlight');
@@ -90,7 +90,7 @@ function getVariableBadgeLabel(
   }
 
   const configMatch = expression.match(CONFIG_VARIABLE_PATTERN);
-  if (configMatch) return `${configMatch[1]}.${configMatch[2]}`;
+  if (configMatch) return configMatch.slice(1).filter(Boolean).join('.');
 
   const loopMatch = expression.match(LOOP_VARIABLE_PATTERN);
   if (loopMatch) return loopMatch[1] ? `loop.${loopMatch[1]}` : 'loop';
@@ -189,7 +189,8 @@ function isConfigVariableReferenceMissing(value: string | number, plugins: Workf
   const expression = getVariableExpression(value);
   const match = expression?.match(CONFIG_VARIABLE_PATTERN);
   if (!match) return false;
-  const [, pluginId, key] = match;
+  const [, pluginId, configNameOrKey, namedConfigKey] = match;
+  const key = namedConfigKey || configNameOrKey;
   const plugin = plugins.find((item) => item.id === pluginId);
   if (!plugin) return true;
   return !(plugin.config as PluginConfigField[] | undefined)?.some((field) => field.key === key);

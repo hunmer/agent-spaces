@@ -27,3 +27,21 @@ test('workflow config template without fallback keeps existing missing-value beh
     '',
   );
 });
+
+test('workflow config template reads a named plugin config without changing the default path', () => {
+  const config = {
+    'workflow.ai-image': {
+      apiKey: 'default-key',
+      '自定义配置文件名字': { apiKey: 'named-key' },
+    },
+  };
+
+  assert.equal(
+    __resolveWorkflowConfigValueForTest(config, '{{ __config__["workflow.ai-image"]["apiKey"] }}'),
+    'default-key',
+  );
+  assert.equal(
+    __resolveWorkflowConfigValueForTest(config, '{{ __config__["workflow.ai-image"]["自定义配置文件名字"]["apiKey"] }}'),
+    'named-key',
+  );
+});

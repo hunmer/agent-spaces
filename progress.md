@@ -18,3 +18,13 @@
 - 已完成全部 8 个 Mini App 的 Host API 迁移；Host API 增加重复打开、卸载和配置写入失败清理；进入静态验证阶段。
 - 验证进展：shared、SDK、server build 通过；Web 针对性 ESLint 0 errors；全量 tsc 仅命中仓库既有错误，本次文件未报错。
 - 8 个迁移后的 Mini App JSX 均通过 esbuild 语法编译；直接渲染 `WorkflowListDialog` 的引用已清零；任务实现完成。
+- 2026-07-31：开始扩展 Workflow 插件配置变量菜单与 `__config__` 命名方案读取能力。
+- 已补命名配置模板回归测试并确认红灯：旧路径通过，新三段路径未解析。
+- 已实现 Picker 的“插件 → 默认/命名配置 → 字段”菜单、运行时命名配置树和 2～3 段配置模板解析；待编译验证。
+- 命名配置模板测试 4/4 通过；Web ESLint 0 errors（3 个既有 refs warnings）；首次 Server build 被 shared 旧产物阻塞。
+- 已按顺序重建 shared，随后 server build 通过；进入差异审查与服务重启阶段。
+- 最终静态验证：相关 Server 测试 8/8、Server build、git diff check 通过；Web ESLint 0 errors（仅 3 个既有 warnings）。
+- procm-mcp 初始无登记进程；已确认现有 `pnpm run dev` 根进程同时管理 Web:3000 与 Server:3100，准备整体迁移到 procm 管理后重启。
+- procm 进程 `tGvR4jkz` 已启动；首次 Web 子进程因另一个独立旧 Web 进程占用 3000 而退出，待清理后重启。
+- 已清理旧进程并拆分为 procm 管理的 `agent-spaces-web` 与 `agent-spaces-server`；Web 3000、Server 3100、Web API 代理均返回 200。
+- 2026-07-31：收到 workflow-nodes 并发加载触发 Node.js `Unexpected module status 5` 的反馈，开始建立并发 HTTP 复现。

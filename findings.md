@@ -19,3 +19,19 @@
 - `fitting-room/GalleryPage` 选中后会调用 `save_shared_config`；迁移时继续等待保存完成。
 - `sdk.workflow.list()` 返回完整 `WorkflowTemplate[]`，可同时满足选择、插件列表展示与 start 节点输入模板生成。
 - Mini App data 读取最终使用 `safeProjectSubdirPath(projectId, 'data', filePath)`，新增 GET 路由沿用现有目录边界校验。
+- 本次入口是 `workflow-variable-picker.tsx` 的 `VariableFieldMenu`/`WorkflowVariablePicker`；CodeGraph 同时发现 `workflow-variable-input.tsx` 存在一套相似字段菜单与配置引用校验，需确认是否共享行为。
+- 兼容目标明确为：`__config__[pluginId][field]` 保持现有默认/生效配置语义；新增 `__config__[pluginId][schemeName][field]` 读取指定命名配置。
+- `WorkflowVariablePicker` 当前只加载插件清单并直接把 `plugin.config` 字段映射为 `__config__[pluginId][field]`，尚未请求 `pluginConfigSchemeApi.list(pluginId)`。
+- `ExecutionManager.loadPluginConfigs()` 当前每个插件只注入一个扁平配置对象：Workflow 选中方案或插件默认配置；需在不改变这些顶层字段的前提下，把全部命名方案作为同级嵌套对象挂入。
+- 服务端模板解析正则只显式处理两段方括号；若配置树包含嵌套对象，纯表达式解析必须扩展到第三段方括号，否则新路径不会命中专用解析逻辑。
+- `workflow-variable-input.tsx` 另有自动补全与 badge 解析逻辑，目前仅识别两段配置路径；用户只点名 picker，但运行时兼容新表达式至少需要避免其“缺失变量”校验误判。
+- 最小兼容数据结构：每个插件配置对象保留现有顶层生效字段，同时附加 `{ [schemeName]: schemeValues }`。因此旧路径语义不变，新增第三段路径可直选任意命名方案；执行级 override 仅覆盖顶层生效字段。
+- Picker 的目标结构可直接使用现有 DropdownMenuSub：配置属性 → 插件 → 默认配置/各命名方案 → 配置字段。命名方案列表来自 `pluginConfigSchemeApi.list(pluginId)`。
+- 模板解析函数 `resolveWorkflowConfigString` 是正确测试缝；现有 `workflow-config-template.test.ts` 可先补第三段路径的失败用例，再实现通用方括号路径解析。
+- 现有中英文 locale 已有 `sidebar.defaultConfig`，UI 无需新增翻译。
+- `workflow-variable-input.tsx` 的缺失校验在有 variableItems 时会把未列出的命名路径判为缺失；为一致性应同步生成命名方案补全项或至少扩展识别。由于用户指定的是 picker，本次优先改 picker，并扩展配置路径正则使第三段路径不会被当成普通无效变量。
+- `execution-manager.ts` 内配置类型出现 7 处，适合引入本地 `WorkflowPluginConfigTree` 类型集中替换，避免散落的 `any`。
+- 新反馈的竞态入口位于 `plugin.ts`：服务启动后异步调用 `startServerLoadPluginScripts()`，其中使用 `Promise.allSettled` 并发激活所有插件；同时 `/workflow-nodes` 会同步进入 `getRegisteredPluginActions()`/`loadCommonJsWorkflowNodes()`。
+- 用户错误中的 `webview/actions.js` 同时被动态 import 与 `require()` 访问，和启动期并发激活、页面并发读取节点定义的交叉时序一致。
+- `getWorkflowNodes()` 会先同步 `activatePlugin()`；激活器通过 VM 执行 `main.js`，其 `createPluginRequire()` 对相对路径使用 Node 原生 `createRequire(entryPath)`。插件位于 `packages/server` 下，会继承该包的 `"type": "module"`，因此 `.js` actions 实际进入 Node ESM loader。
+- `startServerLoadPluginScripts()` 本身并发的是 sidecar 启动，不直接激活 actions；需要继续确认 sidecar 是否导入同一入口，或问题是否来自 Node 22 对同一 ESM 的并发 `require()` 状态。

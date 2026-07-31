@@ -15,7 +15,7 @@ import {
 import { Braces } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { getNodeDefinition } from '@/lib/workflow-nodes';
-import { pluginApi, type WorkflowPlugin } from '@/lib/workflow-plugin-api';
+import { pluginApi, pluginConfigSchemeApi, type WorkflowPlugin } from '@/lib/workflow-plugin-api';
 import { resolveServerAssetUrl } from '@/lib/server';
 import { isStructuredOutputFieldType } from './workflow-properties-utils';
 import { PluginIcon } from './workflow-plugin-icon';
@@ -70,8 +70,9 @@ function buildLoopVariablePath(fieldPath: string): string {
   return `{{ __loop__.${fieldPath} }}`;
 }
 
-function buildConfigPath(pluginId: string, key: string): string {
-  return `{{ __config__["${pluginId}"]["${key}"] }}`;
+function buildConfigPath(pluginId: string, key: string, schemeName?: string): string {
+  const segments = [pluginId, ...(schemeName ? [schemeName] : []), key];
+  return `{{ __config__${segments.map(segment => `[${JSON.stringify(segment)}]`).join('')} }}`;
 }
 
 function buildEnvPath(fieldPath: string): string {
@@ -436,7 +437,7 @@ export function WorkflowVariablePicker({
     () => nodes.find((node) => node.id === activeNodeId) ?? null,
     [activeNodeId, nodes],
   );
-  const [plugins, setPlugins] = useState<WorkflowPlugin[]>([]);
+  const [plugins, setPlugins] = useState<Array<WorkflowPlugin & { configSchemes: string[] }>>([]);
 
   useEffect(() => {
     if (!enabledPlugins.length) {
@@ -446,10 +447,15 @@ export function WorkflowVariablePicker({
 
     let cancelled = false;
     pluginApi.listWorkflowPlugins()
-      .then((items) => {
+      .then(async (items) => {
         if (cancelled) return;
         const enabled = new Set(enabledPlugins);
-        setPlugins((items as WorkflowPlugin[]).filter((plugin) => enabled.has(plugin.id) && plugin.config?.length));
+        const enabledItems = (items as WorkflowPlugin[]).filter((plugin) => enabled.has(plugin.id) && plugin.config?.length);
+        const itemsWithSchemes = await Promise.all(enabledItems.map(async plugin => ({
+          ...plugin,
+          configSchemes: await pluginConfigSchemeApi.list(plugin.id).catch(() => []),
+        })));
+        if (!cancelled) setPlugins(itemsWithSchemes);
       })
       .catch(() => {
         if (!cancelled) setPlugins([]);
@@ -682,16 +688,28 @@ export function WorkflowVariablePicker({
                     <span className="truncate">{plugin.name}</span>
                   </DropdownMenuSubTrigger>
                   <DropdownMenuSubContent className="min-w-[180px]">
-                    {(plugin.config as PluginConfigField[] | undefined)?.map((field) => (
-                      <DropdownMenuItem
-                        key={field.key}
-                        className="text-xs"
-                        disabled={!matchesTypeFilter(field.type, normalizedTypeFilter)}
-                        onClick={() => onSelect(buildConfigPath(plugin.id, field.key))}
-                      >
-                        <span className="mr-1 font-mono text-[10px] text-muted-foreground">{field.type}</span>
-                        <span className="truncate">{field.label}</span>
-                      </DropdownMenuItem>
+                    {[
+                      { name: '', label: t('sidebar.defaultConfig') },
+                      ...plugin.configSchemes.map(name => ({ name, label: name })),
+                    ].map(configScheme => (
+                      <DropdownMenuSub key={configScheme.name || '__default__'}>
+                        <DropdownMenuSubTrigger className="text-xs">
+                          <span className="truncate">{configScheme.label}</span>
+                        </DropdownMenuSubTrigger>
+                        <DropdownMenuSubContent className="min-w-[180px]">
+                          {(plugin.config as PluginConfigField[] | undefined)?.map((field) => (
+                            <DropdownMenuItem
+                              key={field.key}
+                              className="text-xs"
+                              disabled={!matchesTypeFilter(field.type, normalizedTypeFilter)}
+                              onClick={() => onSelect(buildConfigPath(plugin.id, field.key, configScheme.name || undefined))}
+                            >
+                              <span className="mr-1 font-mono text-[10px] text-muted-foreground">{field.type}</span>
+                              <span className="truncate">{field.label}</span>
+                            </DropdownMenuItem>
+                          ))}
+                        </DropdownMenuSubContent>
+                      </DropdownMenuSub>
                     ))}
                   </DropdownMenuSubContent>
                 </DropdownMenuSub>

@@ -90,10 +90,14 @@ import {
 const JSON_PRESETS_KEY = '__jsonPresets';
 const SELECTED_JSON_PRESET_KEY = '__selectedJsonPresetId';
 
+type PluginConfigValues = Record<string, string>;
+type PluginConfigTree = Record<string, string | PluginConfigValues>;
+type WorkflowPluginConfigTree = Record<string, PluginConfigTree>;
+
 // 保留公共导出（外部测试直接引用），实际定义已移至 execution-value-access.ts
 export { getNestedValue } from './execution-value-access.js';
 export function __resolveWorkflowConfigValueForTest(
-  config: Record<string, Record<string, string>>,
+  config: WorkflowPluginConfigTree,
   template: string,
 ): any {
   return resolveWorkflowConfigString(config, template);
@@ -105,7 +109,7 @@ export function __normalizeExecutionSnapshotNodesForTest(nodes: WorkflowNode[]):
 
 export function __normalizeExecutionSnapshotNodesWithConfigForTest(
   nodes: WorkflowNode[],
-  config: Record<string, Record<string, string>>,
+  config: WorkflowPluginConfigTree,
 ): WorkflowNode[] {
   return normalizeExecutionSnapshotNodes(nodes, (_node, data) => resolveSnapshotDataForTest(data, config));
 }
@@ -278,7 +282,7 @@ export class ExecutionManager {
   private executionGraphScope = new AsyncLocalStorage<{
     nodes: WorkflowNode[];
     edges: WorkflowEdge[];
-    config: Record<string, Record<string, string>>;
+    config: WorkflowPluginConfigTree;
   }>();
   private subWorkflowExecutionScope = new AsyncLocalStorage<string[]>();
   private subWorkflowExecutions = new Map<string, SubWorkflowExecutionContext[]>();
@@ -293,7 +297,7 @@ export class ExecutionManager {
     return this.executionGraphScope.getStore()?.edges ?? session.edges;
   }
 
-  private getExecutionConfig(session: ExecutionSession): Record<string, Record<string, string>> {
+  private getExecutionConfig(session: ExecutionSession): WorkflowPluginConfigTree {
     return this.executionGraphScope.getStore()?.config ?? session.context.__config__ ?? {};
   }
 
@@ -1683,7 +1687,7 @@ export class ExecutionManager {
     session: ExecutionSession,
     workflow: { nodes: WorkflowNode[]; edges: WorkflowEdge[] },
     input?: Record<string, any>,
-    config: Record<string, Record<string, string>> = this.getExecutionConfig(session),
+    config: WorkflowPluginConfigTree = this.getExecutionConfig(session),
   ): Promise<unknown> {
     return this.executionGraphScope.run({ nodes: workflow.nodes, edges: workflow.edges, config }, async () => {
       const rootNodes = getNodesForExecutionScope(workflow.nodes, null);
@@ -1801,7 +1805,7 @@ export class ExecutionManager {
     workflow: Workflow = session.workflow,
     nodes: WorkflowNode[] = session.nodes,
     overrides?: WorkflowExecuteRequest['pluginConfigs'],
-  ): Record<string, Record<string, string>> {
+  ): WorkflowPluginConfigTree {
     const pluginIds = this.getReferencedPluginIds(workflow, nodes);
     const schemes = workflow.pluginConfigSchemes || {};
     const config: Record<string, Record<string, string>> = {};
@@ -1825,46 +1829,56 @@ export class ExecutionManager {
       }
     }
 
-    if (!overrides) return config;
+    if (overrides) {
+      const installedPlugins = pluginService.listPlugins();
+      const localizedPlugins = [...pluginService.listPlugins('zh'), ...pluginService.listPlugins('en')];
+      for (const [pluginIdentifier, override] of Object.entries(overrides)) {
+        const idMatch = installedPlugins.find(plugin => plugin.id === pluginIdentifier);
+        const nameMatchIds = new Set(localizedPlugins.filter(plugin => plugin.name === pluginIdentifier).map(plugin => plugin.id));
+        if (!idMatch && nameMatchIds.size > 1) {
+          throw new Error(`Plugin name is ambiguous: ${pluginIdentifier}; use plugin ID instead`);
+        }
+        const nameMatchId = nameMatchIds.values().next().value as string | undefined;
+        const plugin = idMatch ?? installedPlugins.find(item => item.id === nameMatchId);
+        if (!plugin) throw new Error(`Plugin not found: ${pluginIdentifier}`);
 
-    const installedPlugins = pluginService.listPlugins();
-    const localizedPlugins = [...pluginService.listPlugins('zh'), ...pluginService.listPlugins('en')];
-    for (const [pluginIdentifier, override] of Object.entries(overrides)) {
-      const idMatch = installedPlugins.find(plugin => plugin.id === pluginIdentifier);
-      const nameMatchIds = new Set(localizedPlugins.filter(plugin => plugin.name === pluginIdentifier).map(plugin => plugin.id));
-      if (!idMatch && nameMatchIds.size > 1) {
-        throw new Error(`Plugin name is ambiguous: ${pluginIdentifier}; use plugin ID instead`);
+        if (typeof override === 'string') {
+          const schemeName = override.trim();
+          if (!schemeName) throw new Error(`Plugin config scheme is empty: ${pluginIdentifier}`);
+          config[plugin.id] = pluginService.readPluginConfigScheme(plugin.id, schemeName);
+          continue;
+        }
+        if (!override || typeof override !== 'object' || Array.isArray(override)) {
+          throw new Error(`Plugin config must be a scheme name or object: ${pluginIdentifier}`);
+        }
+        const normalized = Object.fromEntries(Object.entries(override).map(([key, value]) => [
+          key,
+          typeof value === 'string'
+            ? value
+            : value == null
+              ? ''
+              : typeof value === 'object'
+                ? JSON.stringify(value)
+                : String(value),
+        ]));
+        config[plugin.id] = {
+          ...(config[plugin.id] ?? pluginService.getPluginConfig(plugin.id)),
+          ...normalized,
+        };
       }
-      const nameMatchId = nameMatchIds.values().next().value as string | undefined;
-      const plugin = idMatch ?? installedPlugins.find(item => item.id === nameMatchId);
-      if (!plugin) throw new Error(`Plugin not found: ${pluginIdentifier}`);
-
-      if (typeof override === 'string') {
-        const schemeName = override.trim();
-        if (!schemeName) throw new Error(`Plugin config scheme is empty: ${pluginIdentifier}`);
-        config[plugin.id] = pluginService.readPluginConfigScheme(plugin.id, schemeName);
-        continue;
-      }
-      if (!override || typeof override !== 'object' || Array.isArray(override)) {
-        throw new Error(`Plugin config must be a scheme name or object: ${pluginIdentifier}`);
-      }
-      const normalized = Object.fromEntries(Object.entries(override).map(([key, value]) => [
-        key,
-        typeof value === 'string'
-          ? value
-          : value == null
-            ? ''
-            : typeof value === 'object'
-              ? JSON.stringify(value)
-              : String(value),
-      ]));
-      config[plugin.id] = {
-        ...(config[plugin.id] ?? pluginService.getPluginConfig(plugin.id)),
-        ...normalized,
-      };
     }
 
-    return config;
+    return Object.fromEntries(Object.entries(config).map(([pluginId, activeConfig]) => {
+      const namedConfigs: Record<string, PluginConfigValues> = {};
+      for (const schemeName of pluginService.listPluginConfigSchemes(pluginId)) {
+        try {
+          namedConfigs[schemeName] = pluginService.readPluginConfigScheme(pluginId, schemeName);
+        } catch {
+          // Ignore stale scheme entries; active config remains available.
+        }
+      }
+      return [pluginId, { ...namedConfigs, ...activeConfig }];
+    }));
   }
 
   private getReferencedPluginIds(workflow: Workflow, nodes: WorkflowNode[]): string[] {
@@ -1952,8 +1966,9 @@ export class ExecutionManager {
       return '';
     }
 
-    const configMatch = value.match(/^\s*\{\{\s*__config__\[(["'])([^"']+)\1\]\[(["'])([^"']+)\3\](?:\.(\w+(?:\.\w+)*))?(?:\s*\|\|\s*(["'])(.*?)\6)?\s*\}\}\s*$/);
-    if (configMatch) return resolveWorkflowConfigString(this.getExecutionConfig(session), value);
+    if (parseWorkflowConfigTemplate(value)) {
+      return resolveWorkflowConfigString(this.getExecutionConfig(session), value);
+    }
 
     const ctxMatch = value.match(/^\s*\{\{\s*context\.([^}]+?)\s*\}\}\s*$/);
     if (ctxMatch) return getNestedValue(session.context, ctxMatch[1]) ?? '';
@@ -1985,7 +2000,7 @@ export class ExecutionManager {
         return d == null ? '' : String(getNestedValue(d, normalizeVariablePath(fp)) ?? '');
       })
       .replace(
-        /\{\{\s*__config__\[(["'])([^"']+)\1\]\[(["'])([^"']+)\3\](?:\.(\w+(?:\.\w+)*))?(?:\s*\|\|\s*(["'])(.*?)\6)?\s*\}\}/g,
+        /\{\{\s*__config__(?:\[(?:"[^"]+"|'[^']+')\]){2,3}(?:\.\w+(?:\.\w+)*)?(?:\s*\|\|\s*(?:"[^"]*"|'[^']*'))?\s*\}\}/g,
         (match) => String(resolveWorkflowConfigString(this.getExecutionConfig(session), match) ?? ''),
       )
       .replace(/\{\{\s*context\.([^}]+?)\s*\}\}/g, (_m, p) => String(getNestedValue(session.context, p) ?? ''));
@@ -2336,24 +2351,38 @@ export class ExecutionManager {
 
 // ---- Utility functions ----
 
-function resolveWorkflowConfigString(config: Record<string, Record<string, string>>, template: string): any {
-  const match = template.match(/^\s*\{\{\s*__config__\[(["'])([^"']+)\1\]\[(["'])([^"']+)\3\](?:\.(\w+(?:\.\w+)*))?(?:\s*\|\|\s*(["'])(.*?)\6)?\s*\}\}\s*$/);
-  if (!match) return template;
-
-  const pluginConfig = config[match[2]];
-  if (pluginConfig != null) {
-    let raw: any = pluginConfig[match[4]];
-    if (match[5] && typeof raw === 'string') {
-      try { raw = JSON.parse(raw); } catch { /* keep raw string */ }
-    }
-    const result = match[5] ? getNestedValue(raw, match[5]) : raw;
-    if (match[7] !== undefined) return result ? result : match[7];
-    if (result !== undefined) return result;
-  }
-  return match[7] ?? '';
+function parseWorkflowConfigTemplate(template: string): {
+  keys: string[];
+  nestedPath?: string;
+  fallback?: string;
+} | null {
+  const match = template.match(/^\s*\{\{\s*(__config__(?:\[(?:"[^"]+"|'[^']+')\]){2,3})(?:\.(\w+(?:\.\w+)*))?(?:\s*\|\|\s*(["'])(.*?)\3)?\s*\}\}\s*$/);
+  if (!match) return null;
+  const keys = [...match[1].matchAll(/\[(["'])([^"']+)\1\]/g)].map(item => item[2]);
+  return { keys, nestedPath: match[2], fallback: match[4] };
 }
 
-function resolveSnapshotDataForTest(value: any, config: Record<string, Record<string, string>>): any {
+function resolveWorkflowConfigString(config: WorkflowPluginConfigTree, template: string): any {
+  const parsed = parseWorkflowConfigTemplate(template);
+  if (!parsed) return template;
+
+  let raw: unknown = config;
+  for (const key of parsed.keys) {
+    if (!raw || typeof raw !== 'object') {
+      raw = undefined;
+      break;
+    }
+    raw = (raw as Record<string, unknown>)[key];
+  }
+  if (parsed.nestedPath && typeof raw === 'string') {
+    try { raw = JSON.parse(raw); } catch { /* keep raw string */ }
+  }
+  const result = parsed.nestedPath ? getNestedValue(raw, parsed.nestedPath) : raw;
+  if (parsed.fallback !== undefined) return result ? result : parsed.fallback;
+  return result ?? '';
+}
+
+function resolveSnapshotDataForTest(value: any, config: WorkflowPluginConfigTree): any {
   if (typeof value === 'string') return resolveWorkflowConfigString(config, value);
   if (Array.isArray(value)) return value.map(item => resolveSnapshotDataForTest(item, config));
   if (value && typeof value === 'object') {
