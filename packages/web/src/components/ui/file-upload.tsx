@@ -1,10 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, type MouseEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type MouseEvent } from "react";
 import { useDropzone, type Accept, type FileRejection } from "react-dropzone";
 import { Upload, X, GripVertical } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { FileCard, type FormatFileProps } from "@/components/file-card-collections";
+import { CANVAS_IMAGE_DROP_MIME, debugCanvasImageDrag, getCanvasImageDropUrls, setCanvasImageDragData } from "./file-upload-drop";
 
 // 文件列表拖拽排序的互斥标记：写入 dataTransfer 表示当前在列表内排序。
 // 嵌入 mini-app（game-asset-canvas）时，画布 handleDrop 见此标记直接 return，
@@ -69,6 +70,8 @@ export function FileUpload<TFile extends FileUploadFileLike = File>({
   // 拖拽排序状态：draggingId = 被拖拽项 id，overId = 当前悬停项 id（用于占位指示）
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
+  const draggingIdRef = useRef<string | null>(null);
+  const debugStagesRef = useRef(new Set<string>());
   const dropzoneAccept = accept ?? getAcceptFromFileNameFilter(fileNameFilter);
   const files = useMemo(() => value.filter((item) => item?.file), [value]);
 
@@ -105,6 +108,64 @@ export function FileUpload<TFile extends FileUploadFileLike = File>({
     [files, onChange, maxFiles],
   );
 
+  const handleCanvasImageDrop = useCallback((event: DragEvent<HTMLDivElement>) => {
+    const urls = getCanvasImageDropUrls(event.dataTransfer);
+    debugCanvasImageDrag("shared-target:drop-handler", event.dataTransfer, {
+      urls,
+      disabled,
+      ownDrag: Boolean(draggingIdRef.current),
+      currentFiles: files.length,
+    });
+    if (urls.length === 0) return;
+    if (draggingIdRef.current) return;
+    event.preventDefault();
+    event.stopPropagation();
+    if (disabled) return;
+
+    const remaining = maxFiles > 0 ? Math.max(0, maxFiles - files.length) : urls.length;
+    if (remaining === 0) {
+      setDragError(`最多 ${maxFiles} 个文件`);
+      return;
+    }
+    const droppedFiles: FileUploadFile[] = urls.slice(0, remaining).map((url, index) => {
+      const file = Object.assign(
+        new File([], getDroppedImageName(url, index), { type: "image/png" }),
+        { url, httpPath: url },
+      );
+      return {
+        id: `upload-${++_fileId}`,
+        file,
+        preview: url,
+      };
+    });
+    setDragError(null);
+    onChange?.([...files, ...droppedFiles]);
+    debugCanvasImageDrag("shared-target:onChange", event.dataTransfer, {
+      addedUrls: urls.slice(0, remaining),
+      nextFiles: files.length + droppedFiles.length,
+    });
+  }, [disabled, files, maxFiles, onChange]);
+
+  const handleCanvasImageDragOver = useCallback((event: DragEvent<HTMLDivElement>) => {
+    if (draggingIdRef.current) return;
+    if (Array.from(event.dataTransfer.types || []).includes(CANVAS_IMAGE_DROP_MIME)) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+  }, []);
+
+  const logDragStage = useCallback((stage: string, event: DragEvent<HTMLDivElement>) => {
+    if (stage.includes("dragover") && debugStagesRef.current.has(stage)) return;
+    debugStagesRef.current.add(stage);
+    debugCanvasImageDrag(stage, event.dataTransfer, {
+      target: event.target instanceof Element ? event.target.tagName : null,
+    });
+  }, []);
+
+  const resetDragStages = useCallback(() => {
+    debugStagesRef.current.clear();
+  }, []);
+
   const removeFile = useCallback(
     (id: string) => {
       const target = files.find((f) => f.id === id);
@@ -118,17 +179,29 @@ export function FileUpload<TFile extends FileUploadFileLike = File>({
   // drop 时清空状态。仅 sortable=true 启用。
   // 同时写入互斥标记 MIME：mini-app 画布 handleDrop 见此标记直接 return，
   // 防止排序松手落画布时误建图片节点（浏览器会把可拖拽元素默认转成 dataTransfer.files）。
-  const handleSortDragStart = useCallback((e: React.DragEvent<HTMLDivElement>, id: string) => {
-    setDraggingId(id);
-    e.dataTransfer.effectAllowed = "move";
+  const handleSortDragStart = useCallback((e: DragEvent<HTMLDivElement>, item: FileUploadFile<TFile>) => {
+    const imageUrl = item.file.type.startsWith("image/") ? getUploadedFileUrl(item.file) : undefined;
+    if (imageUrl) setCanvasImageDragData(e.dataTransfer, [imageUrl]);
+    debugCanvasImageDrag("shared-input:dragstart", e.dataTransfer, {
+      imageUrl,
+      sortable,
+      fileId: item.id,
+    });
+    draggingIdRef.current = item.id;
+    setDraggingId(item.id);
+    if (!sortable) {
+      e.dataTransfer.effectAllowed = "copy";
+      return;
+    }
+    e.dataTransfer.effectAllowed = imageUrl ? "copyMove" : "move";
     try {
-      e.dataTransfer.setData("text/plain", id);
+      e.dataTransfer.setData("text/plain", item.id);
       e.dataTransfer.setData(IMAGE_REORDER_MIME, "1");
     } catch {}
-  }, []);
+  }, [sortable]);
 
   const handleSortDragOver = useCallback(
-    (e: MouseEvent<HTMLDivElement>, overItemId: string) => {
+    (e: DragEvent<HTMLDivElement>, overItemId: string) => {
       if (!sortable || !draggingId || draggingId === overItemId) return;
       e.preventDefault(); // 允许 drop
       if (overId !== overItemId) setOverId(overItemId);
@@ -144,8 +217,15 @@ export function FileUpload<TFile extends FileUploadFileLike = File>({
   );
 
   const handleSortDragEnd = useCallback(() => {
+    draggingIdRef.current = null;
     setDraggingId(null);
     setOverId(null);
+  }, []);
+
+  const handleItemDrop = useCallback((event: DragEvent<HTMLDivElement>) => {
+    if (!draggingIdRef.current) return;
+    event.preventDefault();
+    event.stopPropagation();
   }, []);
 
   const { getRootProps, getInputProps, isDragActive, open: openFilePicker } = useDropzone({
@@ -175,7 +255,32 @@ export function FileUpload<TFile extends FileUploadFileLike = File>({
   }, []);
 
   return (
-    <div className={cn("space-y-3", className)}>
+    <div
+      className={cn("space-y-3", className)}
+      onDragEnterCapture={(event) => logDragStage("shared-target:dragenter:capture", event)}
+      onDragOverCapture={(event) => {
+        logDragStage("shared-target:dragover:capture", event);
+        handleCanvasImageDragOver(event);
+      }}
+      onDropCapture={(event) => {
+        logDragStage("shared-target:drop:capture", event);
+        handleCanvasImageDrop(event);
+        resetDragStages();
+      }}
+      onDragEnter={(event) => logDragStage("shared-target:dragenter:bubble", event)}
+      onDragOver={(event) => {
+        logDragStage("shared-target:dragover:bubble", event);
+        handleCanvasImageDragOver(event);
+      }}
+      onDrop={(event) => {
+        logDragStage("shared-target:drop:bubble", event);
+        handleCanvasImageDrop(event);
+        resetDragStages();
+      }}
+      onDragLeaveCapture={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) resetDragStages();
+      }}
+    >
       {/* Drop zone（hideDropzone 时隐藏，保留文件列表） */}
       {!hideDropzone && (
         <div
@@ -211,16 +316,17 @@ export function FileUpload<TFile extends FileUploadFileLike = File>({
           {files.map((item) => {
             const preview = getFilePreview(item);
             const uploaded = Boolean(getUploadedFileUrl(item.file));
+            const imageUrl = item.file.type.startsWith("image/") ? getUploadedFileUrl(item.file) : undefined;
             const isDragging = sortable && draggingId === item.id;
             const isOver = sortable && overId === item.id && draggingId !== item.id;
             return (
               <div
                 key={item.id}
-                draggable={sortable || undefined}
-                onDragStart={sortable ? (e) => handleSortDragStart(e, item.id) : undefined}
+                draggable={sortable || Boolean(imageUrl) || undefined}
+                onDragStart={sortable || imageUrl ? (e) => handleSortDragStart(e, item) : undefined}
                 onDragOver={sortable ? (e) => handleSortDragOver(e, item.id) : undefined}
-                onDragEnd={sortable ? handleSortDragEnd : undefined}
-                onDrop={sortable ? handleSortDragEnd : undefined}
+                onDragEnd={sortable || imageUrl ? handleSortDragEnd : undefined}
+                onDrop={handleItemDrop}
                 className={cn(
                   "flex items-center gap-3 rounded-lg border bg-background px-3 py-2 transition-colors",
                   isDragging ? "border-primary opacity-40" : "border-border",
@@ -286,6 +392,14 @@ export function FileUpload<TFile extends FileUploadFileLike = File>({
 function getFilePreview(item: FileUploadFile<FileUploadFileLike>): string | undefined {
   if (!item.file.type.startsWith("image/")) return undefined;
   return getUploadedFileUrl(item.file) || item.preview;
+}
+
+function getDroppedImageName(url: string, index: number): string {
+  try {
+    const name = decodeURIComponent(new URL(url, "http://localhost").pathname.split("/").pop() || "");
+    if (name) return name;
+  } catch {}
+  return `dropped-image-${index + 1}.png`;
 }
 
 // 扩展名 → FormatFileProps 映射。与 file-display-view.tsx 的 detectFormat 保持一致，

@@ -59,6 +59,7 @@ export default function useDecoratedNodes({
       const data = { ...nd.data };
       if (up) {
         data.images = up.images;
+        data.fileUploadInputs = up.fileUploads;
         data.protectedUpstreamImageUrls = up.images.filter((url) => groupAssetUrls.has(url));
         if (up.isDisplay) {
           data.source = 'upstream';

@@ -40,6 +40,7 @@ export function copyNodes(selectedNodes, allEdges) {
       target: e.target,
       sourceHandle: e.sourceHandle,
       targetHandle: e.targetHandle,
+      data: e.data ? { ...e.data } : undefined,
     }));
   clipboard = { nodes: cleanNodes, edges: cleanEdges };
   return cleanNodes.length;

@@ -1,5 +1,7 @@
 import { useRef, useState } from 'react';
-import { X } from '@agent-spaces/ui';
+import { debugCanvasImageDrag, setCanvasImageDragData, X } from '@agent-spaces/ui';
+import { IMAGE_REORDER_MIME } from '../../utils/canvas-constants';
+import { occurrenceKeys } from '../../utils/list-keys';
 
 /**
  * 通用「上游连线图列表」组件：缩略图（hover 显示删除按钮，删除即断开对应连线），
@@ -29,6 +31,7 @@ export default function UpstreamImageList({
   const [draggingIdx, setDraggingIdx] = useState(null);
   const [overIdx, setOverIdx] = useState(null);
   const nonDeletableSet = new Set(nonDeletableUrls);
+  const itemKeys = occurrenceKeys(urls);
 
   const move = (from, to) => {
     if (from === to || from < 0 || to < 0 || from >= urls.length || to >= urls.length) return;
@@ -38,11 +41,20 @@ export default function UpstreamImageList({
     onChangeOrder(next);
   };
 
-  const onDragStart = (i) => (e) => {
+  const onDragStart = (i, url) => (e) => {
+    setCanvasImageDragData(e.dataTransfer, [url]);
+    debugCanvasImageDrag('upstream-input:dragstart', e.dataTransfer, { url, sortable, index: i });
+    if (!sortable) {
+      e.dataTransfer.effectAllowed = 'copy';
+      return;
+    }
     draggingRef.current = i;
     setDraggingIdx(i);
-    e.dataTransfer.effectAllowed = 'move';
-    try { e.dataTransfer.setData('text/plain', String(i)); } catch {}
+    e.dataTransfer.effectAllowed = 'copyMove';
+    try {
+      e.dataTransfer.setData('text/plain', String(i));
+      e.dataTransfer.setData(IMAGE_REORDER_MIME, '1');
+    } catch {}
   };
   const onDragOver = (i) => (e) => {
     const from = draggingRef.current;
@@ -70,9 +82,9 @@ export default function UpstreamImageList({
           const isOver = sortable && overIdx === i && draggingIdx !== i;
           return (
             <div
-              key={url}
-              draggable={sortable || undefined}
-              onDragStart={sortable ? onDragStart(i) : undefined}
+              key={itemKeys[i]}
+              draggable
+              onDragStart={onDragStart(i, url)}
               onDragOver={sortable ? onDragOver(i) : undefined}
               onDragEnd={sortable ? onDragEnd : undefined}
               className={`group relative flex items-center gap-2 rounded border px-1.5 py-1 transition-colors ${

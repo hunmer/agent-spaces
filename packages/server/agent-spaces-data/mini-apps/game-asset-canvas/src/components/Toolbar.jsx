@@ -16,21 +16,23 @@ import {
  * 顶部工具栏：标题 + Menubar + 右侧插槽（工作区切换/执行队列/节点数）。
  *
  * Menubar 布局：
- *   文件▾(导出[JSON/素材库]/导入) | 画布▾(自动布局/清空) | 工具▾(像素编辑器/3D导演台/在线PS/提示词管理/设置) | 选择▾(全选/反选/取消选择)
+ *   文件▾(导出[JSON/素材库]/导入[JSON/素材库]) | 画布▾(自动布局/清空) | 工具▾(...) | 选择▾(全选/反选/取消选择)
  *
- * @param {{ onClear, onAutoLayout, onExport, onExportAssetLibrary, onImport, onOpenSettings, onOpenPromptManager,
+ * @param {{ onClear, onAutoLayout, onExport, onExportAssetLibrary, onExportWorkspace, onImport, onImportAssetLibrary, onImportWorkspace, onOpenSettings, onOpenPromptManager,
  *           edgePathStyle, edgeLineStyle, edgePathStyles, edgeLineStyles, onEdgePathStyleChange, onEdgeLineStyleChange,
  *           onSelectAll, onInvertSelect, onClearSelection,
  *           count, queueSlot, workspaceSlot }} props
  */
 export default function Toolbar({
-  onClear, onAutoLayout, onExport, onExportAssetLibrary, onImport, onOpenSettings, onOpenPromptManager,
+  onClear, onAutoLayout, onExport, onExportAssetLibrary, onExportWorkspace, onImport, onImportAssetLibrary, onImportWorkspace, onOpenSettings, onOpenPromptManager,
   edgePathStyle, edgeLineStyle, edgePathStyles, edgeLineStyles, onEdgePathStyleChange, onEdgeLineStyleChange,
   onSelectAll, onInvertSelect, onClearSelection,
   count, queueSlot, workspaceSlot,
 }) {
-  // 素材库导出中状态：控制「导出素材库」菜单项禁用 + 文案切换。
+  // 素材库/工作区 导出/导入中状态：控制对应菜单项禁用 + 文案切换。
   const [exporting, setExporting] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [workspaceBusy, setWorkspaceBusy] = useState(false);
 
   // 导出素材库：toast.loading 实时反馈进度，完成/失败切 success/error。
   // 空库/全部失败由工具函数抛错，这里 catch 后 toast.error。
@@ -51,6 +53,70 @@ export default function Toolbar({
       toast.error(`导出素材库失败：${e?.message || e}`, { id: toastId });
     } finally {
       setExporting(false);
+    }
+  };
+
+  // 导入素材库：选 zip → 上传入库。toast 进度同导出。用户取消选文件静默无操作（onImportAssetLibrary 返回 null）。
+  const handleImportAssetLibrary = async () => {
+    if (importing || !onImportAssetLibrary) return;
+    setImporting(true);
+    const toastId = toast.loading('请选择素材库 zip 文件…');
+    try {
+      const stats = await onImportAssetLibrary((done, total) => {
+        toast.loading(`导入素材库中… (${done}/${total})`, { id: toastId });
+      });
+      if (stats === null) {
+        // 用户取消选文件，撤销 loading toast
+        toast.dismiss(toastId);
+        return;
+      }
+      if (stats.failed > 0) {
+        toast.success(`导入完成：成功 ${stats.ok} 张，失败 ${stats.failed} 张（${stats.categories} 个分类）`, { id: toastId });
+      } else {
+        toast.success(`导入完成：共 ${stats.ok} 张（${stats.categories} 个分类）`, { id: toastId });
+      }
+    } catch (e) {
+      toast.error(`导入素材库失败：${e?.message || e}`, { id: toastId });
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  // 导出工作区：3 个 json + 后端图片落 zip。toast 进度反馈下载图片进度。
+  const handleExportWorkspace = async () => {
+    if (workspaceBusy || !onExportWorkspace) return;
+    setWorkspaceBusy(true);
+    const toastId = toast.loading('正在收集工作区数据…');
+    try {
+      const stats = await onExportWorkspace((done, total) => {
+        toast.loading(`下载工作区图片中… (${done}/${total})`, { id: toastId });
+      });
+      toast.success(`导出完成：${stats.jsons} 个数据文件，图片 ${stats.assetsOk} 张${stats.assetsFailed > 0 ? `（失败 ${stats.assetsFailed}）` : ''}`, { id: toastId });
+    } catch (e) {
+      toast.error(`导出工作区失败：${e?.message || e}`, { id: toastId });
+    } finally {
+      setWorkspaceBusy(false);
+    }
+  };
+
+  // 导入工作区：选 zip → 重传图片 → 新建工作区写入。toast 显示上传图片进度。
+  const handleImportWorkspace = async () => {
+    if (workspaceBusy || !onImportWorkspace) return;
+    setWorkspaceBusy(true);
+    const toastId = toast.loading('请选择工作区 zip 文件…');
+    try {
+      const stats = await onImportWorkspace((done, total) => {
+        toast.loading(`上传图片中… (${done}/${total})`, { id: toastId });
+      });
+      if (stats === null) {
+        toast.dismiss(toastId); // 用户取消
+        return;
+      }
+      toast.success(`工作区导入完成：图片 ${stats.uploaded} 张${stats.failed > 0 ? `（失败 ${stats.failed}）` : ''}`, { id: toastId });
+    } catch (e) {
+      toast.error(`导入工作区失败：${e?.message || e}`, { id: toastId });
+    } finally {
+      setWorkspaceBusy(false);
     }
   };
   // 像素编辑器：新窗口打开本地 Pixelorama web 版（与节点内编辑器同源，独立全屏编辑，支持像素绘制与动画帧）。
@@ -77,7 +143,7 @@ export default function Toolbar({
       <div className="mx-1 h-5 w-px bg-border" />
 
       <Menubar>
-        {/* 文件▾：导出[JSON/素材库] / 导入 */}
+        {/* 文件▾：导出[JSON/素材库/工作区] / 导入[JSON/素材库/工作区] */}
         <MenubarMenu>
           <MenubarTrigger>文件</MenubarTrigger>
           <MenubarContent>
@@ -88,9 +154,25 @@ export default function Toolbar({
                 <MenubarItem disabled={exporting} onClick={handleExportAssetLibrary}>
                   {exporting ? '导出素材库中…' : '导出素材库'}
                 </MenubarItem>
+                <MenubarSeparator />
+                <MenubarItem disabled={workspaceBusy} onClick={handleExportWorkspace}>
+                  {workspaceBusy ? '导出工作区中…' : '导出工作区'}
+                </MenubarItem>
               </MenubarSubContent>
             </MenubarSub>
-            <MenubarItem onClick={onImport}>导入</MenubarItem>
+            <MenubarSub>
+              <MenubarSubTrigger>导入…</MenubarSubTrigger>
+              <MenubarSubContent>
+                <MenubarItem onClick={onImport}>导入 JSON</MenubarItem>
+                <MenubarItem disabled={importing} onClick={handleImportAssetLibrary}>
+                  {importing ? '导入素材库中…' : '导入素材库'}
+                </MenubarItem>
+                <MenubarSeparator />
+                <MenubarItem disabled={workspaceBusy} onClick={handleImportWorkspace}>
+                  {workspaceBusy ? '导入工作区中…' : '导入工作区'}
+                </MenubarItem>
+              </MenubarSubContent>
+            </MenubarSub>
           </MenubarContent>
         </MenubarMenu>
 

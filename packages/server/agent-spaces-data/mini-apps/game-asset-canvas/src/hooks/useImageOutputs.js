@@ -117,11 +117,14 @@ export default function useImageOutputs({ setNodes, setGroups }) {
   // 有 sourceNode 时排在它右侧（避让已有节点），否则退化为画布左上角网格。
   // opts.sourceNode / opts.tags / opts.source
   const addImageNodesFromUrls = useCallback((urls, opts = {}) => {
-    if (!urls?.length) return;
+    if (!urls?.length) return [];
+    const nodeIds = urls.map(() => genId(NODE_TYPES.imageDisplay));
     setNodes((prev) => {
       const { additions } = buildImageNodes(prev, urls, opts);
+      additions.forEach((node, i) => { node.id = nodeIds[i]; });
       return [...prev, ...additions];
     });
+    return nodeIds;
   }, [setNodes]);
 
   // 批量加入图片节点并归组（一条 WorkflowGroup）。位置用 findFreePositions 避让。
@@ -159,20 +162,18 @@ export default function useImageOutputs({ setNodes, setGroups }) {
   // 这样把「是否分组」的决定权交给调用方（Canvas 里经 GroupConfirmDialog 确认后再传）。
   // 单图强制不分组（原行为）。
   const handleExportImages = useCallback((sourceNode, imgs, opts = {}) => {
-    if (!imgs?.length) return;
+    if (!imgs?.length) return [];
     const tags = dedupeTags([IMAGE_TAGS.export]);
     const baseOpts = { sourceNode, tags, source: 'export' };
     // 单图：保持原行为，直接加一个独立图片节点（不分组）
     if (imgs.length === 1) {
-      addImageNodesFromUrls(imgs, baseOpts);
-      return;
+      return addImageNodesFromUrls(imgs, baseOpts);
     }
     // 多图：由 opts.groupName 决定是否分组
     if (opts.groupName !== undefined) {
-      addImageNodesGrouped(imgs, { ...baseOpts, groupName: opts.groupName });
-    } else {
-      addImageNodesFromUrls(imgs, baseOpts);
+      return addImageNodesGrouped(imgs, { ...baseOpts, groupName: opts.groupName });
     }
+    return addImageNodesFromUrls(imgs, baseOpts);
   }, [addImageNodesFromUrls, addImageNodesGrouped]);
 
   return { addImageNodesFromUrls, addImageNodesGrouped, handleExportImages };

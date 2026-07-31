@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { FolderPlus, ImageOff, Loader2, Plus, Trash2, openMediaGallery, Popover, PopoverContent, PopoverTrigger } from '@agent-spaces/ui';
+import { debugCanvasImageDrag, FolderPlus, ImageOff, Loader2, Plus, Trash2, openMediaGallery, Popover, PopoverContent, PopoverTrigger, setCanvasImageDragData } from '@agent-spaces/ui';
 import { IMAGE_REORDER_MIME } from '../../utils/canvas-constants';
 
 // 图片加载失败占位：onError 时切换为该块，显示破损图标 + url
@@ -47,10 +47,16 @@ export default function ImageResult({ images, max = 0, preview = false, onImageL
     next.splice(to, 0, m);
     onReorderImages(next);
   };
-  const onReorderDragStart = (i) => (e) => {
+  const onReorderDragStart = (i, url) => (e) => {
+    setCanvasImageDragData(e.dataTransfer, [url]);
+    debugCanvasImageDrag('output:dragstart', e.dataTransfer, { url, sortable, index: i });
+    if (!sortable) {
+      e.dataTransfer.effectAllowed = 'copy';
+      return;
+    }
     draggingRef.current = i;
     setDraggingIdx(i);
-    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.effectAllowed = 'copyMove';
     try {
       e.dataTransfer.setData('text/plain', String(i));
       // 写入互斥标记：画布 handleDrop 见此标记直接 return，不建节点（防误触发）
@@ -114,7 +120,7 @@ export default function ImageResult({ images, max = 0, preview = false, onImageL
     return (
       <div className="flex w-full flex-col gap-2">
         {list.map((url, i) => (
-          <PreviewImage key={i} url={url} onOpen={() => open(i)} onImageLoad={onImageLoad} />
+          <PreviewImage key={i} url={url} onOpen={() => open(i)} onImageLoad={onImageLoad} onDragStart={onReorderDragStart(i, url)} />
         ))}
       </div>
     );
@@ -170,8 +176,8 @@ export default function ImageResult({ images, max = 0, preview = false, onImageL
           {list.map((url, i) => (
             <div
               key={i}
-              draggable={sortable || undefined}
-              onDragStart={sortable ? onReorderDragStart(i) : undefined}
+              draggable
+              onDragStart={onReorderDragStart(i, url)}
               onDragOver={sortable ? onReorderDragOver(i) : undefined}
               onDragEnd={sortable ? onReorderDragEnd : undefined}
               className={`group relative block aspect-square overflow-visible rounded border transition-colors ${
@@ -230,7 +236,7 @@ function ImageLoadingPlaceholder() {
 /**
  * 预览态单图：加载中显示 spinner 占位，加载完毕才展示；失败切换占位块（点击仍可尝试打开 gallery）。
  */
-function PreviewImage({ url, onOpen, onImageLoad }) {
+function PreviewImage({ url, onOpen, onImageLoad, onDragStart }) {
   const [failed, setFailed] = useState(false);
   const [loaded, setLoaded] = useState(false);
   // url 变化（版本切换）时重置状态：重新进入 loading，允许重新加载新图
@@ -238,6 +244,8 @@ function PreviewImage({ url, onOpen, onImageLoad }) {
   return (
     <button
       type="button"
+      draggable
+      onDragStart={onDragStart}
       onClick={(e) => { e.stopPropagation(); onOpen(); }}
       className="block w-full overflow-hidden"
     >

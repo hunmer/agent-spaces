@@ -55,6 +55,12 @@ export const PARAMS_SCHEMA = [
     type: 'text',
     description: '可选。产出图下载、保存到素材库时使用的文件名（含扩展名，如 hero_edited.png）；多张产出自动加 _2/_3 后缀。留空则用 URL 默认名。',
   },
+  {
+    key: 'mask',
+    label: '蒙版图片',
+    type: 'image',
+    description: '可选。蒙版图片 URL（单张）。白色区域表示需要编辑的部分，黑色区域保持不变。通过节点内的「蒙版图片」上传区设置，提交时作为 mask 字段传入 edit_image 工作流。',
+  },
 ];
 export default function EditImageNode({ id, data, selected }) {
   const params = data?.params || {};
@@ -62,6 +68,7 @@ export default function EditImageNode({ id, data, selected }) {
   // 两种来源并存，提交时合并去重。参考 imageProcess 节点的双来源模式。
   const inputImages = data?.images || [];
   const uploadedImages = Array.isArray(data?.uploadedImages) ? data.uploadedImages : [];
+  const connectedMask = data?.fileUploadInputs?.mask?.[0] || '';
   const status = data?.status || 'idle';
   const error = data?.error;
   const running = status === 'running';
@@ -78,6 +85,12 @@ export default function EditImageNode({ id, data, selected }) {
   const setUploadedImages = useCallback((urls) => {
     onUpdate?.({ uploadedImages: Array.isArray(urls) ? urls.filter(Boolean) : [] });
   }, [onUpdate]);
+
+  // 蒙版图片：单张，存 params.mask（string URL）。FileUpload 用 max=1，onChange 取首项。
+  const setMaskImage = useCallback((urls) => {
+    const next = Array.isArray(urls) ? urls.filter(Boolean) : [];
+    onUpdate?.({ params: { ...params, mask: next[0] || undefined } });
+  }, [onUpdate, params]);
 
   // 把参考图 + 连线图作为只读项整合进同一个 FileUpload 网格（带来源角标），上传图可删，只读项不可删。
   // 这样「输入图片」与「参考图」合并为单一区块，避免 UI 分组割裂。
@@ -134,9 +147,12 @@ export default function EditImageNode({ id, data, selected }) {
         size: params.size || '1k',
         count: Math.max(1, Number(params.count) || 1),
         concurrency: Math.max(1, Number(params.concurrency) || 1),
+        ...(connectedMask || params.mask
+          ? { mask: normalizeImageUrls([connectedMask || params.mask])[0] }
+          : {}),
       },
     });
-  }, [onGenerate, id, params, promptHtml, allInputImages]);
+  }, [onGenerate, id, params, promptHtml, allInputImages, connectedMask]);
 
   return (
     <NodeShell id={id} nodeType={NODE_TYPES.editImage} data={data} selected={selected} targetHandle sourceHandle>
@@ -241,6 +257,20 @@ export default function EditImageNode({ id, data, selected }) {
           onChange={(e) => set({ fileName: e.target.value || undefined })}
         />
       </label>
+
+      {/* 蒙版图片（单张）：白色=需编辑区域。提交时作为 mask 字段传入 edit_image 工作流。 */}
+      <div className="flex flex-col gap-1">
+        <span className="text-xs font-medium text-muted-foreground">蒙版图片（可选）</span>
+        <UploadSection>
+          <FileUpload
+            value={connectedMask ? [] : (params.mask ? [params.mask] : [])}
+            onChange={setMaskImage}
+            max={connectedMask ? 0 : 1}
+            placeholder="上传蒙版图片（白色=编辑区域）"
+            extraItems={connectedMask ? [{ src: connectedMask, badge: '连线' }] : []}
+          />
+        </UploadSection>
+      </div>
 
       <CountAndConcurrency
         count={params.count ?? 1}

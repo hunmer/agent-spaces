@@ -299,6 +299,30 @@ export default {
     return next;
   },
 
+  // 整库覆盖写入素材库（供「导入工作区」一次性写入，避免逐条 add_asset 触发 N 次广播）。
+  // 输入 { categories: [...] }；category/asset 字段不完整时补默认值，保证落盘结构合法。
+  save_asset_library: ({ workspaceId, lib }, ctx) => {
+    const rawCats = (lib && Array.isArray(lib.categories)) ? lib.categories : [];
+    const categories = rawCats.map((c) => ({
+      id: c.id || `cat-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+      name: (c.name || '').trim() || '未命名分类',
+      createdAt: typeof c.createdAt === 'number' ? c.createdAt : Date.now(),
+      assets: (Array.isArray(c.assets) ? c.assets : [])
+        .filter((a) => a && a.url)
+        .map((a) => ({
+          id: a.id || `ast-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+          url: a.url,
+          name: a.name || 'untitled',
+          ...(a.title ? { title: a.title } : {}),
+          size: typeof a.size === 'number' ? a.size : 0,
+          uploadedAt: typeof a.uploadedAt === 'number' ? a.uploadedAt : Date.now(),
+        })),
+    }));
+    const next = { categories };
+    ctx.writeConfig(assetLibPath(workspaceId), next);
+    return next;
+  },
+
   // 删除分类下的指定资产
   remove_asset: ({ workspaceId, categoryId, assetId }, ctx) => {
     const lib = readAssetLibrary(ctx, workspaceId);

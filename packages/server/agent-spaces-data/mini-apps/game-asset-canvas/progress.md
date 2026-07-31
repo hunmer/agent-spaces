@@ -25,3 +25,42 @@
 - Added focused image/video regression tests; both failed against the old passthrough precedence as expected.
 - Updated passthrough precedence at the shared derivation boundary; the original two regressions now pass.
 - Final validation complete: 14/14 top-level utils tests, Babel syntax checks, and `git diff --check` passed; handoff constraint updated.
+- Follow-up report: repeated switching between one-image and two-image versions leaves one extra downstream input; started a new diagnosis loop with targeted instrumentation.
+- Reproduced duplicate-key failure with real duplicate output URLs; derivation remained correct across repeated switching.
+- Replaced raw URL React keys with occurrence-aware unique keys and removed temporary debug instrumentation; focused tests pass 6/6.
+- Follow-up validation complete: 16/16 top-level utils tests, Babel syntax checks, debug-prefix cleanup, and `git diff --check` passed.
+- 2026-07-31: Started comparing workflow-editor and game-asset-canvas group drag previews; CodeGraph located `GroupOverlays` as the overlay entry point.
+- Confirmed the shared overlay already emits flow-coordinate preview bounds/delta; locating the workflow editor's visual renderer before wiring the same contract into the mini-app.
+- Added transient preview state and a pointer-transparent dashed target rectangle inside `GroupOverlays`' existing `ViewportPortal`.
+- `git diff --check` is clean; no direct `GroupOverlays` test exists, so validation is proceeding through JSX compilation and focused diff/source checks.
+- JSX compilation passed; existing group helper test passed 1/1; theme-variable presence and diff whitespace checks passed. Final diff review remains.
+- Final diff review passed. `procm-mcp` reported no running process and no workspace command configuration, so no persistent service could be restarted.
+- 2026-07-31: Started diagnosing node input/output image drag to `fileupload`; restoring the real drag payload/drop parsing chain before changing code.
+- CodeGraph had no useful JSX event matches; targeted search isolated the source drag components and target `FileUpload.jsx`.
+- Built a deterministic source-level failure signal: internal drags provide no image files/URL, while `FileUpload` accepts only native image files.
+- Found existing `CANVAS_DROP_MIME` URL protocol and ruled out canvas drop interception; internal node images simply do not produce/consume that protocol.
+- Identified a second target component family (`@agent-spaces/ui` FileUpload) and excluded the full `ImageDisplayNode` body from generic HTML dragging because it is the node move handle.
+- Classified FileUpload imports: shared UI is the dominant target across nodes; local FileUpload covers two edit flows.
+- Confirmed node upload handlers already accept file-like URL entries, so internal drops can reuse URLs without network re-upload. Preparing a pure payload/parser regression seam.
+- Chosen seam: a pure shared UI helper for writing/parsing the existing canvas image MIME, covered by `node:test`; both FileUpload families and explicit node thumbnails will use it.
+- Added the regression test and observed the expected red failure because `file-upload-drop` does not exist.
+- Implemented shared MIME helpers, shared/local FileUpload URL consumption, and drag payload production for uploaded, upstream, and output thumbnails. Preserved existing sortable-image suppression and duplicate URL keys.
+- Regression helper test is green 2/2. Shared FileUpload now listens at its outer boundary so URL drops work over the dropzone, existing file list, and collapsed-list state.
+- Focused validation passed: helper tests 2/2, Web ESLint clean, mini-app JSX compilation clean, and list-key test 1/1.
+- Full Web TypeScript check exposed one new FileUpload generic mismatch; preparing a typed `File` representation for internal URLs. Other reported errors are existing prompt-editor issues.
+- Fixed the generic mismatch with a zero-byte File carrying URL fields. Recheck shows only four existing prompt-editor TypeScript errors; changed files are clean.
+- Hardened self-drop behavior for both shared and local FileUpload using synchronous instance refs; cross-node drops remain accepted.
+- Removed a redundant inner drop handler flagged by React refs lint; outer FileUpload handling remains the single internal-URL boundary while react-dropzone keeps native file handling.
+- Web ESLint recheck is clean and MIME tests pass 2/2.
+- Final diff review passed; aligned sortable-image `effectAllowed` with both reorder and cross-node copy semantics.
+- Final compile, Web ESLint, MIME tests, and diff check passed. One combined command used the wrong path for the list-key test; targeted rerun remains. `procm-mcp` has no running process.
+- Targeted list-key rerun passed 1/1. Task complete; no procm process/command configuration was available to restart.
+- Follow-up report: input drag shows forbidden cursor; output drag allows drop but does nothing. Reopening diagnosis at DOM capture/bubble ordering and adding targeted `[DEBUG-image-drop]` instrumentation.
+- CodeGraph confirms source payload writing executes before sorting metadata; next probe targets installed react-dropzone event composition.
+- Added `[DEBUG-image-drop]` logs at payload write, each input/output drag source, shared target capture/bubble stages, parsed drop handler, and onChange; no behavioral fix applied in this step.
+- Debug build/test passed, but TypeScript found one new helper typing error; corrected the structural DataTransfer writer type.
+- Received runtime logs: source payload is correct for input and output, but no target logs fire. Proceeding with capture-stage URL handling in both FileUpload implementations.
+- Root cause confirmed from logs plus canvas code: input is blocked by copy-vs-move mismatch; output is swallowed by the reorder MIME early return.
+- Implemented image-specific canvas copy effect, allowed image payloads through the reorder guard, and moved shared/local FileUpload URL handling to capture phase. Debug logs remain enabled.
+- Added same-instance capture bypass to preserve existing shared/local FileUpload sorting while handling cross-node drops early.
+- Runtime-informed fix passed automated validation. Kept `[DEBUG-image-drop]` instrumentation for user verification; procm transport was unavailable for restart.

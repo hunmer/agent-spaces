@@ -16,9 +16,12 @@
  *
  * @param {Array} nodes
  * @param {Array} edges
- * @returns {Map<string, {images: string[], isDisplay: boolean}>} nodeId -> 派生输入
+ * edge.data.inputTarget 可把图片路由到目标节点的其它 FileUpload；旧边默认进入 images。
+ *
+ * @returns {Map<string, {images: string[], fileUploads: Record<string, string[]>, isDisplay: boolean}>} nodeId -> 派生输入
  */
 import { NODE_TYPES, isImageProcessNodeType } from './constants.js';
+import { DEFAULT_FILE_UPLOAD_TARGET, resolveFileUploadTarget } from './connection-targets.js';
 
 export function computeInputImages(nodes, edges) {
   const isReceiverType = (type) => type === NODE_TYPES.editImage
@@ -71,16 +74,26 @@ export function computeInputImages(nodes, edges) {
       if (!isReceiverType(node.type)) continue;
       const incoming = incomingByTarget.get(node.id);
       if (!incoming || !incoming.length) continue;
-      const upstream = [];
+      const upstreamByTarget = {};
       for (const e of incoming) {
         const src = byId.get(e.source);
         if (!src) continue;
-        upstream.push(...sourceImages(src, derived));
+        const targetId = resolveFileUploadTarget(node.type, e.data?.inputTarget);
+        if (!upstreamByTarget[targetId]) upstreamByTarget[targetId] = [];
+        upstreamByTarget[targetId].push(...sourceImages(src, derived));
       }
+      const upstream = upstreamByTarget[DEFAULT_FILE_UPLOAD_TARGET] || [];
+      const fileUploads = Object.fromEntries(
+        Object.entries(upstreamByTarget).filter(([targetId]) => targetId !== DEFAULT_FILE_UPLOAD_TARGET),
+      );
       const prev = derived.get(node.id);
+      map.set(node.id, {
+        images: upstream,
+        fileUploads,
+        isDisplay: node.type === NODE_TYPES.imageDisplay,
+      });
       if (!prev || prev.join('|') !== upstream.join('|')) {
         derived.set(node.id, upstream);
-        map.set(node.id, { images: upstream, isDisplay: node.type === NODE_TYPES.imageDisplay });
         changed = true;
       }
     }

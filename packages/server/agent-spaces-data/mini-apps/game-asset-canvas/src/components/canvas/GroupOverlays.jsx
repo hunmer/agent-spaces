@@ -1,4 +1,4 @@
-import { Fragment } from 'react';
+import { Fragment, useState } from 'react';
 import { ViewportPortal } from '@xyflow/react';
 import { WorkflowGroupOverlay } from '@agent-spaces/ui';
 import GroupExecutionToolbar from './GroupExecutionToolbar';
@@ -28,6 +28,8 @@ export default function GroupOverlays({
   runningGroupIds,
   onSwitchExecutionRun, onUploadExecutionAssets, onRemoveExecutionAsset,
 }) {
+  const [dragPreview, setDragPreview] = useState(null);
+
   return (
     <ViewportPortal>
       {items.map(({ group, childNodes }) => (
@@ -41,6 +43,7 @@ export default function GroupOverlays({
             onDelete={onDelete}
             onUpdate={onUpdate}
             onMove={onMove}
+            onDragPreviewChange={setDragPreview}
             onConnect={onConnect}
             screenDeltaToFlowDelta={screenDeltaToFlowDelta}
           />
@@ -59,6 +62,21 @@ export default function GroupOverlays({
           )}
         </Fragment>
       ))}
+      {dragPreview && (
+        <div
+          className="pointer-events-none absolute"
+          style={{
+            left: dragPreview.bounds.x + dragPreview.delta.x,
+            top: dragPreview.bounds.y + dragPreview.delta.y,
+            width: dragPreview.bounds.width,
+            height: dragPreview.bounds.height,
+            border: '2px dashed var(--primary)',
+            borderRadius: 8,
+            backgroundColor: 'rgba(59,130,246,0.06)',
+            boxShadow: '0 0 0 1px rgba(255,255,255,0.6)',
+          }}
+        />
+      )}
     </ViewportPortal>
   );
 }

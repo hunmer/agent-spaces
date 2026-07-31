@@ -88,3 +88,73 @@ Switching an upstream node's output history immediately replaces every connected
 - A combined search script failed in the tool orchestration layer because of regex string escaping; split it into plain PowerShell commands.
 - A combined read returned exit code 1 because one optional test search had no matches; replaced it with deterministic file reads.
 - The first Node import probe had malformed orchestration quoting and did not run; the corrected probe confirmed Node 22 cannot resolve `input-images.js`'s extensionless `./constants` import, even with the legacy resolution flag.
+- Follow-up combined read stopped because a PowerShell `Select-String` pattern was misquoted; removed the optional config search and split deterministic source reads.
+
+## Follow-up: Repeated History Switching
+
+- [x] Reproduce the `1 image -> 2 images -> 1 image` residual across repeated switches.
+- [x] Instrument derivation and input-list state boundaries with `[DEBUG-history-sync]`.
+- [x] Test ranked hypotheses and identify the exact state owner retaining the extra image.
+- [x] Add a regression test, implement the minimal fix, and remove debug instrumentation.
+- [x] Run focused and related validation.
+
+---
+
+# Group Drag Position Preview
+
+## Goal
+Show a dashed target-position outline while moving a group on the game asset canvas, matching the workflow editor interaction.
+
+## Phases
+- [x] Compare the workflow editor preview and the mini-app group drag state.
+- [x] Implement the smallest preview-state and overlay change.
+- [x] Run focused static/tests validation and review the diff.
+
+## Constraints
+- Preserve existing group move/drop behavior and unrelated worktree changes.
+- Do not use a real browser unless requested.
+
+## Errors Encountered
+- Mini-app directory has no `package.json`; the combined pre-edit inspection stopped on that missing optional file. Validation commands will be resolved from the workspace package files instead.
+- Combined validation inspection returned exit 1 because the optional test-name search found no `GroupOverlays` test; the diff/check itself was clean. Subsequent checks are split into deterministic commands.
+- First esbuild syntax command combined `--external:*` without `--bundle`; esbuild rejected the option combination before compilation. Retrying with bundling enabled.
+- `procm-mcp` had no running process and the workspace has no `procm-commands.json`, so there was no configured persistent service to restart.
+
+---
+
+# Node Image Drag To File Upload
+
+## Goal
+Allow images dragged from a node's input/output previews to populate another node's `fileupload` field.
+
+## Phases
+- [x] Build a deterministic repro at the real drag payload/drop parsing seam.
+- [x] Rank and test hypotheses across source drag and target fileupload handlers.
+- [x] Add a regression test, apply the minimal fix, and remove instrumentation.
+- [x] Run focused validation, review the diff, and check persistent service state.
+
+## Constraints
+- Preserve local-file upload/drop, canvas node dragging, and edge connection behavior.
+- Preserve unrelated worktree changes; do not use a real browser unless the source-level seam is insufficient.
+
+## Errors Encountered
+- The first combined `rg` lookup returned exit 1 without output, likely from PowerShell regex quoting or one no-match branch. Replaced it with simple literal searches in separate commands.
+- Import-classification regex hit the same PowerShell quoting issue. Replaced it with literal `FileUpload` searches scoped to import lines via `Select-String`.
+- Expected red regression test failed with `Cannot find module './file-upload-drop'`, confirming the helper/contract did not exist before the fix.
+- Web TypeScript validation found the new dropped URL file-like object was not assignable to the default `File` generic. Resolved by creating a zero-byte `File` carrying the existing URL fields; unrelated prompt-editor errors remain pre-existing.
+- Final combined test command used an incorrect `../../server` path from `packages/web`; MIME tests passed but the list-key test file was not found. Rerunning that test from the mini-app directory.
+- `procm-mcp` had no running process and the workspace still has no `procm-commands.json`, so no persistent service could be restarted.
+
+## Follow-up: Drop Event Propagation
+
+- [x] Reproduce the forbidden-cursor/no-op split at the event propagation seam.
+- [x] Instrument source, capture, and target stages with `[DEBUG-image-drop]`.
+- [x] Move internal URL handling ahead of react-dropzone interception and retest.
+- [x] Validate, review, and leave actionable logs for manual verification.
+- [ ] User verifies input/output drops in the running browser and reports the resulting stage chain if still failing.
+
+### Errors Encountered
+- Broad pnpm-store `rg` filtered through `Select-String` returned no output. Resolve the installed react-dropzone package directory first, then inspect it directly.
+- Initial debug helper typed writers as `setData` only, so TypeScript rejected reading optional debug fields. Expanded the structural writer type to include optional DataTransfer debug properties.
+- Combined same-instance bypass patch mixed shared/local FileUpload context in one file hunk and did not apply. Split by file with exact contexts.
+- Final `procm-mcp` process check could not connect to `127.0.0.1:7331`; no persistent service restart was possible.

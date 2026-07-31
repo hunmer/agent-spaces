@@ -52,3 +52,33 @@ test('computeInputVideos keeps video editor uploads while forwarding the current
   assert.deepEqual(result.get('editor')?.videos, ['new.mp4']);
   assert.deepEqual(result.get('target')?.videos, ['upload.mp4', 'new.mp4']);
 });
+
+test('computeInputImages does not accumulate images across repeated version switches', () => {
+  const outputs = [['one.png'], ['one.png', 'two.png'], ['one.png'], ['one.png', 'two.png'], ['one.png']];
+  const edges = [edge('source', 'target')];
+
+  const counts = outputs.map((images) => {
+    const nodes = [
+      { id: 'source', type: NODE_TYPES.editImage, data: { output: { images } } },
+      { id: 'target', type: NODE_TYPES.imageProcess, data: {} },
+    ];
+    return computeInputImages(nodes, edges).get('target')?.images.length;
+  });
+  assert.deepEqual(counts, [1, 2, 1, 2, 1]);
+});
+
+test('computeInputImages routes a selected edit-image mask away from regular inputs', () => {
+  const nodes = [
+    { id: 'input', type: NODE_TYPES.textToImage, data: { output: { images: ['input.png'] } } },
+    { id: 'mask', type: NODE_TYPES.textToImage, data: { output: { images: ['mask.png'] } } },
+    { id: 'target', type: NODE_TYPES.editImage, data: {} },
+  ];
+  const edges = [
+    edge('input', 'target'),
+    { ...edge('mask', 'target'), id: 'mask-target', data: { inputTarget: 'mask' } },
+  ];
+
+  const result = computeInputImages(nodes, edges).get('target');
+  assert.deepEqual(result?.images, ['input.png']);
+  assert.deepEqual(result?.fileUploads, { mask: ['mask.png'] });
+});

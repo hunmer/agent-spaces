@@ -5,7 +5,7 @@ import {
 } from '@xyflow/react';
 import {
   ResizablePanelGroup, ResizablePanel, ResizableHandle,
-  Images, MapPinned,
+  Images, MapPinned, toast,
 } from '@agent-spaces/ui';
 
 import Toolbar from './Toolbar';
@@ -26,7 +26,9 @@ import AssetLibraryPickerDialog from './AssetLibraryPickerDialog';
 import ExportImagesDialog from './ExportImagesDialog';
 import GroupConfirmDialog from './GroupConfirmDialog';
 import DeleteGroupDialog from './DeleteGroupDialog';
+import ConnectionTargetDialog from './ConnectionTargetDialog';
 import useAssetLibrary from '../hooks/useAssetLibrary';
+import { getFileUploadTargets } from '../utils/connection-targets';
 
 import useCanvasState from '../hooks/useCanvasState';
 import useWorkflow from '../hooks/useWorkflow';
@@ -50,7 +52,8 @@ import useDecoratedNodes from '../hooks/useDecoratedNodes';
 import { IMAGE_TAGS, NODE_TYPES, NODE_META } from '../utils/constants';
 import { NODE_COMPONENTS, PANEL_ID_MAIN, PANEL_ID_RIGHT, dedupeTags } from '../utils/canvas-constants';
 import { genId } from '../utils/canvas-id';
-import { exportAssetLibraryZip, extractFileNameFromUrl } from '../utils/export';
+import { exportAssetLibraryZip, extractFileNameFromUrl, pickAssetLibraryZipFile, importAssetLibraryZip, exportWorkspaceZip, pickWorkspaceZipFile, importWorkspaceZip } from '../utils/export';
+import { canvasConfigPath, historyConfigPath, assetLibraryConfigPath, saveCanvas } from '../utils/storage';
 
 const EDGE_TYPES = { floating: FloatingEdge };
 const DEFAULT_EDGE_OPTIONS = {
@@ -103,6 +106,8 @@ export default function Canvas() {
   const [edgeLineStyle, setEdgeLineStyle] = useState('solid');
   const [hoveredNodeId, setHoveredNodeId] = useState(null);
   const [isConnecting, setIsConnecting] = useState(false);
+  // 多上传区域目标的待确认连线：选择完成前不写入 edges。
+  const [pendingConnection, setPendingConnection] = useState(null);
 
   const reactFlow = useReactFlow();
   const wrappingRef = useRef(null);
@@ -222,7 +227,7 @@ export default function Canvas() {
 
   // 连线：多选增强（参考 xyflow MultiConnect）——若 source 选中，把所有选中节点都连到 target。
   // 用 nodesRef 读最新 nodes（多选判断），callback deps 不含 nodes → 稳定引用。
-  const onConnect = useCallback((conn) => {
+  const addConnections = useCallback((conn, inputTarget) => {
     setEdges((prev) => {
       const curNodes = nodesRef.current;
       const sources = curNodes.some((n) => n.id === conn.source && n.selected)
@@ -239,7 +244,7 @@ export default function Canvas() {
             source, target: conn.target,
             sourceHandle: conn.sourceHandle, targetHandle: conn.targetHandle,
             markerEnd: { type: MarkerType.ArrowClosed },
-            data: { pathStyle: edgePathStyle, lineStyle: edgeLineStyle },
+            data: { pathStyle: edgePathStyle, lineStyle: edgeLineStyle, inputTarget },
           },
           next,
         );
@@ -247,6 +252,16 @@ export default function Canvas() {
       return next;
     });
   }, [edgeLineStyle, edgePathStyle, setEdges]);
+
+  const onConnect = useCallback((conn) => {
+    const targetNode = nodesRef.current.find((node) => node.id === conn.target);
+    const targets = getFileUploadTargets(targetNode?.type);
+    if (targets.length > 1) {
+      setPendingConnection({ conn, targets });
+      return;
+    }
+    addConnections(conn, targets[0]?.id);
+  }, [addConnections]);
 
   // 连线拖到空白处放手：弹出「添加节点」菜单
   const onConnectEnd = useCallback((event, connectionState) => {
@@ -341,7 +356,7 @@ export default function Canvas() {
   }, [settings, runWorkflow]);
 
   // —— 添加到素材库：节点产出图 / 生成记录图 共用的分组选择器 ——
-  const { addAsset } = useAssetLibrary(activeId);
+  const { addAsset, createCategory } = useAssetLibrary(activeId);
 
   // 导出当前工作区素材库为 zip（按分类转文件夹）。导出时直接调 list_assets service 拿最新全量数据，
   // 避免闭包内 categories 陈旧。onProgress 透传给工具函数，由 Toolbar 侧更新 toast 进度。
@@ -352,6 +367,72 @@ export default function Canvas() {
       onProgress,
     });
   }, [activeId, activeWorkspace]);
+
+  // 导入素材库 zip：选 zip → 按文件夹建/找分类 → 逐文件上传入库。
+  // 分类合并策略（ensureCategory）：先查当前工作区同名分类，有则复用，无则新建（createCategory 返回整个 lib，取末项 id）。
+  const handleImportAssetLibrary = useCallback(async (onProgress) => {
+    const file = await pickAssetLibraryZipFile();
+    if (!file) return null; // 用户取消
+    // 找同名分类，无则新建。createCategory 返回完整 lib {categories:[...]}，新建项在末尾。
+    const ensureCategory = async (name) => {
+      const lib = await window.AgentSpaces?.invokeService?.('list_assets', { workspaceId: activeId });
+      const existed = (lib?.categories || []).find((c) => c.name === name);
+      if (existed) return existed.id;
+      const next = await createCategory(name);
+      const created = (next?.categories || []).findLast?.((c) => c.name === name)
+        || (next?.categories || []).filter((c) => c.name === name).pop();
+      if (!created) throw new Error(`创建分类「${name}」失败`);
+      return created.id;
+    };
+    return importAssetLibraryZip(file, { ensureCategory, addAsset, onProgress });
+  }, [activeId, createCategory, addAsset]);
+
+  // 导出当前工作区为 zip（3 个 json + 后端图片落 static/，url 相对化为占位符）。
+  // 用 getConfig 同步读三个 path 的缓存（与各 hook 的三重读取同源），传给 exportWorkspaceZip。
+  const handleExportWorkspace = useCallback(async (onProgress) => {
+    const AS = window.AgentSpaces;
+    const canvasState = AS?.getConfig?.(canvasConfigPath(activeId));
+    const historyList = AS?.getConfig?.(historyConfigPath(activeId));
+    const assetLib = AS?.getConfig?.(assetLibraryConfigPath(activeId));
+    return exportWorkspaceZip({
+      canvasState,
+      historyList: Array.isArray(historyList) ? historyList : null,
+      assetLib,
+      workspaceName: activeWorkspace?.name,
+      onProgress,
+    });
+  }, [activeId, activeWorkspace]);
+
+  // 导入工作区 zip：重传 static 图片 → 回填 url → 新建工作区写入 canvas/history/asset。
+  // 数据写入用 save_canvas（整库覆盖，广播回流自动 setNodes）；history 逐条 add_history；
+  // asset 用 save_asset_library（整库写入）。最后 switchWorkspace 切到新工作区。
+  const handleImportWorkspace = useCallback(async (onProgress) => {
+    const file = await pickWorkspaceZipFile();
+    if (!file) return null; // 用户取消
+    const { canvasState, historyList, assetLib, stats } = await importWorkspaceZip(file, { onProgress });
+    const AS = window.AgentSpaces;
+    // 新建工作区（名字带「-导入」后缀），拿新 workspaceId
+    const newName = `${activeWorkspace?.name || '工作区'}-导入`;
+    const res = await createWorkspace(newName);
+    const newWs = Array.isArray(res?.workspaces) ? res.workspaces[res.workspaces.length - 1] : null;
+    const newId = newWs?.id;
+    if (!newId) throw new Error('创建工作区失败');
+    // 写入数据（新工作区此时画布为空、无 dirty，广播回流会自动加载）
+    if (canvasState) {
+      await saveCanvas(newId, canvasState);
+    }
+    if (Array.isArray(historyList)) {
+      // 倒序 add（add_history 是 unshift，倒序入队保持原顺序）
+      for (let i = historyList.length - 1; i >= 0; i--) {
+        try { await AS?.invokeService?.('add_history', { workspaceId: newId, item: historyList[i] }); } catch {}
+      }
+    }
+    if (assetLib) {
+      try { await AS?.invokeService?.('save_asset_library', { workspaceId: newId, lib: assetLib }); } catch {}
+    }
+    switchWorkspace(newId);
+    return stats;
+  }, [activeWorkspace, createWorkspace, switchWorkspace]);
 
   const [assetsPickerOpen, setAssetsPickerOpen] = useState(false);
   // 统一归一化为 {url, fileName?}：兼容旧调用方传 string / string[]，以及新调用方传 {url,fileName} / 该类对象数组
@@ -400,14 +481,20 @@ export default function Canvas() {
   // groupState: 选完图后打开分组确认 { sourceNode, urls }
   const [exportState, setExportState] = useState(null);
   const [groupState, setGroupState] = useState(null);
+  const completeImageExport = useCallback((sourceNode, imgs, opts) => {
+    const nodeIds = handleExportImages(sourceNode, imgs, opts);
+    if (!nodeIds?.length) return;
+    setTimeout(() => crud.focusNode(nodeIds[0]), 0);
+    toast.success(`已导出 ${nodeIds.length} 张图片到画布`);
+  }, [handleExportImages, crud.focusNode]);
   const handleExportImagesWithPicker = useCallback((sourceNode, imgs) => {
     if (!imgs?.length) return;
     if (imgs.length === 1) {
-      handleExportImages(sourceNode, imgs);
+      completeImageExport(sourceNode, imgs);
       return;
     }
     setExportState({ sourceNode, images: imgs });
-  }, [handleExportImages]);
+  }, [completeImageExport]);
 
   // 视频导出到画布（复用 handleExportVideos，视频不分组成独立节点）
   const handleExportVideosWithPicker = useCallback((sourceNode, vids) => {
@@ -625,6 +712,9 @@ export default function Canvas() {
             onExport={crud.handleExport}
             onExportAssetLibrary={handleExportAssetLibrary}
             onImport={crud.handleImport}
+            onImportAssetLibrary={handleImportAssetLibrary}
+            onExportWorkspace={handleExportWorkspace}
+            onImportWorkspace={handleImportWorkspace}
             onOpenSettings={() => setSettingsOpen(true)}
             onOpenPromptManager={() => setPromptManagerOpen(true)}
             edgePathStyle={edgePathStyle}
@@ -855,13 +945,13 @@ export default function Canvas() {
         onConfirm={(groupName) => {
           // 创建分组（groupName 为 null 表示用户未填名，用默认）
           if (groupState?.sourceNode) {
-            handleExportImages(groupState.sourceNode, groupState.urls, { groupName: groupName ?? '' });
+            completeImageExport(groupState.sourceNode, groupState.urls, { groupName: groupName ?? '' });
           }
         }}
         onCancel={() => {
           // 不分组：独立节点加入画布
           if (groupState?.sourceNode) {
-            handleExportImages(groupState.sourceNode, groupState.urls);
+            completeImageExport(groupState.sourceNode, groupState.urls);
           }
         }}
       />
@@ -872,6 +962,16 @@ export default function Canvas() {
         nodeCount={groupOps.deleteGroupNodeCount}
         onClose={groupOps.cancelDeleteGroup}
         onConfirm={groupOps.confirmDeleteGroup}
+      />
+
+      <ConnectionTargetDialog
+        open={!!pendingConnection}
+        targets={pendingConnection?.targets || []}
+        onClose={() => setPendingConnection(null)}
+        onSelect={(inputTarget) => {
+          if (pendingConnection?.conn) addConnections(pendingConnection.conn, inputTarget);
+          setPendingConnection(null);
+        }}
       />
     </ResizablePanelGroup>
   );

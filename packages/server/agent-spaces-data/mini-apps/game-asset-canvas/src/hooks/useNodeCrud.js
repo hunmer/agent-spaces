@@ -1,10 +1,13 @@
 import { useCallback, useRef } from 'react';
 import { addEdge, MarkerType } from '@xyflow/react';
+import { debugCanvasImageDrag } from '@agent-spaces/ui';
 import { NODE_TYPES, NODE_META, IMAGE_TAGS, WORKFLOWS } from '../utils/constants';
 import { DEFAULT_SIZE, initialData, CANVAS_DROP_MIME, IMAGE_REORDER_MIME } from '../utils/canvas-constants';
 import { genId, autoPosition } from '../utils/canvas-id';
 import { autoLayout } from '../utils/layout';
 import { downloadJson, serializeCanvas, pickAndParseCanvasFile } from '../utils/export';
+
+const debuggedCanvasImageDrags = new WeakSet();
 
 // 历史记录项 → 新节点 dataPatch：
 // - 生成类节点（params 含 prompt/model 字段）预填 prompt/model
@@ -168,7 +171,12 @@ export default function useNodeCrud({
   // 拖拽经过画布：必须 preventDefault 才能触发 drop
   const handleDragOver = useCallback((event) => {
     event.preventDefault();
-    event.dataTransfer.dropEffect = 'move';
+    const isImageDrag = Array.from(event.dataTransfer.types || []).includes(CANVAS_DROP_MIME);
+    event.dataTransfer.dropEffect = isImageDrag ? 'copy' : 'move';
+    if (isImageDrag && !debuggedCanvasImageDrags.has(event.dataTransfer)) {
+      debuggedCanvasImageDrags.add(event.dataTransfer);
+      debugCanvasImageDrag('canvas:dragover', event.dataTransfer, { isImageDrag });
+    }
   }, []);
 
   // 按 URL 在落点批量建图片展示节点（历史记录/素材库图片拖入画布复用）。
@@ -248,8 +256,16 @@ export default function useNodeCrud({
   // 放下：区分系统图片文件 / 历史项 / 节点类型
   const handleDrop = useCallback((event) => {
     event.preventDefault();
+    const imgRaw = event.dataTransfer.getData(CANVAS_DROP_MIME);
+    const isReorder = Boolean(event.dataTransfer.getData(IMAGE_REORDER_MIME));
+    debugCanvasImageDrag('canvas:drop', event.dataTransfer, {
+      hasImagePayload: Boolean(imgRaw),
+      isReorder,
+      insideNode: event.target instanceof Element && Boolean(event.target.closest('.react-flow__node')),
+    });
     // 节点内/弹窗内图片列表拖拽排序的标记：直接放行，不建节点（否则 img 默认被浏览器转成文件会误建 imageDisplay）
-    if (event.dataTransfer.getData(IMAGE_REORDER_MIME)) return;
+    // 若同时有明确的画布图片 payload，则表示图片被拖出了排序列表，应按跨区域复制处理。
+    if (isReorder && !imgRaw) return;
     // drop 落在节点内（含节点内 FileUpload/dropzone）：交给节点自行处理，画布不建节点。
     // 否则事件冒泡到这里会因 dataTransfer.files 非空误建 imageDisplay，且 FileUpload 的 onChange 也被触发导致重复消费。
     if (event.target instanceof Element && event.target.closest('.react-flow__node')) return;
@@ -268,7 +284,6 @@ export default function useNodeCrud({
       } catch {}
     }
     // 历史记录/素材库的图片缩略图拖入：按图片 URL 在落点建 imageDisplay 节点
-    const imgRaw = event.dataTransfer.getData(CANVAS_DROP_MIME);
     if (imgRaw) {
       try {
         const parsed = JSON.parse(imgRaw);

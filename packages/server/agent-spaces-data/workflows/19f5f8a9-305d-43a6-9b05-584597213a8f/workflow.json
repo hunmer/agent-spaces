@@ -58,6 +58,12 @@
               "4k"
             ],
             "children": []
+          },
+          {
+            "key": "mask",
+            "type": "string",
+            "value": "",
+            "children": []
           }
         ]
       }
@@ -482,7 +488,8 @@
         "sourceNodeId": "node_1781686908308_6flfam",
         "sourceHandle": "case-3",
         "image": "{{ __data__[\"node_1783940935348_adxsie\"].urls }}",
-        "prompt": "{{ __data__[\"node_1781681576137_start\"].prompt }}"
+        "prompt": "{{ __data__[\"node_1781681576137_start\"].prompt }}",
+        "mask": "{{ __data__[\"node_1781681576137_start\"].mask }}"
       }
     },
     {
@@ -590,7 +597,8 @@
         "sourceHandle": "case-3",
         "image": "{{ __data__[\"node_1783940935348_adxsie\"].urls }}",
         "prompt": "{{ __data__[\"node_1781681576137_start\"].prompt }}",
-        "apiMode": "auto"
+        "apiMode": "auto",
+        "mask": "{{ __data__[\"node_1781681576137_start\"].mask }}"
       }
     }
   ],
@@ -1024,10 +1032,26 @@
       "edgeKind": "reference",
       "sourceHandle": "output:data.images",
       "targetHandle": "property:groups[0].variables[4].value"
+    },
+    {
+      "id": "e-node_1781681576137_start-output:mask-node_1782282946001_rr0sss-property:mask",
+      "source": "node_1781681576137_start",
+      "target": "node_1782282946001_rr0sss",
+      "edgeKind": "reference",
+      "sourceHandle": "output:mask",
+      "targetHandle": "property:mask"
+    },
+    {
+      "id": "e-node_1781681576137_start-output:mask-node_1785492437794_9kmwwg-property:mask",
+      "source": "node_1781681576137_start",
+      "target": "node_1785492437794_9kmwwg",
+      "edgeKind": "reference",
+      "sourceHandle": "output:mask",
+      "targetHandle": "property:mask"
     }
   ],
   "createdAt": 1782271756656,
-  "updatedAt": 1785492526946,
+  "updatedAt": 1785500703717,
   "published": false,
   "enabledPlugins": [
     "workflow.openai",
@@ -1040,7 +1064,7 @@
   "groups": [],
   "description": "编辑图片",
   "variables": [],
-  "lastOpenedAt": 1785471084640,
+  "lastOpenedAt": 1785500564158,
   "pluginConfigSchemes": {
     "workflow.ai-image": "本地gemini"
   }

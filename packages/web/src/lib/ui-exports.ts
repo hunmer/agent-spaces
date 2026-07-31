@@ -67,6 +67,7 @@ export { Markdown } from '@/components/ui/markdown';
 export { ExpandableTabs } from '@/components/ui/expandable-tabs';
 export { FileUpload } from '@/components/ui/file-upload';
 export type { FileUploadFile } from '@/components/ui/file-upload';
+export { CANVAS_IMAGE_DROP_MIME, debugCanvasImageDrag, getCanvasImageDropUrls, setCanvasImageDragData } from '@/components/ui/file-upload-drop';
 // 纯 UI 拖拽接收层（不含上传逻辑，onFiles 回调通知调用方）
 export { Dropzone } from '@/components/ui/dropzone';
 export type { DropzoneProps } from '@/components/ui/dropzone';

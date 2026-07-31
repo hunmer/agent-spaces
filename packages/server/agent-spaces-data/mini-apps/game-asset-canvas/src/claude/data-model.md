@@ -138,11 +138,17 @@ interface Edge {
   targetHandle?: string | null;
   markerEnd?: { type: MarkerType.ArrowClosed };  // 默认箭头
   animated?: boolean;            // 默认 true
+  data?: {
+    inputTarget?: string;         // 目标 FileUpload id；缺省/无效值回退到 images
+    pathStyle?: string;
+    lineStyle?: string;
+  };
 }
 ```
 
 - Handle 位置：source 在节点底部（Bottom），target 在节点顶部（Top）。
-- 连线语义：「source 产出图 → target 输入图」，由 `computeInputImages` 派生到 target 的 `data.images`。
+- 连线语义：「source 产出图 → target 输入区」。旧边或 `inputTarget='images'` 由 `computeInputImages` 派生到 target 的 `data.images`；其它目标派生到 `data.fileUploadInputs[inputTarget]`。
+- 多上传区声明集中在 `utils/connection-targets.js`。当前编辑图片节点声明 `images`（输入图片）和 `mask`（蒙版图片），手动连线时由用户选择。
 
 ## 分组（WorkflowGroup）
 

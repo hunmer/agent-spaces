@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from 'react';
-import { openMediaGallery } from '@agent-spaces/ui';
+import { CANVAS_IMAGE_DROP_MIME, debugCanvasImageDrag, getCanvasImageDropUrls, openMediaGallery, setCanvasImageDragData } from '@agent-spaces/ui';
 import { IMAGE_REORDER_MIME } from '../utils/canvas-constants';
 
 /**
@@ -56,10 +56,16 @@ export default function FileUpload({ value = [], onChange, max = 6, placeholder 
     next.splice(to, 0, moved);
     onReorderItems?.(next.map((item) => item.src));
   };
-  const onReorderDragStart = (displayIndex, item) => (e) => {
+  const onReorderDragStart = (displayIndex, item, sortable) => (e) => {
+    setCanvasImageDragData(e.dataTransfer, [item.src]);
+    debugCanvasImageDrag('local-input:dragstart', e.dataTransfer, { url: item.src, sortable });
     draggingRef.current = unifiedSortable ? displayIndex : item.sourceIndex;
+    if (!sortable) {
+      e.dataTransfer.effectAllowed = 'copy';
+      return;
+    }
     setDraggingIdx(displayIndex);
-    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.effectAllowed = 'copyMove';
     try {
       e.dataTransfer.setData('text/plain', String(displayIndex));
       // 写入互斥标记：画布 handleDrop 见此标记直接 return，不建节点（防误触发）
@@ -129,8 +135,46 @@ export default function FileUpload({ value = [], onChange, max = 6, placeholder 
     e.preventDefault();
     e.stopPropagation(); // 阻止冒泡到 ReactFlow，避免外部文件已被本组件消费后又触发画布「拖拽建节点」
     setDragOver(false);
+    const droppedUrls = getCanvasImageDropUrls(e.dataTransfer);
+    debugCanvasImageDrag('local-target:drop-handler', e.dataTransfer, {
+      droppedUrls,
+      ownDrag: draggingRef.current !== null,
+      currentUrls: urls.length,
+    });
+    if (droppedUrls.length > 0) {
+      if (draggingRef.current !== null) return;
+      const remaining = max - urls.length;
+      if (remaining <= 0) {
+        setError(`最多 ${max} 张`);
+        return;
+      }
+      setError('');
+      onChange?.([...urls, ...droppedUrls.slice(0, remaining)]);
+      debugCanvasImageDrag('local-target:onChange', e.dataTransfer, {
+        addedUrls: droppedUrls.slice(0, remaining),
+      });
+      return;
+    }
     handleFiles(e.dataTransfer.files);
-  }, [handleFiles]);
+  }, [handleFiles, max, onChange, urls]);
+
+  const onInternalDragOverCapture = useCallback((e) => {
+    debugCanvasImageDrag('local-target:dragover:capture', e.dataTransfer);
+    if (draggingRef.current !== null) return;
+    if (!Array.from(e.dataTransfer.types || []).includes(CANVAS_IMAGE_DROP_MIME)) return;
+    e.preventDefault();
+    e.stopPropagation();
+    e.dataTransfer.dropEffect = 'copy';
+    setDragOver(true);
+  }, []);
+
+  const onInternalDropCapture = useCallback((e) => {
+    const droppedUrls = getCanvasImageDropUrls(e.dataTransfer);
+    debugCanvasImageDrag('local-target:drop:capture', e.dataTransfer, { droppedUrls });
+    if (droppedUrls.length === 0) return;
+    if (draggingRef.current !== null) return;
+    onDrop(e);
+  }, [onDrop]);
 
   const onRemove = useCallback((idx) => {
     onChange?.(urls.filter((_, i) => i !== idx));
@@ -143,11 +187,15 @@ export default function FileUpload({ value = [], onChange, max = 6, placeholder 
   }, [allItems]);
 
   return (
-    <div className="flex flex-col gap-2">
+    <div
+      className="flex flex-col gap-2"
+      onDragOverCapture={onInternalDragOverCapture}
+      onDropCapture={onInternalDropCapture}
+    >
       {(extras.length > 0 || urls.length > 0) && (
         <div
           className="grid grid-cols-3 gap-1.5"
-          onDrop={(e) => { e.preventDefault(); e.stopPropagation(); }}
+          onDrop={onDrop}
           onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
         >
           {displayItems.map((item, i) => {
@@ -155,10 +203,10 @@ export default function FileUpload({ value = [], onChange, max = 6, placeholder 
             return (
               <div
                 key={i}
-                draggable={sortable || undefined}
-                onDragStart={sortable ? onReorderDragStart(i, item) : undefined}
+                draggable
+                onDragStart={onReorderDragStart(i, item, sortable)}
                 onDragOver={sortable ? onReorderDragOver(i, item) : undefined}
-                onDragEnd={sortable ? onReorderDragEnd : undefined}
+                onDragEnd={onReorderDragEnd}
                 className={`group relative aspect-square overflow-hidden rounded-md border transition-colors ${
                   sortable && draggingIdx === i ? 'border-primary opacity-40'
                     : sortable && overIdx === i && draggingIdx !== i ? 'border-primary border-t-2'
