@@ -21,6 +21,7 @@ const POLL_INTERVAL = 5000
 const POLL_MAX_ATTEMPTS = 120 // 最长 ~10 分钟
 
 const API_MODES = [
+  { label: '自动识别 (按 baseUrl 后缀)', value: 'auto' },
   { label: '异步任务 (Images API)', value: 'async_task' },
   { label: 'Chat Completions', value: 'chat_completions' },
   { label: 'Responses', value: 'responses' },
@@ -44,8 +45,37 @@ function getHeaders(args) {
 // ── 同步接口模式（chat / responses）工具 ─────────────────────
 
 function getApiMode(args) {
-  const mode = (args.apiMode || 'async_task').toString()
-  return API_MODES.some((m) => m.value === mode) ? mode : 'async_task'
+  const mode = (args.apiMode || 'auto').toString()
+  return API_MODES.some((m) => m.value === mode) ? mode : 'auto'
+}
+
+// auto 模式：根据 baseUrl 末尾的端点后缀推断模式，并剥掉后缀得到真正的 base。
+// 返回 { mode, baseUrl } —— baseUrl 是不含端点后缀的规范 base，供后续 PATH 拼接，避免重复。
+//   .../responses          → responses
+//   .../chat/completions   → chat_completions
+//   .../images/generations → async_task (文生图)
+//   .../images/edits       → async_task (图生图)
+//   其它(纯 base)          → async_task（默认兼容旧行为）
+function resolveAuto(baseUrl, mode) {
+  if (mode !== 'auto') return { mode, baseUrl }
+  const b = String(baseUrl || '').replace(/\?.*$/, '').replace(/\/+$/, '')
+  const rules = [
+    { re: /\/chat\/completions$/i, mode: 'chat_completions' },
+    { re: /\/responses$/i, mode: 'responses' },
+    { re: /\/images\/(generations|edits)$/i, mode: 'async_task' },
+  ]
+  for (const { re, mode: m } of rules) {
+    const mat = re.exec(b)
+    if (mat) return { mode: m, baseUrl: b.slice(0, mat.index) }
+  }
+  return { mode: 'async_task', baseUrl }
+}
+
+// 统一解析 mode + 规范 baseUrl（auto 时已剥掉端点后缀）
+function resolveRequest(args) {
+  const mode = getApiMode(args)
+  const rawBase = getBaseUrl(args)
+  return resolveAuto(rawBase, mode)
 }
 
 // buffer → data URI（用于 chat image_url / responses input_image）
@@ -143,8 +173,8 @@ function extractImagesFromResponsesOutput(output, ctx) {
 }
 
 // 通用同步 POST + 返回 { images, model, created }
-async function runChatCompletions(ctx, args, body) {
-  const baseUrl = getBaseUrl(args)
+// baseUrl 为 resolveRequest 已解析的规范 base（auto 时已剥掉端点后缀）
+async function runChatCompletions(ctx, args, baseUrl, body) {
   const headers = getHeaders(args)
   ctx.logger.info(`chat/completions model=${body.model} 同步请求`)
   const resp = await ctx.api.postJson(`${baseUrl}${CHAT_COMPLETIONS_PATH}`, {
@@ -163,8 +193,7 @@ async function runChatCompletions(ctx, args, body) {
   return { images, model: resp.model || body.model, created: resp.created }
 }
 
-async function runResponses(ctx, args, body) {
-  const baseUrl = getBaseUrl(args)
+async function runResponses(ctx, args, baseUrl, body) {
   const headers = getHeaders(args)
   ctx.logger.info(`/v1/responses model=${body.model} 同步请求`)
   const resp = await ctx.api.postJson(`${baseUrl}${RESPONSES_PATH}`, {
@@ -313,8 +342,8 @@ async function extractImages(taskData, ctx) {
 }
 
 // 轮询任务直到终态
-async function pollTask(ctx, args, taskId) {
-  const baseUrl = getBaseUrl(args)
+// baseUrl 为 resolveRequest 已解析的规范 base（auto 时已剥掉端点后缀）
+async function pollTask(ctx, args, baseUrl, taskId) {
   const headers = getHeaders(args)
   const url = `${baseUrl}${TASK_PATH}/${encodeURIComponent(taskId)}`
   for (let i = 0; i < POLL_MAX_ATTEMPTS; i++) {
@@ -338,11 +367,11 @@ async function pollTask(ctx, args, taskId) {
 }
 
 // 提交任务 → 拿 task_id → 轮询 → 提取图片
-async function submitAndPoll(ctx, args, submitFn) {
+async function submitAndPoll(ctx, args, baseUrl, submitFn) {
   const taskId = await submitFn()
   if (!taskId) throw new Error('提交任务成功但未返回 task_id')
   ctx.logger.info(`已提交任务 task_id=${taskId}，开始轮询...`)
-  const taskData = await pollTask(ctx, args, taskId)
+  const taskData = await pollTask(ctx, args, baseUrl, taskId)
   const out = await extractImages(taskData, ctx)
   return { taskId, ...out }
 }
@@ -389,11 +418,11 @@ module.exports = (t) => [
         label: t('field.apiMode.label', 'API Mode'),
         type: 'select',
         dataType: 'string',
-        default: 'async_task',
+        default: 'auto',
         options: API_MODES,
         tooltip: t(
           'field.apiMode.tooltip',
-          'async_task: /v1/images/generations 轮询；chat_completions: /v1/chat/completions 同步；responses: /v1/responses 同步。',
+          'auto: 按 baseUrl 末尾自动识别（…/responses / …/chat/completions / …/images/* ），无后缀则走异步任务；async_task: Images API 轮询；chat_completions: /chat/completions 同步；responses: /responses 同步。',
         ),
       },
       {
@@ -462,7 +491,7 @@ module.exports = (t) => [
     run: async (ctx, args) => {
       const model = args.model || 'gpt-image-2-all'
       const prompt = args.prompt
-      const mode = getApiMode(args)
+      const { mode, baseUrl } = resolveRequest(args)
       ctx.logger.info(`文生图 mode=${mode} model=${model} ratio=${args.aspectRatio || '默认'} n=${args.n || 1}`)
       ctx.logger.info(`提示词: ${prompt}`)
 
@@ -473,7 +502,7 @@ module.exports = (t) => [
           messages: [{ role: 'user', content: prompt }],
           ...(args.n && { n: Number(args.n) }),
         }
-        const out = await runChatCompletions(ctx, args, body)
+        const out = await runChatCompletions(ctx, args, baseUrl, body)
         return {
           success: true,
           message: t('message.generated', 'Generated {count} image(s)').replace('{count}', out.images.length),
@@ -490,7 +519,7 @@ module.exports = (t) => [
           input: prompt,
           tools: [tool],
         }
-        const out = await runResponses(ctx, args, body)
+        const out = await runResponses(ctx, args, baseUrl, body)
         return {
           success: true,
           message: t('message.generated', 'Generated {count} image(s)').replace('{count}', out.images.length),
@@ -498,8 +527,7 @@ module.exports = (t) => [
         }
       }
 
-      // ── async_task：现有异步任务逻辑（默认，兼容旧配置）──
-      const baseUrl = getBaseUrl(args)
+      // ── async_task：现有异步任务逻辑（auto 无端点后缀时的默认）──
       const headers = getHeaders(args)
       const body = {
         prompt,
@@ -507,7 +535,7 @@ module.exports = (t) => [
         ...(args.aspectRatio && { aspect_ratio: args.aspectRatio }),
         ...(args.n && { n: Number(args.n) }),
       }
-      const out = await submitAndPoll(ctx, args, async () => {
+      const out = await submitAndPoll(ctx, args, baseUrl, async () => {
         const r = await ctx.api.postJson(`${baseUrl}${GENERATIONS_PATH}?async=true`, {
           headers,
           body,
@@ -564,11 +592,11 @@ module.exports = (t) => [
         label: t('field.apiMode.label', 'API Mode'),
         type: 'select',
         dataType: 'string',
-        default: 'async_task',
+        default: 'auto',
         options: API_MODES,
         tooltip: t(
           'field.apiMode.tooltip',
-          'async_task: /v1/images/edits 轮询；chat_completions: /v1/chat/completions 多模态同步；responses: /v1/responses input_image 同步。',
+          'auto: 按 baseUrl 末尾自动识别（…/responses / …/chat/completions / …/images/* ），无后缀则走异步任务；async_task: Images API 轮询；chat_completions: /chat/completions 多模态同步；responses: /responses input_image 同步。',
         ),
       },
       {
@@ -661,7 +689,7 @@ module.exports = (t) => [
 
       const model = args.model || 'gpt-image-1'
       const prompt = args.prompt
-      const mode = getApiMode(args)
+      const { mode, baseUrl } = resolveRequest(args)
 
       // ── chat/completions：多模态 messages 同步取图 ──
       if (mode === 'chat_completions') {
@@ -676,7 +704,7 @@ module.exports = (t) => [
         ctx.logger.info(`图片编辑 chat/completions model=${model} 输入图片=${files.length} 蒙版=${args.mask ? '有' : '无'}`)
         ctx.logger.info(`编辑指令: ${prompt}`)
         const body = { model, messages: [{ role: 'user', content }], ...(args.n && { n: Number(args.n) }) }
-        const out = await runChatCompletions(ctx, args, body)
+        const out = await runChatCompletions(ctx, args, baseUrl, body)
         return {
           success: true,
           message: t('message.edited', 'Edited {count} image(s)').replace('{count}', out.images.length),
@@ -697,7 +725,7 @@ module.exports = (t) => [
         ctx.logger.info(`图片编辑 /v1/responses model=${model} 输入图片=${files.length} 蒙版=${args.mask ? '有' : '无'}`)
         ctx.logger.info(`编辑指令: ${prompt}`)
         const body = { model, input: [{ role: 'user', content }], tools: [{ type: 'image_generation' }] }
-        const out = await runResponses(ctx, args, body)
+        const out = await runResponses(ctx, args, baseUrl, body)
         return {
           success: true,
           message: t('message.edited', 'Edited {count} image(s)').replace('{count}', out.images.length),
@@ -705,8 +733,7 @@ module.exports = (t) => [
         }
       }
 
-      // ── async_task：现有异步任务逻辑（默认，兼容旧配置）──
-      const baseUrl = getBaseUrl(args)
+      // ── async_task：现有异步任务逻辑（auto 无端点后缀时的默认）──
       const headers = getHeaders(args)
       const fields = {}
       // 多图用 image[]，单图用 image（OpenAI / gpt-image-1 多参考图约定）
@@ -726,7 +753,7 @@ module.exports = (t) => [
       ctx.logger.info(`图片编辑 model=${fields.model} 输入图片=${files.length} 蒙版=${args.mask ? '有' : '无'}`)
       ctx.logger.info(`编辑指令: ${prompt}`)
 
-      const out = await submitAndPoll(ctx, args, async () => {
+      const out = await submitAndPoll(ctx, args, baseUrl, async () => {
         const resp = await globalThis.fetch(`${baseUrl}${EDITS_PATH}?async=true`, {
           method: 'POST',
           headers: { Authorization: headers.Authorization, 'Content-Type': mp.contentType },

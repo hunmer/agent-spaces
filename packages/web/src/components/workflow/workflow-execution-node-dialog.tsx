@@ -8,6 +8,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { SearchSelect } from '@/components/ui/search-select';
 import { Button } from '@/components/ui/button';
 import { Play } from 'lucide-react';
 
@@ -103,15 +104,13 @@ export function ExecutionNodeDialog({
                       {prop.label || prop.key}
                     </span>
                     {prop.type === 'select' ? (
-                      <select
-                        className="flex h-8 w-full rounded-md border bg-background px-3 text-xs"
+                      <SearchSelect
                         value={propValues[prop.key] ?? stringifyValue(propertyValues[prop.key] ?? prop.default)}
-                        onChange={e => setProp(prop.key, e.target.value)}
-                      >
-                        {prop.options?.map(opt => (
-                          <option key={opt.value} value={opt.value}>{opt.label}</option>
-                        ))}
-                      </select>
+                        onChange={v => setProp(prop.key, v)}
+                        options={(prop.options ?? []).map(opt => ({ value: opt.value, label: opt.label }))}
+                        placeholder={prop.label || prop.key}
+                        allowCustom={false}
+                      />
                     ) : (
                       <Input
                         className="h-8 text-xs"

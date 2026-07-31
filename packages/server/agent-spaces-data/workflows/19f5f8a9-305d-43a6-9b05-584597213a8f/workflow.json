@@ -886,7 +886,7 @@
     }
   ],
   "createdAt": 1782271756656,
-  "updatedAt": 1785206094343,
+  "updatedAt": 1785468140704,
   "published": false,
   "enabledPlugins": [
     "workflow.openai",
@@ -895,9 +895,9 @@
     "workflow.jimeng",
     "workflow.ai-image"
   ],
-  "lastRunAt": 1785414806972,
+  "lastRunAt": 1785468039259,
   "groups": [],
   "description": "编辑图片",
   "variables": [],
-  "lastOpenedAt": 1785206053238
+  "lastOpenedAt": 1785468094063
 }

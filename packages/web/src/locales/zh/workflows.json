@@ -28,7 +28,9 @@
     "typeCurrent": "当前工作流",
     "selectedCount": "已选 {count} 项",
     "exportSelected": "导出选中",
-    "deleteSelected": "删除选中"
+    "deleteSelected": "删除选中",
+    "confirm": "确定",
+    "cancel": "取消"
   },
   "card": {
     "edit": "编辑",

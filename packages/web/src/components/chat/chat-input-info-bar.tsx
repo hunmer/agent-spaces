@@ -118,7 +118,6 @@ export function ChatInputInfoBar({
   const [skillsDialogOpen, setSkillsDialogOpen] = useState(false);
   const [toolsDialogOpen, setToolsDialogOpen] = useState(false);
   const [dialogEnabledPlugins, setDialogEnabledPlugins] = useState<string[]>([]);
-  const [draftWorkflowIds, setDraftWorkflowIds] = useState<string[]>([]);
   const [draftWorkflowPluginTools, setDraftWorkflowPluginTools] = useState<Array<{ pluginId: string; toolName: string }>>([]);
   const [draftMcps, setDraftMcps] = useState<string[]>([]);
   const [draftSkills, setDraftSkills] = useState<string[]>([]);
@@ -196,10 +195,6 @@ export function ChatInputInfoBar({
       setDialogEnabledPlugins(items.filter((item) => item.enabled).map((item) => item.id));
     });
   }, [pluginToolDialogOpen]);
-
-  useEffect(() => {
-    if (workflowDialogOpen) setDraftWorkflowIds(workflowIds);
-  }, [workflowDialogOpen, workflowIds]);
 
   useEffect(() => {
     if (pluginToolDialogOpen) setDraftWorkflowPluginTools(workflowPluginTools);
@@ -813,16 +808,15 @@ export function ChatInputInfoBar({
       <WorkflowListDialog
         open={workflowDialogOpen}
         workflows={workflows}
-        onSelect={() => {}}
-        onCreate={() => {}}
-        onClose={() => setWorkflowDialogOpen(false)}
-        selectable
-        showCreate={false}
-        selectedWorkflowIds={draftWorkflowIds}
-        onSelectedWorkflowIdsChange={(nextWorkflowIds) => {
-          setDraftWorkflowIds(nextWorkflowIds);
+        mode="multiple"
+        defaultSelectedIds={workflowIds}
+        onConfirm={(selected) => {
+          const nextWorkflowIds = selected.map(wf => wf.id);
           void persistAgentBindings({ boundWorkflowIds: nextWorkflowIds });
         }}
+        onCreate={() => {}}
+        onClose={() => setWorkflowDialogOpen(false)}
+        showCreate={false}
       />
       <PluginToolDialog
         open={pluginToolDialogOpen}

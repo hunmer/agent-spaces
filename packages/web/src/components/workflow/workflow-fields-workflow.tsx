@@ -47,9 +47,10 @@ export function WorkflowPropertyEditor({
       <WorkflowListDialog
         open={open}
         workflows={workflows.filter(workflow => workflow.id !== currentWorkflowId)}
-        onSelect={(workflow) => {
-          onChange(workflow);
-          setOpen(false);
+        mode="single"
+        onConfirm={(selected) => {
+          const workflow = selected[0];
+          if (workflow) onChange(workflow);
         }}
         onCreate={() => {}}
         onClose={() => setOpen(false)}

@@ -514,7 +514,11 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
       <WorkflowListDialog
         open={workflowListOpen}
         workflows={workflows}
-        onSelect={handleImportFromWorkflow}
+        mode="single"
+        onConfirm={(selected) => {
+          const workflow = selected[0];
+          if (workflow) handleImportFromWorkflow(workflow);
+        }}
         onCreate={() => {}}
         onClose={() => setWorkflowListOpen(false)}
         showCreate={false}

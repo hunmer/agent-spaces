@@ -808,13 +808,12 @@ export function AgentDetail({
       <WorkflowListDialog
         open={workflowDialogOpen}
         workflows={workflows.map((workflow) => ({ id: workflow.id, name: workflow.name, description: '', nodes: [], edges: [], folderId: null, createdAt: 0, updatedAt: 0 }))}
-        onSelect={() => {}}
+        mode="multiple"
+        defaultSelectedIds={agent.boundWorkflowIds}
+        onConfirm={(selected) => onChange("boundWorkflowIds", selected.map(wf => wf.id))}
         onCreate={() => {}}
         onClose={() => setWorkflowDialogOpen(false)}
-        selectable
         showCreate={false}
-        selectedWorkflowIds={agent.boundWorkflowIds}
-        onSelectedWorkflowIdsChange={(workflowIds) => onChange("boundWorkflowIds", workflowIds)}
       />
 
       <PluginToolDialog

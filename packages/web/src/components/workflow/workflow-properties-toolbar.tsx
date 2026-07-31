@@ -51,14 +51,16 @@ export function Toolbar({
 
   return (
     <div className="flex shrink-0 items-center gap-1 border-b px-3 py-1.5">
-      <Badge variant="secondary" className="h-5 cursor-pointer rounded px-2 text-[10px]" onClick={() => document.getElementById('properties-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>{t('editor.properties')}</Badge>
-      {canEditInputFields && <Badge variant="outline" className="h-5 cursor-pointer rounded px-2 text-[10px]" onClick={() => document.getElementById('input-fields-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>{t('properties.inputFields')}</Badge>}
-      {canEditOutputFields && <Badge variant="outline" className="h-5 cursor-pointer rounded px-2 text-[10px]" onClick={() => document.getElementById('output-fields-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>{t('properties.outputFields')}</Badge>}
-      {showRunResultAnchor && <Badge variant="outline" className="h-5 cursor-pointer rounded px-2 text-[10px]" onClick={() => document.getElementById('run-result-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>{t('properties.runResult')}</Badge>}
-      {showRunLogsAnchor && <Badge variant="outline" className="h-5 cursor-pointer rounded px-2 text-[10px]" onClick={() => document.getElementById('run-logs-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>{t('properties.runLogs')}</Badge>}
-      {showJsonPresetAnchor && <Badge variant="outline" className="h-5 cursor-pointer rounded px-2 text-[10px]" onClick={() => document.getElementById('json-preset-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>{t('properties.jsonPresetAnchor')}</Badge>}
+      <div className="flex min-w-0 items-center gap-1 overflow-x-auto">
+        <Badge variant="secondary" className="h-5 shrink-0 cursor-pointer rounded px-2 text-[10px]" onClick={() => document.getElementById('properties-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>{t('editor.properties')}</Badge>
+        {canEditInputFields && <Badge variant="outline" className="h-5 shrink-0 cursor-pointer rounded px-2 text-[10px]" onClick={() => document.getElementById('input-fields-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>{t('properties.inputFields')}</Badge>}
+        {canEditOutputFields && <Badge variant="outline" className="h-5 shrink-0 cursor-pointer rounded px-2 text-[10px]" onClick={() => document.getElementById('output-fields-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>{t('properties.outputFields')}</Badge>}
+        {showRunResultAnchor && <Badge variant="outline" className="h-5 shrink-0 cursor-pointer rounded px-2 text-[10px]" onClick={() => document.getElementById('run-result-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>{t('properties.runResult')}</Badge>}
+        {showRunLogsAnchor && <Badge variant="outline" className="h-5 shrink-0 cursor-pointer rounded px-2 text-[10px]" onClick={() => document.getElementById('run-logs-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>{t('properties.runLogs')}</Badge>}
+        {showJsonPresetAnchor && <Badge variant="outline" className="h-5 shrink-0 cursor-pointer rounded px-2 text-[10px]" onClick={() => document.getElementById('json-preset-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>{t('properties.jsonPresetAnchor')}</Badge>}
+      </div>
       {!readOnly && (
-        <div className="ml-auto flex items-center gap-1">
+        <div className="ml-auto flex shrink-0 items-center gap-1">
         {onResetToDefaults && (
           <Button
             variant="ghost"

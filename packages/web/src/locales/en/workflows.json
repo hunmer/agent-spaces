@@ -28,7 +28,9 @@
     "typeCurrent": "Current",
     "selectedCount": "{count} selected",
     "exportSelected": "Export",
-    "deleteSelected": "Delete"
+    "deleteSelected": "Delete",
+    "confirm": "Confirm",
+    "cancel": "Cancel"
   },
   "card": {
     "edit": "Edit",

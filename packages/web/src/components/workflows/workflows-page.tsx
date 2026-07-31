@@ -353,7 +353,11 @@ export function WorkflowsPage() {
       <WorkflowListDialog
         open={listDialogOpen}
         workflows={workflows}
-        onSelect={handleListOpen}
+        mode="single"
+        onConfirm={(selected) => {
+          const wf = selected[0];
+          if (wf) handleListOpen(wf);
+        }}
         onCreate={handleListCreate}
         onClose={() => setListDialogOpen(false)}
       />

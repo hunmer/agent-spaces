@@ -3,9 +3,7 @@
 import { useState } from 'react';
 import type { NodeProperty } from '@agent-spaces/shared';
 import { Check, ChevronDown } from 'lucide-react';
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select';
+import { SearchSelect } from '@/components/ui/search-select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
@@ -116,22 +114,14 @@ export function PropertyField({
       }
 
       return (
-        <Select
+        <SearchSelect
           value={String(value ?? prop.default ?? '')}
-          onValueChange={onChange}
+          onChange={onChange}
+          options={(prop.options ?? []).map(option => ({ value: option.value, label: option.label }))}
+          placeholder={prop.label}
+          allowCustom={false}
           disabled={disabled}
-        >
-          <SelectTrigger className="h-7 text-xs w-full">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {prop.options?.map(option => (
-              <SelectItem key={option.value} value={option.value} className="text-xs">
-                {option.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        />
       );
 
     case 'checkbox':

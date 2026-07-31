@@ -29,8 +29,8 @@
       "type": "ai_image_generate",
       "label": "AI Text to Image",
       "position": {
-        "x": 390,
-        "y": 195
+        "x": 300,
+        "y": 180
       },
       "data": {
         "apiKey": "{{ __config__[\"workflow.ai-image\"][\"apiKey\"] }}",
@@ -77,9 +77,9 @@
   ],
   "edges": [],
   "createdAt": 1785412727533,
-  "updatedAt": 1785465512808,
+  "updatedAt": 1785467603492,
   "published": false,
-  "lastOpenedAt": 1785465499828,
+  "lastOpenedAt": 1785468076885,
   "enabledPlugins": [
     "workflow.ai-image"
   ],

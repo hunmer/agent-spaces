@@ -1182,7 +1182,10 @@ export function useMiniAppHostApi(projectId: string, runtimeContext?: MiniAppRun
       <WorkflowListDialog
         open={workflowPickerOpen}
         workflows={workflowPickerItems}
-        onSelect={async (workflow) => {
+        mode="single"
+        onConfirm={async (selected) => {
+          const workflow = selected[0];
+          if (!workflow) { closeWorkflowPicker(null); return; }
           try {
             await ensureMiniAppWorkflowConfig(projectId, workflow);
             closeWorkflowPicker(workflow);

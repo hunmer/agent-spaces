@@ -1694,11 +1694,9 @@ export function MiniAppPreview({ type, sourceCode, error, onError, projectId, pr
         open={workflowConfigsOpen}
         workflows={allConfiguredWorkflows}
         currentWorkflowIds={new Set(configuredWorkflows.map(w => w.id))}
-        onSelect={() => {}}
         onCreate={() => {}}
         onClose={() => setWorkflowConfigsOpen(false)}
         showCreate={false}
-        selectionDisabled
         onConfigure={(workflow) => setConfigWorkflow(workflow)}
       />
       {projectId ? (
