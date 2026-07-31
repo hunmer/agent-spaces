@@ -20,6 +20,7 @@ export const IMAGE_PROCESS_TYPES = {
 
 // 节点类型
 export const NODE_TYPES = {
+  text: 'text',
   textToImage: 'textToImage',
   editImage: 'editImage',
   imageDisplay: 'imageDisplay',
@@ -207,6 +208,7 @@ export const FRAME_EXTRACT_MODE_OPTIONS = [
 
 // 节点显示配置
 export const NODE_META = {
+  [NODE_TYPES.text]: { label: '文字', icon: '📝', color: '#0f766e' },
   [NODE_TYPES.textToImage]: { label: '文字生成图片', icon: '✍️', color: '#6366f1' },
   [NODE_TYPES.editImage]: { label: '编辑图片', icon: '🖌️', color: '#ec4899' },
   [NODE_TYPES.imageDisplay]: { label: '图片展示', icon: '🖼️', color: '#10b981' },

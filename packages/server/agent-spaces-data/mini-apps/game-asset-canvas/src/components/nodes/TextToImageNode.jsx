@@ -57,7 +57,8 @@ export const PARAMS_SCHEMA = [
   },
 ];
 export default function TextToImageNode({ id, data, selected }) {
-  const params = data?.params || {};
+  const storedParams = data?.params || {};
+  const params = { ...storedParams, ...(data?.textInputValues || {}) };
   const status = data?.status || 'idle';
   const error = data?.error;
   const running = status === 'running';
@@ -76,8 +77,8 @@ export default function TextToImageNode({ id, data, selected }) {
   }, [params.prompt]);
 
   const set = useCallback((patch) => {
-    onUpdate?.({ params: { ...params, ...patch } });
-  }, [onUpdate, params]);
+    onUpdate?.({ params: { ...storedParams, ...patch } });
+  }, [onUpdate, storedParams]);
 
   const handleRun = useCallback(() => {
     // 提示词库选中 + 用户输入 合并（去空去重）

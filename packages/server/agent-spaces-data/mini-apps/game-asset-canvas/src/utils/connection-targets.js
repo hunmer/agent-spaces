@@ -1,5 +1,10 @@
 import { NODE_TYPES } from './constants.js';
 
+export const CONNECTION_INPUT_TYPES = {
+  image: 'image',
+  text: 'text',
+};
+
 export const DEFAULT_FILE_UPLOAD_TARGET = 'images';
 
 const DEFAULT_TARGETS = [
@@ -22,4 +27,35 @@ export function resolveFileUploadTarget(nodeType, targetId) {
   return targets.some((target) => target.id === targetId)
     ? targetId
     : DEFAULT_FILE_UPLOAD_TARGET;
+}
+
+const TEXT_OUTPUT_NODE_TYPES = new Set([
+  NODE_TYPES.text,
+  NODE_TYPES.promptReverse,
+]);
+
+export function getTextInputTargets(paramsSchema = []) {
+  return paramsSchema
+    .filter((field) => field?.key && (field.type === 'text' || field.type === 'textarea'))
+    .map((field) => ({
+      id: field.key,
+      label: field.label || field.key,
+      description: field.description || `写入「${field.label || field.key}」文本输入`,
+    }));
+}
+
+export function getNodeOutputType(nodeType) {
+  return TEXT_OUTPUT_NODE_TYPES.has(nodeType)
+    ? CONNECTION_INPUT_TYPES.text
+    : CONNECTION_INPUT_TYPES.image;
+}
+
+export function getConnectionTargets(sourceNodeType, targetNodeType, targetParamsSchema = []) {
+  const inputType = getNodeOutputType(sourceNodeType);
+  return {
+    inputType,
+    targets: inputType === CONNECTION_INPUT_TYPES.text
+      ? getTextInputTargets(targetParamsSchema)
+      : getFileUploadTargets(targetNodeType),
+  };
 }

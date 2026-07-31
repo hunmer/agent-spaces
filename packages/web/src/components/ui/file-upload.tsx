@@ -2,9 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type MouseEvent } from "react";
 import { useDropzone, type Accept, type FileRejection } from "react-dropzone";
-import { Upload, X, GripVertical } from "lucide-react";
+import { Eye, Upload, X, GripVertical } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { FileCard, type FormatFileProps } from "@/components/file-card-collections";
+import { openMediaGallery, type MediaItem } from "./media-gallery";
 import { CANVAS_IMAGE_DROP_MIME, debugCanvasImageDrag, getCanvasImageDropUrls, setCanvasImageDragData } from "./file-upload-drop";
 
 // 文件列表拖拽排序的互斥标记：写入 dataTransfer 表示当前在列表内排序。
@@ -74,6 +75,16 @@ export function FileUpload<TFile extends FileUploadFileLike = File>({
   const debugStagesRef = useRef(new Set<string>());
   const dropzoneAccept = accept ?? getAcceptFromFileNameFilter(fileNameFilter);
   const files = useMemo(() => value.filter((item) => item?.file), [value]);
+  const imageGalleryEntries = useMemo(() => files.reduce<Array<{ id: string; media: MediaItem }>>((entries, item) => {
+    const src = getFilePreview(item);
+    if (src) {
+      entries.push({
+        id: item.id,
+        media: { src, thumb: src, type: "image", alt: item.file.name, fileName: item.file.name },
+      });
+    }
+    return entries;
+  }, []), [files]);
 
   useEffect(() => {
     for (const item of files) {
@@ -174,6 +185,12 @@ export function FileUpload<TFile extends FileUploadFileLike = File>({
     },
     [files, onChange],
   );
+
+  const openImagePreview = useCallback((id: string) => {
+    const index = imageGalleryEntries.findIndex((entry) => entry.id === id);
+    if (index < 0) return;
+    openMediaGallery(imageGalleryEntries.map((entry) => entry.media), index);
+  }, [imageGalleryEntries]);
 
   // 拖拽排序：拖起一项，悬停到另一项上时实时重排（受控 value 经 onChange 回写）。
   // drop 时清空状态。仅 sortable=true 启用。
@@ -281,8 +298,8 @@ export function FileUpload<TFile extends FileUploadFileLike = File>({
         if (!event.currentTarget.contains(event.relatedTarget as Node | null)) resetDragStages();
       }}
     >
-      {/* Drop zone（hideDropzone 时隐藏，保留文件列表） */}
-      {!hideDropzone && (
+      {/* 空列表使用完整 Drop zone；有文件后入口移到列表底部。 */}
+      {!hideDropzone && files.length === 0 && (
         <div
           {...getRootProps({ onClick: handleDropzoneClick })}
           className={cn(
@@ -328,7 +345,7 @@ export function FileUpload<TFile extends FileUploadFileLike = File>({
                 onDragEnd={sortable || imageUrl ? handleSortDragEnd : undefined}
                 onDrop={handleItemDrop}
                 className={cn(
-                  "flex items-center gap-3 rounded-lg border bg-background px-3 py-2 transition-colors",
+                  "group flex items-center gap-3 rounded-lg border bg-background px-3 py-2 transition-colors",
                   isDragging ? "border-primary opacity-40" : "border-border",
                   isOver && "border-primary border-t-2",
                   sortable && "cursor-grab active:cursor-grabbing",
@@ -338,7 +355,23 @@ export function FileUpload<TFile extends FileUploadFileLike = File>({
                   <GripVertical className="size-4 shrink-0 text-muted-foreground" />
                 )}
                 {preview ? (
-                  <img src={preview} alt="" draggable={false} className="size-10 shrink-0 rounded-md object-cover" />
+                  <button
+                    type="button"
+                    title="查看大图"
+                    aria-label={`查看 ${item.file.name}`}
+                    onPointerDown={(event) => event.stopPropagation()}
+                    onClick={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      openImagePreview(item.id);
+                    }}
+                    className="group/preview relative size-10 shrink-0 overflow-hidden rounded-md"
+                  >
+                    <img src={preview} alt="" draggable={false} className="size-full object-cover" />
+                    <span className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition-opacity group-hover/preview:opacity-100">
+                      <Eye className="size-4 text-white" />
+                    </span>
+                  </button>
                 ) : (
                   <div className="shrink-0 py-0.5">
                     <FileCard formatFile={detectFormat(item.file.name)} />
@@ -376,13 +409,41 @@ export function FileUpload<TFile extends FileUploadFileLike = File>({
                     e.stopPropagation();
                     removeFile(item.id);
                   }}
-                  className="flex size-7 items-center justify-center rounded-md hover:bg-accent transition-colors"
+                  className="flex size-7 items-center justify-center rounded-md opacity-0 transition group-hover:opacity-100 group-focus-within:opacity-100 hover:bg-accent"
+                  title="删除文件"
+                  aria-label={`删除 ${item.file.name}`}
                 >
                   <X className="size-4 text-muted-foreground" />
                 </button>
               </div>
             );
           })}
+          {!hideDropzone && files.length > 0 && (
+            <div
+              {...getRootProps({ onClick: handleDropzoneClick })}
+              data-compact-upload-trigger
+              className={cn(
+                "flex cursor-pointer items-center gap-3 rounded-lg border border-dashed bg-background px-3 py-2 transition-colors",
+                isDragActive
+                  ? "border-primary bg-primary/5"
+                  : "border-border hover:border-primary/50 hover:bg-accent/50",
+                disabled && "pointer-events-none opacity-50",
+              )}
+            >
+              <input {...getInputProps({ onClick: stopInputClickPropagation })} />
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-md bg-muted">
+                <Upload className="size-5 text-muted-foreground" />
+              </div>
+              <div className="w-0 flex-1">
+                <p className="truncate text-sm font-medium">
+                  {isDragActive ? "松开即可上传" : "添加文件"}
+                </p>
+                <p className="truncate text-xs text-muted-foreground">
+                  {placeholder ?? "拖拽文件到此处，或点击选择"}
+                </p>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

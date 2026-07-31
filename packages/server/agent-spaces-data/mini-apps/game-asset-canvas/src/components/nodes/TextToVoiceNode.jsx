@@ -41,7 +41,8 @@ export const PARAMS_SCHEMA = [
   },
 ];
 export default function TextToVoiceNode({ id, data, selected }) {
-  const params = data?.params || {};
+  const storedParams = data?.params || {};
+  const params = { ...storedParams, ...(data?.textInputValues || {}) };
   // 产出优先取 audios 数组（count>1 时由后端写入），降级旧单 audio 字段
   const audios = Array.isArray(data?.output?.audios) && data.output.audios.length
     ? data.output.audios
@@ -55,8 +56,8 @@ export default function TextToVoiceNode({ id, data, selected }) {
   const { openPicker } = useNodeDialog();
 
   const set = useCallback((patch) => {
-    onUpdate?.({ params: { ...params, ...patch } });
-  }, [onUpdate, params]);
+    onUpdate?.({ params: { ...storedParams, ...patch } });
+  }, [onUpdate, storedParams]);
 
   const handleRun = useCallback(() => {
     const merged = [params.pickedPrompt, params.prompt].map((s) => (s || '').trim()).filter(Boolean).join('\n');

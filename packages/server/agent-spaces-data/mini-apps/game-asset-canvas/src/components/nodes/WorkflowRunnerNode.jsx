@@ -54,7 +54,8 @@ export const PARAMS_SCHEMA = [
 ];
 
 export default function WorkflowRunnerNode({ id, data, selected }) {
-  const params = data?.params || {};
+  const storedParams = data?.params || {};
+  const params = { ...storedParams, ...(data?.textInputValues || {}) };
   const status = data?.status || 'idle';
   const error = data?.error;
   const running = status === 'running';
@@ -64,8 +65,8 @@ export default function WorkflowRunnerNode({ id, data, selected }) {
   const [pickerError, setPickerError] = useState('');
 
   const set = useCallback((patch) => {
-    onUpdate?.({ params: { ...params, ...patch } });
-  }, [onUpdate, params]);
+    onUpdate?.({ params: { ...storedParams, ...patch } });
+  }, [onUpdate, storedParams]);
 
   const onPickWorkflow = useCallback((workflow) => {
     const wfId = workflow.workflow_id || workflow.id;

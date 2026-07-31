@@ -34,9 +34,11 @@ import VideoDisplayNode from '../components/nodes/VideoDisplayNode';
 import VideoEditorNode from '../components/nodes/VideoEditorNode';
 import MaskPaintNode from '../components/nodes/MaskPaintNode';
 import NoteNode from '../components/nodes/NoteNode';
+import TextNode from '../components/nodes/TextNode';
 
 // 节点类型 -> 渲染组件
 export const NODE_COMPONENTS = {
+  [NODE_TYPES.text]: TextNode,
   [NODE_TYPES.textToImage]: TextToImageNode,
   [NODE_TYPES.editImage]: EditImageNode,
   [NODE_TYPES.imageDisplay]: ImageDisplayNode,
@@ -87,6 +89,7 @@ export const NODE_PARAMS_SCHEMA = {
 
 // 右键菜单 / 落空菜单的节点类型列表（与 RightPanel 新增节点 tab 保持一致）
 export const ADD_NODE_ITEMS = [
+  { type: NODE_TYPES.text },
   { type: NODE_TYPES.textToImage },
   { type: NODE_TYPES.editImage },
   { type: NODE_TYPES.imageDisplay },
@@ -123,6 +126,7 @@ export const ADD_NODE_ITEMS = [
 
 // 各节点默认尺寸（NodeResizer 需要节点有显式 width/height）
 export const DEFAULT_SIZE = {
+  [NODE_TYPES.text]: { w: 720, h: 680 },
   [NODE_TYPES.note]: { w: 200, h: 120 },
   [NODE_TYPES.imageDisplay]: { w: 260, h: 240 },
   [NODE_TYPES.pixelEditor]: { w: 300, h: 260 },
@@ -171,6 +175,7 @@ export function dedupeTags(tags) {
 
 // 每种节点的初始 data
 export function initialData(type) {
+  if (type === NODE_TYPES.text) return { output: { text: '' } };
   if (type === NODE_TYPES.note) return { text: '' };
   if (type === NODE_TYPES.imageDisplay) return { images: [], source: '' };
   if (type === NODE_TYPES.videoDisplay) return { videos: [], source: '' };

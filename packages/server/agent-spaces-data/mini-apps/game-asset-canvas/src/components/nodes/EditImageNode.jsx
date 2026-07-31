@@ -11,6 +11,17 @@ import { ASPECT_OPTIONS, DEFAULT_MODEL, MODEL_OPTIONS, NODE_TYPES, SIZE_OPTIONS,
 import { normalizeImageUrls, resolveReferenceImages, promptHtmlToText, dedupeUrls } from '../../utils/workflow';
 import UploadSection from './UploadSection';
 
+function plainTextToPromptHtml(text) {
+  const escape = (value) => value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+  return String(text || '')
+    .split(/\n{2,}/)
+    .map((paragraph) => `<p>${escape(paragraph).replace(/\n/g, '<br>')}</p>`)
+    .join('');
+}
+
 /**
  * 编辑图片节点。
  * data.params: { prompt, model, aspect, size }
@@ -64,7 +75,8 @@ export const PARAMS_SCHEMA = [
   },
 ];
 export default function EditImageNode({ id, data, selected }) {
-  const params = data?.params || {};
+  const storedParams = data?.params || {};
+  const params = { ...storedParams, ...(data?.textInputValues || {}) };
   // 连线图（由 computeInputImages 派生到 data.images）+ 用户上传图（data.uploadedImages，持久化不被覆盖）
   // 两种来源并存，提交时合并去重。参考 imageProcess 节点的双来源模式。
   const inputImages = data?.images || [];
@@ -80,8 +92,8 @@ export default function EditImageNode({ id, data, selected }) {
   const [maskPaintSource, setMaskPaintSource] = useState('');
 
   const set = useCallback((patch) => {
-    onUpdate?.({ params: { ...params, ...patch } });
-  }, [onUpdate, params]);
+    onUpdate?.({ params: { ...storedParams, ...patch } });
+  }, [onUpdate, storedParams]);
 
   // FileUpload onChange：上传待编辑图片，写入 data.uploadedImages（与连线图 data.images 分离，互不覆盖）
   const setUploadedImages = useCallback((urls) => {
@@ -91,8 +103,8 @@ export default function EditImageNode({ id, data, selected }) {
   // 蒙版图片：单张，存 params.mask（string URL）。FileUpload 用 max=1，onChange 取首项。
   const setMaskImage = useCallback((urls) => {
     const next = Array.isArray(urls) ? urls.filter(Boolean) : [];
-    onUpdate?.({ params: { ...params, mask: next[0] || undefined } });
-  }, [onUpdate, params]);
+    onUpdate?.({ params: { ...storedParams, mask: next[0] || undefined } });
+  }, [onUpdate, storedParams]);
 
   const setMaskPaintData = useCallback((next) => {
     onUpdate?.({ editMaskPaintData: next });
@@ -116,7 +128,10 @@ export default function EditImageNode({ id, data, selected }) {
   ];
 
   // 编辑指令的富文本 HTML（PromptTextEditor onChange 写入）。提交时转纯文本（@参考图 → R0/R1）。
-  const promptHtml = params.promptHtml || '';
+  const referencedPrompt = data?.textInputValues?.prompt;
+  const promptHtml = referencedPrompt !== undefined
+    ? plainTextToPromptHtml(referencedPrompt)
+    : (params.promptHtml || plainTextToPromptHtml(params.prompt));
 
   // 统一的输入图清单：参考图 + 上传图 + 连线图，按用户拖拽顺序持久化。
   // @ 列表、key(R0/R1…)映射、提交 images 三处都用它，保证「上传后 @ 能选到新图」且 key 与提交顺序一致。
@@ -216,16 +231,7 @@ export default function EditImageNode({ id, data, selected }) {
               prompt: promptHtmlToText(promptHtml),
               agentConfig: data?.promptOptimizeAgent,
               onApply: (newPrompt) => {
-                // 纯文本 → PromptTextEditor 可用的 HTML（段落用 <p>，换行用 <br>）
-                const escape = (s) => s
-                  .replace(/&/g, '&amp;')
-                  .replace(/</g, '&lt;')
-                  .replace(/>/g, '&gt;');
-                const html = newPrompt
-                  .split(/\n{2,}/)
-                  .map((para) => `<p>${escape(para).replace(/\n/g, '<br>')}</p>`)
-                  .join('');
-                set({ promptHtml: html });
+                set({ promptHtml: plainTextToPromptHtml(newPrompt) });
               },
             })}
             title="优化提示词"
@@ -275,6 +281,7 @@ export default function EditImageNode({ id, data, selected }) {
             max={connectedMask ? 0 : 1}
             placeholder="上传蒙版图片（白色=编辑区域）"
             extraItems={connectedMask ? [{ src: connectedMask, badge: '连线' }] : []}
+            bottomActions
           />
         </UploadSection>
       </div>

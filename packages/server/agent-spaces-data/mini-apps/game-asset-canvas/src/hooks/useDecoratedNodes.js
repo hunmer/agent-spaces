@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { NODE_TYPES, IMAGE_TAGS } from '../utils/constants';
-import { computeInputImages, computeInputVideos, computeInputSpineAssets } from '../utils/input-images';
+import { computeInputImages, computeInputTexts, computeInputVideos, computeInputSpineAssets } from '../utils/input-images';
 import { dedupeTags } from '../utils/canvas-constants';
 
 /**
@@ -32,6 +32,7 @@ export default function useDecoratedNodes({
   onOutputPreviewHeight, onOutputPreviewModeChange, settings, callbacks,
 }) {
   const upstreamMap = useMemo(() => computeInputImages(nodes, edges), [nodes, edges]);
+  const upstreamTextsMap = useMemo(() => computeInputTexts(nodes, edges), [nodes, edges]);
   const upstreamVideosMap = useMemo(() => computeInputVideos(nodes, edges), [nodes, edges]);
   const upstreamSpineMap = useMemo(() => computeInputSpineAssets(nodes, edges), [nodes, edges]);
 
@@ -54,6 +55,7 @@ export default function useDecoratedNodes({
     } = callbacks || {};
     return nodes.map((nd) => {
       const up = upstreamMap.get(nd.id);
+      const upTexts = upstreamTextsMap.get(nd.id);
       const upVids = upstreamVideosMap.get(nd.id);
       const upSpine = upstreamSpineMap.get(nd.id);
       const data = { ...nd.data };
@@ -66,6 +68,7 @@ export default function useDecoratedNodes({
           data.tags = dedupeTags([...(nd.data?.tags || []), IMAGE_TAGS.upstream]);
         }
       }
+      if (upTexts) data.textInputValues = upTexts;
       // 视频派生注入（对称图片逻辑）：
       // - videoDisplay：有连入边时用上游视频覆盖 data.videos（纯展示节点）
       // - videoEditor：编辑器场景，上游视频与用户上传去重合并（不覆盖用户数据）
@@ -168,7 +171,7 @@ export default function useDecoratedNodes({
       };
     });
   }, [
-    nodes, upstreamMap, upstreamVideosMap, protectedImageUrls, selectionCount, outputPreviewState,
+    nodes, upstreamMap, upstreamTextsMap, upstreamVideosMap, protectedImageUrls, selectionCount, outputPreviewState,
     onOutputPreviewHeight, onOutputPreviewModeChange, settings, callbacks,
   ]);
 

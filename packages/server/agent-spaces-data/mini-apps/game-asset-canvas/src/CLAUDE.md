@@ -1,6 +1,6 @@
 # 游戏资产生成画布 (game-asset-canvas)
 
-Agent Spaces 宿主里的 React mini-app，用 ReactFlow 搭一个节点化的游戏资产生成画布：节点调工作流（文生图/编辑/抠图/放大/语音/视频）或跑本地图像算法（GIF/像素化/Sheet 合成），节点间连线传图，支持多工作区隔离 + 复制粘贴 + 分组 overlay/多实例执行 + Agent RPC 操控画布。
+Agent Spaces 宿主里的 React mini-app，用 ReactFlow 搭一个节点化的游戏资产生成画布：节点调工作流（文生图/编辑/抠图/放大/语音/视频）或跑本地图像算法（GIF/像素化/Sheet 合成），节点间连线传递图片/视频/文本产物，支持多工作区隔离 + 复制粘贴 + 分组 overlay/多实例执行 + Agent RPC 操控画布。
 
 项目**无 package.json、无构建步骤**，所有运行时依赖经宿主 allowlist（`@xyflow/react` / `@dagrejs/dagre` / `@agent-spaces/ui`）或本地 vendor / CDN 加载（fabric/painterro/pixelorama/gifenc/browser-image-compression/PixiJS/pixi-spine/JSZip）。源码三层结构：Canvas.jsx 只做编排，业务逻辑在 hooks，纯函数/单例在 utils，展示子组件在 components/canvas；Spine 编辑子域集中在 `src/spine/`。
 
@@ -71,7 +71,8 @@ graph TD
 - **2026-07-30 换肤白图修复**：热预览使用保持原 region 坐标的 atlas（旧 UV 不采样 repack 布局）；SAM 对整图使用 bbox prompt；形状交集先 rembg 去背景，再做连通域 + 原轮廓 IoU；生成记录展示原图、生成/去背景阶段与最终 Atlas 前后对比。
 - **2026-07-30 换肤记录持久化**：生成记录迁移到 `configs/spine-reskin-history.json`，按资源签名隔离并通过 `services/canvas.js` 单写；图片和三件套先上传，JSON 仅保存 URL，支持刷新恢复与多端同步。
 - **2026-07-30 独立 SAM 插件**：SAM 换肤改为 `workflow.sam/sam_segment_with_boxes`，整图与全部 bbox 一次提交；灰度 mask 只写入生成图 alpha。`workflow.rembg` 仅保留给形状交集和局部重绘去背景。
-- **2026-07-31 编辑图片蒙版入口**：输入缩略图右上角可直接打开 `MaskPaintDialog`；绘制快照存 `data.editMaskPaintData`，导出结果复用 `params.mask`。
+- **2026-07-31 编辑图片蒙版入口**：输入缩略图悬浮时在底部显示编辑/删除图标，可直接打开 `MaskPaintDialog`；绘制快照存 `data.editMaskPaintData`，导出结果复用 `params.mask`。
+- **2026-08-01 文本产物**：新增 Markdown `TextNode`；`computeInputTexts` 按 edge 的 `inputTarget` 派生文本引用，反推提示词结果改由节点外置 `NodeOutput` 展示并可继续连线。
 - **建议下一步深挖**：
   - 如需精确节点组件实现细节，定点读 `components/nodes/<具体>.jsx`
   - 如需精确 image-ops 算法实现，定点读 `utils/image-ops/<具体>.js`（gif.js / matte.js / pixelate.js 等）

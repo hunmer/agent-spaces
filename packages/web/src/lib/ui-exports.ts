@@ -144,3 +144,6 @@ export { default as dagre, graphlib } from '@dagrejs/dagre';
 
 // sonner（轻量 toast）—— mini-app 挂载 <Toaster/> 后即可用 toast.success/error/loading 等
 export { toast, Toaster } from 'sonner';
+
+// tiny-pinyin（拼音转换）—— 供 mini-app 做中文拼音搜索/匹配（parse 返回 {source,type,target}[]）
+export { isSupported as pinyinIsSupported, parse as pinyinParse, patchDict as pinyinPatchDict, genToken as pinyinGenToken, convertToPinyin as pinyinConvertToPinyin } from 'tiny-pinyin';

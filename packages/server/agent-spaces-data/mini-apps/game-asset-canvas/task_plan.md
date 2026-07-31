@@ -66,6 +66,104 @@ Fix `bg_components` reskin segmentation when the original atlas is loaded as an 
 ## Errors Encountered
 - Optional search for an existing EditImageNode/FileUpload source-contract test returned no matches; adding a focused adjacent test instead.
 
+## Follow-up: Thumbnail Action Layout
+
+- [x] Move Edit Image thumbnail actions to a bottom inline icon group.
+- [x] Show the action group only on thumbnail hover/focus.
+- [x] Re-run focused tests and JSX validation.
+
+## Follow-up: Mini-app Hover CSS Compatibility
+
+- [x] Replace ungenerated Tailwind hover variants with stable scoped CSS.
+- [x] Cover hover/focus visibility and pointer interaction in the regression contract.
+- [x] Re-run focused validation.
+
+## Follow-up: Clipped Bottom Actions
+
+- [x] Move all action positioning and sizing into scoped CSS.
+- [x] Add runtime computed-style diagnostics for manual verification.
+- [x] Re-run focused validation.
+
+## Follow-up: Centered And Reused Bottom Actions
+
+- [x] Center the thumbnail action group horizontally.
+- [x] Reuse the bottom hover action layout for mask thumbnails without edit.
+- [x] Remove confirmed runtime diagnostics and re-run validation.
+
+## Follow-up: Upload Trigger In Thumbnail Grid
+
+- [x] Move the upload trigger into the thumbnail grid as the first item.
+- [x] Preserve upload/drop/max/sorting behavior and compact the trigger UI.
+- [x] Add ordering coverage and run focused validation.
+
+---
+
+# Shared FileUpload Compact Dropzone
+
+## Goal
+Keep the full shared FileUpload dropzone only while empty; after the first file, render a compact upload row after the file items.
+
+## Phases
+- [x] Trace GIF node usage and shared FileUpload/hideDropzone contracts.
+- [ ] Implement empty/full dropzone mode switching in the shared component.
+- [ ] Add focused regression coverage.
+- [ ] Run Web lint/tests and review the diff.
+
+## Constraints
+- Preserve existing file acceptance, maxFiles, sorting, removal, and internal image-drop behavior.
+- `hideDropzone` must hide both full and compact upload entries.
+- This is a host-layer change and requires Web restart.
+
+## Errors Encountered
+- Direct `node --test` cannot load Web `.ts` test files because this package has no TypeScript test loader; converted the new source-contract test to `.js` and excluded the existing `.ts` helper test from that command.
+
+---
+
+# Output Thumbnail Actions Layout
+
+## Goal
+Move node output thumbnail asset/delete actions into one hover-only, bottom-centered inline action group.
+
+## Phases
+- [x] Locate the shared output thumbnail action renderer.
+- [x] Implement mini-app-safe scoped positioning/visibility CSS.
+- [x] Add focused source-contract coverage.
+- [x] Leave validation pending because the user interrupted automatic checks.
+
+## Constraints
+- Preserve gallery opening, asset saving, image deletion, and output sorting.
+- Keep actions inside the image bounds and avoid behavior-critical Tailwind hover/position utilities.
+
+## Errors Encountered
+None.
+
+---
+
+# Shared FileUpload Gallery Preview
+
+## Goal
+Show the shared FileUpload delete action only on item hover/focus and open image previews in MediaGallery when their thumbnails are clicked.
+
+## Phases
+- [x] Confirm the host Gallery API and current file-row structure.
+- [x] Implement image-only gallery mapping and thumbnail interaction.
+- [x] Make delete visibility hover/focus-only.
+- [x] Update source-contract coverage; leave automatic validation pending per user preference.
+
+## Constraints
+- Non-image file cards remain unchanged.
+- Sorting and cross-node image dragging remain available from the file row.
+- Gallery indices include only image files with resolvable previews.
+
+## Errors Encountered
+None.
+
+## Follow-up: Thumbnail Preview Overlay
+
+- [x] Add a thumbnail-local translucent hover overlay.
+- [x] Center an eye icon without affecting row hover/delete behavior.
+- [x] Update source-contract coverage; leave automatic validation pending.
+
 ---
 
 # Upstream Output History Synchronization
@@ -179,3 +277,35 @@ Add an edit action to each Edit Image node upload thumbnail that opens the exist
 
 ## Errors Encountered
 None.
+
+---
+
+# Text Node And Text Product Routing
+
+## Goal
+Add a Markdown-backed text node and make text products, including reverse-prompt results, connectable or draggable into compatible node text parameters.
+
+### Phase 1: Text Node And Routing
+- **Status:** complete
+
+## Phases
+- [x] Trace node schemas, reverse-prompt execution, media derivation, and image drag-to-input behavior.
+- [x] Define a shared target-field resolver/chooser for image and text products.
+- [x] Implement text node registration, Markdown editing/display, text derivation, and reverse-prompt output.
+- [x] Add focused regression coverage and update project documentation.
+- [x] Run proportional validation and review all overlapping diffs.
+
+## Constraints
+- Preserve existing worktree changes and current image drag behavior.
+- Reuse `packages/web/src/components/common/editors/markdown-editor.tsx` through the mini-app host export boundary.
+- Mini-app changes refresh directly; host export/allowlist changes require a web restart.
+- Do not use a real browser unless source-level validation is insufficient.
+
+## Errors Encountered
+- Initial relative lookup for `.agents/skills/planning-with-files/SKILL.md` failed because the skill lives at `/Users/Zhuanz/.agents/skills/planning-with-files/SKILL.md`; switched to the catalog-provided absolute path.
+- Expected red tests failed because the new connection-target and text-derivation exports did not exist.
+- First implementation patch did not apply because the `NODE_META` context differed from the assumed declaration; no partial code changes were made, and the patch was split against exact source context.
+- First combined UI integration patch did not apply because `useDecoratedNodes` had a shorter dependency list than expected; no partial changes were made, and subsequent edits were split by file boundary.
+- Final behavior review found EditImageNode renders/executes `promptHtml` while its schema exposes `prompt`; added a derived plain-text-to-editor-HTML bridge without persisting the reference.
+- Completion checker initially reported `0/0 phases` because the existing long-term plan uses custom headings; added one checker-compatible completed phase for this task.
+- First final status command used repository-relative paths while already inside the mini-app directory, producing a harmless path warning; reran from the repository root.

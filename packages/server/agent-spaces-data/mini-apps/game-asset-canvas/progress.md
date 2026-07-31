@@ -71,3 +71,30 @@
 - Implemented the thumbnail edit action and EditImageNode dialog wiring; focused tests pass 2/2 and changed JSX files compile.
 - Updated the node data model, handoff constraint, and CLAUDE index for the new mask entry.
 - Final validation complete: focused tests 2/2, three-file JSX compilation, `git diff --check`, and scoped diff review passed. Mini-app source changes require refresh only.
+- Follow-up started: moving Edit Image thumbnail actions into a hover-only bottom icon group.
+- Follow-up complete: edit/delete icons now render inline at the thumbnail bottom on hover/focus; tests 2/2, JSX compilation, and diff checks pass.
+- Runtime feedback showed the mini-app host stylesheet lacks the new Tailwind hover variant; replacing it with scoped CSS for deterministic visibility.
+- Mini-app hover compatibility fix complete: scoped hover/focus CSS controls opacity and pointer events; tests 2/2, JSX compilation, and diff checks pass.
+- Second runtime report showed the bottom action row is clipped; remaining Tailwind positioning utilities are now the primary cause, so all geometry is moving into scoped CSS with computed-style logging.
+- Clipping fix complete: parent/action/button geometry is fully defined in scoped CSS; `[DEBUG-mask-actions]` reports computed rectangles/styles on hover; tests 2/2, JSX compilation, and diff checks pass.
+- Follow-up started: centering the bottom action group, reusing it for mask-image deletion, and removing confirmed diagnostics.
+- Follow-up complete: bottom actions are centered, mask thumbnails reuse the delete-only layout, diagnostics are removed, and focused validation passes.
+- Follow-up started: moving the upload trigger into the thumbnail grid as its first item while preserving existing upload/drop behavior.
+- Follow-up complete: the compact upload trigger is the thumbnail grid's first item, max/drop behavior is preserved, and focused validation passes.
+- 2026-07-31: Started shared FileUpload compact-dropzone task; confirmed GIF nodes use the Web host component and traced collapse semantics.
+- Implemented full-empty/compact-nonempty dropzone rendering; direct Node test hit the Web package's missing `.ts` loader, so the new source-contract test is being converted to `.js`.
+- Started output-thumbnail action layout change; located both asset and delete controls in shared mini-app `ImageResult`.
+- Implemented the bottom-centered inline output action group and added source-contract coverage; automatic validation intentionally skipped after the user's interrupted validation run.
+- Started shared FileUpload Gallery/delete-hover change; confirmed the host API and image-only index mapping requirement.
+- Implemented image-thumbnail MediaGallery opening and hover/focus-only delete visibility in shared FileUpload; source-contract coverage updated, automatic validation intentionally skipped.
+- Added the FileUpload thumbnail preview-overlay follow-up: thumbnail-local hover state will show a translucent mask and eye icon.
+- Thumbnail preview overlay complete: translucent mask and centered eye icon use an isolated named hover group; automatic validation intentionally skipped.
+- 2026-08-01: Started the text-node/text-product routing task; read handoff and required skills, restored existing planning context, and recorded the pre-existing dirty worktree.
+- CodeGraph and targeted reads confirmed image target routing at `connection-targets.js`/`Canvas.onConnect`, existing reverse-prompt `output.text`, and schema-backed text target fields; selected separate derived text values to preserve reference semantics.
+- Added red pure-function coverage for schema-derived text targets, image/text routing selection, field-specific text derivation, and multi-source composition.
+- Implemented and greened the pure routing/derivation layer (12/12 focused tests).
+- Added Markdown TextNode, external text-product rendering, reverse-prompt output extraction, node registration, generic direct connection chooser, derived form values, blank-drop routing, and RPC target metadata.
+- Added Edit Image prompt bridging, Agent execution-time text references, edge metadata in get_canvas, API/tool support for the text node and inputTarget, and handoff/index documentation.
+- Validation complete: all 111 mini-app Node tests pass, 22 related source files compile with Babel, and `git diff --check` is clean.
+- No `procm-mcp` capability is available in this session; no persistent process was restarted. Mini-app `src/**` changes take effect on refresh.
+- Planning completion check was normalized to the skill's recognized phase/status format; a mistaken status-path check was rerun from the repository root.

@@ -112,3 +112,42 @@
 - The local `components/FileUpload.jsx` owns the exact uploaded/reference/connected thumbnail grid used by Edit Image, so an optional per-thumbnail action is the narrowest reusable UI boundary.
 - Implemented `FileUpload.onEditItem` for every rendered input thumbnail; the edit action occupies the top-right position and existing remove controls shift left when both are present.
 - Edit Image persists dialog operations in `data.editMaskPaintData` and reuses `setMaskImage` so the exported URL immediately becomes `params.mask`.
+
+## Shared FileUpload Compact Dropzone
+
+- GIF split/merge are rendered through `ImageProcessNode`, which imports the shared `@agent-spaces/ui FileUpload` from `packages/web/src/components/ui/file-upload.tsx`.
+- The shared component currently renders a large dropzone before a vertical file-card list regardless of whether files already exist.
+- `UploadSection` injects `hideDropzone=true` when a node upload section is collapsed; the compact entry must honor the same flag.
+- Existing `maxFiles` behavior should remain unchanged in this layout-only task, including retaining an upload entry after a single-file list exists.
+
+## Output Thumbnail Actions Layout
+
+- `ImageResult` owned two separate negative-offset controls: asset saving at the top-right and image deletion at the bottom-right.
+- Both controls now share a scoped `.game-asset-output-actions` container positioned inside the image at bottom center, with hover/focus visibility independent of Tailwind-generated variants.
+
+## Shared FileUpload Gallery Preview
+
+- The host-standard viewer is `openMediaGallery(items, startIndex)` from `components/ui/media-gallery.tsx`.
+- Shared FileUpload can contain non-image files, so Gallery entries and indices must be derived only from items whose `getFilePreview` returns a URL.
+- Because `file-upload.tsx` is host source included in Tailwind scanning, `group-hover` and `group-focus-within` are valid for delete visibility here.
+
+## Text Node And Text Product Routing
+
+- User requires a new Markdown text node using the host `markdown-editor.tsx` for both editing and display.
+- Text products must support normal edge propagation and drag-to-input assignment; a single compatible text field is selected automatically, while multiple compatible fields require a chooser dialog.
+- The existing image target-selection implementation must be generalized instead of duplicated for text.
+- Reverse-prompt results must move from form-local display into the node output model so downstream nodes can consume them.
+- The worktree already contains unrelated and overlapping edits; all changes must be incremental against current files.
+- CodeGraph located `utils/connection-targets.js` as the existing image target-field abstraction; edges carry target metadata and `computeInputImages` derives both aggregate images and per-fileupload values.
+- `computeInputImages` currently treats `imageDisplay` as the only passthrough output node and treats `promptReverse` as an image receiver.
+- `MarkdownEditor` is a default Web component taking `{ contentMarkdown, onChange, theme }`; it must be exposed through `ui-exports.ts` and the renderer mapping before mini-app code can import it.
+- Current worktree already exports `MarkdownEditor` from `packages/web/src/lib/ui-exports.ts`; the renderer resolves the whole export object for `@agent-spaces/ui`, so no additional host edit is required for this task, but the existing host change still requires Web restart to take effect.
+- Existing `Canvas.onConnect` always calls `getFileUploadTargets(targetType)` and stores `edge.data.inputTarget`; `ConnectionTargetDialog` is image-specific only in copy/icon defaults and can become a generic target chooser.
+- Text-capable target schemas currently exist for text-to-image (`prompt`, `fileName`), edit-image (`prompt`, `fileName`), text-to-voice (`prompt`, `voiceId`), video-generator (`prompt`), and workflow-runner (`workflowId`, `inputText`, `urlFieldPath`).
+- Reference semantics require derived text to live separately from persisted `data.params`: injecting directly into params would cause component spread-updates to persist stale upstream content. Use `data.textInputValues`, merge only for rendering/execution, and keep setters based on stored params.
+- Reverse-prompt execution already persists `data.output.text`; the UI-only gap is extracting its current inline result block into a reusable text-product presentation and routing that output downstream.
+- `NodeShell` already renders `NodeOutput` outside the resizable/scrollable form body. Extending `NodeOutput` with a text branch places reverse-prompt text in the same product area as generated images without changing execution storage.
+- Connection creation also occurs in `useNodeCrud.handleAddAtDrop` and `useCanvasAgentRpc`; both must write the same `inputType/inputTarget` edge metadata or text references silently fail outside direct UI connections.
+- Agent execution builds inputs from raw canvas nodes, so it must merge `computeInputTexts` at execution time; UI node buttons already receive decorated derived values.
+- `EditImageNode` is a special text target: its schema exposes `prompt`, but its visible editor/execution uses `promptHtml`. Referenced plain text is escaped and converted to paragraph HTML for display/execution without being persisted.
+- `MarkdownEditor` was already present in the committed host export surface, so this feature required no new host-layer change and follows the mini-app refresh-only path.

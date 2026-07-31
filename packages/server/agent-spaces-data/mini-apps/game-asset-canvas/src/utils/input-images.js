@@ -21,7 +21,9 @@
  * @returns {Map<string, {images: string[], fileUploads: Record<string, string[]>, isDisplay: boolean}>} nodeId -> 派生输入
  */
 import { NODE_TYPES, isImageProcessNodeType } from './constants.js';
-import { DEFAULT_FILE_UPLOAD_TARGET, resolveFileUploadTarget } from './connection-targets.js';
+import {
+  CONNECTION_INPUT_TYPES, DEFAULT_FILE_UPLOAD_TARGET, resolveFileUploadTarget,
+} from './connection-targets.js';
 
 export function computeInputImages(nodes, edges) {
   const isReceiverType = (type) => type === NODE_TYPES.editImage
@@ -100,6 +102,33 @@ export function computeInputImages(nodes, edges) {
     if (!changed) break;
   }
   return map;
+}
+
+/**
+ * 把文本产物按 edge.data.inputTarget 派生到目标节点参数。
+ * 返回值与持久化 params 分离，避免引用关系被表单更新复制进节点数据。
+ */
+export function computeInputTexts(nodes, edges) {
+  const byId = new Map(nodes.map((node) => [node.id, node]));
+  const valuesByTarget = new Map();
+
+  for (const edge of edges) {
+    if (edge.data?.inputType !== CONNECTION_INPUT_TYPES.text || !edge.data?.inputTarget) continue;
+    const sourceText = byId.get(edge.source)?.data?.output?.text;
+    if (typeof sourceText !== 'string' || !sourceText.trim()) continue;
+    if (!valuesByTarget.has(edge.target)) valuesByTarget.set(edge.target, {});
+    const targetValues = valuesByTarget.get(edge.target);
+    if (!targetValues[edge.data.inputTarget]) targetValues[edge.data.inputTarget] = [];
+    targetValues[edge.data.inputTarget].push(sourceText);
+  }
+
+  return new Map(Array.from(valuesByTarget, ([nodeId, fields]) => [
+    nodeId,
+    Object.fromEntries(Object.entries(fields).map(([field, values]) => [
+      field,
+      Array.from(new Set(values)).join('\n\n'),
+    ])),
+  ]));
 }
 
 /**

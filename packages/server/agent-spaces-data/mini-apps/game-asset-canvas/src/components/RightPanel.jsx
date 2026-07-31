@@ -1,13 +1,78 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   openMediaGallery, ScrollArea, Tabs, TabsList, TabsTrigger, TabsContent,
-  Crosshair, Trash2, Plus, Boxes, History, Images, Zap, CopyPlus, FolderPlus,
+  Crosshair, Trash2, Plus, Boxes, History, Images, Zap, CopyPlus, FolderPlus, Search,
+  pinyinParse,
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
 } from '@agent-spaces/ui';
 import { NODE_META, NODE_TYPES, NODE_TYPE_TO_PROCESSOR } from '../utils/constants';
 import { CANVAS_DROP_MIME } from '../utils/canvas-constants';
 import AssetLibrary from './AssetLibrary';
 import ImageHoverCard from './ImageHoverCard';
+
+// 拼音搜索：对每个 label 预计算「全拼」和「首字母串」（type 2=中文取首字母，非中文原样保留以兼容英文/数字）。
+// 去除空白后再拼，避免「GIF 拆帧」的空格把首字母串断成 'gif cz' 导致 'gifcz' 匹配不上。
+// 例：「GIF 拆帧」→ full='gifchaizhen'，initials='gifcz'；「文字生成图片」→ full='wenzishengchengtupian'，initials='wzsctp'。
+const _pinyinCache = new Map();
+function getPinyinKeys(label) {
+  if (!pinyinParse || typeof pinyinParse !== 'function') return null;
+  if (_pinyinCache.has(label)) return _pinyinCache.get(label);
+  let full = '';
+  let initials = '';
+  for (const t of pinyinParse(label)) {
+    full += t.target;
+    initials += t.type === 2 ? (t.target[0] || '') : t.target;
+  }
+  const result = { full: full.replace(/\s+/g, '').toLowerCase(), initials: initials.replace(/\s+/g, '').toLowerCase() };
+  _pinyinCache.set(label, result);
+  return result;
+}
+
+// 通用文本匹配：空 query 命中；否则试「原文子串 / 全拼 / 首字母」(大小写不敏感，均去空白)。
+// NodeList/HistoryList 等无 label 的场景直接传 text；AddNodeList 的 matchNode 转调本函数。
+function matchText(text, query) {
+  const q = (query || '').trim().toLowerCase().replace(/\s+/g, '');
+  if (!q) return true;
+  if (typeof text !== 'string' || !text) return false;
+  if (text.toLowerCase().replace(/\s+/g, '').includes(q)) return true;
+  const pk = getPinyinKeys(text);
+  if (!pk) return false;
+  return pk.full.includes(q) || pk.initials.includes(q);
+}
+
+// 节点匹配：matchNode 转调 matchText，保持 AddNodeList 调用不变。
+function matchNode(item, query) {
+  return matchText(item.label, query);
+}
+
+// 通用搜索栏：搜索图标 + 受控 input + 清除按钮。三个 tab（新增节点/节点管理/生成记录）共用。
+function SearchBar({ value, onChange, placeholder }) {
+  const hasValue = (value || '').trim().length > 0;
+  return (
+    <div className="nodrag nopan nowheel border-b border-border p-2">
+      <div className="relative">
+        <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+        <input
+          type="text"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder || '搜索'}
+          className="h-7 w-full rounded-md border border-border bg-background pl-7 pr-7 text-xs outline-none transition focus:border-primary"
+        />
+        {hasValue && (
+          <button
+            type="button"
+            onClick={() => onChange('')}
+            title="清除搜索"
+            className="absolute right-1.5 top-1/2 flex h-4 w-4 -translate-y-1/2 items-center justify-center rounded text-muted-foreground transition hover:text-foreground"
+          >
+            ✕
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
 
 // 节点分类（顶部 chips 筛选用）。category 字段同步打到 ADD_ITEMS 每项。
 const NODE_CATEGORIES = [
@@ -24,6 +89,7 @@ const ADD_ITEMS = [
   { type: NODE_TYPES.textToImage, label: '文字生成图片', category: 'generate' },
   { type: NODE_TYPES.editImage, label: '编辑图片', category: 'generate' },
   // 工具
+  { type: NODE_TYPES.text, label: '文字', category: 'util' },
   { type: NODE_TYPES.imageDisplay, label: '图片展示', category: 'util' },
   // 图像处理（按单个处理器拆分为 12 个独立节点）
   { type: NODE_TYPES.ipGifSplit, label: 'GIF 拆帧', category: 'image-process' },
@@ -142,9 +208,10 @@ const EXECUTABLE_TYPES = new Set([
 ]);
 
 // ============ 新增节点（可点击添加，可拖拽到画布；可执行节点 hover 右上角 ⚡ 直接执行） ============
-// 顶部按分类筛选 + 列表按分组展示（每组标题 + 计数 + 卡片网格，2~5 列自适应）。
+// 顶部搜索框（支持拼音/首字母）+ 分类筛选 + 列表按分组展示（每组标题 + 计数 + 卡片网格，2~5 列自适应）。
 function AddNodeList({ onAdd, onDragStartNode, onExecute }) {
   const [activeCat, setActiveCat] = useState('all');
+  const [query, setQuery] = useState('');
   const scrollRef = useRef(null);
   const [cols, setCols] = useState(MIN_COLS);
 
@@ -176,11 +243,18 @@ function AddNodeList({ onAdd, onDragStartNode, onExecute }) {
       .filter((g) => g.items.length > 0);
   }, []);
 
-  // 选「全部」→ 所有分组；选某分类 → 只显示该分组
+  // 选「全部」→ 所有分组；选某分类 → 只显示该分组。
+  // 命中搜索时强制展开所有分组（跨分类查到结果，否则用户只看到当前 chip 分类下被过滤的子集，体验差）。
+  const hasQuery = query.trim().length > 0;
   const visibleGroups = useMemo(() => {
+    if (hasQuery) {
+      return groupedItems
+        .map((g) => ({ ...g, items: g.items.filter((it) => matchNode(it, query)) }))
+        .filter((g) => g.items.length > 0);
+    }
     if (activeCat === 'all') return groupedItems;
     return groupedItems.filter((g) => g.id === activeCat);
-  }, [activeCat, groupedItems]);
+  }, [activeCat, groupedItems, hasQuery, query]);
 
   const totalVisible = useMemo(
     () => visibleGroups.reduce((n, g) => n + g.items.length, 0),
@@ -189,31 +263,35 @@ function AddNodeList({ onAdd, onDragStartNode, onExecute }) {
 
   return (
     <div ref={scrollRef} className="flex h-full min-h-0 flex-col">
-      {/* 分类筛选 chips */}
-      <div className="flex flex-wrap gap-1 border-b border-border p-2">
-        {NODE_CATEGORIES.map((c) => {
-          const active = activeCat === c.id;
-          return (
-            <button
-              key={c.id}
-              type="button"
-              onClick={() => setActiveCat(c.id)}
-              className={
-                'rounded-full px-2.5 py-1 text-[11px] font-medium transition ' +
-                (active
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-muted text-muted-foreground hover:bg-muted/70 hover:text-foreground')
-              }
-            >
-              {c.label}
-            </button>
-          );
-        })}
-      </div>
+      {/* 搜索框（支持拼音/首字母，例如 wzsctp 命中「文字生成图片」） */}
+      <SearchBar value={query} onChange={setQuery} placeholder="搜索节点（支持拼音）" />
+
+      {/* 分类筛选 chips（搜索时隐藏，让结果跨分类展示） */}
+      {!hasQuery && (
+        <div className="flex flex-wrap gap-1 border-b border-border p-2">
+          {NODE_CATEGORIES.map((c) => {
+            const active = activeCat === c.id;
+            return (
+              <button
+                key={c.id}
+                type="button"
+                onClick={() => setActiveCat(c.id)}
+                className={
+                  'rounded-full px-2.5 py-1 text-[11px] font-medium transition ' +
+                  (active
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-muted text-muted-foreground hover:bg-muted/70 hover:text-foreground')
+                }
+              >
+                {c.label}
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       <ScrollArea className="min-h-0 flex-1">
         <div className="p-3">
-          <p className="mb-2 text-xs text-muted-foreground">左上角＋添加到画布，或拖拽到画布任意位置</p>
           {visibleGroups.map((g) => (
             <div key={g.id} className="mb-4 last:mb-0">
               {/* 分组标题 + 计数 */}
@@ -235,7 +313,9 @@ function AddNodeList({ onAdd, onDragStartNode, onExecute }) {
             </div>
           ))}
           {totalVisible === 0 && (
-            <p className="px-2 py-8 text-center text-xs text-muted-foreground">该分类暂无节点</p>
+            <p className="px-2 py-8 text-center text-xs text-muted-foreground">
+              {hasQuery ? '未找到匹配节点' : '该分类暂无节点'}
+            </p>
           )}
         </div>
       </ScrollArea>
@@ -297,59 +377,72 @@ function AddNodeCard({ item, onAdd, onExecute, onDragStartNode }) {
 
 // ============ 节点管理 ============
 function NodeList({ nodes, onSelectNode, onLocateNode, onDeleteNode }) {
+  const [query, setQuery] = useState('');
+  // 搜索匹配节点名（meta.label），无 query 时不过滤。空列表与无结果区分文案。
+  const filtered = useMemo(
+    () => nodes.filter((n) => matchText((NODE_META[n.type] || { label: n.type }).label, query)),
+    [nodes, query],
+  );
   return (
-    <ScrollArea className="h-full">
-      <div className="flex flex-col gap-1 p-2">
-        {nodes.length === 0 && (
-          <p className="px-2 py-8 text-center text-xs text-muted-foreground">画布暂无节点</p>
-        )}
-        {nodes.map((n) => {
-          const meta = NODE_META[n.type] || { icon: '🔹', label: n.type };
-          const imgCount = n.data?.output?.images?.length || n.data?.images?.length || 0;
-          return (
-            <div
-              key={n.id}
-              className="group/node flex cursor-pointer items-center gap-2 rounded-md border border-transparent px-2 py-1.5 text-sm transition hover:bg-muted"
-              onClick={() => onSelectNode?.(n.id)}
-            >
-              <span>{meta.icon}</span>
-              <div className="flex min-w-0 flex-1 flex-col">
-                <span className="truncate">{meta.label}</span>
-                <span className="truncate text-[10px] text-muted-foreground">
-                  {n.data?.status === 'running' ? '生成中…'
-                    : n.data?.status === 'error' ? '出错'
-                    : imgCount > 0 ? `${imgCount} 张图` : '—'}
-                </span>
+    <div className="flex h-full min-h-0 flex-col">
+      <SearchBar value={query} onChange={setQuery} placeholder="搜索节点（支持拼音）" />
+      <ScrollArea className="min-h-0 flex-1">
+        <div className="flex flex-col gap-1 p-2">
+          {nodes.length === 0 && (
+            <p className="px-2 py-8 text-center text-xs text-muted-foreground">画布暂无节点</p>
+          )}
+          {filtered.map((n) => {
+            const meta = NODE_META[n.type] || { icon: '🔹', label: n.type };
+            const imgCount = n.data?.output?.images?.length || n.data?.images?.length || 0;
+            return (
+              <div
+                key={n.id}
+                className="group/node flex cursor-pointer items-center gap-2 rounded-md border border-transparent px-2 py-1.5 text-sm transition hover:bg-muted"
+                onClick={() => onSelectNode?.(n.id)}
+              >
+                <span>{meta.icon}</span>
+                <div className="flex min-w-0 flex-1 flex-col">
+                  <span className="truncate">{meta.label}</span>
+                  <span className="truncate text-[10px] text-muted-foreground">
+                    {n.data?.status === 'running' ? '生成中…'
+                      : n.data?.status === 'error' ? '出错'
+                      : imgCount > 0 ? `${imgCount} 张图` : '—'}
+                  </span>
+                </div>
+                {/* 跳转到节点（定位画布） */}
+                <button
+                  type="button"
+                  className="rounded p-1 text-muted-foreground transition hover:text-primary opacity-0 group-hover/node:opacity-100"
+                  onClick={(e) => { e.stopPropagation(); onLocateNode?.(n.id); }}
+                  title="在画布定位"
+                >
+                  <Crosshair className="h-3.5 w-3.5" />
+                </button>
+                {/* 删除节点 */}
+                <button
+                  type="button"
+                  className="rounded p-1 text-muted-foreground transition hover:text-destructive opacity-0 group-hover/node:opacity-100"
+                  onClick={(e) => { e.stopPropagation(); onDeleteNode?.(n.id); }}
+                  title="删除节点"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
               </div>
-              {/* 跳转到节点（定位画布） */}
-              <button
-                type="button"
-                className="rounded p-1 text-muted-foreground transition hover:text-primary opacity-0 group-hover/node:opacity-100"
-                onClick={(e) => { e.stopPropagation(); onLocateNode?.(n.id); }}
-                title="在画布定位"
-              >
-                <Crosshair className="h-3.5 w-3.5" />
-              </button>
-              {/* 删除节点 */}
-              <button
-                type="button"
-                className="rounded p-1 text-muted-foreground transition hover:text-destructive opacity-0 group-hover/node:opacity-100"
-                onClick={(e) => { e.stopPropagation(); onDeleteNode?.(n.id); }}
-                title="删除节点"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </button>
-            </div>
-          );
-        })}
-      </div>
-    </ScrollArea>
+            );
+          })}
+          {nodes.length > 0 && filtered.length === 0 && (
+            <p className="px-2 py-8 text-center text-xs text-muted-foreground">未找到匹配节点</p>
+          )}
+        </div>
+      </ScrollArea>
+    </div>
   );
 }
 
 // ============ 生成记录 ============
 function HistoryList({ history, onRemoveHistory, onClearHistory, onUseImage, onInsertHistory, onDragStartHistory, onAddToAssets }) {
   const [activeCat, setActiveCat] = useState('all');
+  const [query, setQuery] = useState('');
   // nodeType → category 映射（ADD_ITEMS 是单一数据源）
   const typeToCat = useMemo(() => {
     const m = new Map();
@@ -373,17 +466,30 @@ function HistoryList({ history, onRemoveHistory, onClearHistory, onUseImage, onI
       .filter((c) => c.id === 'all' || seen.has(c.id))
       .map((c) => ({ ...c, count: counts.get(c.id) || 0 }));
   }, [history, typeToCat]);
+  // 搜索匹配：节点名 + prompt + text 三者任一命中（均走 matchText 支持拼音）。
+  const matchHistory = (it, q) => {
+    const parts = [
+      NODE_META[it.nodeType]?.label,
+      it.prompt,
+      it.text,
+    ];
+    return parts.some((t) => matchText(t, q));
+  };
+  // 搜索时跨分类（忽略 activeCat）；否则按分类过滤。
+  const hasQuery = query.trim().length > 0;
   const filtered = useMemo(() => {
+    if (hasQuery) return history.filter((it) => matchHistory(it, query));
     if (activeCat === 'all') return history;
     return history.filter((it) => typeToCat.get(it.nodeType) === activeCat);
-  }, [history, activeCat, typeToCat]);
+  }, [history, activeCat, typeToCat, hasQuery, query]);
 
   return (
     <div className="flex h-full flex-col">
       {history.length > 0 && (
         <>
-          {/* 分类筛选 chips（参考「选择添加节点」列表样式）：含计数 + 横向滚动防溢出 */}
-          {cats.length > 1 && (
+          <SearchBar value={query} onChange={setQuery} placeholder="搜索记录（支持拼音）" />
+          {/* 分类筛选 chips（搜索时隐藏，让结果跨分类展示） */}
+          {!hasQuery && cats.length > 1 && (
             <div className="nodrag nopan nowheel scrollbar-none flex gap-1 overflow-x-auto border-b border-border p-2">
               {cats.map((c) => {
                 const active = activeCat === c.id;
@@ -436,7 +542,9 @@ function HistoryList({ history, onRemoveHistory, onClearHistory, onUseImage, onI
             />
           ))}
           {history.length > 0 && filtered.length === 0 && (
-            <p className="px-2 py-8 text-center text-xs text-muted-foreground">该分类暂无记录</p>
+            <p className="px-2 py-8 text-center text-xs text-muted-foreground">
+              {hasQuery ? '未找到匹配记录' : '该分类暂无记录'}
+            </p>
           )}
         </div>
       </ScrollArea>

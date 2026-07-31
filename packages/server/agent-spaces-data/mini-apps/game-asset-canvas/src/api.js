@@ -10,6 +10,7 @@
 
 // 合法节点类型（与 utils/constants.js NODE_TYPES 同步；handler 不能 import）
 const VALID_NODE_TYPES = [
+  'text',          // Markdown 文字
   'textToImage',   // 文字生成图片
   'editImage',     // 编辑图片
   'imageDisplay',  // 图片展示
@@ -48,6 +49,7 @@ const VALID_NODE_TYPES = [
 ];
 
 const NODE_LABELS = {
+  text: '文字',
   textToImage: '文字生成图片',
   editImage: '编辑图片',
   imageDisplay: '图片展示',
@@ -426,7 +428,12 @@ export default {
         label: n.label || '',
         position: n.position,
       })),
-      edges: edges.map((e) => ({ source: e.source, target: e.target })),
+      edges: edges.map((e) => ({
+        source: e.source,
+        target: e.target,
+        inputType: e.inputType,
+        inputTarget: e.inputTarget,
+      })),
       message: `画布当前 ${nodes.length} 个节点 / ${edges.length} 条连线`,
     };
   },
@@ -436,17 +443,19 @@ export default {
    * @param {object} input
    * @param {string} input.sourceId 源节点 id
    * @param {string} input.targetId 目标节点 id
+   * @param {string} [input.inputTarget] 目标输入字段 key
    */
   connect_nodes: async (input, ctx) => {
     const sourceId = asString(input?.sourceId);
     const targetId = asString(input?.targetId);
+    const inputTarget = asString(input?.inputTarget);
     if (!sourceId || !targetId) {
       return { ok: false, message: 'sourceId 和 targetId 都必填（先用 get_canvas / list_nodes 查节点 id）' };
     }
     if (sourceId === targetId) {
       return { ok: false, message: '不能连接到自己' };
     }
-    const result = await rpc(ctx, 'canvas.connectNodes', { sourceId, targetId });
+    const result = await rpc(ctx, 'canvas.connectNodes', { sourceId, targetId, inputTarget });
     if (result?.ok === false) return result;
     return {
       ok: true,
@@ -480,7 +489,7 @@ export default {
       if (sourceId === targetId) {
         return { ok: false, message: `edges[${i}] 不能连接到自己` };
       }
-      cleaned.push({ sourceId, targetId });
+      cleaned.push({ sourceId, targetId, inputTarget: asString(item.inputTarget) });
     }
     const result = await rpc(ctx, 'canvas.connectBatch', { edges: cleaned });
     return {

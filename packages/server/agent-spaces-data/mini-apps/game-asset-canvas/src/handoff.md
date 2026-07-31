@@ -60,6 +60,7 @@ useCanvasState(workspaceId)  ← nodes/edges/groups 的唯一 state
         ↓
 computeInputImages(nodes, edges)  ← 上游产出图派生到下游 data.images（多跳转发）
 computeInputVideos(nodes, edges)  ← 上游产出视频派生到下游 data.videos
+computeInputTexts(nodes, edges)   ← 上游 output.text 按 edge.inputTarget 派生到 data.textInputValues
         ↓
 useDecoratedNodes({nodes, callbacks})  ← 注入 onUpdate/onGenerate/onProcessLocal 等回调
   （videoEditor 的上游视频与用户上传去重合并，非覆盖）
@@ -140,7 +141,11 @@ Agent → api.js handler → ctx.requestClient(type, payload, timeoutMs)
 22. **ffmpeg 插件产物落 mini-app data 目录**：`routes/plugin.ts:187` 已把 workspaceId 透传给 `createBuiltinPluginApi`，插件 ctx.api 有 `getMiniAppDataDir()` / `saveMiniAppDataFile(relPath, buffer)`（返回 httpPath，走 `/api/mini-apps/:id/data/file`）。ffmpeg 的 extract_frames/custom/probe 都用这套，产物不落全局 public/uploads。
 23. **透传节点优先使用当前派生输入**：`imageDisplay` / `videoDisplay` 有连入边时，继续向下游转发必须优先取 `computeInputImages/computeInputVideos` 本轮派生值（包括空数组），不能回退到节点持久化的旧 `data.images/videos`，否则上游切换历史版本后会向更下游残留旧产出。`videoEditor` 仍按“自身上传 + 当前上游”去重合并。
 24. **媒体 URL 不能直接作为 React 列表 key**：工作流可能返回重复 URL（同一图片出现多次），`key={url}` 在历史版本 `1↔2` 张切换时会触发 React 错误复用并残留 DOM。上游输入列表统一用 `occurrenceKeys` 生成“同 URL 出现序号 + URL”的唯一 key。
-25. **编辑图片缩略图可直接绘制蒙版**：`EditImageNode` 的输入缩略图通过本地 `FileUpload.onEditItem` 打开 `MaskPaintDialog`；绘制快照存 `data.editMaskPaintData`，导出的首张 URL 写入既有 `params.mask`，不要新增第二套蒙版字段或执行协议。
+25. **文本连线是引用，不复制 params**：文字/反推节点的 `data.output.text` 经 `computeInputTexts` 派生到目标的 `data.textInputValues`；目标组件只在展示/执行时与持久化 `data.params` 合并，写回仍基于原始 params。edge 用 `data.inputType='text'` + `data.inputTarget=<字段 key>`；断线后应恢复目标节点原来的手动值。
+25. **编辑图片缩略图可直接绘制蒙版**：`EditImageNode` 的输入缩略图悬浮时在底部居中显示并排的编辑/删除图标，编辑动作通过本地 `FileUpload.onEditItem` 打开 `MaskPaintDialog`；蒙版缩略图传 `bottomActions` 复用该底部栏但只显示删除。显隐、绝对定位和按钮尺寸全部使用 `FileUpload` 内的 `.game-asset-upload-thumb*` 作用域 CSS，不依赖 mini-app 源码无法生成的 Tailwind `group-hover` / `bottom-*` 等工具类；绘制快照存 `data.editMaskPaintData`，导出的首张 URL 写入既有 `params.mask`。
+26. **本地 FileUpload 上传入口属于缩略图网格**：未达到 `max` 时，紧凑上传入口始终渲染为三列缩略图网格的第一个单元格，后接已有图片；不要恢复为缩略图整行 + 下方独立上传行。
+27. **节点产出缩略图操作栏底部居中**：`ImageResult` 的“添加到素材库/删除”按钮统一放在 `.game-asset-output-actions`，悬浮时在图片内部底部居中并排显示；定位、尺寸、显隐必须用组件内作用域 CSS，不要恢复右上/右下负偏移或 Tailwind `group-hover`。
+28. **共享 FileUpload 图片预览走 Gallery**：宿主 `packages/web/src/components/ui/file-upload.tsx` 点击图片缩略图调用 `openMediaGallery`，Gallery 只包含有预览 URL 的图片文件并按图片子集定位；缩略图自身悬浮时用 `group/preview` 显示半透明遮罩和眼睛图标，最右侧删除按钮仅在文件行 hover/focus 时显示。该文件是宿主层，修改后必须重启 Web。
 
 ## 工作区数据目录（产图落本地）
 

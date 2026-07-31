@@ -2,7 +2,8 @@ import { useCallback, useRef } from 'react';
 import { addEdge, MarkerType } from '@xyflow/react';
 import { debugCanvasImageDrag } from '@agent-spaces/ui';
 import { NODE_TYPES, NODE_META, IMAGE_TAGS, WORKFLOWS } from '../utils/constants';
-import { DEFAULT_SIZE, initialData, CANVAS_DROP_MIME, IMAGE_REORDER_MIME } from '../utils/canvas-constants';
+import { DEFAULT_SIZE, initialData, NODE_PARAMS_SCHEMA, CANVAS_DROP_MIME, IMAGE_REORDER_MIME } from '../utils/canvas-constants';
+import { getConnectionTargets } from '../utils/connection-targets';
 import { genId, autoPosition } from '../utils/canvas-id';
 import { autoLayout } from '../utils/layout';
 import { downloadJson, serializeCanvas, pickAndParseCanvasFile } from '../utils/export';
@@ -53,13 +54,14 @@ export function historyToNodePatch(item) {
  * @param {Function} deps.submit  useExecutionQueue 的 submit
  * @param {Function} deps.setDropNodeMenu  落空菜单 state setter
  * @param {Function} deps.setContextMenu    右键菜单 state setter
+ * @param {Function} deps.setPendingConnection 多目标输入选择对话框 state setter
  * @param {Function} deps.getLastParams  useLastParams().getLastParams —— 读某 nodeType 上次提交参数（稳定 callback，读 ref）
  * @param {Function} deps.saveLastParams useLastParams().saveLastParams —— 表单提交时存参数子集
  */
 export default function useNodeCrud({
   nodes, edges, setNodes, setEdges, setGroups,
   reactFlow, selectedId, setSelectedId, updateNodeData, settings, submit,
-  setDropNodeMenu, setContextMenu,
+  setDropNodeMenu, setContextMenu, setPendingConnection,
   getViewportCenter, getLastParams, saveLastParams,
 }) {
   const dragTypeRef = useRef(null);
@@ -110,7 +112,22 @@ export default function useNodeCrud({
       // 节点中心落在落点
       const position = { x: flow.x - size.w / 2, y: flow.y - size.h / 2 };
       const newId = createNodeAt(type, position, dataPatch);
+      const sourceNode = nodesRef.current.find((node) => node.id === cur.source);
+      const connection = getConnectionTargets(
+        sourceNode?.type,
+        type,
+        NODE_PARAMS_SCHEMA[type] || [],
+      );
+      if (connection.targets.length > 1) {
+        setPendingConnection?.({
+          conn: { source: cur.source, target: newId, sourceHandle: cur.sourceHandle },
+          targets: connection.targets,
+          inputType: connection.inputType,
+        });
+        return null;
+      }
       setEdges((prev) => {
+        if (!connection.targets.length) return prev;
         const key = `${cur.source}->${newId}`;
         if (prev.some((e) => `${e.source}->${e.target}` === key)) return prev;
         return addEdge(
@@ -120,13 +137,17 @@ export default function useNodeCrud({
             sourceHandle: cur.sourceHandle,
             markerEnd: { type: MarkerType.ArrowClosed },
             animated: true,
+            data: {
+              inputType: connection.inputType,
+              inputTarget: connection.targets[0].id,
+            },
           },
           prev,
         );
       });
       return null; // 关闭菜单
     });
-  }, [reactFlow, createNodeAt, setEdges, setDropNodeMenu]);
+  }, [reactFlow, createNodeAt, setEdges, setDropNodeMenu, setPendingConnection]);
 
   // 点击添加：定位到画布可视区域中心（由调用方提供屏幕中心坐标，hook 内转 flow 坐标）
   const handleAdd = useCallback((type) => {

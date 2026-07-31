@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { computeInputImages, computeInputVideos } from './input-images.js';
+import { computeInputImages, computeInputTexts, computeInputVideos } from './input-images.js';
 import { NODE_TYPES } from './constants.js';
 
 const edge = (source, target) => ({ id: `${source}-${target}`, source, target });
@@ -81,4 +81,38 @@ test('computeInputImages routes a selected edit-image mask away from regular inp
   const result = computeInputImages(nodes, edges).get('target');
   assert.deepEqual(result?.images, ['input.png']);
   assert.deepEqual(result?.fileUploads, { mask: ['mask.png'] });
+});
+
+test('computeInputTexts routes text products to selected target fields', () => {
+  const nodes = [
+    { id: 'manual', type: NODE_TYPES.text, data: { output: { text: '# Hero' } } },
+    { id: 'reverse', type: NODE_TYPES.promptReverse, data: { output: { text: 'pixel art' } } },
+    { id: 'target', type: NODE_TYPES.textToImage, data: {} },
+  ];
+  const edges = [
+    { ...edge('manual', 'target'), data: { inputType: 'text', inputTarget: 'prompt' } },
+    { ...edge('reverse', 'target'), id: 'reverse-target', data: { inputType: 'text', inputTarget: 'prompt' } },
+  ];
+
+  assert.deepEqual(computeInputTexts(nodes, edges).get('target'), {
+    prompt: '# Hero\n\npixel art',
+  });
+});
+
+test('computeInputTexts ignores image edges and keeps separate text targets', () => {
+  const nodes = [
+    { id: 'text', type: NODE_TYPES.text, data: { output: { text: 'voice line' } } },
+    { id: 'image', type: NODE_TYPES.textToImage, data: { output: { images: ['hero.png'] } } },
+    { id: 'target', type: NODE_TYPES.textToVoice, data: {} },
+  ];
+  const edges = [
+    { ...edge('text', 'target'), data: { inputType: 'text', inputTarget: 'prompt' } },
+    { ...edge('text', 'target'), id: 'voice-id', data: { inputType: 'text', inputTarget: 'voiceId' } },
+    edge('image', 'target'),
+  ];
+
+  assert.deepEqual(computeInputTexts(nodes, edges).get('target'), {
+    prompt: 'voice line',
+    voiceId: 'voice line',
+  });
 });

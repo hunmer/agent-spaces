@@ -2,6 +2,8 @@ import { useEffect, useRef } from 'react';
 import { addEdge, MarkerType } from '@xyflow/react';
 import { NODE_META, NODE_TYPES, WORKFLOWS, VOICE_PROVIDER_OPTIONS, DEFAULT_VIDEO_MODEL, VIDEO_ASPECT_OPTIONS, VIDEO_QUALITY_OPTIONS, VIDEO_DURATION_OPTIONS, DEFAULT_MODEL } from '../utils/constants';
 import { DEFAULT_SIZE, initialData, NODE_PARAMS_SCHEMA } from '../utils/canvas-constants';
+import { CONNECTION_INPUT_TYPES, getConnectionTargets } from '../utils/connection-targets';
+import { computeInputTexts } from '../utils/input-images';
 import { genId } from '../utils/canvas-id';
 import { findFreePositions } from '../utils/layout';
 
@@ -35,6 +37,28 @@ function ensureGroupByName(setGroups, groupName, nodeIds) {
   });
 }
 
+function resolveRpcConnection(sourceNode, targetNode, requestedTarget) {
+  const { inputType, targets } = getConnectionTargets(
+    sourceNode?.type,
+    targetNode?.type,
+    NODE_PARAMS_SCHEMA[targetNode?.type] || [],
+  );
+  if (!targets.length) {
+    return { ok: false, message: '目标节点没有兼容的输入字段' };
+  }
+  const requested = typeof requestedTarget === 'string' ? requestedTarget.trim() : '';
+  if (requested && !targets.some((target) => target.id === requested)) {
+    return { ok: false, message: `inputTarget 无效，可用：${targets.map((target) => target.id).join(', ')}` };
+  }
+  if (!requested && inputType === CONNECTION_INPUT_TYPES.text && targets.length > 1) {
+    return { ok: false, message: `目标节点有多个文本输入字段，请指定 inputTarget：${targets.map((target) => target.id).join(', ')}` };
+  }
+  return {
+    ok: true,
+    data: { inputType, inputTarget: requested || targets[0].id },
+  };
+}
+
 /**
  * 生成类节点的「最低可执行条件」检查 + input 组装。
  * 复刻各节点 handleRun 的合并/默认逻辑（提示词合并、count/concurrency 兜底）。
@@ -43,10 +67,10 @@ function ensureGroupByName(setGroups, groupName, nodeIds) {
  * @param {object} node 节点对象（含 data.params / data.uploadedImages / data.images）
  * @returns {{kind:'image'|'audio'|'video', workflowId:string, input:object} | null}
  */
-function buildNodeExecution(node) {
+function buildNodeExecution(node, textInputValues) {
   if (!node || !node.data) return null;
   const type = node.type;
-  const params = node.data.params || {};
+  const params = { ...(node.data.params || {}), ...(textInputValues || {}) };
   const pickedPrompt = (params.pickedPrompt || '').toString().trim();
   const userPrompt = (params.prompt || '').toString().trim();
   // EditImage 用 promptHtml 富文本，但 agent 通过 update_node 写入通常走 prompt 字段；
@@ -289,16 +313,29 @@ export default function useCanvasAgentRpc({ nodes, edges, createNodeAt, updateNo
               result = { ok: true, alreadyExists: true, message: '已存在连线' };
               break;
             }
-            if (!curNodes.some((n) => n.id === sourceId)) {
+            const sourceNode = curNodes.find((n) => n.id === sourceId);
+            if (!sourceNode) {
               result = { ok: false, message: `源节点不存在：${sourceId}` };
               break;
             }
-            if (!curNodes.some((n) => n.id === targetId)) {
+            const targetNode = curNodes.find((n) => n.id === targetId);
+            if (!targetNode) {
               result = { ok: false, message: `目标节点不存在：${targetId}` };
               break;
             }
+            const resolved = resolveRpcConnection(sourceNode, targetNode, payload.inputTarget);
+            if (!resolved.ok) {
+              result = resolved;
+              break;
+            }
             setEdgesFn((prev) => addEdge(
-              { source: sourceId, target: targetId, markerEnd: { type: MarkerType.ArrowClosed }, animated: true },
+              {
+                source: sourceId,
+                target: targetId,
+                markerEnd: { type: MarkerType.ArrowClosed },
+                animated: true,
+                data: resolved.data,
+              },
               prev,
             ));
             result = { ok: true, edgeId: `${sourceId}->${targetId}` };
@@ -316,8 +353,18 @@ export default function useCanvasAgentRpc({ nodes, edges, createNodeAt, updateNo
               const { sourceId, targetId } = spec;
               if (!existingIds.has(sourceId) || !existingIds.has(targetId)) { invalid++; continue; }
               if (existingEdges.has(`${sourceId}->${targetId}`)) { skipped++; continue; }
+              const sourceNode = curNodes.find((node) => node.id === sourceId);
+              const targetNode = curNodes.find((node) => node.id === targetId);
+              const resolved = resolveRpcConnection(sourceNode, targetNode, spec.inputTarget);
+              if (!resolved.ok) { invalid++; continue; }
               existingEdges.add(`${sourceId}->${targetId}`);
-              toAdd.push({ source: sourceId, target: targetId, markerEnd: { type: MarkerType.ArrowClosed }, animated: true });
+              toAdd.push({
+                source: sourceId,
+                target: targetId,
+                markerEnd: { type: MarkerType.ArrowClosed },
+                animated: true,
+                data: resolved.data,
+              });
             }
             if (toAdd.length) setEdgesFn((prev) => [...prev, ...toAdd]);
             result = {
@@ -349,7 +396,12 @@ export default function useCanvasAgentRpc({ nodes, edges, createNodeAt, updateNo
             result = {
               ok: true,
               nodes: curNodes.map((n) => ({ id: n.id, type: n.type, label: n.data?.label || '', position: n.position })),
-              edges: curEdges.map((e) => ({ source: e.source, target: e.target })),
+              edges: curEdges.map((e) => ({
+                source: e.source,
+                target: e.target,
+                inputType: e.data?.inputType,
+                inputTarget: e.data?.inputTarget,
+              })),
             };
             break;
           }
@@ -375,7 +427,8 @@ export default function useCanvasAgentRpc({ nodes, edges, createNodeAt, updateNo
               break;
             }
             // 组装 input + 校验最低执行条件（缺提示词/缺输入图返回 ok:false）
-            const spec = buildNodeExecution(node);
+            const textInputValues = computeInputTexts(curNodes, curEdges).get(nodeId);
+            const spec = buildNodeExecution(node, textInputValues);
             if (!spec) {
               const label = (NODE_META[node.type] && NODE_META[node.type].label) || node.type;
               const reason = node.type === NODE_TYPES.editImage

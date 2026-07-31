@@ -1,6 +1,5 @@
 import { useCallback } from 'react';
 import { FileUpload } from '@agent-spaces/ui';
-import { Copy, Check } from '@agent-spaces/ui';
 import NodeShell from './NodeShell';
 import UpstreamImageList, { orderUpstream } from './UpstreamImageList';
 import { NODE_TYPES } from '../../utils/constants';
@@ -28,7 +27,6 @@ export default function PromptReverseNode({ id, type, data, selected }) {
   const upstreamOrder = Array.isArray(data?.upstreamOrder) ? data.upstreamOrder : [];
   const upstreamImages = orderUpstream(rawUpstream, upstreamOrder);
   const inputImages = dedupeUrls([...uploadedImages, ...upstreamImages]);
-  const outputText = data?.output?.text || '';
   const status = data?.status || 'idle';
   const error = data?.error;
   const statusMsg = data?.statusMsg || '';
@@ -38,7 +36,6 @@ export default function PromptReverseNode({ id, type, data, selected }) {
   const onPromptReverse = data?.onPromptReverse;
   const onCancelProcess = data?.onCancelProcess;
   const uploading = data?.uploading;
-  const copied = data?.copied === true;
 
   const handleFilesChange = useCallback(async (files) => {
     const AS = window.AgentSpaces;
@@ -76,21 +73,6 @@ export default function PromptReverseNode({ id, type, data, selected }) {
     if (!inputImages.length) return;
     onPromptReverse?.(id, inputImages);
   }, [onPromptReverse, id, inputImages]);
-
-  const handleCopy = useCallback(async () => {
-    if (!outputText) return;
-    try {
-      await navigator.clipboard.writeText(outputText);
-      onUpdate?.({ copied: true });
-      setTimeout(() => onUpdate?.({ copied: false }), 1500);
-    } catch (err) {
-      console.error('copy failed:', err);
-    }
-  }, [outputText, onUpdate]);
-
-  const handleClearText = useCallback(() => {
-    onUpdate?.({ output: { text: '' }, status: 'idle', error: undefined, statusMsg: '' });
-  }, [onUpdate]);
 
   // FileUpload value
   const fileUploadValue = uploadedImages.map((url, i) => ({
@@ -173,35 +155,6 @@ export default function PromptReverseNode({ id, type, data, selected }) {
 
       {cancelled && (
         <p className="rounded-md bg-muted px-2 py-1 text-xs text-muted-foreground">已取消</p>
-      )}
-
-      {/* 文本产出 */}
-      {outputText && (
-        <div className="flex flex-col gap-1">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-medium text-muted-foreground">提示词结果</span>
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                onClick={handleCopy}
-                title="复制全部"
-                className="flex items-center gap-1 rounded p-1 text-[10px] text-muted-foreground transition hover:bg-primary/10 hover:text-primary"
-              >
-                {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-                {copied ? '已复制' : '复制'}
-              </button>
-              <button
-                type="button"
-                onClick={handleClearText}
-                title="清空结果"
-                className="rounded p-1 text-[10px] text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive"
-              >✕</button>
-            </div>
-          </div>
-          <pre className="nodrag nopan nowheel max-h-80 overflow-auto whitespace-pre-wrap break-words rounded-md border border-border bg-muted/30 p-2 text-[11px] leading-relaxed text-foreground">
-{outputText}
-          </pre>
-        </div>
       )}
     </NodeShell>
   );

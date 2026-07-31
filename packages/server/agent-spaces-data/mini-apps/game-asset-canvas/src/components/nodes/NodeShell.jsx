@@ -53,11 +53,13 @@ export default function NodeShell({
     && !!(data?.spineAssets?.skel && data?.spineAssets?.atlas && data?.spineAssets?.png);
   const canPreviewOutput = previewImages.length > 0 || hasSpineAssets || status === 'running';
   const outputPreviewEnabled = data?.outputPreviewMode === true && canPreviewOutput;
+  const onUpdate = data?.onUpdate;
   // 产出卡片 props（预览分支与正常分支共用）：图片/回调/版本/状态
   const outputProps = {
     status,
     statusMsg: data?.statusMsg,
     images: data?.output?.images || [],
+    text: nodeType === NODE_TYPES.promptReverse ? (data?.output?.text || '') : '',
     fileName: data?.params?.fileName,
     onAddToAssets: data?.onAddToAssets,
     onAddImages: data?.onAddImages,
@@ -67,13 +69,15 @@ export default function NodeShell({
     versions: data?.versions,
     activeVersion: data?.activeVersion,
     onSwitchVersion: data?.onSwitchVersion,
+    onClearText: nodeType === NODE_TYPES.promptReverse
+      ? () => onUpdate?.({ output: { ...(data?.output || {}), text: '' }, status: 'idle', error: undefined, statusMsg: '' })
+      : undefined,
   };
   const onExportImages = data?.onExportImages;
   const onProcessImage = data?.onProcessImage;
   const onCutoutCreate = data?.onCutoutCreate;
   const onEditImages = data?.onEditImages;
   const onResetParams = data?.onResetParams;
-  const onUpdate = data?.onUpdate;
   // 上传控件折叠态（持久化到 data.uploadHidden）。首次 status 变 done 时自动折叠一次（用户手动切过则不再自动）。
   const uploadHidden = data?.uploadHidden === true;
   const userToggledUploadRef = useRef(false);

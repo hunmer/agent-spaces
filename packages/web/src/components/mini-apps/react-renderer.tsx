@@ -58,6 +58,7 @@ import {
 import '@xyflow/react/dist/style.css';
 import dagre, { graphlib } from '@dagrejs/dagre';
 import * as diffPkg from 'diff';
+import * as pinyinPkg from 'tiny-pinyin';
 import * as AgentSpacesUI from '@/lib/ui-exports';
 import { LocaleIntlProvider, useLocale } from '@/components/layout/locale-provider';
 
@@ -242,6 +243,9 @@ function resolveExternalModule(id: string) {
   }
   if (id === 'diff') {
     return { __esModule: true, ...diffPkg };
+  }
+  if (id === 'tiny-pinyin') {
+    return { __esModule: true, ...pinyinPkg };
   }
   return undefined;
 }

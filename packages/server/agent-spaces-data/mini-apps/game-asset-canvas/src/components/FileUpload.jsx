@@ -1,12 +1,12 @@
 import { useCallback, useRef, useState } from 'react';
-import { CANVAS_IMAGE_DROP_MIME, SquarePen, debugCanvasImageDrag, getCanvasImageDropUrls, openMediaGallery, setCanvasImageDragData } from '@agent-spaces/ui';
+import { CANVAS_IMAGE_DROP_MIME, SquarePen, Trash2, Upload, debugCanvasImageDrag, getCanvasImageDropUrls, openMediaGallery, setCanvasImageDragData } from '@agent-spaces/ui';
 import { IMAGE_REORDER_MIME } from '../utils/canvas-constants';
 
 /**
  * 图片上传组件：支持点击/拖拽上传，调用 window.AgentSpaces.uploadFile 上传到后端，
  * 返回 http URL 后回传给父组件，并展示已上传图片缩略图（可删除）。
  *
- * @param {{ value: string[], onChange:(urls:string[])=>void, max?:number, placeholder?:string, extraItems?:{src:string,badge?:string,onRemove?:()=>void}[], itemOrder?:string[], onReorderItems?:(urls:string[])=>void, onEditItem?:(url:string)=>void }} props
+ * @param {{ value: string[], onChange:(urls:string[])=>void, max?:number, placeholder?:string, extraItems?:{src:string,badge?:string,onRemove?:()=>void}[], itemOrder?:string[], onReorderItems?:(urls:string[])=>void, onEditItem?:(url:string)=>void, bottomActions?:boolean }} props
  *   value: 已上传图片 URL 数组（http URL，可删）
  *   onChange: 上传成功/删除后回传新的 URL 数组
  *   max: 最大上传数量，默认 6（不含只读项）
@@ -14,9 +14,10 @@ import { IMAGE_REORDER_MIME } from '../utils/canvas-constants';
  *               传 onRemove 则该项右上角显示红色删除按钮（如参考图，可从提示词库带入后移除）；
  *               不传 onRemove 则纯只读（如连线图，由上游派生，不可在此删）。作用：把不同来源整合进同一网格。
  *   itemOrder/onReorderItems: 传入后，上传图和 extraItems 组成的整个列表均可拖拽排序。
- *   onEditItem: 可选。传入后，每张缩略图右上角显示编辑按钮，并回传该图 URL。
+ *   onEditItem: 可选。传入后，缩略图悬浮时在底部显示编辑/删除图标组，并回传待编辑图片 URL。
+ *   bottomActions: 可选。即使没有编辑动作，也把删除按钮放到底部悬浮操作组。
  */
-export default function FileUpload({ value = [], onChange, max = 6, placeholder = '点击或拖拽图片到此处上传', extraItems = [], itemOrder = [], onReorderItems, onEditItem }) {
+export default function FileUpload({ value = [], onChange, max = 6, placeholder = '点击或拖拽图片到此处上传', extraItems = [], itemOrder = [], onReorderItems, onEditItem, bottomActions = false }) {
   const inputRef = useRef(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
@@ -40,6 +41,7 @@ export default function FileUpload({ value = [], onChange, max = 6, placeholder 
   // 默认仅上传图内部排序；注入 onReorderItems 后，参考图/连线图也参与统一排序。
   const unifiedSortable = typeof onReorderItems === 'function' && displayItems.length > 1;
   const uploadedSortable = !unifiedSortable && urls.length > 1;
+  const useBottomActions = bottomActions || typeof onEditItem === 'function';
   const draggingRef = useRef(null);
   const [draggingIdx, setDraggingIdx] = useState(null);
   const [overIdx, setOverIdx] = useState(null);
@@ -193,12 +195,70 @@ export default function FileUpload({ value = [], onChange, max = 6, placeholder 
       onDragOverCapture={onInternalDragOverCapture}
       onDropCapture={onInternalDropCapture}
     >
-      {(extras.length > 0 || urls.length > 0) && (
+      <style>{`
+        .game-asset-upload-thumb {
+          position: relative;
+        }
+        .game-asset-upload-thumb-actions {
+          position: absolute;
+          left: 50%;
+          bottom: 2px;
+          transform: translateX(-50%);
+          z-index: 20;
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          opacity: 0;
+          pointer-events: none;
+          transition: opacity 150ms ease;
+        }
+        .game-asset-upload-thumb-action {
+          display: flex;
+          width: 20px;
+          height: 20px;
+          flex: 0 0 20px;
+          align-items: center;
+          justify-content: center;
+        }
+        .game-asset-upload-add {
+          min-width: 0;
+          aspect-ratio: 1 / 1;
+        }
+        .game-asset-upload-thumb:hover .game-asset-upload-thumb-actions,
+        .game-asset-upload-thumb:focus-within .game-asset-upload-thumb-actions {
+          opacity: 1;
+          pointer-events: auto;
+        }
+      `}</style>
+      {(urls.length < max || extras.length > 0 || urls.length > 0) && (
         <div
           className="grid grid-cols-3 gap-1.5"
           onDrop={onDrop}
           onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
         >
+          {urls.length < max && (
+            <button
+              type="button"
+              data-upload-trigger
+              onClick={onPick}
+              onDrop={onDrop}
+              onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+              onDragLeave={() => setDragOver(false)}
+              disabled={uploading}
+              className={`game-asset-upload-add flex flex-col items-center justify-center gap-1 rounded-md border border-dashed px-1 text-xs text-muted-foreground transition disabled:opacity-50 ${
+                dragOver ? 'border-primary bg-primary/5 text-primary' : 'border-border hover:border-primary hover:text-primary'
+              }`}
+              title={placeholder}
+              aria-label={placeholder}
+            >
+              {uploading ? (
+                <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+              ) : (
+                <Upload className="h-5 w-5" />
+              )}
+              <span>{uploading ? '上传中…' : '上传'}</span>
+            </button>
+          )}
           {displayItems.map((item, i) => {
             const sortable = unifiedSortable || (uploadedSortable && item.kind === 'uploaded');
             return (
@@ -208,7 +268,7 @@ export default function FileUpload({ value = [], onChange, max = 6, placeholder 
                 onDragStart={onReorderDragStart(i, item, sortable)}
                 onDragOver={sortable ? onReorderDragOver(i, item) : undefined}
                 onDragEnd={onReorderDragEnd}
-                className={`group relative aspect-square overflow-hidden rounded-md border transition-colors ${
+                className={`game-asset-upload-thumb group relative aspect-square overflow-hidden rounded-md border transition-colors ${
                   sortable && draggingIdx === i ? 'border-primary opacity-40'
                     : sortable && overIdx === i && draggingIdx !== i ? 'border-primary border-t-2'
                     : item.kind === 'extra' ? 'border-border bg-muted/40' : 'border-border'
@@ -221,23 +281,43 @@ export default function FileUpload({ value = [], onChange, max = 6, placeholder 
                     {item.badge}
                   </span>
                 )}
-                {typeof onEditItem === 'function' && (
-                  <button
-                    type="button"
-                    draggable={false}
-                    onPointerDown={(ev) => ev.stopPropagation()}
-                    onClick={(ev) => {
-                      ev.stopPropagation();
-                      onEditItem?.(item.src);
-                    }}
-                    className="nodrag nopan nowheel absolute right-0.5 top-0.5 z-20 flex h-5 w-5 items-center justify-center rounded-full border border-border bg-background/90 text-foreground shadow transition hover:bg-muted"
-                    title="蒙版绘制"
-                    aria-label="为此图片绘制蒙版"
-                  >
-                    <SquarePen className="h-3 w-3" />
-                  </button>
-                )}
-                {(item.kind === 'uploaded' || typeof item.onRemove === 'function') && (
+                {useBottomActions ? (
+                  <div className="game-asset-upload-thumb-actions nodrag nopan nowheel">
+                    {typeof onEditItem === 'function' && (
+                      <button
+                        type="button"
+                        draggable={false}
+                        onPointerDown={(ev) => ev.stopPropagation()}
+                        onClick={(ev) => {
+                          ev.stopPropagation();
+                          onEditItem?.(item.src);
+                        }}
+                        className="game-asset-upload-thumb-action rounded border border-border bg-background/90 text-foreground shadow hover:bg-muted"
+                        title="蒙版绘制"
+                        aria-label="为此图片绘制蒙版"
+                      >
+                        <SquarePen className="h-3 w-3" />
+                      </button>
+                    )}
+                    {(item.kind === 'uploaded' || typeof item.onRemove === 'function') && (
+                      <button
+                        type="button"
+                        draggable={false}
+                        onPointerDown={(ev) => ev.stopPropagation()}
+                        onClick={(ev) => {
+                          ev.stopPropagation();
+                          if (item.kind === 'uploaded') onRemove(item.sourceIndex);
+                          else item.onRemove();
+                        }}
+                        className="game-asset-upload-thumb-action rounded border border-border bg-background/90 text-destructive shadow hover:bg-destructive hover:text-destructive-foreground"
+                        title="移除"
+                        aria-label="移除图片"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </button>
+                    )}
+                  </div>
+                ) : (item.kind === 'uploaded' || typeof item.onRemove === 'function') && (
                   <button
                     type="button"
                     onClick={(ev) => {
@@ -245,7 +325,7 @@ export default function FileUpload({ value = [], onChange, max = 6, placeholder 
                       if (item.kind === 'uploaded') onRemove(item.sourceIndex);
                       else item.onRemove();
                     }}
-                    className={`absolute top-0.5 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white shadow transition hover:bg-red-600 ${typeof onEditItem === 'function' ? 'right-6' : 'right-0.5'} ${item.kind === 'extra' ? 'opacity-0 group-hover:opacity-100' : ''}`}
+                    className={`absolute right-0.5 top-0.5 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white shadow transition hover:bg-red-600 ${item.kind === 'extra' ? 'opacity-0 group-hover:opacity-100' : ''}`}
                     title="移除"
                   >
                     ✕
@@ -255,33 +335,6 @@ export default function FileUpload({ value = [], onChange, max = 6, placeholder 
             );
           })}
         </div>
-      )}
-
-      {urls.length < max && (
-        <button
-          type="button"
-          onClick={onPick}
-          onDrop={onDrop}
-          onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-          onDragLeave={() => setDragOver(false)}
-          disabled={uploading}
-          className={`flex min-h-[72px] flex-col items-center justify-center gap-1 rounded-md border border-dashed px-2 py-3 text-xs text-muted-foreground transition disabled:opacity-50 ${
-            dragOver ? 'border-primary bg-primary/5 text-primary' : 'border-border hover:border-primary hover:text-primary'
-          }`}
-        >
-          {uploading ? (
-            <>
-              <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-              <span>上传中…</span>
-            </>
-          ) : (
-            <>
-              <span className="text-2xl">⬆</span>
-              <span>{placeholder}</span>
-              <span className="text-[10px]">支持拖拽，最多 {max} 张</span>
-            </>
-          )}
-        </button>
       )}
 
       <input

@@ -68,7 +68,8 @@ export const PARAMS_SCHEMA = [
   },
 ];
 export default function VideoGeneratorNode({ id, data, selected }) {
-  const params = data?.params || {};
+  const storedParams = data?.params || {};
+  const params = { ...storedParams, ...(data?.textInputValues || {}) };
   const uploadedImages = Array.isArray(data?.uploadedImages) ? data.uploadedImages : [];
   const rawUpstream = Array.isArray(data?.images) ? data.images : [];
   const upstreamOrder = Array.isArray(data?.upstreamOrder) ? data.upstreamOrder : [];
@@ -89,8 +90,8 @@ export default function VideoGeneratorNode({ id, data, selected }) {
   const { openPicker } = useNodeDialog();
 
   const set = useCallback((patch) => {
-    onUpdate?.({ params: { ...params, ...patch } });
-  }, [onUpdate, params]);
+    onUpdate?.({ params: { ...storedParams, ...patch } });
+  }, [onUpdate, storedParams]);
 
   const handleFilesChange = useCallback(async (files) => {
     const AS = window.AgentSpaces;

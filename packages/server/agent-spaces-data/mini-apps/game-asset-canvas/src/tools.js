@@ -8,6 +8,7 @@
 
 
 const NODE_TYPE_ENUM = [
+  'text',
   'textToImage',
   'editImage',
   'imageDisplay',
@@ -46,6 +47,7 @@ const NODE_TYPE_ENUM = [
 ];
 
 const NODE_TYPE_DESC = [
+  'text=文字（Markdown 编辑/展示，产出可连接到其它节点的文本输入）',
   'textToImage=文字生成图片',
   'editImage=编辑图片',
   'imageDisplay=图片展示（接收上游图片）',
@@ -105,7 +107,7 @@ export default [
         },
         data: {
           type: 'object',
-          description: '节点初始 data 字段（可选，合并到默认 data）。生成类节点（textToImage/editImage/textToVoice/videoGenerator）的 params 含枚举字段（如 model/aspect），改前先调 get_node_params(type) 查合法值。note 传 {text:"备注内容"}；图像处理节点（ip*）传 {params:{processorParams:{...}}}。',
+          description: '节点初始 data 字段（可选，合并到默认 data）。text 传 {output:{text:"Markdown 内容"}}；生成类节点（textToImage/editImage/textToVoice/videoGenerator）的 params 含枚举字段（如 model/aspect），改前先调 get_node_params(type) 查合法值。note 传 {text:"备注内容"}；图像处理节点（ip*）传 {params:{processorParams:{...}}}。',
         },
         groupName: { type: 'string', description: '可选。把新建的节点归入此名称的分组（画布上的可视化 group）：同名分组不存在则自动创建，已存在则直接加入。用于把同一项目/同一角色的多个节点归类管理。' },
         focus: { type: 'boolean', description: '创建后是否聚焦/居中到该节点（默认 true）' },
@@ -166,12 +168,13 @@ export default [
   },
   {
     name: 'connect_nodes',
-    description: '把两个节点连起来（source 的产出图作为 target 的输入）。用户说「把 A 连到 B」「文生图的结果接到图片展示」时调用。注意：source 通常是产出节点（textToImage/editImage/imageProcess 等），target 通常是接收节点（imageDisplay/editImage/imageProcess/imageEditor/pixelEditor）。',
+    description: '把两个节点连起来（source 的图片或文本产物作为 target 输入）。文本目标有多个字段时必须传 inputTarget，可先用 get_node_params(targetType) 查询字段 key。',
     inputSchema: {
       type: 'object',
       properties: {
         sourceId: { type: 'string', description: '源节点 id（来自 list_nodes / get_canvas）' },
         targetId: { type: 'string', description: '目标节点 id（来自 list_nodes / get_canvas）' },
+        inputTarget: { type: 'string', description: '可选。目标输入字段 key；文本产物连接到有多个文本字段的节点时必填，可先用 get_node_params(targetType) 查询。' },
       },
       required: ['sourceId', 'targetId'],
     },
@@ -184,12 +187,13 @@ export default [
       properties: {
         edges: {
           type: 'array',
-          description: '连线规格数组，每项 {sourceId, targetId}',
+          description: '连线规格数组，每项 {sourceId, targetId, inputTarget?}',
           items: {
             type: 'object',
             properties: {
               sourceId: { type: 'string' },
               targetId: { type: 'string' },
+              inputTarget: { type: 'string', description: '可选目标输入字段 key' },
             },
             required: ['sourceId', 'targetId'],
           },

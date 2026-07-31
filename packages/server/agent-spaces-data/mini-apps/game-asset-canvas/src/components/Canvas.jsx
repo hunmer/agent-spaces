@@ -28,7 +28,7 @@ import GroupConfirmDialog from './GroupConfirmDialog';
 import DeleteGroupDialog from './DeleteGroupDialog';
 import ConnectionTargetDialog from './ConnectionTargetDialog';
 import useAssetLibrary from '../hooks/useAssetLibrary';
-import { getFileUploadTargets } from '../utils/connection-targets';
+import { getConnectionTargets, getNodeOutputType } from '../utils/connection-targets';
 
 import useCanvasState from '../hooks/useCanvasState';
 import useWorkflow from '../hooks/useWorkflow';
@@ -50,7 +50,7 @@ import useCanvasAgentRpc from '../hooks/useCanvasAgentRpc';
 import useDecoratedNodes from '../hooks/useDecoratedNodes';
 
 import { IMAGE_TAGS, NODE_TYPES, NODE_META } from '../utils/constants';
-import { NODE_COMPONENTS, PANEL_ID_MAIN, PANEL_ID_RIGHT, dedupeTags } from '../utils/canvas-constants';
+import { NODE_COMPONENTS, NODE_PARAMS_SCHEMA, PANEL_ID_MAIN, PANEL_ID_RIGHT, dedupeTags } from '../utils/canvas-constants';
 import { genId } from '../utils/canvas-id';
 import { exportAssetLibraryZip, extractFileNameFromUrl, pickAssetLibraryZipFile, importAssetLibraryZip, exportWorkspaceZip, pickWorkspaceZipFile, importWorkspaceZip } from '../utils/export';
 import { canvasConfigPath, historyConfigPath, assetLibraryConfigPath, saveCanvas } from '../utils/storage';
@@ -189,7 +189,7 @@ export default function Canvas() {
   const crud = useNodeCrud({
     nodes, edges, setNodes, setEdges, setGroups,
     reactFlow, selectedId, setSelectedId, updateNodeData, settings, submit,
-    setDropNodeMenu, setContextMenu,
+    setDropNodeMenu, setContextMenu, setPendingConnection,
     getViewportCenter, getLastParams, saveLastParams,
   });
 
@@ -227,11 +227,16 @@ export default function Canvas() {
 
   // 连线：多选增强（参考 xyflow MultiConnect）——若 source 选中，把所有选中节点都连到 target。
   // 用 nodesRef 读最新 nodes（多选判断），callback deps 不含 nodes → 稳定引用。
-  const addConnections = useCallback((conn, inputTarget) => {
+  const addConnections = useCallback((conn, inputTarget, inputType) => {
     setEdges((prev) => {
       const curNodes = nodesRef.current;
+      const originOutputType = inputType || getNodeOutputType(
+        curNodes.find((node) => node.id === conn.source)?.type,
+      );
       const sources = curNodes.some((n) => n.id === conn.source && n.selected)
-        ? curNodes.filter((n) => n.selected).map((n) => n.id)
+        ? curNodes
+          .filter((n) => n.selected && getNodeOutputType(n.type) === originOutputType)
+          .map((n) => n.id)
         : [conn.source];
       let next = prev;
       const existing = new Set(prev.map((e) => `${e.source}->${e.target}`));
@@ -244,7 +249,12 @@ export default function Canvas() {
             source, target: conn.target,
             sourceHandle: conn.sourceHandle, targetHandle: conn.targetHandle,
             markerEnd: { type: MarkerType.ArrowClosed },
-            data: { pathStyle: edgePathStyle, lineStyle: edgeLineStyle, inputTarget },
+            data: {
+              pathStyle: edgePathStyle,
+              lineStyle: edgeLineStyle,
+              inputTarget,
+              inputType: originOutputType,
+            },
           },
           next,
         );
@@ -254,13 +264,22 @@ export default function Canvas() {
   }, [edgeLineStyle, edgePathStyle, setEdges]);
 
   const onConnect = useCallback((conn) => {
+    const sourceNode = nodesRef.current.find((node) => node.id === conn.source);
     const targetNode = nodesRef.current.find((node) => node.id === conn.target);
-    const targets = getFileUploadTargets(targetNode?.type);
-    if (targets.length > 1) {
-      setPendingConnection({ conn, targets });
+    const { inputType, targets } = getConnectionTargets(
+      sourceNode?.type,
+      targetNode?.type,
+      NODE_PARAMS_SCHEMA[targetNode?.type] || [],
+    );
+    if (!targets.length) {
+      toast.error(inputType === 'text' ? '目标节点没有可接收文本的输入框' : '目标节点不支持该输入');
       return;
     }
-    addConnections(conn, targets[0]?.id);
+    if (targets.length > 1) {
+      setPendingConnection({ conn, targets, inputType });
+      return;
+    }
+    addConnections(conn, targets[0]?.id, inputType);
   }, [addConnections]);
 
   // 连线拖到空白处放手：弹出「添加节点」菜单
@@ -967,9 +986,12 @@ export default function Canvas() {
       <ConnectionTargetDialog
         open={!!pendingConnection}
         targets={pendingConnection?.targets || []}
+        inputType={pendingConnection?.inputType}
         onClose={() => setPendingConnection(null)}
         onSelect={(inputTarget) => {
-          if (pendingConnection?.conn) addConnections(pendingConnection.conn, inputTarget);
+          if (pendingConnection?.conn) {
+            addConnections(pendingConnection.conn, inputTarget, pendingConnection.inputType);
+          }
           setPendingConnection(null);
         }}
       />

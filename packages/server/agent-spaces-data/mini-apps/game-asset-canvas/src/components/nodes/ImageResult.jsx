@@ -18,10 +18,10 @@ function BrokenImagePlaceholder({ url }) {
  * @param {number} [props.max] 单网格最多展示张数，0 或缺省表示全部（GIF 拆帧等可能产出数十帧）
  * @param {boolean} [props.preview] 输出预览模式：无标签/边框，图片全宽纵向排列
  * @param {Function} [props.onImageLoad] 图片加载完成回调
- * @param {Function} [props.onAddToAssets] 传入则每张图右上角显示「添加到素材库」按钮，点击回传 {url, fileName}
+ * @param {Function} [props.onAddToAssets] 传入则缩略图底部操作栏显示「添加到素材库」按钮，点击回传 {url, fileName}
  * @param {string} [props.fileName] 该批产出的下载/入库文件名（多张时自动加序号后缀），传给 MediaGallery 的 download 字段
  * @param {Function} [props.onAddImages] 传入则标题右侧显示「添加」按钮（Popover 内上传），上传成功后回传新增 url 数组
- * @param {Function} [props.onRemoveImage] 传入则每张图右下角显示删除按钮，点击回传被删图索引
+ * @param {Function} [props.onRemoveImage] 传入则缩略图底部操作栏显示删除按钮，点击回传被删图索引
  * @param {Function} [props.onClearImages] 传入则标题右侧显示「清空」按钮，点击清空所有产出
  * @param {Function} [props.onReorderImages] 传入则产出网格支持拖拽排序，回传重排后的 url 数组
  * @param {Array} [props.versions] 历史版本数组 [{params, output, createdAt}]
@@ -128,6 +128,37 @@ export default function ImageResult({ images, max = 0, preview = false, onImageL
 
   return (
     <div className="flex flex-col gap-1.5">
+      <style>{`
+        .game-asset-output-thumb {
+          position: relative;
+        }
+        .game-asset-output-actions {
+          position: absolute;
+          left: 50%;
+          bottom: 2px;
+          z-index: 20;
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          opacity: 0;
+          pointer-events: none;
+          transform: translateX(-50%);
+          transition: opacity 150ms ease;
+        }
+        .game-asset-output-action {
+          display: flex;
+          width: 20px;
+          height: 20px;
+          flex: 0 0 20px;
+          align-items: center;
+          justify-content: center;
+        }
+        .game-asset-output-thumb:hover .game-asset-output-actions,
+        .game-asset-output-thumb:focus-within .game-asset-output-actions {
+          opacity: 1;
+          pointer-events: auto;
+        }
+      `}</style>
       <div className="flex items-center justify-between">
         <span className="text-xs font-medium text-muted-foreground">
           产出（{all.length}）{sortable ? '· 可拖拽排序' : ''}
@@ -180,7 +211,7 @@ export default function ImageResult({ images, max = 0, preview = false, onImageL
               onDragStart={onReorderDragStart(i, url)}
               onDragOver={sortable ? onReorderDragOver(i) : undefined}
               onDragEnd={sortable ? onReorderDragEnd : undefined}
-              className={`group relative block aspect-square overflow-visible rounded border transition-colors ${
+              className={`game-asset-output-thumb group relative block aspect-square overflow-hidden rounded border transition-colors ${
                 sortable && draggingIdx === i ? 'border-primary opacity-40'
                   : sortable && overIdx === i && draggingIdx !== i ? 'border-primary border-t-2'
                   : 'border-border'
@@ -193,26 +224,29 @@ export default function ImageResult({ images, max = 0, preview = false, onImageL
               >
                 <GridImage url={url} />
               </button>
-              {onAddToAssets && (
-                <button
-                  type="button"
-                  onClick={(e) => { e.stopPropagation(); onAddToAssets({ url, fileName: nameFor(i) }); }}
-                  title="添加到素材库"
-                  className="absolute -right-1 -top-1 z-20 flex size-5 items-center justify-center rounded-full border border-border bg-background text-muted-foreground opacity-0 shadow-sm transition hover:bg-primary hover:text-primary-foreground group-hover:opacity-100"
-                >
-                  <FolderPlus className="h-3 w-3" />
-                </button>
-              )}
-              {/* 单图删除：右下角，hover 图片时显示；onRemoveImage 注入时才显示 */}
-              {onRemoveImage && (
-                <button
-                  type="button"
-                  onClick={(e) => { e.stopPropagation(); onRemoveImage(i); }}
-                  title="从产出删除"
-                  className="absolute -bottom-1 -right-1 z-20 flex size-5 items-center justify-center rounded-full border border-border bg-background text-muted-foreground opacity-0 shadow-sm transition hover:bg-destructive hover:text-destructive-foreground group-hover:opacity-100"
-                >
-                  <Trash2 className="h-3 w-3" />
-                </button>
+              {(onAddToAssets || onRemoveImage) && (
+                <div className="game-asset-output-actions nodrag nopan nowheel">
+                  {onAddToAssets && (
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); onAddToAssets({ url, fileName: nameFor(i) }); }}
+                      title="添加到素材库"
+                      className="game-asset-output-action rounded border border-border bg-background/90 text-muted-foreground shadow-sm hover:bg-primary hover:text-primary-foreground"
+                    >
+                      <FolderPlus className="h-3 w-3" />
+                    </button>
+                  )}
+                  {onRemoveImage && (
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); onRemoveImage(i); }}
+                      title="从产出删除"
+                      className="game-asset-output-action rounded border border-border bg-background/90 text-muted-foreground shadow-sm hover:bg-destructive hover:text-destructive-foreground"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </button>
+                  )}
+                </div>
               )}
             </div>
           ))}

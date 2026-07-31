@@ -1,6 +1,6 @@
 import {
   Button, Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
-  Images, ScanLine,
+  FileText, Images, ScanLine,
 } from '@agent-spaces/ui';
 
 const TARGET_ICONS = {
@@ -8,20 +8,22 @@ const TARGET_ICONS = {
   mask: ScanLine,
 };
 
-export default function ConnectionTargetDialog({ open, targets = [], onSelect, onClose }) {
+export default function ConnectionTargetDialog({ open, targets = [], inputType = 'image', onSelect, onClose }) {
   return (
     <Dialog open={open} onOpenChange={(next) => { if (!next) onClose?.(); }}>
       <DialogContent className="p-5" style={{ width: '420px', maxWidth: '92vw' }}>
         <DialogHeader>
-          <DialogTitle className="text-sm">选择连接区域</DialogTitle>
+          <DialogTitle className="text-sm">选择连接目标</DialogTitle>
           <DialogDescription className="text-[12px] text-muted-foreground">
-            目标节点有多个图片上传区域，请选择本次连线要写入的位置。
+            {inputType === 'text'
+              ? '目标节点有多个文本输入框，请选择本次连线要引用的位置。'
+              : '目标节点有多个图片上传区域，请选择本次连线要写入的位置。'}
           </DialogDescription>
         </DialogHeader>
 
         <div className="flex flex-col gap-2 py-1">
           {targets.map((target) => {
-            const Icon = TARGET_ICONS[target.id] || Images;
+            const Icon = TARGET_ICONS[target.id] || (inputType === 'text' ? FileText : Images);
             return (
               <Button
                 key={target.id}
