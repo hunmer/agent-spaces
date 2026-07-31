@@ -1,12 +1,12 @@
 import { useCallback, useRef, useState } from 'react';
-import { CANVAS_IMAGE_DROP_MIME, debugCanvasImageDrag, getCanvasImageDropUrls, openMediaGallery, setCanvasImageDragData } from '@agent-spaces/ui';
+import { CANVAS_IMAGE_DROP_MIME, SquarePen, debugCanvasImageDrag, getCanvasImageDropUrls, openMediaGallery, setCanvasImageDragData } from '@agent-spaces/ui';
 import { IMAGE_REORDER_MIME } from '../utils/canvas-constants';
 
 /**
  * 图片上传组件：支持点击/拖拽上传，调用 window.AgentSpaces.uploadFile 上传到后端，
  * 返回 http URL 后回传给父组件，并展示已上传图片缩略图（可删除）。
  *
- * @param {{ value: string[], onChange:(urls:string[])=>void, max?:number, placeholder?:string, extraItems?:{src:string,badge?:string,onRemove?:()=>void}[], itemOrder?:string[], onReorderItems?:(urls:string[])=>void }} props
+ * @param {{ value: string[], onChange:(urls:string[])=>void, max?:number, placeholder?:string, extraItems?:{src:string,badge?:string,onRemove?:()=>void}[], itemOrder?:string[], onReorderItems?:(urls:string[])=>void, onEditItem?:(url:string)=>void }} props
  *   value: 已上传图片 URL 数组（http URL，可删）
  *   onChange: 上传成功/删除后回传新的 URL 数组
  *   max: 最大上传数量，默认 6（不含只读项）
@@ -14,8 +14,9 @@ import { IMAGE_REORDER_MIME } from '../utils/canvas-constants';
  *               传 onRemove 则该项右上角显示红色删除按钮（如参考图，可从提示词库带入后移除）；
  *               不传 onRemove 则纯只读（如连线图，由上游派生，不可在此删）。作用：把不同来源整合进同一网格。
  *   itemOrder/onReorderItems: 传入后，上传图和 extraItems 组成的整个列表均可拖拽排序。
+ *   onEditItem: 可选。传入后，每张缩略图右上角显示编辑按钮，并回传该图 URL。
  */
-export default function FileUpload({ value = [], onChange, max = 6, placeholder = '点击或拖拽图片到此处上传', extraItems = [], itemOrder = [], onReorderItems }) {
+export default function FileUpload({ value = [], onChange, max = 6, placeholder = '点击或拖拽图片到此处上传', extraItems = [], itemOrder = [], onReorderItems, onEditItem }) {
   const inputRef = useRef(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
@@ -220,6 +221,22 @@ export default function FileUpload({ value = [], onChange, max = 6, placeholder 
                     {item.badge}
                   </span>
                 )}
+                {typeof onEditItem === 'function' && (
+                  <button
+                    type="button"
+                    draggable={false}
+                    onPointerDown={(ev) => ev.stopPropagation()}
+                    onClick={(ev) => {
+                      ev.stopPropagation();
+                      onEditItem?.(item.src);
+                    }}
+                    className="nodrag nopan nowheel absolute right-0.5 top-0.5 z-20 flex h-5 w-5 items-center justify-center rounded-full border border-border bg-background/90 text-foreground shadow transition hover:bg-muted"
+                    title="蒙版绘制"
+                    aria-label="为此图片绘制蒙版"
+                  >
+                    <SquarePen className="h-3 w-3" />
+                  </button>
+                )}
                 {(item.kind === 'uploaded' || typeof item.onRemove === 'function') && (
                   <button
                     type="button"
@@ -228,7 +245,7 @@ export default function FileUpload({ value = [], onChange, max = 6, placeholder 
                       if (item.kind === 'uploaded') onRemove(item.sourceIndex);
                       else item.onRemove();
                     }}
-                    className={`absolute right-0.5 top-0.5 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white shadow transition hover:bg-red-600 ${item.kind === 'extra' ? 'opacity-0 group-hover:opacity-100' : ''}`}
+                    className={`absolute top-0.5 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white shadow transition hover:bg-red-600 ${typeof onEditItem === 'function' ? 'right-6' : 'right-0.5'} ${item.kind === 'extra' ? 'opacity-0 group-hover:opacity-100' : ''}`}
                     title="移除"
                   >
                     ✕

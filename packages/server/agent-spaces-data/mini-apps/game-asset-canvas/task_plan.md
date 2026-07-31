@@ -64,7 +64,7 @@ Fix `bg_components` reskin segmentation when the original atlas is loaded as an 
 - Do not use a real browser.
 
 ## Errors Encountered
-None.
+- Optional search for an existing EditImageNode/FileUpload source-contract test returned no matches; adding a focused adjacent test instead.
 
 ---
 
@@ -158,3 +158,24 @@ Allow images dragged from a node's input/output previews to populate another nod
 - Initial debug helper typed writers as `setData` only, so TypeScript rejected reading optional debug fields. Expanded the structural writer type to include optional DataTransfer debug properties.
 - Combined same-instance bypass patch mixed shared/local FileUpload context in one file hunk and did not apply. Split by file with exact contexts.
 - Final `procm-mcp` process check could not connect to `127.0.0.1:7331`; no persistent service restart was possible.
+
+---
+
+# Edit Image Thumbnail Mask Entry
+
+## Goal
+Add an edit action to each Edit Image node upload thumbnail that opens the existing mask-painting dialog and stores the painted output as that node's mask image.
+
+## Phases
+- [x] Inspect EditImageNode, mask dialog, and node persistence contracts.
+- [x] Implement the smallest thumbnail action/dialog wiring.
+- [x] Add or update focused regression coverage.
+- [x] Run focused syntax/tests validation and review the diff.
+
+## Constraints
+- Reuse the existing mask-painting implementation and existing node data shape.
+- Preserve upload, sorting, deletion, upstream inputs, and generation behavior.
+- Keep changes inside the game-asset-canvas mini-app.
+
+## Errors Encountered
+None.

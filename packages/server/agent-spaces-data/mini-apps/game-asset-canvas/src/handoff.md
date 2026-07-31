@@ -140,6 +140,7 @@ Agent → api.js handler → ctx.requestClient(type, payload, timeoutMs)
 22. **ffmpeg 插件产物落 mini-app data 目录**：`routes/plugin.ts:187` 已把 workspaceId 透传给 `createBuiltinPluginApi`，插件 ctx.api 有 `getMiniAppDataDir()` / `saveMiniAppDataFile(relPath, buffer)`（返回 httpPath，走 `/api/mini-apps/:id/data/file`）。ffmpeg 的 extract_frames/custom/probe 都用这套，产物不落全局 public/uploads。
 23. **透传节点优先使用当前派生输入**：`imageDisplay` / `videoDisplay` 有连入边时，继续向下游转发必须优先取 `computeInputImages/computeInputVideos` 本轮派生值（包括空数组），不能回退到节点持久化的旧 `data.images/videos`，否则上游切换历史版本后会向更下游残留旧产出。`videoEditor` 仍按“自身上传 + 当前上游”去重合并。
 24. **媒体 URL 不能直接作为 React 列表 key**：工作流可能返回重复 URL（同一图片出现多次），`key={url}` 在历史版本 `1↔2` 张切换时会触发 React 错误复用并残留 DOM。上游输入列表统一用 `occurrenceKeys` 生成“同 URL 出现序号 + URL”的唯一 key。
+25. **编辑图片缩略图可直接绘制蒙版**：`EditImageNode` 的输入缩略图通过本地 `FileUpload.onEditItem` 打开 `MaskPaintDialog`；绘制快照存 `data.editMaskPaintData`，导出的首张 URL 写入既有 `params.mask`，不要新增第二套蒙版字段或执行协议。
 
 ## 工作区数据目录（产图落本地）
 

@@ -59,6 +59,12 @@ data.params = {
 }
 data.output = { images: string[] };  // 产出图 URL 数组
 data.images?: string[];          // 编辑图片节点：上游推入的输入图
+data.uploadedImages?: string[];  // 编辑图片节点：用户上传的输入图
+data.params.mask?: string;       // 编辑图片节点：上传/绘制得到的单张蒙版 URL
+data.editMaskPaintData?: {       // 编辑图片节点：缩略图蒙版绘制快照
+  inputSignature: string;
+  perImage: Record<string, { imgW: number; imgH: number; ops: object[] }>;
+};
 ```
 
 #### 图片展示（imageDisplay）

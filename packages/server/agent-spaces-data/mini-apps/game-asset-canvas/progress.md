@@ -64,3 +64,10 @@
 - Implemented image-specific canvas copy effect, allowed image payloads through the reorder guard, and moved shared/local FileUpload URL handling to capture phase. Debug logs remain enabled.
 - Added same-instance capture bypass to preserve existing shared/local FileUpload sorting while handling cross-node drops early.
 - Runtime-informed fix passed automated validation. Kept `[DEBUG-image-drop]` instrumentation for user verification; procm transport was unavailable for restart.
+- 2026-07-31: Started the Edit Image thumbnail mask-entry task; confirmed mini-app boundaries and preserved existing planning history.
+- Read project conventions and located the existing `editImage.mask` persistence field plus the `maskPaint` implementation family.
+- Traced the dialog contract and selected a minimal wiring: optional thumbnail action in local FileUpload, dialog state in EditImageNode, and existing `setMaskImage` persistence.
+- Added a focused source-contract test for thumbnail action, selected-image dialog input, mask save wiring, and persisted paint data.
+- Implemented the thumbnail edit action and EditImageNode dialog wiring; focused tests pass 2/2 and changed JSX files compile.
+- Updated the node data model, handoff constraint, and CLAUDE index for the new mask entry.
+- Final validation complete: focused tests 2/2, three-file JSX compilation, `git diff --check`, and scoped diff review passed. Mini-app source changes require refresh only.

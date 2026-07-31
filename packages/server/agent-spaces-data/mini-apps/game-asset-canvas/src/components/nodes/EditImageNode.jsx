@@ -4,6 +4,7 @@ import NodeShell from './NodeShell';
 import { useNodeDialog } from './NodeDialogContext';
 import PickedPromptBadge from './PickedPromptBadge';
 import FileUpload from '../FileUpload';
+import MaskPaintDialog from '../MaskPaintDialog';
 import { orderUpstream } from './UpstreamImageList';
 import CountAndConcurrency from './CountAndConcurrency';
 import { ASPECT_OPTIONS, DEFAULT_MODEL, MODEL_OPTIONS, NODE_TYPES, SIZE_OPTIONS, WORKFLOWS } from '../../utils/constants';
@@ -76,6 +77,7 @@ export default function EditImageNode({ id, data, selected }) {
   const onGenerate = data?.onGenerate;
   const onCancelProcess = data?.onCancelProcess;
   const { openPicker, openOptimize } = useNodeDialog();
+  const [maskPaintSource, setMaskPaintSource] = useState('');
 
   const set = useCallback((patch) => {
     onUpdate?.({ params: { ...params, ...patch } });
@@ -91,6 +93,10 @@ export default function EditImageNode({ id, data, selected }) {
     const next = Array.isArray(urls) ? urls.filter(Boolean) : [];
     onUpdate?.({ params: { ...params, mask: next[0] || undefined } });
   }, [onUpdate, params]);
+
+  const setMaskPaintData = useCallback((next) => {
+    onUpdate?.({ editMaskPaintData: next });
+  }, [onUpdate]);
 
   // 把参考图 + 连线图作为只读项整合进同一个 FileUpload 网格（带来源角标），上传图可删，只读项不可删。
   // 这样「输入图片」与「参考图」合并为单一区块，避免 UI 分组割裂。
@@ -167,6 +173,7 @@ export default function EditImageNode({ id, data, selected }) {
           extraItems={extraItems}
           itemOrder={allInputImages}
           onReorderItems={(next) => onUpdate?.({ inputImageOrder: next })}
+          onEditItem={setMaskPaintSource}
           />
         </UploadSection>
       </div>
@@ -300,6 +307,15 @@ export default function EditImageNode({ id, data, selected }) {
       {error && (
         <p className="rounded-md bg-red-500/10 px-2 py-1 text-xs text-red-500">{error}</p>
       )}
+
+      <MaskPaintDialog
+        open={!!maskPaintSource}
+        inputImages={maskPaintSource ? [maskPaintSource] : []}
+        initialData={data?.editMaskPaintData || null}
+        onDataChange={setMaskPaintData}
+        onSave={setMaskImage}
+        onClose={() => setMaskPaintSource('')}
+      />
     </NodeShell>
   );
 }

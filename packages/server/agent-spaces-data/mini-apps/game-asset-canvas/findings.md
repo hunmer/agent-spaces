@@ -99,3 +99,16 @@
 - Fix preserves in-node sorting: drops inside a ReactFlow node still return at the node boundary; only a sortable image dragged outside its list with a valid image payload can create/copy an image.
 - Capture handlers explicitly skip drags originating from the same FileUpload instance, so original item-level sorting still receives dragover/drop; cross-instance drags are consumed in capture.
 - Automated validation after the runtime-informed fix passed: MIME tests 2/2, Web ESLint clean, four mini-app entries compiled, and `git diff --check` clean. Browser verification remains intentionally pending with logs retained.
+
+## Edit Image Thumbnail Mask Entry
+
+- The request targets the Edit Image node's uploaded-image thumbnails and should reuse the project's existing mask-painting dialog.
+- Acceptance requires the selected thumbnail image to seed the dialog and the dialog output to persist through the node's existing mask field.
+- Project conventions require mini-app-local JSX, icons from `@agent-spaces/ui`, and interaction controls inside `nodrag nopan nowheel` regions.
+- `editImage` already declares separate persisted `images` and `mask` inputs; the new action should write the existing `mask` field rather than introduce node data.
+- The existing reusable implementation appears under the `maskPaint` node path; targeted component reads are required to identify its dialog callback contract.
+- `MaskPaintDialog` is directly reusable: it accepts `inputImages`, optional persisted `initialData`, calls `onSave(urls)` after uploading exported masks, and closes through `onClose`.
+- `EditImageNode.setMaskImage` already persists the first URL into `data.params.mask`; no workflow or execution changes are needed.
+- The local `components/FileUpload.jsx` owns the exact uploaded/reference/connected thumbnail grid used by Edit Image, so an optional per-thumbnail action is the narrowest reusable UI boundary.
+- Implemented `FileUpload.onEditItem` for every rendered input thumbnail; the edit action occupies the top-right position and existing remove controls shift left when both are present.
+- Edit Image persists dialog operations in `data.editMaskPaintData` and reuses `setMaskImage` so the exported URL immediately becomes `params.mask`.
