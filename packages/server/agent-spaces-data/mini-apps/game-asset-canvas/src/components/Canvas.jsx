@@ -50,6 +50,7 @@ import useDecoratedNodes from '../hooks/useDecoratedNodes';
 import { IMAGE_TAGS, NODE_TYPES, NODE_META } from '../utils/constants';
 import { NODE_COMPONENTS, PANEL_ID_MAIN, PANEL_ID_RIGHT, dedupeTags } from '../utils/canvas-constants';
 import { genId } from '../utils/canvas-id';
+import { exportAssetLibraryZip, extractFileNameFromUrl } from '../utils/export';
 
 const EDGE_TYPES = { floating: FloatingEdge };
 const DEFAULT_EDGE_OPTIONS = {
@@ -341,6 +342,17 @@ export default function Canvas() {
 
   // —— 添加到素材库：节点产出图 / 生成记录图 共用的分组选择器 ——
   const { addAsset } = useAssetLibrary(activeId);
+
+  // 导出当前工作区素材库为 zip（按分类转文件夹）。导出时直接调 list_assets service 拿最新全量数据，
+  // 避免闭包内 categories 陈旧。onProgress 透传给工具函数，由 Toolbar 侧更新 toast 进度。
+  const handleExportAssetLibrary = useCallback(async (onProgress) => {
+    const lib = await window.AgentSpaces?.invokeService?.('list_assets', { workspaceId: activeId });
+    return exportAssetLibraryZip(lib?.categories || [], {
+      workspaceName: activeWorkspace?.name,
+      onProgress,
+    });
+  }, [activeId, activeWorkspace]);
+
   const [assetsPickerOpen, setAssetsPickerOpen] = useState(false);
   // 统一归一化为 {url, fileName?}：兼容旧调用方传 string / string[]，以及新调用方传 {url,fileName} / 该类对象数组
   const [assetsPickerImages, setAssetsPickerImages] = useState([]);
@@ -362,7 +374,9 @@ export default function Canvas() {
     for (const grp of pickedGroups) {
       for (const item of assetsPickerImages) {
         const url = item.url;
-        const fileName = item.fileName || url.split('/').pop() || 'untitled';
+        // 优先用调用方传入的语义化 fileName；否则从 url 解析真实文件名（宿主 url 真名藏在 query path= 里，
+        // 不能用 url.split('/').pop()——会拿到 local-file 等路由末段甚至带 query 的乱码）。
+        const fileName = item.fileName || extractFileNameFromUrl(url);
         const dot = fileName.lastIndexOf('.');
         const title = dot > 0 ? fileName.slice(0, dot) : fileName;
         try {
@@ -609,6 +623,7 @@ export default function Canvas() {
             onClear={crud.handleClear}
             onAutoLayout={crud.handleAutoLayout}
             onExport={crud.handleExport}
+            onExportAssetLibrary={handleExportAssetLibrary}
             onImport={crud.handleImport}
             onOpenSettings={() => setSettingsOpen(true)}
             onOpenPromptManager={() => setPromptManagerOpen(true)}

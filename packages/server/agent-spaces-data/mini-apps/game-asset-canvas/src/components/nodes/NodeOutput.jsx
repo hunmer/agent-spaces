@@ -41,9 +41,6 @@ export default function NodeOutput({
   onMouseLeave,
 }) {
   const hasImages = images.length > 0;
-  // 无产出且非运行中：不渲染（折叠栏也没必要显示）
-  if (!hasImages && status !== 'running') return null;
-
   const [expanded, setExpanded] = useState(true);
   // 耗时统计：running 时从挂载起实时累加；done/error 时定格最后一次运行耗时。
   const startTimeRef = useRef(Date.now());
@@ -57,6 +54,9 @@ export default function NodeOutput({
     }, 500);
     return () => clearInterval(timer);
   }, [status]);
+
+  // Hooks 必须在早返回之前执行，避免 status 切到 running 时改变 Hook 调用顺序。
+  if (!hasImages && status !== 'running') return null;
 
   const isRunning = status === 'running';
   const Icon = isRunning ? Loader2 : status === 'error' ? X : Check;

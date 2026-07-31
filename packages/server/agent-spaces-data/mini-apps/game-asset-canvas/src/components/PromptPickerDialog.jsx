@@ -150,9 +150,16 @@ export default function PromptPickerDialog({ open, scene = 'text', pickerMode = 
                   key={p.id}
                   className="group relative flex flex-col gap-1 rounded-md border border-border bg-background p-3 text-left transition hover:border-primary hover:bg-accent"
                 >
-                  <button
-                    type="button"
+                  <div
+                    role="button"
+                    tabIndex={0}
                     onClick={() => handlePick(p)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        handlePick(p);
+                      }
+                    }}
                     className="flex flex-1 flex-col gap-1 text-left"
                   >
                     <span className="flex items-center gap-1.5">
@@ -192,7 +199,7 @@ export default function PromptPickerDialog({ open, scene = 'text', pickerMode = 
                     <span className="line-clamp-3 font-mono text-[11px] leading-relaxed text-muted-foreground/70 group-hover:text-muted-foreground">
                       {p.prompt}
                     </span>
-                  </button>
+                  </div>
                   <div className="absolute right-1.5 top-1.5 flex gap-1 opacity-0 transition group-hover:opacity-100">
                     <button
                       type="button"

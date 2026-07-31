@@ -140,3 +140,6 @@ export {
 
 // dagre（ReactFlow 自动布局）
 export { default as dagre, graphlib } from '@dagrejs/dagre';
+
+// sonner（轻量 toast）—— mini-app 挂载 <Toaster/> 后即可用 toast.success/error/loading 等
+export { toast, Toaster } from 'sonner';

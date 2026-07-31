@@ -42,7 +42,9 @@ export function WorkflowListDialog({
   onConfigure,
 }: WorkflowListDialogProps) {
   const t = useTranslations('workflows');
-  const filters = useWorkflowFilters({ workflows });
+  // 弹窗不复用主列表页持久化的过滤状态（wf-filter:*），否则用户在 WorkflowsPage
+  // 设置的类型/标签/搜索过滤会把弹窗里的工作流全部过滤掉，表现为列表为空。
+  const filters = useWorkflowFilters({ workflows, persist: false });
 
   const selectedSet = useMemo(() => new Set(selectedWorkflowIds), [selectedWorkflowIds]);
 

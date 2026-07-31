@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import {
   Menubar,
   MenubarMenu,
@@ -8,25 +9,50 @@ import {
   MenubarSub,
   MenubarSubTrigger,
   MenubarSubContent,
+  toast,
 } from '@agent-spaces/ui';
 
 /**
  * 顶部工具栏：标题 + Menubar + 右侧插槽（工作区切换/执行队列/节点数）。
  *
  * Menubar 布局：
- *   文件▾(导出/导入) | 画布▾(自动布局/清空) | 工具▾(像素编辑器/3D导演台/在线PS/提示词管理/设置) | 选择▾(全选/反选/取消选择)
+ *   文件▾(导出[JSON/素材库]/导入) | 画布▾(自动布局/清空) | 工具▾(像素编辑器/3D导演台/在线PS/提示词管理/设置) | 选择▾(全选/反选/取消选择)
  *
- * @param {{ onClear, onAutoLayout, onExport, onImport, onOpenSettings, onOpenPromptManager,
+ * @param {{ onClear, onAutoLayout, onExport, onExportAssetLibrary, onImport, onOpenSettings, onOpenPromptManager,
  *           edgePathStyle, edgeLineStyle, edgePathStyles, edgeLineStyles, onEdgePathStyleChange, onEdgeLineStyleChange,
  *           onSelectAll, onInvertSelect, onClearSelection,
  *           count, queueSlot, workspaceSlot }} props
  */
 export default function Toolbar({
-  onClear, onAutoLayout, onExport, onImport, onOpenSettings, onOpenPromptManager,
+  onClear, onAutoLayout, onExport, onExportAssetLibrary, onImport, onOpenSettings, onOpenPromptManager,
   edgePathStyle, edgeLineStyle, edgePathStyles, edgeLineStyles, onEdgePathStyleChange, onEdgeLineStyleChange,
   onSelectAll, onInvertSelect, onClearSelection,
   count, queueSlot, workspaceSlot,
 }) {
+  // 素材库导出中状态：控制「导出素材库」菜单项禁用 + 文案切换。
+  const [exporting, setExporting] = useState(false);
+
+  // 导出素材库：toast.loading 实时反馈进度，完成/失败切 success/error。
+  // 空库/全部失败由工具函数抛错，这里 catch 后 toast.error。
+  const handleExportAssetLibrary = async () => {
+    if (exporting || !onExportAssetLibrary) return;
+    setExporting(true);
+    const toastId = toast.loading('正在准备素材库…');
+    try {
+      const stats = await onExportAssetLibrary((done, total) => {
+        toast.loading(`导出素材库中… (${done}/${total})`, { id: toastId });
+      });
+      if (stats.failed > 0) {
+        toast.success(`导出完成：成功 ${stats.ok} 张，失败 ${stats.failed} 张`, { id: toastId });
+      } else {
+        toast.success(`导出完成：共 ${stats.ok} 张`, { id: toastId });
+      }
+    } catch (e) {
+      toast.error(`导出素材库失败：${e?.message || e}`, { id: toastId });
+    } finally {
+      setExporting(false);
+    }
+  };
   // 像素编辑器：新窗口打开本地 Pixelorama web 版（与节点内编辑器同源，独立全屏编辑，支持像素绘制与动画帧）。
   // 用 window.location.origin 拼，兼容 dev(3000)/dist(3100)。
   const openPixelEditor = () => {
@@ -51,11 +77,19 @@ export default function Toolbar({
       <div className="mx-1 h-5 w-px bg-border" />
 
       <Menubar>
-        {/* 文件▾：导出 / 导入 */}
+        {/* 文件▾：导出[JSON/素材库] / 导入 */}
         <MenubarMenu>
           <MenubarTrigger>文件</MenubarTrigger>
           <MenubarContent>
-            <MenubarItem onClick={onExport}>导出</MenubarItem>
+            <MenubarSub>
+              <MenubarSubTrigger>导出…</MenubarSubTrigger>
+              <MenubarSubContent>
+                <MenubarItem onClick={onExport}>导出 JSON</MenubarItem>
+                <MenubarItem disabled={exporting} onClick={handleExportAssetLibrary}>
+                  {exporting ? '导出素材库中…' : '导出素材库'}
+                </MenubarItem>
+              </MenubarSubContent>
+            </MenubarSub>
             <MenubarItem onClick={onImport}>导入</MenubarItem>
           </MenubarContent>
         </MenubarMenu>

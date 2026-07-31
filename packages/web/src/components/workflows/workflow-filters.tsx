@@ -20,6 +20,14 @@ export interface UseWorkflowFiltersOptions {
   initialSortField?: WorkflowSortField;
   initialSortOrder?: WorkflowSortOrder;
   initialTypeFilter?: WorkflowTypeFilter;
+  /**
+   * 是否把过滤状态持久化到 localStorage。
+   * - 主列表页（WorkflowsPage）保持默认 true，跨刷新保留用户筛选。
+   * - 临时弹窗（WorkflowListDialog）传 false，避免与主列表页共享同一份
+   *   localStorage（key 固定为 wf-filter:*），导致主页设置的类型/标签/搜索
+   *   过滤把弹窗里的工作流全部过滤掉，出现“列表为空”。
+   */
+  persist?: boolean;
 }
 
 export interface WorkflowFiltersState {
@@ -48,13 +56,17 @@ export function useWorkflowFilters({
   initialSortField = 'createdAt',
   initialSortOrder = 'desc',
   initialTypeFilter = 'normal',
+  persist = true,
 }: UseWorkflowFiltersOptions = {}): WorkflowFiltersState {
-  const [search, setSearch] = usePersistentState('wf-filter:search', '');
-  const [selectedTags, setSelectedTags] = usePersistentState<string[]>('wf-filter:tags', []);
-  const [scheduleFilter, setScheduleFilter] = usePersistentState<WorkflowScheduleFilter>('wf-filter:schedule', 'all');
-  const [typeFilter, setTypeFilter] = usePersistentState<WorkflowTypeFilter>('wf-filter:type', initialTypeFilter);
-  const [sortField, setSortField] = usePersistentState<WorkflowSortField>('wf-filter:sortField', initialSortField);
-  const [sortOrder, setSortOrder] = usePersistentState<WorkflowSortOrder>('wf-filter:sortOrder', initialSortOrder);
+  // persist=false 时 key 传 undefined，usePersistentState 退化为纯 useState，
+  // 既不读也不写 localStorage，彻底隔离弹窗与主列表页的过滤状态。
+  const key = persist ? (k: string) => k : () => undefined;
+  const [search, setSearch] = usePersistentState(key('wf-filter:search'), '');
+  const [selectedTags, setSelectedTags] = usePersistentState<string[]>(key('wf-filter:tags'), []);
+  const [scheduleFilter, setScheduleFilter] = usePersistentState<WorkflowScheduleFilter>(key('wf-filter:schedule'), 'all');
+  const [typeFilter, setTypeFilter] = usePersistentState<WorkflowTypeFilter>(key('wf-filter:type'), initialTypeFilter);
+  const [sortField, setSortField] = usePersistentState<WorkflowSortField>(key('wf-filter:sortField'), initialSortField);
+  const [sortOrder, setSortOrder] = usePersistentState<WorkflowSortOrder>(key('wf-filter:sortOrder'), initialSortOrder);
 
   const allTags = useMemo(() => {
     const tagSet = new Set<string>();
