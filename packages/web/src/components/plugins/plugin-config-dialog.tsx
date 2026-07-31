@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { pluginApi, pluginConfigSchemeApi, workflowPluginSchemeApi } from '@/lib/workflow-plugin-api';
+import { loadPluginConfigValues } from './plugin-config-loader';
 
 export function PluginConfigDialog({
   open,
@@ -45,17 +46,17 @@ export function PluginConfigDialog({
       try {
         setValues(loadValues
           ? await loadValues()
-          : schemeName
-            ? await pluginConfigSchemeApi.read(pluginId, schemeName)
-            : await pluginApi.getConfig(pluginId));
-      } catch {
-        if (schemeName && legacyWorkflowId) {
-          const legacyValues = await workflowPluginSchemeApi.read(legacyWorkflowId, pluginId, schemeName);
-          await pluginConfigSchemeApi.save(pluginId, schemeName, legacyValues);
-          setValues(legacyValues);
-        } else {
-          setValues(await pluginApi.getConfig(pluginId));
-        }
+          : await loadPluginConfigValues({
+            schemeName,
+            legacyWorkflowId,
+            readScheme: () => pluginConfigSchemeApi.read(pluginId, schemeName!),
+            readLegacyScheme: () => workflowPluginSchemeApi.read(legacyWorkflowId!, pluginId, schemeName!),
+            saveScheme: values => pluginConfigSchemeApi.save(pluginId, schemeName!, values),
+            readDefault: () => pluginApi.getConfig(pluginId),
+          }));
+      } catch (err) {
+        setValues({});
+        setError(err instanceof Error ? err.message : '加载配置失败');
       }
     };
     void load();

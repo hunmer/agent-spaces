@@ -1276,6 +1276,7 @@ export function MiniAppPreview({ type, sourceCode, error, onError, projectId, pr
   const [pluginConfigSchemes, setPluginConfigSchemes] = useState<Record<string, string>>({});
   const [workflowConfigsOpen, setWorkflowConfigsOpen] = useState(false);
   const [configuredWorkflows, setConfiguredWorkflows] = useState<Workflow[]>([]);
+  const [allConfiguredWorkflows, setAllConfiguredWorkflows] = useState<Workflow[]>([]);
   const [configWorkflow, setConfigWorkflow] = useState<Workflow | null>(null);
   const [newSchemePluginId, setNewSchemePluginId] = useState<string | null>(null);
   const [newSchemeName, setNewSchemeName] = useState('');
@@ -1384,6 +1385,9 @@ export function MiniAppPreview({ type, sourceCode, error, onError, projectId, pr
     ]);
     const configuredIds = new Set(configs.map(config => config.workflowId));
     setConfiguredWorkflows(workflows.filter(workflow => configuredIds.has(workflow.id)));
+    // 弹窗需要全集，便于用户切换 normal/workspace 时查看所有工作流；
+    // “当前工作流”类型通过 configuredIds 收窄到已配置子集。
+    setAllConfiguredWorkflows(workflows);
     setWorkflowConfigsOpen(true);
   }, [projectId]);
 
@@ -1688,7 +1692,8 @@ export function MiniAppPreview({ type, sourceCode, error, onError, projectId, pr
       )}
       <WorkflowListDialog
         open={workflowConfigsOpen}
-        workflows={configuredWorkflows}
+        workflows={allConfiguredWorkflows}
+        currentWorkflowIds={new Set(configuredWorkflows.map(w => w.id))}
         onSelect={() => {}}
         onCreate={() => {}}
         onClose={() => setWorkflowConfigsOpen(false)}

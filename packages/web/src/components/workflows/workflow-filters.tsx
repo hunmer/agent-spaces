@@ -13,7 +13,7 @@ import { usePersistentState } from '@/hooks/use-persistent-state';
 export type WorkflowSortField = 'createdAt' | 'updatedAt' | 'lastRunAt' | 'lastOpenedAt';
 export type WorkflowSortOrder = 'asc' | 'desc';
 export type WorkflowScheduleFilter = 'all' | 'scheduled' | 'unscheduled';
-export type WorkflowTypeFilter = 'normal' | 'workspace';
+export type WorkflowTypeFilter = 'normal' | 'workspace' | 'current';
 
 export interface UseWorkflowFiltersOptions {
   workflows?: WorkflowTemplate[];
@@ -28,6 +28,12 @@ export interface UseWorkflowFiltersOptions {
    *   过滤把弹窗里的工作流全部过滤掉，出现“列表为空”。
    */
   persist?: boolean;
+  /**
+   * “当前工作流”类型过滤（typeFilter === 'current'）依赖的 id 集合。
+   * 仅在弹窗等需要收窄到“已配置/已选中”子集的场景传入；主列表页不传，
+   * 也不会显示“当前”选项。
+   */
+  currentWorkflowIds?: Set<string>;
 }
 
 export interface WorkflowFiltersState {
@@ -57,6 +63,7 @@ export function useWorkflowFilters({
   initialSortOrder = 'desc',
   initialTypeFilter = 'normal',
   persist = true,
+  currentWorkflowIds,
 }: UseWorkflowFiltersOptions = {}): WorkflowFiltersState {
   // persist=false 时 key 传 undefined，usePersistentState 退化为纯 useState，
   // 既不读也不写 localStorage，彻底隔离弹窗与主列表页的过滤状态。
@@ -78,18 +85,22 @@ export function useWorkflowFilters({
     return workflows.filter(wf => {
       const q = search.toLowerCase();
       const matchesSearch = !search
-        || wf.name.toLowerCase().includes(q)
-        || wf.description?.toLowerCase().includes(q)
-        || toPinyinSearchKey(wf.name).includes(q)
-        || toPinyinSearchKey(wf.description ?? '').includes(q);
+      || wf.name.toLowerCase().includes(q)
+      || wf.description?.toLowerCase().includes(q)
+      || toPinyinSearchKey(wf.name).includes(q)
+      || toPinyinSearchKey(wf.description ?? '').includes(q);
       const matchesTags = selectedTags.length === 0 || selectedTags.some(tag => wf.tags?.includes(tag));
       const hasEnabledCronTrigger = wf.triggers?.some(trigger => trigger.type === 'cron' && trigger.enabled) || false;
       const matchesSchedule =
         scheduleFilter === 'all'
         || (scheduleFilter === 'scheduled' && hasEnabledCronTrigger)
         || (scheduleFilter === 'unscheduled' && !hasEnabledCronTrigger);
-      // 类型过滤：未声明 type 视为 normal
-      const matchesType = (wf.type ?? 'normal') === typeFilter;
+      // 类型过滤：
+      // - 'current' 只保留 currentWorkflowIds 中的工作流（弹窗“当前工作流”场景）；
+      // - 否则按工作流自身 type 匹配（未声明 type 视为 normal）。
+      const matchesType = typeFilter === 'current'
+        ? (currentWorkflowIds?.has(wf.id) ?? false)
+        : (wf.type ?? 'normal') === typeFilter;
       return matchesSearch && matchesTags && matchesSchedule && matchesType;
     }).sort((a, b) => {
       // lastRunAt is undefined for workflows that have never run — treat as 0 (oldest).
@@ -97,7 +108,7 @@ export function useWorkflowFilters({
       const bv = b[sortField] ?? 0;
       return sortOrder === 'asc' ? av - bv : bv - av;
     });
-  }, [workflows, search, selectedTags, scheduleFilter, typeFilter, sortField, sortOrder]);
+  }, [workflows, search, selectedTags, scheduleFilter, typeFilter, sortField, sortOrder, currentWorkflowIds]);
 
   return {
     search, setSearch,
@@ -149,12 +160,14 @@ function FilterPopover({
 export interface WorkflowFilterToolbarProps {
   state: WorkflowFiltersState;
   className?: string;
-  /** 是否显示类型过滤（normal/workspace）。默认 true。 */
+  /** 是否显示类型过滤（normal/workspace/当前）。默认 true。 */
   showTypeFilter?: boolean;
   /** 是否显示定时过滤。默认 true。 */
   showScheduleFilter?: boolean;
   /** 是否显示标签过滤。默认 true（无标签时自动隐藏）。 */
   showTagsFilter?: boolean;
+  /** 是否在类型过滤中显示“当前工作流”选项。默认 false（仅弹窗需要）。 */
+  showCurrentFilter?: boolean;
 }
 
 /**
@@ -166,6 +179,7 @@ export function WorkflowFilterToolbar({
   showTypeFilter = true,
   showScheduleFilter = true,
   showTagsFilter = true,
+  showCurrentFilter = false,
 }: WorkflowFilterToolbarProps) {
   const t = useTranslations('workflows');
   const {
@@ -178,6 +192,12 @@ export function WorkflowFilterToolbar({
     allTags,
   } = state;
 
+  const typeLabel = typeFilter === 'workspace'
+    ? t('page.typeWorkspace')
+    : typeFilter === 'current'
+      ? t('page.typeCurrent')
+      : t('page.typeNormal');
+
   return (
     <div className={`flex items-center gap-2 flex-wrap ${className ?? ''}`}>
       {showTypeFilter ? (
@@ -185,7 +205,7 @@ export function WorkflowFilterToolbar({
           trigger={
             <>
               <Filter className="h-3.5 w-3.5" />
-              {typeFilter === 'workspace' ? t('page.typeWorkspace') : t('page.typeNormal')}
+              {typeLabel}
             </>
           }
         >
@@ -193,6 +213,7 @@ export function WorkflowFilterToolbar({
             {([
               ['normal', t('page.typeNormal')],
               ['workspace', t('page.typeWorkspace')],
+              ...(showCurrentFilter ? [['current', t('page.typeCurrent')] as const] : []),
             ] as const).map(([value, label]) => (
               <button
                 key={value}

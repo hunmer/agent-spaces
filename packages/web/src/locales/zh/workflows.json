@@ -25,6 +25,7 @@
     "scheduleUnscheduled": "未定时运行",
     "typeNormal": "普通工作流",
     "typeWorkspace": "工作空间工作流",
+    "typeCurrent": "当前工作流",
     "selectedCount": "已选 {count} 项",
     "exportSelected": "导出选中",
     "deleteSelected": "删除选中"

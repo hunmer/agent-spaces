@@ -25,6 +25,7 @@
     "scheduleUnscheduled": "Not scheduled",
     "typeNormal": "Normal",
     "typeWorkspace": "Workspace",
+    "typeCurrent": "Current",
     "selectedCount": "{count} selected",
     "exportSelected": "Export",
     "deleteSelected": "Delete"

@@ -26,6 +26,12 @@ interface WorkflowListDialogProps {
   showCreate?: boolean;
   selectionDisabled?: boolean;
   onConfigure?: (workflow: WorkflowTemplate) => void;
+  /**
+   * “当前工作流”集合：传入后类型过滤会多出“当前工作流”选项，且默认选中它，
+   * 只展示该集合中的工作流（如 mini-app 已配置的工作流）。
+   * 不传则与主列表页行为一致，只保留 normal/workspace。
+   */
+  currentWorkflowIds?: Set<string>;
 }
 
 export function WorkflowListDialog({
@@ -40,11 +46,20 @@ export function WorkflowListDialog({
   showCreate = true,
   selectionDisabled = false,
   onConfigure,
+  currentWorkflowIds,
 }: WorkflowListDialogProps) {
   const t = useTranslations('workflows');
   // 弹窗不复用主列表页持久化的过滤状态（wf-filter:*），否则用户在 WorkflowsPage
   // 设置的类型/标签/搜索过滤会把弹窗里的工作流全部过滤掉，表现为列表为空。
-  const filters = useWorkflowFilters({ workflows, persist: false });
+  // 只要调用方传入了 currentWorkflowIds（哪怕空集合），就把“当前工作流”作为
+  // 常驻类型项并默认选中；空集合时该视图为空，切 normal/workspace 仍可看全部。
+  const hasCurrent = currentWorkflowIds !== undefined;
+  const filters = useWorkflowFilters({
+    workflows,
+    persist: false,
+    initialTypeFilter: hasCurrent ? 'current' : 'normal',
+    currentWorkflowIds,
+  });
 
   const selectedSet = useMemo(() => new Set(selectedWorkflowIds), [selectedWorkflowIds]);
 
@@ -65,6 +80,7 @@ export function WorkflowListDialog({
         <WorkflowFilterToolbar
           state={filters}
           className="gap-1.5"
+          showCurrentFilter={hasCurrent}
         />
         <div className="max-h-[400px] space-y-1 overflow-y-auto">
           {filters.filtered.length === 0 ? (
