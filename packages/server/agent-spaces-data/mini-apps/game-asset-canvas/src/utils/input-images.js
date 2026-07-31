@@ -18,7 +18,7 @@
  * @param {Array} edges
  * @returns {Map<string, {images: string[], isDisplay: boolean}>} nodeId -> 派生输入
  */
-import { NODE_TYPES, isImageProcessNodeType } from './constants';
+import { NODE_TYPES, isImageProcessNodeType } from './constants.js';
 
 export function computeInputImages(nodes, edges) {
   const isReceiverType = (type) => type === NODE_TYPES.editImage
@@ -48,10 +48,10 @@ export function computeInputImages(nodes, edges) {
     const sd = node.data || {};
     if (sd.output?.images?.length) return sd.output.images;
     if (!PASSTHROUGH_TYPES.has(node.type)) return [];
-    const own = sd.images || [];
     const derived = derivedByNode.get(node.id);
-    // 自身有手动图优先用；无手动图时才透传上游派生图（避免手动上传被连线图覆盖）
-    return own.length ? own : (derived || []);
+    // 有连入边时 derived 是当前上游真值（包括空数组），必须覆盖历史/手动残留。
+    if (derived !== undefined) return derived;
+    return sd.images || [];
   };
 
   const incomingByTarget = new Map();
@@ -111,9 +111,13 @@ export function computeInputVideos(nodes, edges) {
       : (sd.output?.video ? [sd.output.video] : []);
     if (outVideos.length) return outVideos;
     if (!VIDEO_PASSTHROUGH_TYPES.has(node.type)) return [];
-    const own = Array.isArray(sd.videos) ? sd.videos : [];
     const derived = derivedByNode.get(node.id);
-    return own.length ? own : (derived || []);
+    const own = Array.isArray(sd.videos) ? sd.videos : [];
+    if (derived === undefined) return own;
+    // videoEditor 的节点语义是保留用户上传并合并上游；videoDisplay 则完全透传上游。
+    return node.type === NODE_TYPES.videoEditor
+      ? Array.from(new Set([...own, ...derived]))
+      : derived;
   };
 
   const incomingByTarget = new Map();

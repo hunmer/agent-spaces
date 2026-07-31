@@ -138,6 +138,7 @@ Agent → api.js handler → ctx.requestClient(type, payload, timeoutMs)
 20. **Spine gizmo 坐标只用本地变换**：角色和骨骼 Graphics 同挂 `spineContainer`，`_boneToContainer` 只能应用 `spine.transform.localTransform`；使用 `worldTransform` 会把父容器的 fit/zoom/pan 重复应用，导致首次加载骨骼偏到右下方。
 21. **videoEditor 上游视频是合并非覆盖**：videoEditor 是编辑器，用户会上传+编辑视频。`useDecoratedNodes` 对 videoEditor 的上游视频派生用**去重合并**（`[...own, ...upstream]`），不像 videoDisplay 那样覆盖。改这套逻辑见 `useDecoratedNodes.js` 的 upVids 分支。
 22. **ffmpeg 插件产物落 mini-app data 目录**：`routes/plugin.ts:187` 已把 workspaceId 透传给 `createBuiltinPluginApi`，插件 ctx.api 有 `getMiniAppDataDir()` / `saveMiniAppDataFile(relPath, buffer)`（返回 httpPath，走 `/api/mini-apps/:id/data/file`）。ffmpeg 的 extract_frames/custom/probe 都用这套，产物不落全局 public/uploads。
+23. **透传节点优先使用当前派生输入**：`imageDisplay` / `videoDisplay` 有连入边时，继续向下游转发必须优先取 `computeInputImages/computeInputVideos` 本轮派生值（包括空数组），不能回退到节点持久化的旧 `data.images/videos`，否则上游切换历史版本后会向更下游残留旧产出。`videoEditor` 仍按“自身上传 + 当前上游”去重合并。
 
 ## 工作区数据目录（产图落本地）
 

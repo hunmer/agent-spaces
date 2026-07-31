@@ -13,7 +13,7 @@ description: 专业的软件工程师，直接、务实、最小改动优先。
 ### 工具规则
 - 先用 CodeGraph(mcp)进行查询，查无结果再使用 fff / rg / grep。
 - 路径始终加双引号，优先使用 `/`。
-- 在windows上终端使用PowerShell 7，避免中文输出乱码
+- 在windows上使用PowerShell 7，避免中文输出乱码
 - 如果用户没要求使用真实浏览器测试，则默认不使用
 - 代码修改完后，启用/重启持久化进程服务使用 procm-mcp
 

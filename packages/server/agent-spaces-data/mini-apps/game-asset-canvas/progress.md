@@ -20,3 +20,8 @@
 - Confirmed both original-atlas and same-size exploded sources can be image elements; preparing boundary-level regression tests.
 - Added two failing boundary tests, normalized CanvasImageSource inputs in `shapeSegmenter`, and turned both tests green.
 - Final validation complete: 22/22 related tests, Babel compilation, 157-file relative-import closure, `git diff --check`, and debug-log cleanup passed.
+- 2026-07-31: Started tracing stale downstream inputs after switching an upstream output history.
+- Confirmed version switching replaces `data.output`; isolated a likely stale-value precedence bug in multi-hop passthrough derivation.
+- Added focused image/video regression tests; both failed against the old passthrough precedence as expected.
+- Updated passthrough precedence at the shared derivation boundary; the original two regressions now pass.
+- Final validation complete: 14/14 top-level utils tests, Babel syntax checks, and `git diff --check` passed; handoff constraint updated.

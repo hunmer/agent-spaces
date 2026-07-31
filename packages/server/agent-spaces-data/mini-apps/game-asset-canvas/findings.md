@@ -32,3 +32,13 @@
 - The smallest complete boundary is `shapeSegmenter`: normalize any CanvasImageSource to a readable canvas before calling `getImageData`.
 - Focused tests reproduced both exact TypeErrors before the fix and pass after normalizing at the shared boundary.
 - Root cause was hypotheses 1 and 2; generated-image caching and cross-realm detection were not involved in the reported failure.
+
+## Upstream Output History Synchronization
+
+- Handoff identifies `computeInputImages(nodes, edges)` and `computeInputVideos(nodes, edges)` as the shared upstream-to-downstream derivation boundary.
+- Existing unrelated user changes are limited to `configs/panel-layout.json` and `manifest.json`; they must remain untouched.
+- `Canvas.handleSwitchVersion` replaces the selected upstream node's `data.output` with the version snapshot through `updateNodeData`, so a node-state change should invalidate `computeInputImages`/`computeInputVideos` memos.
+- In multi-hop image/video chains, passthrough sources currently prefer persisted `data.images`/`data.videos` over the fresh value in `derivedByNode`; persisted values can therefore retain a previous upstream version and override the newly derived version for later downstream nodes.
+- Receiver components read `data.images` from decorated props; their persistent `upstreamOrder` is only an ordering hint and `orderUpstream` filters stale URLs against the current raw list.
+- Focused red tests reproduced the defect for both image and video multi-hop chains: downstream received `old.png`/`old.mp4` after the source output had switched to `new.png`/`new.mp4`.
+- Fix: passthrough nodes use `derivedByNode` whenever the node has a current derived value, including `[]`; only unconnected passthrough nodes fall back to persisted media. `videoEditor` merges its own videos with the current derived videos.

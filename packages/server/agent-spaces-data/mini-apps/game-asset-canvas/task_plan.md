@@ -65,3 +65,26 @@ Fix `bg_components` reskin segmentation when the original atlas is loaded as an 
 
 ## Errors Encountered
 None.
+
+---
+
+# Upstream Output History Synchronization
+
+## Goal
+Switching an upstream node's output history immediately replaces every connected downstream input without retaining the previous derived input.
+
+## Phases
+- [x] Trace output-history selection and downstream input derivation.
+- [x] Add a focused regression test reproducing stale downstream input.
+- [x] Implement the smallest fix at the shared synchronization boundary.
+- [x] Run focused/static validation and review the diff.
+
+## Constraints
+- Preserve unrelated worktree changes.
+- Do not use a real browser.
+
+## Errors Encountered
+- Recursive AGENTS.md discovery timed out after traversing node_modules; reran targeted reads for the known root instructions and handoff.
+- A combined search script failed in the tool orchestration layer because of regex string escaping; split it into plain PowerShell commands.
+- A combined read returned exit code 1 because one optional test search had no matches; replaced it with deterministic file reads.
+- The first Node import probe had malformed orchestration quoting and did not run; the corrected probe confirmed Node 22 cannot resolve `input-images.js`'s extensionless `./constants` import, even with the legacy resolution flag.
