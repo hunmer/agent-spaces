@@ -97,7 +97,7 @@ export default function TextToImageNode({ id, data, selected }) {
   }, [onGenerate, id, params]);
 
   return (
-    <NodeShell id={id} nodeType={NODE_TYPES.textToImage} data={data} selected={selected} sourceHandle>
+    <NodeShell id={id} nodeType={NODE_TYPES.textToImage} data={data} selected={selected} targetHandle sourceHandle>
       <PickedPromptBadge
         pickedPrompt={params.pickedPrompt}
         onClear={() => set({ pickedPrompt: undefined })}

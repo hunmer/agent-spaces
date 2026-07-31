@@ -105,8 +105,29 @@ export function computeInputImages(nodes, edges) {
 }
 
 /**
+ * 把富文本（tiptap/HTML）产物转成纯文本：剥离 HTML 标签、块级元素补换行、解码实体、合并空白。
+ * 兼容普通文本（无标签时原样返回）。运行在浏览器侧，用 DOMParser 解析最稳。
+ */
+function htmlToPlainText(html) {
+  if (!html) return '';
+  // 快速判断：完全不含 < > 视为纯文本，直接返回（避免 DOMParser 开销）
+  if (!/[<>]/.test(html)) return html;
+  if (typeof DOMParser === 'undefined') {
+    // SSR / 测试环境兜底：粗暴去标签 + 实体
+    return html.replace(/<[^>]+>/g, '\n').replace(/&nbsp;/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
+  }
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  // 块级元素前补换行，保证段落/标题边界
+  const BLOCK = 'P,DIV,H1,H2,H3,H4,H5,H6,LI,BR,BLOCKQUOTE,PRE,TR';
+  doc.querySelectorAll(BLOCK.split(',').join(',')).forEach((el) => el.prepend('\n'));
+  const text = doc.body.textContent || '';
+  return text.replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+}
+
+/**
  * 把文本产物按 edge.data.inputTarget 派生到目标节点参数。
  * 返回值与持久化 params 分离，避免引用关系被表单更新复制进节点数据。
+ * 注意：上游文本节点（MarkdownEditor）产出的是 HTML，注入下游提示词前必须纯文本化（htmlToPlainText）。
  */
 export function computeInputTexts(nodes, edges) {
   const byId = new Map(nodes.map((node) => [node.id, node]));
@@ -119,7 +140,7 @@ export function computeInputTexts(nodes, edges) {
     if (!valuesByTarget.has(edge.target)) valuesByTarget.set(edge.target, {});
     const targetValues = valuesByTarget.get(edge.target);
     if (!targetValues[edge.data.inputTarget]) targetValues[edge.data.inputTarget] = [];
-    targetValues[edge.data.inputTarget].push(sourceText);
+    targetValues[edge.data.inputTarget].push(htmlToPlainText(sourceText));
   }
 
   return new Map(Array.from(valuesByTarget, ([nodeId, fields]) => [

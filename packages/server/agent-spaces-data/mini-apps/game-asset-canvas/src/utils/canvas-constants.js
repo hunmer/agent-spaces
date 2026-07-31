@@ -126,7 +126,7 @@ export const ADD_NODE_ITEMS = [
 
 // 各节点默认尺寸（NodeResizer 需要节点有显式 width/height）
 export const DEFAULT_SIZE = {
-  [NODE_TYPES.text]: { w: 720, h: 680 },
+  [NODE_TYPES.text]: { w: 420, h: 360 },
   [NODE_TYPES.note]: { w: 200, h: 120 },
   [NODE_TYPES.imageDisplay]: { w: 260, h: 240 },
   [NODE_TYPES.pixelEditor]: { w: 300, h: 260 },

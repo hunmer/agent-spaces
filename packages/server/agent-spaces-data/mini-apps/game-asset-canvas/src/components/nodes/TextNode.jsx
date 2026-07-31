@@ -13,8 +13,9 @@ export default function TextNode({ id, data, selected }) {
 
   return (
     <NodeShell id={id} nodeType={NODE_TYPES.text} data={data} selected={selected} sourceHandle>
-      <div className="nodrag nopan nowheel min-w-0 overflow-hidden">
-        <MarkdownEditor contentMarkdown={text} onChange={handleChange} />
+      {/* h-full 让 MarkdownEditor 撑满 NodeShell 内容区（高度由节点尺寸驱动） */}
+      <div className="nodrag nopan nowheel min-w-0 flex-1 overflow-hidden p-1">
+        <MarkdownEditor contentMarkdown={text} onChange={handleChange} height="100%" />
       </div>
     </NodeShell>
   );
