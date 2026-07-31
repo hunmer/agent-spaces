@@ -181,6 +181,7 @@
     "inputPlaceholder": "Message assistant…",
     "empty": "No messages",
     "loadError": "Failed to load",
+    "toolRerunFailed": "Failed to run the tool again",
     "settings": "Agent settings",
     "settingsTitle": "Edit Agent",
     "loading": "Loading…",

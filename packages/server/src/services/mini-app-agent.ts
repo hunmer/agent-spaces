@@ -395,52 +395,24 @@ export interface MiniAppAgentRunOutput {
   agentMessage: miniAppStore.MiniAppChatMessage;
 }
 
-/**
- * 自包含执行路径：读 agents.json → 解析凭据 → 组装 functionTools（plugin + api.js）
- * → 注入路由/方法清单/systemPrompt → langchain execute → 落盘 user+agent 消息。
- * 不依赖 workspace。
- */
-export async function runMiniAppAgent(input: MiniAppAgentRunInput): Promise<MiniAppAgentRunOutput> {
-  const { projectId, agentId, sessionId, message, route, onEvent, stopSignal } = input;
+type MiniAppAgentEntry = {
+  id: string; name: string; avatar?: string; agentId?: string;
+  runtimeKind?: string;
+  modelProvider?: string; providerId?: string; modelId?: string; apiKey?: string; apiBase?: string;
+  systemPrompt?: string; temperature?: number; maxTokens?: number;
+  tools?: { api?: boolean; plugin?: boolean };
+};
 
-  const project = miniAppStore.getProject(projectId);
-  if (!project) throw new Error(`Project not found: ${projectId}`);
-  if (!project.enableAgents) throw new Error('Agents not enabled for this project');
-
-  const configs = miniAppStore.readAgentsConfig(projectId);
-  if (!configs) throw new Error('agents.json not found');
-  const entry = configs.find((c: any) => c && c.id === agentId) as
-    | {
-        id: string; name: string; avatar?: string; agentId?: string;
-        runtimeKind?: string;
-        modelProvider?: string; providerId?: string; modelId?: string; apiKey?: string; apiBase?: string;
-        systemPrompt?: string; temperature?: number; maxTokens?: number;
-        tools?: { api?: boolean; plugin?: boolean };
-      }
-    | undefined;
-  if (!entry) throw new Error(`Agent not found in agents.json: ${agentId}`);
-
-  const creds = resolveAgentCredentials(entry, listPresets('') as any);
-
-  const runtimeConfig: AgentRuntimeConfig = {
-    kind: creds.runtimeKind,
-    ...(creds.modelProvider ? { provider: creds.modelProvider as AgentRuntimeConfig['provider'] } : {}),
-    ...(creds.modelId ? { model: creds.modelId } : {}),
-    ...(creds.apiKey ? { apiKey: creds.apiKey } : {}),
-    ...(creds.apiBase ? { baseURL: creds.apiBase } : {}),
-    ...(typeof creds.maxTokens === 'number' ? { maxTokens: creds.maxTokens } : {}),
-  };
-  const runtime = createAgentRuntime(runtimeConfig);
-  const onAbort = () => runtime.stop();
-  if (stopSignal) stopSignal.addEventListener('abort', onAbort, { once: true });
-
-  try {
-  // 组装 functionTools
-  const functionTools: AgentFunctionTool[] = [];
-  const sections: string[] = [];
+function createMiniAppAgentFunctionTools(
+  projectId: string,
+  project: NonNullable<ReturnType<typeof miniAppStore.getProject>>,
+  entry: MiniAppAgentEntry,
+  stopSignal?: AbortSignal,
+): { functionTools: AgentFunctionTool[]; apiMethodNames: string[]; hasAgentFilePermission: boolean } {
+  const functionTools: AgentFunctionTool[] = [createAskUserQuestionsTool(projectId, stopSignal)];
   const toolsCfg = entry.tools ?? { api: true, plugin: true };
-  functionTools.push(createAskUserQuestionsTool(projectId, stopSignal));
-  const hasAgentFilePermission = miniAppStore.getProject(projectId)?.agentPermissions?.includes('Files') === true;
+  const hasAgentFilePermission = project.agentPermissions?.includes('Files') === true;
+
   if (toolsCfg.plugin) {
     functionTools.push(...createMiniAppFunctionTools({
       enabledPlugins: project.enabledPlugins ?? [],
@@ -463,6 +435,7 @@ export async function runMiniAppAgent(input: MiniAppAgentRunInput): Promise<Mini
       } : null,
     ));
   }
+
   let apiMethodNames: string[] = [];
   if (toolsCfg.api) {
     const apiMethods = loadApiJs(projectId);
@@ -470,10 +443,75 @@ export async function runMiniAppAgent(input: MiniAppAgentRunInput): Promise<Mini
     apiMethodNames = Object.keys(apiMethods);
     functionTools.push(createMiniAppToolsCatalogTool(projectId));
     if (apiMethodNames.length) {
-      const ctxProvider = () => makeApiCtx(projectId);
-      functionTools.push(...buildApiFunctionTools(apiMethods, ctxProvider, apiToolSpecs));
+      functionTools.push(...buildApiFunctionTools(apiMethods, () => makeApiCtx(projectId), apiToolSpecs));
     }
   }
+
+  return { functionTools, apiMethodNames, hasAgentFilePermission };
+}
+
+export async function rerunMiniAppAgentTool(
+  projectId: string,
+  agentId: string,
+  toolName: string,
+  input: unknown,
+): Promise<unknown> {
+  const project = miniAppStore.getProject(projectId);
+  if (!project) throw new Error(`Project not found: ${projectId}`);
+  if (!project.enableAgents) throw new Error('Agents not enabled for this project');
+
+  const entry = miniAppStore.readAgentsConfig(projectId)
+    ?.find((config: any) => config && config.id === agentId) as MiniAppAgentEntry | undefined;
+  if (!entry) throw new Error(`Agent not found in agents.json: ${agentId}`);
+  if (toolName === 'askUserQuestions') throw new Error('Interactive questions cannot be rerun directly');
+
+  const { functionTools } = createMiniAppAgentFunctionTools(projectId, project, entry);
+  const tool = functionTools.find((candidate) => candidate.name === toolName);
+  if (!tool) throw new Error(`Tool not found or disabled: ${toolName}`);
+  return tool.execute(input);
+}
+
+/**
+ * 自包含执行路径：读 agents.json → 解析凭据 → 组装 functionTools（plugin + api.js）
+ * → 注入路由/方法清单/systemPrompt → langchain execute → 落盘 user+agent 消息。
+ * 不依赖 workspace。
+ */
+export async function runMiniAppAgent(input: MiniAppAgentRunInput): Promise<MiniAppAgentRunOutput> {
+  const { projectId, agentId, sessionId, message, route, onEvent, stopSignal } = input;
+
+  const project = miniAppStore.getProject(projectId);
+  if (!project) throw new Error(`Project not found: ${projectId}`);
+  if (!project.enableAgents) throw new Error('Agents not enabled for this project');
+
+  const configs = miniAppStore.readAgentsConfig(projectId);
+  if (!configs) throw new Error('agents.json not found');
+  const entry = configs.find((c: any) => c && c.id === agentId) as MiniAppAgentEntry | undefined;
+  if (!entry) throw new Error(`Agent not found in agents.json: ${agentId}`);
+
+  const creds = resolveAgentCredentials(entry, listPresets('') as any);
+
+  const runtimeConfig: AgentRuntimeConfig = {
+    kind: creds.runtimeKind,
+    ...(creds.modelProvider ? { provider: creds.modelProvider as AgentRuntimeConfig['provider'] } : {}),
+    ...(creds.modelId ? { model: creds.modelId } : {}),
+    ...(creds.apiKey ? { apiKey: creds.apiKey } : {}),
+    ...(creds.apiBase ? { baseURL: creds.apiBase } : {}),
+    ...(typeof creds.maxTokens === 'number' ? { maxTokens: creds.maxTokens } : {}),
+  };
+  const runtime = createAgentRuntime(runtimeConfig);
+  const onAbort = () => runtime.stop();
+  if (stopSignal) stopSignal.addEventListener('abort', onAbort, { once: true });
+
+  try {
+  // 组装 functionTools
+  const sections: string[] = [];
+  const toolsCfg = entry.tools ?? { api: true, plugin: true };
+  const { functionTools, apiMethodNames, hasAgentFilePermission } = createMiniAppAgentFunctionTools(
+    projectId,
+    project,
+    entry,
+    stopSignal,
+  );
 
   // 拼 systemPrompt
   if (creds.systemPrompt) sections.push(creds.systemPrompt);

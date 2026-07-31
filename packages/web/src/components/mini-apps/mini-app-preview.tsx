@@ -312,6 +312,7 @@ function flattenAgentFiles(nodes: FileNode[]): ChatPanelMentionFile[] {
 
 /** Mini-app Agent 对话逻辑（popover 与 dock 共享同一份会话状态）。 */
 function useMiniAppAgentChat(projectId: string) {
+  const t = useTranslations('mini-apps');
   const searchParams = useSearchParams();
   const route = searchParams.get('route') ?? '/';
 
@@ -565,6 +566,51 @@ function useMiniAppAgentChat(projectId: string) {
     )));
   }, [projectId, agentId]);
 
+  const handleRerunTool = useCallback(async (
+    message: ChatMessage,
+    item: Extract<WorkflowAgentTimelineItem, { type: 'tool' }>,
+  ) => {
+    if (!projectId || !agentId || sending) return;
+    const rerunId = `rerun-${item.name}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    const rerunItem: WorkflowAgentTimelineItem = {
+      id: rerunId,
+      type: 'tool',
+      name: item.name,
+      input: item.input,
+      status: 'running',
+    };
+    setMessages((prev) => prev.map((currentMessage) => (
+      currentMessage.id === message.id
+        ? { ...currentMessage, timeline: [...(currentMessage.timeline ?? []), rerunItem] }
+        : currentMessage
+    )));
+    setSending(true);
+
+    let result: unknown;
+    try {
+      result = (await sdk.miniApp.rerunAgentTool(projectId, agentId, item.name, item.input)).result;
+    } catch (error) {
+      result = {
+        success: false,
+        error: error instanceof Error && error.message ? error.message : t('agent.toolRerunFailed'),
+      };
+    } finally {
+      setSending(false);
+    }
+
+    setMessages((prev) => prev.map((currentMessage) => {
+      if (currentMessage.id !== message.id) return currentMessage;
+      return {
+        ...currentMessage,
+        timeline: currentMessage.timeline?.map((timelineItem) => (
+          timelineItem.type === 'tool' && timelineItem.id === rerunId
+            ? { ...timelineItem, result, status: isMiniAppErrorToolResult(result) ? 'error' as const : 'success' as const }
+            : timelineItem
+        )),
+      };
+    }));
+  }, [projectId, agentId, sending, t]);
+
   // 删除单条消息：调后端删除，同步移除本地 messages
   const handleDeleteMessage = useCallback(async (messageId: string) => {
     const sid = sessionIdRef.current;
@@ -704,7 +750,7 @@ function useMiniAppAgentChat(projectId: string) {
     agentFilesEnabled,
     agentFileMentions,
     loadHistory,
-    handleAnswerAskUserQuestion,
+    handleAnswerAskUserQuestion, handleRerunTool,
     handleDeleteMessage, handleRegenerateMessage, sessionDetailForMessage,
     introduction,
     // 多会话
@@ -1074,7 +1120,7 @@ function MiniAppAgentPopover({ projectId }: { projectId: string }) {
   useEffect(() => { if (open) loadHistoryRef.current(); }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const { messages, input, setInput, sending, handleSend, handleStop, current, suggestions, agentFileMentions,
-    handleAnswerAskUserQuestion, handleDeleteMessage, handleRegenerateMessage, sessionDetailForMessage, introduction,
+    handleAnswerAskUserQuestion, handleRerunTool, handleDeleteMessage, handleRegenerateMessage, sessionDetailForMessage, introduction,
     agents, agentId, setAgentId } = chat;
 
   return (
@@ -1100,6 +1146,7 @@ function MiniAppAgentPopover({ projectId }: { projectId: string }) {
           onSend={handleSend}
           onStop={handleStop}
           onAnswerAskUserQuestion={handleAnswerAskUserQuestion}
+          onRerunTool={handleRerunTool}
           onDeleteMessage={handleDeleteMessage}
           onRegenerateMessage={handleRegenerateMessage}
           sessionDetailForMessage={sessionDetailForMessage}
@@ -1127,7 +1174,7 @@ function MiniAppAgentDock({ projectId, onClose }: { projectId: string; onClose: 
   useEffect(() => { loadHistoryRef.current(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const { messages, input, setInput, sending, handleSend, handleStop, current, suggestions, agentFileMentions,
-    handleAnswerAskUserQuestion, handleDeleteMessage, handleRegenerateMessage, sessionDetailForMessage, introduction,
+    handleAnswerAskUserQuestion, handleRerunTool, handleDeleteMessage, handleRegenerateMessage, sessionDetailForMessage, introduction,
     agents, agentId, setAgentId } = chat;
 
   return (
@@ -1151,6 +1198,7 @@ function MiniAppAgentDock({ projectId, onClose }: { projectId: string; onClose: 
         onSend={handleSend}
         onStop={handleStop}
         onAnswerAskUserQuestion={handleAnswerAskUserQuestion}
+        onRerunTool={handleRerunTool}
         onDeleteMessage={handleDeleteMessage}
         onRegenerateMessage={handleRegenerateMessage}
         introduction={introduction}

@@ -5,6 +5,7 @@ import { Markdown } from "@/components/ui/markdown";
 import { cn, copyToClipboard } from "@/lib/utils";
 import type { WorkflowAgentTimelineItem } from "@agent-spaces/shared";
 import { AlertCircle, Check, CheckCircle2, ChevronDown, Copy, Loader2, Play, Wrench } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 
 export function normalizeChatTimeline(
@@ -28,6 +29,7 @@ export function ChatToolTimeline({
   showTools?: boolean;
   streaming?: boolean;
 }) {
+  const t = useTranslations("chat.toolTimeline");
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const items = normalizeChatTimeline(timeline);
@@ -94,7 +96,8 @@ export function ChatToolTimeline({
               </button>
               <button
                 type="button"
-                title={copiedId === item.id ? "已复制" : "复制完整 JSON"}
+                title={copiedId === item.id ? t("copied") : t("copyJson")}
+                aria-label={copiedId === item.id ? t("copied") : t("copyJson")}
                 className={cn(
                   "shrink-0 rounded p-1 text-muted-foreground transition-opacity hover:bg-accent hover:text-foreground",
                   copiedId === item.id ? "opacity-100" : "opacity-0 group-hover:opacity-100 focus-visible:opacity-100",
@@ -110,7 +113,8 @@ export function ChatToolTimeline({
               {onRerunTool && !streaming && item.status !== "running" ? (
                 <button
                   type="button"
-                  title="再次运行工具"
+                  title={t("rerun")}
+                  aria-label={t("rerun")}
                   className="shrink-0 rounded p-1 text-muted-foreground opacity-0 transition-opacity hover:bg-accent hover:text-foreground group-hover:opacity-100 focus-visible:opacity-100"
                   onClick={(e) => {
                     e.stopPropagation();
@@ -122,6 +126,8 @@ export function ChatToolTimeline({
               ) : null}
               <button
                 type="button"
+                title={open ? t("collapse") : t("expand")}
+                aria-label={open ? t("collapse") : t("expand")}
                 className="shrink-0 p-0.5 text-muted-foreground"
                 onClick={() => setExpanded((state) => ({ ...state, [item.id]: !state[item.id] }))}
               >
@@ -130,9 +136,9 @@ export function ChatToolTimeline({
             </div>
             {open ? (
               <div className="border-t px-2.5 py-2">
-                <ToolJsonBlock label="Input" value={item.input} />
-                {item.result !== undefined ? <ToolJsonBlock label="Result" value={item.result} /> : null}
-                {missingResult ? <ToolJsonBlock label="Result" value={{ success: false, error: "Tool did not return a result." }} /> : null}
+                <ToolJsonBlock label={t("input")} rootName="input" value={item.input} />
+                {item.result !== undefined ? <ToolJsonBlock label={t("result")} rootName="result" value={item.result} /> : null}
+                {missingResult ? <ToolJsonBlock label={t("result")} rootName="result" value={{ success: false, error: t("missingResult") }} /> : null}
               </div>
             ) : null}
           </div>
@@ -166,11 +172,12 @@ function ThinkingTimelineCard({
   expanded: boolean;
   onToggle: () => void;
 }) {
+  const t = useTranslations("chat.toolTimeline");
   return (
     <div className="rounded-lg border bg-muted/30 text-xs shadow-sm">
       <button type="button" className="flex w-full items-center gap-2 px-2.5 py-2 text-left" onClick={onToggle}>
         <ChevronDown className={cn("size-3.5 shrink-0 text-muted-foreground transition-transform", expanded && "rotate-180")} />
-        <span className="min-w-0 flex-1 truncate font-medium text-muted-foreground">思考过程</span>
+        <span className="min-w-0 flex-1 truncate font-medium text-muted-foreground">{t("thinking")}</span>
       </button>
       {expanded ? (
         <div className="whitespace-pre-wrap break-words border-t px-2.5 py-2 text-muted-foreground">
@@ -181,13 +188,13 @@ function ThinkingTimelineCard({
   );
 }
 
-function ToolJsonBlock({ label, value }: { label: string; value: unknown }) {
+function ToolJsonBlock({ label, rootName, value }: { label: string; rootName: string; value: unknown }) {
   return (
     <JsonViewer
       data={value as import("@/components/viewers/json-viewer").JsonValue}
       title={label}
       defaultExpanded={2}
-      rootName={label.toLowerCase()}
+      rootName={rootName}
       className="mb-2 last:mb-0"
       style={{ maxHeight: "10rem", overflow: "auto" }}
     />

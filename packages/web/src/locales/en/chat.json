@@ -236,6 +236,17 @@
     "showToolCalls": "Show tool calls",
     "hideToolCalls": "Hide tool calls"
   },
+  "toolTimeline": {
+    "thinking": "Thinking",
+    "copied": "Copied",
+    "copyJson": "Copy full JSON",
+    "rerun": "Run tool again",
+    "expand": "Expand tool details",
+    "collapse": "Collapse tool details",
+    "input": "Input",
+    "result": "Result",
+    "missingResult": "Tool did not return a result."
+  },
   "addAgent": {
     "editTitle": "Edit Agent",
     "addTitle": "Add Chat Agent",

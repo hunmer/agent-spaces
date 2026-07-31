@@ -8,7 +8,7 @@ import { exec } from 'node:child_process';
 import * as svc from '../services/mini-apps.js';
 import { invokeService } from '../services/mini-app-services.js';
 import { getProject, readAgentsConfig, readAgentConfig, upsertAgentConfig, listAgentChats, clearAgentChats, listChatSessions, renameChatSession, deleteChatMessage, resetAgentsConfig, DuplicateNameError } from '../storage/mini-app-store.js';
-import { answerMiniAppAgentQuestion, getRegisteredMiniAppTools, runMiniAppAgent } from '../services/mini-app-agent.js';
+import { answerMiniAppAgentQuestion, getRegisteredMiniAppTools, rerunMiniAppAgentTool, runMiniAppAgent } from '../services/mini-app-agent.js';
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 500 * 1024 * 1024 } });
@@ -682,6 +682,21 @@ router.delete('/:id/agents/chat', (req: Request<{ id: string }, any, any, { sess
     res.json({ ok: true });
   } catch (error: any) {
     res.status(error.message === 'Invalid sessionId' ? 400 : 500).json({ error: error.message });
+  }
+});
+
+// POST /:id/agents/:agentId/tools/rerun — 使用相同 Agent 权限再次执行单个工具
+router.post('/:id/agents/:agentId/tools/rerun', async (req: Request<{ id: string; agentId: string }>, res: Response) => {
+  const { name, input } = req.body ?? {};
+  if (!name || typeof name !== 'string') {
+    res.status(400).json({ error: 'name is required' }); return;
+  }
+  try {
+    const result = await rerunMiniAppAgentTool(req.params.id, req.params.agentId, name, input);
+    res.json({ result });
+  } catch (error: any) {
+    const message = error?.message ?? String(error);
+    res.status(message.includes('not found') ? 404 : 500).json({ error: message });
   }
 });
 

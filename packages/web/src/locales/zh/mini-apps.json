@@ -181,6 +181,7 @@
     "inputPlaceholder": "对助手说点什么…",
     "empty": "暂无消息",
     "loadError": "加载失败",
+    "toolRerunFailed": "工具再次运行失败",
     "settings": "Agent 设置",
     "settingsTitle": "编辑 Agent",
     "loading": "加载中…",
