@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { autoLayoutSubset } from './layout.js';
+import { autoLayoutSubset, findFreePositions } from './layout.js';
 
 const nodes = [
   { id: 'a', position: { x: 100, y: 200 }, width: 100, height: 50 },
@@ -26,4 +26,25 @@ test('autoLayoutSubset accepts the workflow group grid options', () => {
 
   assert.deepEqual(result[0].position, { x: 100, y: 200 });
   assert.deepEqual(result[1].position, { x: 100, y: 290 });
+});
+
+test('findFreePositions skips occupied cells and reserves positions from the same batch', () => {
+  const obstacles = [
+    { position: { x: 120, y: 120 }, width: 280, height: 220 },
+    { position: { x: 440, y: 120 }, width: 280, height: 220 },
+  ];
+
+  const positions = findFreePositions(
+    { x: 120, y: 120 },
+    280,
+    220,
+    2,
+    obstacles,
+    { gap: 40, direction: 'right', cols: 3 },
+  );
+
+  assert.deepEqual(positions, [
+    { x: 760, y: 120 },
+    { x: 120, y: 380 },
+  ]);
 });

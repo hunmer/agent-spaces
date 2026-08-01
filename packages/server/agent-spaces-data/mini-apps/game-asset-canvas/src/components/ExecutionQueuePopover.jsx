@@ -96,7 +96,7 @@ export default function ExecutionQueuePopover({
             onValueCommitted={(value) => onConcurrencyChange?.(Math.max(1, Math.min(10, Number(value) || 1)))}
           />
         </div>
-        <ScrollArea className="max-h-96">
+        <ScrollArea viewportClassName="max-h-96">
           <div className="flex flex-col gap-1 p-2">
             {/* 运行中节点 */}
             {hasRunningNodes && (

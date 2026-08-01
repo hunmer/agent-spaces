@@ -209,7 +209,16 @@ export default function useCanvasAgentRpc({ nodes, edges, createNodeAt, updateNo
         let result;
         switch (type) {
           case 'canvas.addNode': {
-            const id = createFn(payload.type, payload.position || null, payload.data);
+            const size = DEFAULT_SIZE[payload.type] || DEFAULT_SIZE.default;
+            const position = payload.position || findFreePositions(
+              { x: 120, y: 120 },
+              size.w,
+              size.h,
+              1,
+              curNodes,
+              { gap: 40, direction: 'right', cols: 3 },
+            )[0];
+            const id = createFn(payload.type, position, payload.data);
             if (payload.focus !== false) {
               setTimeout(() => focusFn(id), 0);
             }
@@ -217,7 +226,7 @@ export default function useCanvasAgentRpc({ nodes, edges, createNodeAt, updateNo
             if (payload.groupName && typeof payload.groupName === 'string') {
               ensureGroupByName(setGroupsFn, payload.groupName, [id]);
             }
-            result = { ok: true, nodeId: id, position: payload.position || null };
+            result = { ok: true, nodeId: id, position };
             break;
           }
           case 'canvas.addNodes': {
