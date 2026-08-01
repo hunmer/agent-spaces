@@ -8,7 +8,7 @@
  */
 import {
   NODE_TYPES, NODE_TYPE_TO_PROCESSOR, defaultProcessorParams, isImageProcessNodeType,
-  DEFAULT_CUTOUT_MODE, defaultCutoutParams,
+  DEFAULT_CUTOUT_MODE, defaultCutoutParams, defaultDepthParams,
 } from './constants';
 
 import TextToImageNode, { PARAMS_SCHEMA as TEXT_TO_IMAGE_PARAMS } from '../components/nodes/TextToImageNode';
@@ -25,6 +25,7 @@ import TextToVoiceNode, { PARAMS_SCHEMA as TEXT_TO_VOICE_PARAMS } from '../compo
 import VideoGeneratorNode, { PARAMS_SCHEMA as VIDEO_GENERATOR_PARAMS } from '../components/nodes/VideoGeneratorNode';
 import ImageCompareNode from '../components/nodes/ImageCompareNode';
 import CutoutNode from '../components/nodes/CutoutNode';
+import DepthExtractNode from '../components/nodes/DepthExtractNode';
 import DirectorDeskNode from '../components/nodes/DirectorDeskNode';
 import PhotopeaNode from '../components/nodes/PhotopeaNode';
 import WorkflowRunnerNode, { PARAMS_SCHEMA as WORKFLOW_RUNNER_PARAMS } from '../components/nodes/WorkflowRunnerNode';
@@ -65,6 +66,7 @@ export const NODE_COMPONENTS = {
   [NODE_TYPES.videoGenerator]: VideoGeneratorNode,
   [NODE_TYPES.imageCompare]: ImageCompareNode,
   [NODE_TYPES.cutout]: CutoutNode,
+  [NODE_TYPES.depthExtract]: DepthExtractNode,
   [NODE_TYPES.directorDesk]: DirectorDeskNode,
   [NODE_TYPES.photopea]: PhotopeaNode,
   [NODE_TYPES.workflowRunner]: WorkflowRunnerNode,
@@ -113,6 +115,7 @@ export const ADD_NODE_ITEMS = [
   { type: NODE_TYPES.videoGenerator },
   { type: NODE_TYPES.imageCompare },
   { type: NODE_TYPES.cutout },
+  { type: NODE_TYPES.depthExtract },
   { type: NODE_TYPES.directorDesk },
   { type: NODE_TYPES.photopea },
   { type: NODE_TYPES.maskPaint },
@@ -135,6 +138,7 @@ export const DEFAULT_SIZE = {
   [NODE_TYPES.promptReverse]: { w: 320, h: 280 },
   [NODE_TYPES.videoGenerator]: { w: 300, h: 320 },
   [NODE_TYPES.cutout]: { w: 290, h: 260 },
+  [NODE_TYPES.depthExtract]: { w: 290, h: 260 },
   [NODE_TYPES.directorDesk]: { w: 300, h: 260 },
   [NODE_TYPES.photopea]: { w: 300, h: 260 },
   [NODE_TYPES.workflowRunner]: { w: 320, h: 340 },
@@ -247,6 +251,16 @@ export function initialData(type) {
       uploadedImages: [],
       upstreamOrder: [],
       params: { mode: DEFAULT_CUTOUT_MODE, modeParams: defaultCutoutParams(DEFAULT_CUTOUT_MODE) },
+    };
+  }
+  if (type === NODE_TYPES.depthExtract) {
+    // 提取深度图节点：调 depth-anything 插件批量提取；params = { grayscale, predOnly }
+    return {
+      status: 'idle',
+      output: { images: [] },
+      uploadedImages: [],
+      upstreamOrder: [],
+      params: defaultDepthParams(),
     };
   }
   if (type === NODE_TYPES.textToVoice) {

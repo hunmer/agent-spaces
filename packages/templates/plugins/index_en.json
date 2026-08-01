@@ -214,6 +214,39 @@
     ]
   },
   {
+    "id": "workflow.depth-anything",
+    "name": "Depth Anything Depth Estimation",
+    "version": "1.0.0",
+    "description": "Monocular depth estimation via the Depth Anything HTTP service. Supports URL/local file input, grayscale or Inferno colormap depth output, depth-only or side-by-side comparison, and batch processing.",
+    "author": {
+      "name": "workflow"
+    },
+    "tags": [
+      "Image",
+      "Depth Estimation",
+      "Monocular Depth",
+      "Depth Anything"
+    ],
+    "type": "server",
+    "hasView": false,
+    "hasWorkflow": true,
+    "path": "depth-anything",
+    "iconUrl": "plugins/depth-anything/icon.svg",
+    "md5": "bdf6225223c2e6150ab57a9206360b9f",
+    "updatedAt": "2026-08-01T05:40:14.900Z",
+    "files": [
+      "actions.js",
+      "icon.svg",
+      "info.json",
+      "lang.json",
+      "main.js",
+      "README.md",
+      "shared.js",
+      "tools.js",
+      "workflow.js"
+    ]
+  },
+  {
     "id": "workflow.desktop-native",
     "name": "Desktop Native",
     "version": "1.0.0",

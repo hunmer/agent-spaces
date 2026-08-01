@@ -8,7 +8,8 @@
     "@agent-spaces/builtin",
     "workflow.rembg",
     "workflow.sam",
-    "workflow.ffmpeg"
+    "workflow.ffmpeg",
+    "workflow.depth-anything"
   ],
   "agentPermissions": [
     "Files"
@@ -62,5 +63,5 @@
     }
   ],
   "createdAt": "2026-07-22T00:00:00.000Z",
-  "updatedAt": "2026-07-31T17:36:57.321Z"
+  "updatedAt": "2026-08-01T06:46:49.814Z"
 }

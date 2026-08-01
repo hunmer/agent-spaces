@@ -38,6 +38,7 @@ export function computeInputImages(nodes, edges) {
     || type === NODE_TYPES.videoGenerator
     || type === NODE_TYPES.imageCompare
     || type === NODE_TYPES.cutout
+    || type === NODE_TYPES.depthExtract
     || type === NODE_TYPES.directorDesk
     || type === NODE_TYPES.photopea
     || type === NODE_TYPES.maskPaint;

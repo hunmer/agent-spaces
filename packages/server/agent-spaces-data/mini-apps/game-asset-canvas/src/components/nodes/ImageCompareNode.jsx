@@ -78,31 +78,36 @@ export default function ImageCompareNode({ id, data, selected }) {
       {/* 对比视图：双图就绪时渲染 ReactCompareSlider（本地组件，无 CDN 依赖） */}
       {bothReady && (
         <div className="nodrag nopan nowheel overflow-hidden rounded-md border border-border">
+          {/* 勿传 display:block：库内部用 grid 重叠两图 + clip-path 裁剪，覆盖会破坏重叠，导致右侧白屏 */}
           <ReactCompareSlider
-            position={50}
+            defaultPosition={50}
             itemOne={<ReactCompareSliderImage src={first.picked} alt="对比前" />}
             itemTwo={<ReactCompareSliderImage src={second.picked} alt="对比后" />}
-            style={{ width: '100%', display: 'block', maxHeight: '320px' }}
+            style={{ width: '100%', maxHeight: '320px' }}
           />
         </div>
       )}
 
-      {/* 两个图槽位上传区 */}
-      <div className="flex flex-col gap-2">
-        <SlotUpload
-          slotKey="first"
-          urls={first}
-          onChange={handleFilesChange('first')}
-          onClear={() => onUpdate?.({ first: { uploadedImages: [] } })}
-          uploading={uploading}
-        />
-        <SlotUpload
-          slotKey="second"
-          urls={second}
-          onChange={handleFilesChange('second')}
-          onClear={() => onUpdate?.({ second: { uploadedImages: [] } })}
-          uploading={uploading}
-        />
+      {/* 两个图槽位上传区：左右并排 */}
+      <div className="flex gap-2">
+        <div className="min-w-0 flex-1">
+          <SlotUpload
+            slotKey="first"
+            urls={first}
+            onChange={handleFilesChange('first')}
+            onClear={() => onUpdate?.({ first: { uploadedImages: [] } })}
+            uploading={uploading}
+          />
+        </div>
+        <div className="min-w-0 flex-1">
+          <SlotUpload
+            slotKey="second"
+            urls={second}
+            onChange={handleFilesChange('second')}
+            onClear={() => onUpdate?.({ second: { uploadedImages: [] } })}
+            uploading={uploading}
+          />
+        </div>
       </div>
 
       {/* 输入统计 */}

@@ -1,0 +1,41 @@
+{
+  "id": "workflow.depth-anything",
+  "name": "Depth Anything 深度估计",
+  "name_zh": "Depth Anything 深度估计",
+  "name_en": "Depth Anything Depth Estimation",
+  "icon": "icon.svg",
+  "version": "1.0.0",
+  "description": "基于 Depth Anything HTTP 服务的单目深度估计，支持从 URL 或本地文件输入，输出灰度深度图或彩色热力图（Inferno），可仅输出深度图或原图+深度图左右拼接，并支持批量处理",
+  "description_zh": "基于 Depth Anything HTTP 服务的单目深度估计，支持从 URL 或本地文件输入，输出灰度深度图或彩色热力图（Inferno），可仅输出深度图或原图+深度图左右拼接，并支持批量处理",
+  "description_en": "Monocular depth estimation via the Depth Anything HTTP service. Supports URL/local file input, grayscale or Inferno colormap depth output, depth-only or side-by-side comparison, and batch processing.",
+  "author": { "name": "workflow" },
+  "tags": ["图片处理", "深度估计", "单目深度", "Depth Anything"],
+  "tags_zh": ["图片处理", "深度估计", "单目深度", "Depth Anything"],
+  "tags_en": ["Image", "Depth Estimation", "Monocular Depth", "Depth Anything"],
+  "type": "server",
+  "hasWorkflow": true,
+  "hasView": false,
+  "entries": {
+    "server": "main.js",
+    "workflow": "workflow.js",
+    "tools": "tools.js"
+  },
+  "config": [
+    {
+      "key": "baseUrl",
+      "label": "Depth Anything Base URL",
+      "desc": "Depth Anything HTTP service URL / 服务地址，默认 http://localhost:7860",
+      "type": "string",
+      "value": "http://localhost:7860",
+      "placeholder": "http://localhost:7860",
+      "required": true
+    },
+    {
+      "key": "timeout",
+      "label": "Timeout (ms) / 超时(ms)",
+      "desc": "Per-image processing timeout / 单张图片处理超时时间",
+      "type": "number",
+      "value": 120000
+    }
+  ]
+}

@@ -214,6 +214,39 @@
     ]
   },
   {
+    "id": "workflow.depth-anything",
+    "name": "Depth Anything 深度估计",
+    "version": "1.0.0",
+    "description": "基于 Depth Anything HTTP 服务的单目深度估计，支持从 URL 或本地文件输入，输出灰度深度图或彩色热力图（Inferno），可仅输出深度图或原图+深度图左右拼接，并支持批量处理",
+    "author": {
+      "name": "workflow"
+    },
+    "tags": [
+      "图片处理",
+      "深度估计",
+      "单目深度",
+      "Depth Anything"
+    ],
+    "type": "server",
+    "hasView": false,
+    "hasWorkflow": true,
+    "path": "depth-anything",
+    "iconUrl": "plugins/depth-anything/icon.svg",
+    "md5": "bdf6225223c2e6150ab57a9206360b9f",
+    "updatedAt": "2026-08-01T05:40:14.900Z",
+    "files": [
+      "actions.js",
+      "icon.svg",
+      "info.json",
+      "lang.json",
+      "main.js",
+      "README.md",
+      "shared.js",
+      "tools.js",
+      "workflow.js"
+    ]
+  },
+  {
     "id": "workflow.desktop-native",
     "name": "桌面原生",
     "version": "1.0.0",

@@ -2,13 +2,16 @@ export default function FloatingEdge({
   id,
   sourceX, sourceY, sourcePosition,
   targetX, targetY, targetPosition,
-  markerStart, markerEnd, style, className, interactionWidth, data,
+  markerStart, markerEnd, style, className, interactionWidth, data, label,
 }) {
   const path = getEdgePath({
     sourceX, sourceY, sourcePosition,
     targetX, targetY, targetPosition,
     pathStyle: data?.pathStyle,
   });
+  const labelX = (sourceX + targetX) / 2;
+  const labelY = (sourceY + targetY) / 2;
+  const labelWidth = Math.max(42, String(label || '').length * 12 + 10);
   return (
     <>
       <path
@@ -27,6 +30,30 @@ export default function FloatingEdge({
         strokeWidth={interactionWidth ?? 20}
         className="react-flow__edge-interaction"
       />
+      {label && (
+        <g pointerEvents="none">
+          <rect
+            x={labelX - labelWidth / 2}
+            y={labelY - 10}
+            width={labelWidth}
+            height={20}
+            rx={4}
+            fill="var(--background)"
+            stroke={data?.highlightColor || 'var(--border)'}
+          />
+          <text
+            x={labelX}
+            y={labelY}
+            dominantBaseline="central"
+            textAnchor="middle"
+            fill={data?.highlightColor || 'var(--foreground)'}
+            fontSize={11}
+            fontWeight={600}
+          >
+            {label}
+          </text>
+        </g>
+      )}
     </>
   );
 }

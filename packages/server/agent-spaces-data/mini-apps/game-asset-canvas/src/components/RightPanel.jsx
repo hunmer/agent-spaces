@@ -102,6 +102,7 @@ const ADD_ITEMS = [
   { type: NODE_TYPES.ipComposeOverlay, label: '图层叠加', category: 'image-process' },
   { type: NODE_TYPES.ipEnhance, label: '图片放大', category: 'image-process' },
   { type: NODE_TYPES.ipCompress, label: '图片压缩', category: 'image-process' },
+  { type: NODE_TYPES.depthExtract, label: '提取深度图', category: 'image-process' },
   // 编辑
   { type: NODE_TYPES.imageEditor, label: '图片编辑', category: 'edit' },
   { type: NODE_TYPES.pixelEditor, label: '像素编辑器', category: 'edit' },

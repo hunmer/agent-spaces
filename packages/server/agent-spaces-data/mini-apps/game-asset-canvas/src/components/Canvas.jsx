@@ -54,6 +54,7 @@ import { NODE_COMPONENTS, NODE_PARAMS_SCHEMA, PANEL_ID_MAIN, PANEL_ID_RIGHT, ded
 import { genId } from '../utils/canvas-id';
 import { exportAssetLibraryZip, extractFileNameFromUrl, pickAssetLibraryZipFile, importAssetLibraryZip, exportWorkspaceZip, pickWorkspaceZipFile, importWorkspaceZip } from '../utils/export';
 import { canvasConfigPath, historyConfigPath, assetLibraryConfigPath, saveCanvas } from '../utils/storage';
+import { decorateEdgesForSelection } from '../utils/edge-display';
 
 const EDGE_TYPES = { floating: FloatingEdge };
 const DEFAULT_EDGE_OPTIONS = {
@@ -309,14 +310,8 @@ export default function Canvas() {
   const deleteKeyCode = useMemo(() => (['Backspace', 'Delete']), []);
   const nodeTypes = useMemo(() => NODE_COMPONENTS, []);
   const floatingEdges = useMemo(
-    () => edges.map((edge) => ({
-      ...edge,
-      type: 'floating',
-      animated: false,
-      data: { ...(edge.data || {}), pathStyle: edgePathStyle, lineStyle: edgeLineStyle },
-      style: stripEdgeDashStyle(edge.style),
-    })),
-    [edgeLineStyle, edgePathStyle, edges],
+    () => decorateEdgesForSelection(edges, nodes, edgePathStyle, edgeLineStyle),
+    [edgeLineStyle, edgePathStyle, edges, nodes],
   );
   const connectionLineStyle = useMemo(() => ({
     pathStyle: edgePathStyle,
@@ -355,7 +350,7 @@ export default function Canvas() {
   // 避免因 hook 返回对象引用变化触发 decoratedNodes 全量重算。
   const {
     makeOnUpdate, handleGenerate, handleGenerateMedia, handleProcessImage,
-    handleProcessLocal, handleCutout, handleCutoutCreate, handleCancelProcess, handlePromptReverse,
+    handleProcessLocal, handleCutout, handleCutoutCreate, handleDepth, handleCancelProcess, handlePromptReverse,
   } = executions;
   const { handleAutoSize, handleAutoSizeToContent } = crud;
   const { handleResetParams } = crud;
@@ -640,6 +635,7 @@ export default function Canvas() {
     onProcessLocal: handleProcessLocal,
     onCutout: handleCutout,
     onCutoutCreate: handleCutoutCreate,
+    onDepth: handleDepth,
     onCancelProcess: handleCancelProcess,
     onPromptReverse: handlePromptReverse,
     onEditImages: (imgs) => setFormState({ nodeType: NODE_TYPES.editImage, initialImages: imgs }),
@@ -661,7 +657,7 @@ export default function Canvas() {
     onExportVideos: handleExportVideosWithPicker,
   }), [
     makeOnUpdate, handleGenerate, handleGenerateMedia, handleProcessImage,
-    handleProcessLocal, handleCutout, handleCutoutCreate, handleCancelProcess, handlePromptReverse,
+    handleProcessLocal, handleCutout, handleCutoutCreate, handleDepth, handleCancelProcess, handlePromptReverse,
     handleExportImagesWithPicker, handleAutoSize, handleAutoSizeToContent, handleBBoxCutout, handleResetParams,
     handleAddToAssets, handleAddOutputImages, handleRemoveOutputImage, handleClearOutputImages, handleReorderOutputImages,
     handleSwitchVersion, handleDeleteUpstreamImage, handleExportVideosWithPicker,
@@ -997,12 +993,4 @@ export default function Canvas() {
       />
     </ResizablePanelGroup>
   );
-}
-
-function stripEdgeDashStyle(style) {
-  if (!style?.strokeDasharray && !style?.['stroke-dasharray']) return style;
-  const next = { ...style };
-  delete next.strokeDasharray;
-  delete next['stroke-dasharray'];
-  return next;
 }

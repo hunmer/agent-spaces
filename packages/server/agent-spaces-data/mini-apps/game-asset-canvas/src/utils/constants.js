@@ -50,6 +50,8 @@ export const NODE_TYPES = {
   note: 'note',
   // 统一抠图节点：合并白底/色度键/工作流抠图/rembg 四种抠图能力，select 切换模式
   cutout: 'cutout',
+  // 提取深度图节点：调 workflow.depth-anything 插件批量提取单目深度图
+  depthExtract: 'depthExtract',
   // 3D导演台节点：iframe 加载 vendor/director-desk-web，截图经 postMessage 回传
   directorDesk: 'directorDesk',
   // 在线PS节点：iframe 加载 Photopea（云端），加载上游/上传图，导出经 saveToOE 回传
@@ -236,6 +238,7 @@ export const NODE_META = {
   [NODE_TYPES.imageCompare]: { label: '图片对比', icon: '🔀', color: '#06b6d4' },
   [NODE_TYPES.note]: { label: '便签', icon: '📝', color: '#f59e0b' },
   [NODE_TYPES.cutout]: { label: '抠图', icon: '✂️', color: '#14b8a6' },
+  [NODE_TYPES.depthExtract]: { label: '提取深度图', icon: '🏔️', color: '#6366f1' },
   [NODE_TYPES.directorDesk]: { label: '3D导演台', icon: '🎥', color: '#7c3aed' },
   [NODE_TYPES.photopea]: { label: '在线PS', icon: '🖌️', color: '#0ea5e9' },
   [NODE_TYPES.workflowRunner]: { label: '执行工作流', icon: '⚙️', color: '#0ea5e9' },
@@ -264,6 +267,7 @@ export const IMAGE_TAGS = {
   upstream: '连线',
   export: '导出',
   cutout: '抠图',
+  depthExtract: '深度图',
   directorDesk: '3D导演台',
   photopea: '在线PS',
   maskPaint: '蒙版绘制',
@@ -690,3 +694,37 @@ export function defaultCutoutParams(mode) {
   for (const p of params) out[p.key] = p.default;
   return out;
 }
+
+// ============ 提取深度图节点（depthExtract）============
+// 调 workflow.depth-anything 插件 depth_batch_predict 动作，GPU 并行批量提取单目深度图。
+// 参数表存 data.params（ParamField 渲染），值透传到插件的 grayscale/pred_only 入参（字符串）。
+export const DEPTH_PARAMS = [
+  {
+    key: 'grayscale',
+    label: '配色',
+    type: 'select',
+    default: 'true',
+    options: [
+      { value: 'true', label: '灰度图（默认）' },
+      { value: 'false', label: '彩色热力图 Inferno' },
+    ],
+  },
+  {
+    key: 'predOnly',
+    label: '输出',
+    type: 'select',
+    default: 'true',
+    options: [
+      { value: 'true', label: '仅深度图（默认）' },
+      { value: 'false', label: '原图+深度图（拼接）' },
+    ],
+  },
+];
+
+/** 深度图节点参数默认值（初始化 data.params 用） */
+export function defaultDepthParams() {
+  const out = {};
+  for (const p of DEPTH_PARAMS) out[p.key] = p.default;
+  return out;
+}
+

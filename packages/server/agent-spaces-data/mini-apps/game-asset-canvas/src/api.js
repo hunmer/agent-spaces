@@ -37,6 +37,7 @@ const VALID_NODE_TYPES = [
   'videoGenerator',// 生成视频
   'imageCompare',  // 图片对比
   'cutout',        // 抠图（统一节点：白底/色度键/工作流/rembg）
+  'depthExtract',  // 提取深度图（调 depth-anything 插件）
   'directorDesk',  // 3D导演台
   'photopea',      // 在线PS（Photopea）
   'workflowRunner',// 执行工作流（通用）
@@ -75,6 +76,7 @@ const NODE_LABELS = {
   videoGenerator: '生成视频',
   imageCompare: '图片对比',
   cutout: '抠图',
+  depthExtract: '提取深度图',
   directorDesk: '3D导演台',
   photopea: '在线PS',
   workflowRunner: '执行工作流',

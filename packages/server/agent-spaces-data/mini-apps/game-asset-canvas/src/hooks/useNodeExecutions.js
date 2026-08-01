@@ -3,6 +3,7 @@ import { NODE_TYPES, IMAGE_TAGS, WORKFLOWS, NODE_META, defaultCutoutParams } fro
 import { generateAudio, generateVideo, normalizeImageUrls, runAgentVisionText, runWithConcurrency } from '../utils/workflow';
 import { runProcessor } from '../utils/image-ops';
 import { runCutout } from '../utils/cutout';
+import { runDepth } from '../utils/depth';
 import { genId } from '../utils/canvas-id';
 import { registerController, clearController, abortController,
   registerWorkflowHandle, setWorkflowExecutionId, getWorkflowHandle,
@@ -398,6 +399,40 @@ export default function useNodeExecutions({ runWorkflow, updateNodeData, addHist
     });
   }, [createNodeAt]);
 
+  // 提取深度图节点「⚡ 提取深度图」：调 runDepth → callPluginTool('workflow.depth-anything', 'depth_batch_predict')。
+  // params = { grayscale, predOnly }，透传到插件入参（字符串 'true'/'false'）。
+  const handleDepth = useCallback(async (nodeId, params, sourceImages) => {
+    if (!sourceImages?.length) return;
+    try { saveLastParams?.(NODE_TYPES.depthExtract, params || {}); }
+    catch (e) { console.error('saveLastParams failed:', e); }
+    const controller = new AbortController();
+    registerController(nodeId, controller);
+
+    updateNodeData(nodeId, { status: 'running', error: undefined, output: { images: [] } });
+    try {
+      const urls = await runDepth(sourceImages, params || {});
+      if (controller.signal.aborted) return;
+      if (!urls.length) throw new Error('深度图提取未返回图片');
+      updateNodeData(nodeId, { status: 'done', output: { images: urls } });
+      addHistory({
+        id: genId('hist'),
+        nodeId,
+        nodeType: NODE_TYPES.depthExtract,
+        prompt: '提取深度图',
+        model: 'depth-anything',
+        images: urls,
+        createdAt: Date.now(),
+      }).catch((e) => console.error('depth addHistory failed:', e));
+      notifyDone('深度图提取完成', `深度图提取完成，产出 ${urls.length} 张图`);
+    } catch (err) {
+      if (controller.signal.aborted) return;
+      console.error('depth failed:', err);
+      updateNodeData(nodeId, { status: 'error', error: err?.message || String(err) });
+    } finally {
+      clearController(nodeId, controller);
+    }
+  }, [updateNodeData, addHistory, saveLastParams]);
+
   // 统一取消入口（节点【取消生成】按钮调用）：
   // - 工作流类（文生图/编辑图/配音/视频）：标记 aborted + stopWorkflow(executionId) 真中断引擎
   // - 本地算法类（图像处理/抠图/反推）：abort AbortController 中断本地任务
@@ -422,6 +457,6 @@ export default function useNodeExecutions({ runWorkflow, updateNodeData, addHist
   return {
     makeOnUpdate,
     handleGenerate, handleGenerateMedia, handlePromptReverse,
-    handleProcessImage, handleProcessLocal, handleCutout, handleCutoutCreate, handleCancelProcess,
+    handleProcessImage, handleProcessLocal, handleCutout, handleCutoutCreate, handleDepth, handleCancelProcess,
   };
 }
