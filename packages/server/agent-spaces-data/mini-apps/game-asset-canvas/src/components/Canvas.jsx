@@ -765,7 +765,7 @@ export default function Canvas() {
   // —— Agent RPC（WS message 监听，ref 持有最新值只订阅一次）——
   // 放在 handleGenerate/handleGenerateMedia 解构之后（TDZ：执行回调需先声明）。
   useCanvasAgentRpc({
-    nodes, edges,
+    nodes, edges, groups,
     createNodeAt: crud.createNodeAt,
     updateNodeData, handleDeleteNode: crud.handleDeleteNode, focusNode: crud.focusNode,
     setNodes, setEdges, setGroups,

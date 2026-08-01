@@ -5,7 +5,7 @@ import { DEFAULT_SIZE, initialData, NODE_PARAMS_SCHEMA } from '../utils/canvas-c
 import { CONNECTION_INPUT_TYPES, getConnectionTargets } from '../utils/connection-targets';
 import { computeInputTexts } from '../utils/input-images';
 import { genId } from '../utils/canvas-id';
-import { findFreePositions } from '../utils/layout';
+import { autoLayoutSubset, findFreePositions } from '../utils/layout';
 
 /**
  * 把新建的节点 id 列表归入指定名称的分组。
@@ -172,6 +172,7 @@ export function buildNodeExecution(node, textInputValues) {
  * @param {object} deps
  * @param {Array} deps.nodes
  * @param {Array} deps.edges
+ * @param {Array} deps.groups
  * @param {Function} deps.createNodeAt
  * @param {Function} deps.updateNodeData
  * @param {Function} deps.handleDeleteNode
@@ -182,10 +183,10 @@ export function buildNodeExecution(node, textInputValues) {
  * @param {Function} deps.onGenerate                   文生图/编辑图片执行回调（handleGenerate）
  * @param {Function} deps.onGenerateMedia              配音/视频执行回调（handleGenerateMedia）
  */
-export default function useCanvasAgentRpc({ nodes, edges, createNodeAt, updateNodeData, handleDeleteNode, focusNode, setNodes, setEdges, setGroups, onGenerate, onGenerateMedia, settings }) {
+export default function useCanvasAgentRpc({ nodes, edges, groups = [], createNodeAt, updateNodeData, handleDeleteNode, focusNode, setNodes, setEdges, setGroups, onGenerate, onGenerateMedia, settings }) {
   // ref 持有最新值，effect 只订阅一次
-  const ctxRef = useRef({ nodes, edges, createNodeAt, updateNodeData, handleDeleteNode, focusNode, setNodes, setEdges, setGroups, onGenerate, onGenerateMedia });
-  ctxRef.current = { nodes, edges, createNodeAt, updateNodeData, handleDeleteNode, focusNode, setNodes, setEdges, setGroups, onGenerate, onGenerateMedia, settings };
+  const ctxRef = useRef({ nodes, edges, groups, createNodeAt, updateNodeData, handleDeleteNode, focusNode, setNodes, setEdges, setGroups, onGenerate, onGenerateMedia });
+  ctxRef.current = { nodes, edges, groups, createNodeAt, updateNodeData, handleDeleteNode, focusNode, setNodes, setEdges, setGroups, onGenerate, onGenerateMedia, settings };
 
   useEffect(() => {
     const AS = window.AgentSpaces;
@@ -203,7 +204,7 @@ export default function useCanvasAgentRpc({ nodes, edges, createNodeAt, updateNo
       if (!requestId || !type) return;
 
       // 每次回调读最新闭包（ref）
-      const { nodes: curNodes, edges: curEdges, createNodeAt: createFn, updateNodeData: updateFn, handleDeleteNode: deleteFn, focusNode: focusFn, setNodes: setNodesFn, setEdges: setEdgesFn, setGroups: setGroupsFn, onGenerate, onGenerateMedia } = ctxRef.current;
+      const { nodes: curNodes, edges: curEdges, groups: curGroups, createNodeAt: createFn, updateNodeData: updateFn, handleDeleteNode: deleteFn, focusNode: focusFn, setNodes: setNodesFn, setEdges: setEdgesFn, setGroups: setGroupsFn, onGenerate, onGenerateMedia } = ctxRef.current;
 
       try {
         let result;
@@ -411,6 +412,50 @@ export default function useCanvasAgentRpc({ nodes, edges, createNodeAt, updateNo
                 inputType: e.data?.inputType,
                 inputTarget: e.data?.inputTarget,
               })),
+              groups: curGroups.map((group) => ({
+                id: group.id,
+                name: group.name,
+                nodeIds: group.childNodeIds,
+              })),
+            };
+            break;
+          }
+          case 'canvas.arrangeGroup': {
+            const groupId = typeof payload.groupId === 'string' ? payload.groupId.trim() : '';
+            const groupName = typeof payload.groupName === 'string' ? payload.groupName.trim() : '';
+            const group = (groupId && curGroups.find((item) => item.id === groupId))
+              || (groupName && curGroups.find((item) => item.name === groupName));
+            if (!group) {
+              result = { ok: false, message: `分组不存在：${groupId || groupName || '(空)'}` };
+              break;
+            }
+            const existingIds = new Set(curNodes.map((node) => node.id));
+            const nodeIds = group.childNodeIds.filter((id) => existingIds.has(id));
+            const options = { nodeIds, direction: payload.direction === 'TB' ? 'TB' : 'LR' };
+            if (payload.grid) {
+              options.grid = {
+                rows: Math.max(1, Math.min(nodeIds.length || 1, Number(payload.grid.rows) || 1)),
+                columns: Math.max(1, Math.min(nodeIds.length || 1, Number(payload.grid.columns) || 1)),
+                horizontalGap: Math.max(0, Math.min(300, Number(payload.grid.horizontalGap) || 0)),
+                verticalGap: Math.max(0, Math.min(300, Number(payload.grid.verticalGap) || 0)),
+              };
+            }
+            const arranged = autoLayoutSubset(curNodes, curEdges, options);
+            const positions = new Map(arranged
+              .filter((node) => nodeIds.includes(node.id))
+              .map((node) => [node.id, node.position]));
+            setNodesFn((prev) => prev.map((node) => positions.has(node.id)
+              ? { ...node, position: positions.get(node.id) }
+              : node));
+            result = {
+              ok: true,
+              groupId: group.id,
+              groupName: group.name,
+              arrangedCount: nodeIds.length,
+              positions: nodeIds.map((nodeId) => ({ nodeId, position: positions.get(nodeId) })),
+              message: nodeIds.length < 2
+                ? `分组「${group.name}」仅有 ${nodeIds.length} 个节点，无需调整`
+                : `已编排分组「${group.name}」中的 ${nodeIds.length} 个节点`,
             };
             break;
           }

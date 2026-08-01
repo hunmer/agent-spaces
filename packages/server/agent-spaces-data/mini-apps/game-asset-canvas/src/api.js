@@ -419,10 +419,12 @@ export default {
     const result = await rpc(ctx, 'canvas.getCanvas', {});
     const nodes = Array.isArray(result?.nodes) ? result.nodes : [];
     const edges = Array.isArray(result?.edges) ? result.edges : [];
+    const groups = Array.isArray(result?.groups) ? result.groups : [];
     return {
       ok: true,
       nodeCount: nodes.length,
       edgeCount: edges.length,
+      groupCount: groups.length,
       nodes: nodes.map((n) => ({
         id: n.id,
         type: n.type,
@@ -436,7 +438,70 @@ export default {
         inputType: e.inputType,
         inputTarget: e.inputTarget,
       })),
-      message: `画布当前 ${nodes.length} 个节点 / ${edges.length} 条连线`,
+      groups: groups.map((group) => ({
+        id: group.id,
+        name: group.name,
+        nodeIds: group.nodeIds,
+      })),
+      message: `画布当前 ${nodes.length} 个节点 / ${edges.length} 条连线 / ${groups.length} 个分组`,
+    };
+  },
+
+  /**
+   * 自动编排指定分组内的节点，支持横向、纵向和网格布局。
+   * @param {object} input
+   * @param {string} [input.groupId] 分组 id（groupId/groupName 至少传一个）
+   * @param {string} [input.groupName] 分组名称
+   * @param {'LR'|'TB'} [input.direction='LR'] 横向或纵向布局；grid 存在时仅用于兼容菜单参数
+   * @param {{rows:number,columns:number,horizontalGap:number,verticalGap:number}} [input.grid] 网格布局参数
+   */
+  arrange_group: async (input, ctx) => {
+    const groupId = asString(input?.groupId);
+    const groupName = asString(input?.groupName);
+    if (!groupId && !groupName) {
+      return { ok: false, message: 'groupId 和 groupName 至少传一个（可先用 get_canvas 查询）' };
+    }
+
+    const direction = asString(input?.direction) || 'LR';
+    if (direction !== 'LR' && direction !== 'TB') {
+      return { ok: false, message: 'direction 仅支持 LR（横向）或 TB（纵向）' };
+    }
+
+    let grid;
+    if (input?.grid !== undefined) {
+      if (!input.grid || typeof input.grid !== 'object' || Array.isArray(input.grid)) {
+        return { ok: false, message: 'grid 必须是对象 {rows, columns, horizontalGap, verticalGap}' };
+      }
+      const rows = Number(input.grid.rows);
+      const columns = Number(input.grid.columns);
+      const horizontalGap = Number(input.grid.horizontalGap);
+      const verticalGap = Number(input.grid.verticalGap);
+      if (!Number.isInteger(rows) || rows < 1 || !Number.isInteger(columns) || columns < 1) {
+        return { ok: false, message: 'grid.rows 和 grid.columns 必须是大于等于 1 的整数' };
+      }
+      if (!Number.isFinite(horizontalGap) || horizontalGap < 0 || horizontalGap > 300
+        || !Number.isFinite(verticalGap) || verticalGap < 0 || verticalGap > 300) {
+        return { ok: false, message: 'grid.horizontalGap 和 grid.verticalGap 必须是 0 到 300 的数字' };
+      }
+      grid = { rows, columns, horizontalGap, verticalGap };
+    }
+
+    const result = await rpc(ctx, 'canvas.arrangeGroup', {
+      groupId: groupId || undefined,
+      groupName: groupName || undefined,
+      direction,
+      grid,
+    });
+    if (result?.ok === false) return result;
+    return {
+      ok: true,
+      groupId: result?.groupId,
+      groupName: result?.groupName,
+      direction,
+      grid,
+      arrangedCount: result?.arrangedCount || 0,
+      positions: result?.positions || [],
+      message: result?.message || `已编排分组「${result?.groupName || groupName || groupId}」`,
     };
   },
 

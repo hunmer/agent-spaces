@@ -6,6 +6,7 @@ import * as AgentSpacesUI from '@/lib/ui-exports';
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/components/layout/theme-provider';
 import { useMiniAppReactRenderer } from './react-renderer';
+import { getTaskEventsSince } from './mini-app-task-events';
 
 export type MiniAppRenderType = 'react' | 'html';
 
@@ -147,6 +148,7 @@ export function MiniAppRenderer({
 }: MiniAppRendererProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const taskEventListenersRef = useRef(new Set<(event: string, data: unknown) => void>());
+  const lastDispatchedTaskEventRef = useRef<MiniAppTaskEvent | null>(taskEvents?.at(-1) ?? null);
   const { resolvedTheme } = useTheme();
   const { clearReactRenderer } = useMiniAppReactRenderer({
     enabled: type === 'react',
@@ -187,9 +189,11 @@ export function MiniAppRenderer({
   }, []);
 
   useEffect(() => {
-    const latest = taskEvents?.at(-1);
-    if (!latest) return;
-    for (const listener of taskEventListenersRef.current) listener(latest.event, latest.data);
+    const pendingEvents = getTaskEventsSince(taskEvents, lastDispatchedTaskEventRef.current);
+    for (const taskEvent of pendingEvents) {
+      for (const listener of taskEventListenersRef.current) listener(taskEvent.event, taskEvent.data);
+    }
+    if (taskEvents?.length) lastDispatchedTaskEventRef.current = taskEvents.at(-1) ?? null;
   }, [taskEvents]);
 
   const renderHtml = useCallback((html: string) => {

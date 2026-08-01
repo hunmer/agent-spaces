@@ -162,10 +162,37 @@ export default [
   },
   {
     name: 'get_canvas',
-    description: '查询画布全貌（节点 + 边 + 计数）。用户问「画布上现在有什么」「有几个节点」「节点之间怎么连的」时调用。返回节点 id/type/position 和边 source/target。',
+    description: '查询画布全貌（节点 + 边 + 分组 + 计数）。用户问「画布上现在有什么」「有哪些分组」「节点之间怎么连的」时调用。返回节点 id/type/position、边 source/target，以及分组 id/name/nodeIds。',
     inputSchema: {
       type: 'object',
       properties: {},
+    },
+  },
+  {
+    name: 'arrange_group',
+    description: '自动编排一个画布分组内的节点。支持横向（LR）、纵向（TB）和自定义网格布局；用户说「整理这个分组」「把角色组横向排列」「将 UI 组排成 2 列」时调用。可先用 get_canvas 查询分组 id/name。',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        groupId: { type: 'string', description: '分组 id（推荐，来自 get_canvas）；groupId/groupName 至少传一个。' },
+        groupName: { type: 'string', description: '分组名称；未传 groupId 时按名称精确匹配。' },
+        direction: {
+          type: 'string',
+          enum: ['LR', 'TB'],
+          description: '布局方向：LR=从左到右，TB=从上到下。默认 LR；传 grid 时按网格布局。',
+        },
+        grid: {
+          type: 'object',
+          description: '可选网格布局。传入后按指定行列排列，而非自动拓扑布局。',
+          properties: {
+            rows: { type: 'integer', minimum: 1, description: '行数，至少 1。' },
+            columns: { type: 'integer', minimum: 1, description: '列数，至少 1。' },
+            horizontalGap: { type: 'number', minimum: 0, maximum: 300, description: '水平间距，0-300。' },
+            verticalGap: { type: 'number', minimum: 0, maximum: 300, description: '垂直间距，0-300。' },
+          },
+          required: ['rows', 'columns', 'horizontalGap', 'verticalGap'],
+        },
+      },
     },
   },
   {

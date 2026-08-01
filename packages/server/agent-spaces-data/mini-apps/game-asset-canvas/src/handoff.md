@@ -86,7 +86,7 @@ Agent → api.js handler → ctx.requestClient(type, payload, timeoutMs)
   → respondClientRequest(requestId, result) → Promise resolve 回 api.js
 ```
 
-**RPC case 清单**（在 useCanvasAgentRpc.js）：addNode / addNodes / updateNodeData / deleteNode / connectNodes / connectBatch / getSelection / deleteEdge / getCanvas / executeNode / waitNodeResult / getNodeParams。
+**RPC case 清单**（在 useCanvasAgentRpc.js）：addNode / addNodes / updateNodeData / deleteNode / connectNodes / connectBatch / getSelection / deleteEdge / getCanvas / arrangeGroup / executeNode / waitNodeResult / getNodeParams。
 
 **关键实现**：
 - `ctxRef` 持有最新 nodes/edges/callbacks，effect deps `[]` 只订阅一次 WS（避免重订阅抖动）。
@@ -150,6 +150,7 @@ Agent → api.js handler → ctx.requestClient(type, payload, timeoutMs)
 29. **画布样式设置沿用工作流字段名**：`bgVariant`（dots/lines/cross）、`attributionPosition`（top-bottom/left-right）、`snapGrid` 存全局 settings；所有节点 Handle 方向统一走 `getFloatingHandleProps`，不要在节点内写死方位。
 29. **复制并应用节点属性只处理单节点剪贴板**：粘贴单个节点时，若当前至少选中一个节点且全部与来源同类型，先由 `PastePropertiesDialog` 选择字段；字段默认全不选，列表顶部提供“全选/反选”；“应用”更新目标节点，“继续粘贴”执行原粘贴。`params` 按子字段展开，`output/images/videos/status/loading/error` 等产出、派生输入和运行态字段不参与属性应用；多节点剪贴板直接沿用原粘贴行为。
 29. **边高亮是展示态**：`decorateEdgesForSelection` 只基于 ReactFlow 原生 `node.selected` 派生输入蓝/输出绿、箭头颜色和居中编号标签，不把高亮字段写入持久化 `edges`；label 仅在边关联选中节点时显示。标签用原生 SVG `rect + text`，因为 mini-app renderer 未暴露 xyflow 的 `EdgeText`。
+30. **宿主 taskEvents 必须增量全量分发**：`mini-app-renderer.tsx` 不能只取 `taskEvents.at(-1)`；React 会批处理多个并发 WS 事件，只发最后一条会让其余 `ctx.requestClient` 请求超时。使用事件对象游标把本轮新增项逐条送给 `onTaskEvent` 监听器。
 
 ## 工作区数据目录（产图落本地）
 
@@ -206,6 +207,7 @@ generateImages(workflowId, input, {directory, historyId})   ← utils/workflow.j
 - `update_node` — patch 节点 data
 - `get_selection` — 查选中节点
 - `get_node_params` — 查节点参数 schema（改枚举参数前必查）
+- `arrange_group` — 按分组 id/名称对组内节点做横向、纵向或网格编排
 - `execute_node` / `execute_nodes` — 执行生成类节点（可选 waitForResult 等待产出）
 
 ## Vendor 资源（需要时读对应源码）
