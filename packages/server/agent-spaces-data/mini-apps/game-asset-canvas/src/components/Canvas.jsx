@@ -705,6 +705,7 @@ export default function Canvas() {
   });
   const renderedNodes = useMemo(() => decoratedNodes.map((node) => ({
     ...node,
+    zIndex: node.zIndex ?? 1,
     style: {
       ...node.style,
       '--floating-handle-size': (isConnecting || node.id === hoveredNodeId) ? '24px' : '8px',
@@ -869,6 +870,7 @@ export default function Canvas() {
                 onDelete={groupOps.requestDeleteGroup}
                 onUpdate={groupOps.updateGroup}
                 onMove={groupOps.handleGroupMove}
+                onAutoLayout={crud.handleAutoLayout}
                 onConnect={groupOps.handleGroupConnect}
                 screenDeltaToFlowDelta={groupOps.screenDeltaToFlowDelta}
                 inputSlotCounts={groupExecution.inputSlotCounts}
@@ -905,6 +907,8 @@ export default function Canvas() {
       <ResizablePanel id={PANEL_ID_RIGHT} order={2} minSize="18%" maxSize="48%">
         <RightPanel
           nodes={nodes}
+          edges={edges}
+          selectedNodeId={selectedId}
           onSelectNode={crud.handleSelectNode}
           onLocateNode={crud.handleLocateNode}
           onDeleteNode={crud.handleDeleteNode}

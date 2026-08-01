@@ -23,7 +23,7 @@ import GroupExecutionToolbar from './GroupExecutionToolbar';
  */
 export default function GroupOverlays({
   items, selectedGroupId, dropTargetGroupId,
-  onSelect, onDelete, onUpdate, onMove, onConnect, screenDeltaToFlowDelta,
+  onSelect, onDelete, onUpdate, onMove, onAutoLayout, onConnect, screenDeltaToFlowDelta,
   inputSlotCounts, onSetExecutionMode, onSetExecutionCount,
   runningGroupIds,
   onSwitchExecutionRun, onUploadExecutionAssets, onRemoveExecutionAsset,
@@ -43,6 +43,7 @@ export default function GroupOverlays({
             onDelete={onDelete}
             onUpdate={onUpdate}
             onMove={onMove}
+            onAutoLayout={onAutoLayout}
             onDragPreviewChange={setDragPreview}
             onConnect={onConnect}
             screenDeltaToFlowDelta={screenDeltaToFlowDelta}

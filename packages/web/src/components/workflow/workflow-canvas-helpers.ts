@@ -79,6 +79,56 @@ export function getGridLayoutPositions(
   }]));
 }
 
+export function alignAutoLayoutLayers(
+  nodes: Array<{ id: string; width: number; height: number; badgeLeft: number; badgeTop: number }>,
+  edges: Array<{ source: string; target: string }>,
+  positions: Map<string, { x: number; y: number }>,
+  direction: 'LR' | 'TB',
+  layerGap: number,
+) {
+  const nodeIds = new Set(nodes.map(node => node.id));
+  const indegree = new Map(nodes.map(node => [node.id, 0]));
+  const outgoing = new Map(nodes.map(node => [node.id, [] as string[]]));
+  for (const edge of edges) {
+    if (!nodeIds.has(edge.source) || !nodeIds.has(edge.target) || edge.source === edge.target) continue;
+    outgoing.get(edge.source)?.push(edge.target);
+    indegree.set(edge.target, (indegree.get(edge.target) ?? 0) + 1);
+  }
+
+  const layers = new Map(nodes.map(node => [node.id, 0]));
+  const queue = nodes.filter(node => indegree.get(node.id) === 0).map(node => node.id);
+  for (let index = 0; index < queue.length; index += 1) {
+    const sourceId = queue[index];
+    for (const targetId of outgoing.get(sourceId) ?? []) {
+      layers.set(targetId, Math.max(layers.get(targetId) ?? 0, (layers.get(sourceId) ?? 0) + 1));
+      const nextIndegree = (indegree.get(targetId) ?? 1) - 1;
+      indegree.set(targetId, nextIndegree);
+      if (nextIndegree === 0) queue.push(targetId);
+    }
+  }
+
+  const nodesByLayer = new Map<number, typeof nodes>();
+  for (const node of nodes) {
+    const layer = layers.get(node.id) ?? 0;
+    const layerNodes = nodesByLayer.get(layer);
+    if (layerNodes) layerNodes.push(node);
+    else nodesByLayer.set(layer, [node]);
+  }
+  const result = new Map(positions);
+  let axis = 0;
+  for (const [, layerNodes] of [...nodesByLayer.entries()].sort(([a], [b]) => a - b)) {
+    for (const node of layerNodes) {
+      const position = result.get(node.id);
+      if (!position) continue;
+      result.set(node.id, direction === 'TB'
+        ? { ...position, y: axis + node.badgeTop }
+        : { ...position, x: axis + node.badgeLeft });
+    }
+    axis += Math.max(...layerNodes.map(node => direction === 'TB' ? node.height : node.width)) + layerGap;
+  }
+  return result;
+}
+
 export function isPositionNodeChange(
   change: NodeChange,
 ): change is NodeChange & { type: 'position'; id: string; position: { x: number; y: number } } {

@@ -39,7 +39,7 @@ import {
   getWorkflowHandleValueType,
 } from './workflow-handle-types';
 import { syncWorkflowReferenceEdges } from './workflow-reference-edges';
-import { getGridLayoutPositions } from './workflow-canvas-helpers';
+import { alignAutoLayoutLayers, getGridLayoutPositions } from './workflow-canvas-helpers';
 
 interface UseEdgeOperationsParams {
   workflow: Workflow | null;
@@ -958,11 +958,28 @@ export function useEdgeOperations({
         }
       }
 
+      const positions = options?.grid ? layoutPositions : alignAutoLayoutLayers(
+        layoutNodes.map(node => {
+          const size = nodeSizes.get(node.id);
+          return {
+            id: node.id,
+            width: size?.width ?? 220,
+            height: size?.height ?? 120,
+            badgeLeft: size?.badgeLeft ?? 0,
+            badgeTop: size?.badgeTop ?? 0,
+          };
+        }),
+        layoutEdges,
+        layoutPositions,
+        direction,
+        layoutEngine === 'elk' ? 90 : 80,
+      );
+
       return {
         parentId: scopeParentId,
         preserveOffset: !!scopeParentId || !!explicitNodeIds,
         nodeIds: layoutNodes.map(node => node.id),
-        positions: layoutPositions,
+        positions,
       };
     };
 

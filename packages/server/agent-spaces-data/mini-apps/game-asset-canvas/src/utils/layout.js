@@ -1,4 +1,5 @@
 import dagre, { graphlib } from '@dagrejs/dagre';
+import { computeGridLayout } from './align-distribute.js';
 
 // 节点默认尺寸（与 NodeShell 宽度对齐）
 const DEFAULT_NODE = { width: 280, height: 220 };
@@ -39,6 +40,44 @@ export function autoLayout(nodes, edges, opts = {}) {
       position: { x: pos.x - pos.width / 2, y: pos.y - pos.height / 2 },
     };
   });
+}
+
+export function autoLayoutSubset(nodes, edges, opts = {}) {
+  const ids = new Set(opts.nodeIds || []);
+  const subset = nodes.filter((node) => ids.has(node.id));
+  if (subset.length < 2) return nodes;
+
+  let arranged;
+  if (opts.grid) {
+    const positions = computeGridLayout(subset, edges, {
+      rows: opts.grid.rows,
+      cols: opts.grid.columns,
+      gapX: opts.grid.horizontalGap,
+      gapY: opts.grid.verticalGap,
+    });
+    arranged = subset.map((node) => positions.has(node.id)
+      ? { ...node, position: positions.get(node.id) }
+      : node);
+  } else {
+    arranged = autoLayout(subset, edges, { direction: opts.direction });
+  }
+
+  const anchor = {
+    x: Math.min(...subset.map((node) => node.position.x)),
+    y: Math.min(...subset.map((node) => node.position.y)),
+  };
+  const arrangedAnchor = {
+    x: Math.min(...arranged.map((node) => node.position.x)),
+    y: Math.min(...arranged.map((node) => node.position.y)),
+  };
+  const positions = new Map(arranged.map((node) => [node.id, {
+    x: node.position.x + anchor.x - arrangedAnchor.x,
+    y: node.position.y + anchor.y - arrangedAnchor.y,
+  }]));
+
+  return nodes.map((node) => positions.has(node.id)
+    ? { ...node, position: positions.get(node.id) }
+    : node);
 }
 
 // AABB 重叠判定（左上角坐标 + 宽高）

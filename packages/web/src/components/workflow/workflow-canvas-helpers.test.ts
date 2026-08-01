@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   addCloneToSourceGroups,
+  alignAutoLayoutLayers,
   appendImmediateCanvasClone,
   findSmallestContainingRectId,
   getGridLayoutPositions,
@@ -59,4 +60,32 @@ test('getGridLayoutPositions keeps even gaps around differently sized nodes', ()
     b: { x: 140, y: 0 },
     c: { x: 0, y: 100 },
   });
+});
+
+test('alignAutoLayoutLayers aligns and compacts the primary axis by topology layer', () => {
+  const nodes = [
+    { id: 'a', width: 100, height: 60, badgeLeft: 0, badgeTop: 0 },
+    { id: 'b', width: 240, height: 160, badgeLeft: 0, badgeTop: 0 },
+    { id: 'c', width: 120, height: 80, badgeLeft: 0, badgeTop: 0 },
+    { id: 'd', width: 180, height: 120, badgeLeft: 0, badgeTop: 0 },
+  ];
+  const edges = [{ source: 'a', target: 'c' }, { source: 'b', target: 'd' }];
+
+  const vertical = alignAutoLayoutLayers(nodes, edges, new Map([
+    ['a', { x: 0, y: 50 }], ['b', { x: 160, y: 0 }],
+    ['c', { x: 0, y: 150 }], ['d', { x: 170, y: 250 }],
+  ]), 'TB', 80);
+  assert.equal(vertical.get('a')?.y, 0);
+  assert.equal(vertical.get('b')?.y, 0);
+  assert.equal(vertical.get('c')?.y, 240);
+  assert.equal(vertical.get('d')?.y, 240);
+
+  const horizontal = alignAutoLayoutLayers(nodes, edges, new Map([
+    ['a', { x: 70, y: 0 }], ['b', { x: 0, y: 100 }],
+    ['c', { x: 350, y: 0 }], ['d', { x: 320, y: 130 }],
+  ]), 'LR', 80);
+  assert.equal(horizontal.get('a')?.x, 0);
+  assert.equal(horizontal.get('b')?.x, 0);
+  assert.equal(horizontal.get('c')?.x, 320);
+  assert.equal(horizontal.get('d')?.x, 320);
 });
