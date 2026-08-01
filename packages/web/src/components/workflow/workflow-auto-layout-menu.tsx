@@ -56,10 +56,12 @@ export function WorkflowAutoLayoutMenu({
     onAutoLayout?.(direction, autoLayoutOptions);
     setOpen(false);
   };
-  const applyGrid = () => {
+  const applyGrid = (nextRows = rows, nextColumns = columns) => {
+    setRows(nextRows);
+    setColumns(nextColumns);
     onAutoLayout?.('LR', {
       ...autoLayoutOptions,
-      grid: { rows, columns, horizontalGap, verticalGap },
+      grid: { rows: nextRows, columns: nextColumns, horizontalGap, verticalGap },
     });
     setOpen(false);
   };
@@ -126,12 +128,12 @@ export function WorkflowAutoLayoutMenu({
           </div>
           <div className="flex flex-wrap gap-1">
             {[1, 2, 3, 4].filter(columnCount => columnCount <= nodeCount).map(columnCount => (
-              <Button key={columnCount} type="button" variant="secondary" size="sm" className="h-6 px-2" onClick={() => setGridColumns(columnCount)}>
+              <Button key={columnCount} type="button" variant="secondary" size="sm" className="h-6 px-2" onClick={() => applyGrid(Math.ceil(nodeCount / columnCount), columnCount)}>
                 {columnCount === 1 ? t('canvasToolbar.singleColumn') : t('canvasToolbar.columnPreset', { count: columnCount })}
               </Button>
             ))}
           </div>
-          <Button size="sm" className="w-full" onClick={applyGrid} disabled={isDisabled}>
+          <Button size="sm" className="w-full" onClick={() => applyGrid()} disabled={isDisabled}>
             {t('canvasToolbar.applyGrid')}
           </Button>
         </div>

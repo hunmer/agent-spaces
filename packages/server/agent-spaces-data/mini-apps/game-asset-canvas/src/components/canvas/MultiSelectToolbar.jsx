@@ -22,6 +22,16 @@ const ALIGN_ITEMS = [
   { mode: 'bottom', label: '底对齐', Icon: AlignEndHorizontal },
 ];
 
+// 分布预设：rows × cols，间距统一 40。cols=0 表示「单列」，rows=0 表示「单行」，
+// applyGridLayout 已按拓扑序填充，超出容量的节点保持原位。
+const GRID_PRESETS = [
+  { label: '2×2', rows: 2, cols: 2 },
+  { label: '2×3', rows: 2, cols: 3 },
+  { label: '3×3', rows: 3, cols: 3 },
+  { label: '单行', rows: 1, cols: 99 },
+  { label: '单列', rows: 99, cols: 1 },
+];
+
 export default function MultiSelectToolbar({
   selectionCount, onCreateGroup, onAlignDistribute, onApplyGridLayout, onDeleteSelected,
 }) {
@@ -33,11 +43,23 @@ export default function MultiSelectToolbar({
 
   if (!(selectionCount > 1)) return null;
 
+  // 点击预设：同步表单值 + 立即应用 + 关闭
+  const applyPreset = (preset) => {
+    const opt = { rows: preset.rows, cols: preset.cols, gapX: 40, gapY: 40 };
+    setRows(preset.rows);
+    setCols(preset.cols);
+    setGapX(40);
+    setGapY(40);
+    onApplyGridLayout(opt);
+    setDistOpen(false);
+  };
+
   const baseBtn = 'flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium transition';
   const labelBtn = `${baseBtn} border-border bg-background text-foreground hover:border-primary hover:text-primary`;
   const activeBtn = `${baseBtn} border-primary bg-primary/10 text-primary`;
   const iconBtn = 'flex items-center justify-center rounded-md border border-border bg-background p-1 text-muted-foreground transition hover:border-primary hover:text-primary';
   const numberInput = 'w-14 rounded-md border border-border bg-background px-1.5 py-1 text-xs text-foreground outline-none focus:border-primary';
+  const presetBtn = 'rounded-md border border-border bg-background px-2 py-1 text-[11px] text-foreground transition hover:border-primary hover:text-primary';
 
   return (
     <div className="nodrag nopan pointer-events-auto absolute bottom-4 left-1/2 z-10 -translate-x-1/2">
@@ -81,7 +103,22 @@ export default function MultiSelectToolbar({
             }
           />
           <PopoverContent side="top" align="center" className="w-64 p-2.5">
-            <div className="mb-1.5 text-[10px] text-muted-foreground">网格布局（按最上游优先排序）</div>
+            {/* 常用预设：点击立即应用，跳过填表单 */}
+            <div className="mb-1 text-[10px] text-muted-foreground">常用预设</div>
+            <div className="mb-2 flex flex-wrap gap-1">
+              {GRID_PRESETS.map((p) => (
+                <button
+                  key={p.label}
+                  type="button"
+                  onClick={() => applyPreset(p)}
+                  className={presetBtn}
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
+            <div className="mb-1.5 border-t border-border" />
+            <div className="mb-1.5 text-[10px] text-muted-foreground">自定义布局（按最上游优先排序）</div>
             <div className="flex items-center gap-2 text-xs">
               <label className="flex items-center gap-1">
                 行数

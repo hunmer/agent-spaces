@@ -4,6 +4,7 @@ import React, { useState, useCallback, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { ChevronDown, ChevronRight, Lock, Unlock, Trash2, Spline } from 'lucide-react';
 import type { WorkflowGroup } from '@agent-spaces/shared';
+import { ColorPicker } from '@/components/ui/color-picker';
 import { WorkflowAutoLayoutMenu, type WorkflowAutoLayoutOptions } from './workflow-auto-layout-menu';
 
 /**
@@ -63,9 +64,15 @@ const GROUP_COLORS = [
   { name: '粉色', bg: 'rgba(236,72,153,0.06)', border: 'rgba(236,72,153,0.3)', header: 'rgba(236,72,153,0.1)' },
 ];
 
+function isCustomGroupColor(color?: string): color is string {
+  return /^#[0-9a-f]{6}$/i.test(color || '');
+}
+
 function getGroupColor(color?: string) {
-  if (!color) return GROUP_COLORS[0];
-  return GROUP_COLORS.find(c => c.name === color) || GROUP_COLORS[0];
+  const preset = GROUP_COLORS.find(c => c.name === color);
+  if (preset) return preset;
+  if (!isCustomGroupColor(color)) return GROUP_COLORS[0];
+  return { name: '自定义', bg: `${color}0f`, border: `${color}4d`, header: `${color}1a` };
 }
 
 export function WorkflowGroupOverlay({
@@ -228,7 +235,7 @@ export function WorkflowGroupOverlay({
   const [connectDrag, setConnectDrag] = useState<{ x: number; y: number } | null>(null);
   const connectStartRef = useRef<{ x: number; y: number } | null>(null);
 
-  const handleConnectPointerDown = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
+  const handleConnectPointerDown = useCallback((event: React.PointerEvent<HTMLButtonElement>) => {
     if (!onConnect || group.locked) return;
     event.preventDefault();
     event.stopPropagation();
@@ -331,43 +338,47 @@ export function WorkflowGroupOverlay({
                 onClick={(e) => { e.stopPropagation(); onUpdate(group.id, { color: c.name }); }}
               />
             ))}
+            <div title="自定义颜色">
+              <ColorPicker
+                colors={[]}
+                value={isCustomGroupColor(group.color) ? group.color : ''}
+                onChange={(color) => onUpdate(group.id, { color })}
+                className="gap-0 [&>button]:size-2.5 [&>button]:border [&>button>span]:text-[8px]"
+              />
+            </div>
             <div className="mx-0.5 h-3 w-px bg-border/50" />
             <WorkflowAutoLayoutMenu
               onAutoLayout={onAutoLayout}
               layoutEngine={layoutEngine}
               nodeIds={layoutNodeIds}
               disabled={group.locked || layoutNodeIds.length === 0}
-              buttonClassName="h-5 w-5 p-0 hover:bg-black/10 rounded"
-              iconClassName="h-2.5 w-2.5 text-muted-foreground"
+              buttonClassName="size-5 p-0 hover:bg-black/10 rounded"
+              iconClassName="size-3 text-muted-foreground"
             />
-            <button className="p-0.5 hover:bg-black/10 rounded" onPointerDown={stopButtonPointerDown} onClick={handleToggleLock}>
+            <button className="flex size-5 items-center justify-center rounded p-0 hover:bg-black/10" onPointerDown={stopButtonPointerDown} onClick={handleToggleLock}>
               {group.locked
-                ? <Lock className="h-2.5 w-2.5 text-orange-500" />
-                : <Unlock className="h-2.5 w-2.5 text-muted-foreground" />
+                ? <Lock className="size-3 text-orange-500" />
+                : <Unlock className="size-3 text-muted-foreground" />
               }
             </button>
-            <button className="p-0.5 hover:bg-black/10 rounded" onPointerDown={stopButtonPointerDown} onClick={handleDelete}>
-              <Trash2 className="h-2.5 w-2.5 text-destructive" />
+            <button className="flex size-5 items-center justify-center rounded p-0 hover:bg-black/10" onPointerDown={stopButtonPointerDown} onClick={handleDelete}>
+              <Trash2 className="size-3 text-destructive" />
             </button>
-          </div>
-        )}
-        {/* 分组输出连线手柄：拖到目标节点松手 → onConnect（调用方建边）。onPointerDown 阻止冒泡，不触发分组移动。 */}
-        {onConnect && (
-          <div
-            role="button"
-            title="拖拽连接到目标节点（把分组内节点的输出连过去）"
-            onPointerDown={handleConnectPointerDown}
-            onMouseEnter={() => setIsHovered(true)}
-            className={`pointer-events-auto absolute right-1 top-1/2 flex -translate-y-1/2 cursor-crosshair items-center justify-center rounded-full border-2 border-foreground/50 bg-background/80 text-muted-foreground shadow transition hover:scale-110 hover:border-primary hover:text-primary ${
-              group.locked ? 'opacity-40 pointer-events-none' : ''
-            }`}
-            style={{ width: 16, height: 16 }}
-          >
-            <Spline className="h-2.5 w-2.5" />
+            {onConnect && (
+              <button
+                type="button"
+                title="拖拽连接到目标节点（把分组内节点的输出连过去）"
+                disabled={group.locked}
+                onPointerDown={handleConnectPointerDown}
+                className="flex size-5 cursor-crosshair items-center justify-center rounded p-0 text-muted-foreground hover:bg-black/10 hover:text-primary disabled:pointer-events-none disabled:opacity-40"
+              >
+                <Spline className="size-3" />
+              </button>
+            )}
           </div>
         )}
         {group.locked && !isHovered && (
-          <Lock className="h-2.5 w-2.5 text-orange-500 shrink-0" />
+          <Lock className="size-3 shrink-0 text-orange-500" />
         )}
       </div>
       {/* 拖拽连线指示线：portal 到 body，避免被 group overlay 的 overflow:hidden / 父级 transform 裁剪。

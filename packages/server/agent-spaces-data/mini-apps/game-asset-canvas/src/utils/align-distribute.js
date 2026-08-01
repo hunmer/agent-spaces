@@ -115,9 +115,12 @@ export function topoSortSelected(selectedNodes, edges) {
 
 /**
  * 网格分布：按拓扑序（最上游优先）把节点铺成 rows × cols 网格。
- * 单元格统一取选中节点最大宽高，节点在各自单元格内居中；
+ * 节点在各自单元格内左上角对齐（同列顶部对齐、同行左侧对齐）；
  * gapX/gapY 为列间/行间间距；锚点取选中节点最小 x/y，保持整体位置不大幅跳动。
  * 超出 rows×cols 容量的节点保持原位（尊重用户指定的行列）。
+ *
+ * 单元格尺寸按列/行独立计算：同列等宽（取该列最宽节点）、同行等高（取该行最高节点），
+ * 这样每列首个节点顶部共线、每行首个节点左侧共线，且不浪费空间。
  *
  * @returns {Map<string, {x:number, y:number}>} nodeId -> 新坐标
  */
@@ -125,19 +128,34 @@ export function computeGridLayout(selectedNodes, edges, { rows, cols, gapX, gapY
   if (!selectedNodes || selectedNodes.length < 2) return new Map();
   const order = topoSortSelected(selectedNodes, edges);
   const sizes = order.map(nodeSize);
-  const cellW = Math.max(...sizes.map((s) => s.w));
-  const cellH = Math.max(...sizes.map((s) => s.h));
+  const colCount = Math.min(cols, order.length);
+  const rowCount = Math.min(rows, Math.ceil(order.length / cols));
+
+  // 每列宽度（取该列最宽节点）、每行高度（取该行最高节点）
+  const colWidths = Array.from({ length: colCount }, () => 0);
+  const rowHeights = Array.from({ length: rowCount }, () => 0);
+  order.forEach((n, i) => {
+    const r = Math.floor(i / cols);
+    const c = i % cols;
+    if (r >= rows) return;
+    colWidths[c] = Math.max(colWidths[c], sizes[i].w);
+    rowHeights[r] = Math.max(rowHeights[r], sizes[i].h);
+  });
+
+  // 列/行起始坐标（前缀和 + 间距）
   const anchorX = Math.min(...order.map((n) => n.position.x));
   const anchorY = Math.min(...order.map((n) => n.position.y));
+  const colX = [anchorX];
+  for (let c = 1; c < colCount; c++) colX[c] = colX[c - 1] + colWidths[c - 1] + gapX;
+  const rowY = [anchorY];
+  for (let r = 1; r < rowCount; r++) rowY[r] = rowY[r - 1] + rowHeights[r - 1] + gapY;
+
   const result = new Map();
   order.forEach((n, i) => {
     const r = Math.floor(i / cols);
     const c = i % cols;
     if (r >= rows) return; // 超出指定行数：保持原位
-    const { w, h } = sizes[i];
-    const cellX = anchorX + c * (cellW + gapX);
-    const cellY = anchorY + r * (cellH + gapY);
-    result.set(n.id, { x: cellX + (cellW - w) / 2, y: cellY + (cellH - h) / 2 });
+    result.set(n.id, { x: colX[c], y: rowY[r] }); // 左上角对齐
   });
   return result;
 }
