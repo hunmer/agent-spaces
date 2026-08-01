@@ -2,24 +2,18 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { useRouter } from 'next/navigation';
-import type { MiniAppProject } from '@agent-spaces/sdk';
 import type { PluginConfigField, Workflow } from '@agent-spaces/shared';
 import { sdk } from '@/lib/sdk';
 import { pluginApi, pluginConfigSchemeApi, type WorkflowPlugin } from '@/lib/workflow-plugin-api';
 import { resolveServerAssetUrl } from '@/lib/server';
 import { getWS } from '@/lib/ws';
 import { cn } from '@/lib/utils';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { AvatarGroup } from '@/components/ui/avatar-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { PanelRightOpen, Loader2, Search, Info, AlertTriangle, MessageSquareText, Monitor, Workflow as WorkflowIcon } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Loader2, Info, AlertTriangle, MessageSquareText, Monitor, RefreshCw, Workflow as WorkflowIcon } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { MiniAppRenderer, type MiniAppTaskEvent } from '../mini-app-renderer';
 import { PluginIcon } from '@/components/workflow/workflow-plugin-icon';
@@ -52,15 +46,27 @@ export interface MiniAppPreviewProps {
   /** 支持的设备类型（manifest.devices），如 ['mobile', 'ipad', 'pc'] */
   devices?: string[];
   allowScroll?: boolean;
+  /** 重载回调：由父组件提供，重新拉取项目文件后再重挂载渲染器 */
+  onReload?: () => Promise<void> | void;
 }
 
-export function MiniAppPreview({ type, sourceCode, error, onError, projectId, projectName, hideHeader, enabledPlugins, files, mainFile, enableAgents, devices, allowScroll = false }: MiniAppPreviewProps) {
+export function MiniAppPreview({ type, sourceCode, error, onError, projectId, projectName, hideHeader, enabledPlugins, files, mainFile, enableAgents, devices, allowScroll = false, onReload }: MiniAppPreviewProps) {
   const t = useTranslations('mini-apps');
   const workflowT = useTranslations('workflows');
-  const router = useRouter();
-  const [drawerOpen, setDrawerOpen] = useState(false);
   const [infoOpen, setInfoOpen] = useState(false);
   const [chatDockOpen, setChatDockOpen] = useState(false);
+  // 重载 mini-app：先由父组件重新拉取文件，再递增 key 重挂载渲染器
+  const [reloadKey, setReloadKey] = useState(0);
+  const [reloading, setReloading] = useState(false);
+  const handleReload = useCallback(async () => {
+    // 提供 onReload：重新拉文件后重挂载，比刷新页面快（复用 bundle/WS/状态）
+    if (onReload) {
+      setReloading(true);
+      try { await onReload(); }
+      finally { setReloading(false); }
+    }
+    setReloadKey((k) => k + 1);
+  }, [onReload]);
   // dock 布局持久化（百分比 Layout，见 docs/ui/react-resizable-panels-size-units.md）
   const dockLayoutKey = 'mini-app-dock:layout';
   const defaultDockLayout: Record<string, number> = { 'mini-app-preview': 70, 'mini-app-agent-dock': 30 };
@@ -84,9 +90,6 @@ export function MiniAppPreview({ type, sourceCode, error, onError, projectId, pr
       try { window.localStorage.setItem(dockLayoutKey, JSON.stringify(layout)); } catch {}
     }, 200);
   }, []);
-  const [projects, setProjects] = useState<MiniAppProject[]>([]);
-  const [projectsLoading, setProjectsLoading] = useState(false);
-  const [search, setSearch] = useState('');
   const [allPlugins, setAllPlugins] = useState<WorkflowPlugin[]>([]);
   const [pluginConfigSchemes, setPluginConfigSchemes] = useState<Record<string, string>>({});
   const [workflowConfigsOpen, setWorkflowConfigsOpen] = useState(false);
@@ -232,23 +235,6 @@ export function MiniAppPreview({ type, sourceCode, error, onError, projectId, pr
     return () => { document.title = prev; };
   }, [projectName]);
 
-  // Load projects when drawer opens
-  const handleDrawerOpen = useCallback((open: boolean) => {
-    setDrawerOpen(open);
-    if (open && projects.length === 0) {
-      setProjectsLoading(true);
-      sdk.miniApp.list().then((list) => {
-        setProjects(list);
-        setProjectsLoading(false);
-      }).catch(() => setProjectsLoading(false));
-    }
-  }, [projects.length]);
-
-  const handleProjectSwitch = useCallback((id: string) => {
-    setDrawerOpen(false);
-    router.push(`/mini-apps-preview?id=${encodeURIComponent(id)}`);
-  }, [router]);
-
   const showToolbar = !!projectId && !hideHeader;
   const handleRendererError = useCallback((nextError: string | null) => {
     onError(nextError === 'React custom view must export a default component.'
@@ -352,6 +338,18 @@ export function MiniAppPreview({ type, sourceCode, error, onError, projectId, pr
                 </SelectContent>
               </Select>
             )}
+            {/* 重载 mini-app：重新拉取文件 + 重挂载渲染器，比刷新页面快 */}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              onClick={handleReload}
+              disabled={reloading}
+              title={t('preview.reload')}
+              aria-label={t('preview.reload')}
+            >
+              <RefreshCw className={cn('h-4 w-4', reloading && 'animate-spin')} />
+            </Button>
             {enableAgents && projectId && !chatDockOpen && <MiniAppAgentPopover projectId={projectId} />}
             {enableAgents && projectId && (
               <Button
@@ -390,56 +388,6 @@ export function MiniAppPreview({ type, sourceCode, error, onError, projectId, pr
                 <Info className="h-4 w-4" />
               </Button>
             )}
-            <Sheet open={drawerOpen} onOpenChange={handleDrawerOpen}>
-              <SheetTrigger render={<Button variant="ghost" size="icon" className="h-7 w-7" />}>
-                  <PanelRightOpen className="h-4 w-4" />
-              </SheetTrigger>
-              <SheetContent side="right" className="w-72 p-0">
-                <SheetHeader className="px-4 pt-4 pb-2">
-                  <SheetTitle className="text-sm">{t('preview.switchProject')}</SheetTitle>
-                </SheetHeader>
-                <div className="px-3 pb-2">
-                  <div className="relative">
-                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                    <Input
-                      placeholder={t('page.searchPlaceholder')}
-                      value={search}
-                      onChange={(e) => setSearch(e.target.value)}
-                      className="h-8 text-xs pl-8"
-                    />
-                  </div>
-                </div>
-                <ScrollArea className="h-[calc(100%-100px)]">
-                  <div className="px-3 pb-3 space-y-1">
-                    {projectsLoading && (
-                      <div className="flex items-center justify-center py-8">
-                        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                      </div>
-                    )}
-                    {!projectsLoading && projects
-                      .filter((p) => {
-                        if (!search) return true;
-                        const q = search.toLowerCase();
-                        return p.name.toLowerCase().includes(q) || p.description?.toLowerCase().includes(q);
-                      })
-                      .map((p) => (
-                      <button
-                        key={p.id}
-                        onClick={() => handleProjectSwitch(p.id)}
-                        className={`w-full flex items-center gap-2 px-3 py-2 rounded-md text-left text-sm transition-colors hover:bg-accent ${
-                          p.id === projectId ? 'bg-accent' : ''
-                        }`}
-                      >
-                        <span className="truncate flex-1">{p.name}</span>
-                        <Badge variant={p.type === 'react' ? 'default' : 'secondary'} className="text-[10px] shrink-0">
-                          {p.type === 'react' ? 'React' : 'HTML'}
-                        </Badge>
-                      </button>
-                    ))}
-                  </div>
-                </ScrollArea>
-              </SheetContent>
-            </Sheet>
           </div>
         </div>
       )}
@@ -450,10 +398,19 @@ export function MiniAppPreview({ type, sourceCode, error, onError, projectId, pr
       )}
       <div className="flex min-h-0 flex-1">
         {(() => {
+          // 重载期间显示 loader，避免看到旧内容
+          if (reloading) {
+            return (
+              <div className="flex h-full w-full items-center justify-center text-muted-foreground">
+                <Loader2 className="h-6 w-6 animate-spin" />
+              </div>
+            );
+          }
           // 预览主体内容（dock 打开/关闭共用）
           const previewEl = (() => {
             const rendererEl = (
               <MiniAppRenderer
+                key={reloadKey}
                 type={type}
                 sourceCode={sourceCode}
                 onError={handleRendererError}

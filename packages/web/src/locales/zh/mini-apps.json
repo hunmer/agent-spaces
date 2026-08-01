@@ -117,6 +117,7 @@
     "plugins": "插件",
     "entryExportError": "入口文件必须 export default 一个 React 组件",
     "switchProject": "切换页面",
+    "reload": "重载",
     "device": "设备外框",
     "deviceNone": "无外框",
     "info": "应用信息",

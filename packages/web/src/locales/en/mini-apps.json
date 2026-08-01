@@ -117,6 +117,7 @@
     "plugins": "Plugins",
     "entryExportError": "Entry file must export default a React component",
     "switchProject": "Switch Page",
+    "reload": "Reload",
     "device": "Device frame",
     "deviceNone": "No frame",
     "info": "App Info",

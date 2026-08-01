@@ -165,6 +165,7 @@ export default function MiniAppPreviewPageClient() {
           projectId={project.id}
           projectName={project.name}
           hideHeader={embedded}
+          onReload={loadProject}
           enabledPlugins={project.enabledPlugins}
           enableAgents={project.enableAgents}
           devices={project.devices}
