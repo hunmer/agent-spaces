@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { debugCanvasImageDrag, FolderPlus, ImageOff, Loader2, Plus, Trash2, openMediaGallery, Popover, PopoverContent, PopoverTrigger, setCanvasImageDragData } from '@agent-spaces/ui';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, debugCanvasImageDrag, FolderPlus, ImageOff, Loader2, Plus, Trash2, openMediaGallery, Popover, PopoverContent, PopoverTrigger, setCanvasImageDragData } from '@agent-spaces/ui';
 import { IMAGE_REORDER_MIME } from '../../utils/canvas-constants';
 
 // 图片加载失败占位：onError 时切换为该块，显示破损图标 + url
@@ -40,6 +40,7 @@ export default function ImageResult({ images, max = 0, preview = false, onImageL
   const draggingRef = useRef(null);
   const [draggingIdx, setDraggingIdx] = useState(null);
   const [overIdx, setOverIdx] = useState(null);
+  const [confirmClear, setConfirmClear] = useState(false);
   const reorderMove = (from, to) => {
     if (from === to || from < 0 || to < 0 || from >= list.length || to >= list.length) return;
     const next = [...list];
@@ -171,7 +172,7 @@ export default function ImageResult({ images, max = 0, preview = false, onImageL
             <button
               type="button"
               title="清空产出"
-              onClick={(e) => { e.stopPropagation(); onClearImages(); }}
+              onClick={(e) => { e.stopPropagation(); setConfirmClear(true); }}
               className="flex items-center gap-0.5 rounded p-1 text-muted-foreground transition hover:bg-foreground/10 hover:text-destructive"
             >
               <Trash2 className="h-3.5 w-3.5" />
@@ -252,6 +253,25 @@ export default function ImageResult({ images, max = 0, preview = false, onImageL
           ))}
         </div>
       )}
+      <AlertDialog open={confirmClear} onOpenChange={setConfirmClear}>
+        <AlertDialogContent size="sm" onClick={(e) => e.stopPropagation()}>
+          <AlertDialogHeader>
+            <AlertDialogTitle>清空产出？</AlertDialogTitle>
+            <AlertDialogDescription>
+              将移除当前节点的全部 {all.length} 张产出，此操作不可撤销。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>取消</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              onClick={(e) => { e.stopPropagation(); setConfirmClear(false); onClearImages(); }}
+            >
+              清空
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

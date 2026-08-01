@@ -35,8 +35,6 @@ export default function ExecutionQueuePopover({ jobs, runningNodes = [], running
             className="relative flex items-center gap-1.5 rounded-md border border-border bg-background px-2.5 py-1 text-xs font-medium transition hover:border-primary"
             title="执行队列"
           >
-            <span>📋</span>
-            <span>执行队列</span>
             {runningCount > 0 && (
               <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] text-primary-foreground">
                 {runningCount}
