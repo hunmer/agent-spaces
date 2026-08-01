@@ -121,11 +121,61 @@
           }
         ]
       }
+    },
+    {
+      "id": "node_1785571322051_ul8k5q",
+      "type": "ai_image_edit",
+      "label": "AI Image Edit",
+      "position": {
+        "x": 675,
+        "y": 420
+      },
+      "data": {
+        "apiKey": "{{ __config__[\"workflow.ai-image\"][\"apiKey\"] }}",
+        "baseUrl": "{{ __config__[\"workflow.ai-image\"][\"baseUrl\"] }}",
+        "apiMode": "auto",
+        "model": "gpt-image-2-all",
+        "aspectRatio": "",
+        "n": 1,
+        "outputs": [
+          {
+            "key": "success",
+            "type": "boolean",
+            "dataType": "boolean"
+          },
+          {
+            "key": "message",
+            "type": "string"
+          },
+          {
+            "key": "data",
+            "type": "object",
+            "dataType": "object",
+            "children": [
+              {
+                "key": "images",
+                "type": "image[]"
+              },
+              {
+                "key": "taskId",
+                "type": "string"
+              },
+              {
+                "key": "model",
+                "type": "string"
+              }
+            ]
+          }
+        ],
+        "image": "https://drive-1252358454.cos.ap-guangzhou.myqcloud.com/uploads/j09esipamsa21cyy.jpg",
+        "prompt": "换成黑色",
+        "mask": "https://drive-1252358454.cos.ap-guangzhou.myqcloud.com/uploads/2026-08/01/mask-1-f62bddc5-59ed-48e2-9612-164a09701d1e.png"
+      }
     }
   ],
   "edges": [],
   "createdAt": 1785570436981,
-  "updatedAt": 1785570978773,
+  "updatedAt": 1785571392742,
   "published": false,
   "lastOpenedAt": 1785570436991,
   "enabledPlugins": [

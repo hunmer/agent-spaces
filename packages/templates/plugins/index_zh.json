@@ -18,8 +18,8 @@
     "hasWorkflow": true,
     "path": "ai-image",
     "iconUrl": "plugins/ai-image/icon.svg",
-    "md5": "2397f38d20856be3aaf195b210233205",
-    "updatedAt": "2026-07-31T03:29:11.737Z",
+    "md5": "dee35554736fd51f1baaf37b1dd6d58c",
+    "updatedAt": "2026-08-01T07:57:56.734Z",
     "files": [
       "actions.js",
       "icon.svg",

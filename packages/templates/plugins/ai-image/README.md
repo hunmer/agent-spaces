@@ -46,7 +46,7 @@
 
 - `prompt`（必填）：图片描述
 - `model`：`gpt-image-2-all`（默认） / `gpt-image-1` / `sora_image` / `nano-banana` / `dall-e-3` / `flux-pro-1.1` / `flux-kontext-pro`
-- `aspectRatio`：`1:1`（默认） / `16:9` / `9:16` / `4:3` / `3:4` / `3:2` / `2:3`
+- `aspectRatio`：不设定 / `1:1`（默认） / `16:9` / `9:16` / `4:3` / `3:4` / `3:2` / `2:3`
 - `n`：生成数量，默认 1
 - 出参 `data.images[]`：图片 URL 列表
 
@@ -55,8 +55,8 @@
 - `image`（必填）：参考图，支持多张，接受 URL / data URI / 本地路径；可填 JSON 数组
 - `prompt`（必填）：编辑指令，如「戴上墨镜」「换成水彩风格」
 - `model`：`gpt-image-2-all`（默认） / `gpt-image-1` / `flux-kontext-pro` / `flux-kontext-max` / `nano-banana`
-- `mask`（可选）：PNG 蒙版，透明区域（alpha=0）为要编辑的区域，需与首张图同尺寸（仅 gpt-image-1）
-- `aspectRatio`：`1:1`（默认） / `16:9` / `9:16` / `4:3` / `3:4`
+- `mask`（可选）：PNG 蒙版，透明区域（alpha=0）为要编辑的区域，需与首张图同尺寸；URL / data URI / 本地路径输入会统一转换为 PNG data URL
+- `aspectRatio`：不设定 / `1:1`（默认） / `16:9` / `9:16` / `4:3` / `3:4`
 - `n`：生成数量，默认 1
 - 出参 `data.images[]`：图片 URL 列表
 

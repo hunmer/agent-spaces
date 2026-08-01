@@ -456,6 +456,7 @@ module.exports = (t) => [
         dataType: 'string',
         default: '1:1',
         options: [
+          { label: t('field.aspectRatio.unset', 'Not set'), value: '' },
           { label: '1:1', value: '1:1' },
           { label: '16:9', value: '16:9' },
           { label: '9:16', value: '9:16' },
@@ -639,7 +640,7 @@ module.exports = (t) => [
         dataType: 'string',
         tooltip: t(
           'field.mask.tooltip',
-          'PNG mask: transparent (alpha=0) areas are edited. Same size as the first image. gpt-image-1 only.',
+          'PNG mask: transparent (alpha=0) areas are edited. Same size as the first image.',
         ),
       },
       {
@@ -649,6 +650,7 @@ module.exports = (t) => [
         dataType: 'string',
         default: '1:1',
         options: [
+          { label: t('field.aspectRatio.unset', 'Not set'), value: '' },
           { label: '1:1', value: '1:1' },
           { label: '16:9', value: '16:9' },
           { label: '9:16', value: '9:16' },
@@ -686,6 +688,9 @@ module.exports = (t) => [
 
       const files = []
       for (const src of inputs) files.push(await resolveImage(src))
+      const maskDataUrl = args.mask
+        ? `data:image/png;base64,${(await resolveImage(args.mask)).buffer.toString('base64')}`
+        : ''
 
       const model = args.model || 'gpt-image-1'
       const prompt = args.prompt
@@ -697,11 +702,8 @@ module.exports = (t) => [
         for (const f of files) {
           content.push({ type: 'image_url', image_url: { url: bufferToDataUri(f) } })
         }
-        if (args.mask) {
-          const maskFile = await resolveImage(args.mask)
-          content.push({ type: 'image_url', image_url: { url: bufferToDataUri(maskFile) } })
-        }
-        ctx.logger.info(`图片编辑 chat/completions model=${model} 输入图片=${files.length} 蒙版=${args.mask ? '有' : '无'}`)
+        if (maskDataUrl) content.push({ type: 'image_url', image_url: { url: maskDataUrl } })
+        ctx.logger.info(`图片编辑 chat/completions model=${model} 输入图片=${files.length} 蒙版=${maskDataUrl ? '有' : '无'}`)
         ctx.logger.info(`编辑指令: ${prompt}`)
         const body = { model, messages: [{ role: 'user', content }], ...(args.n && { n: Number(args.n) }) }
         const out = await runChatCompletions(ctx, args, baseUrl, body)
@@ -718,11 +720,8 @@ module.exports = (t) => [
         for (const f of files) {
           content.push({ type: 'input_image', image_url: bufferToDataUri(f) })
         }
-        if (args.mask) {
-          const maskFile = await resolveImage(args.mask)
-          content.push({ type: 'input_image', image_url: bufferToDataUri(maskFile) })
-        }
-        ctx.logger.info(`图片编辑 /v1/responses model=${model} 输入图片=${files.length} 蒙版=${args.mask ? '有' : '无'}`)
+        if (maskDataUrl) content.push({ type: 'input_image', image_url: maskDataUrl })
+        ctx.logger.info(`图片编辑 /v1/responses model=${model} 输入图片=${files.length} 蒙版=${maskDataUrl ? '有' : '无'}`)
         ctx.logger.info(`编辑指令: ${prompt}`)
         const body = { model, input: [{ role: 'user', content }], tools: [{ type: 'image_generation' }] }
         const out = await runResponses(ctx, args, baseUrl, body)
@@ -744,13 +743,13 @@ module.exports = (t) => [
       fields.model = model
       if (args.aspectRatio) fields.aspect_ratio = args.aspectRatio
       if (args.n) fields.n = String(args.n)
-      if (args.mask) {
-        const maskFile = await resolveImage(args.mask)
-        fields.mask = { buffer: maskFile.buffer, filename: maskFile.filename, mime: maskFile.mime || 'image/png' }
+      if (maskDataUrl) {
+        const maskFile = await resolveImage(maskDataUrl)
+        fields.mask = { buffer: maskFile.buffer, filename: 'mask.png', mime: 'image/png' }
       }
 
       const mp = buildMultipart(fields)
-      ctx.logger.info(`图片编辑 model=${fields.model} 输入图片=${files.length} 蒙版=${args.mask ? '有' : '无'}`)
+      ctx.logger.info(`图片编辑 model=${fields.model} 输入图片=${files.length} 蒙版=${maskDataUrl ? '有' : '无'}`)
       ctx.logger.info(`编辑指令: ${prompt}`)
 
       const out = await submitAndPoll(ctx, args, baseUrl, async () => {

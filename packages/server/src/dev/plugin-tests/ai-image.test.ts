@@ -40,7 +40,7 @@ export default async function run(plugin: LoadedPlugin) {
     const u = String(url);
     const method = (opts && opts.method) || 'GET';
     fetchCalls.push({ url: u, method, body: opts && opts.body, contentType: opts && opts.headers && opts.headers['Content-Type'] });
-    if (u.includes('/v1/images/edits')) {
+    if (u.includes('/images/edits')) {
       return new Response(JSON.stringify({ task_id: 'task-edit-1' }), {
         status: 200,
         headers: { 'content-type': 'application/json' },
@@ -86,16 +86,24 @@ export default async function run(plugin: LoadedPlugin) {
         { code: 'success', data: { status: 'SUCCESS', progress: '100%', data: { data: [{ url: 'https://example.com/edited.png' }], model: 'gpt-image-2-all', created: 1702 } } },
       ],
     });
-    const r3 = (await plugin.runAction('ai_image_edit', { image: ['https://example.com/in.png'], prompt: '戴上墨镜', model: 'gpt-image-2-all' })) as { success: boolean; data: { images: string[] } };
+    const r3 = (await plugin.runAction('ai_image_edit', {
+      image: ['https://example.com/in.png'],
+      mask: 'https://example.com/mask.png',
+      prompt: '戴上墨镜',
+      model: 'gpt-image-2-all',
+      aspectRatio: '',
+    })) as { success: boolean; data: { images: string[] } };
     assert.equal(r3.success, true);
     assert.deepEqual(r3.data.images, ['https://example.com/edited.png']);
 
-    const editCall = fetchCalls.find((c) => c.url.includes('/v1/images/edits'));
+    const editCall = fetchCalls.find((c) => c.url.includes('/images/edits'));
     assert.ok(editCall, 'edit should be submitted via fetch');
     assert.ok(editCall!.contentType?.includes('multipart/form-data'), 'edit content-type should be multipart/form-data');
     const editBody = editCall!.body;
     assert.ok(editBody, 'edit body should exist');
     assert.ok(editBody!.includes('name="image"'), 'multipart should contain image field');
+    assert.ok(editBody!.includes('name="mask"; filename="mask.png"'), 'URL mask should become a PNG multipart file');
+    assert.ok(!editBody!.includes('name="aspect_ratio"'), 'empty aspect ratio should be omitted');
     assert.ok(editBody!.includes('戴上墨镜'), 'multipart should contain prompt');
     console.log('✓ edit (multipart submit)');
 
