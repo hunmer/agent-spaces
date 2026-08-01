@@ -13,6 +13,7 @@ import type {
 import { isRuntimeWorkflowEdge } from '@agent-spaces/shared';
 import type { ExecutionSession, LoopIterations } from './execution-types.js';
 import { getNestedValue, setNestedValue, deleteNestedValue } from './execution-value-access.js';
+import { readFile } from 'node:fs/promises';
 
 export function clone<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
@@ -236,6 +237,49 @@ export function executeArrayTextReplace(resolvedData: Record<string, any>): Reco
       replaceMode,
     )),
   };
+}
+
+// ---- 图片转 Base64 ----
+
+const IMAGE_MIME_BY_EXT: Record<string, string> = {
+  png: 'image/png',
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  gif: 'image/gif',
+  webp: 'image/webp',
+  bmp: 'image/bmp',
+  svg: 'image/svg+xml',
+  ico: 'image/x-icon',
+  avif: 'image/avif',
+};
+
+function guessMimeFromPath(path: string): string {
+  const ext = path.split('?')[0].split('#')[0].split('.').pop()?.toLowerCase() ?? '';
+  return IMAGE_MIME_BY_EXT[ext] || 'image/png';
+}
+
+export async function executeImageToBase64(
+  resolvedData: Record<string, any>,
+): Promise<Record<string, string>> {
+  const source = String(resolvedData.source ?? '').trim();
+  const asDataURL = resolvedData.outputFormat !== 'base64';
+  if (!source) throw new Error('image_to_base64: source is required');
+
+  let buffer: Buffer;
+  let mime: string;
+
+  if (/^https?:\/\//i.test(source)) {
+    const response = await fetch(source);
+    if (!response.ok) throw new Error(`image_to_base64: fetch failed (${response.status})`);
+    mime = (response.headers.get('content-type') || '').split(';')[0].trim() || guessMimeFromPath(source);
+    buffer = Buffer.from(await response.arrayBuffer());
+  } else {
+    buffer = await readFile(source);
+    mime = guessMimeFromPath(source);
+  }
+
+  const base64 = buffer.toString('base64');
+  return { result: asDataURL ? `data:${mime};base64,${base64}` : base64 };
 }
 
 export function replaceTextWithLimit(

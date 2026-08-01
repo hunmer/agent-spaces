@@ -168,14 +168,14 @@
           }
         ],
         "image": "https://drive-1252358454.cos.ap-guangzhou.myqcloud.com/uploads/j09esipamsa21cyy.jpg",
-        "prompt": "换成黑色",
+        "prompt": "换成红色",
         "mask": "https://drive-1252358454.cos.ap-guangzhou.myqcloud.com/uploads/2026-08/01/mask-1-f62bddc5-59ed-48e2-9612-164a09701d1e.png"
       }
     }
   ],
   "edges": [],
   "createdAt": 1785570436981,
-  "updatedAt": 1785571392742,
+  "updatedAt": 1785572007929,
   "published": false,
   "lastOpenedAt": 1785570436991,
   "enabledPlugins": [

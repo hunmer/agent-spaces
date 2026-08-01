@@ -953,7 +953,6 @@ function WorkflowNodeComponent({ id, data, type, selected }: NodeProps) {
           nodeId={id}
           executionStep={displayExecutionStep}
           executionSteps={Array.isArray(nodeData.executionSteps) ? nodeData.executionSteps : undefined}
-          executionStatus={nodeData.execStatus}
           nodeType={workflowNodeType}
           loopExecutionScopeId={nodeData.loopExecutionScopeId}
           data={getRecordValue(nodeData[EXECUTION_DATA_KEY] ?? nodeData.executionLogData)}

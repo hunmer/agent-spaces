@@ -505,7 +505,8 @@
       "miniapp": "Mini App",
       "utilities": "辅助工具",
       "sqlite": "数据库",
-      "knowledgeBase": "知识库"
+      "knowledgeBase": "知识库",
+      "image": "图片"
     },
     "start": {
       "label": "开始",
@@ -708,6 +709,23 @@
         "text": {
           "label": "分隔符",
           "tooltip": "用于分割字符串的分隔符，默认 |"
+        }
+      }
+    },
+    "image_to_base64": {
+      "label": "图片转 Base64",
+      "description": "将本地图片路径或远程图片 URL 转换为 base64 / dataURL 字符串，输出 result",
+      "props": {
+        "source": {
+          "label": "图片来源",
+          "placeholder": "本地路径或图片 URL，可使用变量",
+          "tooltip": "支持本地文件绝对路径（如 C:/a/b.png）或 http(s) 图片 URL，支持绑定上游变量"
+        },
+        "outputFormat": {
+          "label": "输出格式",
+          "tooltip": "dataURL 输出含 MIME 前缀（如 data:image/png;base64,...），base64 仅输出纯 base64 字符串",
+          "dataURL": "Data URL",
+          "base64": "纯 Base64"
         }
       }
     },

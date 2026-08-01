@@ -505,7 +505,8 @@
       "miniapp": "Mini App",
       "utilities": "Utilities",
       "sqlite": "Database",
-      "knowledgeBase": "Knowledge Base"
+      "knowledgeBase": "Knowledge Base",
+      "image": "Image"
     },
     "start": {
       "label": "Start",
@@ -707,7 +708,24 @@
         },
         "text": {
           "label": "Delimiter",
-          "tooltip": "Delimiter used to split the string, defaults to |"
+          "tooltip": "Delimiter used to split the string, default |"
+        }
+      }
+    },
+    "image_to_base64": {
+      "label": "Image to Base64",
+      "description": "Convert a local image path or remote image URL into a base64 / dataURL string, output result",
+      "props": {
+        "source": {
+          "label": "Image Source",
+          "placeholder": "Local path or image URL, variables supported",
+          "tooltip": "Supports local file absolute paths (e.g. C:/a/b.png) or http(s) image URLs; supports binding upstream variables"
+        },
+        "outputFormat": {
+          "label": "Output Format",
+          "tooltip": "dataURL outputs with MIME prefix (e.g. data:image/png;base64,...), base64 outputs the raw base64 string only",
+          "dataURL": "Data URL",
+          "base64": "Raw Base64"
         }
       }
     },

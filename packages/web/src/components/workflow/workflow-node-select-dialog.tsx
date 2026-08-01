@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Search, Shapes, Workflow as WorkflowIcon, Sparkles, MousePointerClick, Monitor, Wrench, Database, BookOpen } from 'lucide-react';
+import { Search, Shapes, Workflow as WorkflowIcon, Sparkles, MousePointerClick, Monitor, Wrench, Database, BookOpen, FileImage } from 'lucide-react';
 import { PluginIcon } from './workflow-plugin-icon';
 import { WorkflowNodeDefinitionIcon, type WorkflowNodeIconDefinition } from './workflow-node-icon';
 
@@ -40,6 +40,7 @@ const BUILTIN_CATEGORY_ICONS: Partial<Record<string, ComponentType<{ className?:
   'nodes.categories.utilities': Wrench,
   'nodes.categories.sqlite': Database,
   'nodes.categories.knowledgeBase': BookOpen,
+  'nodes.categories.image': FileImage,
 };
 
 export function WorkflowNodeSelectDialog({

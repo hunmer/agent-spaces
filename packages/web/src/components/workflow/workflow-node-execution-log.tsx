@@ -70,7 +70,6 @@ interface WorkflowNodeExecutionLogProps {
   nodeId: string;
   executionStep: ExecutionStep;
   executionSteps?: ExecutionStep[];
-  executionStatus?: string;
   nodeType?: string;
   loopExecutionScopeId?: string;
   data?: Record<string, unknown>;
@@ -87,7 +86,6 @@ export function WorkflowNodeExecutionLog({
   nodeId,
   executionStep,
   executionSteps,
-  executionStatus,
   nodeType,
   loopExecutionScopeId,
   data,
@@ -100,7 +98,6 @@ export function WorkflowNodeExecutionLog({
   onToggleLog,
 }: WorkflowNodeExecutionLogProps) {
   const t = useTranslations('workflows');
-  const isExecutionActive = executionStatus === 'running' || executionStatus === 'paused';
   const batchSteps = React.useMemo(() => {
     return Array.isArray(executionSteps) && executionSteps.length > 0
       ? executionSteps
@@ -127,7 +124,7 @@ export function WorkflowNodeExecutionLog({
   const selectedExecutionStep = selectedBatchIndex === -1
     ? executionStep
     : batchSteps[selectedBatchIndex] || executionStep;
-  const shouldShowRunningSpinner = selectedExecutionStep.status === 'running' && isExecutionActive;
+  const shouldShowRunningSpinner = selectedExecutionStep.status === 'running';
   const shouldShowBatchTabs = batchSteps.length > 1;
   const handleBatchIndexChange = React.useCallback((value: string) => {
     if (value === allTabValue) {

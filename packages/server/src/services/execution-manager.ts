@@ -45,6 +45,7 @@ import {
   executeStringSplit,
   executeRandomText,
   executeArrayTextReplace,
+  executeImageToBase64,
   executeSwitch,
   executeVariableAggregate,
   executeSetVariable,
@@ -1115,6 +1116,8 @@ export class ExecutionManager {
         return executeStringConcat(resolvedData);
       case 'string_split':
         return executeStringSplit(resolvedData);
+      case 'image_to_base64':
+        return executeImageToBase64(resolvedData);
       case 'set_variable':
         return executeSetVariable(session, resolvedData.variables || [], appendLog);
       case 'get_variable':
