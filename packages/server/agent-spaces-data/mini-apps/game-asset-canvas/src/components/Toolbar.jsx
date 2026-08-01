@@ -9,6 +9,14 @@ import {
   MenubarSub,
   MenubarSubTrigger,
   MenubarSubContent,
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
   History as HistoryIcon,
   Popover,
   PopoverContent,
@@ -41,6 +49,8 @@ export default function Toolbar({
   const [exporting, setExporting] = useState(false);
   const [importing, setImporting] = useState(false);
   const [workspaceBusy, setWorkspaceBusy] = useState(false);
+  // 清空画布需二次确认，防止误触清空全部节点。
+  const [confirmClear, setConfirmClear] = useState(false);
 
   // 导出素材库：toast.loading 实时反馈进度，完成/失败切 success/error。
   // 空库/全部失败由工具函数抛错，这里 catch 后 toast.error。
@@ -212,7 +222,7 @@ export default function Toolbar({
               </MenubarSubContent>
             </MenubarSub>
             <MenubarSeparator />
-            <MenubarItem onClick={onClear} variant="destructive">清空</MenubarItem>
+            <MenubarItem onClick={() => setConfirmClear(true)} variant="destructive">清空</MenubarItem>
           </MenubarContent>
         </MenubarMenu>
 
@@ -285,6 +295,25 @@ export default function Toolbar({
           </PopoverContent>
         </Popover>
       </div>
+      <AlertDialog open={confirmClear} onOpenChange={setConfirmClear}>
+        <AlertDialogContent size="sm">
+          <AlertDialogHeader>
+            <AlertDialogTitle>清空画布？</AlertDialogTitle>
+            <AlertDialogDescription>
+              将移除画布上的所有节点、连线和分组，此操作不可撤销。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>取消</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              onClick={() => { setConfirmClear(false); onClear?.(); }}
+            >
+              清空
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

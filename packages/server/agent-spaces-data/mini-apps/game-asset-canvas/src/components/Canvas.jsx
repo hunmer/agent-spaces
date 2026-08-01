@@ -887,6 +887,7 @@ export default function Canvas() {
               selectionCount={selection.selectionCount}
               onCreateGroup={groupOps.createGroupFromSelection}
               onAlignDistribute={selection.alignDistribute}
+              onApplyGridLayout={selection.applyGridLayout}
               onDeleteSelected={selection.deleteSelectedNodes}
             />
 

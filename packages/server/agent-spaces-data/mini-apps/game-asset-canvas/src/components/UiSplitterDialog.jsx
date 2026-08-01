@@ -6,15 +6,21 @@ import {
 } from '@agent-spaces/ui';
 import { getFabric } from '../utils/image-ops/cdn';
 import {
-  loadImageSource, detect, exportBox, sampleColor, cornerColor, toHex,
+  loadImageSource, detect, cornerColor, toHex,
 } from '../utils/image-ops/sprite-splitter';
 import {
-  hexToRgb, normalizeGridCount, gridSplitThrottleMs, evenlySpacedGuides,
-  resolveGridGuides, gridBoxesFromGuides, inputSignature,
+  hexToRgb, normalizeGridCount, evenlySpacedGuides,
+  resolveGridGuides,
 } from '../utils/ui-splitter-helpers';
 import InputImageList from './ui-splitter/InputImageList';
 import SplitterToolbar from './ui-splitter/SplitterToolbar';
 import SplitResultPanel from './ui-splitter/SplitResultPanel';
+import useSplitterSlices from './ui-splitter/useSplitterSlices';
+import useSplitterGrid from './ui-splitter/useSplitterGrid';
+import useSplitterCrop from './ui-splitter/useSplitterCrop';
+import useSplitterSave from './ui-splitter/useSplitterSave';
+import bindSplitterFabricEvents from './ui-splitter/bindSplitterFabricEvents';
+import bindSplitterKeyboard from './ui-splitter/splitterKeyboard';
 
 /**
  * UI 拆分对话框：用 fabric.js 在画布上框选区域 + 自动检测连通域，
@@ -155,63 +161,6 @@ export default function UiSplitterDialog({
     return opts;
   }, [method, tolerance, minArea, padding, pickedHex, curState]);
   useEffect(() => { computeOptions(); }, [computeOptions]);
-
-  // ===== fabric 切片框辅助 =====
-  const rects = useCallback(() => {
-    const fc = fcRef.current;
-    if (!fc) return [];
-    return fc.getObjects().filter((o) => o.kind === 'slice');
-  }, []);
-
-  const clearRects = useCallback(() => {
-    const fc = fcRef.current;
-    if (!fc) return;
-    for (const r of rects()) fc.remove(r);
-  }, [rects]);
-
-  const realBox = useCallback((rect) => ({
-    x: rect.left,
-    y: rect.top,
-    width: rect.width * rect.scaleX,
-    height: rect.height * rect.scaleY,
-  }), []);
-
-  const snapshot = useCallback(() => rects().map(realBox), [rects, realBox]);
-
-  const addRect = useCallback((box) => {
-    const fc = fcRef.current;
-    const fabric = fabricLibRef.current;
-    if (!fc || !fabric) return;
-    const rect = new fabric.Rect({
-      left: box.x,
-      top: box.y,
-      width: box.width,
-      height: box.height,
-      fill: 'rgba(0,0,0,0)',
-      stroke: '#0ea5e9',
-      strokeWidth: 2,
-      cornerColor: '#0ea5e9',
-      transparentCorners: false,
-      objectCaching: false,
-    });
-    rect.kind = 'slice';
-    fc.add(rect);
-  }, []);
-
-  const updateHistoryButtons = useCallback(() => {
-    const st = curState();
-    setCanUndo((st?.undo?.length || 0) > 0);
-    setCanRedo((st?.redo?.length || 0) > 0);
-  }, [curState]);
-
-  const pushHistory = useCallback(() => {
-    if (applyingHistoryRef.current) return;
-    const st = curState();
-    if (!st) return;
-    st.undo.push(snapshot());
-    st.redo.length = 0;
-    updateHistoryButtons();
-  }, [snapshot, curState, updateHistoryButtons]);
 
   // 右侧预览列表
   const [previews, setPreviews] = useState([]); // [{ name, url }]

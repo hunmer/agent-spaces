@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { copyNodes, hasClipboard, pasteNodes, serializeClipboard } from '../utils/clipboard';
 import { genId } from '../utils/canvas-id';
-import { computeAlignment } from '../utils/align-distribute';
+import { computeAlignment, computeGridLayout } from '../utils/align-distribute';
 import { IMAGE_TAGS } from '../utils/constants';
 import { imageFilesFromClipboardData, readClipboardImageFiles } from '../utils/clipboard-images';
 
@@ -47,6 +47,19 @@ export default function useSelectionClipboard({
     const sel = nodesRef.current.filter((n) => n.selected);
     if (sel.length < 2) return;
     const newPositions = computeAlignment(sel, mode);
+    if (!newPositions.size) return;
+    setNodes((prev) => prev.map((n) => {
+      const pos = newPositions.get(n.id);
+      if (!pos) return n;
+      return { ...n, position: { ...n.position, ...pos } };
+    }));
+  }, [setNodes]);
+
+  // 网格分布选中节点：按「最上游优先」拓扑序铺成 rows × cols，间距 gapX/gapY
+  const applyGridLayout = useCallback((opts) => {
+    const sel = nodesRef.current.filter((n) => n.selected);
+    if (sel.length < 2) return;
+    const newPositions = computeGridLayout(sel, edgesRef.current, opts);
     if (!newPositions.size) return;
     setNodes((prev) => prev.map((n) => {
       const pos = newPositions.get(n.id);
@@ -172,7 +185,7 @@ export default function useSelectionClipboard({
   return {
     selectionCount, setSelectionCount,
     onSelectionChange,
-    alignDistribute, deleteSelectedNodes, handleUseImage,
+    alignDistribute, applyGridLayout, deleteSelectedNodes, handleUseImage,
     handleCopy, handlePaste,
     handleSelectAll, handleInvertSelect, handleClearSelection,
   };
