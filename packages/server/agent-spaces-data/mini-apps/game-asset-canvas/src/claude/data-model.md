@@ -152,7 +152,7 @@ interface Edge {
 }
 ```
 
-- Handle 位置：source 在节点底部（Bottom），target 在节点顶部（Top）。
+- Handle 位置由全局设置决定：上下时 source=Bottom、target=Top；左右时 source=Right、target=Left。
 - 连线语义：「source 产出图 → target 输入区」。旧边或 `inputTarget='images'` 由 `computeInputImages` 派生到 target 的 `data.images`；其它目标派生到 `data.fileUploadInputs[inputTarget]`。
 - 多上传区声明集中在 `utils/connection-targets.js`。当前编辑图片节点声明 `images`（输入图片）和 `mask`（蒙版图片），手动连线时由用户选择。
 

@@ -26,8 +26,8 @@ export default function FileUpload({ nodeId, value = [], onChange, max = 6, plac
   const urls = Array.isArray(value) ? value : [];
   // 只读项归一：过滤无 src 的项
   const extras = (Array.isArray(extraItems) ? extraItems : []).filter((e) => e && e.src);
-  // 跨节点图片选中状态：checkbox 点击增删切换，ctrl+点击图片本体替换式选中
-  const { isSelected, toggle, selectExclusive } = useContext(ImageSelectionContext);
+  // 跨节点图片选中状态：checkbox 点击增删切换，ctrl+点击图片本体增删切换（跨节点累加）
+  const { isSelected, toggle } = useContext(ImageSelectionContext);
 
   const rawItems = [
     ...extras.map((item, sourceIndex) => ({ ...item, kind: 'extra', sourceIndex })),
@@ -285,8 +285,8 @@ export default function FileUpload({ nodeId, value = [], onChange, max = 6, plac
                 onDragOver={sortable ? onReorderDragOver(i, item) : undefined}
                 onDragEnd={onReorderDragEnd}
                 onClick={(e) => {
-                  // ctrl/meta + 点击图片本体：清空其他选中，仅选中当前（替换式）
-                  if ((e.ctrlKey || e.metaKey) && nodeId) { e.stopPropagation(); selectExclusive(nodeId, item.src); return; }
+                  // ctrl/meta + 点击图片本体：增删切换（跨节点累加多选）
+                  if ((e.ctrlKey || e.metaKey) && nodeId) { e.stopPropagation(); toggle(nodeId, item.src, true); return; }
                   openAt(i);
                 }}
                 className={`game-asset-upload-thumb group relative aspect-square cursor-pointer overflow-hidden rounded-md border transition-colors ${

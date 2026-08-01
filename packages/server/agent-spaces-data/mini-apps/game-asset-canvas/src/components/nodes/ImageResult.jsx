@@ -33,8 +33,8 @@ export default function ImageResult({ nodeId, images, max = 0, preview = false, 
   const all = images || [];
   const list = max > 0 ? all.slice(0, max) : all;
   const hasVersions = Array.isArray(versions) && versions.length > 1 && onSwitchVersion;
-  // 跨节点图片选中状态：checkbox 点击增删切换，ctrl+点击图片本体替换式选中
-  const { isSelected, toggle, selectExclusive } = useContext(ImageSelectionContext);
+  // 跨节点图片选中状态：checkbox 点击增删切换，ctrl+点击图片本体增删切换（跨节点累加）
+  const { isSelected, toggle } = useContext(ImageSelectionContext);
   if (!list.length && !onAddImages && !hasVersions) return null;
 
   // 拖拽排序（原生 HTML5 DnD，参考 UpstreamImageList）：仅在非预览态 + 注入 onReorderImages + 多图时启用。
@@ -237,8 +237,8 @@ export default function ImageResult({ nodeId, images, max = 0, preview = false, 
               onDragEnd={sortable ? onReorderDragEnd : undefined}
               onClick={(e) => {
                 e.stopPropagation();
-                // ctrl/meta + 点击图片本体：清空其他选中，仅选中当前（替换式）
-                if ((e.ctrlKey || e.metaKey) && nodeId) { selectExclusive(nodeId, url); return; }
+                // ctrl/meta + 点击图片本体：增删切换（跨节点累加多选）
+                if ((e.ctrlKey || e.metaKey) && nodeId) { toggle(nodeId, url, true); return; }
                 open(i);
               }}
               className={`game-asset-output-thumb group relative block aspect-square cursor-pointer overflow-hidden rounded border transition-colors ${

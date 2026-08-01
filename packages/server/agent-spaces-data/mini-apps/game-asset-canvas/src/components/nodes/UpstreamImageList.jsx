@@ -33,8 +33,8 @@ export default function UpstreamImageList({
   const [overIdx, setOverIdx] = useState(null);
   const nonDeletableSet = new Set(nonDeletableUrls);
   const itemKeys = occurrenceKeys(urls);
-  // 跨节点图片选中状态：checkbox 点击增删切换，ctrl+点击图片本体替换式选中
-  const { isSelected, toggle, selectExclusive } = useContext(ImageSelectionContext);
+  // 跨节点图片选中状态：checkbox 点击增删切换，ctrl+点击图片本体增删切换（跨节点累加）
+  const { isSelected, toggle } = useContext(ImageSelectionContext);
 
   const move = (from, to) => {
     if (from === to || from < 0 || to < 0 || from >= urls.length || to >= urls.length) return;
@@ -107,8 +107,8 @@ export default function UpstreamImageList({
               onDragEnd={sortable ? onDragEnd : undefined}
               onClick={(e) => {
                 e.stopPropagation();
-                // ctrl/meta + 点击图片本体：清空其他选中，仅选中当前（替换式）
-                if ((e.ctrlKey || e.metaKey) && nodeId) { selectExclusive(nodeId, url); return; }
+                // ctrl/meta + 点击图片本体：增删切换（跨节点累加多选）
+                if ((e.ctrlKey || e.metaKey) && nodeId) { toggle(nodeId, url, true); return; }
                 openMediaGallery([{ src: url, type: 'image' }], 0);
               }}
               className={`game-asset-upstream-row group relative flex cursor-pointer items-center gap-2 rounded border px-1.5 py-1 transition-colors ${
