@@ -765,7 +765,7 @@
     }
   ],
   "createdAt": 1782530195481,
-  "updatedAt": 1782540100663,
+  "updatedAt": 1785588204273,
   "published": true,
   "enabledPlugins": [
     "workflow.openai",
@@ -782,7 +782,12 @@
   "description": "文字生成语音",
   "variables": [],
   "layoutSnapshot": {
-    "nodeDisplayMode": "normal"
+    "nodeDisplayMode": "normal",
+    "propertyModeBadgePosition": "center",
+    "canvasTheme": "default",
+    "bgVariant": "dots",
+    "floatingHandles": false,
+    "attributionPosition": "left-right"
   },
-  "lastOpenedAt": 1784283182626
+  "lastOpenedAt": 1785588049974
 }

@@ -8,7 +8,7 @@ import SpinePreviewViewer from './SpinePreviewViewer';
 import NodeOutput from './NodeOutput';
 import FloatingHandle from './FloatingHandle';
 import { UploadCollapseContext } from './UploadSection';
-import { FLOATING_HANDLE_OFFSET } from '../canvas/floating-edge-utils';
+import { getFloatingHandleProps } from '../canvas/floating-edge-utils';
 
 const STATUS_TEXT = {
   idle: '',
@@ -285,8 +285,7 @@ export default function NodeShell({
         {targetHandle && (
           <FloatingHandle
             type="target"
-            position={Position.Top}
-            style={{ top: -FLOATING_HANDLE_OFFSET, zIndex: 50 }}
+            {...getFloatingHandleProps(data?.floatingHandlePosition, 'target')}
           />
         )}
         <div data-node-card className="mx-auto w-full overflow-hidden rounded-lg bg-card shadow-sm" style={{ maxWidth: '640px' }}>
@@ -312,8 +311,7 @@ export default function NodeShell({
         {sourceHandle && (
           <FloatingHandle
             type="source"
-            position={Position.Bottom}
-            style={{ bottom: -FLOATING_HANDLE_OFFSET, zIndex: 50 }}
+            {...getFloatingHandleProps(data?.floatingHandlePosition, 'source')}
           />
         )}
       </div>
@@ -354,8 +352,7 @@ export default function NodeShell({
       {targetHandle && (
         <FloatingHandle
           type="target"
-          position={Position.Top}
-          style={{ top: -FLOATING_HANDLE_OFFSET, zIndex: 50 }}
+          {...getFloatingHandleProps(data?.floatingHandlePosition, 'target')}
         />
       )}
       <div className="flex h-full w-full flex-col overflow-hidden rounded-lg border border-border bg-card text-card-foreground shadow-sm">
@@ -416,8 +413,7 @@ export default function NodeShell({
       {sourceHandle && (
         <FloatingHandle
           type="source"
-          position={Position.Bottom}
-          style={{ bottom: -FLOATING_HANDLE_OFFSET, zIndex: 50 }}
+          {...getFloatingHandleProps(data?.floatingHandlePosition, 'source')}
         />
       )}
     </div>

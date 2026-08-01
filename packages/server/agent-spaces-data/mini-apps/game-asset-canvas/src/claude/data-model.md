@@ -271,6 +271,8 @@ interface SpineReskinHistoryItem {
 
 存 `configs/settings.json`（全局共享）。结构见 `utils/settings.js DEFAULT_SETTINGS`，前端读时用 `mergeSettings` 补默认值。
 
+画布样式字段：`bgVariant: 'dots' | 'lines' | 'cross'`、`attributionPosition: 'top-bottom' | 'left-right'`、`snapGrid: boolean`。
+
 ## 工作区清单（WorkspacesFile）
 
 存 `configs/workspaces.json`：

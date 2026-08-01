@@ -33,8 +33,8 @@ export default function ImageResult({ nodeId, images, max = 0, preview = false, 
   const all = images || [];
   const list = max > 0 ? all.slice(0, max) : all;
   const hasVersions = Array.isArray(versions) && versions.length > 1 && onSwitchVersion;
-  // 跨节点图片选中状态（单击选中 / ctrl 多选 / 双击预览）
-  const { isSelected, toggle } = useContext(ImageSelectionContext);
+  // 跨节点图片选中状态：checkbox 点击增删切换，ctrl+点击图片本体替换式选中
+  const { isSelected, toggle, selectExclusive } = useContext(ImageSelectionContext);
   if (!list.length && !onAddImages && !hasVersions) return null;
 
   // 拖拽排序（原生 HTML5 DnD，参考 UpstreamImageList）：仅在非预览态 + 注入 onReorderImages + 多图时启用。
@@ -123,20 +123,15 @@ export default function ImageResult({ nodeId, images, max = 0, preview = false, 
   if (preview) {
     return (
       <div className="flex w-full flex-col gap-2">
-        {list.map((url, i) => {
-          const sel = nodeId ? isSelected(nodeId, url) : false;
-          return (
-            <PreviewImage
-              key={i}
-              url={url}
-              selected={sel}
-              onOpen={() => open(i)}
-              onSelect={(ctrlKey) => nodeId && toggle(nodeId, url, ctrlKey)}
-              onImageLoad={onImageLoad}
-              onDragStart={onReorderDragStart(i, url)}
-            />
-          );
-        })}
+        {list.map((url, i) => (
+          <PreviewImage
+            key={i}
+            url={url}
+            onOpen={() => open(i)}
+            onImageLoad={onImageLoad}
+            onDragStart={onReorderDragStart(i, url)}
+          />
+        ))}
       </div>
     );
   }
@@ -240,8 +235,12 @@ export default function ImageResult({ nodeId, images, max = 0, preview = false, 
               onDragStart={onReorderDragStart(i, url)}
               onDragOver={sortable ? onReorderDragOver(i) : undefined}
               onDragEnd={sortable ? onReorderDragEnd : undefined}
-              onClick={(e) => { e.stopPropagation(); if (nodeId) toggle(nodeId, url, e.ctrlKey || e.metaKey); }}
-              onDoubleClick={(e) => { e.stopPropagation(); open(i); }}
+              onClick={(e) => {
+                e.stopPropagation();
+                // ctrl/meta + 点击图片本体：清空其他选中，仅选中当前（替换式）
+                if ((e.ctrlKey || e.metaKey) && nodeId) { selectExclusive(nodeId, url); return; }
+                open(i);
+              }}
               className={`game-asset-output-thumb group relative block aspect-square cursor-pointer overflow-hidden rounded border transition-colors ${
                 sortable && draggingIdx === i ? 'border-primary opacity-40'
                   : sortable && overIdx === i && draggingIdx !== i ? 'border-primary border-t-2'
@@ -252,11 +251,18 @@ export default function ImageResult({ nodeId, images, max = 0, preview = false, 
               <div className="block h-full w-full overflow-hidden rounded">
                 <GridImage url={url} />
               </div>
-              {/* 选中角标 */}
-              {sel && (
-                <span className="absolute right-0.5 top-0.5 z-20 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-primary-foreground shadow">
-                  <Check className="h-2.5 w-2.5" />
-                </span>
+              {/* 右上角选择 checkbox：hover 显示空框，选中时常驻显示实心勾。点击切换选中（天然多选）。 */}
+              {nodeId && (
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); toggle(nodeId, url); }}
+                  title={sel ? '取消选择' : '选择'}
+                  className={`game-asset-output-checkbox nodrag nopan nowheel ${sel ? 'game-asset-output-checkbox-on' : ''} absolute right-1 top-1 z-20 flex h-4 w-4 items-center justify-center rounded-full border shadow ${
+                    sel ? 'border-primary bg-primary text-primary-foreground' : 'border-background bg-background/90 text-foreground hover:border-primary hover:text-primary'
+                  }`}
+                >
+                  {sel && <Check className="h-2.5 w-2.5" />}
+                </button>
               )}
               {(onAddToAssets || onRemoveImage) && (
                 <div className="game-asset-output-actions nodrag nopan nowheel">
@@ -322,10 +328,10 @@ function ImageLoadingPlaceholder() {
 }
 
 /**
- * 预览态单图：加载中显示 spinner 占位，加载完毕才展示；失败切换占位块（双击仍可尝试打开 gallery）。
- * 单击切换选中、双击打开 gallery（不改选中态）。
+ * 预览态单图：加载中显示 spinner 占位，加载完毕才展示；失败切换占位块（点击仍可尝试打开 gallery）。
+ * 单击打开 gallery。
  */
-function PreviewImage({ url, selected, onOpen, onSelect, onImageLoad, onDragStart }) {
+function PreviewImage({ url, onOpen, onImageLoad, onDragStart }) {
   const [failed, setFailed] = useState(false);
   const [loaded, setLoaded] = useState(false);
   // url 变化（版本切换）时重置状态：重新进入 loading，允许重新加载新图
@@ -335,9 +341,8 @@ function PreviewImage({ url, selected, onOpen, onSelect, onImageLoad, onDragStar
       type="button"
       draggable
       onDragStart={onDragStart}
-      onClick={(e) => { e.stopPropagation(); onSelect?.(e.ctrlKey || e.metaKey); }}
-      onDoubleClick={(e) => { e.stopPropagation(); onOpen(); }}
-      className={`block w-full overflow-hidden rounded transition-shadow ${selected ? 'ring-2 ring-primary ring-offset-2' : ''}`}
+      onClick={(e) => { e.stopPropagation(); onOpen(); }}
+      className="block w-full overflow-hidden"
     >
       {failed ? (
         <BrokenImagePlaceholder url={url} />

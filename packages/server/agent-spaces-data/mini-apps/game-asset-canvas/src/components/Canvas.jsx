@@ -67,6 +67,7 @@ const DEFAULT_EDGE_OPTIONS = {
 };
 const EDGE_PATH_STYLES = ['bezier', 'straight', 'step', 'smoothstep'];
 const EDGE_LINE_STYLES = ['solid', 'dashed'];
+const SNAP_GRID = [16, 16];
 
 /**
  * 游戏资产生成画布主组件（编排层）。
@@ -347,6 +348,18 @@ export default function Canvas() {
     pathStyle: edgePathStyle,
     strokeDasharray: edgeLineStyle === 'dashed' ? '6 4' : 'none',
   }), [edgeLineStyle, edgePathStyle]);
+  const backgroundVariant = settings.bgVariant === 'lines' ? BackgroundVariant.Lines
+    : settings.bgVariant === 'cross' ? BackgroundVariant.Cross
+    : BackgroundVariant.Dots;
+  const handlePosition = settings.attributionPosition === 'left-right' ? 'left-right' : 'top-bottom';
+  const snapEnabled = settings.snapGrid !== false;
+  const handleCanvasStyleChange = useCallback(async (patch) => {
+    try {
+      await saveSettings({ ...settings, ...patch });
+    } catch (error) {
+      toast.error(`保存画布样式失败：${error?.message || error}`);
+    }
+  }, [saveSettings, settings]);
 
   const handleOutputPreviewHeight = useCallback((id, height) => {
     if (!id || !Number.isFinite(height) || height <= 0) return;
@@ -771,6 +784,10 @@ export default function Canvas() {
             edgeLineStyles={EDGE_LINE_STYLES}
             onEdgePathStyleChange={setEdgePathStyle}
             onEdgeLineStyleChange={setEdgeLineStyle}
+            bgVariant={settings.bgVariant}
+            handlePosition={handlePosition}
+            snapEnabled={snapEnabled}
+            onCanvasStyleChange={handleCanvasStyleChange}
             onSelectAll={selection.handleSelectAll}
             onInvertSelect={selection.handleInvertSelect}
             onClearSelection={selection.handleClearSelection}
@@ -841,10 +858,12 @@ export default function Canvas() {
               nodeTypes={nodeTypes}
               edgeTypes={EDGE_TYPES}
               defaultEdgeOptions={DEFAULT_EDGE_OPTIONS}
+              snapToGrid={snapEnabled}
+              snapGrid={SNAP_GRID}
               fitView={!hasSavedViewport}
               proOptions={{ hideAttribution: true }}
             >
-              <Background variant={BackgroundVariant.Dots} gap={16} size={1} />
+              <Background variant={backgroundVariant} gap={16} size={1} />
               <Controls>
                 <ControlButton
                   title={allNodePreviewsEnabled ? '关闭所有节点的预览模式' : '开启所有节点的预览模式'}

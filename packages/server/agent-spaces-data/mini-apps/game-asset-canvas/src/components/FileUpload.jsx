@@ -26,8 +26,8 @@ export default function FileUpload({ nodeId, value = [], onChange, max = 6, plac
   const urls = Array.isArray(value) ? value : [];
   // 只读项归一：过滤无 src 的项
   const extras = (Array.isArray(extraItems) ? extraItems : []).filter((e) => e && e.src);
-  // 跨节点图片选中状态（单击选中 / ctrl 多选 / 双击预览）
-  const { isSelected, toggle } = useContext(ImageSelectionContext);
+  // 跨节点图片选中状态：checkbox 点击增删切换，ctrl+点击图片本体替换式选中
+  const { isSelected, toggle, selectExclusive } = useContext(ImageSelectionContext);
 
   const rawItems = [
     ...extras.map((item, sourceIndex) => ({ ...item, kind: 'extra', sourceIndex })),
@@ -232,6 +232,18 @@ export default function FileUpload({ nodeId, value = [], onChange, max = 6, plac
           opacity: 1;
           pointer-events: auto;
         }
+        /* 右上角选择 checkbox：选中时常驻显示，未选中时仅 hover 显示 */
+        .game-asset-upload-checkbox {
+          opacity: 0;
+          pointer-events: none;
+          transition: opacity 150ms ease;
+        }
+        .game-asset-upload-thumb:hover .game-asset-upload-checkbox,
+        .game-asset-upload-thumb:focus-within .game-asset-upload-checkbox,
+        .game-asset-upload-checkbox.game-asset-upload-checkbox-on {
+          opacity: 1;
+          pointer-events: auto;
+        }
       `}</style>
       {(urls.length < max || extras.length > 0 || urls.length > 0) && (
         <div
@@ -272,8 +284,11 @@ export default function FileUpload({ nodeId, value = [], onChange, max = 6, plac
                 onDragStart={onReorderDragStart(i, item, sortable)}
                 onDragOver={sortable ? onReorderDragOver(i, item) : undefined}
                 onDragEnd={onReorderDragEnd}
-                onClick={(e) => { e.stopPropagation(); if (nodeId) toggle(nodeId, item.src, e.ctrlKey || e.metaKey); }}
-                onDoubleClick={(e) => { e.stopPropagation(); openAt(i); }}
+                onClick={(e) => {
+                  // ctrl/meta + 点击图片本体：清空其他选中，仅选中当前（替换式）
+                  if ((e.ctrlKey || e.metaKey) && nodeId) { e.stopPropagation(); selectExclusive(nodeId, item.src); return; }
+                  openAt(i);
+                }}
                 className={`game-asset-upload-thumb group relative aspect-square cursor-pointer overflow-hidden rounded-md border transition-colors ${
                   sortable && draggingIdx === i ? 'border-primary opacity-40'
                     : sortable && overIdx === i && draggingIdx !== i ? 'border-primary border-t-2'
@@ -282,11 +297,20 @@ export default function FileUpload({ nodeId, value = [], onChange, max = 6, plac
                 } ${sortable ? 'cursor-grab active:cursor-grabbing' : ''}`}
               >
                 <img src={item.src} alt="" draggable={false} className="h-full w-full object-cover" />
-                {/* 选中角标 */}
-                {sel && (
-                  <span className="absolute right-0.5 top-0.5 z-20 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-primary-foreground shadow">
-                    <Check className="h-2.5 w-2.5" />
-                  </span>
+                {/* 右上角选择 checkbox：hover 显示空框，选中时常驻显示实心勾。点击切换选中（天然多选）。 */}
+                {nodeId && (
+                  <button
+                    type="button"
+                    draggable={false}
+                    onPointerDown={(ev) => ev.stopPropagation()}
+                    onClick={(ev) => { ev.stopPropagation(); toggle(nodeId, item.src); }}
+                    title={sel ? '取消选择' : '选择'}
+                    className={`game-asset-upload-checkbox nodrag nopan nowheel ${sel ? 'game-asset-upload-checkbox-on' : ''} absolute right-1 top-1 z-20 flex h-4 w-4 items-center justify-center rounded-full border shadow ${
+                      sel ? 'border-primary bg-primary text-primary-foreground' : 'border-background bg-background/90 text-foreground hover:border-primary hover:text-primary'
+                    }`}
+                  >
+                    {sel && <Check className="h-2.5 w-2.5" />}
+                  </button>
                 )}
                 {item.badge && (
                   <span className="absolute bottom-0.5 left-0.5 rounded bg-black/60 px-1 text-[9px] leading-tight text-white">

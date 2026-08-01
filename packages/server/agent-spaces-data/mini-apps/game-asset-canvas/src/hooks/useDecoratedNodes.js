@@ -116,6 +116,7 @@ export default function useDecoratedNodes({
         data: {
           ...data,
           selectionCount,
+          floatingHandlePosition: settings.attributionPosition === 'left-right' ? 'left-right' : 'top-bottom',
           onOutputPreviewHeight: (height) => onOutputPreviewHeight?.(nd.id, height),
           onOutputPreviewModeChange: (enabled) => onOutputPreviewModeChange?.(nd.id, enabled),
           onUpdate: makeOnUpdate?.(nd.id),

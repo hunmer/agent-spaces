@@ -35,12 +35,14 @@ import {
  *
  * @param {{ onClear, onAutoLayout, onExport, onExportAssetLibrary, onExportWorkspace, onImport, onImportAssetLibrary, onImportWorkspace, onOpenSettings, onOpenPromptManager,
  *           edgePathStyle, edgeLineStyle, edgePathStyles, edgeLineStyles, onEdgePathStyleChange, onEdgeLineStyleChange,
+ *           bgVariant, handlePosition, snapEnabled, onCanvasStyleChange,
  *           onSelectAll, onInvertSelect, onClearSelection,
  *           operationHistory, onUndo, onRedo, canUndo, canRedo, queueSlot, workspaceSlot }} props
  */
 export default function Toolbar({
   onClear, onAutoLayout, onExport, onExportAssetLibrary, onExportWorkspace, onImport, onImportAssetLibrary, onImportWorkspace, onOpenSettings, onOpenPromptManager,
   edgePathStyle, edgeLineStyle, edgePathStyles, edgeLineStyles, onEdgePathStyleChange, onEdgeLineStyleChange,
+  bgVariant, handlePosition, snapEnabled, onCanvasStyleChange,
   onSelectAll, onInvertSelect, onClearSelection,
   operationHistory, onUndo, onRedo, canUndo, canRedo,
   queueSlot, workspaceSlot,
@@ -199,6 +201,37 @@ export default function Toolbar({
           <MenubarTrigger>画布</MenubarTrigger>
           <MenubarContent>
             <MenubarItem onClick={onAutoLayout}>自动布局</MenubarItem>
+            <MenubarSeparator />
+            <MenubarSub>
+              <MenubarSubTrigger>背景</MenubarSubTrigger>
+              <MenubarSubContent>
+                {[
+                  ['dots', '点阵'],
+                  ['lines', '线条'],
+                  ['cross', '十字'],
+                ].map(([value, label]) => (
+                  <MenubarItem key={value} onClick={() => onCanvasStyleChange?.({ bgVariant: value })}>
+                    {bgVariant === value ? '✓ ' : ''}{label}
+                  </MenubarItem>
+                ))}
+              </MenubarSubContent>
+            </MenubarSub>
+            <MenubarSub>
+              <MenubarSubTrigger>Handle 位置</MenubarSubTrigger>
+              <MenubarSubContent>
+                {[
+                  ['top-bottom', '上下'],
+                  ['left-right', '左右'],
+                ].map(([value, label]) => (
+                  <MenubarItem key={value} onClick={() => onCanvasStyleChange?.({ attributionPosition: value })}>
+                    {handlePosition === value ? '✓ ' : ''}{label}
+                  </MenubarItem>
+                ))}
+              </MenubarSubContent>
+            </MenubarSub>
+            <MenubarItem onClick={() => onCanvasStyleChange?.({ snapGrid: !snapEnabled })}>
+              {snapEnabled ? '✓ ' : ''}自动吸附
+            </MenubarItem>
             <MenubarSeparator />
             <MenubarSub>
               <MenubarSubTrigger>连线</MenubarSubTrigger>

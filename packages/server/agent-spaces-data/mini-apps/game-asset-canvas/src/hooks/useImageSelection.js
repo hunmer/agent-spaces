@@ -40,6 +40,12 @@ export default function useImageSelection() {
 
   const clear = useCallback(() => setSelected([]), []);
 
+  // 仅选中指定项（清空其他所有选中，包括其他节点）。用于 ctrl+点击图片本体的"替换式"选中。
+  const selectExclusive = useCallback((nodeId, url) => {
+    if (!nodeId || !url) return;
+    setSelected([{ nodeId, url }]);
+  }, []);
+
   // 去重 url 数组（同 url 只算一份，喂给编辑/抠图/放大操作）
   const selectedUrls = useMemo(() => {
     const seen = new Set();
@@ -56,6 +62,6 @@ export default function useImageSelection() {
   const selectedCount = selected.length;
 
   return useMemo(() => ({
-    selected, isSelected, toggle, clear, selectedCount, selectedUrls,
-  }), [selected, isSelected, toggle, clear, selectedCount, selectedUrls]);
+    selected, isSelected, toggle, selectExclusive, clear, selectedCount, selectedUrls,
+  }), [selected, isSelected, toggle, selectExclusive, clear, selectedCount, selectedUrls]);
 }

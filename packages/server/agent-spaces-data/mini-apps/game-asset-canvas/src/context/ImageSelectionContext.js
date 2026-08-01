@@ -9,7 +9,8 @@ import { createContext } from 'react';
  *
  * 提供的值（由 hooks/useImageSelection 实现）：
  * @property {(nodeId:string, url:string)=>boolean} isSelected 该图是否被选中
- * @property {(nodeId:string, url:string, ctrlKey?:boolean)=>void} toggle 切换选中（ctrl 时多选增删，普通点击设为唯一）
+ * @property {(nodeId:string, url:string, ctrlKey?:boolean)=>void} toggle checkbox 点击的增删切换（天然多选累加）
+ * @property {(nodeId:string, url:string)=>void} selectExclusive 仅选中指定项（清空其他，用于 ctrl+点击图片本体）
  * @property {()=>void} clear 清空所有选中
  * @property {number} selectedCount 选中图片数
  * @property {string[]} selectedUrls 选中图片 url 去重数组（喂给编辑/抠图/放大操作）
@@ -20,6 +21,7 @@ const noop = () => {};
 const noSelection = {
   isSelected: () => false,
   toggle: noop,
+  selectExclusive: noop,
   clear: noop,
   selectedCount: 0,
   selectedUrls: [],

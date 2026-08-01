@@ -84,7 +84,7 @@
 
 ### 顶层（17 个）
 - `Canvas.jsx`：编排层（hook 装配 + ReactFlow 变更回调 + JSX）
-- `Toolbar.jsx`：顶栏（工作区切换插槽/自动布局/导出/设置/队列插槽/清空）
+- `Toolbar.jsx`：顶栏（工作区切换插槽/自动布局/画布样式/导出/设置/队列插槽/清空）
 - `RightPanel.jsx`：右侧 Tabs（新增节点 / 节点管理 / 生成记录）
 - `SettingsDialog.jsx`：设置页（工作流槽位 + BBox AI 分析 + 反推提示词 AI）
 - `ExecutionQueuePopover.jsx`：执行队列弹窗 + 中断

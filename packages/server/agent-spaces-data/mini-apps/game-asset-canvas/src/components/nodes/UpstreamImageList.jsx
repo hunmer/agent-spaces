@@ -33,8 +33,8 @@ export default function UpstreamImageList({
   const [overIdx, setOverIdx] = useState(null);
   const nonDeletableSet = new Set(nonDeletableUrls);
   const itemKeys = occurrenceKeys(urls);
-  // 跨节点图片选中状态（单击选中 / ctrl 多选 / 双击预览）
-  const { isSelected, toggle } = useContext(ImageSelectionContext);
+  // 跨节点图片选中状态：checkbox 点击增删切换，ctrl+点击图片本体替换式选中
+  const { isSelected, toggle, selectExclusive } = useContext(ImageSelectionContext);
 
   const move = (from, to) => {
     if (from === to || from < 0 || to < 0 || from >= urls.length || to >= urls.length) return;
@@ -76,6 +76,20 @@ export default function UpstreamImageList({
 
   return (
     <div className="flex flex-col gap-1">
+      <style>{`
+        /* 右上角选择 checkbox：选中时常驻显示，未选中时仅 hover 显示 */
+        .game-asset-upstream-checkbox {
+          opacity: 0;
+          pointer-events: none;
+          transition: opacity 150ms ease;
+        }
+        .game-asset-upstream-row:hover .game-asset-upstream-checkbox,
+        .game-asset-upstream-row:focus-within .game-asset-upstream-checkbox,
+        .game-asset-upstream-checkbox.game-asset-upstream-checkbox-on {
+          opacity: 1;
+          pointer-events: auto;
+        }
+      `}</style>
       <span className="text-[11px] text-muted-foreground">
         🔗 来自连线 {urls.length} 张{sortable ? '（可拖拽排序）' : ''}
       </span>
@@ -91,9 +105,13 @@ export default function UpstreamImageList({
               onDragStart={onDragStart(i, url)}
               onDragOver={sortable ? onDragOver(i) : undefined}
               onDragEnd={sortable ? onDragEnd : undefined}
-              onClick={(e) => { e.stopPropagation(); if (nodeId) toggle(nodeId, url, e.ctrlKey || e.metaKey); }}
-              onDoubleClick={(e) => { e.stopPropagation(); openMediaGallery([{ src: url, type: 'image' }], 0); }}
-              className={`group relative flex cursor-pointer items-center gap-2 rounded border px-1.5 py-1 transition-colors ${
+              onClick={(e) => {
+                e.stopPropagation();
+                // ctrl/meta + 点击图片本体：清空其他选中，仅选中当前（替换式）
+                if ((e.ctrlKey || e.metaKey) && nodeId) { selectExclusive(nodeId, url); return; }
+                openMediaGallery([{ src: url, type: 'image' }], 0);
+              }}
+              className={`game-asset-upstream-row group relative flex cursor-pointer items-center gap-2 rounded border px-1.5 py-1 transition-colors ${
                 isDragging ? 'border-primary opacity-40'
                   : isOver ? 'border-primary border-t-2'
                   : sel ? 'border-primary bg-primary/5'
@@ -112,10 +130,20 @@ export default function UpstreamImageList({
                     className="pointer-events-none max-h-full max-w-full object-contain"
                   />
                 </div>
-                {sel && (
-                  <span className="absolute -right-1 -top-1 z-20 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-primary-foreground shadow">
-                    <Check className="h-2.5 w-2.5" />
-                  </span>
+                {/* 右上角选择 checkbox：hover 显示空框，选中时常驻显示实心勾。点击切换选中（天然多选）。 */}
+                {nodeId && (
+                  <button
+                    type="button"
+                    draggable={false}
+                    onPointerDown={(ev) => ev.stopPropagation()}
+                    onClick={(ev) => { ev.stopPropagation(); toggle(nodeId, url); }}
+                    title={sel ? '取消选择' : '选择'}
+                    className={`game-asset-upstream-checkbox nodrag nopan nowheel ${sel ? 'game-asset-upstream-checkbox-on' : ''} absolute -right-1 -top-1 z-20 flex h-4 w-4 items-center justify-center rounded-full border shadow ${
+                      sel ? 'border-primary bg-primary text-primary-foreground' : 'border-background bg-background/90 text-foreground hover:border-primary hover:text-primary'
+                    }`}
+                  >
+                    {sel && <Check className="h-2.5 w-2.5" />}
+                  </button>
                 )}
               </div>
               {itemLabel !== '' && (

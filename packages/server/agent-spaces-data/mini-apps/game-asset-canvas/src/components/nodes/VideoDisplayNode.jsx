@@ -2,7 +2,7 @@ import { useCallback, useRef, useState, useEffect } from 'react';
 import { NodeResizer, NodeToolbar, Position } from '@xyflow/react';
 import { ChevronLeft, ChevronRight, Upload } from '@agent-spaces/ui';
 import useViewportActivation from '../../hooks/useViewportActivation';
-import { FLOATING_HANDLE_OFFSET } from '../canvas/floating-edge-utils';
+import { getFloatingHandleProps } from '../canvas/floating-edge-utils';
 import FloatingHandle from './FloatingHandle';
 
 /**
@@ -100,13 +100,11 @@ export default function VideoDisplayNode({ id, data, selected }) {
 
       <FloatingHandle
         type="target"
-        position={Position.Left}
-        style={{ left: -FLOATING_HANDLE_OFFSET, zIndex: 50 }}
+        {...getFloatingHandleProps(data?.floatingHandlePosition, 'target')}
       />
       <FloatingHandle
         type="source"
-        position={Position.Right}
-        style={{ right: -FLOATING_HANDLE_OFFSET, zIndex: 50 }}
+        {...getFloatingHandleProps(data?.floatingHandlePosition, 'source')}
       />
 
       <div className="absolute inset-0 overflow-hidden rounded-lg bg-card shadow-sm">
