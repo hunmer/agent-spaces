@@ -10,7 +10,7 @@ import { useCallback, useMemo, useState } from 'react';
  * - ctrl/meta 按下：增删切换（已选则移除，未选则追加）
  * - 普通点击：若当前项已是唯一选中 → 清空；否则设为唯一选中（替换）
  *
- * @returns {{ selected, isSelected, toggle, clear, selectedCount, selectedUrls }}
+ * @returns {{ selected, isSelected, toggle, selectForContextMenu, clear, selectedCount, selectedUrls }}
  */
 export default function useImageSelection() {
   const [selected, setSelected] = useState([]);
@@ -38,6 +38,13 @@ export default function useImageSelection() {
     });
   }, []);
 
+  const selectForContextMenu = useCallback((nodeId, url) => {
+    if (!nodeId || !url) return;
+    setSelected((prev) => (
+      prev.some((it) => sameItem(it, nodeId, url)) ? prev : [{ nodeId, url }]
+    ));
+  }, []);
+
   const clear = useCallback(() => setSelected([]), []);
 
   // 去重 url 数组（同 url 只算一份，喂给编辑/抠图/放大操作）
@@ -56,6 +63,6 @@ export default function useImageSelection() {
   const selectedCount = selected.length;
 
   return useMemo(() => ({
-    selected, isSelected, toggle, clear, selectedCount, selectedUrls,
-  }), [selected, isSelected, toggle, clear, selectedCount, selectedUrls]);
+    selected, isSelected, toggle, selectForContextMenu, clear, selectedCount, selectedUrls,
+  }), [selected, isSelected, toggle, selectForContextMenu, clear, selectedCount, selectedUrls]);
 }

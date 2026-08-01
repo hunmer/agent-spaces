@@ -35,3 +35,19 @@
 - 用户错误中的 `webview/actions.js` 同时被动态 import 与 `require()` 访问，和启动期并发激活、页面并发读取节点定义的交叉时序一致。
 - `getWorkflowNodes()` 会先同步 `activatePlugin()`；激活器通过 VM 执行 `main.js`，其 `createPluginRequire()` 对相对路径使用 Node 原生 `createRequire(entryPath)`。插件位于 `packages/server` 下，会继承该包的 `"type": "module"`，因此 `.js` actions 实际进入 Node ESM loader。
 - `startServerLoadPluginScripts()` 本身并发的是 sidecar 启动，不直接激活 actions；需要继续确认 sidecar 是否导入同一入口，或问题是否来自 Node 22 对同一 ESM 的并发 `require()` 状态。
+- 游戏资产画布的图片选择有统一状态 hook `useImageSelection`；复选框入口分布在 `ImageResult`、`UpstreamImageList`、`FileUpload`。
+- 三处图片本体点击在 `metaKey/ctrlKey` 时都会调用 `toggle(nodeId, url, true)`，但三处复选框点击仅调用 `toggle(nodeId, url)`，未传递修饰键，疑似导致跨节点旧选择被清空。
+- `useImageSelection.toggle(nodeId, url, ctrlKey)` 已明确实现：第三参数为真时追加/移除，为假时替换成唯一选择；因此无需修改状态 hook。
+- 该 mini-app 已使用 Node 内置测试通过读取 JSX 源码验证 UI 行为约束；本次可用同类小测试覆盖三个复选框入口。
+- 最终实现仅在三个复选框事件中传递 `metaKey || ctrlKey`；普通点击语义不变，修饰键点击进入既有追加/移除分支。
+- `ImageSelectionToolbar` 当前同时包含展示与动作调用；Canvas 在 JSX 中内联编辑/抠图/放大并在动作后清空选择。
+- 三类目标缩略图都已消费 `ImageSelectionContext`，适合由该 Context 下发统一动作；右键菜单组件可在缩略图层复用，无需逐层增加 props。
+- 右键菜单需要先把目标图纳入选择：未选中目标应替换为该图，已选中目标则保持现有跨节点选择集，然后执行统一动作。
+- 项目已有覆盖整个 ReactFlow 的 `CanvasContextMenu`，且 ContextMenu 组件已由宿主导出；最佳最小边界是在该菜单识别缩略图 data 属性后切换内容，避免三类缩略图各自嵌套 ContextMenu。
+- 将图片动作抽为共享 `ImageSelectionMenuItems`，由顶部 toolbar 和 Canvas 右键菜单分别提供按钮/菜单项 renderer，可真正复用动作清单和调用逻辑。
+- `useImageSelection` 需要新增 `selectForContextMenu(nodeId, url)`：目标已在选择集中则保持集合，未在则替换为该单图，避免用普通 `toggle` 时右键已选唯一项反而清空。
+- `CanvasContextMenu` 的 Base UI `onOpenChange` 可取得原始右键事件 target，适合通过 `closest('[data-image-selection-url]')` 判断图片菜单；其余区域继续显示新增节点菜单。
+- Canvas 中 `handleCutoutCreate`、`handleProcessImage` 在渲染前已可用，可抽取稳定的三个选择动作回调并组装成共享 props。
+- 实施时发现用户并发加入了“下载、素材库”工具栏动作；共享组件完整纳入这两项及下载 loading/toast 逻辑，未覆盖或回退用户改动。
+- 最终菜单分流：右键带 `data-image-selection-url` 的缩略图显示图片动作，否则继续显示原 `AddNodeMenuItems`。
+- Base UI 1.4.1 的 `ContextMenuLabel` 是 Menu GroupLabel，必须位于 `ContextMenuGroup` 内；图片菜单分支此前缺少该容器，导致 `MenuGroupRootContext is missing`。

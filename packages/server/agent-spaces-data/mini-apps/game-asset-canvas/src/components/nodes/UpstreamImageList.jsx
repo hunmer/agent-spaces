@@ -101,6 +101,8 @@ export default function UpstreamImageList({
           return (
             <div
               key={itemKeys[i]}
+              data-image-selection-node-id={nodeId || undefined}
+              data-image-selection-url={nodeId ? url : undefined}
               draggable
               onDragStart={onDragStart(i, url)}
               onDragOver={sortable ? onDragOver(i) : undefined}
@@ -136,7 +138,7 @@ export default function UpstreamImageList({
                     type="button"
                     draggable={false}
                     onPointerDown={(ev) => ev.stopPropagation()}
-                    onClick={(ev) => { ev.stopPropagation(); toggle(nodeId, url); }}
+                    onClick={(ev) => { ev.stopPropagation(); toggle(nodeId, url, ev.metaKey || ev.ctrlKey); }}
                     title={sel ? '取消选择' : '选择'}
                     className={`game-asset-upstream-checkbox nodrag nopan nowheel ${sel ? 'game-asset-upstream-checkbox-on' : ''} absolute -right-1 -top-1 z-20 flex h-4 w-4 items-center justify-center rounded-full border shadow ${
                       sel ? 'border-primary bg-primary text-primary-foreground' : 'border-background bg-background/90 text-foreground hover:border-primary hover:text-primary'

@@ -39,6 +39,7 @@ export default function NodeShell({
   id, nodeType, data, selected, resizable = true,
   targetHandle, sourceHandle, children, toolbarActions,
 }) {
+  const showFullNode = data?.compactView !== true;
   const meta = NODE_META[nodeType] || { label: '节点', icon: '🔹', color: '#64748b' };
   const status = data?.status || 'idle';
   const statusColor = status === 'running' ? '#3b82f6'
@@ -94,7 +95,7 @@ export default function NodeShell({
   // 多选（选中数 > 1）时隐藏节点 toolbar：避免每个被选节点都冒出一排按钮，干扰多选操作
   const selectionCount = data?.selectionCount ?? 1;
   const [toolbarHovered, setToolbarHovered] = useState(false);
-  const toolbarVisible = (!!selected || toolbarHovered) && selectionCount <= 1;
+  const toolbarVisible = showFullNode && (!!selected || toolbarHovered) && selectionCount <= 1;
   const toolbarLeaveTimerRef = useRef(null);
   const showToolbar = () => {
     if (toolbarLeaveTimerRef.current) clearTimeout(toolbarLeaveTimerRef.current);
@@ -166,7 +167,22 @@ export default function NodeShell({
     ro.observe(inner);
     measure();
     return () => ro.disconnect();
-  }, [viewportActivated, data?.onAutoSizeToContent, id, outputPreviewEnabled]);
+  }, [viewportActivated, data?.onAutoSizeToContent, id, outputPreviewEnabled, showFullNode]);
+
+  const compactView = !showFullNode ? (
+    <div
+      className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center overflow-hidden rounded-lg border border-border bg-card shadow-sm"
+      style={{ backgroundColor: `rgb(${hexToRgb(meta.color)} / 0.16)` }}
+    >
+      <div className="flex max-w-full items-center gap-3 px-4">
+        <span className="shrink-0 text-3xl leading-none">{meta.icon}</span>
+        <span className="truncate text-xl font-semibold text-card-foreground">{meta.label}</span>
+        {status !== 'idle' && (
+          <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: statusColor }} />
+        )}
+      </div>
+    </div>
+  ) : null;
 
   // 统一的 toolbar 按钮组：预览/正常分支共用，避免进入预览后按钮消失。
   // 切换预览 + 节点自定义按钮（toolbarActions）+ 导出图片。
@@ -219,7 +235,7 @@ export default function NodeShell({
     return (
       <>
       {/* 顶部行：版本数字按钮（可滚动）+ 类型 Badge。 */}
-      <div className="nodrag nopan relative z-20 mb-1 flex items-center gap-1.5 px-1" style={{ width: nodeWidth || undefined }}>
+      <div className={`nodrag nopan relative z-20 mb-1 flex items-center gap-1.5 px-1 ${showFullNode ? '' : 'invisible'}`} style={{ width: nodeWidth || undefined }}>
         {Array.isArray(data?.versions) && data.versions.length > 1 && data?.onSwitchVersion && (
           <div
             className="scrollbar-none flex min-w-0 flex-1 items-center gap-1 overflow-x-auto"
@@ -273,7 +289,7 @@ export default function NodeShell({
         </NodeToolbar>
         {resizable && (
           <NodeResizer
-            isVisible={!!selected}
+            isVisible={!!selected && showFullNode}
             minWidth={220}
             minHeight={120}
             color="#6366f1"
@@ -288,7 +304,7 @@ export default function NodeShell({
             {...getFloatingHandleProps(data?.floatingHandlePosition, 'target')}
           />
         )}
-        <div data-node-card className="mx-auto w-full overflow-hidden rounded-lg bg-card shadow-sm" style={{ maxWidth: '640px' }}>
+        <div data-node-card className={`mx-auto w-full overflow-hidden rounded-lg bg-card shadow-sm ${showFullNode ? '' : 'invisible pointer-events-none'}`} style={{ maxWidth: '640px' }}>
           <div className="scrollbar-none nodrag nopan nowheel w-full" style={{ maxHeight: '60vh', overflowY: 'auto' }}>
             {status === 'running' ? (
               <div className="flex min-h-[160px] w-full flex-col items-center justify-center gap-2 text-muted-foreground">
@@ -308,6 +324,7 @@ export default function NodeShell({
             ) : null}
           </div>
         </div>
+        {compactView}
         {sourceHandle && (
           <FloatingHandle
             type="source"
@@ -340,7 +357,7 @@ export default function NodeShell({
       ) : null}
       {resizable && (
         <NodeResizer
-          isVisible={!!selected}
+          isVisible={!!selected && showFullNode}
           minWidth={220}
           minHeight={120}
           color="#6366f1"
@@ -358,7 +375,7 @@ export default function NodeShell({
       <div className="flex h-full w-full flex-col overflow-hidden rounded-lg border border-border bg-card text-card-foreground shadow-sm">
       <div
         data-node-header
-        className="flex shrink-0 items-center justify-between gap-2 px-3 py-2"
+        className={`flex shrink-0 items-center justify-between gap-2 px-3 py-2 ${showFullNode ? '' : 'invisible pointer-events-none'}`}
         style={{ borderBottom: '1px solid var(--border)', backgroundColor: `rgb(${hexToRgb(meta.color)} / 0.12)` }}
       >
         <div className="flex items-center gap-2 truncate">
@@ -400,9 +417,10 @@ export default function NodeShell({
           </button>
         </div>
       </div>
+      {compactView}
       {/* nodrag/nopan/nowheel：ReactFlow 约定，带这些 class 的元素不触发节点拖拽、画布平移、滚轮缩放，
           避免在节点内滚动/选文本/操作输入框时误触画布 */}
-      <div data-node-content className="scrollbar-none nodrag nopan nowheel flex min-h-0 flex-1 flex-col overflow-auto">
+      <div data-node-content className={`scrollbar-none nodrag nopan nowheel flex min-h-0 flex-1 flex-col overflow-auto ${showFullNode ? '' : 'invisible pointer-events-none'}`}>
         <div ref={contentInnerRef} className="flex flex-col gap-2 p-3">
           <UploadCollapseContext.Provider value={uploadHidden}>
             {viewportActivated ? children : null}
@@ -418,11 +436,13 @@ export default function NodeShell({
       )}
     </div>
     {/* 产出卡片：节点外部下方独立卡片，不随表单滚动，不受 resize 钳制。 */}
-    <NodeOutput
-      {...outputProps}
-      width={nodeWidth || undefined}
-      hasExternalSourceHandle={!!sourceHandle}
-    />
+    <div className={showFullNode ? '' : 'invisible pointer-events-none'}>
+      <NodeOutput
+        {...outputProps}
+        width={nodeWidth || undefined}
+        hasExternalSourceHandle={!!sourceHandle}
+      />
+    </div>
     </>
   );
 }

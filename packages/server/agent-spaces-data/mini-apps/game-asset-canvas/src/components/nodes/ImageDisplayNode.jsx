@@ -20,6 +20,7 @@ import FloatingHandle from './FloatingHandle';
  * data.tags: string[]  来源标签
  */
 export default function ImageDisplayNode({ id, data, selected }) {
+  const showFullNode = data?.compactView !== true;
   const images = Array.isArray(data?.images) ? data.images.filter(Boolean) : [];
   const onUpdate = data?.onUpdate;
   const onAutoSize = data?.onAutoSize;
@@ -97,7 +98,7 @@ export default function ImageDisplayNode({ id, data, selected }) {
     <div ref={rootRef} className="group relative h-full w-full overflow-visible">
       {/* NodeToolbar：导出/抠图/放大/编辑（选中且单选时） */}
       {showToolbar && (
-        <NodeToolbar isVisible={!!selected && selectionCount <= 1} position={Position.Top} align="center" offset={8}>
+        <NodeToolbar isVisible={showFullNode && !!selected && selectionCount <= 1} position={Position.Top} align="center" offset={8}>
           <div className="flex items-center gap-1">
             {showEditButton && (
               <button
@@ -131,7 +132,7 @@ export default function ImageDisplayNode({ id, data, selected }) {
 
       {/* 选中时显示 resize 控件 */}
       <NodeResizer
-        isVisible={!!selected}
+        isVisible={showFullNode && !!selected}
         minWidth={180}
         minHeight={120}
         color="#6366f1"
@@ -148,7 +149,7 @@ export default function ImageDisplayNode({ id, data, selected }) {
         {...getFloatingHandleProps(data?.floatingHandlePosition, 'source')}
       />
 
-      <div className="absolute inset-0 overflow-hidden rounded-lg bg-card shadow-sm">
+      <div className={`absolute inset-0 overflow-hidden rounded-lg bg-card shadow-sm ${showFullNode ? '' : 'invisible pointer-events-none'}`}>
       {/* 顶部自定义拖拽 handle：ReactFlow node.dragHandle 指向 .image-drag-handle，
           整节点只能从这里拖动。透明窄条覆盖图片顶部，hover 时浮现便于发现。 */}
       <div
@@ -253,6 +254,15 @@ export default function ImageDisplayNode({ id, data, selected }) {
         onChange={handleFile}
       />
       </div>
+      {!showFullNode && (
+        <div className="image-drag-handle absolute inset-0 z-20 flex cursor-move items-center justify-center overflow-hidden rounded-lg border border-border bg-card shadow-sm">
+          <div className="flex max-w-full items-center gap-3 px-4">
+            <span className="text-3xl leading-none">🖼️</span>
+            <span className="truncate text-xl font-semibold text-card-foreground">图片展示</span>
+            {(loading || uploading) && <span className="h-3 w-3 shrink-0 rounded-full bg-blue-500" />}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

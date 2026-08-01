@@ -411,6 +411,80 @@ export async function exportAssetLibraryZip(categories, opts = {}) {
 }
 
 /**
+ * 下载图片集合：单张直接下载原图，多张打包成 zip。
+ * 文件名从 url 用 extractFileNameFromUrl 解析（后端 url 真名藏在 query 里），同 url 重复时加 _2/_3 后缀。
+ *
+ * @param {string[]} urls 图片 url 数组
+ * @param {{onProgress?:(done:number,total:number)=>void}} [opts]
+ * @returns {Promise<{total:number, ok:number, failed:number}>}
+ * @throws {Error} 全部失败时抛错（调用方负责 toast）
+ */
+export async function downloadImages(urls, opts = {}) {
+  const list = (Array.isArray(urls) ? urls : []).filter(Boolean);
+  if (list.length === 0) throw new Error('没有可下载的图片');
+
+  const total = list.length;
+  const onProgress = typeof opts.onProgress === 'function' ? opts.onProgress : null;
+
+  // 单张：直接 fetch + 原图下载，不打包
+  if (total === 1) {
+    let ok = 0;
+    let failed = 0;
+    try {
+      const res = await fetch(list[0]);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const blob = await res.blob();
+      const rawName = extractFileNameFromUrl(list[0]) || 'untitled';
+      downloadBlob(blob, rawName);
+      ok = 1;
+    } catch {
+      failed = 1;
+    }
+    if (onProgress) onProgress(ok, total);
+    if (ok === 0) throw new Error('图片下载失败');
+    return { total, ok, failed };
+  }
+
+  // 多张：打包 zip（复用素材库导出的打包逻辑）
+  const JSZip = await getJSZip();
+  const zip = new JSZip();
+  let ok = 0;
+  let failed = 0;
+  let done = 0;
+  const used = new Set();
+
+  for (const url of list) {
+    try {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const blob = await res.blob();
+      const rawName = extractFileNameFromUrl(url) || 'untitled';
+      const dot = rawName.lastIndexOf('.');
+      const base = dot > 0 ? rawName.slice(0, dot) : rawName;
+      const ext = dot > 0 ? rawName.slice(dot) : '';
+      const fileName = dedupeName(base, ext, used);
+      zip.file(fileName, blob);
+      ok++;
+    } catch {
+      failed++;
+    } finally {
+      done++;
+      if (onProgress) onProgress(done, total);
+    }
+  }
+
+  if (ok === 0) throw new Error('图片全部下载失败，无法生成 zip');
+
+  const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } });
+  const now = new Date();
+  const pad = (n) => String(n).padStart(2, '0');
+  const stamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}`;
+  downloadBlob(blob, `图片-${stamp}.zip`);
+
+  return { total, ok, failed };
+}
+
+/**
  * 触发文件选择器，让用户选一个 .zip 文件。
  * 用户取消返回 null（不抛错）。
  * @returns {Promise<File | null>}

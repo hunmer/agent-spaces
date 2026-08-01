@@ -21,6 +21,14 @@
 - [in_progress] 15. 构造并发 workflow-nodes HTTP 复现并定位模块加载竞态
 - [pending] 16. 在正确加载边界串行化/去重插件模块初始化
 - [pending] 17. 回归测试、构建并重启 procm Server
+- [complete] 18. 定位图片复选框跨节点修饰键多选被清空的原因
+- [complete] 19. 最小修改选择事件与状态合并逻辑
+- [complete] 20. 运行针对性验证并总结验收方式
+- [complete] 21. 梳理图片选择工具栏动作与输入输出缩略图组件边界
+- [complete] 22. 抽取并接入可复用的图片选择右键菜单
+- [complete] 23. 回归验证菜单动作、选择行为与 JSX 语法
+- [complete] 24. 修复图片右键菜单 Label 缺少 Base UI Group 上下文
+- [complete] 25. 增加结构回归测试并复验
 
 ## Decision
 - 插件状态持久化命名配置方案；宿主（Workflow/Mini App）仅保存每个插件当前选中的方案名。

@@ -231,6 +231,8 @@ export default function ImageResult({ nodeId, images, max = 0, preview = false, 
             return (
             <div
               key={i}
+              data-image-selection-node-id={nodeId || undefined}
+              data-image-selection-url={nodeId ? url : undefined}
               draggable
               onDragStart={onReorderDragStart(i, url)}
               onDragOver={sortable ? onReorderDragOver(i) : undefined}
@@ -255,7 +257,7 @@ export default function ImageResult({ nodeId, images, max = 0, preview = false, 
               {nodeId && (
                 <button
                   type="button"
-                  onClick={(e) => { e.stopPropagation(); toggle(nodeId, url); }}
+                  onClick={(e) => { e.stopPropagation(); toggle(nodeId, url, e.metaKey || e.ctrlKey); }}
                   title={sel ? '取消选择' : '选择'}
                   className={`game-asset-output-checkbox nodrag nopan nowheel ${sel ? 'game-asset-output-checkbox-on' : ''} absolute right-1 top-1 z-20 flex h-4 w-4 items-center justify-center rounded-full border shadow ${
                     sel ? 'border-primary bg-primary text-primary-foreground' : 'border-background bg-background/90 text-foreground hover:border-primary hover:text-primary'

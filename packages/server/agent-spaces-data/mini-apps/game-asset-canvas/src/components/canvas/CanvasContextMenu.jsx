@@ -1,8 +1,11 @@
+import { useState } from 'react';
 import {
   ContextMenu, ContextMenuTrigger, ContextMenuContent,
-  ContextMenuGroup, ContextMenuItem, ContextMenuSub, ContextMenuSubTrigger, ContextMenuSubContent,
+  ContextMenuGroup, ContextMenuItem, ContextMenuLabel, ContextMenuSeparator,
+  ContextMenuSub, ContextMenuSubTrigger, ContextMenuSubContent,
 } from '@agent-spaces/ui';
 import AddNodeMenuItems from './AddNodeMenuItems';
+import ImageSelectionMenuItems from './ImageSelectionMenuItems';
 
 /**
  * 画布右键菜单。
@@ -23,11 +26,32 @@ import AddNodeMenuItems from './AddNodeMenuItems';
  * @param {React.ReactElement} props.triggerElement  画布容器 div（带 ref/onDrop/onDragOver/onContextMenu）
  * @param {React.ReactNode} props.children           ReactFlow 等主体内容（放进 trigger 内）
  * @param {Function} props.onPick  (type, dataPatch?) => void  右键选中节点类型后在右键位置建节点
+ * @param {object} props.imageSelectionMenuProps 图片选择共享动作参数
+ * @param {(nodeId:string,url:string)=>void} props.onSelectContextImage 确保右键图片进入选择集
  */
-export default function CanvasContextMenu({ triggerElement, children, onPick }) {
+export default function CanvasContextMenu({
+  triggerElement, children, onPick, imageSelectionMenuProps, onSelectContextImage,
+}) {
+  const [showImageMenu, setShowImageMenu] = useState(false);
+
   const handleOpenChange = (open, eventDetails) => {
-    if (open && eventDetails.event?.target?.closest?.('[data-slot="dialog-content"]')) {
+    if (!open) {
+      setShowImageMenu(false);
+      return;
+    }
+    const target = eventDetails.event?.target;
+    if (target?.closest?.('[data-slot="dialog-content"]')) {
       eventDetails.cancel();
+      return;
+    }
+    const imageTarget = target?.closest?.('[data-image-selection-url]');
+    const nodeId = imageTarget?.dataset?.imageSelectionNodeId;
+    const url = imageTarget?.dataset?.imageSelectionUrl;
+    if (nodeId && url) {
+      onSelectContextImage?.(nodeId, url);
+      setShowImageMenu(true);
+    } else {
+      setShowImageMenu(false);
     }
   };
 
@@ -37,34 +61,51 @@ export default function CanvasContextMenu({ triggerElement, children, onPick }) 
         {children}
       </ContextMenuTrigger>
       <ContextMenuContent className="w-52">
-        <ContextMenuGroup>
-          <AddNodeMenuItems
-            onPick={onPick}
-            renderItem={(inner, onClick, key) => (
-              <ContextMenuItem key={key} onClick={onClick}>
-                {inner}
-              </ContextMenuItem>
-            )}
-            renderSub={(triggerLabel, subItems, key) => (
-              <ContextMenuSub key={key}>
-                <ContextMenuSubTrigger>{triggerLabel}</ContextMenuSubTrigger>
-                <ContextMenuSubContent className="w-52">
-                  {subItems.map((s) => (
-                    s.type === 'label' ? (
-                      <p key={s.id} className="px-2 py-0.5 text-[10px] text-muted-foreground">
-                        {s.label}
-                      </p>
-                    ) : (
-                      <ContextMenuItem key={s.id} title={s.desc} onClick={s.onClick}>
-                        {s.label}
-                      </ContextMenuItem>
-                    )
-                  ))}
-                </ContextMenuSubContent>
-              </ContextMenuSub>
-            )}
-          />
-        </ContextMenuGroup>
+        {showImageMenu ? (
+          <ContextMenuGroup>
+            <ContextMenuLabel>已选 {imageSelectionMenuProps?.selectedCount || 0} 张</ContextMenuLabel>
+            <ContextMenuSeparator />
+            <ImageSelectionMenuItems
+              {...imageSelectionMenuProps}
+              renderSeparator={() => <ContextMenuSeparator />}
+              renderItem={({ id, label, Icon, onClick, disabled, loading }) => (
+                <ContextMenuItem key={id} onClick={onClick} disabled={disabled}>
+                  <Icon className={loading ? 'animate-spin' : undefined} />
+                  {label}
+                </ContextMenuItem>
+              )}
+            />
+          </ContextMenuGroup>
+        ) : (
+          <ContextMenuGroup>
+            <AddNodeMenuItems
+              onPick={onPick}
+              renderItem={(inner, onClick, key) => (
+                <ContextMenuItem key={key} onClick={onClick}>
+                  {inner}
+                </ContextMenuItem>
+              )}
+              renderSub={(triggerLabel, subItems, key) => (
+                <ContextMenuSub key={key}>
+                  <ContextMenuSubTrigger>{triggerLabel}</ContextMenuSubTrigger>
+                  <ContextMenuSubContent className="w-52">
+                    {subItems.map((s) => (
+                      s.type === 'label' ? (
+                        <p key={s.id} className="px-2 py-0.5 text-[10px] text-muted-foreground">
+                          {s.label}
+                        </p>
+                      ) : (
+                        <ContextMenuItem key={s.id} title={s.desc} onClick={s.onClick}>
+                          {s.label}
+                        </ContextMenuItem>
+                      )
+                    ))}
+                  </ContextMenuSubContent>
+                </ContextMenuSub>
+              )}
+            />
+          </ContextMenuGroup>
+        )}
       </ContextMenuContent>
     </ContextMenu>
   );

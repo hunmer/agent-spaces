@@ -28,3 +28,12 @@
 - procm 进程 `tGvR4jkz` 已启动；首次 Web 子进程因另一个独立旧 Web 进程占用 3000 而退出，待清理后重启。
 - 已清理旧进程并拆分为 procm 管理的 `agent-spaces-web` 与 `agent-spaces-server`；Web 3000、Server 3100、Web API 代理均返回 200。
 - 2026-07-31：收到 workflow-nodes 并发加载触发 Node.js `Unexpected module status 5` 的反馈，开始建立并发 HTTP 复现。
+- 2026-08-01：收到游戏资产画布图片复选框跨节点 Command/Ctrl 多选会清空旧选择的反馈，开始定位选择状态与事件链。
+- 已确认三处复选框未透传修饰键；已统一传入 `metaKey || ctrlKey`，并新增覆盖三个入口的源码回归测试。
+- 验证完成：3/3 Node 测试通过，三个修改后的 JSX 均通过 Babel React 语法解析，`git diff --check` 通过。
+- 2026-08-01：新增需求，节点输入/输出 Gallery 缩略图右键弹出与 `ImageSelectionToolbar` 相同的菜单，并复用动作逻辑。
+- 已抽取 `ImageSelectionMenuItems`，完整保留编辑/抠图/放大/下载/素材库/取消选择；顶部工具栏与 Canvas 右键菜单共用。
+- 三类缩略图已增加图片选择标记；`useImageSelection` 新增右键确保选中逻辑，Canvas 中图片动作回调只定义一次。
+- 验证完成：图片菜单及既有缩略图相关测试 6/6 通过；8 个修改后的 JSX/JS 文件通过 Babel React 语法解析；`git diff --check` 通过。
+- 2026-08-01：收到运行时报错 `MenuGroupRootContext is missing`，确认图片菜单的 `ContextMenuLabel` 未包在 `ContextMenuGroup` 内。
+- 已用 `ContextMenuGroup` 包裹图片菜单 Label 和动作项；新增结构回归测试，相关测试 5/5、Babel 语法及 `git diff --check` 均通过。

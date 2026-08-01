@@ -6,6 +6,7 @@ import { NODE_TYPES } from '../../utils/constants';
  * data.text: string
  */
 export default function NoteNode({ id, data }) {
+  const showFullNode = data?.compactView !== true;
   const text = data?.text || '';
   const onUpdate = data?.onUpdate;
 
@@ -15,19 +16,25 @@ export default function NoteNode({ id, data }) {
 
   return (
     <div
-      className="w-[200px] rounded-md border border-amber-300/60 bg-amber-50 shadow-sm dark:border-amber-500/40 dark:bg-amber-950/40"
+      className="relative w-[200px] rounded-md border border-amber-300/60 bg-amber-50 shadow-sm dark:border-amber-500/40 dark:bg-amber-950/40"
       style={{ backgroundColor: 'rgb(245 158 11 / 0.10)' }}
     >
-      <div className="flex items-center gap-1.5 border-b border-amber-300/40 px-2.5 py-1.5">
+      <div className={`flex items-center gap-1.5 border-b border-amber-300/40 px-2.5 py-1.5 ${showFullNode ? '' : 'invisible pointer-events-none'}`}>
         <span className="text-sm">📝</span>
         <span className="text-xs font-semibold text-amber-700 dark:text-amber-400">便签</span>
       </div>
       <textarea
-        className="nodrag nopan nowheel min-h-[60px] w-full resize-y bg-transparent px-2.5 py-1.5 text-sm text-foreground outline-none placeholder:text-muted-foreground/60"
+        className={`nodrag nopan nowheel min-h-[60px] w-full resize-y bg-transparent px-2.5 py-1.5 text-sm text-foreground outline-none placeholder:text-muted-foreground/60 ${showFullNode ? '' : 'invisible pointer-events-none'}`}
         placeholder="写点备注…（如：这组资产用于森林关卡）"
         value={text}
         onChange={handleChange}
       />
+      {!showFullNode && (
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center gap-2 overflow-hidden rounded-md px-3">
+          <span className="text-2xl leading-none">📝</span>
+          <span className="truncate text-lg font-semibold text-amber-700 dark:text-amber-400">便签</span>
+        </div>
+      )}
     </div>
   );
 }

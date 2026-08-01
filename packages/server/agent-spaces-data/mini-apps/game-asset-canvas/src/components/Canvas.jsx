@@ -59,6 +59,7 @@ import { genId } from '../utils/canvas-id';
 import { exportAssetLibraryZip, extractFileNameFromUrl, pickAssetLibraryZipFile, importAssetLibraryZip, exportWorkspaceZip, pickWorkspaceZipFile, importWorkspaceZip } from '../utils/export';
 import { canvasConfigPath, historyConfigPath, assetLibraryConfigPath, saveCanvas } from '../utils/storage';
 import { decorateEdgesForSelection } from '../utils/edge-display';
+import { COMPACT_NODE_ZOOM_THRESHOLD } from './nodes/compact-node';
 
 const EDGE_TYPES = { floating: FloatingEdge };
 const DEFAULT_EDGE_OPTIONS = {
@@ -725,19 +726,54 @@ export default function Canvas() {
     onOutputPreviewModeChange: handleOutputPreviewModeChange,
     settings, callbacks: nodeCallbacks,
   });
+  const compactNodes = (viewport?.zoom ?? 1) < COMPACT_NODE_ZOOM_THRESHOLD;
   const renderedNodes = useMemo(() => decoratedNodes.map((node) => ({
     ...node,
     zIndex: node.zIndex ?? 1,
+    data: { ...node.data, compactView: compactNodes },
     style: {
       ...node.style,
       '--floating-handle-size': (isConnecting || node.id === hoveredNodeId) ? '24px' : '8px',
     },
-  })), [decoratedNodes, hoveredNodeId, isConnecting]);
+  })), [compactNodes, decoratedNodes, hoveredNodeId, isConnecting]);
 
   const onNodeMouseEnter = useCallback((_event, node) => setHoveredNodeId(node.id), []);
   const onNodeMouseLeave = useCallback((_event, node) => {
     setHoveredNodeId((current) => (current === node.id ? null : current));
   }, []);
+
+  const handleEditSelectedImages = useCallback((urls) => {
+    if (!urls?.length) return;
+    setFormState({ nodeType: NODE_TYPES.editImage, initialImages: urls });
+    imageSelection.clear();
+  }, [imageSelection.clear]);
+  const handleCutoutSelectedImages = useCallback((urls) => {
+    if (!urls?.length) return;
+    handleCutoutCreate(urls);
+    imageSelection.clear();
+  }, [handleCutoutCreate, imageSelection.clear]);
+  const handleProcessSelectedImages = useCallback((urls, type) => {
+    if (!urls?.length) return;
+    handleProcessImage(urls, type);
+    imageSelection.clear();
+  }, [handleProcessImage, imageSelection.clear]);
+  const handleAddSelectedImagesToAssets = useCallback((urls) => {
+    if (!urls?.length) return;
+    handleAddToAssets(urls);
+  }, [handleAddToAssets]);
+  const imageSelectionMenuProps = useMemo(() => ({
+    selectedCount: imageSelection.selectedCount,
+    selectedUrls: imageSelection.selectedUrls,
+    onEditImages: handleEditSelectedImages,
+    onCutoutCreate: handleCutoutSelectedImages,
+    onProcessImage: handleProcessSelectedImages,
+    onAddToAssets: handleAddSelectedImagesToAssets,
+    onClear: imageSelection.clear,
+  }), [
+    imageSelection.selectedCount, imageSelection.selectedUrls, imageSelection.clear,
+    handleEditSelectedImages, handleCutoutSelectedImages, handleProcessSelectedImages,
+    handleAddSelectedImagesToAssets,
+  ]);
 
   // —— 工作区操作（切换/创建/删除）——
   const handleSwitch = (id) => { if (id !== activeId) switchWorkspace(id); };
@@ -829,6 +865,8 @@ export default function Canvas() {
               />
             }
             onPick={crud.handleAddAtMenu}
+            imageSelectionMenuProps={imageSelectionMenuProps}
+            onSelectContextImage={imageSelection.selectForContextMenu}
           >
             <ReactFlow
               key={activeId}
@@ -860,6 +898,7 @@ export default function Canvas() {
               defaultEdgeOptions={DEFAULT_EDGE_OPTIONS}
               snapToGrid={snapEnabled}
               snapGrid={SNAP_GRID}
+              minZoom={0.01}
               fitView={!hasSavedViewport}
               proOptions={{ hideAttribution: true }}
             >
@@ -923,24 +962,7 @@ export default function Canvas() {
 
             {/* 顶部图片选中 toolbar：跨节点选中图片后浮出，编辑/抠图/放大作用于选中图并集 */}
             <ImageSelectionToolbar
-              selectedCount={imageSelection.selectedCount}
-              selectedUrls={imageSelection.selectedUrls}
-              onEditImages={(urls) => {
-                if (!urls?.length) return;
-                setFormState({ nodeType: NODE_TYPES.editImage, initialImages: urls });
-                imageSelection.clear();
-              }}
-              onCutoutCreate={(urls) => {
-                if (!urls?.length) return;
-                handleCutoutCreate(urls);
-                imageSelection.clear();
-              }}
-              onProcessImage={(urls, type) => {
-                if (!urls?.length) return;
-                handleProcessImage(urls, type);
-                imageSelection.clear();
-              }}
-              onClear={imageSelection.clear}
+              {...imageSelectionMenuProps}
             />
 
             {/* 拖拽连线到空白处的「添加节点」菜单 */}
