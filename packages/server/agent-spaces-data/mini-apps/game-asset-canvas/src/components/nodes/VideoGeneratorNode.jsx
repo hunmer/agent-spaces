@@ -205,6 +205,7 @@ export default function VideoGeneratorNode({ id, data, selected }) {
       )}
       {upstreamImages.length > 0 && (
         <UpstreamImageList
+          nodeId={id}
           urls={upstreamImages}
           onChangeOrder={(next) => onUpdate?.({ upstreamOrder: next })}
         />

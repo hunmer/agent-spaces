@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, debugCanvasImageDrag, FolderPlus, ImageOff, Loader2, Plus, Trash2, openMediaGallery, Popover, PopoverContent, PopoverTrigger, setCanvasImageDragData } from '@agent-spaces/ui';
+import { useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, Check, debugCanvasImageDrag, FolderPlus, ImageOff, Loader2, Plus, Trash2, openMediaGallery, Popover, PopoverContent, PopoverTrigger, setCanvasImageDragData } from '@agent-spaces/ui';
 import { IMAGE_REORDER_MIME } from '../../utils/canvas-constants';
+import { ImageSelectionContext } from '../../context/ImageSelectionContext';
 
 // 图片加载失败占位：onError 时切换为该块，显示破损图标 + url
 function BrokenImagePlaceholder({ url }) {
@@ -28,10 +29,12 @@ function BrokenImagePlaceholder({ url }) {
  * @param {number} [props.activeVersion] 当前选中的版本索引
  * @param {Function} [props.onSwitchVersion] 版本切换回调，回传版本索引
  */
-export default function ImageResult({ images, max = 0, preview = false, onImageLoad, onAddToAssets, fileName, onAddImages, onRemoveImage, onClearImages, onReorderImages, versions, activeVersion, onSwitchVersion }) {
+export default function ImageResult({ nodeId, images, max = 0, preview = false, onImageLoad, onAddToAssets, fileName, onAddImages, onRemoveImage, onClearImages, onReorderImages, versions, activeVersion, onSwitchVersion }) {
   const all = images || [];
   const list = max > 0 ? all.slice(0, max) : all;
   const hasVersions = Array.isArray(versions) && versions.length > 1 && onSwitchVersion;
+  // 跨节点图片选中状态（单击选中 / ctrl 多选 / 双击预览）
+  const { isSelected, toggle } = useContext(ImageSelectionContext);
   if (!list.length && !onAddImages && !hasVersions) return null;
 
   // 拖拽排序（原生 HTML5 DnD，参考 UpstreamImageList）：仅在非预览态 + 注入 onReorderImages + 多图时启用。
@@ -120,9 +123,20 @@ export default function ImageResult({ images, max = 0, preview = false, onImageL
   if (preview) {
     return (
       <div className="flex w-full flex-col gap-2">
-        {list.map((url, i) => (
-          <PreviewImage key={i} url={url} onOpen={() => open(i)} onImageLoad={onImageLoad} onDragStart={onReorderDragStart(i, url)} />
-        ))}
+        {list.map((url, i) => {
+          const sel = nodeId ? isSelected(nodeId, url) : false;
+          return (
+            <PreviewImage
+              key={i}
+              url={url}
+              selected={sel}
+              onOpen={() => open(i)}
+              onSelect={(ctrlKey) => nodeId && toggle(nodeId, url, ctrlKey)}
+              onImageLoad={onImageLoad}
+              onDragStart={onReorderDragStart(i, url)}
+            />
+          );
+        })}
       </div>
     );
   }
@@ -156,6 +170,18 @@ export default function ImageResult({ images, max = 0, preview = false, onImageL
         }
         .game-asset-output-thumb:hover .game-asset-output-actions,
         .game-asset-output-thumb:focus-within .game-asset-output-actions {
+          opacity: 1;
+          pointer-events: auto;
+        }
+        /* 右上角选择 checkbox：选中时常驻显示，未选中时仅 hover 显示 */
+        .game-asset-output-checkbox {
+          opacity: 0;
+          pointer-events: none;
+          transition: opacity 150ms ease;
+        }
+        .game-asset-output-thumb:hover .game-asset-output-checkbox,
+        .game-asset-output-thumb:focus-within .game-asset-output-checkbox,
+        .game-asset-output-checkbox.game-asset-output-checkbox-on {
           opacity: 1;
           pointer-events: auto;
         }
@@ -205,26 +231,33 @@ export default function ImageResult({ images, max = 0, preview = false, onImageL
       )}
       {list.length > 0 && (
         <div className="grid grid-cols-3 gap-1">
-          {list.map((url, i) => (
+          {list.map((url, i) => {
+            const sel = nodeId ? isSelected(nodeId, url) : false;
+            return (
             <div
               key={i}
               draggable
               onDragStart={onReorderDragStart(i, url)}
               onDragOver={sortable ? onReorderDragOver(i) : undefined}
               onDragEnd={sortable ? onReorderDragEnd : undefined}
-              className={`game-asset-output-thumb group relative block aspect-square overflow-hidden rounded border transition-colors ${
+              onClick={(e) => { e.stopPropagation(); if (nodeId) toggle(nodeId, url, e.ctrlKey || e.metaKey); }}
+              onDoubleClick={(e) => { e.stopPropagation(); open(i); }}
+              className={`game-asset-output-thumb group relative block aspect-square cursor-pointer overflow-hidden rounded border transition-colors ${
                 sortable && draggingIdx === i ? 'border-primary opacity-40'
                   : sortable && overIdx === i && draggingIdx !== i ? 'border-primary border-t-2'
+                  : sel ? 'border-primary'
                   : 'border-border'
               } ${sortable ? 'cursor-grab active:cursor-grabbing' : ''}`}
             >
-              <button
-                type="button"
-                onClick={(e) => { e.stopPropagation(); open(i); }}
-                className="block h-full w-full overflow-hidden rounded"
-              >
+              <div className="block h-full w-full overflow-hidden rounded">
                 <GridImage url={url} />
-              </button>
+              </div>
+              {/* 选中角标 */}
+              {sel && (
+                <span className="absolute right-0.5 top-0.5 z-20 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-primary-foreground shadow">
+                  <Check className="h-2.5 w-2.5" />
+                </span>
+              )}
               {(onAddToAssets || onRemoveImage) && (
                 <div className="game-asset-output-actions nodrag nopan nowheel">
                   {onAddToAssets && (
@@ -250,7 +283,8 @@ export default function ImageResult({ images, max = 0, preview = false, onImageL
                 </div>
               )}
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
       <AlertDialog open={confirmClear} onOpenChange={setConfirmClear}>
@@ -288,9 +322,10 @@ function ImageLoadingPlaceholder() {
 }
 
 /**
- * 预览态单图：加载中显示 spinner 占位，加载完毕才展示；失败切换占位块（点击仍可尝试打开 gallery）。
+ * 预览态单图：加载中显示 spinner 占位，加载完毕才展示；失败切换占位块（双击仍可尝试打开 gallery）。
+ * 单击切换选中、双击打开 gallery（不改选中态）。
  */
-function PreviewImage({ url, onOpen, onImageLoad, onDragStart }) {
+function PreviewImage({ url, selected, onOpen, onSelect, onImageLoad, onDragStart }) {
   const [failed, setFailed] = useState(false);
   const [loaded, setLoaded] = useState(false);
   // url 变化（版本切换）时重置状态：重新进入 loading，允许重新加载新图
@@ -300,8 +335,9 @@ function PreviewImage({ url, onOpen, onImageLoad, onDragStart }) {
       type="button"
       draggable
       onDragStart={onDragStart}
-      onClick={(e) => { e.stopPropagation(); onOpen(); }}
-      className="block w-full overflow-hidden"
+      onClick={(e) => { e.stopPropagation(); onSelect?.(e.ctrlKey || e.metaKey); }}
+      onDoubleClick={(e) => { e.stopPropagation(); onOpen(); }}
+      className={`block w-full overflow-hidden rounded transition-shadow ${selected ? 'ring-2 ring-primary ring-offset-2' : ''}`}
     >
       {failed ? (
         <BrokenImagePlaceholder url={url} />

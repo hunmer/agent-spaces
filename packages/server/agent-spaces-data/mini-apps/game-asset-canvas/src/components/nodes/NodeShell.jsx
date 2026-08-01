@@ -56,6 +56,7 @@ export default function NodeShell({
   const onUpdate = data?.onUpdate;
   // 产出卡片 props（预览分支与正常分支共用）：图片/回调/版本/状态
   const outputProps = {
+    nodeId: id,
     status,
     statusMsg: data?.statusMsg,
     images: data?.output?.images || [],
@@ -74,9 +75,6 @@ export default function NodeShell({
       : undefined,
   };
   const onExportImages = data?.onExportImages;
-  const onProcessImage = data?.onProcessImage;
-  const onCutoutCreate = data?.onCutoutCreate;
-  const onEditImages = data?.onEditImages;
   const onResetParams = data?.onResetParams;
   // 上传控件折叠态（持久化到 data.uploadHidden）。首次 status 变 done 时自动折叠一次（用户手动切过则不再自动）。
   const uploadHidden = data?.uploadHidden === true;
@@ -142,12 +140,7 @@ export default function NodeShell({
   }, [reportOutputPreviewHeight]);
 
   // 是否显示抠图/放大按钮：节点有产出图且有处理回调
-  const showProcessButtons = outputImages.length > 0 && onProcessImage;
-  // 是否显示抠图按钮（统一抠图节点）：节点有产出图且有创建回调
-  const showCutoutButton = outputImages.length > 0 && onCutoutCreate;
-  // 是否显示编辑按钮：节点有产出图且有编辑回调
-  const showEditButton = outputImages.length > 0 && onEditImages;
-
+  // 注：【编辑】【抠图】【放大】已移到画布级 ImageSelectionToolbar（图片选中后顶部浮出），NodeShell 不再渲染。
   // 首次内容高度自适应 + 内容变化时持续跟随：测量「标题栏 + 内容区」真实高度并上报。
   // 内层测量 div（contentInnerRef）自然撑开，offsetHeight 恒等于内容真实高度（不受 overflow/flex 影响），
   // 故 observe 它能捕获 textarea 等子元素的高度变化；observe root 无效（root 高度恒 = node.height）。
@@ -176,9 +169,9 @@ export default function NodeShell({
   }, [viewportActivated, data?.onAutoSizeToContent, id, outputPreviewEnabled]);
 
   // 统一的 toolbar 按钮组：预览/正常分支共用，避免进入预览后按钮消失。
-  // 切换预览 + 节点自定义按钮（toolbarActions）+ 编辑/抠图/放大/导出等通用操作。
-  const hasExtraButtons = (outputImages.length > 0 && onExportImages)
-    || showProcessButtons || showEditButton || showCutoutButton;
+  // 切换预览 + 节点自定义按钮（toolbarActions）+ 导出图片。
+  // 【编辑】【抠图】【放大】已移到画布级 ImageSelectionToolbar（图片选中后顶部浮出）。
+  const hasExtraButtons = outputImages.length > 0 && onExportImages;
   const shouldShowToolbar = canPreviewOutput || hasExtraButtons || toolbarActions?.length;
   const toolbarButtons = (
     <>
@@ -209,35 +202,7 @@ export default function NodeShell({
           {action.label}
         </button>
       ))}
-      {showEditButton && (
-        <button
-          type="button"
-          onClick={(e) => { e.stopPropagation(); onEditImages(outputImages); }}
-          className="rounded-md border border-border bg-background px-2.5 py-1 text-xs font-medium text-foreground shadow-sm transition hover:border-primary hover:text-primary"
-        >
-          编辑
-        </button>
-      )}
-      {/* 抠图按钮：创建统一抠图节点并预填当前产出图作为输入（替换原直接调工作流） */}
-      {showCutoutButton && (
-        <button
-          type="button"
-          onClick={(e) => { e.stopPropagation(); onCutoutCreate(outputImages); }}
-          className="rounded-md border border-border bg-background px-2.5 py-1 text-xs font-medium text-foreground shadow-sm transition hover:border-primary hover:text-primary"
-        >
-          抠图
-        </button>
-      )}
-      {/* 放大按钮：保留原直接调工作流逻辑（放大未合并进统一抠图节点） */}
-      {showProcessButtons && (
-        <button
-          type="button"
-          onClick={(e) => { e.stopPropagation(); onProcessImage(outputImages, 'enhance'); }}
-          className="rounded-md border border-border bg-background px-2.5 py-1 text-xs font-medium text-foreground shadow-sm transition hover:border-primary hover:text-primary"
-        >
-          放大
-        </button>
-      )}
+      {/* 编辑/抠图/放大 已移到画布级 ImageSelectionToolbar（图片选中后顶部浮出） */}
       {outputImages.length > 0 && onExportImages && (
         <button
           type="button"
@@ -339,7 +304,7 @@ export default function NodeShell({
                   onHeightChange={reportOutputPreviewHeight}
                 />
               ) : (
-                <ImageResult images={previewImages} preview onImageLoad={reportOutputPreviewHeight} />
+                <ImageResult nodeId={id} images={previewImages} preview onImageLoad={reportOutputPreviewHeight} />
               )
             ) : null}
           </div>

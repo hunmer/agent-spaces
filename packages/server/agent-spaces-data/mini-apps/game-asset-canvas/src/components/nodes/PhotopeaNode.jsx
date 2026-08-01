@@ -106,6 +106,7 @@ export default function PhotopeaNode({ id, data, selected }) {
 
       {upstreamImages.length > 0 && (
         <UpstreamImageList
+          nodeId={id}
           urls={upstreamImages}
           sortable
           onChangeOrder={(next) => onUpdate?.({ upstreamOrder: next })}

@@ -128,6 +128,7 @@ export default function PixelEditorNode({ id, data, selected }) {
           data.images 是 computeInputImages 派生真值，会被覆盖，所以顺序单独存 data.upstreamOrder。 */}
       {upstreamImages.length > 0 && (
         <UpstreamImageList
+          nodeId={id}
           urls={upstreamImages}
           sortable
           onChangeOrder={(next) => onUpdate?.({ upstreamOrder: next })}

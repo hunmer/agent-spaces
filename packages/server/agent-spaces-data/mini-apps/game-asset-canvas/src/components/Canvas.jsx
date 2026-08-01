@@ -20,13 +20,17 @@ import WorkspaceSwitcher from './WorkspaceSwitcher';
 import CanvasContextMenu from './canvas/CanvasContextMenu';
 import DropNodeMenu from './canvas/DropNodeMenu';
 import MultiSelectToolbar from './canvas/MultiSelectToolbar';
+import ImageSelectionToolbar from './canvas/ImageSelectionToolbar';
 import GroupOverlays from './canvas/GroupOverlays';
 import FloatingEdge from './canvas/FloatingEdge';
+import { ImageSelectionContext } from '../context/ImageSelectionContext';
+import useImageSelection from '../hooks/useImageSelection';
 import AssetLibraryPickerDialog from './AssetLibraryPickerDialog';
 import ExportImagesDialog from './ExportImagesDialog';
 import GroupConfirmDialog from './GroupConfirmDialog';
 import DeleteGroupDialog from './DeleteGroupDialog';
 import ConnectionTargetDialog from './ConnectionTargetDialog';
+import PastePropertiesDialog from './PastePropertiesDialog';
 import useAssetLibrary from '../hooks/useAssetLibrary';
 import { getConnectionTargets, getNodeOutputType } from '../utils/connection-targets';
 
@@ -91,6 +95,8 @@ export default function Canvas() {
 
   // —— 本组件局部 state ——
   const [selectedId, setSelectedId] = useState(null);
+  // 跨节点图片选中状态（单击选中 / ctrl 多选 / 双击预览，选中后顶部浮出 ImageSelectionToolbar）
+  const imageSelection = useImageSelection();
   const [settingsOpen, setSettingsOpen] = useState(false);
   // 顶部菜单「提示词管理」入口：pickerMode=false 纯管理（不填充、不关闭）
   const [promptManagerOpen, setPromptManagerOpen] = useState(false);
@@ -235,7 +241,10 @@ export default function Canvas() {
   const groupOps = useGroupOperations({
     groups, nodes, edges, setGroups, setNodes, setEdges, reactFlow, canvasRef: wrappingRef,
   });
-  const clearGroupSelection = useCallback(() => groupOps.setSelectedGroupId(null), [groupOps.setSelectedGroupId]);
+  const clearGroupSelection = useCallback(() => {
+    groupOps.setSelectedGroupId(null);
+    imageSelection.clear();
+  }, [groupOps.setSelectedGroupId, imageSelection]);
   const groupExecution = useGroupExecution({ groups, nodes, edges, setGroups, setNodes });
 
   // —— ReactFlow 变更回调（逻辑简单，留在编排层）——
@@ -736,6 +745,7 @@ export default function Canvas() {
   }
 
   return (
+    <ImageSelectionContext.Provider value={imageSelection}>
     <ResizablePanelGroup
       direction="horizontal"
       className="h-full min-h-0"
@@ -892,6 +902,28 @@ export default function Canvas() {
               onDeleteSelected={selection.deleteSelectedNodes}
             />
 
+            {/* 顶部图片选中 toolbar：跨节点选中图片后浮出，编辑/抠图/放大作用于选中图并集 */}
+            <ImageSelectionToolbar
+              selectedCount={imageSelection.selectedCount}
+              selectedUrls={imageSelection.selectedUrls}
+              onEditImages={(urls) => {
+                if (!urls?.length) return;
+                setFormState({ nodeType: NODE_TYPES.editImage, initialImages: urls });
+                imageSelection.clear();
+              }}
+              onCutoutCreate={(urls) => {
+                if (!urls?.length) return;
+                handleCutoutCreate(urls);
+                imageSelection.clear();
+              }}
+              onProcessImage={(urls, type) => {
+                if (!urls?.length) return;
+                handleProcessImage(urls, type);
+                imageSelection.clear();
+              }}
+              onClear={imageSelection.clear}
+            />
+
             {/* 拖拽连线到空白处的「添加节点」菜单 */}
             <DropNodeMenu
               dropNodeMenu={dropNodeMenu}
@@ -1022,6 +1054,14 @@ export default function Canvas() {
           setPendingConnection(null);
         }}
       />
+
+      <PastePropertiesDialog
+        state={selection.propertyPaste}
+        onClose={selection.cancelPropertyPaste}
+        onApply={selection.applyProperties}
+        onContinuePaste={selection.continuePaste}
+      />
     </ResizablePanelGroup>
+    </ImageSelectionContext.Provider>
   );
 }

@@ -10,6 +10,10 @@ const INJECTED_DATA_KEYS = [
 
 let clipboard = null; // { nodes: CleanNode[], edges: CleanEdge[] }
 const CLIPBOARD_KIND = 'agent-spaces/game-asset-canvas-nodes';
+const TRANSIENT_DATA_KEYS = new Set([
+  'output', 'images', 'videos', 'textInputValues',
+  'status', 'loading', 'error', 'progress', 'executionId', 'source',
+]);
 
 /**
  * 序列化节点子图为干净数据（剥离函数回调 + 选中标记）。
@@ -49,6 +53,43 @@ export function copyNodes(selectedNodes, allEdges) {
 /** 剪贴板是否非空 */
 export function hasClipboard() {
   return !!(clipboard?.nodes?.length);
+}
+
+export function canApplyClipboardProperties(sourceNode, targetNodes) {
+  return !!sourceNode && !!targetNodes?.length
+    && targetNodes.every((node) => node.type === sourceNode.type);
+}
+
+/** 单节点属性粘贴可选项：params 展开到字段，其余 data 保持顶层字段。 */
+export function getClipboardProperties(node, paramSchema = []) {
+  const data = node?.data || {};
+  const labels = new Map(paramSchema.map((item) => [item.key, item.label]));
+  const properties = Object.keys(data.params || {}).map((key) => ({
+    path: `params.${key}`,
+    label: labels.get(key) || key,
+  }));
+  for (const [key, value] of Object.entries(data)) {
+    if (key !== 'params' && !TRANSIENT_DATA_KEYS.has(key) && typeof value !== 'function') {
+      properties.push({ path: key, label: key });
+    }
+  }
+  return properties;
+}
+
+/** 把选中的剪贴板 data 字段应用到目标节点 data。 */
+export function applyClipboardProperties(targetData, sourceData, propertyPaths) {
+  const next = { ...(targetData || {}) };
+  for (const path of propertyPaths || []) {
+    if (path.startsWith('params.')) {
+      const key = path.slice(7);
+      if (Object.prototype.hasOwnProperty.call(sourceData?.params || {}, key)) {
+        next.params = { ...(next.params || {}), [key]: sourceData.params[key] };
+      }
+    } else if (Object.prototype.hasOwnProperty.call(sourceData || {}, path)) {
+      next[path] = sourceData[path];
+    }
+  }
+  return next;
 }
 
 /** 写入系统剪贴板的文本 payload；与内存剪贴板保持同一份干净节点数据。 */

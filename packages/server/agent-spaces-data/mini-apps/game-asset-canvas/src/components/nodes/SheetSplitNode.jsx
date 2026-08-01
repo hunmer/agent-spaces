@@ -105,7 +105,7 @@ export default function SheetSplitNode({ id, data, selected }) {
 
       {/* 上游连线图（hover 可删除断开连线，多张） */}
       {upstreamImages.length > 0 && (
-        <UpstreamImageList urls={upstreamImages} sortable onChangeOrder={(next) => onUpdate?.({ upstreamOrder: next })} onDelete={data?.onDeleteUpstreamImage} nonDeletableUrls={data?.protectedUpstreamImageUrls} />
+        <UpstreamImageList nodeId={id} urls={upstreamImages} sortable onChangeOrder={(next) => onUpdate?.({ upstreamOrder: next })} onDelete={data?.onDeleteUpstreamImage} nonDeletableUrls={data?.protectedUpstreamImageUrls} />
       )}
 
       {/* 输入来源统计 */}

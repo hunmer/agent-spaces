@@ -107,6 +107,7 @@ export default function MaskPaintNode({ id, data, selected }) {
       {/* 上游连线图（hover 可删除断开连线，多张） */}
       {upstreamImages.length > 0 && (
         <UpstreamImageList
+          nodeId={id}
           urls={upstreamImages}
           sortable
           onChangeOrder={(next) => onUpdate?.({ upstreamOrder: next })}

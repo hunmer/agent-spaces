@@ -146,6 +146,7 @@ Agent → api.js handler → ctx.requestClient(type, payload, timeoutMs)
 26. **本地 FileUpload 上传入口属于缩略图网格**：未达到 `max` 时，紧凑上传入口始终渲染为三列缩略图网格的第一个单元格，后接已有图片；不要恢复为缩略图整行 + 下方独立上传行。
 27. **节点产出缩略图操作栏底部居中**：`ImageResult` 的“添加到素材库/删除”按钮统一放在 `.game-asset-output-actions`，悬浮时在图片内部底部居中并排显示；定位、尺寸、显隐必须用组件内作用域 CSS，不要恢复右上/右下负偏移或 Tailwind `group-hover`。
 28. **共享 FileUpload 图片预览走 Gallery**：宿主 `packages/web/src/components/ui/file-upload.tsx` 点击图片缩略图调用 `openMediaGallery`，Gallery 只包含有预览 URL 的图片文件并按图片子集定位；缩略图自身悬浮时用 `group/preview` 显示半透明遮罩和眼睛图标，最右侧删除按钮仅在文件行 hover/focus 时显示。该文件是宿主层，修改后必须重启 Web。
+29. **复制并应用节点属性只处理单节点剪贴板**：粘贴单个节点时，若当前至少选中一个节点且全部与来源同类型，先由 `PastePropertiesDialog` 选择字段；字段默认全不选，列表顶部提供“全选/反选”；“应用”更新目标节点，“继续粘贴”执行原粘贴。`params` 按子字段展开，`output/images/videos/status/loading/error` 等产出、派生输入和运行态字段不参与属性应用；多节点剪贴板直接沿用原粘贴行为。
 29. **边高亮是展示态**：`decorateEdgesForSelection` 只基于 ReactFlow 原生 `node.selected` 派生输入蓝/输出绿、箭头颜色和居中编号标签，不把高亮字段写入持久化 `edges`；label 仅在边关联选中节点时显示。标签用原生 SVG `rect + text`，因为 mini-app renderer 未暴露 xyflow 的 `EdgeText`。
 
 ## 工作区数据目录（产图落本地）

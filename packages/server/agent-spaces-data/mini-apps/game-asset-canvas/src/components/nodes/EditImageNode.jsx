@@ -181,6 +181,7 @@ export default function EditImageNode({ id, data, selected }) {
         <span className="text-xs font-medium text-muted-foreground">输入图片</span>
         <UploadSection>
           <FileUpload
+          nodeId={id}
           value={uploadedImages}
           onChange={setUploadedImages}
           max={6}

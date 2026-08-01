@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { copyNodes, hasClipboard, pasteNodes, serializeClipboard } from '../utils/clipboard';
+import {
+  applyClipboardProperties, canApplyClipboardProperties,
+  copyNodes, hasClipboard, pasteNodes, serializeClipboard,
+} from '../utils/clipboard';
 import { genId } from '../utils/canvas-id';
 import { computeAlignment, computeGridLayout } from '../utils/align-distribute';
 import { IMAGE_TAGS } from '../utils/constants';
@@ -29,6 +32,7 @@ export default function useSelectionClipboard({
   addImageNodesFromUrls, onPasteImageFiles,
 }) {
   const [selectionCount, setSelectionCount] = useState(0);
+  const [propertyPaste, setPropertyPaste] = useState(null);
 
   // nodes/edges 的 ref 镜像：让「读最新选中态」的 callback 去掉对 nodes/edges 的依赖
   const nodesRef = useRef(nodes);
@@ -98,6 +102,42 @@ export default function useSelectionClipboard({
     }
   }, []);
 
+  const commitPaste = useCallback((result) => {
+    setNodes((prev) => [...prev, ...result.nodes]);
+    setEdges((prev) => [...prev, ...result.edges]);
+  }, [setNodes, setEdges]);
+
+  const requestNodePaste = useCallback(() => {
+    if (!hasClipboard()) return;
+    const result = pasteNodes({ genId });
+    if (!result) return;
+    const sourceNode = result.nodes.length === 1 ? result.nodes[0] : null;
+    const targets = nodesRef.current.filter((node) => node.selected);
+    if (canApplyClipboardProperties(sourceNode, targets)) {
+      setPropertyPaste({ result, sourceNode, targetIds: targets.map((node) => node.id) });
+      return;
+    }
+    commitPaste(result);
+  }, [commitPaste]);
+
+  const applyProperties = useCallback((propertyPaths) => {
+    if (!propertyPaste) return;
+    const ids = new Set(propertyPaste.targetIds);
+    const sourceData = propertyPaste.sourceNode.data;
+    setNodes((prev) => prev.map((node) => (ids.has(node.id)
+      ? { ...node, data: applyClipboardProperties(node.data, sourceData, propertyPaths) }
+      : node)));
+    setPropertyPaste(null);
+  }, [propertyPaste, setNodes]);
+
+  const continuePaste = useCallback(() => {
+    if (!propertyPaste) return;
+    commitPaste(propertyPaste.result);
+    setPropertyPaste(null);
+  }, [commitPaste, propertyPaste]);
+
+  const cancelPropertyPaste = useCallback(() => setPropertyPaste(null), []);
+
   const handlePaste = useCallback(async () => {
     if (onPasteImageFiles && typeof navigator !== 'undefined' && navigator.clipboard?.read) {
       let imageFiles = [];
@@ -113,12 +153,8 @@ export default function useSelectionClipboard({
       }
     }
 
-    if (!hasClipboard()) return;
-    const result = pasteNodes({ genId });
-    if (!result) return;
-    setNodes((prev) => [...prev, ...result.nodes]);
-    setEdges((prev) => [...prev, ...result.edges]);
-  }, [onPasteImageFiles, setNodes, setEdges]);
+    requestNodePaste();
+  }, [onPasteImageFiles, requestNodePaste]);
 
   // 全选节点（Ctrl/Cmd+A）：selected 由 ReactFlow 自管，直接置 true。
   const handleSelectAll = useCallback(() => {
@@ -168,10 +204,7 @@ export default function useSelectionClipboard({
       }
       if (hasClipboard()) {
         event.preventDefault();
-        const result = pasteNodes({ genId });
-        if (!result) return;
-        setNodes((prev) => [...prev, ...result.nodes]);
-        setEdges((prev) => [...prev, ...result.edges]);
+        requestNodePaste();
       }
     };
     window.addEventListener('keydown', onKeyDown);
@@ -180,13 +213,14 @@ export default function useSelectionClipboard({
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('paste', onPaste);
     };
-  }, [handleCopy, handleSelectAll, onPasteImageFiles, setEdges, setNodes]);
+  }, [handleCopy, handleSelectAll, onPasteImageFiles, requestNodePaste]);
 
   return {
     selectionCount, setSelectionCount,
     onSelectionChange,
     alignDistribute, applyGridLayout, deleteSelectedNodes, handleUseImage,
     handleCopy, handlePaste,
+    propertyPaste, applyProperties, continuePaste, cancelPropertyPaste,
     handleSelectAll, handleInvertSelect, handleClearSelection,
   };
 }

@@ -1,6 +1,7 @@
-import { useCallback, useRef, useState } from 'react';
-import { CANVAS_IMAGE_DROP_MIME, SquarePen, Trash2, Upload, debugCanvasImageDrag, getCanvasImageDropUrls, openMediaGallery, setCanvasImageDragData } from '@agent-spaces/ui';
+import { useCallback, useContext, useRef, useState } from 'react';
+import { CANVAS_IMAGE_DROP_MIME, Check, SquarePen, Trash2, Upload, debugCanvasImageDrag, getCanvasImageDropUrls, openMediaGallery, setCanvasImageDragData } from '@agent-spaces/ui';
 import { IMAGE_REORDER_MIME } from '../utils/canvas-constants';
+import { ImageSelectionContext } from '../context/ImageSelectionContext';
 
 /**
  * 图片上传组件：支持点击/拖拽上传，调用 window.AgentSpaces.uploadFile 上传到后端，
@@ -17,7 +18,7 @@ import { IMAGE_REORDER_MIME } from '../utils/canvas-constants';
  *   onEditItem: 可选。传入后，缩略图悬浮时在底部显示编辑/删除图标组，并回传待编辑图片 URL。
  *   bottomActions: 可选。即使没有编辑动作，也把删除按钮放到底部悬浮操作组。
  */
-export default function FileUpload({ value = [], onChange, max = 6, placeholder = '点击或拖拽图片到此处上传', extraItems = [], itemOrder = [], onReorderItems, onEditItem, bottomActions = false }) {
+export default function FileUpload({ nodeId, value = [], onChange, max = 6, placeholder = '点击或拖拽图片到此处上传', extraItems = [], itemOrder = [], onReorderItems, onEditItem, bottomActions = false }) {
   const inputRef = useRef(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
@@ -25,6 +26,8 @@ export default function FileUpload({ value = [], onChange, max = 6, placeholder 
   const urls = Array.isArray(value) ? value : [];
   // 只读项归一：过滤无 src 的项
   const extras = (Array.isArray(extraItems) ? extraItems : []).filter((e) => e && e.src);
+  // 跨节点图片选中状态（单击选中 / ctrl 多选 / 双击预览）
+  const { isSelected, toggle } = useContext(ImageSelectionContext);
 
   const rawItems = [
     ...extras.map((item, sourceIndex) => ({ ...item, kind: 'extra', sourceIndex })),
@@ -261,6 +264,7 @@ export default function FileUpload({ value = [], onChange, max = 6, placeholder 
           )}
           {displayItems.map((item, i) => {
             const sortable = unifiedSortable || (uploadedSortable && item.kind === 'uploaded');
+            const sel = nodeId ? isSelected(nodeId, item.src) : false;
             return (
               <div
                 key={i}
@@ -268,14 +272,22 @@ export default function FileUpload({ value = [], onChange, max = 6, placeholder 
                 onDragStart={onReorderDragStart(i, item, sortable)}
                 onDragOver={sortable ? onReorderDragOver(i, item) : undefined}
                 onDragEnd={onReorderDragEnd}
-                className={`game-asset-upload-thumb group relative aspect-square overflow-hidden rounded-md border transition-colors ${
+                onClick={(e) => { e.stopPropagation(); if (nodeId) toggle(nodeId, item.src, e.ctrlKey || e.metaKey); }}
+                onDoubleClick={(e) => { e.stopPropagation(); openAt(i); }}
+                className={`game-asset-upload-thumb group relative aspect-square cursor-pointer overflow-hidden rounded-md border transition-colors ${
                   sortable && draggingIdx === i ? 'border-primary opacity-40'
                     : sortable && overIdx === i && draggingIdx !== i ? 'border-primary border-t-2'
+                    : sel ? 'border-primary'
                     : item.kind === 'extra' ? 'border-border bg-muted/40' : 'border-border'
-                } ${sortable ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'}`}
-                onClick={() => openAt(i)}
+                } ${sortable ? 'cursor-grab active:cursor-grabbing' : ''}`}
               >
                 <img src={item.src} alt="" draggable={false} className="h-full w-full object-cover" />
+                {/* 选中角标 */}
+                {sel && (
+                  <span className="absolute right-0.5 top-0.5 z-20 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-primary-foreground shadow">
+                    <Check className="h-2.5 w-2.5" />
+                  </span>
+                )}
                 {item.badge && (
                   <span className="absolute bottom-0.5 left-0.5 rounded bg-black/60 px-1 text-[9px] leading-tight text-white">
                     {item.badge}

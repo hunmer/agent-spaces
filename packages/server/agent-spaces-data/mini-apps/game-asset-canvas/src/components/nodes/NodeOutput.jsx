@@ -25,6 +25,7 @@ import TextResult from './TextResult';
  */
 export default function NodeOutput({
   width,
+  nodeId,
   hasExternalSourceHandle = false,
   status = 'idle',
   statusMsg,
@@ -109,6 +110,7 @@ export default function NodeOutput({
             <TextResult text={text} onClear={onClearText} />
           ) : (
             <ImageResult
+              nodeId={nodeId}
               images={images}
               fileName={fileName}
               onAddToAssets={onAddToAssets}
