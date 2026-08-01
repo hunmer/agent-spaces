@@ -9,7 +9,7 @@ import { hexToRgb } from '../../utils/ui-splitter-helpers';
  *   refs: { fcRef, imageStatesRef, gridModeRef, exportEnabledRef, onSaveRef,
  *           drawModeRef, spaceDownRef, pickingRef }
  *   state: { thumbUrls, method, tolerance, minArea, padding }
- *   setters: { setError, setSaving, setSavedCount, setMethod, setDrawMode, setExportEnabled }
+ *   setters: { setError, setSaving, setSavedCount, setMethod, setDrawMode, setExportEnabled, setStatus }
  *   props:  { onClose }
  *   deps:   { curState, snapshot, setColor, renderList }
  */
@@ -20,7 +20,7 @@ export default function useSplitterSave(ctx) {
     drawModeRef, spaceDownRef, pickingRef,
   } = refs;
   const { thumbUrls, method, tolerance, minArea, padding } = state;
-  const { setError, setSaving, setSavedCount, setMethod, setDrawMode, setExportEnabled } = setters;
+  const { setError, setSaving, setSavedCount, setMethod, setDrawMode, setExportEnabled, setStatus } = setters;
   const { onClose } = props;
   const { curState, snapshot, setColor, renderList } = deps;
 
@@ -82,7 +82,7 @@ export default function useSplitterSave(ctx) {
   // 吸色 / 背景色选择
   const togglePicking = useCallback(() => {
     pickingRef.current = !pickingRef.current;
-    ctx.setters.setStatus(pickingRef.current ? '点击画布上的背景色' : '');
+    setStatus(pickingRef.current ? '点击画布上的背景色' : '');
   }, []);
   const handlePickColor = useCallback((hex) => {
     setColor(hexToRgb(hex));

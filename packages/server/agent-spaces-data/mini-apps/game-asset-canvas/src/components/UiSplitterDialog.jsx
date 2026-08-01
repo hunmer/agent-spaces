@@ -9,8 +9,7 @@ import {
   loadImageSource, detect, cornerColor, toHex,
 } from '../utils/image-ops/sprite-splitter';
 import {
-  hexToRgb, normalizeGridCount, evenlySpacedGuides,
-  resolveGridGuides,
+  hexToRgb, evenlySpacedGuides, resolveGridGuides, gridBoxesFromGuides, inputSignature,
 } from '../utils/ui-splitter-helpers';
 import InputImageList from './ui-splitter/InputImageList';
 import SplitterToolbar from './ui-splitter/SplitterToolbar';
@@ -165,223 +164,28 @@ export default function UiSplitterDialog({
   // 右侧预览列表
   const [previews, setPreviews] = useState([]); // [{ name, url }]
 
-  // ===== 节点对话框数据持久化：统一写回函数 =====
-  // 输入签名（inputSignature，来自 ui-splitter-helpers）= inputImages 用 '|' 拼接，用于判定恢复时输入是否一致。
-  // 写回内容：每图 rects/pickedColor/exportEnabled + 检测参数 + 网格模式 + inputSignature。
-  // 所有增删改入口（AI 检测/手工绘制/表单修改/删除/撤销重做/切换图）都汇总到 renderList → syncSplitData，
-  // 避免某条路径漏写（持久化规范「所有增删改入口必须汇总到统一同步函数」）。
-  const syncSplitData = useCallback(() => {
-    const urls = thumbUrlsRef.current;
-    if (!urls?.length) return;
-    const states = imageStatesRef.current;
-    const perImage = {};
-    for (const url of urls) {
-      const st = states[url];
-      perImage[url] = {
-        rects: (st?.rects || []).map((b) => ({ ...b })),
-        pickedColor: st?.pickedColor ? [...st.pickedColor] : null,
-        exportEnabled: exportEnabledRef.current[url] !== false,
-        gridGuides: st?.gridGuides ? {
-          cols: st.gridGuides.cols,
-          rows: st.gridGuides.rows,
-          v: [...(st.gridGuides.v || [])],
-          h: [...(st.gridGuides.h || [])],
-        } : null,
-      };
-    }
-    onDataChangeRef.current?.({
-      inputSignature: inputSignature(urls),
-      cutoutMethodVersion: 1,
-      method: methodRef.current,
-      tolerance: toleranceRef.current,
-      minArea: minAreaRef.current,
-      padding: paddingRef.current,
-      pickedHex: pickedHexRef.current,
-      gridMode: gridModeRef.current,
-      gridCols: gridColsRef.current,
-      gridRows: gridRowsRef.current,
-      perImage,
-    });
-  }, []);
-
-  // 表单参数变化 → 写回节点持久化（detectAll 已会经 renderList 写回，
-  // 此处兜底覆盖「改参数但未触发检测」的路径；syncSplitData 只读不写 state，无循环风险）。
-  // 必须声明在 syncSplitData 之后（useEffect deps 在函数体同步执行时求值，引用未初始化的 const 会 TDZ）。
-  useEffect(() => {
-    if (!open || !readyRef.current) return;
-    syncSplitData();
-  }, [open, method, tolerance, minArea, padding, pickedHex, syncSplitData]);
-
-  const renderList = useCallback(() => {
-    const source = sourceRef.current;
-    // 同步当前图切片框到 state（保证 totalCount 统计最新）
-    const cur = curState();
-    if (cur && !gridModeRef.current) cur.rects = rects().map(realBox);
-    if (!source) { setPreviews([]); setCount(0); setTotalCount(0); return; }
-    const boxes = cur?.rects || [];
-    setCount(boxes.length);
-    const items = boxes.map((box, i) => {
-      const canvas = exportBox(source.imageData, box, computeOptions());
-      const name = `element_${String(i + 1).padStart(2, '0')}_${Math.round(box.width)}x${Math.round(box.height)}.png`;
-      return { name, url: canvas.toDataURL('image/png') };
-    });
-    setPreviews(items);
-    // 统计每图切片数 + 启用导出图的切片总和（驱动保存按钮）
-    let total = 0;
-    const states = imageStatesRef.current;
-    const counts = {};
-    for (const url of thumbUrls) {
-      const st = states[url];
-      const n = st?.rects?.length || 0;
-      counts[url] = n;
-      // exportEnabled 是 state，renderList 闭包可能读到旧值，用 ref 兜底
-      if (exportEnabledRef.current[url] !== false) total += n;
-    }
-    setSliceCounts(counts);
-    setTotalCount(total);
-    // 切片框变化 → 写回节点持久化（统一同步点）
-    syncSplitData();
-  }, [rects, realBox, computeOptions, curState, thumbUrls, syncSplitData]);
-
-  // 删除当前画布上选中的切片框（带历史）
-  const deleteSelectedRects = useCallback(() => {
-    const fc = fcRef.current;
-    if (!fc) return false;
-    const selected = rects().filter((r) => r.active || fc.getActiveObject() === r);
-    if (!selected.length) return false;
-    pushHistory();
-    for (const r of selected) fc.remove(r);
-    fc.discardActiveObject();
-    fc.renderAll();
-    renderList();
-    setStatus(`已删除 ${selected.length} 个切片框`);
-    return true;
-  }, [rects, pushHistory, renderList]);
-
-  // 清空当前激活图的所有切片框（带历史）
-  const clearAllRects = useCallback(() => {
-    const fc = fcRef.current;
-    if (!fc) return;
-    const all = rects();
-    if (!all.length) return;
-    pushHistory();
-    for (const r of all) fc.remove(r);
-    fc.discardActiveObject();
-    fc.renderAll();
-    renderList();
-    setStatus('已清空当前图的切片框');
-  }, [rects, pushHistory, renderList]);
-
-  // 按预览索引删除单个切片框（与 renderList 的顺序一致）
-  const deleteRectAt = useCallback((index) => {
-    const fc = fcRef.current;
-    if (!fc) return;
-    if (gridModeRef.current) {
-      const st = curState();
-      if (!st?.rects?.[index]) return;
-      st.rects = st.rects.filter((_, i) => i !== index);
-      renderList();
-      setStatus('已删除该网格切片');
-      return;
-    }
-    const all = rects();
-    const r = all[index];
-    if (!r) return;
-    pushHistory();
-    fc.remove(r);
-    fc.renderAll();
-    renderList();
-    setStatus('已删除该切片框');
-  }, [rects, pushHistory, renderList, curState]);
-
-  const applySnapshot = useCallback((boxes) => {
-    const fc = fcRef.current;
-    if (!fc) return;
-    applyingHistoryRef.current = true;
-    clearRects();
-    boxes.forEach((box) => addRect(box));
-    applyingHistoryRef.current = false;
-    fc.renderAll();
-    renderList();
-    updateHistoryButtons();
-  }, [clearRects, addRect, renderList, updateHistoryButtons]);
-
-  const undo = useCallback(() => {
-    const st = curState();
-    if (!st?.undo?.length) return;
-    st.redo.push(snapshot());
-    applySnapshot(st.undo.pop());
-  }, [curState, snapshot, applySnapshot]);
-
-  const redo = useCallback(() => {
-    const st = curState();
-    if (!st?.redo?.length) return;
-    st.undo.push(snapshot());
-    applySnapshot(st.redo.pop());
-  }, [curState, snapshot, applySnapshot]);
-
-  const setColor = useCallback((color) => {
-    const st = curState();
-    if (st) st.pickedColor = color;
-    setPickedHex(toHex(color));
-  }, [curState]);
-
-  // ===== 自动检测 =====
-  // 对指定图（url）做纯数据检测，返回 box 数组并写入该图 state。不操作 fabric 画布。
-  // picked 模式下用该图自身的 pickedColor（每图独立背景色），其它参数取当前表单值。
-  const detectFor = useCallback((url) => {
-    const st = imageStatesRef.current[url];
-    if (!st?.source) return [];
-    const opts = computeOptions();
-    if (opts.method === 'picked') opts.backgroundColor = st.pickedColor;
-    const boxes = detect(st.source.imageData, opts);
-    st.rects = boxes;
-    return boxes;
-  }, [computeOptions]);
-
-  // 对所有图批量检测（非激活图只写数据不渲染；最后统一 renderList 刷新计数/预览）
-  const detectAll = useCallback(() => {
-    // 「不检测」模式：跳过自动连通域检测，不清空画布、不改动现有切片框，保留用户手动框。
-    if (methodRef.current === 'none') return 0;
-    let total = 0;
-    const active = activeUrlRef.current;
-    for (const url of thumbUrls) {
-      const boxes = detectFor(url);
-      total += boxes.length;
-      // 激活图把切片框同步到画布
-      if (url === active) {
-        const fc = fcRef.current;
-        if (fc) {
-          clearRects();
-          boxes.forEach(addRect);
-          // 重新应用当前绘制模式
-          const inDraw = drawModeRef.current;
-          for (const r of fc.getObjects().filter((o) => o.kind === 'slice')) r.selectable = !inDraw;
-          fc.selection = !inDraw;
-          fc.defaultCursor = inDraw ? 'crosshair' : 'default';
-          fc.hoverCursor = inDraw ? 'crosshair' : 'move';
-          fc.renderAll();
-        }
-      }
-    }
-    renderList();
-    setStatus(`已对所有图检测，共 ${total} 个区域`);
-    return total;
-  }, [thumbUrls, detectFor, clearRects, addRect, renderList]);
-
-  // 表单参数变化时自动重新检测所有图（编辑器就绪后才生效，避免加载阶段空跑）
-  // 网格模式 / 裁切模式下跳过：detectAll 会重置切片框，破坏网格参考线状态
-  useEffect(() => {
-    if (!open || !readyRef.current || gridModeRef.current || cropModeRef.current) return;
-    detectAll();
-  }, [open, method, tolerance, minArea, padding, pickedHex, detectAll]);
-
-  // 网格模式下，视觉参数（背景色/容差/边距）变化只影响导出底色，不改变切片框，
-  // detectAll 会被上面的 effect 跳过，这里补一次 renderList 重算切片预览。
-  useEffect(() => {
-    if (!open || !readyRef.current || !gridModeRef.current) return;
-    renderList();
-  }, [open, pickedHex, tolerance, minArea, padding, renderList]);
+  // ===== 功能 hook 装配（顺序即原 useCallback 声明顺序，保持 TDZ 正确）=====
+  // 切片框 CRUD + 撤销重做 + 预览渲染 + 自动检测 + 持久化写回（详见 useSplitterSlices.js）
+  const sliceApi = useSplitterSlices({
+    refs: {
+      fcRef, fabricLibRef, sourceRef, imageStatesRef, activeUrlRef, thumbUrlsRef,
+      exportEnabledRef, readyRef, drawModeRef, gridModeRef, cropModeRef, gridColsRef,
+      gridRowsRef, vGuidesRef, hGuidesRef, gridSplitTimerRef, applyingHistoryRef,
+      methodRef, toleranceRef, minAreaRef, paddingRef, pickedHexRef, onDataChangeRef,
+    },
+    state: { open, thumbUrls, method, tolerance, minArea, padding, pickedHex },
+    setters: {
+      setStatus, setPreviews, setCount, setTotalCount, setSliceCounts,
+      setCanUndo, setCanRedo, setPickedHex,
+    },
+    callbacks: { curState, computeOptions },
+  });
+  // 解构切片 hook 接口，供 fitToStage/switchTo/fabric 初始化/其他 hook 使用
+  const {
+    rects, clearRects, realBox, snapshot, addRect, updateHistoryButtons, pushHistory,
+    undo, redo, setColor, detectAll, renderList,
+    deleteSelectedRects, clearAllRects, deleteRectAt,
+  } = sliceApi;
 
   // 让 fabric 视口 contain 居中显示整张图片（坐标系仍是图片像素，仅改 viewportTransform）
   const fitToStage = useCallback(() => {
@@ -468,6 +272,39 @@ export default function UiSplitterDialog({
     renderList();
     setStatus(`已切换到图 ${thumbUrls.indexOf(url) + 1}。`);
   }, [snapshot, syncSourceRef, clearRects, addRect, fitToStage, updateHistoryButtons, renderList, thumbUrls]);
+
+  // 网格模式 hook（参考线 CRUD + 进入/退出网格 + 实时拆分），依赖 sliceApi 的渲染/历史接口
+  const gridApi = useSplitterGrid({
+    refs: {
+      fcRef, fabricLibRef, sourceRef, gridModeRef, gridColsRef, gridRowsRef,
+      vGuidesRef, hGuidesRef, gridSplitTimerRef, lastGridSplitAtRef,
+      cropDraftRef, cropModeRef, drawModeRef,
+    },
+    state: { activeUrl, gridMode },
+    setters: { setStatus, setGridCols, setGridRows, setGridMode, setCropMode, setCropBox },
+    sliceApi: { curState, renderList, pushHistory, clearRects, addRect },
+  });
+  const {
+    syncGuidesFromCanvas, clearGuides, renderGuideDistances, clearGuideDistances,
+    renderGuides, restoreGridForCurrent, applyGridSplit, scheduleGridSplit,
+    enterGridMode, exitGridMode, toggleGridMode, applyGridSize,
+  } = gridApi;
+
+  // 裁切 hook（应用裁切 / 模式切换 / 取消），依赖 fitToStage 与 gridApi.enterGridMode/syncGuidesFromCanvas
+  const cropApi = useSplitterCrop({
+    refs: {
+      fcRef, fabricLibRef, sourceRef, imageStatesRef, activeUrlRef,
+      onDataChangeRef, onReplaceImageRef, cropModeRef, cropDraftRef,
+      gridModeRef, gridSplitTimerRef, drawModeRef,
+    },
+    state: { cropBox, gridOnly },
+    setters: {
+      setCropBusy, setError, setStatus, setThumbUrls, setActiveUrl,
+      setCropMode, setCropBox, setPickedHex, setGridMode,
+    },
+    deps: { fitToStage, renderList, updateHistoryButtons, enterGridMode, syncGuidesFromCanvas },
+  });
+  const { applyCrop, toggleCropMode, cancelCrop } = cropApi;
 
   // ===== 打开对话框：加载 fabric + 所有图 =====
   useEffect(() => {
@@ -572,7 +409,18 @@ export default function UiSplitterDialog({
           roRef.current = ro;
         }
 
-        bindFabricEvents(fc, fabric);
+        bindSplitterFabricEvents(fc, fabric, {
+          refs: {
+            sourceRef, spaceDownRef, panningRef, lastPanRef, pickingRef, drawingRef, startRef,
+            draftRef, stageRef, cropModeRef, croppingRef, cropStartRef, cropDraftRef, cropSizeLabelRef,
+            gridModeRef, drawModeRef,
+          },
+          setters: { setMethod, setStatus, setCropBox },
+          callbacks: {
+            pushHistory, renderList, setColor, curState, scheduleGridSplit,
+            renderGuideDistances, clearGuideDistances,
+          },
+        });
         // 激活第一张
         const first = urls[0];
         activeUrlRef.current = first;
@@ -705,751 +553,31 @@ export default function UiSplitterDialog({
     }
   }, [open]);
 
-  // ===== 裁切 / 网格：核心函数（声明在 bindFabricEvents 之前，避免 TDZ） =====
-
-  // 把画布上所有参考线坐标重排写回 ref（拖动结束、拆分前调用）
-  const syncGuidesFromCanvas = useCallback(() => {
-    const fc = fcRef.current;
-    if (!fc) return;
-    const vs = [];
-    const hs = [];
-    for (const o of fc.getObjects()) {
-      if (o.kind !== 'guide') continue;
-      if (o.axis === 'v') vs.push(Math.round(o.left));
-      else if (o.axis === 'h') hs.push(Math.round(o.top));
-    }
-    vGuidesRef.current = vs.sort((a, b) => a - b);
-    hGuidesRef.current = hs.sort((a, b) => a - b);
-    const st = curState();
-    if (st) {
-      st.gridGuides = {
-        cols: gridColsRef.current,
-        rows: gridRowsRef.current,
-        v: [...vGuidesRef.current],
-        h: [...hGuidesRef.current],
-      };
-    }
-  }, [curState]);
-
-  // 清除画布上的网格覆盖层（不动切片框）；重绘时保留参考线坐标。
-  const clearGuides = useCallback((resetPositions = true) => {
-    const fc = fcRef.current;
-    if (!fc) return;
-    for (const o of fc.getObjects().filter((g) => (
-      g.kind === 'guide' || g.kind === 'grid-boundary' || g.kind === 'grid-distance'
-    ))) fc.remove(o);
-    if (resetPositions) {
-      vGuidesRef.current = [];
-      hGuidesRef.current = [];
-    }
-  }, []);
-
-  // 拖动参考线时，显示该轴全部相邻线（含两侧边框）之间的图片像素距离。
-  const renderGuideDistances = useCallback((axis) => {
-    const fc = fcRef.current;
-    const fabric = fabricLibRef.current;
-    const src = sourceRef.current;
-    if (!fc || !fabric || !src) return;
-    for (const o of fc.getObjects().filter((item) => item.kind === 'grid-distance')) fc.remove(o);
-
-    const isVertical = axis === 'v';
-    const size = isVertical ? src.canvas.width : src.canvas.height;
-    const crossSize = isVertical ? src.canvas.height : src.canvas.width;
-    const positions = fc.getObjects()
-      .filter((item) => item.kind === 'guide' && item.axis === axis)
-      .map((item) => Math.round(isVertical ? item.left : item.top))
-      .sort((a, b) => a - b);
-    const boundaries = [0, ...positions, size];
-
-    for (let i = 0; i < boundaries.length - 1; i++) {
-      const start = boundaries[i];
-      const end = boundaries[i + 1];
-      const distance = Math.max(0, end - start);
-      const label = new fabric.Text(`${distance}px`, {
-        left: isVertical ? (start + end) / 2 : Math.min(8, crossSize / 2),
-        top: isVertical ? Math.min(8, crossSize / 2) : (start + end) / 2,
-        originX: isVertical ? 'center' : 'left',
-        originY: isVertical ? 'top' : 'center',
-        fontSize: 13,
-        fontWeight: 'bold',
-        fill: '#111827',
-        backgroundColor: 'rgba(254, 240, 138, 0.92)',
-        padding: 3,
-        selectable: false,
-        evented: false,
-        objectCaching: false,
-      });
-      label.kind = 'grid-distance';
-      fc.add(label);
-    }
-    fc.requestRenderAll();
-  }, []);
-
-  const clearGuideDistances = useCallback(() => {
-    const fc = fcRef.current;
-    if (!fc) return;
-    for (const o of fc.getObjects().filter((item) => item.kind === 'grid-distance')) fc.remove(o);
-    fc.requestRenderAll();
-  }, []);
-
-  // 在当前图片上渲染网格边界，并按 vGuidesRef/hGuidesRef 绘制内部参考线。
-  const renderGuides = useCallback(() => {
-    const fc = fcRef.current;
-    const fabric = fabricLibRef.current;
-    const src = sourceRef.current;
-    if (!fc || !fabric || !src) return;
-    clearGuides(false);
-    const iw = src.canvas.width;
-    const ih = src.canvas.height;
-    const boundary = new fabric.Rect({
-      left: 0, top: 0, width: iw, height: ih,
-      fill: 'rgba(234,179,8,0.04)', stroke: '#eab308', strokeWidth: 2,
-      strokeDashArray: [6, 4], selectable: false, evented: false,
-      objectCaching: false,
-    });
-    boundary.kind = 'grid-boundary';
-    fc.add(boundary);
-    const mkLine = (x1, y1, x2, y2, axis) => {
-      // fabric.Line 的 left/top 是包围盒左上角，构造时 x1==x2 的垂直线 left 即为 x1
-      const line = new fabric.Line([x1, y1, x2, y2], {
-        stroke: '#eab308', strokeWidth: 2, selectable: true, evented: true,
-        hasControls: false, hasBorders: false, hoverCursor: axis === 'v' ? 'ew-resize' : 'ns-resize',
-        objectCaching: false,
-      });
-      line.kind = 'guide';
-      line.axis = axis;
-      // 单轴锁定：垂直线只允许水平移动，水平线只允许垂直移动
-      if (axis === 'v') {
-        line.set({ lockMovementY: true, lockScalingY: true, lockScalingX: true, lockRotation: true });
-      } else {
-        line.set({ lockMovementX: true, lockScalingX: true, lockScalingY: true, lockRotation: true });
-      }
-      fc.add(line);
-    };
-    for (const x of vGuidesRef.current) mkLine(x, 0, x, ih, 'v');
-    for (const y of hGuidesRef.current) mkLine(0, y, iw, y, 'h');
-    fc.renderAll();
-  }, [clearGuides]);
-
-  const restoreGridForCurrent = useCallback(() => {
-    const src = sourceRef.current;
-    const st = curState();
-    if (!src || !st) return null;
-    const guides = resolveGridGuides(
-      st.gridGuides,
-      src.canvas.width,
-      src.canvas.height,
-      gridColsRef.current,
-      gridRowsRef.current,
-    );
-    gridColsRef.current = guides.cols;
-    gridRowsRef.current = guides.rows;
-    vGuidesRef.current = [...guides.v];
-    hGuidesRef.current = [...guides.h];
-    st.gridGuides = { ...guides, v: [...guides.v], h: [...guides.h] };
-    setGridCols(guides.cols);
-    setGridRows(guides.rows);
-    renderGuides();
-    return guides;
-  }, [curState, renderGuides]);
-
-  const buildGridBoxes = useCallback(() => {
-    const src = sourceRef.current;
-    if (!src) return [];
-    return gridBoxesFromGuides(src.canvas.width, src.canvas.height, vGuidesRef.current, hGuidesRef.current);
-  }, []);
-
-  const applyGridSplit = useCallback(() => {
-    if (!gridModeRef.current) return [];
-    syncGuidesFromCanvas();
-    const boxes = buildGridBoxes();
-    const st = curState();
-    if (st) st.rects = boxes;
-    renderList();
-    setStatus(`网格实时拆分：${boxes.length} 个切片`);
-    return boxes;
-  }, [syncGuidesFromCanvas, buildGridBoxes, curState, renderList]);
-
-  const scheduleGridSplit = useCallback((immediate = false) => {
-    const run = () => {
-      gridSplitTimerRef.current = null;
-      lastGridSplitAtRef.current = Date.now();
-      applyGridSplit();
-    };
-    const throttleMs = gridSplitThrottleMs(gridColsRef.current, gridRowsRef.current);
-    const remaining = throttleMs - (Date.now() - lastGridSplitAtRef.current);
-    if (immediate || remaining <= 0) {
-      if (gridSplitTimerRef.current) clearTimeout(gridSplitTimerRef.current);
-      run();
-    } else if (!gridSplitTimerRef.current) {
-      gridSplitTimerRef.current = setTimeout(run, remaining);
-    }
-  }, [applyGridSplit]);
-
-  // 网格态切换图片或恢复对话框时，优先恢复该图片最后一次参考线位置。
-  useEffect(() => {
-    if (!gridMode || !sourceRef.current) return;
-    restoreGridForCurrent();
-    scheduleGridSplit(true);
-  }, [activeUrl, gridMode, restoreGridForCurrent, scheduleGridSplit]);
-
-  // 进入网格模式：优先恢复当前图片上次参考线，没有快照时按行列均分。
-  const enterGridMode = useCallback(() => {
-    const fc = fcRef.current;
-    const src = sourceRef.current;
-    if (!fc || !src) return;
-    pushHistory();
-    clearRects();
-    clearGuides();
-    fc.selection = false;
-    fc.defaultCursor = 'default';
-    fc.hoverCursor = 'default';
-    if (cropDraftRef.current) { fc.remove(cropDraftRef.current); cropDraftRef.current = null; }
-    cropModeRef.current = false;
-    setCropMode(false);
-    setCropBox(null);
-    gridModeRef.current = true;
-    setGridMode(true);
-    restoreGridForCurrent();
-    scheduleGridSplit(true);
-  }, [pushHistory, clearRects, clearGuides, restoreGridForCurrent, scheduleGridSplit]);
-
-  // 退出网格模式：固化最后一次实时拆分结果为普通切片框。
-  const exitGridMode = useCallback(() => {
-    const fc = fcRef.current;
-    if (!fc) return;
-    if (gridSplitTimerRef.current) clearTimeout(gridSplitTimerRef.current);
-    gridSplitTimerRef.current = null;
-    const boxes = applyGridSplit();
-    clearGuides();
-    clearRects();
-    for (const box of boxes) addRect(box);
-    gridModeRef.current = false;
-    setGridMode(false);
-    // 恢复绘制模式的光标/选择态
-    const inDraw = drawModeRef.current;
-    for (const r of fc.getObjects().filter((o) => o.kind === 'slice')) r.selectable = !inDraw;
-    fc.selection = !inDraw;
-    fc.defaultCursor = inDraw ? 'crosshair' : 'default';
-    fc.hoverCursor = inDraw ? 'crosshair' : 'move';
-    fc.renderAll();
-    renderList();
-    setStatus(`已退出网格模式，保留 ${boxes.length} 个切片`);
-  }, [applyGridSplit, clearGuides, clearRects, addRect, renderList]);
-
-  // 应用裁切：导出裁切区域 → 上传 → 替换/追加原图 → 重建 source
-  const applyCrop = useCallback(async () => {
-    const AS = window.AgentSpaces;
-    const box = cropBox;
-    const src = sourceRef.current;
-    if (!AS?.uploadFile || !box || !src) return;
-    const url = activeUrlRef.current;
-    if (!url) return;
-    setCropBusy(true);
-    setError('');
-    setStatus('正在裁切并上传…');
-    try {
-      // 导出裁切区域（不透明背景，避免被 exportBox 的背景色替换逻辑影响）
-      const canvas = exportBox(src.imageData, box, { transparent: false });
-      const blob = await new Promise((res) => canvas.toBlob((b) => res(b), 'image/png'));
-      if (!blob) throw new Error('裁切导出失败');
-      const file = new File([blob], `crop_${Date.now()}.png`, { type: 'image/png' });
-      const uploaded = await AS.uploadFile(file);
-      const httpUrl = uploaded?.url || uploaded?.httpPath;
-      if (!httpUrl) throw new Error('裁切结果上传失败');
-      // 通知节点替换原图（uploadedImages 原地替换；若为上游只读图则节点内追加为上传图）
-      const replaced = onReplaceImageRef.current?.(url, httpUrl);
-      // 重建该图 source（含新 imageData/canvas），用新 URL 作为 imageStates 的键以保持一致性
-      const newSource = await loadImageSource(httpUrl);
-      // 更新 imageStates：旧 key 删除，新 key 写入（URL 变了，键也要换）
-      const oldSt = imageStatesRef.current[url];
-      delete imageStatesRef.current[url];
-      imageStatesRef.current[httpUrl] = {
-        source: newSource,
-        pickedColor: cornerColor(newSource.imageData),
-        undo: [],
-        redo: [],
-        rects: [],
-      };
-      // 同步 thumbUrls / activeUrl 到新 URL
-      setThumbUrls((prev) => prev.map((u) => (u === url ? httpUrl : u)));
-      activeUrlRef.current = httpUrl;
-      setActiveUrl(httpUrl);
-      sourceRef.current = newSource;
-      // 刷新 fabric 背景图
-      const fabric = fabricLibRef.current;
-      const fc = fcRef.current;
-      if (fabric && fc) {
-        fabric.Image.fromURL(newSource.canvas.toDataURL('image/png'), (img) => {
-          img.selectable = false;
-          img.evented = false;
-          fc.setBackgroundImage(img, () => {
-            fitToStage();
-            fc.renderAll();
-          });
-        });
-      }
-      // 清裁切框 + 退出裁切模式
-      if (cropDraftRef.current && fc) { fc.remove(cropDraftRef.current); cropDraftRef.current = null; }
-      cropModeRef.current = false;
-      setCropMode(false);
-      setCropBox(null);
-      updateHistoryButtons();
-      renderList();
-      setPickedHex(toHex(cornerColor(newSource.imageData)));
-      // grid-only：裁切完成后自动回到网格模式（裁切会改图，重进网格按新图尺寸重建参考线）
-      if (gridOnly) {
-        enterGridMode();
-      }
-      // 裁切后输入图集合变化，清旧 splitData（遵守持久化规范）
-      onDataChangeRef.current?.(null);
-      setStatus(replaced === false ? '已裁切（上游只读图，结果已追加为新上传图）' : '已裁切并替换原图');
-    } catch (err) {
-      console.error('[ui-splitter] crop failed:', err);
-      setError(err?.message || String(err));
-    } finally {
-      setCropBusy(false);
-    }
-  }, [cropBox, fitToStage, renderList, updateHistoryButtons, gridOnly, enterGridMode]);
-
-  // ===== fabric 事件绑定（单独函数，避免重建 fc 时回调读旧闭包） =====
-  const bindFabricEvents = useCallback((fc, fabric) => {
-    const pointerPoint = (event) => {
-      const p = fc.getPointer(event.e);
-      return { x: Math.round(p.x), y: Math.round(p.y) };
-    };
-
-    const setPanMode = (enabled) => {
-      spaceDownRef.current = enabled;
-      stageRef.current?.classList.toggle('is-panning', enabled);
-      fc.selection = !enabled;
-      for (const r of fc.getObjects().filter((o) => o.kind === 'slice')) r.selectable = !enabled;
-      fc.defaultCursor = enabled ? 'grab' : 'default';
-    };
-
-    fc.on('mouse:wheel', (event) => {
-      if (!sourceRef.current) return;
-      let zoom = fc.getZoom() * Math.pow(0.999, event.e.deltaY);
-      zoom = Math.max(0.1, Math.min(6, zoom));
-      fc.zoomToPoint({ x: event.e.offsetX, y: event.e.offsetY }, zoom);
-      event.e.preventDefault();
-      event.e.stopPropagation();
-    });
-
-    fc.on('mouse:down', (event) => {
-      if (!sourceRef.current) return;
-      if (spaceDownRef.current) {
-        panningRef.current = true;
-        lastPanRef.current = { x: event.e.clientX, y: event.e.clientY };
-        fc.defaultCursor = 'grabbing';
-        return;
-      }
-      const p = pointerPoint(event);
-      if (pickingRef.current) {
-        setColor(sampleColor(sourceRef.current.imageData, p.x, p.y));
-        setMethod('picked');
-        pickingRef.current = false;
-        setStatus(`已吸取背景色 ${toHex(curState()?.pickedColor)}`);
-        return;
-      }
-      // 裁切模式：左键点空白启动裁切拉框（不进切片 undo 栈）。点中已有对象（参考线/切片框）放行给 fabric。
-      if (cropModeRef.current && !event.target) {
-        croppingRef.current = true;
-        cropStartRef.current = p;
-        // 清除上一个未应用的裁切框
-        if (cropDraftRef.current) { fc.remove(cropDraftRef.current); cropDraftRef.current = null; }
-        if (cropSizeLabelRef.current) { fc.remove(cropSizeLabelRef.current); cropSizeLabelRef.current = null; }
-        cropDraftRef.current = new fabric.Rect({
-          left: p.x, top: p.y, width: 1, height: 1,
-          fill: 'rgba(234,179,8,0.08)', stroke: '#eab308', strokeWidth: 2,
-          strokeDashArray: [6, 4], objectCaching: false,
-          selectable: false, evented: false,
-        });
-        cropDraftRef.current.kind = 'crop';
-        fc.add(cropDraftRef.current);
-        cropSizeLabelRef.current = new fabric.Text('1 × 1 px', {
-          left: p.x, top: p.y, originX: 'center', originY: 'center',
-          fontSize: 13, fontWeight: 'bold', fill: '#111827',
-          backgroundColor: 'rgba(254, 240, 138, 0.92)', padding: 3,
-          selectable: false, evented: false, objectCaching: false,
-        });
-        cropSizeLabelRef.current.kind = 'crop-size';
-        fc.add(cropSizeLabelRef.current);
-        setCropBox(null);
-        return;
-      }
-      // 网格模式下禁止切片拉框（参考线独占交互）
-      if (gridModeRef.current) return;
-      // 绘制模式：左键点空白 或 任意模式下 Alt+左键 都拉框新建。
-      // 点中已有切片框（event.target 存在）时不拦截，交给 fabric 选择/移动。
-      const wantDraw = (drawModeRef.current && !event.target) || event.e.altKey;
-      if (!wantDraw) return;
-      pushHistory();
-      drawingRef.current = true;
-      startRef.current = p;
-      draftRef.current = new fabric.Rect({
-        left: p.x, top: p.y, width: 1, height: 1,
-        fill: 'rgba(0,0,0,0)', stroke: '#f97316', strokeWidth: 2, objectCaching: false,
-      });
-      draftRef.current.kind = 'slice';
-      fc.add(draftRef.current);
-    });
-
-    fc.on('mouse:move', (event) => {
-      if (panningRef.current && lastPanRef.current) {
-        const vpt = fc.viewportTransform;
-        vpt[4] += event.e.clientX - lastPanRef.current.x;
-        vpt[5] += event.e.clientY - lastPanRef.current.y;
-        lastPanRef.current = { x: event.e.clientX, y: event.e.clientY };
-        fc.requestRenderAll();
-        return;
-      }
-      // 裁切框尺寸更新
-      if (croppingRef.current && cropDraftRef.current) {
-        const p = pointerPoint(event);
-        const s = cropStartRef.current;
-        const left = Math.min(s.x, p.x);
-        const top = Math.min(s.y, p.y);
-        const width = Math.abs(p.x - s.x);
-        const height = Math.abs(p.y - s.y);
-        cropDraftRef.current.set({ left, top, width, height });
-        cropSizeLabelRef.current?.set({
-          text: `${Math.round(width)} × ${Math.round(height)} px`,
-          left: left + width / 2,
-          top: top + height / 2,
-        });
-        fc.renderAll();
-        return;
-      }
-      if (!drawingRef.current || !draftRef.current) return;
-      const p = pointerPoint(event);
-      const s = startRef.current;
-      draftRef.current.set({
-        left: Math.min(s.x, p.x),
-        top: Math.min(s.y, p.y),
-        width: Math.abs(p.x - s.x),
-        height: Math.abs(p.y - s.y),
-      });
-      fc.renderAll();
-    });
-
-    fc.on('mouse:up', () => {
-      if (panningRef.current) {
-        panningRef.current = false;
-        lastPanRef.current = null;
-        fc.defaultCursor = spaceDownRef.current ? 'grab' : 'default';
-        return;
-      }
-      // 裁切框松开：太小则丢弃，否则保留并驱动确认条
-      if (croppingRef.current) {
-        croppingRef.current = false;
-        const d = cropDraftRef.current;
-        if (cropSizeLabelRef.current) { fc.remove(cropSizeLabelRef.current); cropSizeLabelRef.current = null; }
-        if (!d) return;
-        if (d.width < 2 || d.height < 2) {
-          fc.remove(d); cropDraftRef.current = null; setCropBox(null); fc.renderAll(); return;
-        }
-        setCropBox({ x: d.left, y: d.top, width: d.width, height: d.height });
-        setStatus(`已选择裁切范围 ${Math.round(d.width)}×${Math.round(d.height)}，点【应用裁切】确认`);
-        return;
-      }
-      if (!drawingRef.current) return;
-      drawingRef.current = false;
-      const d = draftRef.current;
-      draftRef.current = null;
-      if (!d) return;
-      if (d.width < 2 || d.height < 2) { fc.remove(d); return; }
-      d.set({ stroke: '#0ea5e9' });
-      renderList();
-    });
-
-    // 拖动/缩放切片框时记录历史（一次操作一条）
-    // 参考线拖动时 clamp 到图片范围并实时同步到 vGuidesRef/hGuidesRef
-    fc.on('object:moving', (event) => {
-      const t = event?.target;
-      if (t?.kind === 'guide' && sourceRef.current) {
-        const iw = sourceRef.current.canvas.width;
-        const ih = sourceRef.current.canvas.height;
-        if (t.axis === 'v') {
-          // 垂直线，只能左右移：left 是线中心，fabric.Line 用 [x1,y1,x2,y2] 构造，移动后 left 表征中心
-          const inset = iw > 2 ? 1 : 0;
-          const clamped = Math.max(inset, Math.min(iw - inset, t.left));
-          t.set({ left: clamped });
-        } else if (t.axis === 'h') {
-          const inset = ih > 2 ? 1 : 0;
-          const clamped = Math.max(inset, Math.min(ih - inset, t.top));
-          t.set({ top: clamped });
-        }
-        renderGuideDistances(t.axis);
-        scheduleGridSplit();
-        return;
-      }
-      if (!fc.__historyMoveStarted) { pushHistory(); fc.__historyMoveStarted = true; }
-    });
-    fc.on('object:scaling', () => {
-      if (!fc.__historyScaleStarted) { pushHistory(); fc.__historyScaleStarted = true; }
-    });
-    fc.on('object:modified', (event) => {
-      const t = event?.target;
-      if (t?.kind === 'guide') {
-        // 松手立即补最后一次，确保节流期间的最终位置不丢失。
-        clearGuideDistances();
-        scheduleGridSplit(true);
-        fc.__historyMoveStarted = false;
-        fc.__historyScaleStarted = false;
-        return;
-      }
-      fc.__historyMoveStarted = false;
-      fc.__historyScaleStarted = false;
-      renderList();
-    });
-  }, [pushHistory, renderList, setColor, curState, scheduleGridSplit, renderGuideDistances, clearGuideDistances]);
 
   // ===== 键盘：空格平移 / Delete 删切片框 / Ctrl+Z 撤销 / Ctrl+Y(Ctrl+Shift+Z) 重做 =====
   useEffect(() => {
     if (!open) return;
-    const onKeyDown = (e) => {
-      const t = e.target;
-      const tag = t?.tagName;
-      const inField = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || t?.isContentEditable;
-      // Delete/Backspace：对话框打开时一律阻止冒泡（避免触发 ReactFlow 删节点）；
-      // 有选中切片框时顺带删除它们
-      if ((e.code === 'Delete' || e.code === 'Backspace') && !inField) {
-        deleteSelectedRects();
-        e.preventDefault();
-        e.stopPropagation();
-        return;
-      }
-      if (e.ctrlKey && (e.code === 'KeyY' || (e.shiftKey && e.code === 'KeyZ'))) {
-        e.preventDefault(); e.stopPropagation(); redo(); return;
-      }
-      if (e.ctrlKey && e.code === 'KeyZ') {
-        e.preventDefault(); e.stopPropagation(); undo(); return;
-      }
-      if (e.code !== 'Space' || inField) return;
-      e.preventDefault();
-      e.stopPropagation();
-      const fc = fcRef.current;
-      if (fc && !spaceDownRef.current) {
-        spaceDownRef.current = true;
-        fc.selection = false;
-        for (const r of fc.getObjects().filter((o) => o.kind === 'slice')) r.selectable = false;
-        fc.defaultCursor = 'grab';
-        stageRef.current?.classList.add('is-panning');
-      }
-    };
-    const onKeyUp = (e) => {
-      if (e.code !== 'Space') return;
-      e.preventDefault();
-      const fc = fcRef.current;
-      if (fc) {
-        const inDraw = drawModeRef.current;
-        fc.selection = !inDraw;
-        for (const r of fc.getObjects().filter((o) => o.kind === 'slice')) r.selectable = !inDraw;
-        fc.defaultCursor = inDraw ? 'crosshair' : 'default';
-      }
-      spaceDownRef.current = false;
-      panningRef.current = false;
-      lastPanRef.current = null;
-      stageRef.current?.classList.remove('is-panning');
-    };
-    window.addEventListener('keydown', onKeyDown, true);  // capture 阶段，抢在 ReactFlow 之前
-    window.addEventListener('keyup', onKeyUp);
-    return () => {
-      window.removeEventListener('keydown', onKeyDown, true);
-      window.removeEventListener('keyup', onKeyUp);
-    };
+    const cleanup = bindSplitterKeyboard({
+      refs: { fcRef, spaceDownRef, panningRef, lastPanRef, stageRef, drawModeRef },
+      callbacks: { undo, redo, deleteSelectedRects },
+    });
+    return cleanup;
   }, [open, undo, redo, deleteSelectedRects]);
 
-  // ===== 保存：把所有图的所有切片转 Blob 上传 =====
-  const handleSave = useCallback(async () => {
-    const AS = window.AgentSpaces;
-    if (!AS?.uploadFile) { setError('宿主 uploadFile 不可用'); return; }
-    // 先把当前画布上的切片框同步回当前图 state（保证最新）
-    const cur = curState();
-    if (cur && !gridModeRef.current) cur.rects = snapshot();
-    // 收集每张图的切片（跳过无切片框的图）
-    const states = imageStatesRef.current;
-    const tasks = [];
-    thumbUrls.forEach((url, idx) => {
-      const st = states[url];
-      if (!st?.source) return;
-      if (exportEnabledRef.current[url] === false) return; // 跳过禁用导出的图
-      // st.rects 已是 box 对象（{x,y,width,height}），无需再 realBox
-      const boxes = (st.rects || []).slice();
-      if (!boxes.length) return;
-      boxes.forEach((box, i) => tasks.push({ st, box, imgIdx: idx, sliceIdx: i }));
-    });
-    if (!tasks.length) { setError('没有切片框，先自动检测或 Alt 拉框'); return; }
-    setSaving(true);
-    setSavedCount(0);
-    setError('');
-    const urls = [];
-    // 保存时按每图各自记录的背景色导出（picked 模式才用，其它模式 backgroundColor 不生效）
-    const optsBase = { method, tolerance: Number(tolerance) || 0, minArea: Number(minArea) || 0, padding: Number(padding) || 0 };
-    try {
-      for (let n = 0; n < tasks.length; n++) {
-        const { st, box, imgIdx, sliceIdx } = tasks[n];
-        const opts = { ...optsBase };
-        if (opts.method === 'picked') opts.backgroundColor = st.pickedColor;
-        const canvas = exportBox(st.source.imageData, box, opts);
-        const blob = await new Promise((res) => canvas.toBlob((b) => res(b), 'image/png'));
-        const file = new File(
-          [blob],
-          thumbUrls.length > 1
-            ? `img${imgIdx + 1}_element_${String(sliceIdx + 1).padStart(2, '0')}.png`
-            : `element_${String(sliceIdx + 1).padStart(2, '0')}.png`,
-          { type: 'image/png' },
-        );
-        const uploaded = await AS.uploadFile(file);
-        const httpUrl = uploaded?.url || uploaded?.httpPath;
-        if (httpUrl) { urls.push(httpUrl); setSavedCount(urls.length); }
-      }
-      if (!urls.length) throw new Error('全部切片上传失败');
-      onSaveRef.current?.(urls);
-      onClose?.();
-    } catch (err) {
-      console.error('[ui-splitter] save failed:', err);
-      setError(err?.message || String(err));
-    } finally {
-      setSaving(false);
-    }
-  }, [curState, snapshot, thumbUrls, method, tolerance, minArea, padding, onClose]);
-
-  // 吸色 / 背景色选择
-  const togglePicking = useCallback(() => {
-    pickingRef.current = !pickingRef.current;
-    setStatus(pickingRef.current ? '点击画布上的背景色' : '');
-  }, []);
-  const handlePickColor = useCallback((hex) => {
-    setColor(hexToRgb(hex));
-    setMethod('picked');
-  }, [setColor]);
-
-  // 切换绘制模式：true=左键拉框新建切片，false=左键选择/移动切片框
-  const toggleDrawMode = useCallback(() => {
-    const next = !drawModeRef.current;
-    drawModeRef.current = next;
-    setDrawMode(next);
-    const fc = fcRef.current;
-    if (fc && !spaceDownRef.current) {
-      // 绘制模式：切片框不可选（避免点空白误选），光标十字；选择模式：切片框可选，光标默认
-      for (const r of fc.getObjects().filter((o) => o.kind === 'slice')) r.selectable = !next;
-      fc.selection = !next;
-      fc.defaultCursor = next ? 'crosshair' : 'default';
-      fc.hoverCursor = next ? 'crosshair' : 'move';
-    }
-  }, []);
-
-  // 切换裁切模式：进入时退出网格；退出时清未应用的裁切框
-  const toggleCropMode = useCallback(() => {
-    const fc = fcRef.current;
-    const next = !cropModeRef.current;
-    if (next) {
-      // 进入裁切：先清掉网格覆盖层（参考线+边界+切片框），让画布只剩背景图便于拉框。
-      // grid-only 下不走 exitGridMode（它会把切片框画回去）；参考线坐标已固化在 st.gridGuides，
-      // 退出裁切回网格时 restoreGridForCurrent 会按新图尺寸重建。
-      if (gridModeRef.current) {
-        if (gridSplitTimerRef.current) clearTimeout(gridSplitTimerRef.current);
-        gridSplitTimerRef.current = null;
-        syncGuidesFromCanvas();          // 固化当前参考线到 state（含 cols/rows/v/h）
-        gridModeRef.current = false;
-        setGridMode(false);
-      }
-      if (fc) {
-        // 清掉所有网格/切片覆盖对象，只留背景图
-        for (const o of fc.getObjects().filter((g) => g.kind === 'guide' || g.kind === 'grid-boundary' || g.kind === 'slice')) fc.remove(o);
-        fc.selection = false;
-        fc.defaultCursor = 'crosshair';
-        fc.hoverCursor = 'crosshair';
-        fc.renderAll();
-      }
-      // 清未应用裁切框
-      if (cropDraftRef.current && fc) { fc.remove(cropDraftRef.current); cropDraftRef.current = null; }
-      setCropBox(null);
-      setStatus('裁切模式：在图上拉框选择范围，松开后点【应用裁切】');
-    } else {
-      // 退出裁切：grid-only 回网格；否则恢复绘制/选择态
-      if (cropDraftRef.current && fc) { fc.remove(cropDraftRef.current); cropDraftRef.current = null; }
-      setCropBox(null);
-      if (gridOnly) {
-        cropModeRef.current = false;
-        setCropMode(false);
-        enterGridMode();
-        return;
-      }
-      if (fc) {
-        const inDraw = drawModeRef.current;
-        for (const r of fc.getObjects().filter((o) => o.kind === 'slice')) r.selectable = !inDraw;
-        fc.selection = !inDraw;
-        fc.defaultCursor = inDraw ? 'crosshair' : 'default';
-        fc.hoverCursor = inDraw ? 'crosshair' : 'move';
-      }
-      setStatus('');
-    }
-    cropModeRef.current = next;
-    setCropMode(next);
-  }, [syncGuidesFromCanvas, gridOnly, enterGridMode]);
-
-  // 顶部网格按钮直接切换模式。
-  const toggleGridMode = useCallback((force) => {
-    const target = typeof force === 'boolean' ? force : !gridModeRef.current;
-    if (target === gridModeRef.current) return;
-    if (target) {
-      enterGridMode();
-    } else {
-      exitGridMode();
-      setStatus('已退出网格模式');
-    }
-  }, [enterGridMode, exitGridMode]);
-
-  // 网格参数变化：重置为均分位置并立即刷新实时切片。
-  const applyGridSize = useCallback((cols, rows) => {
-    const c = normalizeGridCount(cols, 1);
-    const r = normalizeGridCount(rows, 1);
-    setGridCols(c);
-    setGridRows(r);
-    gridColsRef.current = c;
-    gridRowsRef.current = r;
-    const src = sourceRef.current;
-    if (!src) return;
-    vGuidesRef.current = evenlySpacedGuides(src.canvas.width, c);
-    hGuidesRef.current = evenlySpacedGuides(src.canvas.height, r);
-    const st = curState();
-    if (st) st.gridGuides = { cols: c, rows: r, v: [...vGuidesRef.current], h: [...hGuidesRef.current] };
-    renderGuides();
-    scheduleGridSplit(true);
-  }, [curState, renderGuides, scheduleGridSplit]);
-
-  // 取消裁切（确认条 ✖）
-  const cancelCrop = useCallback(() => {
-    const fc = fcRef.current;
-    if (cropDraftRef.current && fc) { fc.remove(cropDraftRef.current); cropDraftRef.current = null; }
-    setCropBox(null);
-    cropModeRef.current = false;
-    setCropMode(false);
-    // grid-only：取消裁切后自动回到网格模式
-    if (gridOnly) {
-      enterGridMode();
-      setStatus('已取消裁切');
-      return;
-    }
-    if (fc) {
-      const inDraw = drawModeRef.current;
-      for (const r of fc.getObjects().filter((o) => o.kind === 'slice')) r.selectable = !inDraw;
-      fc.selection = !inDraw;
-      fc.defaultCursor = inDraw ? 'crosshair' : 'default';
-      fc.hoverCursor = inDraw ? 'crosshair' : 'move';
-    }
-    setStatus('已取消裁切');
-  }, [gridOnly, enterGridMode]);
-
-  // 切换某图是否导出
-  const toggleExport = useCallback((url, on) => {
-    setExportEnabled((prev) => ({ ...prev, [url]: on }));
-    // renderList 依赖 exportEnabledRef（下次渲染同步），这里手动触发一次计数刷新
-    setTimeout(() => renderList(), 0);
-  }, [renderList]);
+  // ===== 保存 + 轻量 toggle（切片导出开关 / 吸色 / 绘制模式切换）=====
+  const saveApi = useSplitterSave({
+    refs: {
+      fcRef, imageStatesRef, gridModeRef, exportEnabledRef, onSaveRef,
+      drawModeRef, spaceDownRef, pickingRef,
+    },
+    state: { thumbUrls, method, tolerance, minArea, padding },
+    setters: {
+      setError, setSaving, setSavedCount, setMethod, setDrawMode, setExportEnabled, setStatus,
+    },
+    props: { onClose },
+    deps: { curState, snapshot, setColor, renderList },
+  });
+  const { handleSave, togglePicking, handlePickColor, toggleDrawMode, toggleExport } = saveApi;
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) onClose?.(); }}>

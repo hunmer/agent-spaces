@@ -10,6 +10,7 @@ import { exportBox, loadImageSource, cornerColor, toHex } from '../../utils/imag
  *           gridModeRef, gridSplitTimerRef, drawModeRef }
  *   state: { cropBox, gridOnly }
  *   setters: { setCropBusy, setError, setStatus, setThumbUrls, setActiveUrl,
+ *              setCropMode, setCropBox, setPickedHex, setGridMode }
  *              setCropMode, setCropBox, setPickedHex }
  *   deps: { fitToStage, renderList, updateHistoryButtons, enterGridMode, syncGuidesFromCanvas }
  */
@@ -23,7 +24,7 @@ export default function useSplitterCrop(ctx) {
   const { cropBox, gridOnly } = state;
   const {
     setCropBusy, setError, setStatus, setThumbUrls, setActiveUrl,
-    setCropMode, setCropBox, setPickedHex,
+    setCropMode, setCropBox, setPickedHex, setGridMode,
   } = setters;
   const { fitToStage, renderList, updateHistoryButtons, enterGridMode, syncGuidesFromCanvas } = deps;
 
@@ -114,7 +115,7 @@ export default function useSplitterCrop(ctx) {
         gridSplitTimerRef.current = null;
         syncGuidesFromCanvas();          // 固化当前参考线到 state（含 cols/rows/v/h）
         gridModeRef.current = false;
-        ctx.setters.setGridMode(false);
+        setGridMode(false);
       }
       if (fc) {
         // 清掉所有网格/切片覆盖对象，只留背景图

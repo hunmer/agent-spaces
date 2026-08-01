@@ -14,7 +14,7 @@ import { inputSignature } from '../../utils/ui-splitter-helpers';
  *           gridRowsRef, vGuidesRef, hGuidesRef, gridSplitTimerRef, applyingHistoryRef,
  *           methodRef, toleranceRef, minAreaRef, paddingRef, pickedHexRef, onDataChangeRef }
  *   state: { open, thumbUrls, method, tolerance, minArea, padding, pickedHex }
- *   setters: { setStatus, setPreviews, setCount, setTotalCount, setSliceCounts, setCanUndo, setCanRedo }
+ *   setters: { setStatus, setPreviews, setCount, setTotalCount, setSliceCounts, setCanUndo, setCanRedo, setPickedHex }
  *   callbacks: { curState, computeOptions }
  */
 export default function useSplitterSlices(ctx) {
@@ -27,7 +27,7 @@ export default function useSplitterSlices(ctx) {
   } = refs;
   const { open, thumbUrls, method, tolerance, minArea, padding, pickedHex } = state;
   const {
-    setStatus, setPreviews, setCount, setTotalCount, setSliceCounts, setCanUndo, setCanRedo,
+    setStatus, setPreviews, setCount, setTotalCount, setSliceCounts, setCanUndo, setCanRedo, setPickedHex,
   } = setters;
   const { curState, computeOptions } = callbacks;
 
@@ -243,7 +243,7 @@ export default function useSplitterSlices(ctx) {
     const st = curState();
     if (st) st.pickedColor = color;
     // setPickedHex 由主文件传入 setters（与 toHex 来自 sprite-splitter）
-    ctx.setters.setPickedHex(toHex(color));
+    setPickedHex(toHex(color));
   }, [curState]);
 
   // ===== 自动检测 =====
