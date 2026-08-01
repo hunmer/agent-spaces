@@ -57,10 +57,14 @@ export const DEFAULT_SETTINGS = {
   promptOptimizeUserPrompt: PROMPT_OPTIMIZE_USER_PROMPT,
   // 完成后通知：节点生成成功后调 sendNotification 推送通知（默认关闭）
   notifyOnComplete: false,
+  // 执行队列同时运行的任务数
+  executionConcurrency: 3,
   // 画布样式（与宿主工作流画布使用相同字段名）
   bgVariant: 'dots',
   attributionPosition: 'top-bottom',
   snapGrid: true,
+  // 生成记录 tab 视图模式：'list'(卡片列表) | 'masonry'(图片瀑布流)
+  historyViewMode: 'list',
 };
 
 // 工作流槽位：设置页为每个节点类型选一个目标工作流

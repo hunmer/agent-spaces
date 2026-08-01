@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { addEdge, MarkerType } from '@xyflow/react';
-import { NODE_META, NODE_TYPES, WORKFLOWS, VOICE_PROVIDER_OPTIONS, DEFAULT_VIDEO_MODEL, VIDEO_ASPECT_OPTIONS, VIDEO_QUALITY_OPTIONS, VIDEO_DURATION_OPTIONS, DEFAULT_MODEL } from '../utils/constants';
+import { NODE_META, NODE_TYPES, WORKFLOWS, VOICE_PROVIDER_OPTIONS, DEFAULT_VIDEO_MODEL, VIDEO_ASPECT_OPTIONS, VIDEO_QUALITY_OPTIONS, VIDEO_DURATION_OPTIONS, DEFAULT_MODEL, modelValuesToOptions } from '../utils/constants';
 import { DEFAULT_SIZE, initialData, NODE_PARAMS_SCHEMA } from '../utils/canvas-constants';
 import { CONNECTION_INPUT_TYPES, getConnectionTargets } from '../utils/connection-targets';
 import { computeInputTexts } from '../utils/input-images';
@@ -67,7 +67,7 @@ function resolveRpcConnection(sourceNode, targetNode, requestedTarget) {
  * @param {object} node 节点对象（含 data.params / data.uploadedImages / data.images）
  * @returns {{kind:'image'|'audio'|'video', workflowId:string, input:object} | null}
  */
-function buildNodeExecution(node, textInputValues) {
+export function buildNodeExecution(node, textInputValues) {
   if (!node || !node.data) return null;
   const type = node.type;
   const params = { ...(node.data.params || {}), ...(textInputValues || {}) };
@@ -182,10 +182,10 @@ function buildNodeExecution(node, textInputValues) {
  * @param {Function} deps.onGenerate                   文生图/编辑图片执行回调（handleGenerate）
  * @param {Function} deps.onGenerateMedia              配音/视频执行回调（handleGenerateMedia）
  */
-export default function useCanvasAgentRpc({ nodes, edges, createNodeAt, updateNodeData, handleDeleteNode, focusNode, setNodes, setEdges, setGroups, onGenerate, onGenerateMedia }) {
+export default function useCanvasAgentRpc({ nodes, edges, createNodeAt, updateNodeData, handleDeleteNode, focusNode, setNodes, setEdges, setGroups, onGenerate, onGenerateMedia, settings }) {
   // ref 持有最新值，effect 只订阅一次
   const ctxRef = useRef({ nodes, edges, createNodeAt, updateNodeData, handleDeleteNode, focusNode, setNodes, setEdges, setGroups, onGenerate, onGenerateMedia });
-  ctxRef.current = { nodes, edges, createNodeAt, updateNodeData, handleDeleteNode, focusNode, setNodes, setEdges, setGroups, onGenerate, onGenerateMedia };
+  ctxRef.current = { nodes, edges, createNodeAt, updateNodeData, handleDeleteNode, focusNode, setNodes, setEdges, setGroups, onGenerate, onGenerateMedia, settings };
 
   useEffect(() => {
     const AS = window.AgentSpaces;
@@ -462,10 +462,11 @@ export default function useCanvasAgentRpc({ nodes, edges, createNodeAt, updateNo
             // 返回某类节点支持的参数 schema（含 required/default/options/description）。
             // schema 定义在各节点组件的 PARAMS_SCHEMA，经 canvas-constants 聚合为 NODE_PARAMS_SCHEMA。
             // 单一数据源：节点即文档，options 直接引用 constants 的 OPTIONS。
+            // model 字段的 options 用 settings 动态覆盖（用户可在设置页自定义模型列表）。
             const { type } = payload;
             if (!type) throw new Error('type 必填');
-            const schema = NODE_PARAMS_SCHEMA[type];
-            if (!schema) {
+            const baseSchema = NODE_PARAMS_SCHEMA[type];
+            if (!baseSchema) {
               const label = (NODE_META[type] && NODE_META[type].label) || type;
               result = {
                 ok: true,
@@ -475,7 +476,14 @@ export default function useCanvasAgentRpc({ nodes, edges, createNodeAt, updateNo
               };
               break;
             }
-            result = { ok: true, type, params: schema };
+            const curSettings = ctxRef.current.settings || {};
+            const params = baseSchema.map((p) => {
+              if (p.key !== 'model') return p;
+              const values = type === NODE_TYPES.editImage ? curSettings.editImageModels : curSettings.textToImageModels;
+              const dynOpts = modelValuesToOptions(values);
+              return { ...p, options: dynOpts };
+            });
+            result = { ok: true, type, params };
             break;
           }
           case 'canvas.waitNodeResult': {

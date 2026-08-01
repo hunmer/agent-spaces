@@ -9,7 +9,6 @@ import TextResult from './TextResult';
  *
  * @param {object} props
  * @param {number} [props.width] 卡片宽度（跟随节点主体宽度，未给则 100%）
- * @param {boolean} [props.hasExternalSourceHandle] 为外置输出 Handle 预留间距
  * @param {string} [props.status] 节点状态：idle/running/done/error
  * @param {string} [props.statusMsg] running 时自定义提示文案
  * @param {Array<string>} [props.images] 产出图（data.output.images）
@@ -26,7 +25,6 @@ import TextResult from './TextResult';
 export default function NodeOutput({
   width,
   nodeId,
-  hasExternalSourceHandle = false,
   status = 'idle',
   statusMsg,
   images = [],
@@ -74,10 +72,9 @@ export default function NodeOutput({
 
   return (
     <div
-      className="nodrag nopan relative z-10 mt-1"
+      className="nodrag nopan relative z-10"
       style={{
         width: typeof width === 'number' ? width : '100%',
-        marginTop: hasExternalSourceHandle ? 40 : undefined,
       }}
       data-node-output
       onMouseEnter={onMouseEnter}

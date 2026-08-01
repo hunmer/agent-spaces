@@ -23,12 +23,17 @@ function genId() {
  */
 export default function useExecutionQueue(opts = {}) {
   const [jobs, setJobs] = useState([]);
+  const jobsRef = useRef(jobs);
+  jobsRef.current = jobs;
+  const tasksRef = useRef(new Map());
+  const activeJobIdsRef = useRef(new Set());
   const onCompleteRef = useRef(opts.onComplete);
   onCompleteRef.current = opts.onComplete;
   const onErrorRef = useRef(opts.onError);
   onErrorRef.current = opts.onError;
   const directoryRef = useRef(opts.directory);
   directoryRef.current = opts.directory;
+  const concurrency = Math.max(1, Math.min(10, Number(opts.concurrency) || 3));
 
   const updateJob = useCallback((jobId, patch) => {
     setJobs((prev) => prev.map((j) => (j.id === jobId ? { ...j, ...patch } : j)));
@@ -40,73 +45,117 @@ export default function useExecutionQueue(opts = {}) {
    *   placeholderNodeId: 上层预先创建的 loading 占位节点 id，完成后填充该节点而非新增
    *   tags: 透传给 onComplete 的来源标签（存入占位节点 data.tags）
    */
-  const submit = useCallback(async (task) => {
+  const submit = useCallback((task) => {
     const jobId = genId();
     // 提前生成 histId：作为落地子目录名，与 history 记录共用
     const histId = genHistId('hist');
     const job = {
       id: jobId,
+      histId,
       label: task.label || '生成任务',
       nodeType: task.nodeType,
       workflowId: task.workflowId,
       input: task.input,
       placeholderNodeId: task.placeholderNodeId || null,
       tags: task.tags || [],
-      status: 'running',
+      status: 'queued',
       executionId: null,
       images: [],
       error: null,
       createdAt: Date.now(),
     };
-    setJobs((prev) => [job, ...prev]);
+    tasksRef.current.set(jobId, task);
+    setJobs((prev) => [...prev, job]);
+    return jobId;
+  }, []);
+
+  const runJob = useCallback(async (job) => {
+    const task = tasksRef.current.get(job.id);
+    if (!task) {
+      activeJobIdsRef.current.delete(job.id);
+      updateJob(job.id, { status: 'error', error: '队列任务数据已丢失' });
+      return;
+    }
+    updateJob(job.id, { status: 'running' });
 
     const AS = window.AgentSpaces;
     // 监听 workflow:started，拿本次执行的 executionId（用于中断）
     let unsubStarted = null;
-    if (AS?.subscribeWorkflowEvents) {
+    if (!task.execute && AS?.subscribeWorkflowEvents) {
       unsubStarted = AS.subscribeWorkflowEvents((event, data) => {
-        if (event === 'workflow:started' && data?.executionId && !job.executionId) {
+        if (event === 'workflow:started' && data?.executionId) {
           job.executionId = data.executionId;
-          updateJob(jobId, { executionId: data.executionId });
+          updateJob(job.id, { executionId: data.executionId });
         }
       });
     }
 
     try {
-      const images = await generateImages(task.workflowId, task.input, { directory: directoryRef.current, historyId: histId });
-      updateJob(jobId, { status: 'done', images });
-      onCompleteRef.current?.(job, images, histId);
+      let images = [];
+      if (task.execute) {
+        await task.execute();
+      } else {
+        images = await generateImages(task.workflowId, task.input, {
+          directory: directoryRef.current,
+          historyId: job.histId,
+        });
+      }
+      const current = jobsRef.current.find((item) => item.id === job.id);
+      if (current?.status === 'stopped') return;
+      updateJob(job.id, { status: 'done', images });
+      if (!task.execute) onCompleteRef.current?.(job, images, job.histId);
     } catch (err) {
       const msg = err?.message || String(err);
       // 中断导致的报错归为 stopped
-      const finalStatus = /stop|中断|取消/i.test(msg) ? 'stopped' : 'error';
-      updateJob(jobId, { status: finalStatus, error: msg });
+      const current = jobsRef.current.find((item) => item.id === job.id);
+      const finalStatus = current?.status === 'stopped' || /stop|中断|取消/i.test(msg) ? 'stopped' : 'error';
+      updateJob(job.id, { status: finalStatus, error: msg });
       // 通知上层（如把占位节点标记为错误）
-      onErrorRef.current?.(job, err);
+      if (!task.execute) onErrorRef.current?.(job, err);
     } finally {
       try { unsubStarted?.(); } catch {}
+      tasksRef.current.delete(job.id);
+      activeJobIdsRef.current.delete(job.id);
     }
   }, [updateJob]);
 
-  /** 中断队列中正在运行的任务 */
+  useEffect(() => {
+    const available = Math.max(0, concurrency - activeJobIdsRef.current.size);
+    if (!available) return;
+    const nextJobs = jobs
+      .filter((job) => job.status === 'queued' && !activeJobIdsRef.current.has(job.id))
+      .slice(0, available);
+    nextJobs.forEach((job) => activeJobIdsRef.current.add(job.id));
+    nextJobs.forEach(runJob);
+  }, [concurrency, jobs, runJob]);
+
+  /** 取消等待任务，或中断正在运行的任务 */
   const cancel = useCallback((jobId) => {
-    const job = jobs.find((j) => j.id === jobId);
-    if (!job || job.status !== 'running') return;
+    const job = jobsRef.current.find((j) => j.id === jobId);
+    if (!job || (job.status !== 'queued' && job.status !== 'running')) return;
+    const task = tasksRef.current.get(jobId);
+    if (job.status === 'queued') {
+      tasksRef.current.delete(jobId);
+      updateJob(jobId, { status: 'stopped', error: '用户取消' });
+      return;
+    }
+    if (task?.cancel) task.cancel();
     if (job.executionId && window.AgentSpaces?.stopWorkflow) {
       window.AgentSpaces.stopWorkflow(job.executionId);
     }
     updateJob(jobId, { status: 'stopped', error: '用户中断' });
-  }, [jobs, updateJob]);
+  }, [updateJob]);
 
   /** 清除已完成/失败/中断的任务 */
   const clearFinished = useCallback(() => {
-    setJobs((prev) => prev.filter((j) => j.status === 'running'));
+    setJobs((prev) => prev.filter((j) => j.status === 'queued' || j.status === 'running'));
   }, []);
 
   // 组件卸载时清理订阅
   useEffect(() => () => {}, []);
 
   const runningCount = jobs.filter((j) => j.status === 'running').length;
+  const queuedCount = jobs.filter((j) => j.status === 'queued').length;
 
-  return { jobs, submit, cancel, clearFinished, runningCount };
+  return { jobs, submit, cancel, clearFinished, runningCount, queuedCount };
 }

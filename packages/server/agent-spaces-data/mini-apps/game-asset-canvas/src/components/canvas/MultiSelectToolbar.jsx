@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import {
   Layers, AlignStartVertical, AlignEndVertical, AlignStartHorizontal, AlignEndHorizontal,
-  Trash2, LayoutGrid, ChevronDown,
+  Trash2, LayoutGrid, ChevronDown, Play,
   Popover, PopoverContent, PopoverTrigger,
 } from '@agent-spaces/ui';
 
@@ -33,7 +33,7 @@ const GRID_PRESETS = [
 ];
 
 export default function MultiSelectToolbar({
-  selectionCount, onCreateGroup, onAlignDistribute, onApplyGridLayout, onDeleteSelected,
+  selectionCount, onCreateGroup, onRunSelected, onAlignDistribute, onApplyGridLayout, onDeleteSelected,
 }) {
   const [distOpen, setDistOpen] = useState(false);
   const [alignOpen, setAlignOpen] = useState(false);
@@ -72,6 +72,11 @@ export default function MultiSelectToolbar({
         <button type="button" onClick={onCreateGroup} className={labelBtn}>
           <Layers className="h-3.5 w-3.5" />
           合并成分组
+        </button>
+
+        <button type="button" onClick={onRunSelected} className={labelBtn}>
+          <Play className="h-3.5 w-3.5" />
+          批量运行
         </button>
 
         {/* 对齐：左/右/顶/底 —— Popover 向上弹出 */}

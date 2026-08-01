@@ -1,8 +1,13 @@
-import { useState } from 'react';
-import { Popover, PopoverContent, PopoverTrigger, ScrollArea, ListTodo } from '@agent-spaces/ui';
+import { useEffect, useState } from 'react';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+  Popover, PopoverContent, PopoverTrigger, ScrollArea, ListTodo, Slider,
+} from '@agent-spaces/ui';
 import { NODE_META } from '../utils/constants';
 
 const STATUS_META = {
+  queued: { label: '队列中', color: '#f59e0b' },
   running: { label: '生成中', color: '#3b82f6', dot: 'animate-pulse' },
   done: { label: '完成', color: '#10b981' },
   error: { label: '失败', color: '#ef4444' },
@@ -21,13 +26,22 @@ const STATUS_META = {
  *   onClearFinished:()=>void
  * }} props
  */
-export default function ExecutionQueuePopover({ jobs, runningNodes = [], runningCount, onCancel, onCancelNode, onClearFinished }) {
+export default function ExecutionQueuePopover({
+  jobs, runningNodes = [], runningCount, concurrency = 3,
+  onConcurrencyChange, onCancel, onCancelNode, onCancelAll, onClearFinished,
+}) {
   const [open, setOpen] = useState(false);
+  const [confirmCancelAll, setConfirmCancelAll] = useState(false);
+  const [draftConcurrency, setDraftConcurrency] = useState(concurrency);
+  useEffect(() => setDraftConcurrency(concurrency), [concurrency]);
   const hasRunningNodes = runningNodes.length > 0;
-  const hasFinishedJobs = jobs.some((j) => j.status !== 'running');
+  const hasFinishedJobs = jobs.some((j) => j.status !== 'queued' && j.status !== 'running');
+  const activeCount = jobs.filter((job) => job.status === 'queued' || job.status === 'running').length
+    + runningNodes.length;
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <>
+      <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
         render={
           <button
@@ -45,17 +59,42 @@ export default function ExecutionQueuePopover({ jobs, runningNodes = [], running
         }
       />
       <PopoverContent className="w-80 p-0" align="end">
-        <div className="flex items-center justify-between border-b border-border px-3 py-2">
+        <div className="flex items-center justify-between gap-2 border-b border-border px-3 py-2">
           <span className="text-sm font-semibold">执行队列</span>
-          {hasFinishedJobs && (
-            <button
-              type="button"
-              onClick={onClearFinished}
-              className="text-xs text-muted-foreground transition hover:text-primary"
-            >
-              清除已完成
-            </button>
-          )}
+          <div className="flex items-center gap-2">
+            {hasFinishedJobs && (
+              <button
+                type="button"
+                onClick={onClearFinished}
+                className="text-xs text-muted-foreground transition hover:text-primary"
+              >
+                清除已完成
+              </button>
+            )}
+            {activeCount > 0 && (
+              <button
+                type="button"
+                onClick={() => setConfirmCancelAll(true)}
+                className="text-xs text-destructive transition hover:text-destructive/80"
+              >
+                中断全部
+              </button>
+            )}
+          </div>
+        </div>
+        <div className="border-b border-border px-3 py-2.5">
+          <div className="mb-2 flex items-center justify-between text-xs">
+            <span className="text-muted-foreground">同时处理任务</span>
+            <span className="font-medium text-foreground">{draftConcurrency}</span>
+          </div>
+          <Slider
+            min={1}
+            max={10}
+            step={1}
+            value={draftConcurrency}
+            onValueChange={(value) => setDraftConcurrency(Math.max(1, Math.min(10, Number(value) || 1)))}
+            onValueCommitted={(value) => onConcurrencyChange?.(Math.max(1, Math.min(10, Number(value) || 1)))}
+          />
         </div>
         <ScrollArea className="max-h-96">
           <div className="flex flex-col gap-1 p-2">
@@ -93,7 +132,30 @@ export default function ExecutionQueuePopover({ jobs, runningNodes = [], running
           </div>
         </ScrollArea>
       </PopoverContent>
-    </Popover>
+      </Popover>
+      <AlertDialog open={confirmCancelAll} onOpenChange={setConfirmCancelAll}>
+        <AlertDialogContent size="sm">
+          <AlertDialogHeader>
+            <AlertDialogTitle>中断全部任务？</AlertDialogTitle>
+            <AlertDialogDescription>
+              将取消或中断当前 {activeCount} 个等待及运行中的任务，此操作无法撤销。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>取消</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              onClick={() => {
+                onCancelAll?.();
+                setConfirmCancelAll(false);
+              }}
+            >
+              中断全部
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
 
@@ -139,14 +201,14 @@ function JobRow({ job, onCancel }) {
           {job.status === 'error' && job.error ? ` · ${job.error}` : ''}
         </span>
       </div>
-      {job.status === 'running' && (
+      {(job.status === 'queued' || job.status === 'running') && (
         <button
           type="button"
           onClick={() => onCancel(job.id)}
           className="shrink-0 rounded px-1.5 py-0.5 text-[10px] text-muted-foreground transition hover:bg-red-500/10 hover:text-red-500"
-          title="中断执行"
+          title={job.status === 'queued' ? '取消等待' : '中断执行'}
         >
-          中断
+          {job.status === 'queued' ? '取消' : '中断'}
         </button>
       )}
     </div>

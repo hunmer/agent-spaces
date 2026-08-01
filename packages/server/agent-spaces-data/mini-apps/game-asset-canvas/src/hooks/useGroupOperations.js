@@ -137,6 +137,15 @@ export default function useGroupOperations({
     setNodes((prev) => prev.map((n) => (n.selected ? { ...n, selected: false } : n)));
   }, [setGroups, setNodes]);
 
+  const selectGroupNodes = useCallback((groupId) => {
+    const ids = new Set(collectGroupNodeIds(groupsRef.current, groupId));
+    setNodes((prev) => prev.map((node) => ({
+      ...node,
+      selected: ids.has(node.id),
+    })));
+    setSelectedGroupId(null);
+  }, [setNodes]);
+
   // 拖拽分组时屏幕坐标差 → 画布坐标差（WorkflowGroupOverlay.onMove 需要）
   const screenDeltaToFlowDelta = useCallback((delta) => {
     const a = reactFlow.screenToFlowPosition({ x: 0, y: 0 }, { snapToGrid: false });
@@ -282,7 +291,7 @@ export default function useGroupOperations({
     deleteGroupId, deleteGroupNodeCount,
     groupOverlayItems,
     requestDeleteGroup, cancelDeleteGroup, confirmDeleteGroup,
-    updateGroup, createGroupFromSelection,
+    updateGroup, createGroupFromSelection, selectGroupNodes,
     screenDeltaToFlowDelta, handleGroupMove, handleGroupConnect,
     handleNodeDragStart, handleNodeDrag, handleNodeDragStop,
   };

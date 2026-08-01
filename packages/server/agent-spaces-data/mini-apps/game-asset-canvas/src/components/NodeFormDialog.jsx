@@ -4,7 +4,7 @@ import {
   Button, Label,
 } from '@agent-spaces/ui';
 import {
-  ASPECT_OPTIONS, DEFAULT_MODEL, MODEL_OPTIONS, NODE_META, NODE_TYPES, SIZE_OPTIONS,
+  ASPECT_OPTIONS, DEFAULT_MODEL, NODE_META, NODE_TYPES, SIZE_OPTIONS, modelValuesToOptions,
 } from '../utils/constants';
 import { normalizeImageUrls, resolveReferenceImages } from '../utils/workflow';
 import PromptPickerDialog from './PromptPickerDialog';
@@ -19,8 +19,12 @@ import FileUpload from './FileUpload';
  * @param {{ open:boolean, nodeType:string, initialImages?:string[], onClose:()=>void, onSubmit:(task)=>void }} props
  *   task = { nodeType, label, workflowId, input }
  */
-export default function NodeFormDialog({ open, nodeType, initialImages, onClose, onSubmit }) {
+export default function NodeFormDialog({ open, nodeType, initialImages, settings, onClose, onSubmit }) {
   const meta = NODE_META[nodeType] || {};
+  // 模型列表：优先设置页自定义，空则回退内置（editImage/editImage 用 editImageModels）
+  const modelOptions = nodeType === NODE_TYPES.editImage
+    ? modelValuesToOptions(settings?.editImageModels)
+    : modelValuesToOptions(settings?.textToImageModels);
   const [prompt, setPrompt] = useState('');
   const [pickedPrompt, setPickedPrompt] = useState('');
   const [model, setModel] = useState(DEFAULT_MODEL);
@@ -110,7 +114,7 @@ export default function NodeFormDialog({ open, nodeType, initialImages, onClose,
 
           <div className="grid grid-cols-3 gap-3">
             <Field label="模型">
-              <SelectInput value={model} options={MODEL_OPTIONS} onChange={setModel} />
+              <SelectInput value={model} options={modelOptions} onChange={setModel} />
             </Field>
             <Field label="比例">
               <SelectInput value={aspect} rawOptions={ASPECT_OPTIONS} onChange={setAspect} />

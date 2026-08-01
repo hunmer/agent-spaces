@@ -1,6 +1,6 @@
 import { Fragment, useState } from 'react';
 import { ViewportPortal } from '@xyflow/react';
-import { WorkflowGroupOverlay } from '@agent-spaces/ui';
+import { Play, WorkflowGroupOverlay } from '@agent-spaces/ui';
 import GroupExecutionToolbar from './GroupExecutionToolbar';
 
 /**
@@ -15,6 +15,7 @@ import GroupExecutionToolbar from './GroupExecutionToolbar';
  * @param {string|null} props.selectedGroupId  当前选中的分组 id
  * @param {string|null} props.dropTargetGroupId 当前拖入命中的分组 id
  * @param {Function} props.onSelect     (groupId) => void
+ * @param {Function} props.onSelectNodes (groupId) => void
  * @param {Function} props.onDelete     (groupId) => void
  * @param {Function} props.onUpdate     (groupId, updates) => void
  * @param {Function} props.onMove       (groupId, delta) => void
@@ -23,9 +24,10 @@ import GroupExecutionToolbar from './GroupExecutionToolbar';
  */
 export default function GroupOverlays({
   items, selectedGroupId, dropTargetGroupId,
-  onSelect, onDelete, onUpdate, onMove, onAutoLayout, onConnect, screenDeltaToFlowDelta,
+  onSelect, onSelectNodes, onDelete, onUpdate, onMove, onAutoLayout, onConnect, screenDeltaToFlowDelta,
   inputSlotCounts, onSetExecutionMode, onSetExecutionCount,
   runningGroupIds,
+  onRunGroup,
   onSwitchExecutionRun, onUploadExecutionAssets, onRemoveExecutionAsset,
 }) {
   const [dragPreview, setDragPreview] = useState(null);
@@ -52,6 +54,18 @@ export default function GroupOverlays({
             isDropTarget={dropTargetGroupId === group.id}
             onCollapsedChange={handleCollapsedChange}
             onSelect={onSelect}
+            onSelectNodes={onSelectNodes}
+            headerRight={onRunGroup ? (
+              <button
+                type="button"
+                title="运行分组内可执行节点"
+                className="flex h-5 items-center gap-1 rounded border border-border/70 bg-background/80 px-1.5 text-[10px] font-medium text-foreground shadow-sm transition hover:border-primary hover:text-primary"
+                onClick={() => onRunGroup(group.id)}
+              >
+                <Play className="size-2.5" />
+                批量运行
+              </button>
+            ) : null}
             onDelete={onDelete}
             onUpdate={onUpdate}
             onMove={onMove}

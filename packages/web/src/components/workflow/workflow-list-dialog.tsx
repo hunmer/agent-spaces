@@ -33,6 +33,11 @@ interface WorkflowListDialogProps {
    * 不传则与主列表页行为一致，只保留 normal/workspace。
    */
   currentWorkflowIds?: Set<string>;
+  /**
+   * 是否开启行勾选（checkbox + 点击选中 + 底部确认按钮）。
+   * 默认 true。仅作展示/配置入口（无 onConfirm）的场景可传 false 隐藏勾选。
+   */
+  selectable?: boolean;
 }
 
 export function WorkflowListDialog({
@@ -46,6 +51,7 @@ export function WorkflowListDialog({
   showCreate = true,
   onConfigure,
   currentWorkflowIds,
+  selectable = true,
 }: WorkflowListDialogProps) {
   const t = useTranslations('workflows');
   // 弹窗不复用主列表页持久化的过滤状态（wf-filter:*），否则用户在 WorkflowsPage
@@ -114,27 +120,31 @@ export function WorkflowListDialog({
             <div className="py-8 text-center text-sm text-muted-foreground">{t('page.empty')}</div>
           ) : null}
           {filters.filtered.map((workflow) => {
-            const checked = selectedSet.has(workflow.id);
+            const checked = selectable && selectedSet.has(workflow.id);
+            const onRowActivate = selectable ? () => toggleWorkflow(workflow.id) : undefined;
             return (
               <div
                 key={workflow.id}
-                role="button"
-                tabIndex={0}
-                aria-pressed={checked}
-                className={`flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm transition-colors hover:bg-accent ${checked ? 'bg-accent' : ''}`}
-                onClick={() => toggleWorkflow(workflow.id)}
+                role={selectable ? 'button' : undefined}
+                tabIndex={selectable ? 0 : undefined}
+                aria-pressed={selectable ? checked : undefined}
+                className={`flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm transition-colors ${selectable ? 'cursor-pointer hover:bg-accent' : ''} ${checked ? 'bg-accent' : ''}`}
+                onClick={onRowActivate}
                 onKeyDown={(e) => {
+                  if (!onRowActivate) return;
                   if (e.key !== 'Enter' && e.key !== ' ') return;
                   e.preventDefault();
-                  toggleWorkflow(workflow.id);
+                  onRowActivate();
                 }}
               >
                 <div className="flex min-w-0 items-center gap-2">
-                  <Checkbox
-                    checked={checked}
-                    onCheckedChange={() => toggleWorkflow(workflow.id)}
-                    onClick={(e) => e.stopPropagation()}
-                  />
+                  {selectable && (
+                    <Checkbox
+                      checked={checked}
+                      onCheckedChange={() => toggleWorkflow(workflow.id)}
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  )}
                   <div className="min-w-0">
                     <div className="truncate font-medium">{workflow.name || t('editor.untitled')}</div>
                     <div className="text-[10px] text-muted-foreground">

@@ -83,6 +83,7 @@ export default function RightPanel({
             onInsertHistory={onInsertHistory}
             onDragStartHistory={onDragStartHistory}
             onAddToAssets={onAddToAssets}
+            onLocateNode={onLocateNode}
           />
         </TabsContent>
 

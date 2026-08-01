@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { NODE_TYPES, IMAGE_TAGS } from '../utils/constants';
+import { NODE_TYPES, IMAGE_TAGS, modelValuesToOptions } from '../utils/constants';
 import { computeInputImages, computeInputTexts, computeInputVideos, computeInputSpineAssets } from '../utils/input-images';
 import { dedupeTags } from '../utils/canvas-constants';
 
@@ -142,9 +142,9 @@ export default function useDecoratedNodes({
           } : undefined,
           // 文生图/编辑图片模型列表（用户在设置页自定义；空则节点回退到内置 MODEL_OPTIONS）
           modelOptions: nd.type === NODE_TYPES.textToImage
-            ? (Array.isArray(settings.textToImageModels) ? settings.textToImageModels.map((v) => ({ value: v, label: v })) : undefined)
+            ? modelValuesToOptions(settings.textToImageModels)
             : nd.type === NODE_TYPES.editImage
-              ? (Array.isArray(settings.editImageModels) ? settings.editImageModels.map((v) => ({ value: v, label: v })) : undefined)
+              ? modelValuesToOptions(settings.editImageModels)
               : undefined,
           // 提示词优化 AI 配置（从 settings 注入，仅 textToImage/editImage 节点用；systemPrompt 归 agent preset）
           promptOptimizeAgent: (nd.type === NODE_TYPES.textToImage || nd.type === NODE_TYPES.editImage) ? {

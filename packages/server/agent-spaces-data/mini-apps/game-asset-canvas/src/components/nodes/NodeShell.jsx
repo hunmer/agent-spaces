@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { NodeResizer, NodeToolbar, Position } from '@xyflow/react';
-import { Badge, Images, Loader, RotateCcw, Upload, EyeOff } from '@agent-spaces/ui';
+import { Badge, BorderGlide, Images, Loader, RotateCcw, Upload, EyeOff } from '@agent-spaces/ui';
 import { NODE_META, NODE_TYPES } from '../../utils/constants';
 import useViewportActivation from '../../hooks/useViewportActivation';
 import ImageResult from './ImageResult';
@@ -42,6 +42,8 @@ export default function NodeShell({
   const showFullNode = data?.compactView !== true;
   const meta = NODE_META[nodeType] || { label: '节点', icon: '🔹', color: '#64748b' };
   const status = data?.status || 'idle';
+  const queuePosition = Math.max(0, Number(data?.queuePosition) || 0);
+  const isRunning = status === 'running' || data?.queueStatus === 'running';
   const statusColor = status === 'running' ? '#3b82f6'
     : status === 'error' ? '#ef4444'
     : status === 'done' ? '#10b981'
@@ -264,9 +266,14 @@ export default function NodeShell({
             ))}
           </div>
         )}
+        {queuePosition > 0 && (
+          <Badge variant="outline" className="ml-auto shrink-0 border-amber-500/50 bg-amber-500/10 text-amber-600">
+            队列中 #{queuePosition}
+          </Badge>
+        )}
         <Badge
           variant="secondary"
-          className="ml-auto max-w-[50%] shrink-0 truncate bg-background/85 shadow-sm backdrop-blur-sm"
+          className={`${queuePosition > 0 ? '' : 'ml-auto'} max-w-[50%] shrink-0 truncate bg-background/85 shadow-sm backdrop-blur-sm`}
         >
           {meta.label}
         </Badge>
@@ -278,6 +285,17 @@ export default function NodeShell({
         onMouseEnter={showToolbar}
         onMouseLeave={hideToolbar}
       >
+        {isRunning && (
+          <BorderGlide
+            className="pointer-events-none absolute inset-0 z-30 rounded-lg"
+            color="#3b82f6"
+            duration={1800}
+            rx="0.5rem"
+            ry="0.5rem"
+          >
+            <div className="h-full w-full" />
+          </BorderGlide>
+        )}
         <NodeToolbar isVisible={toolbarVisible} position={Position.Top} align="center" offset={8}>
           <div
             className="flex items-center justify-center gap-1"
@@ -344,6 +362,17 @@ export default function NodeShell({
       onMouseEnter={showToolbar}
       onMouseLeave={hideToolbar}
     >
+      {isRunning && (
+        <BorderGlide
+          className="pointer-events-none absolute inset-0 z-30 rounded-lg"
+          color="#3b82f6"
+          duration={1800}
+          rx="0.5rem"
+          ry="0.5rem"
+        >
+          <div className="h-full w-full" />
+        </BorderGlide>
+      )}
       {shouldShowToolbar ? (
         <NodeToolbar isVisible={toolbarVisible} position={Position.Top} align="center" offset={8}>
           <div
@@ -383,6 +412,11 @@ export default function NodeShell({
           <span className="truncate text-sm font-semibold">{meta.label}</span>
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
+          {queuePosition > 0 && (
+            <Badge variant="outline" className="border-amber-500/50 bg-amber-500/10 text-amber-600">
+              队列中 #{queuePosition}
+            </Badge>
+          )}
           {status !== 'idle' && (
             <span
               className="rounded-full px-2 py-0.5 text-[10px] font-medium"
@@ -440,7 +474,6 @@ export default function NodeShell({
       <NodeOutput
         {...outputProps}
         width={nodeWidth || undefined}
-        hasExternalSourceHandle={!!sourceHandle}
       />
     </div>
     </>

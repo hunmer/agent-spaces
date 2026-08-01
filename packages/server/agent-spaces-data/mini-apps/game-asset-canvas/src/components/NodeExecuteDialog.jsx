@@ -15,10 +15,10 @@ import {
 import ParamField from './nodes/ParamField';
 import {
   ASPECT_OPTIONS, CUTOUT_MODES, CUTOUT_PARAMS, DEFAULT_CUTOUT_MODE, DEFAULT_MODEL,
-  DEFAULT_VIDEO_MODEL, IMAGE_PROCESSORS, MODEL_OPTIONS, NODE_META, NODE_TYPES,
+  DEFAULT_VIDEO_MODEL, IMAGE_PROCESSORS, NODE_META, NODE_TYPES,
   NODE_TYPE_TO_PROCESSOR, SIZE_OPTIONS, VIDEO_ASPECT_OPTIONS, VIDEO_DURATION_OPTIONS,
   VIDEO_MODEL_OPTIONS, VIDEO_QUALITY_OPTIONS, VOICE_PROVIDER_OPTIONS, WORKFLOWS,
-  defaultCutoutParams, isAliyunVideoModel,
+  defaultCutoutParams, isAliyunVideoModel, modelValuesToOptions,
 } from '../utils/constants';
 import { normalizeImageUrls } from '../utils/workflow';
 
@@ -42,6 +42,10 @@ Object.keys(NODE_TYPE_TO_PROCESSOR).forEach((nt) => { EXEC_KIND[nt] = 'image-pro
 export default function NodeExecuteDialog({ open, nodeType, onClose, executions, settings }) {
   const meta = NODE_META[nodeType] || {};
   const kind = EXEC_KIND[nodeType];
+  // 模型列表：优先设置页自定义，空则回退内置（editImage 用 editImageModels）
+  const modelOptions = nodeType === NODE_TYPES.editImage
+    ? modelValuesToOptions(settings?.editImageModels)
+    : modelValuesToOptions(settings?.textToImageModels);
 
   // —— 各分支表单 state（打开时按 kind 初始化）——
   const [prompt, setPrompt] = useState('');
@@ -206,7 +210,7 @@ export default function NodeExecuteDialog({ open, nodeType, onClose, executions,
           {/* 生成图/编辑图：模型/比例/尺寸 */}
           {kind === 'generate-image' && (
             <div className="grid grid-cols-3 gap-3">
-              <SelectField label="模型" value={model} options={MODEL_OPTIONS} onChange={setModel} />
+              <SelectField label="模型" value={model} options={modelOptions} onChange={setModel} />
               <SelectField label="比例" rawOptions={ASPECT_OPTIONS} value={aspect} onChange={setAspect} />
               <SelectField label="尺寸" rawOptions={SIZE_OPTIONS} value={size} onChange={setSize} />
             </div>

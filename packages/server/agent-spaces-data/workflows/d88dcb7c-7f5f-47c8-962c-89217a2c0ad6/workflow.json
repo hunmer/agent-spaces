@@ -528,7 +528,8 @@
         "sourceNodeId": "node_1781686908308_6flfam",
         "sourceHandle": "case-3",
         "prompt": "{{ __data__[\"node_1781681576137_start\"].prompt }}",
-        "label": "gemini"
+        "label": "gemini",
+        "apiMode": "responses"
       }
     }
   ],
@@ -902,7 +903,7 @@
     }
   ],
   "createdAt": 1782287549292,
-  "updatedAt": 1785580888474,
+  "updatedAt": 1785603566368,
   "published": false,
   "enabledPlugins": [
     "workflow.openai",
@@ -911,12 +912,13 @@
     "workflow.jimeng",
     "workflow.ai-image"
   ],
-  "lastRunAt": 1785587835796,
+  "lastRunAt": 1785604609631,
   "groups": [],
   "description": "文字生成图片",
   "variables": [],
   "layoutSnapshot": {
     "nodeDisplayMode": "normal"
   },
-  "lastOpenedAt": 1785580583526
+  "lastOpenedAt": 1785603546810,
+  "pluginConfigSchemes": {}
 }

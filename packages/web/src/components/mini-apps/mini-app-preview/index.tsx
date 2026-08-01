@@ -477,6 +477,7 @@ export function MiniAppPreview({ type, sourceCode, error, onError, projectId, pr
         onCreate={() => {}}
         onClose={() => setWorkflowConfigsOpen(false)}
         showCreate={false}
+        selectable={false}
         onConfigure={(workflow) => setConfigWorkflow(workflow)}
       />
       {projectId ? (

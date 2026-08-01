@@ -131,6 +131,23 @@ export const MODEL_OPTIONS = [
 
 export const DEFAULT_MODEL = 'gpt-image-1';
 
+// 内置 value → label 映射（保留用户自定义模型列表中内置项的友好名称）
+const BUILTIN_MODEL_LABELS = Object.fromEntries(MODEL_OPTIONS.map((o) => [o.value, o.label]));
+
+/**
+ * 把设置里的模型 value 列表转成 SelectInput 用的 [{value,label}] options。
+ * - 空数组/非数组 → 回退内置 MODEL_OPTIONS（保证始终有可选项）
+ * - 内置 value → 用内置友好 label（如 gpt-image-1 → "GPT Image 1"）
+ * - 非内置 value → label 取 value 本身
+ */
+export function modelValuesToOptions(values) {
+  if (!Array.isArray(values) || values.length === 0) return MODEL_OPTIONS;
+  return values
+    .map((v) => String(v).trim())
+    .filter(Boolean)
+    .map((v) => ({ value: v, label: BUILTIN_MODEL_LABELS[v] || v }));
+}
+
 // 比例
 export const ASPECT_OPTIONS = ['21:9', '16:9', '9:16', '1:1', '4:3', '3:4'];
 // 尺寸

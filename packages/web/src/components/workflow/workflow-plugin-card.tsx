@@ -79,10 +79,26 @@ export function LocalPluginCard({
         iconClickable={canShowTools}
         onIconClick={canShowTools ? () => setToolsOpen(true) : undefined}
         iconTitle={canShowTools ? t('pluginCard.tools') : undefined}
-        headerExtra={onUninstallAction ? (
-          <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive" onClick={(e) => { e.stopPropagation(); onUninstallAction(); }}>
-            <Trash2 className="h-3.5 w-3.5" />
-          </Button>
+        headerExtra={(onReinstallAction || onUninstallAction) ? (
+          <div className="flex items-center gap-1">
+            {onReinstallAction && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 w-6 p-0 text-muted-foreground hover:text-primary"
+                title={reinstalling ? t('pluginCard.installing') : t('pluginCard.reinstall')}
+                disabled={reinstalling}
+                onClick={(e) => { e.stopPropagation(); onReinstallAction(); }}
+              >
+                <Download className={`h-3.5 w-3.5 ${reinstalling ? 'animate-bounce' : ''}`} />
+              </Button>
+            )}
+            {onUninstallAction && (
+              <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive" onClick={(e) => { e.stopPropagation(); onUninstallAction(); }}>
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            )}
+          </div>
         ) : undefined}
       >
         {plugin.config?.length ? (
@@ -95,18 +111,6 @@ export function LocalPluginCard({
             legacyWorkflowId={projectId}
           />
         ) : null}
-        {onReinstallAction && (
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-7 gap-1 text-xs"
-            disabled={reinstalling}
-            onClick={(e) => { e.stopPropagation(); onReinstallAction(); }}
-          >
-            <Download className={`h-3.5 w-3.5 ${reinstalling ? 'animate-bounce' : ''}`} />
-            {reinstalling ? t('pluginCard.installing') : t('pluginCard.reinstall')}
-          </Button>
-        )}
         {onUpdateAction && (needsUpdate || updateQueued) && (
           updateQueued ? (
             <Button variant="secondary" size="sm" className="h-7 gap-1 text-xs" disabled={updating} onClick={(e) => { e.stopPropagation(); onUpdateAction(); }}>

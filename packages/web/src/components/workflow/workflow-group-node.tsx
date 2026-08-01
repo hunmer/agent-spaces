@@ -2,7 +2,7 @@
 
 import React, { useState, useCallback, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { ChevronDown, ChevronRight, Lock, Unlock, Trash2, Spline } from 'lucide-react';
+import { ChevronDown, ChevronRight, ListChecks, Lock, Unlock, Trash2, Spline } from 'lucide-react';
 import type { WorkflowGroup } from '@agent-spaces/shared';
 import { ColorPicker } from '@/components/ui/color-picker';
 import { WorkflowAutoLayoutMenu, type WorkflowAutoLayoutOptions } from './workflow-auto-layout-menu';
@@ -39,6 +39,8 @@ interface GroupOverlayProps {
   isDropTarget: boolean;
   onCollapsedChange: (groupId: string, collapsed: boolean) => void;
   onSelect: (groupId: string) => void;
+  onSelectNodes?: (groupId: string) => void;
+  headerRight?: React.ReactNode;
   onDelete: (groupId: string) => void;
   onUpdate: (groupId: string, updates: Partial<WorkflowGroup>) => void;
   onMove: (groupId: string, delta: { x: number; y: number }, options?: { pushUndo?: boolean }) => void;
@@ -80,7 +82,7 @@ function getGroupColor(color?: string) {
 export function WorkflowGroupOverlay({
   group, childNodes, collapsed, isSelected, isDropTarget,
   onCollapsedChange, onSelect, onDelete, onUpdate, onMove, onAutoLayout, layoutEngine, onDragPreviewChange, screenDeltaToFlowDelta,
-  onConnect,
+  onConnect, onSelectNodes, headerRight,
 }: GroupOverlayProps) {
   const [isHovered, setIsHovered] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -326,6 +328,16 @@ export function WorkflowGroupOverlay({
           </span>
         )}
 
+        {headerRight && (
+          <div
+            className="flex shrink-0 items-center"
+            onPointerDown={stopButtonPointerDown}
+            onClick={(event) => event.stopPropagation()}
+          >
+            {headerRight}
+          </div>
+        )}
+
         {isHovered && (
           <div className="flex items-center gap-0.5">
             {GROUP_COLORS.map(c => (
@@ -348,6 +360,20 @@ export function WorkflowGroupOverlay({
               />
             </div>
             <div className="mx-0.5 h-3 w-px bg-border/50" />
+            {onSelectNodes && (
+              <button
+                type="button"
+                title="全选分组内节点"
+                className="flex size-5 items-center justify-center rounded p-0 hover:bg-black/10"
+                onPointerDown={stopButtonPointerDown}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onSelectNodes(group.id);
+                }}
+              >
+                <ListChecks className="size-3 text-muted-foreground" />
+              </button>
+            )}
             <WorkflowAutoLayoutMenu
               onAutoLayout={onAutoLayout}
               layoutEngine={layoutEngine}

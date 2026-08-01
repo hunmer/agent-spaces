@@ -999,6 +999,15 @@ export function WorkflowCanvas({
     setSelectedGroupId(groupId);
   }, [onNodeSelect, selectEdge]);
 
+  const handleGroupNodesSelect = useCallback((groupId: string) => {
+    const groups = workflow.groups || [];
+    const groupNodeIds = collectWorkflowGroupNodeIds(groups, groupId);
+    const ids = workflow.nodes.map(node => node.id).filter(id => groupNodeIds.has(id));
+    selectEdge(null);
+    setSelectedGroupId(null);
+    onNodesSelect?.(ids, { primaryNodeId: ids.length === 1 ? ids[0] : null });
+  }, [onNodesSelect, selectEdge, workflow.groups, workflow.nodes]);
+
   const requestGroupDelete = useCallback((groupId: string) => {
     setDeleteGroupNodes(false);
     setPendingDeleteGroupId(groupId);
@@ -1480,6 +1489,7 @@ export function WorkflowCanvas({
               isDropTarget={dropTargetGroupId === group.id}
               onCollapsedChange={handleGroupCollapsedChange}
               onSelect={handleGroupSelect}
+              onSelectNodes={handleGroupNodesSelect}
               onDelete={requestGroupDelete}
               onUpdate={(groupId, updates) => onGroupUpdate?.(groupId, updates)}
               onMove={(groupId, delta, options) => onGroupMove?.(groupId, delta, options)}

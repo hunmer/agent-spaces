@@ -31,6 +31,7 @@ import GroupConfirmDialog from './GroupConfirmDialog';
 import DeleteGroupDialog from './DeleteGroupDialog';
 import ConnectionTargetDialog from './ConnectionTargetDialog';
 import PastePropertiesDialog from './PastePropertiesDialog';
+import BatchRunConfirmDialog from './BatchRunConfirmDialog';
 import useAssetLibrary from '../hooks/useAssetLibrary';
 import { getConnectionTargets, getNodeOutputType } from '../utils/connection-targets';
 
@@ -50,7 +51,7 @@ import useNodeExecutions from '../hooks/useNodeExecutions';
 import useLastParams from '../hooks/useLastParams';
 import { runCutout } from '../utils/cutout';
 import { WORKFLOWS } from '../utils/constants';
-import useCanvasAgentRpc from '../hooks/useCanvasAgentRpc';
+import useCanvasAgentRpc, { buildNodeExecution } from '../hooks/useCanvasAgentRpc';
 import useDecoratedNodes from '../hooks/useDecoratedNodes';
 
 import { IMAGE_TAGS, NODE_TYPES, NODE_META } from '../utils/constants';
@@ -59,6 +60,7 @@ import { genId } from '../utils/canvas-id';
 import { exportAssetLibraryZip, extractFileNameFromUrl, pickAssetLibraryZipFile, importAssetLibraryZip, exportWorkspaceZip, pickWorkspaceZipFile, importWorkspaceZip } from '../utils/export';
 import { canvasConfigPath, historyConfigPath, assetLibraryConfigPath, saveCanvas } from '../utils/storage';
 import { decorateEdgesForSelection } from '../utils/edge-display';
+import { countNodesWithOutput } from '../utils/batch-run';
 import { COMPACT_NODE_ZOOM_THRESHOLD } from './nodes/compact-node';
 
 const EDGE_TYPES = { floating: FloatingEdge };
@@ -118,6 +120,8 @@ export default function Canvas() {
   const [isConnecting, setIsConnecting] = useState(false);
   // 多上传区域目标的待确认连线：选择完成前不写入 edges。
   const [pendingConnection, setPendingConnection] = useState(null);
+  // 批量运行目标中已有产出时，暂存候选节点并等待用户确认。
+  const [batchRunConfirm, setBatchRunConfirm] = useState(null);
 
   const reactFlow = useReactFlow();
   const wrappingRef = useRef(null);
@@ -127,6 +131,7 @@ export default function Canvas() {
   // 同步在每次渲染后更新（useEffect 兜底 + 直接赋值保证同步读取）。
   const nodesRef = useRef(nodes);
   const edgesRef = useRef(edges);
+  const reservedBatchNodeIdsRef = useRef(new Set());
   nodesRef.current = nodes;
   edgesRef.current = edges;
 
@@ -171,8 +176,9 @@ export default function Canvas() {
   const { handleExportVideos } = useVideoOutputs({ setNodes });
 
   // —— 执行队列（onComplete/onError 用 imageOutputs + updateNodeData + addHistory）——
-  const { jobs, submit, cancel, clearFinished, runningCount } = useExecutionQueue({
+  const { jobs, submit, cancel, clearFinished, runningCount, queuedCount } = useExecutionQueue({
     directory: activeWorkspace?.directory,
+    concurrency: settings.executionConcurrency,
     onComplete: (job, images, histId) => {
       const tag = job.nodeType === NODE_TYPES.editImage ? IMAGE_TAGS.editImage : IMAGE_TAGS.textToImage;
       if (job.placeholderNodeId) {
@@ -207,6 +213,33 @@ export default function Canvas() {
       }
     },
   });
+  const activeQueueNodeIds = useMemo(() => new Set(
+    jobs
+      .filter((job) => job.status === 'queued' || job.status === 'running')
+      .map((job) => job.placeholderNodeId)
+      .filter(Boolean),
+  ), [jobs]);
+  useEffect(() => {
+    for (const nodeId of reservedBatchNodeIdsRef.current) {
+      if (!activeQueueNodeIds.has(nodeId)) reservedBatchNodeIdsRef.current.delete(nodeId);
+    }
+  }, [activeQueueNodeIds]);
+  const queuePositions = useMemo(() => {
+    const positions = new Map();
+    jobs
+      .filter((job) => job.status === 'queued' && job.placeholderNodeId)
+      .forEach((job, index) => positions.set(job.placeholderNodeId, index + 1));
+    return positions;
+  }, [jobs]);
+  const queueStatuses = useMemo(() => new Map(
+    jobs
+      .filter((job) => (job.status === 'queued' || job.status === 'running') && job.placeholderNodeId)
+      .map((job) => [job.placeholderNodeId, job.status]),
+  ), [jobs]);
+  const standaloneRunningNodes = useMemo(
+    () => runningNodes.filter((node) => !activeQueueNodeIds.has(node.id)),
+    [activeQueueNodeIds, runningNodes],
+  );
 
   // —— 节点 CRUD + 定位/布局/导出 + 尺寸自适应 + 表单提交 ——
   // 画布容器屏幕中心点（供 handleAdd 定位新节点到视口中心）
@@ -372,6 +405,14 @@ export default function Canvas() {
       await saveSettings({ ...settings, ...patch });
     } catch (error) {
       toast.error(`保存画布样式失败：${error?.message || error}`);
+    }
+  }, [saveSettings, settings]);
+  const handleExecutionConcurrencyChange = useCallback(async (value) => {
+    const executionConcurrency = Math.max(1, Math.min(10, Number(value) || 3));
+    try {
+      await saveSettings({ ...settings, executionConcurrency });
+    } catch (error) {
+      toast.error(`保存队列并发数失败：${error?.message || error}`);
     }
   }, [saveSettings, settings]);
 
@@ -729,6 +770,7 @@ export default function Canvas() {
     updateNodeData, handleDeleteNode: crud.handleDeleteNode, focusNode: crud.focusNode,
     setNodes, setEdges, setGroups,
     onGenerate: handleGenerate, onGenerateMedia: handleGenerateMedia,
+    settings,
   });
 
   const { decoratedNodes } = useDecoratedNodes({
@@ -739,16 +781,97 @@ export default function Canvas() {
     onOutputPreviewModeChange: handleOutputPreviewModeChange,
     settings, callbacks: nodeCallbacks,
   });
+  const collectBatchRunNodes = useCallback((nodeIds) => {
+    const nodeMap = new Map(decoratedNodes.map((node) => [node.id, node]));
+    const candidates = [];
+    let skipped = 0;
+    for (const nodeId of nodeIds || []) {
+      const node = nodeMap.get(nodeId);
+      if (
+        !node
+        || node.data?.status === 'running'
+        || activeQueueNodeIds.has(nodeId)
+        || reservedBatchNodeIdsRef.current.has(nodeId)
+      ) {
+        skipped += 1;
+        continue;
+      }
+      const spec = buildNodeExecution(node, node.data?.textInputValues);
+      if (!spec) {
+        skipped += 1;
+        continue;
+      }
+      candidates.push({ node, spec });
+    }
+    return { candidates, skipped };
+  }, [activeQueueNodeIds, decoratedNodes]);
+
+  const submitBatchRun = useCallback((nodeIds) => {
+    const { candidates, skipped } = collectBatchRunNodes(nodeIds);
+    for (const { node, spec } of candidates) {
+      reservedBatchNodeIdsRef.current.add(node.id);
+      submit({
+        nodeType: node.type,
+        label: NODE_META[node.type]?.label || node.data?.label || node.type,
+        placeholderNodeId: node.id,
+        execute: () => (spec.kind === 'image'
+          ? handleGenerate(node.id, node.type, { workflowId: spec.workflowId, input: spec.input })
+          : handleGenerateMedia(node.id, node.type, spec.kind, { workflowId: spec.workflowId, input: spec.input })),
+        cancel: () => handleCancelProcess(node.id),
+      });
+    }
+    if (candidates.length > 0) {
+      toast.success(`已加入 ${candidates.length} 个任务${skipped ? `，跳过 ${skipped} 个不可执行或已运行节点` : ''}`);
+    } else {
+      toast.warning('分组内没有可执行的生成节点');
+    }
+  }, [collectBatchRunNodes, handleCancelProcess, handleGenerate, handleGenerateMedia, submit]);
+
+  const requestBatchRun = useCallback((nodeIds) => {
+    const { candidates } = collectBatchRunNodes(nodeIds);
+    if (!candidates.length) {
+      toast.warning('所选范围内没有可执行的生成节点');
+      return;
+    }
+    const outputCount = countNodesWithOutput(candidates.map(({ node }) => node));
+    const candidateIds = candidates.map(({ node }) => node.id);
+    if (outputCount > 0) {
+      setBatchRunConfirm({ nodeIds: candidateIds, outputCount });
+      return;
+    }
+    submitBatchRun(candidateIds);
+  }, [collectBatchRunNodes, submitBatchRun]);
+
+  const handleRunGroup = useCallback((groupId) => {
+    const group = groups.find((item) => item.id === groupId);
+    if (group) requestBatchRun(group.childNodeIds || []);
+  }, [groups, requestBatchRun]);
+
+  const handleRunSelected = useCallback(() => {
+    requestBatchRun(nodesRef.current.filter((node) => node.selected).map((node) => node.id));
+  }, [requestBatchRun]);
+  const handleCancelAllTasks = useCallback(() => {
+    jobs
+      .filter((job) => job.status === 'queued' || job.status === 'running')
+      .forEach((job) => cancel(job.id));
+    standaloneRunningNodes.forEach((node) => handleCancelProcess(node.id));
+  }, [cancel, handleCancelProcess, jobs, standaloneRunningNodes]);
   const compactNodes = (viewport?.zoom ?? 1) < COMPACT_NODE_ZOOM_THRESHOLD;
   const renderedNodes = useMemo(() => decoratedNodes.map((node) => ({
     ...node,
-    zIndex: node.zIndex ?? 1,
-    data: { ...node.data, compactView: compactNodes },
+    // ReactFlow 选中节点默认提升 1000；hover 时同步提升，让节点外部的产出卡片不被相邻节点遮挡。
+    zIndex: node.id === hoveredNodeId ? Math.max(node.zIndex ?? 1, 1001) : (node.zIndex ?? 1),
+    data: {
+      ...node.data,
+      compactView: compactNodes,
+      queuePosition: queuePositions.get(node.id),
+      queueStatus: queueStatuses.get(node.id),
+    },
     style: {
       ...node.style,
       '--floating-handle-size': (isConnecting || node.id === hoveredNodeId) ? '24px' : '8px',
     },
-  })), [compactNodes, decoratedNodes, hoveredNodeId, isConnecting]);
+  })), [compactNodes, decoratedNodes, hoveredNodeId, isConnecting, queuePositions, queueStatuses]);
 
   const onNodeMouseEnter = useCallback((_event, node) => setHoveredNodeId(node.id), []);
   const onNodeMouseLeave = useCallback((_event, node) => {
@@ -858,10 +981,13 @@ export default function Canvas() {
             queueSlot={(
               <ExecutionQueuePopover
                 jobs={jobs}
-                runningNodes={runningNodes}
-                runningCount={runningCount + runningNodes.length}
+                runningNodes={standaloneRunningNodes}
+                runningCount={runningCount + queuedCount + standaloneRunningNodes.length}
+                concurrency={settings.executionConcurrency}
+                onConcurrencyChange={handleExecutionConcurrencyChange}
                 onCancel={cancel}
                 onCancelNode={handleCancelProcess}
+                onCancelAll={handleCancelAllTasks}
                 onClearFinished={clearFinished}
               />
             )}
@@ -948,6 +1074,7 @@ export default function Canvas() {
                 selectedGroupId={groupOps.selectedGroupId}
                 dropTargetGroupId={groupOps.dropTargetGroupId}
                 onSelect={groupOps.setSelectedGroupId}
+                onSelectNodes={groupOps.selectGroupNodes}
                 onDelete={groupOps.requestDeleteGroup}
                 onUpdate={groupOps.updateGroup}
                 onMove={groupOps.handleGroupMove}
@@ -956,6 +1083,7 @@ export default function Canvas() {
                 screenDeltaToFlowDelta={groupOps.screenDeltaToFlowDelta}
                 inputSlotCounts={groupExecution.inputSlotCounts}
                 runningGroupIds={groupExecution.runningGroupIds}
+                onRunGroup={handleRunGroup}
                 onSetExecutionMode={groupExecution.setMode}
                 onSetExecutionCount={groupExecution.setCount}
                 onSwitchExecutionRun={groupExecution.switchRun}
@@ -968,6 +1096,7 @@ export default function Canvas() {
             <MultiSelectToolbar
               selectionCount={selection.selectionCount}
               onCreateGroup={groupOps.createGroupFromSelection}
+              onRunSelected={handleRunSelected}
               onAlignDistribute={selection.alignDistribute}
               onApplyGridLayout={selection.applyGridLayout}
               onDeleteSelected={selection.deleteSelectedNodes}
@@ -1022,6 +1151,17 @@ export default function Canvas() {
         }}
       />
 
+      <BatchRunConfirmDialog
+        open={!!batchRunConfirm}
+        outputCount={batchRunConfirm?.outputCount || 0}
+        onCancel={() => setBatchRunConfirm(null)}
+        onConfirm={() => {
+          const pending = batchRunConfirm;
+          setBatchRunConfirm(null);
+          if (pending?.nodeIds?.length) submitBatchRun(pending.nodeIds);
+        }}
+      />
+
       {/* 顶部菜单「提示词管理」入口：pickerMode=false 纯管理（不填充、不关闭） */}
       <PromptPickerDialog
         open={promptManagerOpen}
@@ -1044,6 +1184,7 @@ export default function Canvas() {
         open={!!formState}
         nodeType={formState?.nodeType}
         initialImages={formState?.initialImages}
+        settings={settings}
         onClose={() => setFormState(null)}
         onSubmit={crud.handleFormSubmit}
       />
