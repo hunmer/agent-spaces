@@ -61,7 +61,7 @@ export default function MiniAppPreviewPageClient() {
 
   const host = useMiniAppHostApi(projectId, runtimeContext);
 
-  const loadProject = useCallback(async () => {
+  const loadProject = useCallback(async (onProgress?: (loaded: number, total: number) => void) => {
     try {
       const p = await sdk.miniApp.get(projectId);
       setProject(p);
@@ -71,13 +71,17 @@ export default function MiniAppPreviewPageClient() {
       // 且会在初始化时触发大体积 fetch（如 vendor/pixelorama-web/index.wasm 38MB、index.pck 12MB）。
       // 运行时资源（iframe 加载的 wasm/glb、fetch+eval 的 vendor js）按需懒加载，无需预读。
       const tree = await sdk.miniApp.getFileTree(projectId);
+      onProgress?.(0, tree.length);
       const files: Record<string, string> = {};
+      let loaded = 0;
       for (const file of tree) {
         if (isSkippableAsset(file)) continue;
         try {
           const { content } = await sdk.miniApp.readFile(projectId, file);
           files[file] = content;
         } catch { /* skip */ }
+        loaded += 1;
+        onProgress?.(loaded, tree.length);
       }
       setAllFiles(files);
 

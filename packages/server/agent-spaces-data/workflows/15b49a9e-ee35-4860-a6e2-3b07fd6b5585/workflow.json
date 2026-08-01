@@ -9,8 +9,8 @@
       "type": "start",
       "label": "Start",
       "position": {
-        "x": 257.5,
-        "y": 50
+        "x": 750,
+        "y": 0
       },
       "data": {}
     },
@@ -29,8 +29,8 @@
       "type": "openai_edit_image",
       "label": "OpenAI Edit Image",
       "position": {
-        "x": 300,
-        "y": 210
+        "x": 270.35631517960405,
+        "y": 126.55851680185387
       },
       "data": {
         "apiKey": "{{ __config__[\"workflow.openai\"][\"apiKey\"] }}",
@@ -80,8 +80,8 @@
       "type": "ai_image_edit",
       "label": "AI Image Edit",
       "position": {
-        "x": -22.5,
-        "y": 120
+        "x": -52.14368482039595,
+        "y": 36.55851680185387
       },
       "data": {
         "apiKey": "{{ __config__[\"workflow.ai-image\"][\"apiKey\"] }}",
@@ -175,11 +175,29 @@
   ],
   "edges": [],
   "createdAt": 1785570436981,
-  "updatedAt": 1785572007929,
+  "updatedAt": 1785582656405,
   "published": false,
-  "lastOpenedAt": 1785570436991,
+  "lastOpenedAt": 1785582619116,
   "enabledPlugins": [
     "workflow.openai",
     "workflow.ai-image"
+  ],
+  "groups": [
+    {
+      "id": "group_1785582626517_qkmu7b",
+      "name": "分组 1",
+      "childNodeIds": [
+        "node_1785570449868_gexdtf",
+        "node_1785570584194_3h2kv6"
+      ],
+      "childGroupIds": [],
+      "locked": false,
+      "disabled": false,
+      "savedNodeStates": {},
+      "x": -76.14368482039593,
+      "y": -11.441478052946081,
+      "width": 620.4999621624465,
+      "height": 270.9999737966102
+    }
   ]
 }

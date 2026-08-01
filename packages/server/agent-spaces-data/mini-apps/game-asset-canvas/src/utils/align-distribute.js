@@ -1,7 +1,7 @@
 /**
  * 多选节点对齐分布的坐标计算（纯函数）。
  *
- * - computeAlignment: 九宫格对齐（mode 形如 'top-left'/'middle-center'/'bottom-right'）
+ * - computeAlignment: 左/右/顶/底四向对齐，取该边缘极值（顶/左取最小，底/右取最大）
  * - computeGridLayout: 按「最上游优先」拓扑序铺成 rows × cols 网格
  *
  * 节点宽高取 style 或顶层 width/height（NodeResizer 要求），兜底 200x100。
@@ -13,47 +13,66 @@ const nodeSize = (n) => ({
   h: n.height || n.style?.height || 100,
 });
 
-// 九宫格 mode 解析：'top-left' → { vertical:'top', horizontal:'left' }
-const V_MAP = { top: 'top', middle: 'middle', bottom: 'bottom' };
-const H_MAP = { left: 'left', center: 'center', right: 'right' };
-function parseMode(mode) {
-  const [v, h] = String(mode || '').split('-');
-  return { vertical: V_MAP[v] || null, horizontal: H_MAP[h] || null };
+/**
+ * 沿副轴消除重叠（贪心推开）：
+ * 按副轴当前坐标排序，逐个检测与前一个尾端的间距，
+ * 重叠则顺延到「前一个尾端 + gap」，不重叠保持原位。
+ * 只移动必须移动的节点，保留原有相对顺序。
+ *
+ * @returns {Map<string, number>} nodeId -> 副轴新坐标
+ */
+function resolveOverlap(selectedNodes, sizes, axis, dim, gap) {
+  const order = selectedNodes
+    .map((_, i) => i)
+    .sort((a, b) => selectedNodes[a].position[axis] - selectedNodes[b].position[axis]);
+  const out = new Map();
+  let prevEnd = -Infinity;
+  for (const i of order) {
+    const n = selectedNodes[i];
+    let pos = n.position[axis];
+    if (pos < prevEnd + gap) pos = prevEnd + gap;
+    out.set(n.id, pos);
+    prevEnd = pos + sizes[i][dim];
+  }
+  return out;
 }
 
 /**
- * 九宫格对齐：把选中节点的水平/垂直边缘对齐到选中区域的九个方位之一。
- * 修正了旧实现「右对齐」误用 min 的 bug（右对齐应贴最右边缘）。
+ * 四向对齐：主轴取指定边缘极值对齐，副轴消除节点重叠。
+ * - left  : x 对齐到最左边缘；y 消除重叠
+ * - right : 右边缘对齐到最右；y 消除重叠
+ * - top   : y 对齐到最顶边缘；x 消除重叠
+ * - bottom: 底边缘对齐到最底；x 消除重叠
  *
  * @param {Array} selectedNodes
- * @param {string} mode 'top-left' | 'top-center' | 'top-right' | 'middle-left' | ... | 'bottom-right'
- * @returns {Map<string, {x:number, y:number}>} nodeId -> 新坐标
+ * @param {string} mode 'left' | 'right' | 'top' | 'bottom'
+ * @param {number} [gap=20] 副轴消除重叠时的最小间距
+ * @returns {Map<string, {x?:number, y?:number}>} nodeId -> 需更新的新坐标
  */
-export function computeAlignment(selectedNodes, mode) {
+export function computeAlignment(selectedNodes, mode, gap = 20) {
   if (!selectedNodes || selectedNodes.length < 2) return new Map();
-  const { vertical, horizontal } = parseMode(mode);
-  if (!vertical && !horizontal) return new Map();
-
   const sizes = selectedNodes.map(nodeSize);
-  const minLeft = Math.min(...selectedNodes.map((n) => n.position.x));
-  const maxRight = Math.max(...selectedNodes.map((n, i) => n.position.x + sizes[i].w));
-  const minTop = Math.min(...selectedNodes.map((n) => n.position.y));
-  const maxBottom = Math.max(...selectedNodes.map((n, i) => n.position.y + sizes[i].h));
-  const centerX = (minLeft + maxRight) / 2;
-  const centerY = (minTop + maxBottom) / 2;
-
   const result = new Map();
-  selectedNodes.forEach((n, i) => {
-    const { w, h } = sizes[i];
-    let { x, y } = n.position;
-    if (horizontal === 'left') x = minLeft;
-    else if (horizontal === 'center') x = centerX - w / 2;
-    else if (horizontal === 'right') x = maxRight - w;
-    if (vertical === 'top') y = minTop;
-    else if (vertical === 'middle') y = centerY - h / 2;
-    else if (vertical === 'bottom') y = maxBottom - h;
-    result.set(n.id, { x, y });
-  });
+
+  if (mode === 'left' || mode === 'right') {
+    // 主轴 x：left 取 min(x)，right 右边缘取 max(x+w)
+    const edge = mode === 'left'
+      ? Math.min(...selectedNodes.map((n) => n.position.x))
+      : Math.max(...selectedNodes.map((n, i) => n.position.x + sizes[i].w));
+    // 副轴 y 消除重叠
+    const ys = resolveOverlap(selectedNodes, sizes, 'y', 'h', gap);
+    selectedNodes.forEach((n, i) => {
+      result.set(n.id, { x: mode === 'left' ? edge : edge - sizes[i].w, y: ys.get(n.id) });
+    });
+  } else if (mode === 'top' || mode === 'bottom') {
+    const edge = mode === 'top'
+      ? Math.min(...selectedNodes.map((n) => n.position.y))
+      : Math.max(...selectedNodes.map((n, i) => n.position.y + sizes[i].h));
+    const xs = resolveOverlap(selectedNodes, sizes, 'x', 'w', gap);
+    selectedNodes.forEach((n, i) => {
+      result.set(n.id, { x: xs.get(n.id), y: mode === 'top' ? edge : edge - sizes[i].h });
+    });
+  }
   return result;
 }
 

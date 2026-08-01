@@ -58,7 +58,7 @@ export function WorkflowAutoLayoutMenu({
       >
         <LayoutGrid className={iconClassName} />
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" side="bottom">
+      <DropdownMenuContent align="end" side="bottom" onPointerDown={(event) => event.stopPropagation()}>
         <DropdownMenuItem disabled={isDisabled} onClick={() => onAutoLayout?.('LR', autoLayoutOptions)}>
           {t('canvasToolbar.horizontalLayout')}
         </DropdownMenuItem>

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Popover, PopoverContent, PopoverTrigger, ScrollArea } from '@agent-spaces/ui';
+import { Popover, PopoverContent, PopoverTrigger, ScrollArea, ListTodo } from '@agent-spaces/ui';
 import { NODE_META } from '../utils/constants';
 
 const STATUS_META = {
@@ -32,12 +32,13 @@ export default function ExecutionQueuePopover({ jobs, runningNodes = [], running
         render={
           <button
             type="button"
-            className="relative flex items-center gap-1.5 rounded-md border border-border bg-background px-2.5 py-1 text-xs font-medium transition hover:border-primary"
+            className="relative flex items-center justify-center rounded-md border border-border bg-background p-1.5 text-muted-foreground transition hover:border-primary hover:text-primary"
             title="执行队列"
           >
+            <ListTodo className="h-4 w-4" />
             {runningCount > 0 && (
-              <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] text-primary-foreground">
-                {runningCount}
+              <span className="absolute -right-1.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold leading-none text-primary-foreground shadow">
+                {runningCount > 99 ? '99+' : runningCount}
               </span>
             )}
           </button>

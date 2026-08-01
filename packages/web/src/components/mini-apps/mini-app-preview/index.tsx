@@ -9,6 +9,7 @@ import { resolveServerAssetUrl } from '@/lib/server';
 import { getWS } from '@/lib/ws';
 import { cn } from '@/lib/utils';
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable';
+import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { AvatarGroup } from '@/components/ui/avatar-group';
@@ -47,7 +48,7 @@ export interface MiniAppPreviewProps {
   devices?: string[];
   allowScroll?: boolean;
   /** 重载回调：由父组件提供，重新拉取项目文件后再重挂载渲染器 */
-  onReload?: () => Promise<void> | void;
+  onReload?: (onProgress?: (loaded: number, total: number) => void) => Promise<void> | void;
 }
 
 export function MiniAppPreview({ type, sourceCode, error, onError, projectId, projectName, hideHeader, enabledPlugins, files, mainFile, enableAgents, devices, allowScroll = false, onReload }: MiniAppPreviewProps) {
@@ -58,12 +59,17 @@ export function MiniAppPreview({ type, sourceCode, error, onError, projectId, pr
   // 重载 mini-app：先由父组件重新拉取文件，再递增 key 重挂载渲染器
   const [reloadKey, setReloadKey] = useState(0);
   const [reloading, setReloading] = useState(false);
+  const [reloadProgress, setReloadProgress] = useState(0); // 0-100
   const handleReload = useCallback(async () => {
     // 提供 onReload：重新拉文件后重挂载，比刷新页面快（复用 bundle/WS/状态）
     if (onReload) {
       setReloading(true);
-      try { await onReload(); }
-      finally { setReloading(false); }
+      setReloadProgress(0);
+      try {
+        await onReload((loaded, total) => {
+          setReloadProgress(total > 0 ? Math.round((loaded / total) * 100) : 0);
+        });
+      } finally { setReloading(false); }
     }
     setReloadKey((k) => k + 1);
   }, [onReload]);
@@ -398,11 +404,13 @@ export function MiniAppPreview({ type, sourceCode, error, onError, projectId, pr
       )}
       <div className="flex min-h-0 flex-1">
         {(() => {
-          // 重载期间显示 loader，避免看到旧内容
+          // 重载期间显示 loader + 进度条，避免看到旧内容
           if (reloading) {
             return (
-              <div className="flex h-full w-full items-center justify-center text-muted-foreground">
+              <div className="flex h-full w-full flex-col items-center justify-center gap-4 px-32 text-muted-foreground">
                 <Loader2 className="h-6 w-6 animate-spin" />
+                <Progress value={reloadProgress} className="max-w-xs" />
+                <span className="text-xs tabular-nums">{reloadProgress}%</span>
               </div>
             );
           }
