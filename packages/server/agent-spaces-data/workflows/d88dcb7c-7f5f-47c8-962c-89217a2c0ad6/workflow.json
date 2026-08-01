@@ -145,6 +145,20 @@
                 "value": "case-3"
               }
             ]
+          },
+          {
+            "id": "group_1785580628211_vawg",
+            "joiner": "and",
+            "conditions": [
+              {
+                "id": "cond_1785580628211_2nqq",
+                "variable": "{{ __data__[\"node_1782281779113_6rk17s\"].target }}",
+                "field": "{{ __data__[\"node_1782281779113_6rk17s\"].target }}",
+                "compareMode": "value",
+                "operator": "equals",
+                "value": "case-4"
+              }
+            ]
           }
         ]
       }
@@ -155,7 +169,7 @@
       "label": "可灵图像生成",
       "position": {
         "x": 990,
-        "y": 896.5000204439038
+        "y": 1125
       },
       "data": {
         "apiKey": "{{ __config__[\"workflow.aliyun-ai\"][\"apiKey\"]}}",
@@ -236,6 +250,12 @@
                 "value": "{{ __data__[\"node_1782289859120_bm7co2\"].data.images }}",
                 "inputMode": "variable",
                 "children": []
+              },
+              {
+                "key": "gemini",
+                "type": "any",
+                "value": "{{ __data__[\"node_1785580616019_owvl4v\"].data.images }}",
+                "children": []
               }
             ],
             "id": 1782272122681
@@ -286,7 +306,7 @@
         "y": 555
       },
       "data": {
-        "code": "async function main({ params }) {\n  let target = ''\n  const model = params.model || ''\n  if (model.includes('kling')) {\n    target = 'case-0'\n  } else if (model.includes('qwen') || model.includes('wanx') || model.includes('wan2.7')) {\n    target = 'case-1'\n  } else if (model.includes('jimeng')) {\n    target = 'case-2'\n  } else if (model.includes('gpt') || model.includes('dall-e') || model.includes('flux') || model.includes('nano')) {\n    target = 'case-3'\n  }\n  let size = ''\n  switch(params.size.toLowerCase()){\n    case '1k':\n      size = '1024*1024'\n      break\n    case '2k':\n      size = '2048*2048'\n      break\n  }\n  return {target, size}\n}",
+        "code": "async function main({ params }) {\n  let target = ''\n  const model = params.model || ''\n  if (model.includes('kling')) {\n    target = 'case-0'\n  } else if (model.includes('qwen') || model.includes('wanx') || model.includes('wan2.7')) {\n    target = 'case-1'\n  } else if (model.includes('jimeng')) {\n    target = 'case-2'\n  } else if (model.includes('gpt') || model.includes('dall-e') || model.includes('flux') || model.includes('nano')) {\n    target = 'case-3'\n  } else if (model.includes('gemini')) {\n    target = 'case-4'\n  }\n  let size = ''\n  switch(params.size.toLowerCase()){\n    case '1k':\n      size = '1024*1024'\n      break\n    case '2k':\n      size = '2048*2048'\n      break\n  }\n  return {target, size}\n}",
         "sourceNodeId": "node_1781681576137_start",
         "sourceHandle": "source",
         "inputFields": [
@@ -324,7 +344,7 @@
       "label": "阿里云AI文生图",
       "position": {
         "x": 990,
-        "y": 687.5000204439038
+        "y": 623.7500102219519
       },
       "data": {
         "apiKey": "{{ __config__[\"workflow.aliyun-ai\"][\"apiKey\"]}}",
@@ -368,7 +388,7 @@
       "label": "即梦AI文生图",
       "position": {
         "x": 990,
-        "y": 409.00000000000006
+        "y": 405.1816504476569
       },
       "data": {
         "sessionId": "{{ __config__[\"workflow.jimeng\"][\"sessionId\"] }}",
@@ -457,6 +477,58 @@
         "sourceNodeId": "node_1781686908308_6flfam",
         "sourceHandle": "case-3",
         "prompt": "{{ __data__[\"node_1781681576137_start\"].prompt }}"
+      }
+    },
+    {
+      "id": "node_1785580616019_owvl4v",
+      "type": "ai_image_generate",
+      "label": "gemini",
+      "position": {
+        "x": 990,
+        "y": 840
+      },
+      "data": {
+        "apiKey": "{{ __config__[\"workflow.ai-image\"][\"本地gemini\"][\"apiKey\"] }}",
+        "baseUrl": "{{ __config__[\"workflow.ai-image\"][\"本地gemini\"][\"baseUrl\"] }}",
+        "model": "{{ __data__[\"node_1781681576137_start\"].model }}",
+        "aspectRatio": "{{ __data__[\"node_1781681576137_start\"].aspect }}",
+        "n": 1,
+        "outputs": [
+          {
+            "key": "success",
+            "type": "boolean"
+          },
+          {
+            "key": "message",
+            "type": "string"
+          },
+          {
+            "key": "data",
+            "type": "object",
+            "children": [
+              {
+                "key": "images",
+                "type": "image[]"
+              },
+              {
+                "key": "taskId",
+                "type": "string"
+              },
+              {
+                "key": "model",
+                "type": "string"
+              },
+              {
+                "key": "created",
+                "type": "number"
+              }
+            ]
+          }
+        ],
+        "sourceNodeId": "node_1781686908308_6flfam",
+        "sourceHandle": "case-3",
+        "prompt": "{{ __data__[\"node_1781681576137_start\"].prompt }}",
+        "label": "gemini"
       }
     }
   ],
@@ -763,10 +835,74 @@
       "edgeKind": "reference",
       "sourceHandle": "output:prompt",
       "targetHandle": "property:prompt"
+    },
+    {
+      "id": "e-node_1782281779113_6rk17s-output:target-node_1781686908308_6flfam-property:conditions[4].conditions[0].variable",
+      "source": "node_1782281779113_6rk17s",
+      "target": "node_1781686908308_6flfam",
+      "edgeKind": "reference",
+      "sourceHandle": "output:target",
+      "targetHandle": "property:conditions[4].conditions[0].variable"
+    },
+    {
+      "id": "e-node_1782281779113_6rk17s-output:target-node_1781686908308_6flfam-property:conditions[4].conditions[0].field",
+      "source": "node_1782281779113_6rk17s",
+      "target": "node_1781686908308_6flfam",
+      "edgeKind": "reference",
+      "sourceHandle": "output:target",
+      "targetHandle": "property:conditions[4].conditions[0].field"
+    },
+    {
+      "id": "e-node_1781686908308_6flfam-case-4-node_1785580616019_owvl4v-target",
+      "source": "node_1781686908308_6flfam",
+      "target": "node_1785580616019_owvl4v",
+      "edgeKind": "runtime",
+      "sourceHandle": "case-4",
+      "targetHandle": "target"
+    },
+    {
+      "id": "e-node_1781681576137_start-output:prompt-node_1785580616019_owvl4v-property:prompt",
+      "source": "node_1781681576137_start",
+      "target": "node_1785580616019_owvl4v",
+      "edgeKind": "reference",
+      "sourceHandle": "output:prompt",
+      "targetHandle": "property:prompt"
+    },
+    {
+      "id": "e-node_1781681576137_start-output:model-node_1785580616019_owvl4v-property:model",
+      "source": "node_1781681576137_start",
+      "target": "node_1785580616019_owvl4v",
+      "edgeKind": "reference",
+      "sourceHandle": "output:model",
+      "targetHandle": "property:model"
+    },
+    {
+      "id": "e-node_1781681576137_start-output:aspect-node_1785580616019_owvl4v-property:aspectRatio",
+      "source": "node_1781681576137_start",
+      "target": "node_1785580616019_owvl4v",
+      "edgeKind": "reference",
+      "sourceHandle": "output:aspect",
+      "targetHandle": "property:aspectRatio"
+    },
+    {
+      "id": "e-node_1785580616019_owvl4v-source-node_1782272119586_dim19h-target",
+      "source": "node_1785580616019_owvl4v",
+      "target": "node_1782272119586_dim19h",
+      "edgeKind": "runtime",
+      "sourceHandle": "source",
+      "targetHandle": "target"
+    },
+    {
+      "id": "e-node_1785580616019_owvl4v-output:data.images-node_1782272119586_dim19h-property:groups[0].variables[4].value",
+      "source": "node_1785580616019_owvl4v",
+      "target": "node_1782272119586_dim19h",
+      "edgeKind": "reference",
+      "sourceHandle": "output:data.images",
+      "targetHandle": "property:groups[0].variables[4].value"
     }
   ],
   "createdAt": 1782287549292,
-  "updatedAt": 1784707160294,
+  "updatedAt": 1785580888474,
   "published": false,
   "enabledPlugins": [
     "workflow.openai",
@@ -775,12 +911,12 @@
     "workflow.jimeng",
     "workflow.ai-image"
   ],
-  "lastRunAt": 1785428839693,
+  "lastRunAt": 1785580894559,
   "groups": [],
   "description": "文字生成图片",
   "variables": [],
   "layoutSnapshot": {
     "nodeDisplayMode": "normal"
   },
-  "lastOpenedAt": 1784706312679
+  "lastOpenedAt": 1785580583526
 }
