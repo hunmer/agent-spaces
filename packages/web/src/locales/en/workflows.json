@@ -259,6 +259,8 @@
       "modeNamed": "Named groups",
       "rename": "Rename",
       "ungroup": "Ungroup",
+      "ungroupConfirm": "Delete group \"{group}\"?",
+      "deleteGroupNodes": "Also delete nodes in the group",
       "batchUngroup": "Delete selected ({count})",
       "noNamedGroups": "No groups"
     },

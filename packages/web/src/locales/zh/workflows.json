@@ -259,6 +259,8 @@
       "modeNamed": "命名分组",
       "rename": "重命名",
       "ungroup": "解散分组",
+      "ungroupConfirm": "确定删除分组“{group}”吗？",
+      "deleteGroupNodes": "同时删除分组内的节点",
       "batchUngroup": "删除选中 ({count})",
       "noNamedGroups": "暂无分组"
     },

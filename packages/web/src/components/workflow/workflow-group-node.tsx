@@ -34,8 +34,10 @@ function getNodeAtScreenPoint(x: number, y: number): string | null {
 interface GroupOverlayProps {
   group: WorkflowGroup;
   childNodes: Array<{ id: string; position: { x: number; y: number }; width?: number; height?: number }>;
+  collapsed: boolean;
   isSelected: boolean;
   isDropTarget: boolean;
+  onCollapsedChange: (groupId: string, collapsed: boolean) => void;
   onSelect: (groupId: string) => void;
   onDelete: (groupId: string) => void;
   onUpdate: (groupId: string, updates: Partial<WorkflowGroup>) => void;
@@ -76,11 +78,10 @@ function getGroupColor(color?: string) {
 }
 
 export function WorkflowGroupOverlay({
-  group, childNodes, isSelected, isDropTarget,
-  onSelect, onDelete, onUpdate, onMove, onAutoLayout, layoutEngine, onDragPreviewChange, screenDeltaToFlowDelta,
+  group, childNodes, collapsed, isSelected, isDropTarget,
+  onCollapsedChange, onSelect, onDelete, onUpdate, onMove, onAutoLayout, layoutEngine, onDragPreviewChange, screenDeltaToFlowDelta,
   onConnect,
 }: GroupOverlayProps) {
-  const [collapsed, setCollapsed] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(group.name);
@@ -125,8 +126,8 @@ export function WorkflowGroupOverlay({
 
   const handleToggleCollapse = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
-    setCollapsed(prev => !prev);
-  }, []);
+    onCollapsedChange(group.id, !collapsed);
+  }, [collapsed, group.id, onCollapsedChange]);
 
   const handleToggleLock = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();

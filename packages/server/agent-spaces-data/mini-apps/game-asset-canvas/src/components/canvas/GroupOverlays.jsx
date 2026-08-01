@@ -29,6 +29,16 @@ export default function GroupOverlays({
   onSwitchExecutionRun, onUploadExecutionAssets, onRemoveExecutionAsset,
 }) {
   const [dragPreview, setDragPreview] = useState(null);
+  const [collapsedGroupIds, setCollapsedGroupIds] = useState(() => new Set());
+
+  const handleCollapsedChange = (groupId, collapsed) => {
+    setCollapsedGroupIds((current) => {
+      const next = new Set(current);
+      if (collapsed) next.add(groupId);
+      else next.delete(groupId);
+      return next;
+    });
+  };
 
   return (
     <ViewportPortal>
@@ -37,8 +47,10 @@ export default function GroupOverlays({
           <WorkflowGroupOverlay
             group={group}
             childNodes={childNodes}
+            collapsed={collapsedGroupIds.has(group.id)}
             isSelected={selectedGroupId === group.id}
             isDropTarget={dropTargetGroupId === group.id}
+            onCollapsedChange={handleCollapsedChange}
             onSelect={onSelect}
             onDelete={onDelete}
             onUpdate={onUpdate}

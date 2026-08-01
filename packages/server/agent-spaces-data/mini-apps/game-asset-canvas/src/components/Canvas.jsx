@@ -243,6 +243,19 @@ export default function Canvas() {
   const groupOps = useGroupOperations({
     groups, nodes, edges, setGroups, setNodes, setEdges, reactFlow, canvasRef: wrappingRef,
   });
+  useEffect(() => {
+    if (!groupOps.selectedGroupId || groupOps.deleteGroupId) return undefined;
+    const handleGroupDeleteKey = (event) => {
+      if (event.key !== 'Delete' && event.key !== 'Backspace') return;
+      const target = event.target;
+      if (target?.closest?.('input, textarea, select, [contenteditable="true"], [role="dialog"]')) return;
+      event.preventDefault();
+      event.stopPropagation();
+      groupOps.requestDeleteGroup(groupOps.selectedGroupId);
+    };
+    window.addEventListener('keydown', handleGroupDeleteKey, true);
+    return () => window.removeEventListener('keydown', handleGroupDeleteKey, true);
+  }, [groupOps.deleteGroupId, groupOps.requestDeleteGroup, groupOps.selectedGroupId]);
   const clearGroupSelection = useCallback(() => {
     groupOps.setSelectedGroupId(null);
     imageSelection.clear();

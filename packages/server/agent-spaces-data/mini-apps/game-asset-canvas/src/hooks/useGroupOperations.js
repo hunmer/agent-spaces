@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { addEdge, MarkerType } from '@xyflow/react';
 import { genId } from '../utils/canvas-id';
 import {
@@ -110,21 +110,6 @@ export default function useGroupOperations({
     setDeleteGroupId(null);
   }, [deleteGroupId, setEdges, setGroups, setNodes]);
 
-  // 分组被选中时接管 Delete；输入框内和确认框打开时不响应。
-  useEffect(() => {
-    if (!selectedGroupId || deleteGroupId) return undefined;
-    const handleKeyDown = (event) => {
-      if (event.key !== 'Delete') return;
-      const target = event.target;
-      if (target?.closest?.('input, textarea, select, [contenteditable="true"], [role="dialog"]')) return;
-      event.preventDefault();
-      event.stopPropagation();
-      requestDeleteGroup(selectedGroupId);
-    };
-    window.addEventListener('keydown', handleKeyDown, true);
-    return () => window.removeEventListener('keydown', handleKeyDown, true);
-  }, [deleteGroupId, requestDeleteGroup, selectedGroupId]);
-
   // 更新分组（重命名/颜色/锁定等，WorkflowGroupOverlay 回调）
   const updateGroup = useCallback((groupId, updates) => {
     setGroups((prev) => prev.map((g) => (g.id === groupId ? { ...g, ...updates } : g)));
@@ -154,8 +139,11 @@ export default function useGroupOperations({
 
   // 拖拽分组时屏幕坐标差 → 画布坐标差（WorkflowGroupOverlay.onMove 需要）
   const screenDeltaToFlowDelta = useCallback((delta) => {
-    const a = reactFlow.screenToFlowPosition({ x: 0, y: 0 });
-    const b = reactFlow.screenToFlowPosition({ x: delta.x, y: delta.y });
+    const a = reactFlow.screenToFlowPosition({ x: 0, y: 0 }, { snapToGrid: false });
+    const b = reactFlow.screenToFlowPosition(
+      { x: delta.x, y: delta.y },
+      { snapToGrid: false },
+    );
     return { x: b.x - a.x, y: b.y - a.y };
   }, [reactFlow]);
 

@@ -36,6 +36,7 @@ export default function MultiSelectToolbar({
   selectionCount, onCreateGroup, onAlignDistribute, onApplyGridLayout, onDeleteSelected,
 }) {
   const [distOpen, setDistOpen] = useState(false);
+  const [alignOpen, setAlignOpen] = useState(false);
   const [rows, setRows] = useState(2);
   const [cols, setCols] = useState(3);
   const [gapX, setGapX] = useState(40);
@@ -57,7 +58,7 @@ export default function MultiSelectToolbar({
   const baseBtn = 'flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium transition';
   const labelBtn = `${baseBtn} border-border bg-background text-foreground hover:border-primary hover:text-primary`;
   const activeBtn = `${baseBtn} border-primary bg-primary/10 text-primary`;
-  const iconBtn = 'flex items-center justify-center rounded-md border border-border bg-background p-1 text-muted-foreground transition hover:border-primary hover:text-primary';
+  const iconBtn = 'flex items-center justify-center rounded-md border border-border bg-background p-1.5 text-muted-foreground transition hover:border-primary hover:text-primary';
   const numberInput = 'w-14 rounded-md border border-border bg-background px-1.5 py-1 text-xs text-foreground outline-none focus:border-primary';
   const presetBtn = 'rounded-md border border-border bg-background px-2 py-1 text-[11px] text-foreground transition hover:border-primary hover:text-primary';
 
@@ -73,20 +74,35 @@ export default function MultiSelectToolbar({
           合并成分组
         </button>
 
-        {/* 对齐：左/右/顶/底 四个图标按钮，直接点击应用 */}
-        <div className="flex items-center gap-0.5">
-          {ALIGN_ITEMS.map(({ mode, label, Icon }) => (
-            <button
-              key={mode}
-              type="button"
-              title={label}
-              onClick={() => onAlignDistribute(mode)}
-              className={iconBtn}
-            >
-              <Icon className="h-3.5 w-3.5" />
-            </button>
-          ))}
-        </div>
+        {/* 对齐：左/右/顶/底 —— Popover 向上弹出 */}
+        <Popover open={alignOpen} onOpenChange={setAlignOpen}>
+          <PopoverTrigger
+            render={
+              <button type="button" className={alignOpen ? activeBtn : labelBtn}>
+                <AlignStartVertical className="h-3.5 w-3.5" />
+                对齐
+                <ChevronDown className="h-3 w-3 opacity-60" />
+              </button>
+            }
+          />
+          <PopoverContent side="top" align="center" className="w-auto p-1.5">
+            <div className="mb-1 text-[10px] text-muted-foreground">对齐方式</div>
+            <div className="grid grid-cols-2 gap-1">
+              {ALIGN_ITEMS.map(({ mode, label, Icon }) => (
+                <button
+                  key={mode}
+                  type="button"
+                  title={label}
+                  onClick={() => { onAlignDistribute(mode); setAlignOpen(false); }}
+                  className="flex items-center gap-1.5 rounded-md border border-border bg-background px-2 py-1.5 text-[11px] text-foreground transition hover:border-primary hover:text-primary"
+                >
+                  <Icon className="h-3.5 w-3.5" />
+                  {label}
+                </button>
+              ))}
+            </div>
+          </PopoverContent>
+        </Popover>
 
         {/* 分布（网格布局）—— Popover 向上弹出 */}
         <Popover

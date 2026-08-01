@@ -126,28 +126,43 @@ export function useGroupOperations({
     markDirty();
   }, [workflow, isReadOnly, pushUndo, setWorkflow, markDirty]);
 
-  const handleUngroup = useCallback((groupId: string) => {
+  const handleUngroup = useCallback((groupId: string, options?: { deleteNodes?: boolean }) => {
     if (!workflow || isReadOnly) return;
     const group = workflow.groups?.find(item => item.id === groupId);
     if (!group) return;
 
-    pushUndo('ungroup');
+    const deletedNodeIds = options?.deleteNodes
+      ? collectWorkflowGroupNodeIds(workflow.groups || [], groupId)
+      : new Set<string>();
+    for (const descendantId of collectCompositeDescendantIds(workflow.nodes, deletedNodeIds)) {
+      deletedNodeIds.add(descendantId);
+    }
+
+    pushUndo(options?.deleteNodes ? 'delete group' : 'ungroup');
     setWorkflow(w => {
       if (!w) return null;
       const groups = w.groups || [];
       const parentGroup = groups.find(item => item.childGroupIds.includes(groupId));
+      const cleanedGroups = deletedNodeIds.size > 0
+        ? cleanupGroupsOnNodeDelete(groups, deletedNodeIds) || []
+        : groups;
       return {
         ...w,
-        groups: groups
+        nodes: deletedNodeIds.size > 0
+          ? w.nodes.filter(node => !deletedNodeIds.has(node.id))
+          : w.nodes,
+        edges: deletedNodeIds.size > 0
+          ? w.edges.filter(edge => !deletedNodeIds.has(edge.source) && !deletedNodeIds.has(edge.target))
+          : w.edges,
+        groups: cleanedGroups
           .filter(item => item.id !== groupId)
           .map((item) => {
             if (!parentGroup || item.id !== parentGroup.id) return item;
             return {
               ...item,
-              childNodeIds: [
-                ...item.childNodeIds,
-                ...group.childNodeIds.filter(id => !item.childNodeIds.includes(id)),
-              ],
+              childNodeIds: deletedNodeIds.size > 0
+                ? item.childNodeIds
+                : [...item.childNodeIds, ...group.childNodeIds.filter(id => !item.childNodeIds.includes(id))],
               childGroupIds: [
                 ...item.childGroupIds.filter(id => id !== groupId),
                 ...group.childGroupIds.filter(id => !item.childGroupIds.includes(id)),
@@ -156,8 +171,12 @@ export function useGroupOperations({
           }),
       };
     });
+    if (deletedNodeIds.size > 0) {
+      setSelectedNodeId(current => current && deletedNodeIds.has(current) ? null : current);
+      setSelectedNodeIds(current => current.filter(id => !deletedNodeIds.has(id)));
+    }
     markDirty();
-  }, [workflow, isReadOnly, pushUndo, setWorkflow, markDirty]);
+  }, [workflow, isReadOnly, pushUndo, setWorkflow, setSelectedNodeId, setSelectedNodeIds, markDirty]);
 
   const handleBatchUngroup = useCallback((groupIds: string[]) => {
     if (!workflow || isReadOnly) return;

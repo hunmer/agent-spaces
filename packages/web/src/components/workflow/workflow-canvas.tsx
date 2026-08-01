@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import {
   ReactFlow,
   Background,
@@ -48,13 +49,28 @@ import {
 } from './workflow-handle-types';
 import type { HandlePositionMode } from './workflow-node-types';
 import { getWorkflowNodeVisualBounds, isScopeBoundaryWorkflowNode, resolveNodeCollisions, WORKFLOW_COLLISION_OPTIONS } from './workflow-canvas-utils';
-import type { WorkflowNodeSizeOverrides } from './workflow-canvas-groups';
+import {
+  collectWorkflowGroupIds,
+  collectWorkflowGroupNodeIds,
+  type WorkflowNodeSizeOverrides,
+} from './workflow-canvas-groups';
 import { useTheme } from '@/components/layout/theme-provider';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { Checkbox } from '@/components/ui/checkbox';
 import { WorkflowSelectionConnectionLine } from './workflow-selection-connection-line';
 import { DragPreviewOverlay, RectangleOverlayRect } from './workflow-canvas-overlays';
 import { LassoSelectionTool, RectangleDrawTool } from './workflow-canvas-selection-tools';
 import { WorkflowSelectionMenu } from './workflow-canvas-selection-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import {
   GROUP_DRAG_PREVIEW_BACKGROUND,
   LOOP_BODY_DRAG_PREVIEW_BACKGROUND,
@@ -264,7 +280,7 @@ interface WorkflowCanvasProps {
   onMergeNodesToGroup?: (ids: string[], options?: { nodeSizes?: WorkflowNodeSizeOverrides }) => void;
   onBatchDeleteNodes?: (ids: string[]) => void;
   onGroupUpdate?: (groupId: string, updates: Partial<NonNullable<Workflow['groups']>[number]>) => void;
-  onGroupDelete?: (groupId: string) => void;
+  onGroupDelete?: (groupId: string, options?: { deleteNodes?: boolean }) => void;
   onGroupMove?: (groupId: string, delta: { x: number; y: number }, options?: { pushUndo?: boolean }) => void;
   debugNodeId?: string | null;
   debugStatus?: 'idle' | 'running' | 'completed' | 'error';
@@ -332,6 +348,7 @@ export function WorkflowCanvas({
   onNodeDragStateChange,
   onFieldKeyRename,
 }: WorkflowCanvasProps) {
+  const t = useTranslations('workflows');
   const { resolvedTheme } = useTheme();
   const isMobile = useIsMobile();
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
@@ -342,6 +359,8 @@ export function WorkflowCanvas({
   const pendingRangeSelectionRef = useRef<string[] | null>(null);
   const [selectionMenu, setSelectionMenu] = useState<{ x: number; y: number; nodeIds: string[] } | null>(null);
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
+  const [pendingDeleteGroupId, setPendingDeleteGroupId] = useState<string | null>(null);
+  const [deleteGroupNodes, setDeleteGroupNodes] = useState(false);
   const [dragPreview, setDragPreview] = useState<DragPreview | null>(null);
   const [resizePreviewRect, setResizePreviewRect] = useState<LocalRect | null>(null);
   const [dropTargetEdgeId, setDropTargetEdgeId] = useState<string | null>(null);
@@ -623,17 +642,47 @@ export function WorkflowCanvas({
     layoutEngine,
   });
 
+  const [collapsedGroupIds, setCollapsedGroupIds] = useState<Set<string>>(() => new Set());
+  const collapsedContent = useMemo(() => {
+    const groups = workflow.groups || [];
+    const nodeIds = new Set<string>();
+    const groupIds = new Set<string>();
+    for (const groupId of collapsedGroupIds) {
+      for (const nodeId of collectWorkflowGroupNodeIds(groups, groupId)) nodeIds.add(nodeId);
+      for (const nestedGroupId of collectWorkflowGroupIds(groups, groupId)) {
+        if (nestedGroupId !== groupId) groupIds.add(nestedGroupId);
+      }
+    }
+    return { nodeIds, groupIds };
+  }, [collapsedGroupIds, workflow.groups]);
+  const handleGroupCollapsedChange = useCallback((groupId: string, collapsed: boolean) => {
+    setCollapsedGroupIds((current) => {
+      const next = new Set(current);
+      if (collapsed) next.add(groupId);
+      else next.delete(groupId);
+      return next;
+    });
+  }, []);
+
   const displayedEdges = useMemo(() => rfEdges.map(edge => (
-    edge.id === dropTargetEdgeId
-      ? { ...edge, data: { ...(edge.data as Record<string, unknown>), isNodeDropTarget: true } }
-      : edge
-  )), [dropTargetEdgeId, rfEdges]);
+    {
+      ...edge,
+      hidden: edge.hidden || collapsedContent.nodeIds.has(edge.source) || collapsedContent.nodeIds.has(edge.target),
+      ...(edge.id === dropTargetEdgeId
+        ? { data: { ...(edge.data as Record<string, unknown>), isNodeDropTarget: true } }
+        : {}),
+    }
+  )), [collapsedContent.nodeIds, dropTargetEdgeId, rfEdges]);
   const visibleNodeIds = useMemo(
     () => isPreview ? new Set(rfNodes.map(node => node.id)) : null,
     [isPreview, rfNodes],
   );
 
   const [canvasNodes, setCanvasNodes] = useState<Node[]>(rfNodes);
+  const displayedNodes = useMemo(() => canvasNodes.map(node => ({
+    ...node,
+    hidden: node.hidden || collapsedContent.nodeIds.has(node.id),
+  })), [canvasNodes, collapsedContent.nodeIds]);
   const isNodeDraggingRef = useRef(false);
   const canvasNodesRef = useRef<Node[]>(rfNodes);
   const draggedNodeIdsRef = useRef<Set<string>>(new Set());
@@ -928,18 +977,46 @@ export function WorkflowCanvas({
 
   const handleNodeClick = useCallback((event: React.MouseEvent, node: Node) => {
     const multi = event.shiftKey || event.metaKey || event.ctrlKey;
+    setSelectedGroupId(null);
     selectEdge(null);
     onNodeSelect(node.id, multi);
   }, [onNodeSelect, selectEdge]);
 
   const handlePaneClick = useCallback(() => {
+    setSelectedGroupId(null);
     selectEdge(null);
     onNodeSelect(null);
   }, [onNodeSelect, selectEdge]);
 
   const handleEdgeClick = useCallback((_: React.MouseEvent, edge: Edge) => {
+    setSelectedGroupId(null);
     selectEdge(edge.id);
   }, [selectEdge]);
+
+  const handleGroupSelect = useCallback((groupId: string) => {
+    selectEdge(null);
+    onNodeSelect(null);
+    setSelectedGroupId(groupId);
+  }, [onNodeSelect, selectEdge]);
+
+  const requestGroupDelete = useCallback((groupId: string) => {
+    setDeleteGroupNodes(false);
+    setPendingDeleteGroupId(groupId);
+  }, []);
+
+  const confirmGroupDelete = useCallback(() => {
+    if (!pendingDeleteGroupId) return;
+    onGroupDelete?.(pendingDeleteGroupId, { deleteNodes: deleteGroupNodes });
+    setSelectedGroupId(current => current === pendingDeleteGroupId ? null : current);
+    setCollapsedGroupIds((current) => {
+      if (!current.has(pendingDeleteGroupId)) return current;
+      const next = new Set(current);
+      next.delete(pendingDeleteGroupId);
+      return next;
+    });
+    setPendingDeleteGroupId(null);
+    setDeleteGroupNodes(false);
+  }, [deleteGroupNodes, onGroupDelete, pendingDeleteGroupId]);
 
   const getDropTargetEdgeId = useCallback((nodeId: string) => {
     const nodeDiv = Array.from(
@@ -1045,6 +1122,13 @@ export function WorkflowCanvas({
       if (event.key !== 'Delete' && event.key !== 'Backspace') return;
       if (isEditableKeyboardTarget(event.target)) return;
 
+      if (selectedGroupId) {
+        event.preventDefault();
+        event.stopPropagation();
+        requestGroupDelete(selectedGroupId);
+        return;
+      }
+
       if (selectedEdgeId) {
         event.preventDefault();
         event.stopPropagation();
@@ -1063,7 +1147,7 @@ export function WorkflowCanvas({
 
     window.addEventListener('keydown', handleCanvasDeleteKey, true);
     return () => window.removeEventListener('keydown', handleCanvasDeleteKey, true);
-  }, [isCanvasLocked, onBatchDeleteNodes, onEdgesChange, onNodeDelete, selectEdge, selectedEdgeId, selectedNodeIds]);
+  }, [isCanvasLocked, onBatchDeleteNodes, onEdgesChange, onNodeDelete, requestGroupDelete, selectEdge, selectedEdgeId, selectedGroupId, selectedNodeIds]);
 
   const handleSelectionStart = useCallback(() => {
     isRangeSelectingRef.current = true;
@@ -1349,7 +1433,7 @@ export function WorkflowCanvas({
         className={`h-full w-full ${isMobile ? 'touch-flow' : ''}`}
         colorMode={canvasThemeColorMode}
         style={canvasThemeStyle}
-        nodes={canvasNodes}
+        nodes={displayedNodes}
         edges={displayedEdges}
         onNodesChange={handleNodesChange}
         onEdgesChange={handleEdgesChangeWithLock}
@@ -1386,15 +1470,17 @@ export function WorkflowCanvas({
         defaultEdgeOptions={{ type: 'custom' }}
       >
         <ViewportPortal>
-          {groupOverlayItems.map(({ group, childNodes }) => (
+          {groupOverlayItems.filter(({ group }) => !collapsedContent.groupIds.has(group.id)).map(({ group, childNodes }) => (
             <WorkflowGroupOverlay
               key={group.id}
               group={group}
               childNodes={childNodes}
+              collapsed={collapsedGroupIds.has(group.id)}
               isSelected={selectedGroupId === group.id}
               isDropTarget={dropTargetGroupId === group.id}
-              onSelect={setSelectedGroupId}
-              onDelete={(groupId) => onGroupDelete?.(groupId)}
+              onCollapsedChange={handleGroupCollapsedChange}
+              onSelect={handleGroupSelect}
+              onDelete={requestGroupDelete}
               onUpdate={(groupId, updates) => onGroupUpdate?.(groupId, updates)}
               onMove={(groupId, delta, options) => onGroupMove?.(groupId, delta, options)}
               onAutoLayout={isCanvasLocked ? undefined : onAutoLayout}
@@ -1436,6 +1522,39 @@ export function WorkflowCanvas({
           onClose={closeSelectionMenu}
         />
       )}
+      <AlertDialog
+        open={pendingDeleteGroupId !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setPendingDeleteGroupId(null);
+            setDeleteGroupNodes(false);
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('editor.nodeList.deleteTitle')}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t('editor.nodeList.ungroupConfirm', {
+                group: workflow.groups?.find(group => group.id === pendingDeleteGroupId)?.name || t('editor.nodeList.group'),
+              })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <label className="flex cursor-pointer items-center gap-2 text-sm text-foreground">
+            <Checkbox
+              checked={deleteGroupNodes}
+              onCheckedChange={(checked) => setDeleteGroupNodes(checked === true)}
+            />
+            <span>{t('editor.nodeList.deleteGroupNodes')}</span>
+          </label>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t('editor.nodeList.cancel')}</AlertDialogCancel>
+            <AlertDialogAction variant="destructive" onClick={confirmGroupDelete}>
+              {t('editor.nodeList.confirmDelete')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <CanvasToolbar
         workflow={workflow}
         isPreview={isPreview}
