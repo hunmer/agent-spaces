@@ -1,68 +1,20 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
-  Button, Input, NumberInput, Label, ScrollArea, Loader, ColorPicker, Switch,
-  Tooltip, TooltipTrigger, TooltipContent,
+  Button, Loader,
   ResizablePanelGroup, ResizablePanel, ResizableHandle,
 } from '@agent-spaces/ui';
-import { Undo2, Redo2, Pipette, SquarePen, MousePointer2, Trash2, Eraser, Scissors, LayoutGrid } from '@agent-spaces/ui';
-import GridAnimationPreview from './GridAnimationPreview';
 import { getFabric } from '../utils/image-ops/cdn';
 import {
   loadImageSource, detect, exportBox, sampleColor, cornerColor, toHex,
 } from '../utils/image-ops/sprite-splitter';
-
-// hex(#rrggbb / #rgb) → [r,g,b]
-const hexToRgb = (hex) => {
-  let h = String(hex || '').replace('#', '').trim();
-  if (h.length === 3) h = h.split('').map((c) => c + c).join('');
-  const n = parseInt(h, 16);
-  if (Number.isNaN(n)) return [0, 0, 0];
-  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
-};
-
-// 背景色预设（ColorPicker 色板）
-const BG_PRESETS = ['#ffffff', '#000000', '#f5f5f5', '#1a1a1a', '#00b140', '#ff00ff'];
-
-const normalizeGridCount = (value, fallback = 2) => Math.max(1, Math.min(20, Math.round(value) || fallback));
-const gridSplitThrottleMs = (cols, rows) => Math.min(1000, 80 + normalizeGridCount(cols) * normalizeGridCount(rows) * 2);
-const evenlySpacedGuides = (size, count) => {
-  const guides = [];
-  for (let i = 1; i < count; i++) guides.push(Math.round((size * i) / count));
-  return guides;
-};
-const normalizeGuideAxis = (values, size, expectedCount) => {
-  if (!Array.isArray(values)) return null;
-  const guides = [...new Set(values
-    .filter(Number.isFinite)
-    .map((value) => Math.max(1, Math.min(size - 1, Math.round(value)))))]
-    .sort((a, b) => a - b);
-  return guides.length === expectedCount ? guides : null;
-};
-const resolveGridGuides = (saved, width, height, fallbackCols = 2, fallbackRows = 2) => {
-  const cols = normalizeGridCount(saved?.cols, fallbackCols);
-  const rows = normalizeGridCount(saved?.rows, fallbackRows);
-  return {
-    cols,
-    rows,
-    v: normalizeGuideAxis(saved?.v, width, cols - 1) || evenlySpacedGuides(width, cols),
-    h: normalizeGuideAxis(saved?.h, height, rows - 1) || evenlySpacedGuides(height, rows),
-  };
-};
-const gridBoxesFromGuides = (width, height, vertical, horizontal) => {
-  const vx = [0, ...(vertical || []).filter((x) => x > 0 && x < width), width].sort((a, b) => a - b);
-  const hy = [0, ...(horizontal || []).filter((y) => y > 0 && y < height), height].sort((a, b) => a - b);
-  const boxes = [];
-  for (let i = 0; i < vx.length - 1; i++) {
-    const boxWidth = vx[i + 1] - vx[i];
-    if (boxWidth < 2) continue;
-    for (let j = 0; j < hy.length - 1; j++) {
-      const boxHeight = hy[j + 1] - hy[j];
-      if (boxHeight >= 2) boxes.push({ x: vx[i], y: hy[j], width: boxWidth, height: boxHeight });
-    }
-  }
-  return boxes;
-};
+import {
+  hexToRgb, normalizeGridCount, gridSplitThrottleMs, evenlySpacedGuides,
+  resolveGridGuides, gridBoxesFromGuides, inputSignature,
+} from '../utils/ui-splitter-helpers';
+import InputImageList from './ui-splitter/InputImageList';
+import SplitterToolbar from './ui-splitter/SplitterToolbar';
+import SplitResultPanel from './ui-splitter/SplitResultPanel';
 
 /**
  * UI 拆分对话框：用 fabric.js 在画布上框选区域 + 自动检测连通域，
@@ -265,11 +217,10 @@ export default function UiSplitterDialog({
   const [previews, setPreviews] = useState([]); // [{ name, url }]
 
   // ===== 节点对话框数据持久化：统一写回函数 =====
-  // 输入签名 = inputImages 用 '|' 拼接，用于判定恢复时输入是否一致。
+  // 输入签名（inputSignature，来自 ui-splitter-helpers）= inputImages 用 '|' 拼接，用于判定恢复时输入是否一致。
   // 写回内容：每图 rects/pickedColor/exportEnabled + 检测参数 + 网格模式 + inputSignature。
   // 所有增删改入口（AI 检测/手工绘制/表单修改/删除/撤销重做/切换图）都汇总到 renderList → syncSplitData，
   // 避免某条路径漏写（持久化规范「所有增删改入口必须汇总到统一同步函数」）。
-  const inputSignature = (urls) => (urls || []).filter(Boolean).join('|');
   const syncSplitData = useCallback(() => {
     const urls = thumbUrlsRef.current;
     if (!urls?.length) return;
@@ -441,6 +392,8 @@ export default function UiSplitterDialog({
 
   // 对所有图批量检测（非激活图只写数据不渲染；最后统一 renderList 刷新计数/预览）
   const detectAll = useCallback(() => {
+    // 「不检测」模式：跳过自动连通域检测，不清空画布、不改动现有切片框，保留用户手动框。
+    if (methodRef.current === 'none') return 0;
     let total = 0;
     const active = activeUrlRef.current;
     for (const url of thumbUrls) {
@@ -721,6 +674,9 @@ export default function UiSplitterDialog({
               // 恢复持久化切片框（深拷贝防御后续运行时修改污染）
               s0.rects = savedRects.map((b) => ({ ...b }));
               total0 += s0.rects.length;
+            } else if (opts0.method === 'none') {
+              // 「不检测」模式且无持久化切片：留空，等用户手动框，不跑 detect()
+              s0.rects = [];
             } else {
               const o0 = { ...opts0 };
               if (o0.method === 'picked') o0.backgroundColor = s0.pickedColor;
@@ -1563,224 +1519,44 @@ export default function UiSplitterDialog({
         </DialogHeader>
 
         {/* 输入图片横向列表（左上角 badge 显示该图切片数） */}
-        {thumbUrls.length > 0 && (
-          <div className="flex items-center gap-2 overflow-x-auto border-b border-border bg-muted/20 px-3 py-2">
-            {thumbUrls.map((url, i) => {
-              const active = url === activeUrl;
-              const n = sliceCounts[url] || 0;
-              const enabled = exportEnabled[url] !== false;
-              return (
-                <button
-                  key={url + i}
-                  type="button"
-                  onClick={() => switchTo(url)}
-                  className={`group relative flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-md border-2 bg-background transition ${
-                    active ? 'border-primary ring-2 ring-primary/30' : 'border-border hover:border-primary/50'
-                  } ${enabled ? '' : 'opacity-50 grayscale'}`}
-                  title={`图 ${i + 1}${n ? ` · ${n} 个切片` : ''}${enabled ? '' : '（已禁用导出）'}`}
-                >
-                  <img src={url} alt={`图${i + 1}`} draggable={false}
-                    className="pointer-events-none max-h-full max-w-full object-contain" />
-                  {/* 左上角：切片数 badge（有切片时高亮；禁用导出时变灰） */}
-                  <span className={`absolute left-0 top-0 flex h-4 min-w-4 items-center justify-center rounded-br-md px-1 text-[9px] font-semibold leading-none ${
-                    !enabled
-                      ? 'bg-muted-foreground/40 text-background'
-                      : n > 0 ? 'bg-primary text-primary-foreground' : 'bg-background/80 text-muted-foreground'
-                  }`}>
-                    {n || ''}
-                  </span>
-                  {/* 右下角：序号 */}
-                  <span className="absolute bottom-0 right-0 bg-background/80 px-1 text-[9px] leading-tight text-muted-foreground">
-                    {i + 1}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        )}
+        <InputImageList
+          thumbUrls={thumbUrls}
+          activeUrl={activeUrl}
+          sliceCounts={sliceCounts}
+          exportEnabled={exportEnabled}
+          onSwitchTo={switchTo}
+        />
 
         {/* 工具条（单行 flex，宽度不够自动换行） */}
-        <div className="flex flex-wrap items-end gap-2 border-b border-border bg-muted/30 px-4 py-2">
-          {gridOnly ? (
-            <>
-              <Field label="列数">
-                <NumberInput min={1} max={20} value={gridCols}
-                  onChange={(v) => applyGridSize(v ?? 1, gridRows)} className="h-8 w-20" />
-              </Field>
-              <Field label="行数">
-                <NumberInput min={1} max={20} value={gridRows}
-                  onChange={(v) => applyGridSize(gridCols, v ?? 1)} className="h-8 w-20" />
-              </Field>
-              <Field label="抠图方式">
-                <select
-                  value={method}
-                  onChange={(e) => setMethod(e.target.value)}
-                  className="h-8 w-full rounded-md border border-border bg-background px-2 text-xs outline-none focus:border-primary"
-                >
-                  <option value="none">不处理</option>
-                  <option value="corner">四角背景色</option>
-                  <option value="picked">吸取背景色</option>
-                  <option value="alpha">Alpha 非透明</option>
-                  <option value="brightness">暗色前景</option>
-                </select>
-              </Field>
-              {method === 'picked' && (
-                <>
-                  <Field label="背景色">
-                    <div className="flex h-8 items-center rounded-md border border-border bg-background px-2">
-                      <ColorPicker colors={BG_PRESETS} value={pickedHex} onChange={handlePickColor} />
-                    </div>
-                  </Field>
-                  <div className="flex items-end gap-1.5">
-                    <Tooltip>
-                      <TooltipTrigger render={
-                        <Button size="icon" variant={pickingRef.current ? 'default' : 'outline'}
-                          className={`h-8 w-8 ${pickingRef.current ? 'ring-2 ring-primary/40' : ''}`}
-                          disabled={cropMode}
-                          onClick={togglePicking} />
-                      }>
-                        <Pipette className="h-4 w-4" />
-                      </TooltipTrigger>
-                      <TooltipContent side="bottom">💧 吸取背景色</TooltipContent>
-                    </Tooltip>
-                  </div>
-                </>
-              )}
-              <span className="pb-2 text-[11px] text-muted-foreground">实时切片 {count}</span>
-            </>
-          ) : null}
-          {!gridOnly && !gridMode && (
-            <>
-              <Field label="检测方法">
-                <select
-                  value={method}
-                  onChange={(e) => setMethod(e.target.value)}
-                  className="h-8 w-full rounded-md border border-border bg-background px-2 text-xs outline-none focus:border-primary"
-                >
-                  <option value="corner">四角背景色</option>
-                  <option value="picked">吸取背景色</option>
-                  <option value="alpha">Alpha 非透明</option>
-                  <option value="brightness">暗色前景</option>
-                </select>
-              </Field>
-              <Field label={`容差 ${tolerance}`}>
-                <NumberInput min={0} max={765} value={tolerance}
-                  onChange={(v) => setTolerance(v ?? 0)}
-                  className="h-8 w-24" />
-              </Field>
-              <Field label={`最小面积 ${minArea}`}>
-                <NumberInput min={1} value={minArea}
-                  onChange={(v) => setMinArea(v ?? 1)}
-                  className="h-8 w-28" />
-              </Field>
-              <Field label={`边距 ${padding}`}>
-                <NumberInput min={0} value={padding}
-                  onChange={(v) => setPadding(v ?? 0)}
-                  className="h-8 w-24" />
-              </Field>
-              <Field label="背景色">
-                <div className="flex h-8 items-center rounded-md border border-border bg-background px-2">
-                  <ColorPicker colors={BG_PRESETS} value={pickedHex} onChange={handlePickColor} />
-                </div>
-              </Field>
-              <div className="flex items-end gap-1.5">
-                <Tooltip>
-                  <TooltipTrigger render={
-                    <Button size="icon" variant={drawMode ? 'default' : 'outline'}
-                      className={`h-8 w-8 ${drawMode ? 'ring-2 ring-primary/40' : ''}`}
-                      disabled={cropMode}
-                      onClick={toggleDrawMode} />
-                  }>
-                    {drawMode ? <SquarePen className="h-4 w-4" /> : <MousePointer2 className="h-4 w-4" />}
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom">{drawMode ? '框选模式：左键拉框新建切片（当前）' : '选择模式：左键点选/移动切片框（当前）'}（Alt 强制拉框）</TooltipContent>
-                </Tooltip>
-                <Tooltip>
-                  <TooltipTrigger render={
-                    <Button size="icon" variant={pickingRef.current ? 'default' : 'outline'}
-                      className={`h-8 w-8 ${pickingRef.current ? 'ring-2 ring-primary/40' : ''}`}
-                      disabled={cropMode}
-                      onClick={togglePicking} />
-                  }>
-                    <Pipette className="h-4 w-4" />
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom">💧 吸取背景色</TooltipContent>
-                </Tooltip>
-                <Tooltip>
-                  <TooltipTrigger render={
-                    <Button size="icon" variant="outline" className="h-8 w-8" disabled={canUndo === false} onClick={undo} />
-                  }>
-                    <Undo2 className="h-4 w-4" />
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom">撤销 (Ctrl+Z)</TooltipContent>
-                </Tooltip>
-                <Tooltip>
-                  <TooltipTrigger render={
-                    <Button size="icon" variant="outline" className="h-8 w-8" disabled={canRedo === false} onClick={redo} />
-                  }>
-                    <Redo2 className="h-4 w-4" />
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom">重做 (Ctrl+Y)</TooltipContent>
-                </Tooltip>
-              </div>
-            </>
-          )}
-          {!gridOnly && gridMode && (
-            <>
-              <Field label="列数">
-                <NumberInput min={1} max={20} value={gridCols}
-                  onChange={(v) => applyGridSize(v ?? 1, gridRows)} className="h-8 w-20" />
-              </Field>
-              <Field label="行数">
-                <NumberInput min={1} max={20} value={gridRows}
-                  onChange={(v) => applyGridSize(gridCols, v ?? 1)} className="h-8 w-20" />
-              </Field>
-              <span className="pb-2 text-[11px] text-muted-foreground">实时切片 {count}</span>
-            </>
-          )}
-          {/* 裁切 / 网格 模式组（与绘制模式互斥） */}
-          {gridOnly ? (
-            // grid-only：只显示裁切按钮（始终可用），不显示网格切换（禁止退出网格）
-            <div className="flex items-end gap-1.5 border-l border-border pl-2">
-              <Tooltip>
-                <TooltipTrigger render={
-                  <Button size="icon" variant={cropMode ? 'default' : 'outline'}
-                    className={`h-8 w-8 ${cropMode ? 'ring-2 ring-primary/40' : ''}`}
-                    onClick={toggleCropMode} />
-                }>
-                  <Scissors className="h-4 w-4" />
-                </TooltipTrigger>
-                <TooltipContent side="bottom">裁切：拉框选范围，替换原图</TooltipContent>
-              </Tooltip>
-            </div>
-          ) : (
-          <div className={`flex items-end gap-1.5 ${gridMode ? '' : 'border-l border-border pl-2'}`}>
-            {!gridMode && (
-              <Tooltip>
-                <TooltipTrigger render={
-                  <Button size="icon" variant={cropMode ? 'default' : 'outline'}
-                    className={`h-8 w-8 ${cropMode ? 'ring-2 ring-primary/40' : ''}`}
-                    onClick={toggleCropMode} />
-                }>
-                  <Scissors className="h-4 w-4" />
-                </TooltipTrigger>
-                <TooltipContent side="bottom">裁切：拉框选范围，替换原图</TooltipContent>
-              </Tooltip>
-            )}
-            <Tooltip>
-              <TooltipTrigger render={
-                <Button size="icon" variant={gridMode ? 'default' : 'outline'}
-                  className={`h-8 w-8 ${gridMode ? 'ring-2 ring-primary/40' : ''}`}
-                  disabled={cropMode}
-                  onClick={toggleGridMode} />
-              }>
-                <LayoutGrid className="h-4 w-4" />
-              </TooltipTrigger>
-              <TooltipContent side="bottom">{gridMode ? '退出网格模式' : '进入网格模式'}</TooltipContent>
-            </Tooltip>
-          </div>
-          )}
-        </div>
+        <SplitterToolbar
+          gridOnly={gridOnly}
+          gridMode={gridMode}
+          cropMode={cropMode}
+          drawMode={drawMode}
+          gridCols={gridCols}
+          gridRows={gridRows}
+          method={method}
+          tolerance={tolerance}
+          minArea={minArea}
+          padding={padding}
+          pickedHex={pickedHex}
+          count={count}
+          pickingRef={pickingRef}
+          onApplyGridSize={applyGridSize}
+          onSetMethod={setMethod}
+          onSetTolerance={setTolerance}
+          onSetMinArea={setMinArea}
+          onSetPadding={setPadding}
+          onHandlePickColor={handlePickColor}
+          onTogglePicking={togglePicking}
+          onToggleDrawMode={toggleDrawMode}
+          onUndo={undo}
+          onRedo={redo}
+          canUndo={canUndo}
+          canRedo={canRedo}
+          onToggleCropMode={toggleCropMode}
+          onToggleGridMode={toggleGridMode}
+        />
 
         {error && (
           <p className="border-b border-red-500/30 bg-red-500/10 px-4 py-2 text-xs text-red-500">{error}</p>
@@ -1845,92 +1621,27 @@ export default function UiSplitterDialog({
 
           {/* 右：普通模式切片预览 / grid-only 模式动画预览。 */}
           <ResizablePanel id="split-result" order={2} minSize="20%" maxSize="55%" defaultSize="28%">
-            <aside className="flex h-full min-h-0 flex-col border-l border-border">
-              {gridOnly ? (
-                <>
-                  <div className="min-h-0 flex-1">
-                    <GridAnimationPreview
-                      previews={previews}
-                      cols={gridCols}
-                      rows={gridRows}
-                      activeImgIdx={thumbUrls.length > 1 && activeUrl ? thumbUrls.indexOf(activeUrl) : undefined}
-                      onSaveSheets={(urls) => { onSaveRef.current?.(urls); onClose?.(); }}
-                    />
-                  </div>
-                </>
-              ) : (
-              <>
-                  <div className="flex items-center justify-between border-b border-border px-3 py-2">
-                    <span className="text-xs font-medium">
-                      {gridMode ? '网格实时切片' : '切片'} {count}
-                      {thumbUrls.length > 1 && activeUrl ? `（图 ${thumbUrls.indexOf(activeUrl) + 1}）` : ''}
-                    </span>
-                    {!gridMode && <div className="flex items-center gap-1">
-                      <Tooltip>
-                        <TooltipTrigger render={
-                          <Button size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                            onClick={clearAllRects} disabled={loading || count === 0} title="清空当前图所有切片" />
-                        }>
-                          <Eraser className="h-3.5 w-3.5" />
-                        </TooltipTrigger>
-                        <TooltipContent side="bottom">清空当前图切片</TooltipContent>
-                      </Tooltip>
-                      <Button size="sm" variant="ghost" className="h-7 text-[11px]" onClick={renderList} disabled={loading}>
-                        刷新预览
-                      </Button>
-                    </div>}
-                  </div>
-                  <ScrollArea className="min-h-0 flex-1">
-                    <div className="grid grid-cols-1 gap-2 p-3 sm:grid-cols-2 lg:grid-cols-1">
-                      {previews.length === 0 && (
-                        <p className="px-2 py-8 text-center text-xs text-muted-foreground">
-                          {loading ? '加载中…' : gridMode ? '正在计算网格切片…' : '无切片。表单变化自动检测或拉框新建'}
-                        </p>
-                      )}
-                      {previews.map((it, i) => (
-                        <div key={i} className="group relative overflow-hidden rounded-md border border-border bg-background">
-                          <div className="flex min-h-[120px] items-center justify-center bg-[conic-gradient(#e2e8f0_25%,transparent_0_50%,#e2e8f0_0_75%,transparent_0)] [background-size:16px_16px] p-2">
-                            <img src={it.url} alt={it.name} className="max-h-[110px] max-w-full object-contain" />
-                          </div>
-                          {/* 单项删除图标（hover 显示） */}
-                          <button
-                            type="button"
-                            onClick={() => deleteRectAt(i)}
-                            title="删除该切片"
-                            className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-md bg-background/80 text-muted-foreground opacity-0 shadow-sm transition hover:bg-destructive hover:text-destructive-foreground group-hover:opacity-100"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </button>
-                          <div className="flex items-center justify-between gap-1 px-2 py-1.5 text-[11px]">
-                            <span className="truncate text-muted-foreground" title={it.name}>{it.name}</span>
-                            <a href={it.url} download={it.name}
-                              className="shrink-0 font-medium text-primary hover:underline">下载</a>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </ScrollArea>
-                  {/* 底部：当前图导出开关 + 保存全部按钮 */}
-                  <div className="flex flex-col gap-2 border-t border-border bg-muted/20 p-3">
-                    {activeUrl && (
-                      <label className="flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
-                        <span>导出当前图（图 {thumbUrls.indexOf(activeUrl) + 1}）</span>
-                        <Switch
-                          checked={exportEnabled[activeUrl] !== false}
-                          onCheckedChange={(on) => toggleExport(activeUrl, on)}
-                        />
-                      </label>
-                    )}
-                    <Button size="sm" className="h-9 w-full" onClick={handleSave}
-                      disabled={saving || totalCount === 0}>
-                      {saving
-                        ? `保存中 ${savedCount}/${totalCount}`
-                        : `💾 保存全部 ${totalCount} 张切片${thumbUrls.length > 1 ? `（${thumbUrls.length} 张图）` : ''}`}
-                    </Button>
-                  </div>
-              </>
-              )}
-            </aside>
+            <SplitResultPanel
+              gridOnly={gridOnly}
+              gridMode={gridMode}
+              loading={loading}
+              count={count}
+              previews={previews}
+              gridCols={gridCols}
+              gridRows={gridRows}
+              thumbUrls={thumbUrls}
+              activeUrl={activeUrl}
+              exportEnabled={exportEnabled}
+              totalCount={totalCount}
+              saving={saving}
+              savedCount={savedCount}
+              onSaveSheets={(urls) => { onSaveRef.current?.(urls); onClose?.(); }}
+              onDeleteRectAt={deleteRectAt}
+              onClearAll={clearAllRects}
+              onRenderList={renderList}
+              onToggleExport={toggleExport}
+              onSave={handleSave}
+            />
           </ResizablePanel>
         </ResizablePanelGroup>
 
@@ -1947,14 +1658,5 @@ export default function UiSplitterDialog({
         </div>
       </DialogContent>
     </Dialog>
-  );
-}
-
-function Field({ label, children }) {
-  return (
-    <Label className="flex flex-col gap-1">
-      <span className="text-[11px] font-medium text-muted-foreground">{label}</span>
-      {children}
-    </Label>
   );
 }

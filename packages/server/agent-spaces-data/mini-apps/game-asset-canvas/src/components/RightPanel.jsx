@@ -86,8 +86,8 @@ const NODE_CATEGORIES = [
 
 const ADD_ITEMS = [
   // 生成
-  { type: NODE_TYPES.textToImage, label: '文字生成图片', category: 'generate' },
-  { type: NODE_TYPES.editImage, label: '编辑图片', category: 'generate' },
+  { type: NODE_TYPES.textToImage, label: '文生图', category: 'generate' },
+  { type: NODE_TYPES.editImage, label: '图生图', category: 'generate' },
   // 工具
   { type: NODE_TYPES.text, label: '文字', category: 'util' },
   { type: NODE_TYPES.imageDisplay, label: '图片展示', category: 'util' },
@@ -104,7 +104,7 @@ const ADD_ITEMS = [
   { type: NODE_TYPES.ipCompress, label: '图片压缩', category: 'image-process' },
   { type: NODE_TYPES.depthExtract, label: '提取深度图', category: 'image-process' },
   // 编辑
-  { type: NODE_TYPES.imageEditor, label: '图片编辑', category: 'edit' },
+  { type: NODE_TYPES.imageEditor, label: '图片编辑器', category: 'edit' },
   { type: NODE_TYPES.pixelEditor, label: '像素编辑器', category: 'edit' },
   { type: NODE_TYPES.cutout, label: '抠图', category: 'edit' },
   { type: NODE_TYPES.promptReverse, label: '反推提示词', category: 'edit' },

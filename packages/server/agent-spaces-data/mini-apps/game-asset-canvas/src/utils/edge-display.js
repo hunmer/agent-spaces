@@ -1,5 +1,6 @@
 export const INPUT_EDGE_COLOR = '#2563eb';
 export const OUTPUT_EDGE_COLOR = '#16a34a';
+export const SELECTED_EDGE_COLOR = '#6366f1';
 
 export function decorateEdgesForSelection(edges, nodes, pathStyle, lineStyle) {
   const selectedIds = new Set(nodes.filter((node) => node.selected).map((node) => node.id));
@@ -14,7 +15,9 @@ export function decorateEdgesForSelection(edges, nodes, pathStyle, lineStyle) {
 
     const isInput = selectedIds.has(edge.target);
     const isOutput = !isInput && selectedIds.has(edge.source);
-    const highlightColor = isInput ? INPUT_EDGE_COLOR : (isOutput ? OUTPUT_EDGE_COLOR : null);
+    const highlightColor = edge.selected
+      ? SELECTED_EDGE_COLOR
+      : (isInput ? INPUT_EDGE_COLOR : (isOutput ? OUTPUT_EDGE_COLOR : null));
 
     return {
       ...edge,
