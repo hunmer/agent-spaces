@@ -9,6 +9,13 @@ import {
   MenubarSub,
   MenubarSubTrigger,
   MenubarSubContent,
+  History as HistoryIcon,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+  Redo2,
+  ScrollArea,
+  Undo2,
   toast,
 } from '@agent-spaces/ui';
 
@@ -21,12 +28,13 @@ import {
  * @param {{ onClear, onAutoLayout, onExport, onExportAssetLibrary, onExportWorkspace, onImport, onImportAssetLibrary, onImportWorkspace, onOpenSettings, onOpenPromptManager,
  *           edgePathStyle, edgeLineStyle, edgePathStyles, edgeLineStyles, onEdgePathStyleChange, onEdgeLineStyleChange,
  *           onSelectAll, onInvertSelect, onClearSelection,
- *           count, queueSlot, workspaceSlot }} props
+ *           operationHistory, onUndo, onRedo, canUndo, canRedo, count, queueSlot, workspaceSlot }} props
  */
 export default function Toolbar({
   onClear, onAutoLayout, onExport, onExportAssetLibrary, onExportWorkspace, onImport, onImportAssetLibrary, onImportWorkspace, onOpenSettings, onOpenPromptManager,
   edgePathStyle, edgeLineStyle, edgePathStyles, edgeLineStyles, onEdgePathStyleChange, onEdgeLineStyleChange,
   onSelectAll, onInvertSelect, onClearSelection,
+  operationHistory, onUndo, onRedo, canUndo, canRedo,
   count, queueSlot, workspaceSlot,
 }) {
   // 素材库/工作区 导出/导入中状态：控制对应菜单项禁用 + 文案切换。
@@ -235,6 +243,47 @@ export default function Toolbar({
       <div className="ml-auto flex items-center gap-2">
         {queueSlot}
         <span className="text-xs text-muted-foreground">{count} 个节点</span>
+        <Popover>
+          <PopoverTrigger
+            render={(
+              <button
+                type="button"
+                className="flex h-8 w-8 items-center justify-center rounded-md border border-border bg-background text-muted-foreground transition hover:border-primary hover:text-foreground"
+                title="操作历史"
+                aria-label="查看操作历史"
+              />
+            )}
+          >
+            <HistoryIcon className="h-4 w-4" />
+          </PopoverTrigger>
+          <PopoverContent className="w-80 p-0" align="end">
+            <div className="flex items-center justify-between border-b border-border px-3 py-2">
+              <span className="text-sm font-semibold">操作历史</span>
+              <div className="flex items-center gap-1">
+                <button type="button" onClick={onUndo} disabled={!canUndo} className="rounded p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-40" title="撤销 (Ctrl+Z)" aria-label="撤销">
+                  <Undo2 className="h-4 w-4" />
+                </button>
+                <button type="button" onClick={onRedo} disabled={!canRedo} className="rounded p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-40" title="重做 (Ctrl+Y)" aria-label="重做">
+                  <Redo2 className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+            <ScrollArea className="max-h-80">
+              {operationHistory.length === 0 ? (
+                <div className="px-3 py-8 text-center text-xs text-muted-foreground">暂无操作记录</div>
+              ) : (
+                <div className="p-2">
+                  {[...operationHistory].reverse().map((item) => (
+                    <div key={item.id} className={`flex items-center justify-between rounded px-2 py-1.5 text-xs ${item.current ? 'bg-muted text-foreground' : 'text-muted-foreground'} ${item.applied ? '' : 'opacity-50'}`}>
+                      <span>{item.label}</span>
+                      <span className="tabular-nums">{new Date(item.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </ScrollArea>
+          </PopoverContent>
+        </Popover>
       </div>
     </div>
   );

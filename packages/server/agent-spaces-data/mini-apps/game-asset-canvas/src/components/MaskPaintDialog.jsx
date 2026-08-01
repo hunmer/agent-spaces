@@ -51,11 +51,16 @@ const inputSignature = (urls) => (urls || []).filter(Boolean).join('|');
  * @param {()=>void} props.onClose
  */
 export default function MaskPaintDialog({
-  open, inputImages, initialData, mode = 'default', onDataChange, onSave, onClose,
+  open, inputImages, initialData, mode = 'default', exportMode = 'black-white',
+  onDataChange, onSave, onClose,
 }) {
   const binaryMaskMode = mode === 'binary-mask';
   const binaryMaskModeRef = useRef(binaryMaskMode);
   binaryMaskModeRef.current = binaryMaskMode;
+  // alpha 蒙版导出（GPT-Image 等）：涂出→alpha=0 可编辑，未涂→alpha=255 保留，RGB 全黑
+  const alphaMaskExport = exportMode === 'alpha-mask';
+  const alphaMaskExportRef = useRef(alphaMaskExport);
+  alphaMaskExportRef.current = alphaMaskExport;
   const stageRef = useRef(null);          // fabric 容器 DOM
   const fcRef = useRef(null);             // fabric.Canvas 实例
   const fabricLibRef = useRef(null);      // fabric 命名空间
@@ -543,6 +548,7 @@ export default function MaskPaintDialog({
         if (!st) continue;
         const canvas = renderMaskToCanvas(st, {
           includeSource: binaryMaskModeRef.current,
+          alphaMask: alphaMaskExportRef.current,
         });
         const dataUrl = canvas.toDataURL('image/png');
         const blob = dataURLToBlob(dataUrl);
@@ -766,8 +772,11 @@ function isValidOp(op) {
 
 // 把某图状态渲染为蒙版 canvas（图片原始尺寸）。
 // blackBackground=true → 导出用（黑底 + 蒙版）；false → 预览用（透明底蒙版，叠加在底图上）。
+// alphaMask=true → alpha 蒙版导出（GPT-Image 等）：涂出→alpha=0(透明/可编辑)，未涂→alpha=255(不透明/保留)，RGB 全黑。
 // 蒙版层逻辑：source-over 画 ops，橡皮 destination-out 实时挖洞。
-function renderMaskToCanvas(st, { blackBackground = true, includeSource = false } = {}) {
+function renderMaskToCanvas(st, {
+  blackBackground = true, includeSource = false, alphaMask = false,
+} = {}) {
   const w = st.imgW || (st.img?.naturalWidth) || 1;
   const h = st.imgH || (st.img?.naturalHeight) || 1;
 
@@ -812,9 +821,27 @@ function renderMaskToCanvas(st, { blackBackground = true, includeSource = false 
   }
   mctx.globalCompositeOperation = 'source-over';
 
-  // 2. 预览模式直接返回透明底蒙版层；导出模式叠黑底
+  // 2. 预览模式直接返回透明底蒙版层
   if (!blackBackground) return maskCanvas;
 
+  // 3. alpha 蒙版导出（GPT-Image 等）：RGB 全黑，alpha = 255 - 涂出覆盖度
+  //    涂出区(alpha=0, 可编辑) / 未涂区(alpha=255, 保留)。
+  if (alphaMask) {
+    const out = document.createElement('canvas');
+    out.width = w;
+    out.height = h;
+    const octx = out.getContext('2d');
+    // 先填全黑不透明（alpha=255 = 保留区）
+    octx.fillStyle = '#000000';
+    octx.fillRect(0, 0, w, h);
+    // 再用 maskCanvas（涂出覆盖度）以 destination-out 挖出可编辑区（alpha=0）
+    octx.globalCompositeOperation = 'destination-out';
+    octx.drawImage(maskCanvas, 0, 0);
+    octx.globalCompositeOperation = 'source-over';
+    return out;
+  }
+
+  // 4. 黑底白笔触导出（原行为）
   const out = document.createElement('canvas');
   out.width = w;
   out.height = h;

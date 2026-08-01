@@ -1,0 +1,135 @@
+{
+  "id": "15b49a9e-ee35-4860-a6e2-3b07fd6b5585",
+  "name": "image2_test",
+  "type": "normal",
+  "folderId": null,
+  "nodes": [
+    {
+      "id": "node_1785570436976_start",
+      "type": "start",
+      "label": "Start",
+      "position": {
+        "x": 257.5,
+        "y": 50
+      },
+      "data": {}
+    },
+    {
+      "id": "node_1785570436976_end",
+      "type": "end",
+      "label": "End",
+      "position": {
+        "x": 250,
+        "y": 400
+      },
+      "data": {}
+    },
+    {
+      "id": "node_1785570449868_gexdtf",
+      "type": "openai_edit_image",
+      "label": "OpenAI Edit Image",
+      "position": {
+        "x": 300,
+        "y": 210
+      },
+      "data": {
+        "apiKey": "{{ __config__[\"workflow.openai\"][\"apiKey\"] }}",
+        "model": "gpt-image-2",
+        "size": "auto",
+        "quality": "auto",
+        "n": 1,
+        "response_format": "",
+        "background": "auto",
+        "baseUrl": "{{ __config__[\"workflow.openai\"][\"baseUrl\"] }}",
+        "outputs": [
+          {
+            "key": "success",
+            "type": "boolean"
+          },
+          {
+            "key": "message",
+            "type": "string"
+          },
+          {
+            "key": "data",
+            "type": "object",
+            "children": [
+              {
+                "key": "images",
+                "type": "image[]"
+              },
+              {
+                "key": "created",
+                "type": "number"
+              },
+              {
+                "key": "usage",
+                "type": "object",
+                "children": []
+              }
+            ]
+          }
+        ],
+        "prompt": "改成黑色材质",
+        "mask": "https://drive-1252358454.cos.ap-guangzhou.myqcloud.com/uploads/2026-08/01/mask-1-f62bddc5-59ed-48e2-9612-164a09701d1e.png",
+        "image": "https://drive-1252358454.cos.ap-guangzhou.myqcloud.com/uploads/j09esipamsa21cyy.jpg"
+      }
+    },
+    {
+      "id": "node_1785570584194_3h2kv6",
+      "type": "ai_image_edit",
+      "label": "AI Image Edit",
+      "position": {
+        "x": -22.5,
+        "y": 120
+      },
+      "data": {
+        "apiKey": "{{ __config__[\"workflow.ai-image\"][\"apiKey\"] }}",
+        "baseUrl": "{{ __config__[\"workflow.ai-image\"][\"baseUrl\"] }}",
+        "apiMode": "auto",
+        "model": "gpt-image-2-all",
+        "aspectRatio": "1:1",
+        "n": 1,
+        "outputs": [
+          {
+            "key": "success",
+            "type": "boolean",
+            "dataType": "boolean"
+          },
+          {
+            "key": "message",
+            "type": "string"
+          },
+          {
+            "key": "data",
+            "type": "object",
+            "dataType": "object",
+            "children": [
+              {
+                "key": "images",
+                "type": "image[]"
+              },
+              {
+                "key": "taskId",
+                "type": "string"
+              },
+              {
+                "key": "model",
+                "type": "string"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [],
+  "createdAt": 1785570436981,
+  "updatedAt": 1785570978773,
+  "published": false,
+  "lastOpenedAt": 1785570436991,
+  "enabledPlugins": [
+    "workflow.openai",
+    "workflow.ai-image"
+  ]
+}

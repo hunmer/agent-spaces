@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Background, BackgroundVariant, Controls, ControlButton, MarkerType, MiniMap,
   ReactFlow, addEdge, applyEdgeChanges, applyNodeChanges, useReactFlow,
@@ -80,6 +80,7 @@ export default function Canvas() {
   const {
     nodes, edges, groups, viewport, hasSavedViewport, loaded,
     setNodes, setEdges, setGroups, setViewport, updateNodeData,
+    operationHistory, undo, redo, canUndo, canRedo,
   } = useCanvasState(activeId);
   // 落地策略由 directory 驱动：设了则产图落到工作区目录，否则落 data（详见 useWorkflow/generateImages）
   const runWorkflow = useWorkflow(activeWorkspace?.directory);
@@ -120,6 +121,26 @@ export default function Canvas() {
   const edgesRef = useRef(edges);
   nodesRef.current = nodes;
   edgesRef.current = edges;
+
+  useEffect(() => {
+    const onKeyDown = (event) => {
+      const tag = event.target?.tagName;
+      const editable = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT'
+        || event.target?.isContentEditable;
+      const modifier = event.ctrlKey || event.metaKey;
+      if (!modifier || editable || event.defaultPrevented) return;
+      const key = event.key.toLowerCase();
+      if (key === 'z' && !event.shiftKey) {
+        event.preventDefault();
+        undo();
+      } else if (key === 'y' || (key === 'z' && event.shiftKey)) {
+        event.preventDefault();
+        redo();
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [redo, undo]);
 
   // 画布中「运行中」的节点（data.status==='running'）：在执行队列 popover 一并展示，支持中断。
   const runningNodes = useMemo(
@@ -581,6 +602,7 @@ export default function Canvas() {
   }, [handleOutputImagesChange]);
   const handleClearOutputImages = useCallback((nodeId) => {
     // 清空产出同时清空版本历史：避免清空后 versions 残留，刷新页面版本按钮又出现
+    console.log('[clear] handleClearOutputImages', nodeId);
     updateNodeData(nodeId, { __versionSkip: true, output: { images: [] }, versions: [], activeVersion: undefined, status: 'idle' });
   }, [updateNodeData]);
 
@@ -741,6 +763,11 @@ export default function Canvas() {
             onSelectAll={selection.handleSelectAll}
             onInvertSelect={selection.handleInvertSelect}
             onClearSelection={selection.handleClearSelection}
+            operationHistory={operationHistory}
+            onUndo={undo}
+            onRedo={redo}
+            canUndo={canUndo}
+            canRedo={canRedo}
             count={nodes.length}
             workspaceSlot={(
               <WorkspaceSwitcher

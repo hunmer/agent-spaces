@@ -319,6 +319,7 @@ export default function EditImageNode({ id, data, selected }) {
         open={!!maskPaintSource}
         inputImages={maskPaintSource ? [maskPaintSource] : []}
         initialData={data?.editMaskPaintData || null}
+        exportMode="alpha-mask"
         onDataChange={setMaskPaintData}
         onSave={setMaskImage}
         onClose={() => setMaskPaintSource('')}
