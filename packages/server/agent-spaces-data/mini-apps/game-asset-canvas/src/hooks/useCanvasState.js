@@ -4,7 +4,8 @@ import {
 } from '../utils/storage';
 import { SAVE_DEBOUNCE } from '../utils/constants';
 import {
-  canvasHistorySignature, createCanvasSnapshot, describeCanvasChange, restoreHistoryNodes,
+  canvasHistorySignature, canvasStateSyncSignature, createCanvasSnapshot, describeCanvasChange,
+  restoreHistoryNodes,
 } from '../utils/canvas-history';
 
 const DEFAULT_VIEWPORT = { x: 0, y: 0, zoom: 1 };
@@ -69,8 +70,8 @@ export default function useCanvasState(workspaceId) {
   useEffect(() => {
     const unsub = onCanvasChanged(workspaceId, (value) => {
       if (!value || !Array.isArray(value.nodes)) return;
-      const sig = JSON.stringify(value);
-      if (lastSavedRef.current && JSON.stringify(lastSavedRef.current) === sig) return;
+      const sig = canvasStateSyncSignature(value);
+      if (lastSavedRef.current && canvasStateSyncSignature(lastSavedRef.current) === sig) return;
       if (dirtyRef.current) return;
       remoteRef.current = true;
       resetOperationHistoryRef.current = true;

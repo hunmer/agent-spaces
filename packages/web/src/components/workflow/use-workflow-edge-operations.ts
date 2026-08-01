@@ -39,6 +39,7 @@ import {
   getWorkflowHandleValueType,
 } from './workflow-handle-types';
 import { syncWorkflowReferenceEdges } from './workflow-reference-edges';
+import { getGridLayoutPositions } from './workflow-canvas-helpers';
 
 interface UseEdgeOperationsParams {
   workflow: Workflow | null;
@@ -841,7 +842,12 @@ export function useEdgeOperations({
     markDirty();
   }, [workflow, isReadOnly, markDirty, setWorkflow]);
 
-  const handleAutoLayout = useCallback(async (direction: 'LR' | 'TB', options?: { layoutEngine?: string; parentId?: string; nodeIds?: string[] }) => {
+  const handleAutoLayout = useCallback(async (direction: 'LR' | 'TB', options?: {
+    layoutEngine?: string;
+    parentId?: string;
+    nodeIds?: string[];
+    grid?: { rows: number; columns: number; horizontalGap: number; verticalGap: number };
+  }) => {
     if (!workflow || isReadOnly || workflow.nodes.length === 0) return;
     const parentId = options?.parentId;
     const optionNodeIds = options?.nodeIds;
@@ -884,7 +890,20 @@ export function useEdgeOperations({
       );
       const layoutPositions = new Map<string, { x: number; y: number }>();
 
-      if (layoutEngine === 'elk') {
+      if (options?.grid) {
+        const gridNodes = layoutNodes.map(node => {
+          const size = nodeSizes.get(node.id);
+          return {
+            id: node.id,
+            width: size?.width ?? 220,
+            height: size?.height ?? 120,
+            badgeLeft: size?.badgeLeft ?? 0,
+            badgeTop: size?.badgeTop ?? 0,
+          };
+        });
+        getGridLayoutPositions(gridNodes, options.grid.columns, options.grid.horizontalGap, options.grid.verticalGap)
+          .forEach((position, nodeId) => layoutPositions.set(nodeId, position));
+      } else if (layoutEngine === 'elk') {
         const elk = new ELK();
         const elkGraph: ElkNode = {
           id: scopeParentId ?? 'workflow',

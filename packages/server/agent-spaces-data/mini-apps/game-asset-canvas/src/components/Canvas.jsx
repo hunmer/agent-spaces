@@ -768,7 +768,6 @@ export default function Canvas() {
             onRedo={redo}
             canUndo={canUndo}
             canRedo={canRedo}
-            count={nodes.length}
             workspaceSlot={(
               <WorkspaceSwitcher
                 workspaces={workspaces}

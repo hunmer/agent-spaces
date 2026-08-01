@@ -39,7 +39,7 @@ export type WorkflowNodeData = Record<string, unknown> & {
   handleColors?: Record<string, string>;
   executionStep?: import('@agent-spaces/shared').ExecutionStep;
   executionSteps?: import('@agent-spaces/shared').ExecutionStep[];
-  onAutoLayout?: (direction: 'LR' | 'TB', options?: { layoutEngine?: string; parentId?: string; nodeIds?: string[] }) => void;
+  onAutoLayout?: (direction: 'LR' | 'TB', options?: { layoutEngine?: string; parentId?: string; nodeIds?: string[]; grid?: { rows: number; columns: number; horizontalGap: number; verticalGap: number } }) => void;
   onFieldKeyRename?: (params: WorkflowFieldKeyRenameParams) => void;
   layoutEngine?: string;
 };

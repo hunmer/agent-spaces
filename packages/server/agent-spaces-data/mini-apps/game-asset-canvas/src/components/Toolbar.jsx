@@ -36,14 +36,14 @@ import {
  * @param {{ onClear, onAutoLayout, onExport, onExportAssetLibrary, onExportWorkspace, onImport, onImportAssetLibrary, onImportWorkspace, onOpenSettings, onOpenPromptManager,
  *           edgePathStyle, edgeLineStyle, edgePathStyles, edgeLineStyles, onEdgePathStyleChange, onEdgeLineStyleChange,
  *           onSelectAll, onInvertSelect, onClearSelection,
- *           operationHistory, onUndo, onRedo, canUndo, canRedo, count, queueSlot, workspaceSlot }} props
+ *           operationHistory, onUndo, onRedo, canUndo, canRedo, queueSlot, workspaceSlot }} props
  */
 export default function Toolbar({
   onClear, onAutoLayout, onExport, onExportAssetLibrary, onExportWorkspace, onImport, onImportAssetLibrary, onImportWorkspace, onOpenSettings, onOpenPromptManager,
   edgePathStyle, edgeLineStyle, edgePathStyles, edgeLineStyles, onEdgePathStyleChange, onEdgeLineStyleChange,
   onSelectAll, onInvertSelect, onClearSelection,
   operationHistory, onUndo, onRedo, canUndo, canRedo,
-  count, queueSlot, workspaceSlot,
+  queueSlot, workspaceSlot,
 }) {
   // 素材库/工作区 导出/导入中状态：控制对应菜单项禁用 + 文案切换。
   const [exporting, setExporting] = useState(false);
@@ -252,7 +252,6 @@ export default function Toolbar({
 
       <div className="ml-auto flex items-center gap-2">
         {queueSlot}
-        <span className="text-xs text-muted-foreground">{count} 个节点</span>
         <Popover>
           <PopoverTrigger
             render={(

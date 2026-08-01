@@ -46,6 +46,39 @@ export function appendImmediateCanvasClone<T extends {
   }];
 }
 
+export function getGridLayoutPositions(
+  nodes: Array<{ id: string; width: number; height: number; badgeLeft: number; badgeTop: number }>,
+  columns: number,
+  horizontalGap: number,
+  verticalGap: number,
+) {
+  const columnCount = Math.max(1, Math.min(columns, nodes.length));
+  const columnWidths = Array.from({ length: columnCount }, () => 0);
+  const rowHeights = Array.from({ length: Math.ceil(nodes.length / columnCount) }, () => 0);
+  nodes.forEach((node, index) => {
+    columnWidths[index % columnCount] = Math.max(columnWidths[index % columnCount], node.width);
+    rowHeights[Math.floor(index / columnCount)] = Math.max(rowHeights[Math.floor(index / columnCount)], node.height);
+  });
+
+  let x = 0;
+  const columnX = columnWidths.map(width => {
+    const current = x;
+    x += width + horizontalGap;
+    return current;
+  });
+  let y = 0;
+  const rowY = rowHeights.map(height => {
+    const current = y;
+    y += height + verticalGap;
+    return current;
+  });
+
+  return new Map(nodes.map((node, index) => [node.id, {
+    x: columnX[index % columnCount] + node.badgeLeft,
+    y: rowY[Math.floor(index / columnCount)] + node.badgeTop,
+  }]));
+}
+
 export function isPositionNodeChange(
   change: NodeChange,
 ): change is NodeChange & { type: 'position'; id: string; position: { x: number; y: number } } {

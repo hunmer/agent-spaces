@@ -6,6 +6,15 @@ export function createCanvasSnapshot(nodes, edges, groups) {
   return { nodes, edges, groups };
 }
 
+export function canvasStateSyncSignature(state) {
+  return JSON.stringify({
+    nodes: state?.nodes || [],
+    edges: state?.edges || [],
+    groups: state?.groups || [],
+    viewport: state?.viewport,
+  });
+}
+
 export function canvasHistorySignature(snapshot) {
   return JSON.stringify({
     nodes: snapshot.nodes.map((node) => ({ id: node.id, type: node.type, data: node.data })),

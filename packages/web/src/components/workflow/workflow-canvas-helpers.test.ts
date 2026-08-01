@@ -4,6 +4,7 @@ import {
   addCloneToSourceGroups,
   appendImmediateCanvasClone,
   findSmallestContainingRectId,
+  getGridLayoutPositions,
   resolveGroupBoundsNode,
 } from './workflow-canvas-helpers';
 
@@ -44,4 +45,18 @@ test('appendImmediateCanvasClone shows the clone at drag start', () => {
     source,
     { id: 'clone', position: { x: 10, y: 20 }, selected: false, dragging: false },
   ]);
+});
+
+test('getGridLayoutPositions keeps even gaps around differently sized nodes', () => {
+  const positions = getGridLayoutPositions([
+    { id: 'a', width: 100, height: 50, badgeLeft: 0, badgeTop: 0 },
+    { id: 'b', width: 80, height: 70, badgeLeft: 0, badgeTop: 0 },
+    { id: 'c', width: 120, height: 40, badgeLeft: 0, badgeTop: 0 },
+  ], 2, 20, 30);
+
+  assert.deepEqual(Object.fromEntries(positions), {
+    a: { x: 0, y: 0 },
+    b: { x: 140, y: 0 },
+    c: { x: 0, y: 100 },
+  });
 });

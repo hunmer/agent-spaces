@@ -151,8 +151,13 @@ export default function RightPanel({
           <TabsTrigger value="add" title="新增节点" aria-label="新增节点" className="flex-1">
             <Plus className="h-4 w-4" />
           </TabsTrigger>
-          <TabsTrigger value="nodes" title="节点管理" aria-label="节点管理" className="flex-1">
+          <TabsTrigger value="nodes" title="节点管理" aria-label="节点管理" className="group flex-1">
             <Boxes className="h-4 w-4" />
+            {nodes.length > 0 && (
+              <span className="ml-1 rounded-full bg-muted px-1.5 text-[10px] font-medium leading-none text-muted-foreground group-data-[state=active]:bg-primary-foreground/20 group-data-[state=active]:text-primary-foreground">
+                {nodes.length}
+              </span>
+            )}
           </TabsTrigger>
           <TabsTrigger value="history" title="生成记录" aria-label="生成记录" className="flex-1">
             <History className="h-4 w-4" />

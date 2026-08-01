@@ -227,7 +227,7 @@ interface UseCanvasDataParams {
   edgePathType?: string;
   edgeLineStyle?: string;
   embeddedMode?: 'issue' | null;
-  onAutoLayout?: (direction: 'LR' | 'TB', options?: { layoutEngine?: string; parentId?: string; nodeIds?: string[] }) => void;
+  onAutoLayout?: (direction: 'LR' | 'TB', options?: { layoutEngine?: string; parentId?: string; nodeIds?: string[]; grid?: { rows: number; columns: number; horizontalGap: number; verticalGap: number } }) => void;
   onFieldKeyRename?: (params: WorkflowFieldKeyRenameParams) => void;
   layoutEngine?: string;
 }

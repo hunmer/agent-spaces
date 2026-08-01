@@ -9,7 +9,7 @@
       "type": "start",
       "label": "Start",
       "position": {
-        "x": 750,
+        "x": 0,
         "y": 0
       },
       "data": {}
@@ -19,8 +19,8 @@
       "type": "end",
       "label": "End",
       "position": {
-        "x": 250,
-        "y": 400
+        "x": 310,
+        "y": 0
       },
       "data": {}
     },
@@ -29,8 +29,8 @@
       "type": "openai_edit_image",
       "label": "OpenAI Edit Image",
       "position": {
-        "x": 270.35631517960405,
-        "y": 126.55851680185387
+        "x": 260.43990484677806,
+        "y": 270.1567925772223
       },
       "data": {
         "apiKey": "{{ __config__[\"workflow.openai\"][\"apiKey\"] }}",
@@ -80,8 +80,8 @@
       "type": "ai_image_edit",
       "label": "AI Image Edit",
       "position": {
-        "x": -52.14368482039595,
-        "y": 36.55851680185387
+        "x": -65.20214430200576,
+        "y": 656.2813221686957
       },
       "data": {
         "apiKey": "{{ __config__[\"workflow.ai-image\"][\"apiKey\"] }}",
@@ -127,8 +127,8 @@
       "type": "ai_image_edit",
       "label": "AI Image Edit",
       "position": {
-        "x": 675,
-        "y": 420
+        "x": 930,
+        "y": 0
       },
       "data": {
         "apiKey": "{{ __config__[\"workflow.ai-image\"][\"apiKey\"] }}",
@@ -173,9 +173,18 @@
       }
     }
   ],
-  "edges": [],
+  "edges": [
+    {
+      "id": "e-node_1785570449868_gexdtf-source-node_1785570584194_3h2kv6-target",
+      "source": "node_1785570449868_gexdtf",
+      "target": "node_1785570584194_3h2kv6",
+      "edgeKind": "runtime",
+      "sourceHandle": "source",
+      "targetHandle": "target"
+    }
+  ],
   "createdAt": 1785570436981,
-  "updatedAt": 1785582656405,
+  "updatedAt": 1785584253869,
   "published": false,
   "lastOpenedAt": 1785582619116,
   "enabledPlugins": [
@@ -194,8 +203,8 @@
       "locked": false,
       "disabled": false,
       "savedNodeStates": {},
-      "x": -76.14368482039593,
-      "y": -11.441478052946081,
+      "x": -3184.3373273101683,
+      "y": -100.37736794615773,
       "width": 620.4999621624465,
       "height": 270.9999737966102
     }
