@@ -1,9 +1,10 @@
 import { useCallback, useRef, useState, useEffect } from 'react';
 import { NodeResizer, NodeToolbar, Position } from '@xyflow/react';
-import { ChevronLeft, ChevronRight, Upload, openMediaGallery } from '@agent-spaces/ui';
+import { ChevronLeft, ChevronRight, Upload } from '@agent-spaces/ui';
 import useViewportActivation from '../../hooks/useViewportActivation';
 import { getFloatingHandleProps } from '../canvas/floating-edge-utils';
 import FloatingHandle from './FloatingHandle';
+import { useCanvasGallery } from '../../utils/canvas-gallery';
 
 /**
  * 图片展示节点：纯展示图片，无外壳边框/标题栏。
@@ -20,6 +21,7 @@ import FloatingHandle from './FloatingHandle';
  * data.tags: string[]  来源标签
  */
 export default function ImageDisplayNode({ id, data, selected }) {
+  const openCanvasGallery = useCanvasGallery();
   const showFullNode = data?.compactView !== true;
   const images = Array.isArray(data?.images) ? data.images.filter(Boolean) : [];
   const resources = Array.isArray(data?.resources) ? data.resources : [];
@@ -85,8 +87,8 @@ export default function ImageDisplayNode({ id, data, selected }) {
 
   const open = useCallback(() => {
     if (!images.length) return;
-    openMediaGallery(images.map((src) => ({ src, type: 'image' })), Math.min(imgIndex, images.length - 1));
-  }, [images, imgIndex]);
+    openCanvasGallery(images.map((src) => ({ src, type: 'image' })), Math.min(imgIndex, images.length - 1));
+  }, [images, imgIndex, openCanvasGallery]);
 
   const sourceLabel = data?.source === 'upstream' ? '来自连线'
     : source === 'url' ? '来自 URL'
@@ -260,7 +262,7 @@ export default function ImageDisplayNode({ id, data, selected }) {
         <div className="image-drag-handle absolute inset-0 z-20 flex cursor-move items-center justify-center overflow-hidden rounded-lg border border-border bg-card shadow-sm">
           <div className="flex max-w-full items-center gap-3 px-4">
             <span className="text-3xl leading-none">🖼️</span>
-            <span className="truncate text-xl font-semibold text-card-foreground">图片展示</span>
+            <span className="truncate text-xl font-semibold text-card-foreground">{data?.title || data?.label || '图片展示'}</span>
             {(loading || uploading) && <span className="h-3 w-3 shrink-0 rounded-full bg-blue-500" />}
           </div>
         </div>

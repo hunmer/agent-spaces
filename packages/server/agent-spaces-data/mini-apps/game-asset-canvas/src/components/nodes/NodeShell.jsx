@@ -7,6 +7,7 @@ import ImageResult from './ImageResult';
 import SpinePreviewViewer from './SpinePreviewViewer';
 import NodeOutput from './NodeOutput';
 import FloatingHandle from './FloatingHandle';
+import EditableNodeTitle from './EditableNodeTitle';
 import { UploadCollapseContext } from './UploadSection';
 import { getFloatingHandleProps } from '../canvas/floating-edge-utils';
 
@@ -41,6 +42,7 @@ export default function NodeShell({
 }) {
   const showFullNode = data?.compactView !== true;
   const meta = NODE_META[nodeType] || { label: '节点', icon: '🔹', color: '#64748b' };
+  const customTitle = data?.title || data?.label;
   const status = data?.status || 'idle';
   const queuePosition = Math.max(0, Number(data?.queuePosition) || 0);
   const isRunning = status === 'running' || data?.queueStatus === 'running';
@@ -179,7 +181,7 @@ export default function NodeShell({
     >
       <div className="flex max-w-full items-center gap-3 px-4">
         <span className="shrink-0 text-3xl leading-none">{meta.icon}</span>
-        <span className="truncate text-xl font-semibold text-card-foreground">{meta.label}</span>
+        <span className="truncate text-xl font-semibold text-card-foreground">{customTitle || meta.label}</span>
         {status !== 'idle' && (
           <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: statusColor }} />
         )}
@@ -272,12 +274,15 @@ export default function NodeShell({
             队列中 #{queuePosition}
           </Badge>
         )}
-        <Badge
-          variant="secondary"
-          className={`${queuePosition > 0 ? '' : 'ml-auto'} max-w-[50%] shrink-0 truncate bg-background/85 shadow-sm backdrop-blur-sm`}
-        >
-          {meta.label}
-        </Badge>
+        <div className={`${queuePosition > 0 ? '' : 'ml-auto'} flex max-w-[50%] min-w-0 shrink-0 rounded-md bg-background/85 px-2.5 py-0.5 text-xs font-semibold shadow-sm backdrop-blur-sm`}>
+          <EditableNodeTitle
+            value={customTitle}
+            fallback={meta.label}
+            onChange={(title) => onUpdate?.({ title })}
+            className="truncate"
+            inputClassName="h-5 w-full rounded px-1 text-xs"
+          />
+        </div>
       </div>
       <div
         ref={rootRef}
@@ -408,9 +413,15 @@ export default function NodeShell({
         className={`flex shrink-0 items-center justify-between gap-2 px-3 py-2 ${showFullNode ? '' : 'invisible pointer-events-none'}`}
         style={{ borderBottom: '1px solid var(--border)', backgroundColor: `rgb(${hexToRgb(meta.color)} / 0.12)` }}
       >
-        <div className="flex items-center gap-2 truncate">
+        <div className="flex min-w-0 flex-1 items-center gap-2">
           <span className="text-base leading-none">{meta.icon}</span>
-          <span className="truncate text-sm font-semibold">{meta.label}</span>
+          <EditableNodeTitle
+            value={customTitle}
+            fallback={meta.label}
+            onChange={(title) => onUpdate?.({ title })}
+            className="truncate text-sm font-semibold"
+            inputClassName="h-6 w-full rounded px-1 text-sm font-semibold"
+          />
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
           {queuePosition > 0 && (

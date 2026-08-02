@@ -6,7 +6,7 @@ import {
 import {
   ResizablePanelGroup, ResizablePanel, ResizableHandle,
   Images, MapPinned, toast, Checkbox,
-  CopyPlus, Crosshair, Trash2,
+  CopyPlus, Crosshair, Trash2, FolderPlus,
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
   openMediaGallery,
@@ -701,11 +701,14 @@ export default function Canvas() {
   // fileName 同时作为入库 name（文件名）和 title（去掉扩展名的可读标题）
   const handleAssetsPickerConfirm = useCallback(async (pickedGroups) => {
     if (!pickedGroups?.length) return;
+    // [asset-label-debug] 写入素材库的 url/分类，和历史记录 url 做一致性比对
+    console.log('[asset-label-debug] picker confirm', {
+      groups: pickedGroups.map((g) => ({ id: g.id, name: g.name })),
+      images: assetsPickerImages.map((it) => ({ url: it.url, thumb: it.thumb })),
+    });
     for (const grp of pickedGroups) {
       for (const item of assetsPickerImages) {
         const url = item.url;
-        // 优先用调用方传入的语义化 fileName；否则从 url 解析真实文件名（宿主 url 真名藏在 query path= 里，
-        // 不能用 url.split('/').pop()——会拿到 local-file 等路由末段甚至带 query 的乱码）。
         const fileName = item.fileName || extractFileNameFromUrl(url);
         const dot = fileName.lastIndexOf('.');
         const title = dot > 0 ? fileName.slice(0, dot) : fileName;
@@ -719,8 +722,9 @@ export default function Canvas() {
             size: 0,
             uploadedAt: Date.now(),
           });
+          console.log('[asset-label-debug] addAsset ok', { categoryId: grp.id, name: grp.name, url });
         } catch (err) {
-          console.error('addAsset failed:', err);
+          console.error('[asset-label-debug] addAsset failed:', err, { url });
         }
       }
     }
@@ -734,6 +738,7 @@ export default function Canvas() {
     openMediaGallery(items, startIndex, [
       {
         label: '收藏到素材库',
+        icon: <FolderPlus size={22} />,
         onClick: ({ item }) => {
           handleAddToAssets({ url: item.src, fileName: item.fileName, thumb: item.thumb });
           toast.success('已加入待收藏，请选择分组');
@@ -741,6 +746,7 @@ export default function Canvas() {
       },
       {
         label: '导入到画布',
+        icon: <CopyPlus size={22} />,
         onClick: ({ item }) => {
           addImageNodesFromUrls([item.src], { source: 'gallery' });
           toast.success('已导入到画布');

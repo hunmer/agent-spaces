@@ -161,7 +161,8 @@ export default {
    * 新增节点。
    * @param {object} input
    * @param {string} input.type     节点类型（必填，见 VALID_NODE_TYPES）
-   * @param {string} [input.label]  节点标题（可选）
+   * @param {string} [input.title]  节点标题（可选）
+   * @param {string} [input.label]  节点标题（兼容旧参数，推荐使用 title）
    * @param {object} [input.position] 坐标 {x,y}；不传则由画布自动错落
    * @param {object} [input.data]   节点初始 data 覆盖（如 {text:'备注'} / {params:{prompt:'...'}}）
    * @param {boolean} [input.focus] 创建后是否聚焦到该节点（默认 true）
@@ -175,16 +176,16 @@ export default {
       };
     }
     const payload = { type };
-    const label = asString(input?.label);
-    if (label) payload.label = label;
+    const title = asString(input?.title) || asString(input?.label);
     if (input?.position && typeof input.position === 'object') {
       const x = Number(input.position.x);
       const y = Number(input.position.y);
       if (Number.isFinite(x) && Number.isFinite(y)) payload.position = { x, y };
     }
     if (input?.data && typeof input?.data === 'object' && !Array.isArray(input.data)) {
-      payload.data = input.data;
+      payload.data = { ...input.data };
     }
+    if (title) payload.data = { ...(payload.data || {}), title };
     payload.focus = input?.focus !== false; // 默认聚焦
     // 可选 groupName：建完节点后归入同名分组（不存在则创建）
     const groupName = asString(input?.groupName);
@@ -195,6 +196,7 @@ export default {
       nodeId: result?.nodeId,
       type,
       typeLabel: NODE_LABELS[type] || type,
+      title: title || NODE_LABELS[type] || type,
       position: result?.position,
       groupName: groupName || undefined,
       message: `已新增「${NODE_LABELS[type] || type}」节点${result?.nodeId ? `（id=${result.nodeId}）` : ''}${groupName ? `并归入分组「${groupName}」` : ''}`,
@@ -339,7 +341,7 @@ export default {
   /**
    * 批量新增节点（一次 RPC 往返建多个，比循环调 add_node 快）。
    * @param {object} input
-   * @param {Array} input.nodes  节点规格数组，每项 {type, label?, position?, data?, focus?}
+   * @param {Array} input.nodes  节点规格数组，每项 {type, title?, position?, data?, focus?}
    * @param {boolean} [input.focusFirst] 是否聚焦到首个新增节点（默认 true）
    */
   add_nodes: async (input, ctx) => {
@@ -356,13 +358,14 @@ export default {
         return { ok: false, message: `nodes[${i}] 类型无效：${type || '(空)'}。可用：${VALID_NODE_TYPES.join(', ')}` };
       }
       const spec = { type };
-      if (typeof item.label === 'string' && item.label.trim()) spec.label = item.label.trim();
+      const title = asString(item.title) || asString(item.label);
       if (item.position && typeof item.position === 'object') {
         const x = Number(item.position.x);
         const y = Number(item.position.y);
         if (Number.isFinite(x) && Number.isFinite(y)) spec.position = { x, y };
       }
-      if (item.data && typeof item.data === 'object' && !Array.isArray(item.data)) spec.data = item.data;
+      if (item.data && typeof item.data === 'object' && !Array.isArray(item.data)) spec.data = { ...item.data };
+      if (title) spec.data = { ...(spec.data || {}), title };
       cleaned.push(spec);
     }
     const result = await rpc(ctx, 'canvas.addNodes', {
@@ -403,6 +406,7 @@ export default {
         id: n.id,
         type: n.type,
         typeLabel: NODE_LABELS[n.type] || n.type,
+        title: n.title || n.label || NODE_LABELS[n.type] || n.type,
         label: n.label || '',
         position: n.position,
       })),
@@ -429,6 +433,7 @@ export default {
         id: n.id,
         type: n.type,
         typeLabel: NODE_LABELS[n.type] || n.type,
+        title: n.title || n.label || NODE_LABELS[n.type] || n.type,
         label: n.label || '',
         position: n.position,
       })),
@@ -607,17 +612,26 @@ export default {
    * 更新节点 data（部分 patch）。
    * @param {object} input
    * @param {string} input.nodeId
-   * @param {object} input.data 合并到节点 data 的字段（如 note 用 {text}，文生图用 {params:{prompt,model}}）
+   * @param {string} [input.title] 节点显示标题
+   * @param {object} [input.data] 合并到节点 data 的字段（如 note 用 {text}，文生图用 {params:{prompt,model}}）
    */
   update_node: async (input, ctx) => {
     const nodeId = asString(input?.nodeId);
     if (!nodeId) return { ok: false, message: 'nodeId 必填' };
-    if (!input?.data || typeof input.data !== 'object' || Array.isArray(input.data)) {
+    const hasTitle = Object.prototype.hasOwnProperty.call(input || {}, 'title');
+    if (hasTitle && typeof input.title !== 'string') {
+      return { ok: false, message: 'title 必须是字符串' };
+    }
+    const hasData = input?.data && typeof input.data === 'object' && !Array.isArray(input.data);
+    if (input?.data !== undefined && !hasData) {
       return { ok: false, message: 'data 必须是对象（合并到节点 data 的字段）' };
     }
-    const result = await rpc(ctx, 'canvas.updateNodeData', { nodeId, data: input.data });
+    if (!hasData && !hasTitle) return { ok: false, message: 'title 和 data 至少传一个' };
+    const patch = { ...(hasData ? input.data : {}) };
+    if (hasTitle) patch.title = input.title.trim();
+    const result = await rpc(ctx, 'canvas.updateNodeData', { nodeId, data: patch });
     if (result?.ok === false) return result;
-    return { ok: true, nodeId, applied: Object.keys(input.data), message: `已更新节点 ${nodeId} 的 ${Object.keys(input.data).length} 个字段` };
+    return { ok: true, nodeId, title: patch.title, applied: Object.keys(patch), message: `已更新节点 ${nodeId} 的 ${Object.keys(patch).length} 个字段` };
   },
 
   /**

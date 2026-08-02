@@ -1,7 +1,9 @@
 import { useCallback, useContext, useEffect, useRef, useState } from 'react';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, Check, debugCanvasImageDrag, FolderPlus, ImageOff, Loader2, Plus, Trash2, openMediaGallery, Popover, PopoverContent, PopoverTrigger, setCanvasImageDragData } from '@agent-spaces/ui';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, Check, debugCanvasImageDrag, FolderPlus, ImageOff, Loader2, Plus, Trash2, Popover, PopoverContent, PopoverTrigger, setCanvasImageDragData } from '@agent-spaces/ui';
 import { IMAGE_REORDER_MIME } from '../../utils/canvas-constants';
 import { ImageSelectionContext } from '../../context/ImageSelectionContext';
+import { useCanvasGallery } from '../../utils/canvas-gallery';
+import ImageHoverCard from '../ImageHoverCard';
 
 // 图片加载失败占位：onError 时切换为该块，显示破损图标 + url
 function BrokenImagePlaceholder({ url }) {
@@ -30,6 +32,7 @@ function BrokenImagePlaceholder({ url }) {
  * @param {Function} [props.onSwitchVersion] 版本切换回调，回传版本索引
  */
 export default function ImageResult({ nodeId, images, resources = [], max = 0, preview = false, onImageLoad, onAddToAssets, fileName, onAddImages, onRemoveImage, onClearImages, onReorderImages, versions, activeVersion, onSwitchVersion }) {
+  const openCanvasGallery = useCanvasGallery();
   const all = images || [];
   const list = max > 0 ? all.slice(0, max) : all;
   const hasVersions = Array.isArray(versions) && versions.length > 1 && onSwitchVersion;
@@ -119,7 +122,7 @@ export default function ImageResult({ nodeId, images, resources = [], max = 0, p
   })();
 
   const open = (index) => {
-    openMediaGallery(galleryItems.length ? galleryItems : list.map((src, i) => ({ src, type: 'image', fileName: nameFor(i) })), galleryOffset + index);
+    openCanvasGallery(galleryItems.length ? galleryItems : list.map((src, i) => ({ src, type: 'image', fileName: nameFor(i) })), galleryOffset + index);
   };
 
   if (preview) {
@@ -253,9 +256,9 @@ export default function ImageResult({ nodeId, images, resources = [], max = 0, p
                   : 'border-border'
               } ${sortable ? 'cursor-grab active:cursor-grabbing' : ''}`}
             >
-              <div className="block h-full w-full overflow-hidden rounded">
+              <ImageHoverCard url={url} triggerShape="fixed" className="h-full w-full border-0">
                 <GridImage url={resourceFor(url).thumb || url} />
-              </div>
+              </ImageHoverCard>
               {/* 右上角选择 checkbox：hover 显示空框，选中时常驻显示实心勾。点击切换选中（天然多选）。 */}
               {nodeId && (
                 <button
@@ -343,28 +346,30 @@ function PreviewImage({ url, thumb, onOpen, onImageLoad, onDragStart }) {
   const displayUrl = thumb || url;
   useEffect(() => { setFailed(false); setLoaded(false); }, [displayUrl]);
   return (
-    <button
-      type="button"
-      draggable
-      onDragStart={onDragStart}
-      onClick={(e) => { e.stopPropagation(); onOpen(); }}
-      className="block w-full overflow-hidden"
-    >
-      {failed ? (
-        <BrokenImagePlaceholder url={url} />
-      ) : (
-        <>
-          {!loaded && <ImageLoadingPlaceholder />}
-          <img
-            src={displayUrl}
-            alt=""
-            className={`block h-auto w-full object-contain transition-opacity duration-200 ${loaded ? 'opacity-100' : 'absolute opacity-0'}`}
-            onLoad={(e) => { setLoaded(true); onImageLoad?.(e); }}
-            onError={() => setFailed(true)}
-          />
-        </>
-      )}
-    </button>
+    <ImageHoverCard url={url} triggerShape="fixed" className="w-full border-0">
+      <button
+        type="button"
+        draggable
+        onDragStart={onDragStart}
+        onClick={(e) => { e.stopPropagation(); onOpen(); }}
+        className="block w-full overflow-hidden"
+      >
+        {failed ? (
+          <BrokenImagePlaceholder url={url} />
+        ) : (
+          <>
+            {!loaded && <ImageLoadingPlaceholder />}
+            <img
+              src={displayUrl}
+              alt=""
+              className={`block h-auto w-full object-contain transition-opacity duration-200 ${loaded ? 'opacity-100' : 'absolute opacity-0'}`}
+              onLoad={(e) => { setLoaded(true); onImageLoad?.(e); }}
+              onError={() => setFailed(true)}
+            />
+          </>
+        )}
+      </button>
+    </ImageHoverCard>
   );
 }
 

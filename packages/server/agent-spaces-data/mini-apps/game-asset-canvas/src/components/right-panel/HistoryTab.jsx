@@ -1,9 +1,9 @@
 // 生成记录 tab：历史卡片列表 + 分类筛选 + 拼音搜索 + 视图切换（列表/瀑布流）。
 // 卡片支持拖拽建节点（拖标题）/拖图片到画布（拖缩略图）/插入到画布/添加到素材库。
 // 瀑布流视图：把所有记录的图片展平成缩略图网格，按真实宽高比错落排布，悬浮显示精简按钮 + 右键全量菜单。
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  openMediaGallery, setCanvasImageDragData, toast, ScrollArea, FolderPlus, CopyPlus,
+  setCanvasImageDragData, toast, ScrollArea, FolderPlus, CopyPlus,
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
   ContextMenu, ContextMenuTrigger, ContextMenuContent, ContextMenuItem, ContextMenuSeparator,
   Masonry,
@@ -20,6 +20,8 @@ import { NODE_CATEGORIES, ADD_ITEMS } from './constants';
 import { downloadImages } from '../../utils/export';
 import ImageHoverCard from '../ImageHoverCard';
 import useSettings from '../../hooks/useSettings';
+import useViewportActivation from '../../hooks/useViewportActivation';
+import { useCanvasGallery } from '../../utils/canvas-gallery';
 
 // 图片尺寸缓存（模块级，跨 HistoryTab 实例复用，避免来回切视图/切 tab 反复 new Image 重测）。
 // url → "w:h"。仅内存，不持久化；同一会话内有效。
@@ -40,6 +42,7 @@ export default function HistoryTab({
   onInsertHistory, onDragStartHistory, onAddToAssets,
   onLocateNode, focusNodeId, assetCategories,
 }) {
+  const openCanvasGallery = useCanvasGallery();
   const [activeCat, setActiveCat] = useState('all');
   const [activeGroup, setActiveGroup] = useState('all');
   const [query, setQuery] = useState('');
@@ -242,7 +245,7 @@ export default function HistoryTab({
   const batchViewGallery = (item) => {
     const urls = collectUrls(resolveTargets(item));
     if (!urls.length) { toast.error('选中记录无图片'); return; }
-    openMediaGallery(urls.map((src) => ({ src, type: 'image' })));
+    openCanvasGallery(urls.map((src) => ({ src, 'type': 'image' })));
   };
   const batchCopyUrls = (item) => {
     const urls = collectUrls(resolveTargets(item));
@@ -333,7 +336,7 @@ export default function HistoryTab({
   };
   const masonryBatchViewGallery = (url) => {
     const urls = resolveImageUrls(url);
-    openMediaGallery(urls.map((src) => ({ src, type: 'image' })));
+    openCanvasGallery(urls.map((src) => ({ src, 'type': 'image' })));
   };
   const masonryBatchCopyUrls = (url) => {
     const urls = resolveImageUrls(url);
@@ -353,33 +356,17 @@ export default function HistoryTab({
     scrollRef.current = viewport;
   };
 
-  // 图片宽高比缓存：url → "w:h" 字符串（供 Masonry getMeta 用，实现真实错落排布）。
-  // 历史记录 images 只存 URL（无尺寸），故在渲染时异步测量；老记录也能自适应。
-  // 缓存是组件级内存（不持久化），切换 tab/刷新重测即可。模块级缓存可跨实例复用，避免来回切视图重测。
+  // 图片宽高比缓存：缩略图进入视口并加载完成后记录，避免为排版提前请求全部图片。
   const [sizeMap, setSizeMap] = useState(() => sizeCache);
-  // 瀑布流激活且有图时，懒测量当前可见 url 的尺寸（不存在于缓存的才测）。
-  useEffect(() => {
-    if (viewMode !== 'masonry') return;
-    const todo = flatImageItems.map((it) => it.url).filter((u) => !sizeCache.has(u));
-    if (!todo.length) return;
-    let cancelled = false;
-    todo.forEach((url) => {
-      const img = new Image();
-      img.crossOrigin = 'anonymous';
-      img.onload = () => {
-        if (cancelled) return;
-        const w = img.naturalWidth || img.width;
-        const h = img.naturalHeight || img.height;
-        if (w > 0 && h > 0) {
-          sizeCache.set(url, `${w}:${h}`);
-          setSizeMap(new Map(sizeCache));
-        }
-      };
-      img.onerror = () => {}; // 测不出则回退 1:1（getMeta 兜底）
-      img.src = url;
-    });
-    return () => { cancelled = true; };
-  }, [viewMode, flatImageItems]);
+  const handleMasonryImageLoad = useCallback((url, image) => {
+    const w = image?.naturalWidth || image?.width;
+    const h = image?.naturalHeight || image?.height;
+    if (!(w > 0 && h > 0)) return;
+    const aspect = `${w}:${h}`;
+    if (sizeCache.get(url) === aspect) return;
+    sizeCache.set(url, aspect);
+    setSizeMap(new Map(sizeCache));
+  }, []);
   const getImageAspect = (url) => sizeMap.get(url); // 缓存未命中返回 undefined → Masonry 回退正方形
 
   // 定位到指定节点的历史记录：focusNodeId 变化时滚动到该节点第一条记录并高亮。
@@ -685,7 +672,7 @@ export default function HistoryTab({
                   <MasonryImageCell
                     item={it}
                     selected={selectedUrls.has(it.url)}
-                    assetLabel={assetLabelMap[it.url]}
+                    assetLabel={assetLabelMap.get(it.url)}
                     onToggleUrlSelect={toggleUrlSelect}
                     onDownload={batchDownload}
                     onMasonryAddToAssets={masonryBatchAddToAssets}
@@ -694,6 +681,7 @@ export default function HistoryTab({
                     onMasonryCopyUrls={masonryBatchCopyUrls}
                     onBatchInsert={batchInsert}
                     onBatchRemove={batchRemove}
+                    onImageLoad={handleMasonryImageLoad}
                   />
                 )}
               />
@@ -847,7 +835,7 @@ function HistoryCard({
                     thumb={resourceByUrl.get(url)?.thumb || url}
                     images={images}
                     index={i}
-                    assetLabel={assetLabelMap?.[url]}
+                    assetLabel={assetLabelMap.get(url)}
                     imgSelected={selectedUrls?.has(url)}
                     onToggleUrlSelect={onToggleUrlSelect}
                     onAddToAssets={onAddToAssets}
@@ -951,6 +939,9 @@ function formatTime(ts) {
 // 右上角：多选 checkbox（hover 显示；选中时常驻）；底部居中：添加到素材库（hover 显示）。
 // 左上角 badge：图片已在素材库时显示分类名（assetLabel）。
 function HistoryImageThumb({ url, thumb, images, index, assetLabel, imgSelected, onToggleUrlSelect, onAddToAssets }) {
+  const openCanvasGallery = useCanvasGallery();
+  const imageButtonRef = useRef(null);
+  const imageActivated = useViewportActivation(imageButtonRef);
   // 拖拽缩略图到画布：写入画布图片协议，落点建 imageDisplay 节点（拖图片，区别于拖卡片建 nodeType 节点）。
   // stopPropagation 防止冒泡到 HistoryCard 的 onDragStart（否则会被当作「拖节点」处理）。
   const handleImgDragStart = (setHoverOpen) => (e) => {
@@ -962,22 +953,26 @@ function HistoryImageThumb({ url, thumb, images, index, assetLabel, imgSelected,
   return (
     <ImageHoverCard
       url={url}
+      closeOnScroll
       className="relative block"
       renderTrigger={({ setHoverOpen }) => (
         <>
           <button
+            ref={imageButtonRef}
             type="button"
-            onClick={() => openMediaGallery(images.map((src) => ({ src, type: 'image' })), index)}
-            className="block h-full w-full overflow-hidden rounded"
+            onClick={() => openCanvasGallery(images.map((src) => ({ src, type: 'image' })), index)}
+            className="block h-full w-full overflow-hidden rounded bg-muted/40"
           >
-            <img
-              src={thumb || url}
-              alt=""
-              className="h-full w-full cursor-grab object-cover transition hover:opacity-80 active:cursor-grabbing"
-              loading="lazy"
-              draggable
-              onDragStart={handleImgDragStart(setHoverOpen)}
-            />
+            {imageActivated && (
+              <img
+                src={thumb || url}
+                alt=""
+                className="h-full w-full cursor-grab object-cover transition hover:opacity-80 active:cursor-grabbing"
+                loading="lazy"
+                draggable
+                onDragStart={handleImgDragStart(setHoverOpen)}
+              />
+            )}
           </button>
           {/* 左上角：素材库 badge（图片已在素材库时显示分类名） */}
           {assetLabel && (
@@ -1028,8 +1023,11 @@ function HistoryImageThumb({ url, thumb, images, index, assetLabel, imgSelected,
 function MasonryImageCell({
   item, selected, assetLabel, onToggleUrlSelect,
   onDownload, onMasonryAddToAssets, onMasonryUseImage, onMasonryViewGallery, onMasonryCopyUrls,
-  onBatchInsert, onBatchRemove,
+  onBatchInsert, onBatchRemove, onImageLoad,
 }) {
+  const openCanvasGallery = useCanvasGallery();
+  const imageButtonRef = useRef(null);
+  const imageActivated = useViewportActivation(imageButtonRef);
   const { url, resource, images, imgIndex } = item;
   const historyItem = item.item; // 原始 history 记录（flatImageItems 把图片展平时挂在 .item）
   const sourceNodeId = historyItem?.nodeId || null;
@@ -1053,23 +1051,28 @@ function MasonryImageCell({
           >
             <ImageHoverCard
               url={url}
+              closeOnScroll
               className="h-full w-full"
               triggerShape="fixed"
               renderTrigger={({ setHoverOpen }) => (
                 <>
                   <button
+                    ref={imageButtonRef}
                     type="button"
-                    onClick={() => openMediaGallery(images.map((src) => ({ src, type: 'image' })), imgIndex)}
-                    className="block h-full w-full overflow-hidden rounded"
+                    onClick={() => openCanvasGallery(images.map((src) => ({ src, type: 'image' })), imgIndex)}
+                    className="block h-full w-full overflow-hidden rounded bg-muted/40"
                   >
-                    <img
-                      src={resource?.thumb || url}
-                      alt=""
-                      className="h-full w-full cursor-grab object-cover transition hover:opacity-80 active:cursor-grabbing"
-                      loading="lazy"
-                      draggable
-                      onDragStart={handleImgDragStart(setHoverOpen)}
-                    />
+                    {imageActivated && (
+                      <img
+                        src={resource?.thumb || url}
+                        alt=""
+                        className="h-full w-full cursor-grab object-cover transition hover:opacity-80 active:cursor-grabbing"
+                        loading="lazy"
+                        draggable
+                        onLoad={(e) => onImageLoad?.(url, e.currentTarget)}
+                        onDragStart={handleImgDragStart(setHoverOpen)}
+                      />
+                    )}
                   </button>
                   {/* 右上角：多选 checkbox（hover 显示；选中时常驻高亮） */}
                   <button

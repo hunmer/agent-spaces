@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   HoverCard,
   HoverCardTrigger,
@@ -33,6 +33,7 @@ import {
  *   className?: string,                // trigger 容器额外 className
  *   triggerShape?: 'square'|'fixed',   // 'square'(默认 aspect-square) | 'fixed'(不强制形状，配合 className 的 w/h)
  *   hoverDelay?: number,               // HoverCard 显示延迟 ms（默认 500）
+ *   closeOnScroll?: boolean,           // 任意祖先滚动时立即关闭
  *   onDragStart?: (e:Event)=>void,
  *   children: React.ReactNode,
  *   onOpenChange?: (open:boolean)=>void,
@@ -45,6 +46,7 @@ export default function ImageHoverCard({
   className,
   triggerShape = 'square',
   hoverDelay = 500,
+  closeOnScroll = false,
   onOpenChange,
   renderTrigger,
   children,
@@ -55,6 +57,16 @@ export default function ImageHoverCard({
     setHoverOpen(open);
     onOpenChange?.(open);
   };
+
+  useEffect(() => {
+    if (!hoverOpen || !closeOnScroll || typeof document === 'undefined') return;
+    const handleScroll = () => {
+      setHoverOpen(false);
+      onOpenChange?.(false);
+    };
+    document.addEventListener('scroll', handleScroll, true);
+    return () => document.removeEventListener('scroll', handleScroll, true);
+  }, [closeOnScroll, hoverOpen, onOpenChange]);
 
   const triggerContent = renderTrigger
     ? renderTrigger({ hoverOpen, setHoverOpen: handleOpenChange })

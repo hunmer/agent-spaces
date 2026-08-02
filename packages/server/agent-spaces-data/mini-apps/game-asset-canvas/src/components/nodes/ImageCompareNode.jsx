@@ -3,6 +3,7 @@ import { FileUpload, ReactCompareSlider, ReactCompareSliderImage } from '@agent-
 import NodeShell from './NodeShell';
 import { NODE_TYPES } from '../../utils/constants';
 import UploadSection from './UploadSection';
+import ImageHoverCard from '../ImageHoverCard';
 
 /**
  * 图片对比节点：双图前后对比滑块（基于 react-compare-slider）。
@@ -149,12 +150,14 @@ function SlotUpload({ slotKey, urls, onChange, onClear, uploading }) {
           )}
         </div>
         <div className="nodrag nopan nowheel group relative overflow-hidden rounded-md border border-border bg-muted/30">
-          <img
-            src={urls.picked}
-            alt={meta.label}
-            draggable={false}
-            className="block max-h-32 w-full object-contain"
-          />
+          <ImageHoverCard url={urls.picked} triggerShape="fixed" className="w-full border-0">
+            <img
+              src={urls.picked}
+              alt={meta.label}
+              draggable={false}
+              className="block max-h-32 w-full object-contain"
+            />
+          </ImageHoverCard>
           {!isUpload && (
             <span className="absolute left-1 top-1 rounded bg-background/80 px-1 py-0.5 text-[9px] text-muted-foreground">🔗 连线</span>
           )}

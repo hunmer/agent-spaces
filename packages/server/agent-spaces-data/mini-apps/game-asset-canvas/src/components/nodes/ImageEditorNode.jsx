@@ -4,6 +4,7 @@ import NodeShell from './NodeShell';
 import ImageEditorDialog from '../ImageEditorDialog';
 import { NODE_TYPES } from '../../utils/constants';
 import UploadSection from './UploadSection';
+import ImageHoverCard from '../ImageHoverCard';
 
 /**
  * 图片编辑节点：浏览器端用 Painterro 编辑单张图片（画笔/文字/裁切/马赛克/旋转等）。
@@ -107,12 +108,14 @@ export default function ImageEditorNode({ id, data, selected }) {
       {upstreamImages.length > 0 && uploadedImages.length === 0 && (
         <div className="flex items-center gap-2 rounded border border-primary/40 bg-muted/30 px-1.5 py-1">
           <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded">
-            <img
-              src={upstreamImages[0]}
-              alt=""
-              draggable={false}
-              className="pointer-events-none max-h-full max-w-full object-contain"
-            />
+            <ImageHoverCard url={upstreamImages[0]} triggerShape="fixed" className="flex h-full w-full items-center justify-center border-0">
+              <img
+                src={upstreamImages[0]}
+                alt=""
+                draggable={false}
+                className="pointer-events-none max-h-full max-w-full object-contain"
+              />
+            </ImageHoverCard>
           </div>
           <span className="truncate text-[10px] text-muted-foreground">🔗 来自连线</span>
         </div>

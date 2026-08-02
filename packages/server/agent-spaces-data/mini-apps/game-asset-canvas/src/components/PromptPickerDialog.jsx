@@ -1,11 +1,12 @@
 import { useMemo, useState } from 'react';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
-  Input, ScrollArea, Button, openMediaGallery,
+  Input, ScrollArea, Button,
 } from '@agent-spaces/ui';
 import { PROMPT_CATEGORIES } from '../utils/prompts';
 import { ASPECT_OPTIONS } from '../utils/constants';
 import { resolveReferenceImages } from '../utils/workflow';
+import { useCanvasGallery } from '../utils/canvas-gallery';
 import usePromptLibrary from '../hooks/usePromptLibrary';
 import ImageHoverCard from './ImageHoverCard';
 
@@ -20,6 +21,7 @@ import ImageHoverCard from './ImageHoverCard';
  * @param {{ open:boolean, scene?:'text'|'edit', pickerMode?:boolean, onClose:()=>void, onPick?:(item:object)=>void }} props
  */
 export default function PromptPickerDialog({ open, scene = 'text', pickerMode = true, onClose, onPick }) {
+  const openCanvasGallery = useCanvasGallery();
   const { mergedPrompts, savePrompt, deletePrompt, resetPrompts } = usePromptLibrary();
   const [activeCat, setActiveCat] = useState(null); // null = 全部
   const [keyword, setKeyword] = useState('');
@@ -185,7 +187,7 @@ export default function PromptPickerDialog({ open, scene = 'text', pickerMode = 
                                 onClick={(e) => {
                                   // 阻止冒泡到卡片选中按钮，避免选中提示词并关闭弹窗
                                   e.stopPropagation();
-                                  openMediaGallery(refImages.map((url) => ({ src: url, type: 'image' })), i);
+                                  openCanvasGallery(refImages.map((url) => ({ src: url, type: 'image' })), i);
                                 }}
                                 className="block h-full w-full cursor-pointer overflow-hidden rounded transition hover:border-primary"
                               >

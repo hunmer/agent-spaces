@@ -1,9 +1,27 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
   Button,
 } from '@agent-spaces/ui';
 import AssetLibrary from './AssetLibrary';
+
+// 从 lightGallery 全屏预览（lg-outer z-index 1050，内部 1084）内触发本对话框时，
+// base-ui Dialog 默认 z-50 会被 gallery 盖住。用 body class 标记 + 全局 CSS 提升本实例层级，
+// 比 :has 兄弟选择器可靠（不依赖 Portal 内部 DOM 结构）。
+const ABOVE_GALLERY_BODY_CLASS = 'as-dialog-above-gallery';
+const ABOVE_GALLERY_STYLE_ID = 'as-dialog-above-gallery-style';
+function ensureAboveGalleryStyle() {
+  if (document.getElementById(ABOVE_GALLERY_STYLE_ID)) return;
+  const style = document.createElement('style');
+  style.id = ABOVE_GALLERY_STYLE_ID;
+  style.textContent = `
+    body.${ABOVE_GALLERY_BODY_CLASS} [data-slot="dialog-overlay"],
+    body.${ABOVE_GALLERY_BODY_CLASS} [data-slot="dialog-content"] {
+      z-index: 2000 !important;
+    }
+  `;
+  document.head.appendChild(style);
+}
 
 /**
  * 素材库选择器对话框：直接复用 AssetLibrary 列表（picker 模式），只加 Dialog 外壳 + 选中态 + 确认按钮。
@@ -28,6 +46,14 @@ export default function AssetLibraryPickerDialog({
   onConfirm,
 }) {
   const [selected, setSelected] = useState([]);
+
+  // 对话框打开期间给 body 加 class，配合注入的全局 CSS 把本实例 overlay+content 提到 gallery 之上。
+  useEffect(() => {
+    if (!open) return;
+    ensureAboveGalleryStyle();
+    document.body.classList.add(ABOVE_GALLERY_BODY_CLASS);
+    return () => document.body.classList.remove(ABOVE_GALLERY_BODY_CLASS);
+  }, [open]);
 
   const titleText = title || (mode === 'group'
     ? (multi ? '选择分组（可多选）' : '选择分组')

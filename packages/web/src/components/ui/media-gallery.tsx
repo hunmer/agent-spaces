@@ -13,8 +13,6 @@ import 'lightgallery/css/lg-zoom.css'
 import 'lightgallery/css/lg-video.css'
 import 'lightgallery/css/lg-thumbnail.css'
 
-import { Button } from '@/components/ui/button'
-
 type LgInstance = ReturnType<typeof lightGallery>
 
 export type MediaItem = {
@@ -90,37 +88,62 @@ function attachActions(
 
   const host = document.createElement('div')
   host.className = 'as-media-gallery-actions'
-  // 绝对定位排在 close 按钮左侧；用 inline style，不依赖项目 Tailwind 作用域（弹窗在 body 下）。
+  // host 只是个挂载点（createRoot 需要 DOM 容器），不给尺寸/边距，避免与原生按钮产生视觉差。
+  // 每个按钮自身带 .lg-icon（float:right + width:50px），独立排列，与 close/download 完全一致。
   Object.assign(host.style, {
-    position: 'absolute',
-    right: '48px', // 留出 close 按钮宽度
-    top: '50%',
-    transform: 'translateY(-50%)',
-    display: 'flex',
-    gap: '6px',
-    alignItems: 'center',
-    zIndex: '10',
+    display: 'inline',
+    color: '#999',
   } as React.CSSProperties)
   toolbar.appendChild(host)
 
   const root = createRoot(host)
   root.render(
     <>
-      {actions.map((action, i) => (
-        <Button
-          key={i}
-          variant={action.variant || 'glass'}
-          size="sm"
-          onClick={() => {
-            const idx = currentIndexRef.current
-            const item = items[idx]
-            if (item) action.onClick({ item, index: idx })
-          }}
-        >
-          {action.icon}
-          <span>{action.label}</span>
-        </Button>
-      ))}
+      {actions.map((action, i) => {
+        const hasIcon = !!action.icon
+        return (
+          <button
+            key={i}
+            type="button"
+            data-as-action={i}
+            // label 作为 title（悬停提示/alt）；有 icon 时只渲染 icon，无 icon 兜底显示文字。
+            // 复用原生 .lg-toolbar .lg-icon（width:50px / height:47px / font-size:24px / float:right），
+            // 不覆盖尺寸，确保与 close/download 等原生按钮宽度一致。
+            title={action.label}
+            aria-label={action.label}
+            className="lg-icon as-media-gallery-action"
+            style={{
+              margin: 0,
+              background: 'transparent',
+              border: 'none',
+              color: 'inherit',
+              cursor: 'pointer',
+              fontSize: '13px',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '4px',
+              lineHeight: 1,
+              transition: 'color .2s, background .2s',
+            }}
+            onClick={() => {
+              const idx = currentIndexRef.current
+              const item = items[idx]
+              if (item) action.onClick({ item, index: idx })
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.color = '#fff'
+              e.currentTarget.style.background = 'rgba(255,255,255,.1)'
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.color = '#999'
+              e.currentTarget.style.background = 'transparent'
+            }}
+          >
+            {hasIcon ? action.icon : <span>{action.label}</span>}
+          </button>
+        )
+      })}
     </>,
   )
 
@@ -162,16 +185,30 @@ export function MediaGallery({
 
     const hasActions = Array.isArray(actions) && actions.length > 0
     if (hasActions) {
-      // lgBeforeOpen 触发时弹窗 DOM 已构建，注入按钮；lgAfterSlide 兜底补注入并同步当前 index。
-      lgRef.current.on('lgBeforeOpen', () => {
+      // lightGallery 2.x 事件通过容器元素 addCustomListener 监听（实例无 .on 方法）。
+      // lgBeforeOpen 触发时弹窗 DOM 已构建，注入按钮；lgAfterSlide 同步当前 index。
+      const container = containerRef.current!
+      const onBeforeOpen = () => {
         actionsCleanupRef.current = attachActions(items, actions!, indexRef)
-      })
-      lgRef.current.on('lgAfterSlide', (e: { index?: number }) => {
-        if (typeof e?.index === 'number') indexRef.current = e.index
+      }
+      const onAfterSlide = (e: Event) => {
+        const idx = (e as CustomEvent).detail?.index
+        if (typeof idx === 'number') indexRef.current = idx
         if (!actionsCleanupRef.current) {
           actionsCleanupRef.current = attachActions(items, actions!, indexRef)
         }
-      })
+      }
+      container.addEventListener('lgBeforeOpen', onBeforeOpen)
+      container.addEventListener('lgAfterSlide', onAfterSlide)
+
+      return () => {
+        container.removeEventListener('lgBeforeOpen', onBeforeOpen)
+        container.removeEventListener('lgAfterSlide', onAfterSlide)
+        actionsCleanupRef.current?.()
+        actionsCleanupRef.current = null
+        lgRef.current?.destroy()
+        lgRef.current = null
+      }
     }
 
     return () => {
@@ -213,22 +250,31 @@ export function openMediaGallery(
   })
 
   const hasActions = Array.isArray(actions) && actions.length > 0
-  if (hasActions) {
-    instance.on('lgBeforeOpen', () => {
-      actionsCleanup = attachActions(items, actions!, indexRef)
-    })
-    instance.on('lgAfterSlide', (e: { index?: number }) => {
-      if (typeof e?.index === 'number') indexRef.current = e.index
-      if (!actionsCleanup) actionsCleanup = attachActions(items, actions!, indexRef)
-    })
-  }
 
-  el.addEventListener('lgAfterClose', () => {
+  // lightGallery 2.x 事件通过容器元素 addEventListener 监听（实例无 .on 方法）。
+  const onBeforeOpen: (() => void) | null = hasActions
+    ? () => { actionsCleanup = attachActions(items, actions!, indexRef) }
+    : null
+  const onAfterSlide: ((e: Event) => void) | null = hasActions
+    ? (e: Event) => {
+        const idx = (e as CustomEvent).detail?.index
+        if (typeof idx === 'number') indexRef.current = idx
+        if (!actionsCleanup) actionsCleanup = attachActions(items, actions!, indexRef)
+      }
+    : null
+  if (onBeforeOpen) el.addEventListener('lgBeforeOpen', onBeforeOpen)
+  if (onAfterSlide) el.addEventListener('lgAfterSlide', onAfterSlide)
+
+  // 关闭时统一清理（事件监听 + actions root + lightGallery 实例 + 容器元素）。
+  const onAfterClose = () => {
+    if (onBeforeOpen) el.removeEventListener('lgBeforeOpen', onBeforeOpen)
+    if (onAfterSlide) el.removeEventListener('lgAfterSlide', onAfterSlide)
     actionsCleanup?.()
     actionsCleanup = null
     instance.destroy()
     el.remove()
-  })
+  }
+  el.addEventListener('lgAfterClose', onAfterClose)
 
   instance.openGallery(startIndex)
 }

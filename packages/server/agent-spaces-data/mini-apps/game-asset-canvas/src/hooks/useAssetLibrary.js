@@ -46,7 +46,15 @@ export default function useAssetLibrary(workspaceId) {
     const as = window.AgentSpaces;
     const target = assetLibraryConfigPath(workspaceId);
     const apply = (value) => {
-      setCategories(value && Array.isArray(value.categories) ? value.categories : []);
+      const cats = value && Array.isArray(value.categories) ? value.categories : [];
+      // [asset-label-debug] 收到素材库变更：分类数/总资产数/首个分类前几个 url，定位广播是否回传
+      const allUrls = cats.flatMap((c) => (c.assets || []).map((a) => a.url));
+      console.log('[asset-label-debug] useAssetLibrary apply', {
+        catCount: cats.length,
+        assetCount: allUrls.length,
+        sample: allUrls.slice(0, 5),
+      });
+      setCategories(cats);
     };
     // 三重读取：getConfig 快照 + onConfigReady 兜底 + onAnyConfigChanged 多端同步
     apply(as?.getConfig?.(target));

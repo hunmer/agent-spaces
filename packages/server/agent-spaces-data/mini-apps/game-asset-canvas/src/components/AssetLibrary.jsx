@@ -1,11 +1,12 @@
 import { useCallback, useState } from 'react';
 import {
-  Dropzone, FileUpload, ScrollArea, openMediaGallery, setCanvasImageDragData,
+  Dropzone, FileUpload, ScrollArea, setCanvasImageDragData,
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
   Plus, Trash2, Loader2, Pencil, Check, CopyPlus,
 } from '@agent-spaces/ui';
 import useAssetLibrary from '../hooks/useAssetLibrary';
 import ImageHoverCard from './ImageHoverCard';
+import { useCanvasGallery } from '../utils/canvas-gallery';
 
 /**
  * 素材库 tab：与当前工作区绑定。支持创建/重命名/删除分类，每个分类可上传图片。
@@ -475,11 +476,12 @@ function AssetThumb({ asset, categoryId, picker, selected, onToggle, onRemove, o
   const [titleDraft, setTitleDraft] = useState('');
   // 展示名：优先 title（可读标题），其次 name（文件名）
   const displayName = asset.title || asset.name;
+  const openCanvasGallery = useCanvasGallery();
   const handleClick = () => {
     if (isPickerImage) {
       onToggle?.();
     } else {
-      openMediaGallery([{ src: asset.url, type: 'image', alt: displayName, fileName: asset.name }], 0);
+      openCanvasGallery([{ src: asset.url, type: 'image', alt: displayName, fileName: asset.name }], 0);
     }
   };
 

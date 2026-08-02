@@ -390,6 +390,7 @@ export default function useCanvasAgentRpc({ nodes, edges, groups = [], createNod
               items: sel.map((n) => ({
                 id: n.id, type: n.type,
                 typeLabel: (NODE_META[n.type] && NODE_META[n.type].label) || n.type,
+                title: n.data?.title || n.data?.label || (NODE_META[n.type] && NODE_META[n.type].label) || n.type,
                 label: n.data?.label || '',
               })),
             };
@@ -405,7 +406,13 @@ export default function useCanvasAgentRpc({ nodes, edges, groups = [], createNod
           case 'canvas.getCanvas': {
             result = {
               ok: true,
-              nodes: curNodes.map((n) => ({ id: n.id, type: n.type, label: n.data?.label || '', position: n.position })),
+              nodes: curNodes.map((n) => ({
+                id: n.id,
+                type: n.type,
+                title: n.data?.title || n.data?.label || (NODE_META[n.type] && NODE_META[n.type].label) || n.type,
+                label: n.data?.label || '',
+                position: n.position,
+              })),
               edges: curEdges.map((e) => ({
                 source: e.source,
                 target: e.target,

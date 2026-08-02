@@ -6,6 +6,7 @@ import { Eye, Upload, X, GripVertical } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { FileCard, type FormatFileProps } from "@/components/file-card-collections";
 import { openMediaGallery, type MediaItem } from "./media-gallery";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "./hover-card";
 import { CANVAS_IMAGE_DROP_MIME, debugCanvasImageDrag, getCanvasImageDropUrls, setCanvasImageDragData } from "./file-upload-drop";
 
 // 文件列表拖拽排序的互斥标记：写入 dataTransfer 表示当前在列表内排序。
@@ -48,6 +49,8 @@ interface FileUploadProps<TFile extends FileUploadFileLike = File> {
   sortable?: boolean;
   /** 隐藏上传区域（dropzone），仅保留文件列表展示。用于节点折叠上传控件但保留已传文件预览的场景。 */
   hideDropzone?: boolean;
+  /** 图片缩略图悬浮时显示大图预览。 */
+  imageHoverPreview?: boolean;
 }
 
 let _fileId = 0;
@@ -66,6 +69,7 @@ export function FileUpload<TFile extends FileUploadFileLike = File>({
   placeholder,
   sortable = false,
   hideDropzone = false,
+  imageHoverPreview = false,
 }: FileUploadProps<TFile>) {
   const [dragError, setDragError] = useState<string | null>(null);
   // 拖拽排序状态：draggingId = 被拖拽项 id，overId = 当前悬停项 id（用于占位指示）
@@ -354,7 +358,33 @@ export function FileUpload<TFile extends FileUploadFileLike = File>({
                 {sortable && (
                   <GripVertical className="size-4 shrink-0 text-muted-foreground" />
                 )}
-                {preview ? (
+                {preview ? (imageHoverPreview ? (
+                  <HoverCard>
+                    <HoverCardTrigger
+                      delay={500}
+                      render={<button
+                        type="button"
+                        title="查看大图"
+                        aria-label={`查看 ${item.file.name}`}
+                        onPointerDown={(event) => event.stopPropagation()}
+                        onClick={(event) => {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          openImagePreview(item.id);
+                        }}
+                        className="group/preview relative size-10 shrink-0 overflow-hidden rounded-md"
+                      />}
+                    >
+                      <img src={preview} alt="" draggable={false} className="size-full object-cover" />
+                      <span className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition-opacity group-hover/preview:opacity-100">
+                        <Eye className="size-4 text-white" />
+                      </span>
+                    </HoverCardTrigger>
+                    <HoverCardContent className="flex w-auto max-w-[500px] items-center justify-center p-1">
+                      <img src={preview} alt={item.file.name} className="max-h-[320px] max-w-[320px] rounded object-contain" />
+                    </HoverCardContent>
+                  </HoverCard>
+                ) : (
                   <button
                     type="button"
                     title="查看大图"
@@ -372,7 +402,7 @@ export function FileUpload<TFile extends FileUploadFileLike = File>({
                       <Eye className="size-4 text-white" />
                     </span>
                   </button>
-                ) : (
+                )) : (
                   <div className="shrink-0 py-0.5">
                     <FileCard formatFile={detectFormat(item.file.name)} />
                   </div>

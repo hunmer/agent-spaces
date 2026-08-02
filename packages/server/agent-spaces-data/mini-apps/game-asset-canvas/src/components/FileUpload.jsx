@@ -1,7 +1,9 @@
 import { useCallback, useContext, useRef, useState } from 'react';
-import { CANVAS_IMAGE_DROP_MIME, Check, SquarePen, Trash2, Upload, debugCanvasImageDrag, getCanvasImageDropUrls, openMediaGallery, setCanvasImageDragData } from '@agent-spaces/ui';
+import { CANVAS_IMAGE_DROP_MIME, Check, SquarePen, Trash2, Upload, debugCanvasImageDrag, getCanvasImageDropUrls, setCanvasImageDragData } from '@agent-spaces/ui';
 import { IMAGE_REORDER_MIME } from '../utils/canvas-constants';
 import { ImageSelectionContext } from '../context/ImageSelectionContext';
+import { useCanvasGallery } from '../utils/canvas-gallery';
+import ImageHoverCard from './ImageHoverCard';
 
 /**
  * 图片上传组件：支持点击/拖拽上传，调用 window.AgentSpaces.uploadFile 上传到后端，
@@ -187,10 +189,11 @@ export default function FileUpload({ nodeId, value = [], onChange, max = 6, plac
   }, [urls, onChange]);
 
   const allItems = displayItems.map((item) => ({ src: item.src, type: 'image' }));
+  const openCanvasGallery = useCanvasGallery();
   const openAt = useCallback((idx) => {
     if (!allItems.length) return;
-    openMediaGallery(allItems, Math.max(0, Math.min(idx, allItems.length - 1)));
-  }, [allItems]);
+    openCanvasGallery(allItems, Math.max(0, Math.min(idx, allItems.length - 1)));
+  }, [allItems, openCanvasGallery]);
 
   return (
     <div
@@ -298,7 +301,9 @@ export default function FileUpload({ nodeId, value = [], onChange, max = 6, plac
                     : item.kind === 'extra' ? 'border-border bg-muted/40' : 'border-border'
                 } ${sortable ? 'cursor-grab active:cursor-grabbing' : ''}`}
               >
-                <img src={item.src} alt="" draggable={false} className="h-full w-full object-cover" />
+                <ImageHoverCard url={item.src} triggerShape="fixed" className="h-full w-full border-0">
+                  <img src={item.src} alt="" draggable={false} className="h-full w-full object-cover" />
+                </ImageHoverCard>
                 {/* 右上角选择 checkbox：hover 显示空框，选中时常驻显示实心勾。点击切换选中（天然多选）。 */}
                 {nodeId && (
                   <button

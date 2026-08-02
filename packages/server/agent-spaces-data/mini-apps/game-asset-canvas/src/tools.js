@@ -98,7 +98,8 @@ export default [
           description: NODE_TYPE_DESC,
           enum: NODE_TYPE_ENUM,
         },
-        label: { type: 'string', description: '节点显示标题（可选，不传用类型默认名）' },
+        title: { type: 'string', description: '节点显示标题（可选，不传用类型默认中文名）' },
+        label: { type: 'string', description: '兼容旧版的节点标题参数；新调用请使用 title' },
         position: {
           type: 'object',
           description: '画布坐标（可选，不传则自动错落排布）',
@@ -125,11 +126,12 @@ export default [
       properties: {
         nodes: {
           type: 'array',
-          description: '节点规格数组，每项与 add_node 同结构：{type, label?, position?, data?}',
+          description: '节点规格数组，每项与 add_node 同结构：{type, title?, position?, data?}',
           items: {
             type: 'object',
             properties: {
               type: { type: 'string', enum: NODE_TYPE_ENUM },
+              title: { type: 'string', description: '节点显示标题（可选）' },
               label: { type: 'string' },
               position: {
                 type: 'object',
@@ -256,17 +258,18 @@ export default [
   },
   {
     name: 'update_node',
-    description: '更新节点 data 的部分字段（patch 合并，不会清空其他字段）。用户说「把便签内容改成 xxx」「修改文生图的提示词」「换成即梦模型」时调用。常见 data 字段：note 用 {text}；生成类节点用 {params:{...}}。**改枚举型参数（model/aspect/size 等）先调 get_node_params(type) 查合法值**，不要盲填。',
+    description: '更新节点标题或 data 的部分字段（patch 合并，不会清空其他字段）。用户说「把节点标题改成 xxx」「把便签内容改成 xxx」「修改文生图的提示词」时调用。**改枚举型参数（model/aspect/size 等）先调 get_node_params(type) 查合法值**，不要盲填。',
     inputSchema: {
       type: 'object',
       properties: {
         nodeId: { type: 'string', description: '目标节点 id' },
+        title: { type: 'string', description: '新的节点显示标题（可选；传空字符串恢复类型默认中文名）' },
         data: {
           type: 'object',
           description: '要合并的字段。如 {text:"新内容"} 或 {params:{prompt:"...",model:"jimeng-5.0"}}。生成类节点的 params 合法枚举值由 get_node_params 返回。',
         },
       },
-      required: ['nodeId', 'data'],
+      required: ['nodeId'],
     },
   },
   {

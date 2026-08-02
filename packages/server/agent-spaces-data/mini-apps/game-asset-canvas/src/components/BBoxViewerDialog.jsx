@@ -10,7 +10,6 @@ import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
   InputGroup, InputGroupAddon, InputGroupButton,
   Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription,
-  openMediaGallery,
 } from '@agent-spaces/ui';
 import {
   Undo2, Redo2, Eraser, Trash2, Download, Upload, FileJson, Crosshair, Sparkles,
@@ -24,6 +23,7 @@ import {
   BUILTIN_PLUGIN,
 } from '../utils/constants';
 import CutoutDialog from './CutoutDialog';
+import { useCanvasGallery } from '../utils/canvas-gallery';
 
 // 12 色调色板（移植自 bbox_viewer.html）
 const PALETTE = [
@@ -2274,13 +2274,14 @@ function FormField({ label, children }) {
  * @param {() => void} [props.onRemove] 抠图结果删除回调（显示右上角 X）
  */
 function Thumb({ src, isCutout, borderColor, onRemove }) {
+  const openCanvasGallery = useCanvasGallery();
   return (
     <HoverCard>
       <HoverCardTrigger
         render={
           <div
             className={'group/thumb relative h-7 w-7 shrink-0 cursor-zoom-in'}
-            onClick={(e) => { e.stopPropagation(); openMediaGallery([{ src, type: 'image' }], 0); }}
+            onClick={(e) => { e.stopPropagation(); openCanvasGallery([{ src, type: 'image' }], 0); }}
           >
             <img
               src={src}

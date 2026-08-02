@@ -4,6 +4,7 @@ import NodeShell from './NodeShell';
 import BBoxViewerDialog from '../BBoxViewerDialog';
 import { NODE_TYPES } from '../../utils/constants';
 import UploadSection from './UploadSection';
+import ImageHoverCard from '../ImageHoverCard';
 
 /**
  * BBox 查看节点：接收上游单图或本地上传图片，弹出 fabric 编辑器
@@ -100,12 +101,14 @@ export default function BBoxViewerNode({ id, data, selected }) {
             )}
           </div>
           <div className="nodrag nopan nowheel group relative overflow-hidden rounded-md border border-border bg-muted/30">
-            <img
-              src={inputUrl}
-              alt="背景图"
-              draggable={false}
-              className="block max-h-32 w-full object-contain"
-            />
+            <ImageHoverCard url={inputUrl} triggerShape="fixed" className="w-full border-0">
+              <img
+                src={inputUrl}
+                alt="背景图"
+                draggable={false}
+                className="block max-h-32 w-full object-contain"
+              />
+            </ImageHoverCard>
             {uploadedImages.length === 0 && (
               <span className="absolute left-1 top-1 rounded bg-background/80 px-1 py-0.5 text-[9px] text-muted-foreground">
                 🔗 连线

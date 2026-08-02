@@ -4,7 +4,6 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
   Input, Label, Loader, Paintbrush, ScrollArea,
   MoreVertical,
-  openMediaGallery,
   ReactCompareSlider, ReactCompareSliderImage,
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
   Switch, Tabs, TabsContent, TabsList, TabsTrigger, Textarea, Trash2, WandSparkles,
@@ -23,6 +22,7 @@ import {
 } from '../utils/reskin/reskinEditorData';
 import useSpineReskinHistory from '../hooks/useSpineReskinHistory';
 import { hasReskinLogImageOutput } from '../utils/reskin/reskinLogData';
+import { useCanvasGallery } from '../utils/canvas-gallery';
 import { resolveReskinComparison } from '../utils/reskin/reskinHistoryData';
 import SpineCompareViewer from './SpineCompareViewer';
 
@@ -91,6 +91,7 @@ export default function ReskinPanel({
   onReskinComplete, initialData, onDataChange, logs, setLogs, currentAnimation = '',
   cutoutWorkflowId,
 }) {
+  const openCanvasGallery = useCanvasGallery();
   const initialStateRef = useRef(null);
   if (!initialStateRef.current) {
     let fallbackSize = '2k';
@@ -716,7 +717,7 @@ export default function ReskinPanel({
             <button
               type="button"
               disabled={running}
-              onClick={() => openMediaGallery([{
+              onClick={() => openCanvasGallery([{
                 src: generatedImageUrl,
                 type: 'image',
                 alt: `${finalSkinName} 生成图片`,
@@ -956,7 +957,7 @@ export default function ReskinPanel({
                       <button
                         key={`${stage.label}-${stageIndex}`}
                         type="button"
-                        onClick={() => openMediaGallery(media, stageIndex ? media.length - 1 : 0)}
+                        onClick={() => openCanvasGallery(media, stageIndex ? media.length - 1 : 0)}
                         className="min-w-0 overflow-hidden rounded border border-border bg-muted"
                         title={`查看${stage.label}`}
                       >
@@ -1238,6 +1239,7 @@ function LogImageFlow({ flow, params, log, applyingMask, onRepaintMask }) {
 }
 
 function LogImageGroup({ label, images, media, startIndex, log, applyingMask, onRepaintMask }) {
+  const openCanvasGallery = useCanvasGallery();
   return (
     <div className="min-w-0">
       <div className="mb-1.5 text-[10px] font-medium tracking-wide text-muted-foreground">{label}</div>
@@ -1252,7 +1254,7 @@ function LogImageGroup({ label, images, media, startIndex, log, applyingMask, on
               <button
                 type="button"
                 className="w-full overflow-hidden rounded border border-border bg-muted text-left transition hover:border-primary"
-                onClick={() => openMediaGallery(media, startIndex + index)}
+                onClick={() => openCanvasGallery(media, startIndex + index)}
                 title={`查看 ${image.label}`}
               >
                 <img src={image.src} alt={image.label} className="h-20 w-full max-h-20 object-contain" />
@@ -1305,6 +1307,7 @@ function formatParamValue(value) {
 }
 
 function LogImageList({ images }) {
+  const openCanvasGallery = useCanvasGallery();
   if (!images.length) return null;
   const media = images.map((image) => ({
     src: image.src,
@@ -1321,7 +1324,7 @@ function LogImageList({ images }) {
             key={`${image.src}-${index}`}
             type="button"
             className="w-24 shrink-0 overflow-hidden rounded border border-border bg-muted text-left transition hover:border-primary"
-            onClick={() => openMediaGallery(media, index)}
+            onClick={() => openCanvasGallery(media, index)}
             title={`查看 ${image.label}`}
           >
             <img src={image.src} alt={image.label} className="h-20 w-full max-h-20 object-contain" />

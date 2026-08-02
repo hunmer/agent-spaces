@@ -70,11 +70,11 @@ export default function RightPanel({
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="add" className="mt-0 min-h-0 flex-1 overflow-hidden">
+        <TabsContent value="add" keepMounted className="mt-0 min-h-0 flex-1 overflow-hidden">
           <AddNodeTab onAdd={onAdd} onDragStartNode={onDragStartNode} onExecute={onExecute} />
         </TabsContent>
 
-        <TabsContent value="nodes" className="mt-0 min-h-0 flex-1 overflow-hidden">
+        <TabsContent value="nodes" keepMounted className="mt-0 min-h-0 flex-1 overflow-hidden">
           <NodeManageTab
             nodes={nodes}
             edges={edges}
@@ -86,7 +86,7 @@ export default function RightPanel({
           />
         </TabsContent>
 
-        <TabsContent value="history" className="mt-0 min-h-0 flex-1 overflow-hidden">
+        <TabsContent value="history" keepMounted className="mt-0 min-h-0 flex-1 overflow-hidden">
           <HistoryTab
             history={history}
             groups={groups}
@@ -103,7 +103,7 @@ export default function RightPanel({
           />
         </TabsContent>
 
-        <TabsContent value="assets" className="mt-0 min-h-0 flex-1 overflow-hidden">
+        <TabsContent value="assets" keepMounted className="mt-0 min-h-0 flex-1 overflow-hidden">
           <AssetLibrary workspaceId={workspaceId} onInsertImagesToCanvas={onInsertImagesToCanvas} />
         </TabsContent>
       </Tabs>
