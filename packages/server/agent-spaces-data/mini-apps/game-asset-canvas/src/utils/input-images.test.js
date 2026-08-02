@@ -17,6 +17,20 @@ test('computeInputImages replaces stale passthrough data after an upstream versi
   assert.deepEqual(result.get('target')?.images, ['new.png']);
 });
 
+test('computeInputImages propagates thumbnail resources through passthrough nodes', () => {
+  const resource = { url: 'full.png', thumb: 'thumb.jpg' };
+  const nodes = [
+    { id: 'source', type: NODE_TYPES.editImage, data: { output: { images: ['full.png'], resources: [resource] } } },
+    { id: 'display', type: NODE_TYPES.imageDisplay, data: {} },
+    { id: 'target', type: NODE_TYPES.imageProcess, data: {} },
+  ];
+  const result = computeInputImages(nodes, [edge('source', 'display'), edge('display', 'target')]);
+
+  assert.deepEqual(result.get('display')?.resources, [resource]);
+  assert.deepEqual(result.get('target')?.resources, [resource]);
+  assert.deepEqual(result.get('target')?.images, ['full.png']);
+});
+
 test('computeInputVideos replaces stale display data after an upstream version switch', () => {
   const nodes = [
     { id: 'source', type: NODE_TYPES.videoGenerator, data: { output: { videos: ['new.mp4'] } } },

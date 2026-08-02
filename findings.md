@@ -37,3 +37,16 @@
 - `runJob` 捕获中断异常时目前仍调用 `onError`，会把已取消节点再次标成错误；应只在最终状态为 `error` 时调用。
 - 最小修复：队列增加 `onCancel(job)`，cancel 接受 queued/running 时立即调用一次；Canvas 统一写 `loading:false,status:'cancelled',error:undefined`。
 - 仅依赖 `jobsRef.current.status` 存在 React 状态提交竞态；增加模块内 `cancelledJobIdsRef`，在异步成功/失败收尾前优先判定，防止晚到结果覆盖取消状态。
+
+## 2026-08-02 图片缩略图链路
+- 宿主已经暴露 `generateThumbnail({source|url,target,...})`，结果写入 mini-app data 目录并返回 `httpUrl`；当前 `downloadImage` 和 `saveImageToDir` 均未调用它。
+- `persistImagesToBackend` 当前返回 `Promise<string[]>`，所有节点执行、连线和工作流输入都依赖 `images: string[]`，直接改成 `{url,thumb}` 对象会造成大范围破坏。
+- 最小兼容方向是保留原图 URL 数组，并在相邻数据字段中保存缩略图；UI 的 `<img src>` 使用缩略图，Gallery、拖拽、删除、工作流输入继续使用原 URL。
+- 工作区目录原图通过 `/local-file` 展示，缩略图仍可统一落 mini-app data 的 `thumbs/`，不产生第二份原图。
+- 生成记录条目是对象且当前含 `images`，可新增同索引 `thumbs`；素材条目是 `{id,url,name,...}`，可新增单值 `thumb`。
+- 节点生成输出当前为 `output: { images }`，适合扩为 `output: { images, thumbs }`；队列创建的 imageDisplay 节点可用 `data.thumbs`。
+- 素材库与历史的 Gallery、拖拽和后续操作均明确使用原始 `url/images`，只需把 `<img src>` 改为 `thumb || url` 即可保持大图语义。
+- 服务端缩略图接口接受远程 URL；宿主生成的带 token 的 data/local-file URL 可作为 `url` 输入，统一生成缩略图到 data 目录。
+- 输出缩略图还必须沿边传播到目标节点；否则 `UpstreamImageList` 只有原 URL，输入区仍会请求大图。应在图片派生阶段同步构造 URL→thumb 映射，但不改变 URL 数组。
+- `generateImages` 当前只有两个主要调用层（`useWorkflow` 与执行队列），可扩展为返回资源结果并在 hook 层拆成 `{urls, thumbs}`；媒体生成仍继续使用原 `persistImagesToBackend` 字符串返回契约。
+- 最终数据设计采用 `resources: [{url, thumb}]`：`images` 保持纯字符串数组；每个资源对象显式含用户要求的 `thumb` 字段，旧数据无 resources 时 UI 自动回退原图。

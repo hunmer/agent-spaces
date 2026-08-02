@@ -56,6 +56,7 @@ function buildImageNodes(prevNodes, urls, opts) {
     data: {
       ...initialData(NODE_TYPES.imageDisplay),
       images: [url],
+      resources: [opts.resources?.[i] || { url, thumb: url }],
       source,
       tags,
       label: meta.label,

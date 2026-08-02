@@ -26,3 +26,10 @@
 - 已增加 cancelledJobIds 竞态保护，中断后的晚到结果不会再触发完成或错误节点更新。
 - 工作流自身返回中断错误时也会触发节点取消收尾；主动取消路径避免重复通知。
 - 最终验证：mini-app utils 测试 32/32、useExecutionQueue/Canvas Babel 语法检查、git diff --check 均通过。
+- 收到新任务：服务器落盘图片缺少缩略图；需增加 thumb 字段供节点输入输出、生成记录和素材库展示，原图逻辑保持不变。
+- 已新增 `generateImageResources`：生成图落盘后调用宿主 sharp 缩略图能力，返回 `{url,thumb}`；`generateImages` 保留 urls 并新增 resources。
+- 已开始扩展执行队列与 `computeInputImages`，让缩略资源沿节点连线传播而不改变原图数组。
+- 已接入节点产出卡片、imageDisplay、全部 UpstreamImageList 调用点、生成记录列表/瀑布流和素材库缩略展示。
+- 素材入库现在保留 `thumb`，点击 Gallery、拖拽、下载和工作流参数仍使用原始 `url`。
+- 定向及全量 mini-app utils 测试通过 36/36；全部改动 JS/JSX 的 Babel 语法检查与 git diff --check 通过。
+- 已同步 handoff.md，记录 `images` 原图数组与 `resources[].thumb` 缩略展示字段的长期约束；任务完成。

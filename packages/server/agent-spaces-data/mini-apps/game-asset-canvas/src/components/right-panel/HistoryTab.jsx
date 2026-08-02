@@ -198,7 +198,7 @@ export default function HistoryTab({
       toast.success(`已用作输入（${urls.length} 张）`);
     } else if (action === 'addToAssets') {
       if (!urls.length) { toast.error('选中记录无图片'); return; }
-      onAddToAssets?.(urls);
+      onAddToAssets?.(collectResources(selectedItems));
     } else if (action === 'insert') {
       selectedItems.forEach((it) => onInsertHistory?.(it, {}));
       toast.success(`已插入 ${selectedItems.length} 条记录到画布`);
@@ -216,6 +216,13 @@ export default function HistoryTab({
   };
   // 批量操作：收集目标记录的所有图片 url（跳过文本记录无图）
   const collectUrls = (items) => items.flatMap((it) => (Array.isArray(it.images) ? it.images.filter(Boolean) : []));
+  const collectResources = (items) => items.flatMap((it) => {
+    const resources = Array.isArray(it.resources) ? it.resources : [];
+    const byUrl = new Map(resources.map((resource) => [resource?.url, resource]));
+    return (Array.isArray(it.images) ? it.images : [])
+      .filter(Boolean)
+      .map((url) => byUrl.get(url) || { url, thumb: url });
+  });
   // 批量操作回调（作用于 resolveTargets 结果）
   const batchUseImage = (item) => {
     const urls = collectUrls(resolveTargets(item));
@@ -226,7 +233,7 @@ export default function HistoryTab({
   const batchAddToAssets = (item) => {
     const urls = collectUrls(resolveTargets(item));
     if (!urls.length) { toast.error('选中记录无图片'); return; }
-    onAddToAssets?.(urls);
+    onAddToAssets?.(collectResources(resolveTargets(item)));
   };
   const batchInsert = (item, opts) => {
     resolveTargets(item).forEach((it) => onInsertHistory?.(it, opts));
@@ -259,7 +266,16 @@ export default function HistoryTab({
       if (it.mediaType === 'audio' || it.mediaType === 'video' || it.mediaType === 'text') continue;
       const imgs = it.images || [];
       if (!imgs.length) continue;
-      imgs.forEach((url, i) => out.push({ key: `${it.id}:${i}`, url, item: it, imgIndex: i, images: imgs }));
+      const resources = Array.isArray(it.resources) ? it.resources : [];
+      const byUrl = new Map(resources.map((resource) => [resource?.url, resource]));
+      imgs.forEach((url, i) => out.push({
+        key: `${it.id}:${i}`,
+        url,
+        resource: byUrl.get(url) || { url, thumb: url },
+        item: it,
+        imgIndex: i,
+        images: imgs,
+      }));
     }
     return out;
   }, [filtered]);
@@ -306,7 +322,11 @@ export default function HistoryTab({
     }
   };
   // masonry 图片级批量：素材库/用作输入/查看大图/复制地址 作用于选中图片集
-  const masonryBatchAddToAssets = (url) => onAddToAssets?.(resolveImageUrls(url));
+  const masonryBatchAddToAssets = (url) => {
+    const urls = resolveImageUrls(url);
+    const byUrl = new Map(flatImageItems.map((item) => [item.url, item.resource]));
+    onAddToAssets?.(urls.map((itemUrl) => byUrl.get(itemUrl) || { url: itemUrl, thumb: itemUrl }));
+  };
   const masonryBatchUseImage = (url) => {
     const urls = resolveImageUrls(url);
     urls.forEach((u) => onUseImage?.(u));
@@ -745,6 +765,8 @@ function HistoryCard({
   selectedUrls, onToggleUrlSelect,
 }) {
   const images = item.images || [];
+  const resources = Array.isArray(item.resources) ? item.resources : [];
+  const resourceByUrl = new Map(resources.map((resource) => [resource?.url, resource]));
   const cover = images[0];
   // 媒体产出（音频/视频）：渲染播放器而非图片网格，避免 broken img。
   // 多份产出（count>1）时全部渲染，单个用 cover 兜底。
@@ -823,6 +845,7 @@ function HistoryCard({
                   <HistoryImageThumb
                     key={i}
                     url={url}
+                    thumb={resourceByUrl.get(url)?.thumb || url}
                     images={images}
                     index={i}
                     assetLabel={assetLabelMap?.[url]}
@@ -846,7 +869,7 @@ function HistoryCard({
               {images.length > 0 && (
                 <button
                   type="button"
-                  onClick={() => onAddToAssets?.(images)}
+                  onClick={() => onAddToAssets?.(images.map((url) => resourceByUrl.get(url) || { url, thumb: url }))}
                   title="把本条记录的所有输出图片添加到素材库分组"
                   className="flex items-center gap-1 text-[10px] text-muted-foreground transition hover:text-primary"
                 >
@@ -928,7 +951,7 @@ function formatTime(ts) {
 // delay=500ms 延迟显示；点击打开 mediaGallery 大图查看。
 // 右上角：多选 checkbox（hover 显示；选中时常驻）；底部居中：添加到素材库（hover 显示）。
 // 左上角 badge：图片已在素材库时显示分类名（assetLabel）。
-function HistoryImageThumb({ url, images, index, assetLabel, imgSelected, onToggleUrlSelect, onAddToAssets }) {
+function HistoryImageThumb({ url, thumb, images, index, assetLabel, imgSelected, onToggleUrlSelect, onAddToAssets }) {
   // 拖拽缩略图到画布：写入画布图片协议，落点建 imageDisplay 节点（拖图片，区别于拖卡片建 nodeType 节点）。
   // stopPropagation 防止冒泡到 HistoryCard 的 onDragStart（否则会被当作「拖节点」处理）。
   const handleImgDragStart = (setHoverOpen) => (e) => {
@@ -949,7 +972,7 @@ function HistoryImageThumb({ url, images, index, assetLabel, imgSelected, onTogg
             className="block h-full w-full overflow-hidden rounded"
           >
             <img
-              src={url}
+              src={thumb || url}
               alt=""
               className="h-full w-full cursor-grab object-cover transition hover:opacity-80 active:cursor-grabbing"
               loading="lazy"
@@ -986,7 +1009,7 @@ function HistoryImageThumb({ url, images, index, assetLabel, imgSelected, onTogg
           <div className="absolute inset-x-0 bottom-0 z-20 flex justify-center pb-0.5 opacity-0 transition group-hover:opacity-100">
             <button
               type="button"
-              onClick={(e) => { e.stopPropagation(); onAddToAssets?.([url]); }}
+              onClick={(e) => { e.stopPropagation(); onAddToAssets?.([{ url, thumb: thumb || url }]); }}
               title="添加到素材库"
               className="flex h-5 w-5 items-center justify-center rounded-full border border-border bg-background/90 text-muted-foreground shadow-sm transition hover:bg-primary hover:text-primary-foreground"
             >
@@ -1008,7 +1031,7 @@ function MasonryImageCell({
   onDownload, onMasonryAddToAssets, onMasonryUseImage, onMasonryViewGallery, onMasonryCopyUrls,
   onBatchInsert, onBatchRemove,
 }) {
-  const { url, images, imgIndex } = item;
+  const { url, resource, images, imgIndex } = item;
   const historyItem = item.item; // 原始 history 记录（flatImageItems 把图片展平时挂在 .item）
   const sourceNodeId = historyItem?.nodeId || null;
   // 拖拽缩略图到画布：与 HistoryImageThumb 一致的协议（拖图片建 imageDisplay 节点）。
@@ -1041,7 +1064,7 @@ function MasonryImageCell({
                     className="block h-full w-full overflow-hidden rounded"
                   >
                     <img
-                      src={url}
+                      src={resource?.thumb || url}
                       alt=""
                       className="h-full w-full cursor-grab object-cover transition hover:opacity-80 active:cursor-grabbing"
                       loading="lazy"

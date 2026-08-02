@@ -109,6 +109,7 @@ export default function MaskPaintNode({ id, data, selected }) {
         <UpstreamImageList
           nodeId={id}
           urls={upstreamImages}
+          resources={data?.imageResources}
           sortable
           onChangeOrder={(next) => onUpdate?.({ upstreamOrder: next })}
           onDelete={data?.onDeleteUpstreamImage}

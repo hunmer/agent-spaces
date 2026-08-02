@@ -207,10 +207,10 @@ async function workflowRedraw(imageUrl, prompt, opts, log) {
   if (!workflowId) throw new Error('未配置编辑图片工作流');
   log('workflow', `调用 edit_image（${model} / ${aspect} / ${size}）…`);
   const t0 = performance.now();
-  const images = await generateImages(workflowId, {
+  const result = await generateImages(workflowId, {
     images: [imageUrl], prompt, model, aspect, size,
   });
-  const url = images[0];
+  const url = result.urls[0];
   if (!url) throw new Error('edit_image 未返回重绘结果图');
   const ms = Math.round(performance.now() - t0);
   log('workflow', `edit_image 重绘完成（${ms}ms）`, { url, durationMs: ms });

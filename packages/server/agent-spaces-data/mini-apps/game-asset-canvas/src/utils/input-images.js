@@ -18,7 +18,7 @@
  * @param {Array} edges
  * edge.data.inputTarget 可把图片路由到目标节点的其它 FileUpload；旧边默认进入 images。
  *
- * @returns {Map<string, {images: string[], fileUploads: Record<string, string[]>, isDisplay: boolean}>} nodeId -> 派生输入
+ * @returns {Map<string, {images: string[], resources: Array<{url:string,thumb?:string}>, fileUploads: Record<string, string[]>, isDisplay: boolean}>} nodeId -> 派生输入
  */
 import { NODE_TYPES, isImageProcessNodeType } from './constants.js';
 import {
@@ -59,6 +59,16 @@ export function computeInputImages(nodes, edges) {
     if (derived !== undefined) return derived;
     return sd.images || [];
   };
+  const sourceResources = (node, images, derivedResourcesByNode) => {
+    const sd = node.data || {};
+    const stored = sd.output?.images?.length ? sd.output?.resources : sd.resources;
+    const derivedResources = derivedResourcesByNode.get(node.id);
+    const candidates = derivedResources !== undefined && PASSTHROUGH_TYPES.has(node.type)
+      ? derivedResources
+      : stored;
+    const byUrl = new Map((Array.isArray(candidates) ? candidates : []).map((item) => [item?.url, item]));
+    return images.map((url) => byUrl.get(url) || { url, thumb: url });
+  };
 
   const incomingByTarget = new Map();
   for (const e of edges) {
@@ -68,6 +78,7 @@ export function computeInputImages(nodes, edges) {
   const byId = new Map(nodes.map((n) => [n.id, n]));
   const map = new Map(); // nodeId -> { images, isDisplay }
   const derived = new Map(); // 视图层累积的派生图（每轮并进 source 视图）
+  const derivedResources = new Map();
 
   // fixed-point：每轮重算所有 receiver 的派生图，并把派生结果并进下一轮的 source 视图。
   // 收敛上限 = nodes.length（最坏线性链）；每轮检测是否还有变化以提前退出。
@@ -78,25 +89,35 @@ export function computeInputImages(nodes, edges) {
       const incoming = incomingByTarget.get(node.id);
       if (!incoming || !incoming.length) continue;
       const upstreamByTarget = {};
+      const resourcesByTarget = {};
       for (const e of incoming) {
         const src = byId.get(e.source);
         if (!src) continue;
         const targetId = resolveFileUploadTarget(node.type, e.data?.inputTarget);
         if (!upstreamByTarget[targetId]) upstreamByTarget[targetId] = [];
-        upstreamByTarget[targetId].push(...sourceImages(src, derived));
+        if (!resourcesByTarget[targetId]) resourcesByTarget[targetId] = [];
+        const sourceUrls = sourceImages(src, derived);
+        upstreamByTarget[targetId].push(...sourceUrls);
+        resourcesByTarget[targetId].push(...sourceResources(src, sourceUrls, derivedResources));
       }
       const upstream = upstreamByTarget[DEFAULT_FILE_UPLOAD_TARGET] || [];
+      const resources = resourcesByTarget[DEFAULT_FILE_UPLOAD_TARGET] || [];
       const fileUploads = Object.fromEntries(
         Object.entries(upstreamByTarget).filter(([targetId]) => targetId !== DEFAULT_FILE_UPLOAD_TARGET),
       );
       const prev = derived.get(node.id);
+      const prevResources = derivedResources.get(node.id);
       map.set(node.id, {
         images: upstream,
+        resources,
         fileUploads,
         isDisplay: node.type === NODE_TYPES.imageDisplay,
       });
-      if (!prev || prev.join('|') !== upstream.join('|')) {
+      const resourcesSignature = resources.map((item) => `${item?.url || ''}\u0000${item?.thumb || ''}`).join('|');
+      const previousResourcesSignature = (prevResources || []).map((item) => `${item?.url || ''}\u0000${item?.thumb || ''}`).join('|');
+      if (!prev || prev.join('|') !== upstream.join('|') || resourcesSignature !== previousResourcesSignature) {
         derived.set(node.id, upstream);
+        derivedResources.set(node.id, resources);
         changed = true;
       }
     }

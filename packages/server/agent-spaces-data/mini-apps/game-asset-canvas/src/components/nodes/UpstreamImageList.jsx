@@ -24,7 +24,7 @@ import { ImageSelectionContext } from '../../context/ImageSelectionContext';
  * @param {string[]} [props.nonDeletableUrls]  不允许删除的图片 URL（分组「按上传素材执行」注入）
  */
 export default function UpstreamImageList({
-  nodeId, urls, sortable, onChangeOrder, itemLabel, onDelete, nonDeletableUrls = [],
+  nodeId, urls, resources = [], sortable, onChangeOrder, itemLabel, onDelete, nonDeletableUrls = [],
 }) {
   // draggingIdx 用 ref 保证 dragstart→dragover 之间同步读取（state 异步会读到 null）。
   // overIdx 用 state 仅驱动渲染高亮。
@@ -33,6 +33,7 @@ export default function UpstreamImageList({
   const [overIdx, setOverIdx] = useState(null);
   const nonDeletableSet = new Set(nonDeletableUrls);
   const itemKeys = occurrenceKeys(urls);
+  const resourceByUrl = new Map(resources.map((item) => [item?.url, item]));
   // 跨节点图片选中状态：checkbox 点击增删切换，ctrl+点击图片本体增删切换（跨节点累加）
   const { isSelected, toggle } = useContext(ImageSelectionContext);
 
@@ -126,7 +127,7 @@ export default function UpstreamImageList({
               <div className="relative flex h-8 w-8 shrink-0 items-center justify-center overflow-visible rounded">
                 <div className="flex h-full w-full items-center justify-center overflow-hidden rounded">
                   <img
-                    src={url}
+                    src={resourceByUrl.get(url)?.thumb || url}
                     alt=""
                     draggable={false}
                     className="pointer-events-none max-h-full max-w-full object-contain"

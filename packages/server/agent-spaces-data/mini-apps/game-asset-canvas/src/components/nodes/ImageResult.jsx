@@ -29,10 +29,12 @@ function BrokenImagePlaceholder({ url }) {
  * @param {number} [props.activeVersion] 当前选中的版本索引
  * @param {Function} [props.onSwitchVersion] 版本切换回调，回传版本索引
  */
-export default function ImageResult({ nodeId, images, max = 0, preview = false, onImageLoad, onAddToAssets, fileName, onAddImages, onRemoveImage, onClearImages, onReorderImages, versions, activeVersion, onSwitchVersion }) {
+export default function ImageResult({ nodeId, images, resources = [], max = 0, preview = false, onImageLoad, onAddToAssets, fileName, onAddImages, onRemoveImage, onClearImages, onReorderImages, versions, activeVersion, onSwitchVersion }) {
   const all = images || [];
   const list = max > 0 ? all.slice(0, max) : all;
   const hasVersions = Array.isArray(versions) && versions.length > 1 && onSwitchVersion;
+  const resourceByUrl = new Map(resources.map((item) => [item?.url, item]));
+  const resourceFor = (url) => resourceByUrl.get(url) || { url, thumb: url };
   // 跨节点图片选中状态：checkbox 点击增删切换，ctrl+点击图片本体增删切换（跨节点累加）
   const { isSelected, toggle } = useContext(ImageSelectionContext);
   if (!list.length && !onAddImages && !hasVersions) return null;
@@ -127,6 +129,7 @@ export default function ImageResult({ nodeId, images, max = 0, preview = false, 
           <PreviewImage
             key={i}
             url={url}
+            thumb={resourceFor(url).thumb}
             onOpen={() => open(i)}
             onImageLoad={onImageLoad}
             onDragStart={onReorderDragStart(i, url)}
@@ -251,7 +254,7 @@ export default function ImageResult({ nodeId, images, max = 0, preview = false, 
               } ${sortable ? 'cursor-grab active:cursor-grabbing' : ''}`}
             >
               <div className="block h-full w-full overflow-hidden rounded">
-                <GridImage url={url} />
+                <GridImage url={resourceFor(url).thumb || url} />
               </div>
               {/* 右上角选择 checkbox：hover 显示空框，选中时常驻显示实心勾。点击切换选中（天然多选）。 */}
               {nodeId && (
@@ -271,7 +274,7 @@ export default function ImageResult({ nodeId, images, max = 0, preview = false, 
                   {onAddToAssets && (
                     <button
                       type="button"
-                      onClick={(e) => { e.stopPropagation(); onAddToAssets({ url, fileName: nameFor(i) }); }}
+                      onClick={(e) => { e.stopPropagation(); onAddToAssets({ ...resourceFor(url), fileName: nameFor(i) }); }}
                       title="添加到素材库"
                       className="game-asset-output-action rounded border border-border bg-background/90 text-muted-foreground shadow-sm hover:bg-primary hover:text-primary-foreground"
                     >
@@ -333,11 +336,12 @@ function ImageLoadingPlaceholder() {
  * 预览态单图：加载中显示 spinner 占位，加载完毕才展示；失败切换占位块（点击仍可尝试打开 gallery）。
  * 单击打开 gallery。
  */
-function PreviewImage({ url, onOpen, onImageLoad, onDragStart }) {
+function PreviewImage({ url, thumb, onOpen, onImageLoad, onDragStart }) {
   const [failed, setFailed] = useState(false);
   const [loaded, setLoaded] = useState(false);
   // url 变化（版本切换）时重置状态：重新进入 loading，允许重新加载新图
-  useEffect(() => { setFailed(false); setLoaded(false); }, [url]);
+  const displayUrl = thumb || url;
+  useEffect(() => { setFailed(false); setLoaded(false); }, [displayUrl]);
   return (
     <button
       type="button"
@@ -352,7 +356,7 @@ function PreviewImage({ url, onOpen, onImageLoad, onDragStart }) {
         <>
           {!loaded && <ImageLoadingPlaceholder />}
           <img
-            src={url}
+            src={displayUrl}
             alt=""
             className={`block h-auto w-full object-contain transition-opacity duration-200 ${loaded ? 'opacity-100' : 'absolute opacity-0'}`}
             onLoad={(e) => { setLoaded(true); onImageLoad?.(e); }}

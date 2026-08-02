@@ -75,19 +75,20 @@ export default function useNodeExecutions({ runWorkflow, updateNodeData, addHist
     try {
       const batches = await runWithConcurrency(count, concurrency, () => {
         if (wfHandle.aborted) return [];
-        return runWorkflow(finalWorkflowId, wfInput, histId).then((r) => r.urls || []).catch((e) => {
+        return runWorkflow(finalWorkflowId, wfInput, histId).then((r) => r || { urls: [], resources: [] }).catch((e) => {
           // 部分失败不阻塞：返回空数组让成功的合并；全部失败由最终 length 校验抛错
           console.warn('generate one batch failed:', e);
-          return [];
+          return { urls: [], resources: [] };
         });
       });
       if (wfHandle.aborted) {
         updateNodeData(nodeId, { status: 'cancelled', error: undefined });
         return;
       }
-      const urls = batches.flat().filter(Boolean);
+      const urls = batches.flatMap((batch) => batch.urls || []).filter(Boolean);
+      const resources = batches.flatMap((batch) => batch.resources || []).filter((item) => item?.url);
       if (!urls.length) throw new Error('未返回图片');
-      updateNodeData(nodeId, { status: 'done', output: { images: urls } });
+      updateNodeData(nodeId, { status: 'done', output: { images: urls, resources } });
       // 落地已在 generateImages 内完成（按 directory 决定走工作区目录或 data），这里只记录历史
       addHistory({
         id: histId,
@@ -96,6 +97,7 @@ export default function useNodeExecutions({ runWorkflow, updateNodeData, addHist
         prompt: input?.prompt || '',
         model: input?.model || '',
         images: urls,
+        resources,
         createdAt: Date.now(),
       }).catch((e) => console.error('addHistory failed:', e));
       notifyDone('生成完成', `${NODE_META[nodeType]?.label || '节点'}产出了 ${urls.length} 张图`);

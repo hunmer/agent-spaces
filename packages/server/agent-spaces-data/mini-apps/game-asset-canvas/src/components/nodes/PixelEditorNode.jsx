@@ -130,6 +130,7 @@ export default function PixelEditorNode({ id, data, selected }) {
         <UpstreamImageList
           nodeId={id}
           urls={upstreamImages}
+          resources={data?.imageResources}
           sortable
           onChangeOrder={(next) => onUpdate?.({ upstreamOrder: next })}
           itemLabel={(i) => `第 ${i + 1} 帧`}

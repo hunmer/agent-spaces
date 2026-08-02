@@ -104,6 +104,7 @@ export default function DirectorDeskNode({ id, data, selected }) {
         <UpstreamImageList
           nodeId={id}
           urls={upstreamImages}
+          resources={data?.imageResources}
           sortable
           onChangeOrder={(next) => onUpdate?.({ upstreamOrder: next })}
           itemLabel={(i) => `全景 ${i + 1}`}

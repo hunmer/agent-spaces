@@ -61,9 +61,11 @@ export default function useDecoratedNodes({
       const data = { ...nd.data };
       if (up) {
         data.images = up.images;
+        data.imageResources = up.resources;
         data.fileUploadInputs = up.fileUploads;
         data.protectedUpstreamImageUrls = up.images.filter((url) => groupAssetUrls.has(url));
         if (up.isDisplay) {
+          data.resources = up.resources;
           data.source = 'upstream';
           data.tags = dedupeTags([...(nd.data?.tags || []), IMAGE_TAGS.upstream]);
         }

@@ -22,6 +22,7 @@ import FloatingHandle from './FloatingHandle';
 export default function ImageDisplayNode({ id, data, selected }) {
   const showFullNode = data?.compactView !== true;
   const images = Array.isArray(data?.images) ? data.images.filter(Boolean) : [];
+  const resources = Array.isArray(data?.resources) ? data.resources : [];
   const onUpdate = data?.onUpdate;
   const onAutoSize = data?.onAutoSize;
   const autoSizeEnabled = data?.autoSize !== false;
@@ -41,6 +42,7 @@ export default function ImageDisplayNode({ id, data, selected }) {
   const selectionCount = data?.selectionCount ?? 1;
   const isMulti = images.length > 1;
   const current = images[Math.min(imgIndex, images.length - 1)] || images[0];
+  const currentThumb = resources.find((item) => item?.url === current)?.thumb || current;
 
   // 工具栏按钮可见性（与原 NodeShell 逻辑一致：有产出图且有回调）
   const onExportImages = data?.onExportImages;
@@ -179,8 +181,8 @@ export default function ImageDisplayNode({ id, data, selected }) {
           <button type="button" onDoubleClick={open} title="双击查看大图" className="flex max-h-full max-w-full items-center justify-center">
             {current && viewportActivated && (
               <img
-                key={current}
-                src={current}
+                key={currentThumb}
+                src={currentThumb}
                 alt=""
                 draggable={false}
                 className="max-h-full max-w-full select-none object-contain"

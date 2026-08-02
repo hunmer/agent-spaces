@@ -86,6 +86,44 @@ export async function persistImagesToBackend(urls, opts = {}) {
   return out;
 }
 
+function imageThumbTarget(url, historyId, index) {
+  let hash = 2166136261;
+  for (const ch of String(url || '')) {
+    hash ^= ch.charCodeAt(0);
+    hash = Math.imul(hash, 16777619);
+  }
+  const scope = String(historyId || 'generated').replace(/[^A-Za-z0-9_-]/g, '_');
+  return `thumbs/${scope}/${(hash >>> 0).toString(36)}-${index}.jpg`;
+}
+
+/**
+ * 为原图 URL 生成仅供界面展示的缩略图资源。原图 URL 始终保留在 url 字段。
+ * 单张失败时 thumb 回退原图，不阻塞节点生成和历史写入。
+ * @param {string[]} urls
+ * @param {{historyId?:string}} [opts]
+ * @returns {Promise<Array<{url:string, thumb:string}>>}
+ */
+export async function generateImageResources(urls, opts = {}) {
+  const generateThumbnail = window.AgentSpaces?.generateThumbnail;
+  const list = Array.isArray(urls) ? urls.filter(Boolean) : [];
+  return Promise.all(list.map(async (url, index) => {
+    if (typeof generateThumbnail !== 'function') return { url, thumb: url };
+    try {
+      const result = await generateThumbnail({
+        url: normalizeImageUrl(url),
+        target: imageThumbTarget(url, opts.historyId, index),
+        width: 320,
+        quality: 80,
+        fit: 'inside',
+      });
+      return { url, thumb: result?.httpUrl || url };
+    } catch (error) {
+      console.warn('generateImageResources failed:', url, error);
+      return { url, thumb: url };
+    }
+  }));
+}
+
 /**
  * URL 数组去重保序（按字符串值）。用于把多来源图片（参考图/上传图/连线图）合并成统一输入列表。
  * @param {string[]} urls
@@ -282,12 +320,12 @@ function hasImages(out) {
 }
 
 /**
- * 执行文生图/编辑图片工作流，返回图片 URL 数组。
+ * 执行文生图/编辑图片工作流，返回原图 URL 与缩略图资源。
  * 兼容多种 output 字段名：result / images / image_urls（image_enchanter 工作流 end 节点用 image_urls）。
  * @param {string} workflowId
  * @param {object} input
  * @param {{directory?:string, historyId?:string}} [opts] directory 设了则落到工作区目录，historyId 作为子目录名
- * @returns {Promise<string[]>}
+ * @returns {Promise<{urls:string[], resources:Array<{url:string,thumb:string}>}>}
  */
 export async function generateImages(workflowId, input, opts = {}) {
   const workflowInput = Array.isArray(input?.images)
@@ -306,7 +344,9 @@ export async function generateImages(workflowId, input, opts = {}) {
   const normalized = normalizeImageUrls(urls);
   // 非后端地址的外链图统一落地：directory 设了则落到工作区目录（返回指向本地文件的 httpUrl），
   // 否则落到后端 data 目录。避免外链失效（防盗链/CORS/过期）。失败保留原地址。
-  return persistImagesToBackend(normalized, { directory: opts.directory, historyId: opts.historyId });
+  const persisted = await persistImagesToBackend(normalized, { directory: opts.directory, historyId: opts.historyId });
+  const resources = await generateImageResources(persisted, { historyId: opts.historyId });
+  return { urls: persisted, resources };
 }
 
 /**

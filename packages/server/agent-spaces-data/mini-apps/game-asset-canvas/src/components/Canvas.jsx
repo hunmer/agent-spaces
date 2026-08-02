@@ -193,18 +193,19 @@ export default function Canvas() {
   const { jobs, submit, cancel, clearFinished, runningCount, queuedCount } = useExecutionQueue({
     directory: activeWorkspace?.directory,
     concurrency: settings.executionConcurrency,
-    onComplete: (job, images, histId) => {
+    onComplete: (job, images, histId, resources) => {
       const tag = job.nodeType === NODE_TYPES.editImage ? IMAGE_TAGS.editImage : IMAGE_TAGS.textToImage;
       if (job.placeholderNodeId) {
         updateNodeData(job.placeholderNodeId, {
           images,
+          resources,
           source: 'queue',
           loading: false,
           error: undefined,
           tags: dedupeTags([...(job.tags || []), tag]),
         });
       } else {
-        addImageNodesFromUrls(images, { tags: [tag] });
+        addImageNodesFromUrls(images, { tags: [tag], resources });
       }
       // 落地已在 generateImages 内完成（按 directory 决定走工作区目录或 data），这里只记录历史
       addHistory({
@@ -214,6 +215,7 @@ export default function Canvas() {
         prompt: job.input?.prompt || '',
         model: job.input?.model || '',
         images,
+        resources,
         createdAt: Date.now(),
       }).catch((e) => console.error('queue addHistory failed:', e));
     },
@@ -599,6 +601,7 @@ export default function Canvas() {
           await addAsset(grp.id, {
             id: `ast-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
             url,
+            thumb: item.thumb || url,
             name: fileName,
             title,
             size: 0,
@@ -685,7 +688,10 @@ export default function Canvas() {
     updateNodeData(nodeId, (data) => {
       const prev = Array.isArray(data?.output?.images) ? data.output.images : [];
       const next = mutator(prev);
-      return { __versionSkip: true, output: { ...(data?.output || {}), images: next } };
+      const previousResources = Array.isArray(data?.output?.resources) ? data.output.resources : [];
+      const byUrl = new Map(previousResources.map((item) => [item?.url, item]));
+      const resources = next.map((url) => byUrl.get(url) || { url, thumb: url });
+      return { __versionSkip: true, output: { ...(data?.output || {}), images: next, resources } };
     });
   }, [updateNodeData]);
   const handleAddOutputImages = useCallback((nodeId, urls) => {
@@ -703,7 +709,7 @@ export default function Canvas() {
   const handleClearOutputImages = useCallback((nodeId) => {
     // 清空产出同时清空版本历史：避免清空后 versions 残留，刷新页面版本按钮又出现
     console.log('[clear] handleClearOutputImages', nodeId);
-    updateNodeData(nodeId, { __versionSkip: true, output: { images: [] }, versions: [], activeVersion: undefined, status: 'idle' });
+    updateNodeData(nodeId, { __versionSkip: true, output: { images: [], resources: [] }, versions: [], activeVersion: undefined, status: 'idle' });
   }, [updateNodeData]);
   // 清空生成记录：可选同时重置画布上所有节点的产出/版本/状态。
   // alsoResetNodes=true 时逐个走 handleClearOutputImages 复用单节点重置字段集。
@@ -789,6 +795,7 @@ export default function Canvas() {
       const audios = [out.audio, ...(out.audios || [])].filter(Boolean);
       const videos = [out.video, ...(out.videos || [])].filter(Boolean);
       const images = Array.isArray(out.images) ? out.images.filter(Boolean) : [];
+      const resources = Array.isArray(out.resources) ? out.resources.filter((item) => item?.url) : [];
       const text = typeof out.text === 'string' ? out.text.trim() : '';
       // imageDisplay/videoDisplay 走 data.images/videos 透传，非 output
       const displayImages = n.type === NODE_TYPES.imageDisplay
@@ -803,9 +810,9 @@ export default function Canvas() {
       } else if (videos.length || displayVideos.length) {
         item = { mediaType: 'video', images: videos.length ? videos : displayVideos };
       } else if (text) {
-        item = { mediaType: 'text', text: text.slice(0, 5000), images: images.slice(0, 4) };
+        item = { mediaType: 'text', text: text.slice(0, 5000), images: images.slice(0, 4), resources: resources.slice(0, 4) };
       } else if (images.length) {
-        item = { images };
+        item = { images, resources };
       } else if (displayImages.length) {
         item = { images: displayImages };
       }

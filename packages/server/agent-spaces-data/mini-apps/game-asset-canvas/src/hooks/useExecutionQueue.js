@@ -12,12 +12,12 @@ function genId() {
  * 执行队列：管理通过表单提交的生成任务。
  * - submit: 入队，异步执行，监听 workflow:started 拿 executionId（供中断）
  * - cancel: 用 stopWorkflow 中断引擎，标记 stopped
- * - 完成后回调 onComplete(job, images, histId) 让上层把结果加到画布
+ * - 完成后回调 onComplete(job, images, histId, resources) 让上层把结果加到画布
  *   histId：落地子目录名（与 generateImages 落地共用），上层 addHistory 应复用该 id
  *
  * @param {{
  *   directory?: string,
- *   onComplete?: (job, images:string[], histId?:string)=>void,
+ *   onComplete?: (job, images:string[], histId?:string, resources?:Array<{url:string,thumb:string}>)=>void,
  *   onError?: (job, err:unknown)=>void,
  *   onCancel?: (job)=>void,
  * }} [opts]
@@ -96,18 +96,21 @@ export default function useExecutionQueue(opts = {}) {
 
     try {
       let images = [];
+      let resources = [];
       if (task.execute) {
         await task.execute();
       } else {
-        images = await generateImages(task.workflowId, task.input, {
+        const result = await generateImages(task.workflowId, task.input, {
           directory: directoryRef.current,
           historyId: job.histId,
         });
+        images = result.urls;
+        resources = result.resources;
       }
       const current = jobsRef.current.find((item) => item.id === job.id);
       if (cancelledJobIdsRef.current.has(job.id) || current?.status === 'stopped') return;
       updateJob(job.id, { status: 'done', images });
-      if (!task.execute) onCompleteRef.current?.(job, images, job.histId);
+      if (!task.execute) onCompleteRef.current?.(job, images, job.histId, resources);
     } catch (err) {
       const msg = err?.message || String(err);
       // 中断导致的报错归为 stopped

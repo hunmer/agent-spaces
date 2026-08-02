@@ -63,6 +63,7 @@ export default function NodeShell({
     status,
     statusMsg: data?.statusMsg,
     images: data?.output?.images || [],
+    resources: data?.output?.resources || [],
     text: nodeType === NODE_TYPES.promptReverse ? (data?.output?.text || '') : '',
     fileName: data?.params?.fileName,
     onAddToAssets: data?.onAddToAssets,

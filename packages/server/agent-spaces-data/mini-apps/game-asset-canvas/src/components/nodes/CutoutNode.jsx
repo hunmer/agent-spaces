@@ -167,6 +167,7 @@ export default function CutoutNode({ id, type, data, selected }) {
         <UpstreamImageList
           nodeId={id}
           urls={upstreamImages}
+          resources={data?.imageResources}
           sortable
           onChangeOrder={(next) => onUpdate?.({ upstreamOrder: next })}
           onDelete={data?.onDeleteUpstreamImage}

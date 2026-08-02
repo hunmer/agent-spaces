@@ -64,7 +64,7 @@ export default function AssetLibrary({ workspaceId, picker, multi, onSelectionCh
       const picked = [];
       categories.forEach((c) => {
         (c.assets || []).forEach((a) => {
-          if (next.includes(`${c.id}#${a.id}`)) picked.push({ url: a.url, name: a.name, categoryId: c.id, id: a.id });
+          if (next.includes(`${c.id}#${a.id}`)) picked.push({ url: a.url, thumb: a.thumb || a.url, name: a.name, categoryId: c.id, id: a.id });
         });
       });
       emit(picked);
@@ -523,7 +523,7 @@ function AssetThumb({ asset, categoryId, picker, selected, onToggle, onRemove, o
         }
       >
         <img
-          src={asset.url}
+          src={asset.thumb || asset.url}
           alt={asset.name || ''}
           className="h-full w-full object-cover"
           loading="lazy"
@@ -552,7 +552,7 @@ function AssetThumb({ asset, categoryId, picker, selected, onToggle, onRemove, o
         }
       >
         <img
-          src={asset.url}
+          src={asset.thumb || asset.url}
           alt={displayName || ''}
           className="h-full w-full object-cover"
           loading="lazy"
@@ -594,7 +594,7 @@ function AssetThumb({ asset, categoryId, picker, selected, onToggle, onRemove, o
           ) : (
             <button type="button" onClick={handleClick} className="block h-full w-full overflow-hidden rounded">
               <img
-                src={asset.url}
+                src={asset.thumb || asset.url}
                 alt={displayName || ''}
                 className="h-full w-full cursor-grab object-cover transition hover:opacity-80 active:cursor-grabbing"
                 loading="lazy"

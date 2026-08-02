@@ -11,11 +11,10 @@ import { generateImages } from '../utils/workflow';
  * histId 由调用方传入（与 history 记录共用，作为落地子目录名）。
  *
  * @param {string} [directory] 当前工作区数据目录（宿主机绝对路径），可选
- * @returns {(workflowId: string, input: object, histId?: string) => Promise<{ urls: string[] }>}
+ * @returns {(workflowId: string, input: object, histId?: string) => Promise<{ urls: string[], resources: Array<{url:string,thumb:string}> }>}
  */
 export default function useWorkflow(directory) {
   return useCallback(async (workflowId, input, histId) => {
-    const urls = await generateImages(workflowId, input, { directory, historyId: histId });
-    return { urls };
+    return generateImages(workflowId, input, { directory, historyId: histId });
   }, [directory]);
 }

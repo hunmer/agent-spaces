@@ -159,6 +159,7 @@ export default function ImageProcessNode({ id, type, data, selected }) {
         <UpstreamImageList
           nodeId={id}
           urls={upstreamImages}
+          resources={data?.imageResources}
           sortable={multipleIn}
           onChangeOrder={(next) => onUpdate?.({ upstreamOrder: next })}
           onDelete={data?.onDeleteUpstreamImage}

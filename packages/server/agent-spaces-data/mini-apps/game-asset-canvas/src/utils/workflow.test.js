@@ -63,10 +63,15 @@ test('generateImages normalizes relative input images before workflow execution'
   const { generateImages } = loadWorkflowModule();
   const previousWindow = globalThis.window;
   let receivedArgs;
+  let thumbnailArgs;
   globalThis.window = {
     location: { origin: 'http://localhost:3000' },
     AgentSpaces: {
       downloadImage: async (url) => ({ httpUrl: url }),
+      generateThumbnail: async (args) => {
+        thumbnailArgs = args;
+        return { httpUrl: '/api/thumb.jpg' };
+      },
       callPluginTool: async (_plugin, _tool, args) => {
         receivedArgs = args;
         return {
@@ -86,13 +91,17 @@ test('generateImages normalizes relative input images before workflow execution'
   };
 
   try {
-    await generateImages('edit-image', {
+    const result = await generateImages('edit-image', {
       images: ['/static/uploads/composite.png'],
       prompt: 'reskin',
     });
     assert.deepEqual(receivedArgs.input.images, [
       'http://localhost:3000/static/uploads/composite.png',
     ]);
+    assert.deepEqual(result.urls, ['http://localhost:3000/static/uploads/generated.png']);
+    assert.deepEqual(result.resources, [{ url: 'http://localhost:3000/static/uploads/generated.png', thumb: '/api/thumb.jpg' }]);
+    assert.equal(thumbnailArgs.url, 'http://localhost:3000/static/uploads/generated.png');
+    assert.match(thumbnailArgs.target, /^thumbs\/generated\/.+\.jpg$/);
   } finally {
     globalThis.window = previousWindow;
   }
