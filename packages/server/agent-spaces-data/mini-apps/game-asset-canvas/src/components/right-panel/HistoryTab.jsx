@@ -270,17 +270,27 @@ export default function HistoryTab({
       if (!imgs.length) continue;
       const resources = Array.isArray(it.resources) ? it.resources : [];
       const byUrl = new Map(resources.map((resource) => [resource?.url, resource]));
-      imgs.forEach((url, i) => out.push({
-        key: `${it.id}:${i}`,
-        url,
-        resource: byUrl.get(url) || { url, thumb: url },
-        item: it,
-        imgIndex: i,
-        images: imgs,
-      }));
+      imgs.forEach((url, i) => {
+        const resource = byUrl.get(url) || { url, thumb: url };
+        out.push({
+          key: `${it.id}:${i}`,
+          url,
+          resource,
+          item: it,
+          galleryIndex: out.length,
+        });
+      });
     }
     return out;
   }, [filtered]);
+  const galleryItems = useMemo(
+    () => flatImageItems.map(({ url, resource }) => ({ src: url, thumb: resource?.thumb || url, type: 'image' })),
+    [flatImageItems],
+  );
+  const galleryIndexByKey = useMemo(
+    () => new Map(flatImageItems.map((it) => [it.key, it.galleryIndex])),
+    [flatImageItems],
+  );
 
   // ---- masonry 图片级多选（须在 flatImageItems 之后，避免 TDZ） ----
   const toggleUrlSelect = (url) => {
@@ -621,6 +631,8 @@ export default function HistoryTab({
                 selected={selectedIds.has(it.id)}
                 selectionCount={selectedIds.size}
                 assetLabelMap={assetLabelMap}
+                galleryItems={galleryItems}
+                galleryIndexByKey={galleryIndexByKey}
                 selectedUrls={selectedUrls}
                 onToggleUrlSelect={toggleUrlSelect}
                 onToggleSelect={toggleSelect}
@@ -671,6 +683,7 @@ export default function HistoryTab({
                 renderItem={(it) => (
                   <MasonryImageCell
                     item={it}
+                    galleryItems={galleryItems}
                     selected={selectedUrls.has(it.url)}
                     assetLabel={assetLabelMap.get(it.url)}
                     onToggleUrlSelect={toggleUrlSelect}
@@ -744,7 +757,7 @@ export default function HistoryTab({
 }
 
 function HistoryCard({
-  item, selected, selectionCount, assetLabelMap,
+  item, selected, selectionCount, assetLabelMap, galleryItems, galleryIndexByKey,
   onToggleSelect, onSelectOnly,
   onRemove, onUseImage, onInsert, onDragStart, onAddToAssets,
   onBatchUseImage, onBatchAddToAssets, onBatchInsert, onBatchViewGallery, onBatchCopyUrls, onBatchRemove,
@@ -833,8 +846,8 @@ function HistoryCard({
                     key={i}
                     url={url}
                     thumb={resourceByUrl.get(url)?.thumb || url}
-                    images={images}
-                    index={i}
+                    galleryItems={galleryItems}
+                    galleryIndex={galleryIndexByKey.get(`${item.id}:${i}`) ?? 0}
                     assetLabel={assetLabelMap.get(url)}
                     imgSelected={selectedUrls?.has(url)}
                     onToggleUrlSelect={onToggleUrlSelect}
@@ -938,7 +951,7 @@ function formatTime(ts) {
 // delay=500ms 延迟显示；点击打开 mediaGallery 大图查看。
 // 右上角：多选 checkbox（hover 显示；选中时常驻）；底部居中：添加到素材库（hover 显示）。
 // 左上角 badge：图片已在素材库时显示分类名（assetLabel）。
-function HistoryImageThumb({ url, thumb, images, index, assetLabel, imgSelected, onToggleUrlSelect, onAddToAssets }) {
+function HistoryImageThumb({ url, thumb, galleryItems, galleryIndex, assetLabel, imgSelected, onToggleUrlSelect, onAddToAssets }) {
   const openCanvasGallery = useCanvasGallery();
   const imageButtonRef = useRef(null);
   const imageActivated = useViewportActivation(imageButtonRef);
@@ -960,7 +973,7 @@ function HistoryImageThumb({ url, thumb, images, index, assetLabel, imgSelected,
           <button
             ref={imageButtonRef}
             type="button"
-            onClick={() => openCanvasGallery(images.map((src) => ({ src, type: 'image' })), index)}
+            onClick={() => openCanvasGallery(galleryItems, galleryIndex)}
             className="block h-full w-full overflow-hidden rounded bg-muted/40"
           >
             {imageActivated && (
@@ -1021,14 +1034,14 @@ function HistoryImageThumb({ url, thumb, images, index, assetLabel, imgSelected,
 // - 右键菜单含下载（多图 zip）；图片操作作用于选中集，记录操作（插入/删除）作用于当前记录。
 // - ImageHoverCard：hover 500ms 预览大图；trigger 内含底部按钮条（hover 显）+ 可拖拽缩略图。
 function MasonryImageCell({
-  item, selected, assetLabel, onToggleUrlSelect,
+  item, galleryItems, selected, assetLabel, onToggleUrlSelect,
   onDownload, onMasonryAddToAssets, onMasonryUseImage, onMasonryViewGallery, onMasonryCopyUrls,
   onBatchInsert, onBatchRemove, onImageLoad,
 }) {
   const openCanvasGallery = useCanvasGallery();
   const imageButtonRef = useRef(null);
   const imageActivated = useViewportActivation(imageButtonRef);
-  const { url, resource, images, imgIndex } = item;
+  const { url, resource, galleryIndex } = item;
   const historyItem = item.item; // 原始 history 记录（flatImageItems 把图片展平时挂在 .item）
   const sourceNodeId = historyItem?.nodeId || null;
   // 拖拽缩略图到画布：与 HistoryImageThumb 一致的协议（拖图片建 imageDisplay 节点）。
@@ -1059,7 +1072,7 @@ function MasonryImageCell({
                   <button
                     ref={imageButtonRef}
                     type="button"
-                    onClick={() => openCanvasGallery(images.map((src) => ({ src, type: 'image' })), imgIndex)}
+                    onClick={() => openCanvasGallery(galleryItems, galleryIndex)}
                     className="block h-full w-full overflow-hidden rounded bg-muted/40"
                   >
                     {imageActivated && (

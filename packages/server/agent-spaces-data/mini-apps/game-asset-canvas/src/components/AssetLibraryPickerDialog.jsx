@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
   Button,
@@ -45,6 +45,17 @@ export default function AssetLibraryPickerDialog({
   title, confirmLabel,
   onConfirm,
 }) {
+  // group 模式下记住上次确认选中的分组 id，下次打开默认选中。按 workspaceId 隔离。
+  const lastGroupIdsKey = `as-asset-picker-last-groups-${workspaceId || 'default'}`;
+  const lastGroupIds = useMemo(() => {
+    if (mode !== 'group') return [];
+    try {
+      const raw = localStorage.getItem(lastGroupIdsKey);
+      const arr = raw ? JSON.parse(raw) : [];
+      return Array.isArray(arr) ? arr.filter((x) => typeof x === 'string') : [];
+    } catch { return []; }
+  }, [mode, lastGroupIdsKey, open]);
+
   const [selected, setSelected] = useState([]);
 
   // 对话框打开期间给 body 加 class，配合注入的全局 CSS 把本实例 overlay+content 提到 gallery 之上。
@@ -62,6 +73,13 @@ export default function AssetLibraryPickerDialog({
   const handleClose = () => { setSelected([]); onClose?.(); };
 
   const handleConfirm = () => {
+    // group 模式：把本次确认的分组 id 持久化，下次打开默认选中
+    if (mode === 'group') {
+      try {
+        const ids = selected.map((g) => g.id).filter(Boolean);
+        if (ids.length) localStorage.setItem(lastGroupIdsKey, JSON.stringify(ids));
+      } catch { /* noop */ }
+    }
     onConfirm?.(selected);
     setSelected([]);
     onClose?.();
@@ -84,6 +102,7 @@ export default function AssetLibraryPickerDialog({
             picker={mode}
             multi={multi}
             onSelectionChange={setSelected}
+            defaultSelectedGroupIds={lastGroupIds}
           />
         </div>
 

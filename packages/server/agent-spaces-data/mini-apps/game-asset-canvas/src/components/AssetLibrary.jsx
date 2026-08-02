@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Dropzone, FileUpload, ScrollArea, setCanvasImageDragData,
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
@@ -26,7 +26,7 @@ import { useCanvasGallery } from '../utils/canvas-gallery';
  *   onSelectionChange?: (selected: array)=>void,
  * }} props
  */
-export default function AssetLibrary({ workspaceId, picker, multi, onSelectionChange, onInsertImagesToCanvas }) {
+export default function AssetLibrary({ workspaceId, picker, multi, onSelectionChange, onInsertImagesToCanvas, defaultSelectedGroupIds }) {
   const {
     categories, createCategory, renameCategory, deleteCategory,
     removeAsset, updateAsset, moveAsset, uploadFiles, uploadingCount,
@@ -39,10 +39,24 @@ export default function AssetLibrary({ workspaceId, picker, multi, onSelectionCh
   // picker 内部自管选中，变化时通知上层
   const [selectedGroupIds, setSelectedGroupIds] = useState([]);
   const [selectedAssetKeys, setSelectedAssetKeys] = useState([]); // key = `${categoryId}#${assetId}`
+  // 记录是否已应用默认选中（避免 categories 刷新时反复覆盖用户操作）
+  const defaultAppliedRef = useRef(false);
 
   const emit = useCallback((next) => {
     onSelectionChange?.(next);
   }, [onSelectionChange]);
+
+  // group picker 模式：categories 首次加载完成后，应用外部传入的默认选中分组并 emit 一次。
+  // 必须放在 emit 定义之后（const TDZ），否则组件渲染期访问 emit 报 ReferenceError。
+  useEffect(() => {
+    if (picker !== 'group' || defaultAppliedRef.current) return;
+    if (!categories.length || !Array.isArray(defaultSelectedGroupIds) || !defaultSelectedGroupIds.length) return;
+    defaultAppliedRef.current = true;
+    const valid = defaultSelectedGroupIds.filter((id) => categories.some((c) => c.id === id));
+    if (!valid.length) return;
+    setSelectedGroupIds(valid);
+    emit(categories.filter((c) => valid.includes(c.id)).map((c) => ({ id: c.id, name: c.name })));
+  }, [picker, categories, defaultSelectedGroupIds, emit]);
 
   const toggleGroup = useCallback((cat) => {
     setSelectedGroupIds((prev) => {

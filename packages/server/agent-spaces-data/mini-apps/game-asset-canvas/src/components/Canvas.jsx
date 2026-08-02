@@ -741,7 +741,6 @@ export default function Canvas() {
         icon: <FolderPlus size={22} />,
         onClick: ({ item }) => {
           handleAddToAssets({ url: item.src, fileName: item.fileName, thumb: item.thumb });
-          toast.success('已加入待收藏，请选择分组');
         },
       },
       {
