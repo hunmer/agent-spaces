@@ -33,3 +33,13 @@
 - 素材入库现在保留 `thumb`，点击 Gallery、拖拽、下载和工作流参数仍使用原始 `url`。
 - 定向及全量 mini-app utils 测试通过 36/36；全部改动 JS/JSX 的 Babel 语法检查与 git diff --check 通过。
 - 已同步 handoff.md，记录 `images` 原图数组与 `resources[].thumb` 缩略展示字段的长期约束；任务完成。
+- 收到新任务：Toolbar 增加“调试”菜单，并提供当前工作区一键补缩略图。
+- 已新增调试菜单和一键补缩略图入口，包含忙碌态、实时进度及成功/失败统计。
+- Canvas 已实现跨节点/历史/素材库按 URL 去重回填，已有缩略图会复用，缺失项最多 4 并发生成。
+- 服务新增生成记录整表保存，并修复素材库整库保存遗漏 thumb 字段。
+- 已补服务测试，覆盖历史整表替换和素材库 thumb 持久化。
+- 最终验证：原有 Spine 服务测试已保留；utils + services 共 40/40 通过，Toolbar/Canvas/service Babel 语法检查及 git diff --check 通过。
+- 收到新问题：HistoryTab 和 AssetLibrary 的图片无法拖到画布新增原图，开始检查拖放协议。
+- 已定位根因：源端只允许 move，画布落点要求 copy，拖放效果不兼容。
+- 已修复两个图片拖拽源：统一使用 setCanvasImageDragData 写入原图 URL；历史使用 copy，素材库使用 copyMove。
+- 最终验证：两个 JSX 文件 Babel 语法检查通过，git diff --check 通过，拖放协议 helper 测试 2/2 通过。

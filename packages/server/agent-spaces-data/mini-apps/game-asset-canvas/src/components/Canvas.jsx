@@ -9,6 +9,7 @@ import {
   CopyPlus, Crosshair, Trash2,
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+  openMediaGallery,
 } from '@agent-spaces/ui';
 
 import Toolbar from './Toolbar';
@@ -54,6 +55,7 @@ import useNodeCrud from '../hooks/useNodeCrud';
 import useNodeExecutions from '../hooks/useNodeExecutions';
 import useLastParams from '../hooks/useLastParams';
 import { runCutout } from '../utils/cutout';
+import { generateImageResources } from '../utils/workflow';
 import { WORKFLOWS } from '../utils/constants';
 import useCanvasAgentRpc, { buildNodeExecution } from '../hooks/useCanvasAgentRpc';
 import useDecoratedNodes from '../hooks/useDecoratedNodes';
@@ -66,6 +68,7 @@ import { exportAssetLibraryZip, extractFileNameFromUrl, pickAssetLibraryZipFile,
 import { canvasConfigPath, historyConfigPath, assetLibraryConfigPath, saveCanvas } from '../utils/storage';
 import { decorateEdgesForSelection } from '../utils/edge-display';
 import { countNodesWithOutput } from '../utils/batch-run';
+import { CanvasGalleryContextProvider } from '../utils/canvas-gallery';
 import { COMPACT_NODE_ZOOM_THRESHOLD } from './nodes/compact-node';
 
 const EDGE_TYPES = { floating: FloatingEdge };
@@ -524,6 +527,115 @@ export default function Canvas() {
     return importAssetLibraryZip(file, { ensureCategory, addAsset, onProgress });
   }, [activeId, createCategory, addAsset]);
 
+  // 调试工具：为当前工作区的节点、生成记录、素材库补齐 resources[].thumb / asset.thumb。
+  // 按原图 URL 去重生成；已有任一有效 thumb 时直接复用，不重复调用 sharp。
+  const handleBackfillThumbnails = useCallback(async (onProgress) => {
+    const AS = window.AgentSpaces;
+    if (typeof AS?.generateThumbnail !== 'function') throw new Error('宿主缩略图能力不可用');
+
+    const knownThumbs = new Map();
+    const needsBackfill = new Set();
+    const register = (images, resources) => {
+      const list = Array.isArray(images) ? images.filter(Boolean) : [];
+      const byUrl = new Map((Array.isArray(resources) ? resources : []).map((item) => [item?.url, item]));
+      list.forEach((url) => {
+        const thumb = byUrl.get(url)?.thumb;
+        if (thumb && thumb !== url) knownThumbs.set(url, thumb);
+        else needsBackfill.add(url);
+      });
+    };
+
+    nodesRef.current.forEach((node) => {
+      register(node.data?.output?.images, node.data?.output?.resources);
+      register(node.data?.images, node.data?.resources);
+    });
+    history.forEach((item) => register(item?.images, item?.resources));
+    assetCategories.forEach((category) => {
+      (category.assets || []).forEach((asset) => register([asset.url], [{ url: asset.url, thumb: asset.thumb }]));
+    });
+
+    const targets = Array.from(needsBackfill);
+    const total = targets.length;
+    let done = 0;
+    let failed = 0;
+    for (const url of targets) {
+      if (knownThumbs.has(url)) done += 1;
+    }
+    onProgress?.(done, total);
+
+    const generateTargets = targets.filter((url) => !knownThumbs.has(url));
+    const concurrency = 4;
+    for (let start = 0; start < generateTargets.length; start += concurrency) {
+      const batch = generateTargets.slice(start, start + concurrency);
+      const results = await Promise.all(batch.map(async (url) => {
+        const [resource] = await generateImageResources([url], { historyId: `backfill-${activeId}` });
+        return resource;
+      }));
+      results.forEach((resource, index) => {
+        const url = batch[index];
+        if (resource?.thumb && resource.thumb !== url) knownThumbs.set(url, resource.thumb);
+        else failed += 1;
+        done += 1;
+      });
+      onProgress?.(done, total);
+    }
+
+    const mergeResources = (images, resources) => {
+      const list = Array.isArray(images) ? images.filter(Boolean) : [];
+      const byUrl = new Map((Array.isArray(resources) ? resources : []).map((item) => [item?.url, item]));
+      return list.map((url) => ({
+        ...(byUrl.get(url) || {}),
+        url,
+        thumb: knownThumbs.get(url) || byUrl.get(url)?.thumb || url,
+      }));
+    };
+
+    const nextNodes = nodesRef.current.map((node) => {
+      const data = node.data || {};
+      let nextData = data;
+      if (Array.isArray(data.output?.images) && data.output.images.length) {
+        nextData = {
+          ...nextData,
+          output: { ...data.output, resources: mergeResources(data.output.images, data.output.resources) },
+        };
+      }
+      if (Array.isArray(data.images) && data.images.length) {
+        nextData = { ...nextData, resources: mergeResources(data.images, data.resources) };
+      }
+      return nextData === data ? node : { ...node, data: nextData };
+    });
+
+    // 用最新配置快照回写，避免回填期间新增的记录或素材被旧闭包覆盖。
+    const latestHistory = AS.getConfig?.(historyConfigPath(activeId));
+    const historyList = Array.isArray(latestHistory) ? latestHistory : history;
+    const nextHistory = historyList.map((item) => (
+      Array.isArray(item?.images) && item.images.length
+        ? { ...item, resources: mergeResources(item.images, item.resources) }
+        : item
+    ));
+    const latestAssetLibrary = AS.getConfig?.(assetLibraryConfigPath(activeId));
+    const library = latestAssetLibrary?.categories ? latestAssetLibrary : { categories: assetCategories };
+    const nextLibrary = {
+      ...library,
+      categories: (library.categories || []).map((category) => ({
+        ...category,
+        assets: (category.assets || []).map((asset) => ({
+          ...asset,
+          thumb: knownThumbs.get(asset.url) || asset.thumb || asset.url,
+        })),
+      })),
+    };
+
+    setNodes(nextNodes);
+    await Promise.all([
+      saveCanvas(activeId, { nodes: nextNodes, edges: edgesRef.current, groups, viewport }),
+      AS.invokeService?.('save_generation_history', { workspaceId: activeId, history: nextHistory }),
+      AS.invokeService?.('save_asset_library', { workspaceId: activeId, lib: nextLibrary }),
+    ]);
+
+    return { total, updated: total - failed, failed };
+  }, [activeId, assetCategories, groups, history, setNodes, viewport]);
+
   // 导出当前工作区为 zip（3 个 json + 后端图片落 static/，url 相对化为占位符）。
   // 用 getConfig 同步读三个 path 的缓存（与各 hook 的三重读取同源），传给 exportWorkspaceZip。
   const handleExportWorkspace = useCallback(async (onProgress) => {
@@ -613,6 +725,29 @@ export default function Canvas() {
       }
     }
   }, [addAsset, assetsPickerImages]);
+
+  // —— 图片全屏预览统一入口（包装 openMediaGallery，注入「收藏到素材库 / 导入到画布」）——
+  // 复用 handleAddToAssets（走 AssetLibraryPickerDialog 分组选择 → addAsset）和
+  // addImageNodesFromUrls（建 imageDisplay 节点）；actions 始终作用于当前可见图（lgAfterSlide 同步 index）。
+  const openCanvasGallery = useCallback((items, startIndex = 0) => {
+    if (!Array.isArray(items) || items.length === 0) return;
+    openMediaGallery(items, startIndex, [
+      {
+        label: '收藏到素材库',
+        onClick: ({ item }) => {
+          handleAddToAssets({ url: item.src, fileName: item.fileName, thumb: item.thumb });
+          toast.success('已加入待收藏，请选择分组');
+        },
+      },
+      {
+        label: '导入到画布',
+        onClick: ({ item }) => {
+          addImageNodesFromUrls([item.src], { source: 'gallery' });
+          toast.success('已导入到画布');
+        },
+      },
+    ]);
+  }, [handleAddToAssets, addImageNodesFromUrls]);
 
   // —— 导出图片流程：多图选择 → 分组确认 → 落到画布 ——
   // exportState: 多图时打开选择对话框 { sourceNode, images }
@@ -782,53 +917,69 @@ export default function Canvas() {
     else if (action === 'delete') handleDeleteNodeWithHistoryCheck(nodeId);
   }, [handleCloneNode, handleLocateHistory, handleDeleteNodeWithHistoryCheck]);
   // 临时：从画布节点产出反向重建生成记录（用于误清空历史后恢复）。
-  // 遍历所有节点，按 output 类型派生 history 条目；createdAt 用当前时间 + 索引保证单调。
   // 字段约定参考 useNodeExecutions 各 addHistory 调用（images/mediaType/text/prompt/model）。
+  // 一个 output 快照派生一条 history item（audio/video/text/images 任一命中）。
+  const pickOutputItem = (out) => {
+    if (!out || typeof out !== 'object') return null;
+    const audios = [out.audio, ...(out.audios || [])].filter(Boolean);
+    const videos = [out.video, ...(out.videos || [])].filter(Boolean);
+    const images = Array.isArray(out.images) ? out.images.filter(Boolean) : [];
+    const resources = Array.isArray(out.resources) ? out.resources.filter((item) => item?.url) : [];
+    const text = typeof out.text === 'string' ? out.text.trim() : '';
+    if (audios.length) return { mediaType: 'audio', images: audios };
+    if (videos.length) return { mediaType: 'video', images: videos };
+    if (text) return { mediaType: 'text', text: text.slice(0, 5000), images: images.slice(0, 4), resources: resources.slice(0, 4) };
+    if (images.length) return { images, resources };
+    return null;
+  };
   const handleRestoreHistoryFromNodes = useCallback(() => {
     const curNodes = nodesRef.current;
     const now = Date.now();
     let restored = 0;
-    curNodes.forEach((n, idx) => {
-      const out = n?.data?.output;
-      if (!out || typeof out !== 'object') return;
-      const params = n.data?.params || {};
-      const audios = [out.audio, ...(out.audios || [])].filter(Boolean);
-      const videos = [out.video, ...(out.videos || [])].filter(Boolean);
-      const images = Array.isArray(out.images) ? out.images.filter(Boolean) : [];
-      const resources = Array.isArray(out.resources) ? out.resources.filter((item) => item?.url) : [];
-      const text = typeof out.text === 'string' ? out.text.trim() : '';
-      // imageDisplay/videoDisplay 走 data.images/videos 透传，非 output
-      const displayImages = n.type === NODE_TYPES.imageDisplay
-        ? (Array.isArray(n.data?.images) ? n.data.images.filter(Boolean) : [])
-        : [];
-      const displayVideos = n.type === NODE_TYPES.videoDisplay
-        ? (Array.isArray(n.data?.videos) ? n.data?.videos.filter(Boolean) : [])
-        : [];
-      let item = null;
-      if (audios.length) {
-        item = { mediaType: 'audio', images: audios };
-      } else if (videos.length || displayVideos.length) {
-        item = { mediaType: 'video', images: videos.length ? videos : displayVideos };
-      } else if (text) {
-        item = { mediaType: 'text', text: text.slice(0, 5000), images: images.slice(0, 4), resources: resources.slice(0, 4) };
-      } else if (images.length) {
-        item = { images, resources };
-      } else if (displayImages.length) {
-        item = { images: displayImages };
+    let timeOffset = 0; // 跨节点累计，保证恢复出的多条记录时间单调、排序稳定
+    curNodes.forEach((n) => {
+      const data = n?.data || {};
+      const nodeType = n.type;
+      // 收集要派生的「产出快照」列表：每条快照 → 一条 history 记录。
+      // - 生成类节点：遍历 data.versions 全部历史版本（含当前激活版本），逐版本派生；
+      //   无 versions（如音频/视频/文本节点不会存档）回退到当前 data.output。
+      // - 透传类节点（imageDisplay/videoDisplay）：data.images/videos 是节点级透传字段，
+      //   不在 versions 里，单独从 data 派生一条。
+      let snapshots = [];
+      if (nodeType === NODE_TYPES.imageDisplay || nodeType === NODE_TYPES.videoDisplay) {
+        const displayImages = nodeType === NODE_TYPES.imageDisplay
+          ? (Array.isArray(data.images) ? data.images.filter(Boolean) : [])
+          : [];
+        const displayVideos = nodeType === NODE_TYPES.videoDisplay
+          ? (Array.isArray(data.videos) ? data.videos.filter(Boolean) : [])
+          : [];
+        if (displayVideos.length) snapshots.push({ item: { mediaType: 'video', images: displayVideos }, params: data.params || {}, createdAt: undefined });
+        else if (displayImages.length) snapshots.push({ item: { images: displayImages }, params: data.params || {}, createdAt: undefined });
+      } else {
+        const versions = Array.isArray(data.versions) ? data.versions : [];
+        const sources = versions.length
+          ? versions.map((v) => ({ out: v.output, params: v.params || {}, createdAt: v.createdAt }))
+          : [{ out: data.output, params: data.params || {}, createdAt: undefined }];
+        sources.forEach(({ out, params, createdAt }) => {
+          const item = pickOutputItem(out);
+          if (item) snapshots.push({ item, params, createdAt });
+        });
       }
-      if (!item) return;
-      addHistory({
-        id: genId('hist'),
-        nodeId: n.id,
-        nodeType: n.type,
-        prompt: params.prompt || '',
-        model: params.model || '',
-        createdAt: now + idx, // 索引偏移保证恢复出的多条记录时间单调，排序稳定
-        ...item,
-      }).catch((e) => console.error('restore addHistory failed:', e));
-      restored += 1;
+      snapshots.forEach(({ item, params, createdAt }) => {
+        addHistory({
+          id: genId('hist'),
+          nodeId: n.id,
+          nodeType,
+          prompt: params.prompt || '',
+          model: params.model || '',
+          createdAt: createdAt || now + (timeOffset++),
+          ...item,
+        }).catch((e) => console.error('restore addHistory failed:', e));
+        restored += 1;
+      });
     });
-    toast.success(`已从 ${restored} 个节点恢复生成记录`);
+    if (restored) toast.success(`已从节点恢复 ${restored} 条生成记录`);
+    else toast.info('画布上没有可恢复的产出');
   }, [addHistory]);
 
   // 删除节点的一张上游输入图：反查产出该 url 的连入边并删除（与 computeInputImages 的产出判定一致：
@@ -1078,6 +1229,7 @@ export default function Canvas() {
   }
 
   return (
+    <CanvasGalleryContextProvider value={openCanvasGallery}>
     <ImageSelectionContext.Provider value={imageSelection}>
     <ResizablePanelGroup
       direction="horizontal"
@@ -1098,6 +1250,7 @@ export default function Canvas() {
             onImportWorkspace={handleImportWorkspace}
             onOpenSettings={() => setSettingsOpen(true)}
             onOpenPromptManager={() => setPromptManagerOpen(true)}
+            onBackfillThumbnails={handleBackfillThumbnails}
             edgePathStyle={edgePathStyle}
             edgeLineStyle={edgeLineStyle}
             edgePathStyles={EDGE_PATH_STYLES}
@@ -1487,5 +1640,6 @@ export default function Canvas() {
       />
     </ResizablePanelGroup>
     </ImageSelectionContext.Provider>
+    </CanvasGalleryContextProvider>
   );
 }

@@ -1,11 +1,10 @@
 import { useCallback, useState } from 'react';
 import {
-  Dropzone, FileUpload, ScrollArea, openMediaGallery,
+  Dropzone, FileUpload, ScrollArea, openMediaGallery, setCanvasImageDragData,
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
   Plus, Trash2, Loader2, Pencil, Check, CopyPlus,
 } from '@agent-spaces/ui';
 import useAssetLibrary from '../hooks/useAssetLibrary';
-import { CANVAS_DROP_MIME } from '../utils/canvas-constants';
 import ImageHoverCard from './ImageHoverCard';
 
 /**
@@ -503,8 +502,8 @@ function AssetThumb({ asset, categoryId, picker, selected, onToggle, onRemove, o
     const payload = JSON.stringify({ assetId: asset.id, fromCategoryId: categoryId });
     e.dataTransfer.setData(ASSET_MOVE_MIME, payload);
     e.dataTransfer.setData('text/plain', payload); // 兜底
-    e.dataTransfer.setData(CANVAS_DROP_MIME, JSON.stringify({ urls: [asset.url] }));
-    e.dataTransfer.effectAllowed = 'move';
+    setCanvasImageDragData(e.dataTransfer, [asset.url]);
+    e.dataTransfer.effectAllowed = 'copyMove';
     setHoverOpen(false);
   };
 

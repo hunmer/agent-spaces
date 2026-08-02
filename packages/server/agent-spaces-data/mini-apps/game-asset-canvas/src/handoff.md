@@ -152,6 +152,7 @@ Agent → api.js handler → ctx.requestClient(type, payload, timeoutMs)
 29. **复制并应用节点属性只处理单节点剪贴板**：粘贴单个节点时，若当前至少选中一个节点且全部与来源同类型，先由 `PastePropertiesDialog` 选择字段；字段默认全不选，列表顶部提供“全选/反选”；“应用”更新目标节点，“继续粘贴”执行原粘贴。`params` 按子字段展开，`output/images/videos/status/loading/error` 等产出、派生输入和运行态字段不参与属性应用；多节点剪贴板直接沿用原粘贴行为。
 29. **边高亮是展示态**：`decorateEdgesForSelection` 只基于 ReactFlow 原生 `node.selected` 派生输入蓝/输出绿、箭头颜色和居中编号标签，不把高亮字段写入持久化 `edges`；label 仅在边关联选中节点时显示。标签用原生 SVG `rect + text`，因为 mini-app renderer 未暴露 xyflow 的 `EdgeText`。
 30. **图片原图与缩略图分离**：工作流图片仍以 `images: string[]` 保存和传给 Gallery/拖拽/下载/下游执行；并行保存 `resources: [{url,thumb}]`，其中 `thumb` 只用于 `<img>` 缩略展示。`computeInputImages` 会把资源派生到 `data.imageResources`，imageDisplay 使用 `data.resources`。旧数据或缩略图失败时必须回退 `thumb || url`，不要把 `images` 改成对象数组。
+31. **旧数据补缩略图走调试菜单**：Toolbar「调试 → 一键补缩略图」扫描当前工作区节点、生成记录和素材库，按原图 URL 去重并复用已有 thumb，最多 4 并发调用 `generateImageResources`。回写使用 `save_canvas` / `save_generation_history` / `save_asset_library`；后两者必须保留 resources/thumb，不能用逐条 add_history（会产生重复记录）。
 30. **队列中断必须同步清节点状态**：`useExecutionQueue.cancel` 通过 `onCancel(job)` 立即让 Canvas 把 `placeholderNodeId` 写为 `loading:false,status:'cancelled'`；异步任务的晚到结果用 `cancelledJobIdsRef` 丢弃，中断异常不能再走 `onError` 覆盖节点状态。
 30. **宿主 taskEvents 必须增量全量分发**：`mini-app-renderer.tsx` 不能只取 `taskEvents.at(-1)`；React 会批处理多个并发 WS 事件，只发最后一条会让其余 `ctx.requestClient` 请求超时。使用事件对象游标把本轮新增项逐条送给 `onTaskEvent` 监听器。
 

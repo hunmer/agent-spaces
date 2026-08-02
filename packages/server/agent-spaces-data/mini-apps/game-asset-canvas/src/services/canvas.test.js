@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-
 import canvasService from './canvas.js';
 
 function createConfigContext(initial = null) {
@@ -15,6 +14,16 @@ function createConfigContext(initial = null) {
       },
     },
     read: () => ({ path, value }),
+  };
+}
+
+function createContext() {
+  const configs = new Map();
+  return {
+    configs,
+    readConfig: (path) => configs.get(path),
+    writeConfig: (path, value) => configs.set(path, value),
+    updateConfig: (path, updater) => configs.set(path, updater(configs.get(path))),
   };
 }
 
@@ -46,4 +55,34 @@ test('Spine reskin history deletion only changes the selected asset', () => {
     a: [{ id: '2' }],
     b: [{ id: '1' }],
   });
+});
+
+test('save_generation_history replaces the workspace list without duplicating entries', () => {
+  const ctx = createContext();
+  canvasService.save_generation_history({
+    workspaceId: 'ws-1',
+    history: [{ id: 'hist-1', images: ['full.png'], resources: [{ url: 'full.png', thumb: 'thumb.jpg' }] }],
+  }, ctx);
+
+  assert.deepEqual(ctx.configs.get('workspaces/ws-1/generation-history.json'), [
+    { id: 'hist-1', images: ['full.png'], resources: [{ url: 'full.png', thumb: 'thumb.jpg' }] },
+  ]);
+});
+
+test('save_asset_library preserves thumbnail metadata', () => {
+  const ctx = createContext();
+  canvasService.save_asset_library({
+    workspaceId: 'ws-1',
+    lib: {
+      categories: [{
+        id: 'cat-1',
+        name: '角色',
+        assets: [{ id: 'asset-1', url: 'full.png', thumb: 'thumb.jpg', name: 'hero.png' }],
+      }],
+    },
+  }, ctx);
+
+  const asset = ctx.configs.get('workspaces/ws-1/asset-library.json').categories[0].assets[0];
+  assert.equal(asset.url, 'full.png');
+  assert.equal(asset.thumb, 'thumb.jpg');
 });

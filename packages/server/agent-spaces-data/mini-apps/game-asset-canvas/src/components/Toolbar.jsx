@@ -33,14 +33,14 @@ import {
  * Menubar 布局：
  *   文件▾(导出[JSON/素材库]/导入[JSON/素材库]) | 画布▾(自动布局[横向/垂直]/清空) | 工具▾(...) | 选择▾(全选/反选/取消选择)
  *
- * @param {{ onClear, onAutoLayout, onExport, onExportAssetLibrary, onExportWorkspace, onImport, onImportAssetLibrary, onImportWorkspace, onOpenSettings, onOpenPromptManager,
+ * @param {{ onClear, onAutoLayout, onExport, onExportAssetLibrary, onExportWorkspace, onImport, onImportAssetLibrary, onImportWorkspace, onOpenSettings, onOpenPromptManager, onBackfillThumbnails,
  *           edgePathStyle, edgeLineStyle, edgePathStyles, edgeLineStyles, onEdgePathStyleChange, onEdgeLineStyleChange,
  *           bgVariant, handlePosition, snapEnabled, onCanvasStyleChange,
  *           onSelectAll, onInvertSelect, onClearSelection,
  *           operationHistory, onUndo, onRedo, canUndo, canRedo, queueSlot, workspaceSlot }} props
  */
 export default function Toolbar({
-  onClear, onAutoLayout, onExport, onExportAssetLibrary, onExportWorkspace, onImport, onImportAssetLibrary, onImportWorkspace, onOpenSettings, onOpenPromptManager,
+  onClear, onAutoLayout, onExport, onExportAssetLibrary, onExportWorkspace, onImport, onImportAssetLibrary, onImportWorkspace, onOpenSettings, onOpenPromptManager, onBackfillThumbnails,
   edgePathStyle, edgeLineStyle, edgePathStyles, edgeLineStyles, onEdgePathStyleChange, onEdgeLineStyleChange,
   bgVariant, handlePosition, snapEnabled, onCanvasStyleChange,
   onSelectAll, onInvertSelect, onClearSelection,
@@ -51,6 +51,7 @@ export default function Toolbar({
   const [exporting, setExporting] = useState(false);
   const [importing, setImporting] = useState(false);
   const [workspaceBusy, setWorkspaceBusy] = useState(false);
+  const [debugBusy, setDebugBusy] = useState(false);
   // 清空画布需二次确认，防止误触清空全部节点。
   const [confirmClear, setConfirmClear] = useState(false);
 
@@ -155,6 +156,28 @@ export default function Toolbar({
   // 在线PS：新窗口打开 Photopea（浏览器版 Photoshop，无需本地依赖）。
   const openOnlinePS = () => {
     window.open('https://www.photopea.com', '_blank', 'noopener');
+  };
+
+  const handleBackfillThumbnails = async () => {
+    if (debugBusy || !onBackfillThumbnails) return;
+    setDebugBusy(true);
+    const toastId = toast.loading('正在扫描缺失缩略图…');
+    try {
+      const stats = await onBackfillThumbnails((done, total) => {
+        toast.loading(`正在补缩略图… (${done}/${total})`, { id: toastId });
+      });
+      if (!stats.total) {
+        toast.success('当前工作区无需补缩略图', { id: toastId });
+      } else if (stats.failed > 0) {
+        toast.success(`补缩略图完成：成功 ${stats.updated}，失败 ${stats.failed}`, { id: toastId });
+      } else {
+        toast.success(`补缩略图完成：共 ${stats.updated} 张`, { id: toastId });
+      }
+    } catch (e) {
+      toast.error(`补缩略图失败：${e?.message || e}`, { id: toastId });
+    } finally {
+      setDebugBusy(false);
+    }
   };
 
   return (
@@ -285,6 +308,15 @@ export default function Toolbar({
             <MenubarItem onClick={onSelectAll}>全选</MenubarItem>
             <MenubarItem onClick={onInvertSelect}>反选</MenubarItem>
             <MenubarItem onClick={onClearSelection}>取消选择</MenubarItem>
+          </MenubarContent>
+        </MenubarMenu>
+
+        <MenubarMenu>
+          <MenubarTrigger>调试</MenubarTrigger>
+          <MenubarContent>
+            <MenubarItem disabled={debugBusy} onClick={handleBackfillThumbnails}>
+              {debugBusy ? '正在补缩略图…' : '一键补缩略图'}
+            </MenubarItem>
           </MenubarContent>
         </MenubarMenu>
       </Menubar>

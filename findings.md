@@ -50,3 +50,16 @@
 - 输出缩略图还必须沿边传播到目标节点；否则 `UpstreamImageList` 只有原 URL，输入区仍会请求大图。应在图片派生阶段同步构造 URL→thumb 映射，但不改变 URL 数组。
 - `generateImages` 当前只有两个主要调用层（`useWorkflow` 与执行队列），可扩展为返回资源结果并在 hook 层拆成 `{urls, thumbs}`；媒体生成仍继续使用原 `persistImagesToBackend` 字符串返回契约。
 - 最终数据设计采用 `resources: [{url, thumb}]`：`images` 保持纯字符串数组；每个资源对象显式含用户要求的 `thumb` 字段，旧数据无 resources 时 UI 自动回退原图。
+
+## 2026-08-02 一键补缩略图
+- Toolbar 使用 Menubar，可直接新增独立“调试”菜单并注入 `onBackfillThumbnails`。
+- 节点可通过 `setNodes` 更新并由 useCanvasState 防抖保存；为确保操作完成即持久化，回填 handler 应显式调用 `saveCanvas`。
+- 历史服务只有 add/remove/clear，缺少整表覆盖；需要新增 `save_generation_history` 才能无重复地回写 resources。
+- 素材库已有 `save_asset_library`，但当前规范化会丢弃 `thumb`，必须保留该字段后才能用于批量回填。
+- 回填应按 URL 去重生成缩略图，再分别映射回节点 output.resources/data.resources、历史 resources、素材 asset.thumb；已有 `thumb !== url` 的项目跳过。
+
+## 2026-08-02 历史/素材图片拖放
+- `HistoryTab.jsx` 和 `AssetLibrary.jsx` 已在图片 dragstart 时写入 `CANVAS_DROP_MIME`，载荷形状均为 `{ urls: [原图URL] }`。
+- 根因是两处都将 `effectAllowed` 设为 `move`，但 Canvas 对图片拖入设置 `dropEffect='copy'`；浏览器不允许该操作组合，导致画布无法接收 drop。
+- 现有节点图片拖放使用 `setCanvasImageDragData`，非排序场景设置 `effectAllowed='copy'`。素材库还要支持分类间移动，因此应使用 `copyMove`，让画布选择 copy、素材分类选择 move。
+- 两个来源传入 helper 的都是 `url`/`asset.url` 原图地址；`thumb` 仅用于 `<img src>` 展示，不应进入拖放载荷。

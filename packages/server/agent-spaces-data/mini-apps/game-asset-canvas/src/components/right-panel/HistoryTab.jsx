@@ -3,7 +3,7 @@
 // 瀑布流视图：把所有记录的图片展平成缩略图网格，按真实宽高比错落排布，悬浮显示精简按钮 + 右键全量菜单。
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  openMediaGallery, toast, ScrollArea, FolderPlus, CopyPlus,
+  openMediaGallery, setCanvasImageDragData, toast, ScrollArea, FolderPlus, CopyPlus,
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
   ContextMenu, ContextMenuTrigger, ContextMenuContent, ContextMenuItem, ContextMenuSeparator,
   Masonry,
@@ -15,7 +15,6 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@agent-spaces/ui';
 import { NODE_META } from '../../utils/constants';
-import { CANVAS_DROP_MIME } from '../../utils/canvas-constants';
 import { matchText, SearchBar } from './search';
 import { NODE_CATEGORIES, ADD_ITEMS } from './constants';
 import { downloadImages } from '../../utils/export';
@@ -956,8 +955,8 @@ function HistoryImageThumb({ url, thumb, images, index, assetLabel, imgSelected,
   // stopPropagation 防止冒泡到 HistoryCard 的 onDragStart（否则会被当作「拖节点」处理）。
   const handleImgDragStart = (setHoverOpen) => (e) => {
     e.stopPropagation();
-    e.dataTransfer.setData(CANVAS_DROP_MIME, JSON.stringify({ urls: [url] }));
-    e.dataTransfer.effectAllowed = 'move';
+    setCanvasImageDragData(e.dataTransfer, [url]);
+    e.dataTransfer.effectAllowed = 'copy';
     setHoverOpen(false); // 拖起时立即关闭 HoverCard 避免遮挡
   };
   return (
@@ -1037,8 +1036,8 @@ function MasonryImageCell({
   // 拖拽缩略图到画布：与 HistoryImageThumb 一致的协议（拖图片建 imageDisplay 节点）。
   const handleImgDragStart = (setHoverOpen) => (e) => {
     e.stopPropagation();
-    e.dataTransfer.setData(CANVAS_DROP_MIME, JSON.stringify({ urls: [url] }));
-    e.dataTransfer.effectAllowed = 'move';
+    setCanvasImageDragData(e.dataTransfer, [url]);
+    e.dataTransfer.effectAllowed = 'copy';
     setHoverOpen(false);
   };
   return (

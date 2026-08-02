@@ -84,6 +84,13 @@ export default {
     return { ok: true };
   },
 
+  // 整表覆盖生成记录（调试工具批量补资源元数据使用，避免逐条 add 产生重复记录）。
+  save_generation_history: ({ workspaceId, history }, ctx) => {
+    const list = Array.isArray(history) ? history.filter((item) => item?.id) : [];
+    ctx.writeConfig(wsPath(workspaceId, HISTORY_FILE), list.slice(0, HISTORY_MAX));
+    return { ok: true, count: list.length };
+  },
+
   // 删除指定生成记录
   remove_history: ({ workspaceId, id }, ctx) => {
     ctx.updateConfig(wsPath(workspaceId, HISTORY_FILE), (prev) => {
@@ -312,6 +319,7 @@ export default {
         .map((a) => ({
           id: a.id || `ast-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
           url: a.url,
+          ...(a.thumb ? { thumb: a.thumb } : {}),
           name: a.name || 'untitled',
           ...(a.title ? { title: a.title } : {}),
           size: typeof a.size === 'number' ? a.size : 0,

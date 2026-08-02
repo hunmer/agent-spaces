@@ -1,7 +1,7 @@
 # Task Plan
 
 ## Goal
-为 game-asset-canvas 的服务器图片资源增加缩略图字段，并在所有缩略展示入口使用，保持原图访问与工作流输入逻辑不变。
+为 game-asset-canvas 增加调试菜单，可一键为当前工作区的旧图片资源补齐并持久化缩略图。
 
 ## Phases
 - [complete] 1. 阅读参考实现与现有 API/RPC/分组布局代码
@@ -22,6 +22,13 @@
 - [complete] 16. 实现缩略图生成、字段透传与兼容读取
 - [complete] 17. 覆盖节点、生成记录、素材库缩略展示入口
 - [complete] 18. 执行类型、语法与针对性回归验证
+- [complete] 19. 检查 Toolbar 菜单结构及历史/素材持久化接口
+- [complete] 20. 实现当前工作区缩略图批量回填
+- [complete] 21. 添加调试菜单入口、进度和结果提示
+- [complete] 22. 执行语法与回归验证
+- [complete] 23. 检查历史记录、素材库与画布拖放协议
+- [complete] 24. 实现原图拖放新增图片节点
+- [complete] 25. 执行语法与针对性回归验证
 
 ## Errors Encountered
 | Error | Attempt | Resolution |
