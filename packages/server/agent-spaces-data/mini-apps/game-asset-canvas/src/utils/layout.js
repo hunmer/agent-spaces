@@ -42,6 +42,153 @@ export function autoLayout(nodes, edges, opts = {}) {
   });
 }
 
+/**
+ * 布局画布顶层实体：未分组节点直接参与，分组按整体包围盒参与。
+ * 分组成员只做等量平移，保持组内相对位置不变。
+ * @returns {{ nodes: Array, groups: Array }}
+ */
+export function autoLayoutTopLevel(nodes, edges, groups = [], opts = {}) {
+  const childGroupIds = new Set(groups.flatMap((group) => group.childGroupIds || []));
+  const topGroups = groups.filter((group) => !childGroupIds.has(group.id));
+  const nodeById = new Map(nodes.map((node) => [node.id, node]));
+  const groupById = new Map(groups.map((group) => [group.id, group]));
+
+  const collectGroupIds = (rootId) => {
+    const result = new Set();
+    const visit = (groupId) => {
+      if (result.has(groupId)) return;
+      result.add(groupId);
+      const group = groupById.get(groupId);
+      (group?.childGroupIds || []).forEach(visit);
+    };
+    visit(rootId);
+    return result;
+  };
+
+  const collectNodeIds = (groupIds) => {
+    const result = new Set();
+    groupIds.forEach((groupId) => {
+      (groupById.get(groupId)?.childNodeIds || []).forEach((nodeId) => result.add(nodeId));
+    });
+    return result;
+  };
+
+  const claimedNodeIds = new Set();
+  const groupEntities = topGroups.map((group) => {
+    const nestedGroupIds = collectGroupIds(group.id);
+    const nodeIds = collectNodeIds(nestedGroupIds);
+    nodeIds.forEach((nodeId) => claimedNodeIds.add(nodeId));
+    const members = [...nodeIds].map((nodeId) => nodeById.get(nodeId)).filter(Boolean);
+
+    let rect;
+    if (members.length) {
+      const padding = 30;
+      const headerHeight = 28;
+      const minX = Math.min(...members.map((node) => node.position.x));
+      const minY = Math.min(...members.map((node) => node.position.y));
+      const maxX = Math.max(...members.map((node) => node.position.x + nodeRect(node).width));
+      const maxY = Math.max(...members.map((node) => node.position.y + nodeRect(node).height));
+      rect = {
+        x: minX - padding,
+        y: minY - headerHeight - padding,
+        width: maxX - minX + padding * 2,
+        height: maxY - minY + headerHeight + padding * 2,
+      };
+    } else {
+      rect = {
+        x: group.x ?? 50,
+        y: group.y ?? 50,
+        width: group.width ?? 300,
+        height: group.height ?? 200,
+      };
+    }
+
+    return {
+      id: `group:${group.id}`,
+      position: { x: rect.x, y: rect.y },
+      width: rect.width,
+      height: rect.height,
+      groupId: group.id,
+      nestedGroupIds,
+      nodeIds,
+    };
+  });
+
+  const nodeEntities = nodes
+    .filter((node) => !claimedNodeIds.has(node.id))
+    .map((node) => ({
+      ...node,
+      id: `node:${node.id}`,
+      sourceNodeId: node.id,
+    }));
+  const entities = [...groupEntities, ...nodeEntities];
+  if (entities.length < 2) return { nodes, groups };
+
+  const entityIdByNodeId = new Map(nodeEntities.map((entity) => [entity.sourceNodeId, entity.id]));
+  groupEntities.forEach((entity) => {
+    entity.nodeIds.forEach((nodeId) => {
+      if (!entityIdByNodeId.has(nodeId)) entityIdByNodeId.set(nodeId, entity.id);
+    });
+  });
+  const entityEdges = edges.flatMap((edge) => {
+    const source = entityIdByNodeId.get(edge.source);
+    const target = entityIdByNodeId.get(edge.target);
+    return source && target && source !== target ? [{ ...edge, source, target }] : [];
+  });
+  const arranged = autoLayout(entities, entityEdges, { direction: opts.direction === 'TB' ? 'TB' : 'LR' });
+  const arrangedById = new Map(arranged.map((entity) => [entity.id, entity]));
+  const nodePositions = new Map(nodeEntities.map((entity) => [
+    entity.sourceNodeId,
+    arrangedById.get(entity.id)?.position || entity.position,
+  ]));
+  const groupDeltas = new Map(groupEntities.map((entity) => {
+    const next = arrangedById.get(entity.id)?.position || entity.position;
+    return [entity.groupId, { x: next.x - entity.position.x, y: next.y - entity.position.y }];
+  }));
+
+  groupEntities.forEach((entity) => {
+    const delta = groupDeltas.get(entity.groupId);
+    entity.nodeIds.forEach((nodeId) => {
+      const node = nodeById.get(nodeId);
+      if (node) nodePositions.set(nodeId, {
+        x: node.position.x + delta.x,
+        y: node.position.y + delta.y,
+      });
+    });
+  });
+
+  const groupDeltaById = new Map();
+  const ownerEntityByGroupId = new Map();
+  groupEntities.forEach((entity) => {
+    entity.nestedGroupIds.forEach((groupId) => {
+      groupDeltaById.set(groupId, groupDeltas.get(entity.groupId));
+      ownerEntityByGroupId.set(groupId, entity);
+    });
+  });
+
+  return {
+    nodes: nodes.map((node) => ({ ...node, position: nodePositions.get(node.id) || node.position })),
+    groups: groups.map((group) => {
+      const delta = groupDeltaById.get(group.id);
+      if (!delta) return group;
+      const owner = ownerEntityByGroupId.get(group.id);
+      if (owner?.groupId === group.id && owner.nodeIds.size === 0) {
+        return {
+          ...group,
+          x: owner.position.x + delta.x,
+          y: owner.position.y + delta.y,
+        };
+      }
+      if (group.x == null && group.y == null) return group;
+      return {
+        ...group,
+        x: (group.x ?? 0) + delta.x,
+        y: (group.y ?? 0) + delta.y,
+      };
+    }),
+  };
+}
+
 export function autoLayoutSubset(nodes, edges, opts = {}) {
   const ids = new Set(opts.nodeIds || []);
   const subset = nodes.filter((node) => ids.has(node.id));

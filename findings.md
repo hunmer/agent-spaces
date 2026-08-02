@@ -22,3 +22,18 @@
 - 修复不应放在 update_node 重试：RPC 丢包重试会引入重复副作用，且其他 canvas RPC 同样受影响。
 - 最终修复：renderer 保存最后已分发事件对象，数组变化时分发其后的全部事件；若游标已滚出 50 条缓存，则分发当前保留缓冲区。
 - 宿主层修改需要重启 Web；当前 Web 由 VS Code 任务启动且环境未提供 procm-mcp，不应直接终止未知管理进程。
+
+## 2026-08-02 Toolbar 顶层自动布局
+- `Toolbar.jsx` 当前“自动布局”直接调用 `onAutoLayout`，没有方向子菜单。
+- `useNodeCrud.handleAutoLayout` 无 `nodeIds` 时直接对全部 ReactFlow 节点执行 dagre，导致 group 内部结构被重新排列。
+- group 不是真实 ReactFlow 节点，位置由成员节点包围盒派生；`handleGroupMove` 通过给递归成员统一增加 delta 来移动整个 group。
+- 自动布局应把最外层 group 和所有未归组节点构造成同级虚拟实体，并把跨实体边映射到虚拟实体；完成后只平移 group 成员。
+- 嵌套 group 应归入最外层 group，避免同一成员被重复移动。
+
+## 2026-08-02 执行队列取消状态
+- `useExecutionQueue.cancel()` 当前只更新 job 为 `stopped` 并中断底层执行，没有通知 Canvas 清理 `placeholderNodeId`。
+- 表单任务的占位 `imageDisplay` 创建时写入 `loading:true`；只有 `onComplete` 和 `onError` 会清为 false，主动取消没有对应回调，因此会永久卡住。
+- 批量运行任务虽然通过 `task.cancel -> handleCancelProcess` 清理节点状态，但队列层仍应统一通知取消，覆盖 queued 任务和所有 placeholder 节点。
+- `runJob` 捕获中断异常时目前仍调用 `onError`，会把已取消节点再次标成错误；应只在最终状态为 `error` 时调用。
+- 最小修复：队列增加 `onCancel(job)`，cancel 接受 queued/running 时立即调用一次；Canvas 统一写 `loading:false,status:'cancelled',error:undefined`。
+- 仅依赖 `jobsRef.current.status` 存在 React 状态提交竞态；增加模块内 `cancelledJobIdsRef`，在异步成功/失败收尾前优先判定，防止晚到结果覆盖取消状态。

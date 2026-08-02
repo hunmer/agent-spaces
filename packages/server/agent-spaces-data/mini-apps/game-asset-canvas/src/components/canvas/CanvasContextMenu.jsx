@@ -44,6 +44,11 @@ export default function CanvasContextMenu({
       eventDetails.cancel();
       return;
     }
+    // 右键落在 ReactFlow 节点上：放行给节点自有的右键菜单，避免画布菜单叠加弹出。
+    if (target?.closest?.('.react-flow__node')) {
+      eventDetails.cancel();
+      return;
+    }
     const imageTarget = target?.closest?.('[data-image-selection-url]');
     const nodeId = imageTarget?.dataset?.imageSelectionNodeId;
     const url = imageTarget?.dataset?.imageSelectionUrl;

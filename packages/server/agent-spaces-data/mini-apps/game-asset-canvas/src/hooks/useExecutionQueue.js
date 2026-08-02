@@ -19,6 +19,7 @@ function genId() {
  *   directory?: string,
  *   onComplete?: (job, images:string[], histId?:string)=>void,
  *   onError?: (job, err:unknown)=>void,
+ *   onCancel?: (job)=>void,
  * }} [opts]
  */
 export default function useExecutionQueue(opts = {}) {
@@ -27,10 +28,13 @@ export default function useExecutionQueue(opts = {}) {
   jobsRef.current = jobs;
   const tasksRef = useRef(new Map());
   const activeJobIdsRef = useRef(new Set());
+  const cancelledJobIdsRef = useRef(new Set());
   const onCompleteRef = useRef(opts.onComplete);
   onCompleteRef.current = opts.onComplete;
   const onErrorRef = useRef(opts.onError);
   onErrorRef.current = opts.onError;
+  const onCancelRef = useRef(opts.onCancel);
+  onCancelRef.current = opts.onCancel;
   const directoryRef = useRef(opts.directory);
   directoryRef.current = opts.directory;
   const concurrency = Math.max(1, Math.min(10, Number(opts.concurrency) || 3));
@@ -101,21 +105,27 @@ export default function useExecutionQueue(opts = {}) {
         });
       }
       const current = jobsRef.current.find((item) => item.id === job.id);
-      if (current?.status === 'stopped') return;
+      if (cancelledJobIdsRef.current.has(job.id) || current?.status === 'stopped') return;
       updateJob(job.id, { status: 'done', images });
       if (!task.execute) onCompleteRef.current?.(job, images, job.histId);
     } catch (err) {
       const msg = err?.message || String(err);
       // 中断导致的报错归为 stopped
       const current = jobsRef.current.find((item) => item.id === job.id);
-      const finalStatus = current?.status === 'stopped' || /stop|中断|取消/i.test(msg) ? 'stopped' : 'error';
+      const explicitlyCancelled = cancelledJobIdsRef.current.has(job.id);
+      const stopped = explicitlyCancelled
+        || current?.status === 'stopped'
+        || /stop|中断|取消/i.test(msg);
+      const finalStatus = stopped ? 'stopped' : 'error';
       updateJob(job.id, { status: finalStatus, error: msg });
-      // 通知上层（如把占位节点标记为错误）
-      if (!task.execute) onErrorRef.current?.(job, err);
+      // 主动中断已在 cancel 时完成节点收尾，不再覆盖成错误状态。
+      if (stopped && !explicitlyCancelled) onCancelRef.current?.(job);
+      else if (!stopped && !task.execute) onErrorRef.current?.(job, err);
     } finally {
       try { unsubStarted?.(); } catch {}
       tasksRef.current.delete(job.id);
       activeJobIdsRef.current.delete(job.id);
+      cancelledJobIdsRef.current.delete(job.id);
     }
   }, [updateJob]);
 
@@ -133,10 +143,13 @@ export default function useExecutionQueue(opts = {}) {
   const cancel = useCallback((jobId) => {
     const job = jobsRef.current.find((j) => j.id === jobId);
     if (!job || (job.status !== 'queued' && job.status !== 'running')) return;
+    cancelledJobIdsRef.current.add(jobId);
     const task = tasksRef.current.get(jobId);
     if (job.status === 'queued') {
       tasksRef.current.delete(jobId);
       updateJob(jobId, { status: 'stopped', error: '用户取消' });
+      onCancelRef.current?.(job);
+      cancelledJobIdsRef.current.delete(jobId);
       return;
     }
     if (task?.cancel) task.cancel();
@@ -144,6 +157,7 @@ export default function useExecutionQueue(opts = {}) {
       window.AgentSpaces.stopWorkflow(job.executionId);
     }
     updateJob(jobId, { status: 'stopped', error: '用户中断' });
+    onCancelRef.current?.(job);
   }, [updateJob]);
 
   /** 清除已完成/失败/中断的任务 */

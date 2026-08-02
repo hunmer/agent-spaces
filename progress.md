@@ -16,3 +16,13 @@
 - 已实现 renderer 增量事件分发，并添加覆盖 React 批量追加场景的纯函数测试。
 - 回归测试 3/3、目标 ESLint、git diff --check 均通过。
 - 已同步 handoff.md；确认 Web 运行于 localhost:3000，但因无 procm-mcp 未直接重启 VS Code 管理的进程。
+- 收到新任务：Toolbar 自动布局只布局 group 和未分组节点，组内节点保持相对位置，并增加横向/垂直子菜单。
+- 已完成 Toolbar 横向/垂直子菜单，并实现顶层 group/未分组节点自动布局；group 内成员仅整体平移。
+- 已覆盖空 group 坐标回写和嵌套 group 归入最外层实体。
+- 最终验证：layout.test.js 5/5、5 个目标文件 Babel 语法检查、git diff --check 均通过；server mini-app 目录无 ESLint 配置。
+- 自动布局提交节点和分组位置后，在下一动画帧调用 ReactFlow fitView 重置视图。
+- 收到新问题：队列任务底层已取消，但运行中节点仍卡在生成状态，开始诊断取消清理链路。
+- 已为执行队列增加 onCancel 通知，Canvas 会立即清除 placeholder 的 loading 并写入 cancelled 状态。
+- 已增加 cancelledJobIds 竞态保护，中断后的晚到结果不会再触发完成或错误节点更新。
+- 工作流自身返回中断错误时也会触发节点取消收尾；主动取消路径避免重复通知。
+- 最终验证：mini-app utils 测试 32/32、useExecutionQueue/Canvas Babel 语法检查、git diff --check 均通过。

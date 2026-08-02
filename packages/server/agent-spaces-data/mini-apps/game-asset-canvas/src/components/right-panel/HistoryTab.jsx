@@ -10,6 +10,9 @@ import {
 } from '@agent-spaces/ui';
 import {
   List, LayoutGrid, Send, Maximize2, ClipboardCopy, Trash2, Crosshair,
+  ArrowDownWideNarrow, RotateCcw, Checkbox,
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@agent-spaces/ui';
 import { NODE_META } from '../../utils/constants';
 import { CANVAS_DROP_MIME } from '../../utils/canvas-constants';
@@ -22,13 +25,28 @@ import useSettings from '../../hooks/useSettings';
 // url → "w:h"。仅内存，不持久化；同一会话内有效。
 const sizeCache = new Map();
 
+// 定位高亮样式：一次性注入（focusNodeId 触发 scrollIntoView + 短暂 ring 高亮）。
+let _highlightStyleInjected = false;
+function ensureHighlightStyle() {
+  if (_highlightStyleInjected || typeof document === 'undefined') return;
+  _highlightStyleInjected = true;
+  const style = document.createElement('style');
+  style.textContent = '.history-item-highlight{box-shadow:0 0 0 2px var(--primary, #3b82f6);transition:box-shadow .2s ease}';
+  document.head.appendChild(style);
+}
+
 export default function HistoryTab({
-  history, onRemoveHistory, onClearHistory, onUseImage,
+  history, groups, onRemoveHistory, onClearHistory, onRestoreFromNodes, onUseImage,
   onInsertHistory, onDragStartHistory, onAddToAssets,
-  onLocateNode,
+  onLocateNode, focusNodeId,
 }) {
   const [activeCat, setActiveCat] = useState('all');
+  const [activeGroup, setActiveGroup] = useState('all');
   const [query, setQuery] = useState('');
+  const [confirmClear, setConfirmClear] = useState(false);
+  // 清空记录时是否同时重置画布节点产出（默认勾选，保持原强绑定行为）
+  const [clearAlsoResetNodes, setClearAlsoResetNodes] = useState(true);
+  const [confirmRestore, setConfirmRestore] = useState(false);
   // viewMode 持久化到 settings（刷新后保留）。useSettings 是单例订阅，可被任意组件重复调用。
   const { settings, saveSettings } = useSettings();
   const viewMode = settings.historyViewMode === 'masonry' ? 'masonry' : 'list';
@@ -36,12 +54,26 @@ export default function HistoryTab({
     // saveSettings 是整体覆盖，需把现有 settings 全部带上避免丢字段（参考 Canvas.handleCanvasStyleChange）
     saveSettings({ ...settings, historyViewMode: mode });
   };
+  // 排序：'desc'（最新在前，默认）/ 'asc'（最旧在前），持久化到 settings。
+  const sortOrder = settings.historySortOrder === 'asc' ? 'asc' : 'desc';
+  const handleSortOrderChange = () => {
+    saveSettings({ ...settings, historySortOrder: sortOrder === 'desc' ? 'asc' : 'desc' });
+  };
   // nodeType → category 映射（ADD_ITEMS 是单一数据源）
   const typeToCat = useMemo(() => {
     const m = new Map();
     for (const it of ADD_ITEMS) m.set(it.type, it.category);
     return m;
   }, []);
+  // nodeId → groupName 映射（节点归属分组；分组可嵌套，按 childNodeIds 反查顶层 group 名）。
+  // 用于生成记录按分组过滤：history 通过 nodeId 反查所属 group。
+  const nodeToGroupName = useMemo(() => {
+    const m = new Map();
+    for (const g of groups || []) {
+      for (const nid of g.childNodeIds || []) m.set(nid, g.name || '未命名分组');
+    }
+    return m;
+  }, [groups]);
   // 动态分类 chips：基于历史记录里实际出现过的 nodeType 推导 category，避免列空分类。
   // 同时统计每类记录数，用于 chips 计数显示。
   const cats = useMemo(() => {
@@ -59,6 +91,20 @@ export default function HistoryTab({
       .filter((c) => c.id === 'all' || seen.has(c.id))
       .map((c) => ({ ...c, count: counts.get(c.id) || 0 }));
   }, [history, typeToCat]);
+  // 动态分组 chips：基于历史记录里实际出现过的 nodeName→groupName 反查，统计每组记录数。
+  // 「未分组」收集 nodeId 为 null 或不在任何 group 的记录。
+  const groupChips = useMemo(() => {
+    const counts = new Map(); // groupName → count
+    let ungrouped = 0;
+    for (const it of history) {
+      const gname = it.nodeId ? nodeToGroupName.get(it.nodeId) : undefined;
+      if (gname) counts.set(gname, (counts.get(gname) || 0) + 1);
+      else ungrouped += 1;
+    }
+    const chips = Array.from(counts.entries()).map(([name, count]) => ({ id: name, label: name, count }));
+    if (ungrouped > 0) chips.push({ id: '__ungrouped__', label: '未分组', count: ungrouped });
+    return chips;
+  }, [history, nodeToGroupName]);
   // 搜索匹配：节点名 + prompt + text 三者任一命中（均走 matchText 支持拼音）。
   const matchHistory = (it, q) => {
     const parts = [
@@ -68,13 +114,32 @@ export default function HistoryTab({
     ];
     return parts.some((t) => matchText(t, q));
   };
-  // 搜索时跨分类（忽略 activeCat）；否则按分类过滤。
+  // 搜索时跨分类+跨分组（忽略 activeCat/activeGroup）；否则按分类 + 分组双重过滤。
   const hasQuery = query.trim().length > 0;
   const filtered = useMemo(() => {
-    if (hasQuery) return history.filter((it) => matchHistory(it, query));
-    if (activeCat === 'all') return history;
-    return history.filter((it) => typeToCat.get(it.nodeType) === activeCat);
-  }, [history, activeCat, typeToCat, hasQuery, query]);
+    const base = hasQuery
+      ? history.filter((it) => matchHistory(it, query))
+      : history.filter((it) => {
+        if (activeCat !== 'all' && typeToCat.get(it.nodeType) !== activeCat) return false;
+        if (activeGroup !== 'all') {
+          const gname = it.nodeId ? nodeToGroupName.get(it.nodeId) : undefined;
+          if (activeGroup === '__ungrouped__') { if (gname) return false; }
+          else if (gname !== activeGroup) return false;
+        }
+        return true;
+      });
+    // 排序：按 createdAt。desc = 最新在前（默认），asc = 最旧在前。
+    // 用带索引稳定排序，避免 createdAt 相同（如批量生成同毫秒）时顺序抖动。
+    const indexed = base.map((it, i) => [it, i]);
+    indexed.sort((a, b) => {
+      const ta = a[0].createdAt || 0;
+      const tb = b[0].createdAt || 0;
+      if (ta !== tb) return sortOrder === 'asc' ? ta - tb : tb - ta;
+      // 时间相同回退到原始顺序：desc 保持原序（新的在后追加→索引大），asc 反转
+      return sortOrder === 'asc' ? a[1] - b[1] : b[1] - a[1];
+    });
+    return indexed.map((pair) => pair[0]);
+  }, [history, activeCat, activeGroup, typeToCat, nodeToGroupName, hasQuery, query, sortOrder]);
 
   // 瀑布流视图：把 filtered 中的图片记录展平成单张图条目。
   // 跳过音频/视频/文本记录（它们在列表视图查看）。key 用 `${item.id}:${index}` 保证唯一
@@ -129,6 +194,44 @@ export default function HistoryTab({
   }, [viewMode, flatImageItems]);
   const getImageAspect = (url) => sizeMap.get(url); // 缓存未命中返回 undefined → Masonry 回退正方形
 
+  // 定位到指定节点的历史记录：focusNodeId 变化时滚动到该节点第一条记录并高亮。
+  // 用 data-history-node-id 标记 + 短暂高亮 class 实现（高亮 1.6s 后自动消失）。
+  const highlightRef = useRef(null);
+  useEffect(() => { ensureHighlightStyle(); }, []);
+  // 定位到历史记录：先重置过滤器为「全部」（否则目标记录可能被过滤掉不可见），
+  // 再在 DOM 更新后滚动+高亮。focusNodeId 形如 "nodeId:token"（token 让同节点可重复触发）。
+  useEffect(() => {
+    if (!focusNodeId) return;
+    const nodeId = String(focusNodeId).split(':')[0];
+    // 重置过滤器，确保目标记录可见
+    setActiveCat('all');
+    setActiveGroup('all');
+    setQuery('');
+    let cancelled = false;
+    const highlight = (el) => {
+      if (highlightRef.current) highlightRef.current.classList.remove('history-item-highlight');
+      el.classList.add('history-item-highlight');
+      highlightRef.current = el;
+      setTimeout(() => {
+        el.classList.remove('history-item-highlight');
+        if (highlightRef.current === el) highlightRef.current = null;
+      }, 1600);
+    };
+    // 过滤器重置 → filtered 重算 → DOM 重建，需等渲染完成。用 rAF + 重试查找兜底。
+    const tryScroll = (attempts) => {
+      if (cancelled) return;
+      const el = scrollRef.current?.querySelector?.(`[data-history-node-id="${CSS.escape(nodeId)}"]`);
+      if (el) {
+        el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        highlight(el);
+        return;
+      }
+      if (attempts > 0) requestAnimationFrame(() => tryScroll(attempts - 1));
+    };
+    requestAnimationFrame(() => requestAnimationFrame(() => tryScroll(5)));
+    return () => { cancelled = true; };
+  }, [focusNodeId]);
+
   return (
     <div className="flex h-full flex-col">
       {history.length > 0 && (
@@ -160,16 +263,82 @@ export default function HistoryTab({
               })}
             </div>
           )}
+          {/* 分组筛选 chips（搜索时隐藏；仅当存在归属分组的记录时显示） */}
+          {!hasQuery && groupChips.length > 0 && (
+            <div className="nodrag nopan nowheel scrollbar-none flex gap-1 overflow-x-auto border-b border-border p-2">
+              <button
+                type="button"
+                onClick={() => setActiveGroup('all')}
+                className={
+                  'flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-medium whitespace-nowrap transition ' +
+                  (activeGroup === 'all'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-muted text-muted-foreground hover:bg-muted/70 hover:text-foreground')
+                }
+              >
+                全部分组
+              </button>
+              {groupChips.map((g) => {
+                const active = activeGroup === g.id;
+                return (
+                  <button
+                    key={g.id}
+                    type="button"
+                    onClick={() => setActiveGroup(g.id)}
+                    className={
+                      'flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-medium whitespace-nowrap transition ' +
+                      (active
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-muted text-muted-foreground hover:bg-muted/70 hover:text-foreground')
+                    }
+                  >
+                    {g.label}
+                    <span className={'rounded-full px-1 text-[10px] ' + (active ? 'bg-primary-foreground/20' : 'bg-background/60')}>
+                      {g.count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
           {/* 工具栏：左侧清空记录，右侧视图切换（列表 / 瀑布流） */}
           <div className="flex items-center justify-between border-b border-border px-2 py-1">
-            <button
-              type="button"
-              onClick={onClearHistory}
-              className="text-xs text-muted-foreground transition hover:text-red-500"
-            >
-              清空记录
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setConfirmClear(true)}
+                className="text-xs text-muted-foreground transition hover:text-red-500"
+              >
+                清空记录
+              </button>
+              {/* 临时：从节点产出反向恢复历史记录（误清空后补救） */}
+              {onRestoreFromNodes && (
+                <button
+                  type="button"
+                  onClick={() => setConfirmRestore(true)}
+                  title="从画布节点的产出反向重建生成记录"
+                  className="flex items-center gap-1 text-xs text-muted-foreground transition hover:text-primary"
+                >
+                  <RotateCcw className="h-3 w-3" />
+                  从节点恢复
+                </button>
+              )}
+            </div>
             <div className="flex items-center gap-0.5">
+              <button
+                type="button"
+                onClick={handleSortOrderChange}
+                title={sortOrder === 'desc' ? '当前：最新在前（点击切换）' : '当前：最旧在前（点击切换）'}
+                className={
+                  'flex h-6 w-6 items-center justify-center rounded transition ' +
+                  (sortOrder === 'asc'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-muted-foreground hover:bg-muted hover:text-foreground')
+                }
+              >
+                {/* desc=最新在前用默认朝下图标；asc=最旧在前高亮表示已切换 */}
+                <ArrowDownWideNarrow className="h-3.5 w-3.5" />
+              </button>
               <button
                 type="button"
                 onClick={() => handleViewModeChange('list')}
@@ -202,7 +371,20 @@ export default function HistoryTab({
       )}
       <ScrollArea ref={setScrollRef} className="min-h-0 flex-1">
         {history.length === 0 && (
-          <p className="px-2 py-8 text-center text-xs text-muted-foreground">暂无生成记录</p>
+          <div className="flex flex-col items-center gap-3 px-4 py-10 text-center">
+            <p className="text-xs text-muted-foreground">暂无生成记录</p>
+            {/* 无记录时仍提供「从节点恢复」入口（误清空后补救） */}
+            {onRestoreFromNodes && (
+              <button
+                type="button"
+                onClick={() => setConfirmRestore(true)}
+                className="flex items-center gap-1 rounded-md border border-border px-3 py-1.5 text-xs text-muted-foreground transition hover:bg-muted hover:text-primary"
+              >
+                <RotateCcw className="h-3 w-3" />
+                从节点恢复
+              </button>
+            )}
+          </div>
         )}
         {/* 列表视图：原卡片形态 */}
         {history.length > 0 && viewMode === 'list' && (
@@ -220,7 +402,7 @@ export default function HistoryTab({
             ))}
             {filtered.length === 0 && (
               <p className="px-2 py-8 text-center text-xs text-muted-foreground">
-                {hasQuery ? '未找到匹配记录' : '该分类暂无记录'}
+                {hasQuery ? '未找到匹配记录' : '当前筛选无记录'}
               </p>
             )}
           </div>
@@ -254,11 +436,57 @@ export default function HistoryTab({
             </div>
           ) : (
             <p className="px-2 py-8 text-center text-xs text-muted-foreground">
-              {hasQuery ? '未找到匹配记录' : (filtered.length === 0 ? '该分类暂无记录' : '当前筛选结果无图片')}
+              {hasQuery ? '未找到匹配记录' : (filtered.length === 0 ? '当前筛选无记录' : '当前筛选结果无图片')}
             </p>
           )
         )}
       </ScrollArea>
+      {/* 清空记录确认框：可选是否同时重置画布节点产出 */}
+      <AlertDialog open={confirmClear} onOpenChange={setConfirmClear}>
+        <AlertDialogContent size="sm">
+          <AlertDialogHeader>
+            <AlertDialogTitle>清空生成记录？</AlertDialogTitle>
+            <AlertDialogDescription>
+              将清空全部生成记录，此操作不可撤销。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <label className="nodrag nopan nowheel flex cursor-pointer items-center gap-2 py-1 text-sm">
+            <Checkbox
+              checked={clearAlsoResetNodes}
+              onCheckedChange={(checked) => setClearAlsoResetNodes(!!checked)}
+            />
+            <span>同时清空画布上所有节点的产出</span>
+          </label>
+          <AlertDialogFooter>
+            <AlertDialogCancel>取消</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              onClick={() => { setConfirmClear(false); onClearHistory?.(clearAlsoResetNodes); }}
+            >
+              清空
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      {/* 从节点恢复确认框：恢复会在现有记录后追加，不会覆盖 */}
+      <AlertDialog open={confirmRestore} onOpenChange={setConfirmRestore}>
+        <AlertDialogContent size="sm">
+          <AlertDialogHeader>
+            <AlertDialogTitle>从节点恢复生成记录？</AlertDialogTitle>
+            <AlertDialogDescription>
+              将遍历画布上有产出的节点，按其产出（图片/音频/视频/文本）重建生成记录并追加到当前列表。原有记录保留，不会覆盖。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>取消</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => { setConfirmRestore(false); onRestoreFromNodes?.(); }}
+            >
+              恢复
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
@@ -274,7 +502,10 @@ function HistoryCard({ item, onRemove, onUseImage, onInsert, onDragStart, onAddT
   const mediaUrls = (isAudio || isVideo) && images.length ? images : (cover ? [cover] : []);
   const hasNodeType = !!item.nodeType && !!NODE_META[item.nodeType];
   return (
-    <div className="rounded-md border border-border p-2">
+    <div
+      className="rounded-md border border-border p-2 transition-shadow"
+      data-history-node-id={item.nodeId || undefined}
+    >
       {/* 标题行作为「拖拽建 nodeType 节点」的手柄：拖标题=建节点，拖下方图片=拖图片到画布。
           不再把整个卡片设为 draggable，否则会吞掉内部图片缩略图的 dragstart。 */}
       <div
@@ -453,7 +684,7 @@ function MasonryImageCell({ item, onUseImage, onAddToAssets, onInsert, onRemove,
     <ContextMenu>
       <ContextMenuTrigger
         render={
-          <div className="h-full w-full">
+          <div className="h-full w-full" data-history-node-id={sourceNodeId || undefined}>
             <ImageHoverCard
               url={url}
               className="h-full w-full"

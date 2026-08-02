@@ -31,7 +31,7 @@ import {
  * 顶部工具栏：标题 + Menubar + 右侧插槽（工作区切换/执行队列/节点数）。
  *
  * Menubar 布局：
- *   文件▾(导出[JSON/素材库]/导入[JSON/素材库]) | 画布▾(自动布局/清空) | 工具▾(...) | 选择▾(全选/反选/取消选择)
+ *   文件▾(导出[JSON/素材库]/导入[JSON/素材库]) | 画布▾(自动布局[横向/垂直]/清空) | 工具▾(...) | 选择▾(全选/反选/取消选择)
  *
  * @param {{ onClear, onAutoLayout, onExport, onExportAssetLibrary, onExportWorkspace, onImport, onImportAssetLibrary, onImportWorkspace, onOpenSettings, onOpenPromptManager,
  *           edgePathStyle, edgeLineStyle, edgePathStyles, edgeLineStyles, onEdgePathStyleChange, onEdgeLineStyleChange,
@@ -200,7 +200,13 @@ export default function Toolbar({
         <MenubarMenu>
           <MenubarTrigger>画布</MenubarTrigger>
           <MenubarContent>
-            <MenubarItem onClick={onAutoLayout}>自动布局</MenubarItem>
+            <MenubarSub>
+              <MenubarSubTrigger>自动布局</MenubarSubTrigger>
+              <MenubarSubContent>
+                <MenubarItem onClick={() => onAutoLayout?.('LR')}>横向</MenubarItem>
+                <MenubarItem onClick={() => onAutoLayout?.('TB')}>垂直</MenubarItem>
+              </MenubarSubContent>
+            </MenubarSub>
             <MenubarSeparator />
             <MenubarSub>
               <MenubarSubTrigger>背景</MenubarSubTrigger>

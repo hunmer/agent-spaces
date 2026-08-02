@@ -5,7 +5,7 @@ import { NODE_TYPES, NODE_META, IMAGE_TAGS, WORKFLOWS } from '../utils/constants
 import { DEFAULT_SIZE, initialData, NODE_PARAMS_SCHEMA, CANVAS_DROP_MIME, IMAGE_REORDER_MIME } from '../utils/canvas-constants';
 import { getConnectionTargets } from '../utils/connection-targets';
 import { genId, autoPosition } from '../utils/canvas-id';
-import { autoLayout, autoLayoutSubset } from '../utils/layout';
+import { autoLayoutSubset, autoLayoutTopLevel } from '../utils/layout';
 import { downloadJson, serializeCanvas, pickAndParseCanvasFile } from '../utils/export';
 
 const debuggedCanvasImageDrags = new WeakSet();
@@ -45,6 +45,7 @@ export function historyToNodePatch(item) {
  * @param {Array} deps.edges
  * @param {Function} deps.setNodes
  * @param {Function} deps.setEdges
+ * @param {Array} deps.groups
  * @param {Function} deps.setGroups
  * @param {object} deps.reactFlow
  * @param {*} deps.selectedId
@@ -59,19 +60,20 @@ export function historyToNodePatch(item) {
  * @param {Function} deps.saveLastParams useLastParams().saveLastParams —— 表单提交时存参数子集
  */
 export default function useNodeCrud({
-  nodes, edges, setNodes, setEdges, setGroups,
+  nodes, edges, groups, setNodes, setEdges, setGroups,
   reactFlow, selectedId, setSelectedId, updateNodeData, settings, submit,
   setDropNodeMenu, setContextMenu, setPendingConnection,
   getViewportCenter, getLastParams, saveLastParams,
 }) {
   const dragTypeRef = useRef(null);
 
-  // nodes/edges 的 ref 镜像：让「读最新值」的 callback（focusNode/handleExport/handleAutoLayout）
-  // 去掉对 nodes/edges 的依赖，成为稳定 callback。
+  // nodes/edges/groups 的 ref 镜像：让读取最新画布状态的 callback 保持稳定。
   const nodesRef = useRef(nodes);
   const edgesRef = useRef(edges);
+  const groupsRef = useRef(groups);
   nodesRef.current = nodes;
   edgesRef.current = edges;
+  groupsRef.current = groups;
 
   // 创建节点到指定位置（点击添加 / 拖拽放下 / Agent add_node 共用）
   // dataPatch: 可选，覆盖/扩展初始 data（如预填 loading/images）
@@ -367,12 +369,27 @@ export default function useNodeCrud({
   const handleSelectNode = useCallback((nodeId) => { focusNode(nodeId); }, [focusNode]);
   const handleLocateNode = useCallback((nodeId) => { focusNode(nodeId); }, [focusNode]);
 
-  // 自动布局（dagre）：用 edgesRef 读最新值
+  // 局部分组布局仍重排指定成员；全画布布局只排列顶层 group 和未分组节点。
   const handleAutoLayout = useCallback((direction, options) => {
-    setNodes((prev) => options?.nodeIds?.length
-      ? autoLayoutSubset(prev, edgesRef.current, { ...options, direction: direction === 'TB' ? 'TB' : 'LR' })
-      : autoLayout(prev, edgesRef.current));
-  }, [setNodes]);
+    if (options?.nodeIds?.length) {
+      setNodes((prev) => autoLayoutSubset(prev, edgesRef.current, {
+        ...options,
+        direction: direction === 'TB' ? 'TB' : 'LR',
+      }));
+      return;
+    }
+    const arranged = autoLayoutTopLevel(
+      nodesRef.current,
+      edgesRef.current,
+      groupsRef.current,
+      { direction },
+    );
+    setNodes(arranged.nodes);
+    setGroups(arranged.groups);
+    requestAnimationFrame(() => {
+      reactFlow.fitView({ padding: 0.12, duration: 300 });
+    });
+  }, [reactFlow, setGroups, setNodes]);
 
   // 导出画布 JSON：用 ref 读最新值
   const handleExport = useCallback(() => {

@@ -5,7 +5,10 @@ import {
 } from '@xyflow/react';
 import {
   ResizablePanelGroup, ResizablePanel, ResizableHandle,
-  Images, MapPinned, toast,
+  Images, MapPinned, toast, Checkbox,
+  CopyPlus, Crosshair, Trash2,
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@agent-spaces/ui';
 
 import Toolbar from './Toolbar';
@@ -57,6 +60,7 @@ import useDecoratedNodes from '../hooks/useDecoratedNodes';
 import { IMAGE_TAGS, NODE_TYPES, NODE_META } from '../utils/constants';
 import { NODE_COMPONENTS, NODE_PARAMS_SCHEMA, PANEL_ID_MAIN, PANEL_ID_RIGHT, dedupeTags } from '../utils/canvas-constants';
 import { genId } from '../utils/canvas-id';
+import { copyNodes, pasteNodes } from '../utils/clipboard';
 import { exportAssetLibraryZip, extractFileNameFromUrl, pickAssetLibraryZipFile, importAssetLibraryZip, exportWorkspaceZip, pickWorkspaceZipFile, importWorkspaceZip } from '../utils/export';
 import { canvasConfigPath, historyConfigPath, assetLibraryConfigPath, saveCanvas } from '../utils/storage';
 import { decorateEdgesForSelection } from '../utils/edge-display';
@@ -122,6 +126,15 @@ export default function Canvas() {
   const [pendingConnection, setPendingConnection] = useState(null);
   // 批量运行目标中已有产出时，暂存候选节点并等待用户确认。
   const [batchRunConfirm, setBatchRunConfirm] = useState(null);
+  // 删节点联动历史确认：待删除节点信息 { nodeId, nodeLabel, relatedCount, relatedIds, alsoDeleteHistory } | null。
+  // 删节点时若该节点有关联生成记录，弹此确认问是否同时删记录。
+  const [deleteNodeHistoryConfirm, setDeleteNodeHistoryConfirm] = useState(null);
+  // 右侧面板激活 tab（受控）：节点右键「定位到历史记录」需要切到 history tab。
+  const [rightTab, setRightTab] = useState('add');
+  // 节点右键菜单：{ nodeId, clientX, clientY } | null。onNodeContextMenu 触发，自定义浮层定位。
+  const [nodeContextMenu, setNodeContextMenu] = useState(null);
+  // 历史记录定位焦点：节点右键「定位到历史记录」时设为目标节点 id，HistoryTab 滚动+高亮后清空。
+  const [historyFocusNodeId, setHistoryFocusNodeId] = useState(null);
 
   const reactFlow = useReactFlow();
   const wrappingRef = useRef(null);
@@ -212,6 +225,15 @@ export default function Canvas() {
         });
       }
     },
+    onCancel: (job) => {
+      if (job.placeholderNodeId) {
+        updateNodeData(job.placeholderNodeId, {
+          loading: false,
+          status: 'cancelled',
+          error: undefined,
+        });
+      }
+    },
   });
   const activeQueueNodeIds = useMemo(() => new Set(
     jobs
@@ -250,7 +272,7 @@ export default function Canvas() {
     return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
   }, []);
   const crud = useNodeCrud({
-    nodes, edges, setNodes, setEdges, setGroups,
+    nodes, edges, groups, setNodes, setEdges, setGroups,
     reactFlow, selectedId, setSelectedId, updateNodeData, settings, submit,
     setDropNodeMenu, setContextMenu, setPendingConnection,
     getViewportCenter, getLastParams, saveLastParams,
@@ -682,6 +704,124 @@ export default function Canvas() {
     console.log('[clear] handleClearOutputImages', nodeId);
     updateNodeData(nodeId, { __versionSkip: true, output: { images: [] }, versions: [], activeVersion: undefined, status: 'idle' });
   }, [updateNodeData]);
+  // 清空生成记录：可选同时重置画布上所有节点的产出/版本/状态。
+  // alsoResetNodes=true 时逐个走 handleClearOutputImages 复用单节点重置字段集。
+  const handleClearHistoryAndReset = useCallback((alsoResetNodes) => {
+    clearHistory();
+    if (alsoResetNodes) {
+      for (const n of nodesRef.current) handleClearOutputImages(n.id);
+    }
+  }, [clearHistory, handleClearOutputImages]);
+  // 删节点联动历史：删前查该节点是否有关联生成记录（item.nodeId === nodeId）。
+  // 有 → 弹确认框问是否同时删记录；无 → 直接删节点（不打扰用户）。
+  // historyRef 读最新 history（避免闭包旧值），crud.handleDeleteNode 是稳定 callback。
+  const historyRef = useRef(history);
+  historyRef.current = history;
+  const handleDeleteNodeWithHistoryCheck = useCallback((nodeId) => {
+    const related = historyRef.current.filter((it) => it.nodeId === nodeId);
+    if (related.length === 0) {
+      crud.handleDeleteNode(nodeId);
+      return;
+    }
+    const node = nodesRef.current.find((n) => n.id === nodeId);
+    setDeleteNodeHistoryConfirm({
+      nodeId,
+      nodeLabel: node ? (NODE_META[node.type]?.label || node.type) : '节点',
+      relatedCount: related.length,
+      relatedIds: related.map((it) => it.id),
+      alsoDeleteHistory: true,
+    });
+  }, [crud]);
+  // 确认删除节点：alsoDeleteHistory=true 时逐条 removeHistory，最后删节点。
+  const confirmDeleteNodeWithHistory = useCallback((alsoDeleteHistory) => {
+    const info = deleteNodeHistoryConfirm;
+    if (!info) return;
+    if (alsoDeleteHistory) {
+      info.relatedIds.forEach((id) => removeHistory(id));
+    }
+    crud.handleDeleteNode(info.nodeId);
+    setDeleteNodeHistoryConfirm(null);
+  }, [deleteNodeHistoryConfirm, crud, removeHistory]);
+  // 节点右键菜单：记录右键的节点 id + 屏幕坐标，自定义浮层定位。
+  // stopPropagation 阻止冒泡到画布级 ContextMenuTrigger（否则画布菜单也会弹出）。
+  const handleNodeContextMenu = useCallback((event, node) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setNodeContextMenu({ nodeId: node.id, clientX: event.clientX, clientY: event.clientY });
+  }, []);
+  // 克隆节点：复用 copyNodes + pasteNodes（内存剪贴板，不污染系统剪贴板）。
+  // 偏移 {40,40} 避免与原节点重叠；克隆后不自动选中（保持原选中态）。
+  const handleCloneNode = useCallback((nodeId) => {
+    const node = nodesRef.current.find((n) => n.id === nodeId);
+    if (!node) return;
+    copyNodes([node], edgesRef.current);
+    const result = pasteNodes({ genId, offset: { x: 40, y: 40 } });
+    if (!result) return;
+    setNodes((prev) => [...prev, ...result.nodes]);
+    setEdges((prev) => [...prev, ...result.edges]);
+    toast.success('已克隆节点');
+  }, [setNodes, setEdges]);
+  // 定位到历史记录：切到 history tab + 设 focusNodeId 让 HistoryTab 滚动高亮。
+  // focusNodeId 用一个新值触发（即使同节点再次定位也能重新滚动）。
+  const handleLocateHistory = useCallback((nodeId) => {
+    setRightTab('history');
+    setHistoryFocusNodeId(`${nodeId}:${Date.now()}`);
+  }, []);
+  // 节点右键菜单执行 action 后关闭菜单。
+  const runNodeContextAction = useCallback((action, nodeId) => {
+    setNodeContextMenu(null);
+    if (action === 'clone') handleCloneNode(nodeId);
+    else if (action === 'locateHistory') handleLocateHistory(nodeId);
+    else if (action === 'delete') handleDeleteNodeWithHistoryCheck(nodeId);
+  }, [handleCloneNode, handleLocateHistory, handleDeleteNodeWithHistoryCheck]);
+  // 临时：从画布节点产出反向重建生成记录（用于误清空历史后恢复）。
+  // 遍历所有节点，按 output 类型派生 history 条目；createdAt 用当前时间 + 索引保证单调。
+  // 字段约定参考 useNodeExecutions 各 addHistory 调用（images/mediaType/text/prompt/model）。
+  const handleRestoreHistoryFromNodes = useCallback(() => {
+    const curNodes = nodesRef.current;
+    const now = Date.now();
+    let restored = 0;
+    curNodes.forEach((n, idx) => {
+      const out = n?.data?.output;
+      if (!out || typeof out !== 'object') return;
+      const params = n.data?.params || {};
+      const audios = [out.audio, ...(out.audios || [])].filter(Boolean);
+      const videos = [out.video, ...(out.videos || [])].filter(Boolean);
+      const images = Array.isArray(out.images) ? out.images.filter(Boolean) : [];
+      const text = typeof out.text === 'string' ? out.text.trim() : '';
+      // imageDisplay/videoDisplay 走 data.images/videos 透传，非 output
+      const displayImages = n.type === NODE_TYPES.imageDisplay
+        ? (Array.isArray(n.data?.images) ? n.data.images.filter(Boolean) : [])
+        : [];
+      const displayVideos = n.type === NODE_TYPES.videoDisplay
+        ? (Array.isArray(n.data?.videos) ? n.data?.videos.filter(Boolean) : [])
+        : [];
+      let item = null;
+      if (audios.length) {
+        item = { mediaType: 'audio', images: audios };
+      } else if (videos.length || displayVideos.length) {
+        item = { mediaType: 'video', images: videos.length ? videos : displayVideos };
+      } else if (text) {
+        item = { mediaType: 'text', text: text.slice(0, 5000), images: images.slice(0, 4) };
+      } else if (images.length) {
+        item = { images };
+      } else if (displayImages.length) {
+        item = { images: displayImages };
+      }
+      if (!item) return;
+      addHistory({
+        id: genId('hist'),
+        nodeId: n.id,
+        nodeType: n.type,
+        prompt: params.prompt || '',
+        model: params.model || '',
+        createdAt: now + idx, // 索引偏移保证恢复出的多条记录时间单调，排序稳定
+        ...item,
+      }).catch((e) => console.error('restore addHistory failed:', e));
+      restored += 1;
+    });
+    toast.success(`已从 ${restored} 个节点恢复生成记录`);
+  }, [addHistory]);
 
   // 删除节点的一张上游输入图：反查产出该 url 的连入边并删除（与 computeInputImages 的产出判定一致：
   // source 节点 output.images 优先，仅 imageDisplay 透传 data.images）。用 ref 读最新值保持稳定引用。
@@ -1020,6 +1160,7 @@ export default function Canvas() {
               onConnectEnd={onConnectEnd}
               onNodeMouseEnter={onNodeMouseEnter}
               onNodeMouseLeave={onNodeMouseLeave}
+              onNodeContextMenu={handleNodeContextMenu}
               onPaneClick={clearGroupSelection}
               onNodeClick={clearGroupSelection}
               onEdgeClick={clearGroupSelection}
@@ -1123,24 +1264,71 @@ export default function Canvas() {
         <RightPanel
           nodes={nodes}
           edges={edges}
+          groups={groups}
           selectedNodeId={selectedId}
           onSelectNode={crud.handleSelectNode}
           onLocateNode={crud.handleLocateNode}
-          onDeleteNode={crud.handleDeleteNode}
+          onDeleteNode={handleDeleteNodeWithHistoryCheck}
           onAdd={crud.handleAdd}
           onDragStartNode={crud.handleDragStartNode}
           onExecute={(type) => setExecuteState({ nodeType: type })}
           history={history}
           onRemoveHistory={removeHistory}
-          onClearHistory={clearHistory}
+          onClearHistory={handleClearHistoryAndReset}
+          onRestoreFromNodes={handleRestoreHistoryFromNodes}
           onUseImage={selection.handleUseImage}
           onInsertHistory={handleInsertHistoryWithMenu}
           onDragStartHistory={crud.handleDragStartHistory}
           onAddToAssets={handleAddToAssets}
           onInsertImagesToCanvas={handleInsertImagesToCanvas}
+          activeTab={rightTab}
+          onActiveTabChange={setRightTab}
+          historyFocusNodeId={historyFocusNodeId}
           workspaceId={activeId}
         />
       </ResizablePanel>
+
+      {/* 节点右键菜单：自定义浮层（克隆 / 定位到历史记录 / 删除）。
+          透明遮罩捕获外部点击关闭；菜单项点击后调 runNodeContextAction。 */}
+      {nodeContextMenu && (
+        <>
+          <div
+            className="fixed inset-0 z-[40]"
+            onPointerDown={() => setNodeContextMenu(null)}
+            onContextMenu={(e) => { e.preventDefault(); setNodeContextMenu(null); }}
+          />
+          <div
+            className="nodrag nopan nowheel fixed z-[41] min-w-40 overflow-hidden rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md"
+            style={{ left: nodeContextMenu.clientX, top: nodeContextMenu.clientY }}
+            onPointerDown={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => runNodeContextAction('clone', nodeContextMenu.nodeId)}
+              className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs transition hover:bg-accent"
+            >
+              <CopyPlus className="h-3.5 w-3.5" />
+              克隆节点
+            </button>
+            <button
+              type="button"
+              onClick={() => runNodeContextAction('locateHistory', nodeContextMenu.nodeId)}
+              className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs transition hover:bg-accent"
+            >
+              <Crosshair className="h-3.5 w-3.5" />
+              定位到历史记录
+            </button>
+            <button
+              type="button"
+              onClick={() => runNodeContextAction('delete', nodeContextMenu.nodeId)}
+              className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs text-red-500 transition hover:bg-accent"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              删除节点
+            </button>
+          </div>
+        </>
+      )}
 
       <SettingsDialog
         open={settingsOpen}
@@ -1161,6 +1349,36 @@ export default function Canvas() {
           if (pending?.nodeIds?.length) submitBatchRun(pending.nodeIds);
         }}
       />
+      {/* 删节点联动历史确认：该节点有关联生成记录时弹出，问是否同时删记录 */}
+      <AlertDialog
+        open={!!deleteNodeHistoryConfirm}
+        onOpenChange={(next) => { if (!next) setDeleteNodeHistoryConfirm(null); }}
+      >
+        <AlertDialogContent size="sm">
+          <AlertDialogHeader>
+            <AlertDialogTitle>删除节点？</AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteNodeHistoryConfirm?.nodeLabel} 有 {deleteNodeHistoryConfirm?.relatedCount} 条关联的生成记录。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <label className="nodrag nopan nowheel flex cursor-pointer items-center gap-2 py-1 text-sm">
+            <Checkbox
+              checked={!!deleteNodeHistoryConfirm?.alsoDeleteHistory}
+              onCheckedChange={(checked) => setDeleteNodeHistoryConfirm((cur) => cur ? { ...cur, alsoDeleteHistory: !!checked } : cur)}
+            />
+            <span>同时删除关联的生成记录</span>
+          </label>
+          <AlertDialogFooter>
+            <AlertDialogCancel>取消</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              onClick={() => confirmDeleteNodeWithHistory(!!deleteNodeHistoryConfirm?.alsoDeleteHistory)}
+            >
+              删除
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* 顶部菜单「提示词管理」入口：pickerMode=false 纯管理（不填充、不关闭） */}
       <PromptPickerDialog

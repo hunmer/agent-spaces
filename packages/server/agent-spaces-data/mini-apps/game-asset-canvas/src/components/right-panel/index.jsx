@@ -10,6 +10,7 @@ import AssetLibrary from '../AssetLibrary';
  * @param {Object} props
  * @param {Array} props.nodes
  * @param {Array} [props.edges]              连线，传给节点管理做连通分量分组
+ * @param {Array} [props.groups]             分组列表，传给生成记录做分组过滤
  * @param {string|null} [props.selectedNodeId] 当前选中节点 id，节点管理用于高亮
  * @param {(id:string)=>void} props.onSelectNode
  * @param {(id:string)=>void} props.onLocateNode
@@ -20,6 +21,10 @@ import AssetLibrary from '../AssetLibrary';
  * @param {Array} props.history
  * @param {(id:string)=>void} props.onRemoveHistory
  * @param {()=>void} props.onClearHistory
+ * @param {()=>void} [props.onRestoreFromNodes] 临时：从节点产出反向恢复历史记录
+ * @param {string} [props.activeTab] 当前激活 tab（受控：add/nodes/history/assets），不传则非受控默认 add
+ * @param {(tab:string)=>void} [props.onActiveTabChange] tab 切换回调
+ * @param {string|null} [props.historyFocusNodeId] 要在历史记录中高亮定位的节点 id
  * @param {(url:string)=>void} props.onUseImage
  * @param {(item:object,opts:object)=>void} props.onInsertHistory
  * @param {(item:object,e:object)=>void} props.onDragStartHistory
@@ -28,17 +33,23 @@ import AssetLibrary from '../AssetLibrary';
  * @param {string} props.workspaceId
  */
 export default function RightPanel({
-  nodes, edges, selectedNodeId,
+  nodes, edges, groups, selectedNodeId,
   onSelectNode, onLocateNode, onDeleteNode,
   onAdd, onDragStartNode, onExecute,
-  history, onRemoveHistory, onClearHistory, onUseImage,
+  history, onRemoveHistory, onClearHistory, onRestoreFromNodes, onUseImage,
   onInsertHistory, onDragStartHistory,
   onAddToAssets, onInsertImagesToCanvas,
+  activeTab, onActiveTabChange, historyFocusNodeId,
   workspaceId,
 }) {
   return (
     <div className="flex h-full min-h-0 flex-col border-l border-border bg-card">
-      <Tabs defaultValue="add" className="flex h-full min-h-0 flex-col">
+      <Tabs
+        value={activeTab}
+        onValueChange={onActiveTabChange}
+        defaultValue="add"
+        className="flex h-full min-h-0 flex-col"
+      >
         <TabsList className="flex w-full flex-row flex-nowrap rounded-none border-b border-border">
           <TabsTrigger value="add" title="新增节点" aria-label="新增节点" className="flex-1">
             <Plus className="h-4 w-4" />
@@ -77,8 +88,11 @@ export default function RightPanel({
         <TabsContent value="history" className="mt-0 min-h-0 flex-1 overflow-hidden">
           <HistoryTab
             history={history}
+            groups={groups}
             onRemoveHistory={onRemoveHistory}
             onClearHistory={onClearHistory}
+            onRestoreFromNodes={onRestoreFromNodes}
+            focusNodeId={historyFocusNodeId}
             onUseImage={onUseImage}
             onInsertHistory={onInsertHistory}
             onDragStartHistory={onDragStartHistory}
