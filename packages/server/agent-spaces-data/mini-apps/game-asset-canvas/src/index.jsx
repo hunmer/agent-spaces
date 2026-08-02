@@ -1,9 +1,21 @@
+import { useEffect } from 'react';
 import { ReactFlowProvider } from '@xyflow/react';
 import { Toaster } from '@agent-spaces/ui';
 import Canvas from './components/Canvas';
 import { NodeDialogProvider } from './components/nodes/NodeDialogContext';
 
 export default function App() {
+  // 阻止浏览器默认的「保存网页」（Ctrl/Cmd+S）行为，仅 preventDefault，不阻断事件传播
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   return (
     <ReactFlowProvider>
       <NodeDialogProvider>

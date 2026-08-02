@@ -78,6 +78,7 @@ export default function RightPanel({
           <NodeManageTab
             nodes={nodes}
             edges={edges}
+            groups={groups}
             selectedNodeId={selectedNodeId}
             onSelectNode={onSelectNode}
             onLocateNode={onLocateNode}

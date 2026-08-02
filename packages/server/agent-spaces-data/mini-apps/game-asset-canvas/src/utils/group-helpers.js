@@ -27,6 +27,26 @@ export function collectGroupNodeIds(groups, groupId) {
 }
 
 /**
+ * 找出包含全部指定节点的最小分组。嵌套分组同时命中时优先返回内层分组。
+ * @param {Array} groups 所有分组
+ * @param {string[]} nodeIds 节点 id
+ * @returns {string|null} 分组 id
+ */
+export function findSmallestGroupContainingNodeIds(groups, nodeIds) {
+  if (!nodeIds.length) return null;
+  const targetIds = new Set(nodeIds);
+  return groups
+    .map((group) => ({
+      id: group.id,
+      nodeIds: collectGroupNodeIds(groups, group.id),
+    }))
+    .filter(({ nodeIds: groupNodeIds }) => (
+      [...targetIds].every((id) => groupNodeIds.includes(id))
+    ))
+    .sort((a, b) => a.nodeIds.length - b.nodeIds.length)[0]?.id ?? null;
+}
+
+/**
  * 找出分组树内的「末端叶子节点」：在组范围内没有下游（出边 target 不在组内）的节点。
  * 用于分组输出连线：从组拖到 target 时，把组内叶子节点连到 target。
  * @param {Array} groups 所有分组

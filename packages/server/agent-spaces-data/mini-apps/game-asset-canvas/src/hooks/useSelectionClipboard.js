@@ -7,6 +7,7 @@ import { genId } from '../utils/canvas-id';
 import { computeAlignment, computeGridLayout } from '../utils/align-distribute';
 import { IMAGE_TAGS } from '../utils/constants';
 import { imageFilesFromClipboardData, readClipboardImageFiles } from '../utils/clipboard-images';
+import { collectGroupNodeIds, findSmallestGroupContainingNodeIds } from '../utils/group-helpers';
 
 /**
  * 节点选中状态 + 多选对齐分布 + 批量删除 + 复制粘贴。
@@ -20,6 +21,7 @@ import { imageFilesFromClipboardData, readClipboardImageFiles } from '../utils/c
  * @param {object} deps
  * @param {Array} deps.nodes
  * @param {Array} deps.edges
+ * @param {Array} deps.groups
  * @param {Function} deps.setNodes
  * @param {Function} deps.setEdges
  * @param {Function} deps.setGroups
@@ -28,17 +30,19 @@ import { imageFilesFromClipboardData, readClipboardImageFiles } from '../utils/c
  * @param {Function} deps.onPasteImageFiles 系统剪贴板图片上传到视口中心
  */
 export default function useSelectionClipboard({
-  nodes, edges, setNodes, setEdges, setGroups, setSelectedId,
+  nodes, edges, groups, setNodes, setEdges, setGroups, setSelectedId,
   addImageNodesFromUrls, onPasteImageFiles,
 }) {
   const [selectionCount, setSelectionCount] = useState(0);
   const [propertyPaste, setPropertyPaste] = useState(null);
 
-  // nodes/edges 的 ref 镜像：让「读最新选中态」的 callback 去掉对 nodes/edges 的依赖
+  // nodes/edges/groups 的 ref 镜像：让「读最新选中态」的 callback 去掉响应式依赖
   const nodesRef = useRef(nodes);
   const edgesRef = useRef(edges);
+  const groupsRef = useRef(groups);
   nodesRef.current = nodes;
   edgesRef.current = edges;
+  groupsRef.current = groups;
 
   // 选中变化：单选时记录 selectedId，多选时只更新 selectionCount
   const onSelectionChange = useCallback(({ nodes: selNodes }) => {
@@ -161,6 +165,21 @@ export default function useSelectionClipboard({
     setNodes((prev) => prev.map((n) => ({ ...n, selected: true })));
   }, [setNodes]);
 
+  // 键盘全选：当前选中节点位于分组内时，仅选中能包含它们的最小分组。
+  const handleKeyboardSelectAll = useCallback(() => {
+    const selectedIds = nodesRef.current.filter((node) => node.selected).map((node) => node.id);
+    const groupId = findSmallestGroupContainingNodeIds(groupsRef.current, selectedIds);
+    if (!groupId) {
+      handleSelectAll();
+      return;
+    }
+    const groupNodeIds = new Set(collectGroupNodeIds(groupsRef.current, groupId));
+    setNodes((prev) => prev.map((node) => ({
+      ...node,
+      selected: groupNodeIds.has(node.id),
+    })));
+  }, [handleSelectAll, setNodes]);
+
   // 反选：selected 取反
   const handleInvertSelect = useCallback(() => {
     setNodes((prev) => prev.map((n) => ({ ...n, selected: !n.selected })));
@@ -184,7 +203,7 @@ export default function useSelectionClipboard({
       if (!mod || isEditableTarget(e.target)) return;
       if (e.key === 'a' || e.key === 'A') {
         e.preventDefault();
-        handleSelectAll();
+        handleKeyboardSelectAll();
       } else if (e.key === 'c' || e.key === 'C') {
         const selected = nodesRef.current.filter((n) => n.selected);
         if (selected.length) { e.preventDefault(); handleCopy(); }
@@ -213,7 +232,7 @@ export default function useSelectionClipboard({
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('paste', onPaste);
     };
-  }, [handleCopy, handleSelectAll, onPasteImageFiles, requestNodePaste]);
+  }, [handleCopy, handleKeyboardSelectAll, onPasteImageFiles, requestNodePaste]);
 
   return {
     selectionCount, setSelectionCount,

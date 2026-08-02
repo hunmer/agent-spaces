@@ -290,7 +290,7 @@ export default function Canvas() {
     return crud.handleDropFiles(files, position);
   }, [crud.handleDropFiles, getViewportCenter, reactFlow]);
   const selection = useSelectionClipboard({
-    nodes, edges, setNodes, setEdges, setGroups, setSelectedId, addImageNodesFromUrls,
+    nodes, edges, groups, setNodes, setEdges, setGroups, setSelectedId, addImageNodesFromUrls,
     onPasteImageFiles: handlePasteImageFiles,
   });
 
