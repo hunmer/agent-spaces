@@ -39,7 +39,7 @@ export default function RightPanel({
   history, onRemoveHistory, onClearHistory, onRestoreFromNodes, onUseImage,
   onInsertHistory, onDragStartHistory,
   onAddToAssets, onInsertImagesToCanvas,
-  activeTab, onActiveTabChange, historyFocusNodeId,
+  activeTab, onActiveTabChange, historyFocusNodeId, assetCategories,
   workspaceId,
 }) {
   return (
@@ -90,6 +90,7 @@ export default function RightPanel({
           <HistoryTab
             history={history}
             groups={groups}
+            assetCategories={assetCategories}
             onRemoveHistory={onRemoveHistory}
             onClearHistory={onClearHistory}
             onRestoreFromNodes={onRestoreFromNodes}

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Background, BackgroundVariant, Controls, ControlButton, MarkerType, MiniMap,
+  Background, BackgroundVariant, Controls, ControlButton, MarkerType,
   ReactFlow, addEdge, applyEdgeChanges, applyNodeChanges, useReactFlow,
 } from '@xyflow/react';
 import {
@@ -25,6 +25,7 @@ import DropNodeMenu from './canvas/DropNodeMenu';
 import MultiSelectToolbar from './canvas/MultiSelectToolbar';
 import ImageSelectionToolbar from './canvas/ImageSelectionToolbar';
 import GroupOverlays from './canvas/GroupOverlays';
+import GroupMiniMap from './canvas/GroupMiniMap';
 import FloatingEdge from './canvas/FloatingEdge';
 import { ImageSelectionContext } from '../context/ImageSelectionContext';
 import useImageSelection from '../hooks/useImageSelection';
@@ -490,7 +491,7 @@ export default function Canvas() {
   }, [settings, runWorkflow]);
 
   // —— 添加到素材库：节点产出图 / 生成记录图 共用的分组选择器 ——
-  const { addAsset, createCategory } = useAssetLibrary(activeId);
+  const { addAsset, createCategory, categories: assetCategories } = useAssetLibrary(activeId);
 
   // 导出当前工作区素材库为 zip（按分类转文件夹）。导出时直接调 list_assets service 拿最新全量数据，
   // 避免闭包内 categories 陈旧。onProgress 透传给工具函数，由 Toolbar 侧更新 toast 进度。
@@ -1202,7 +1203,9 @@ export default function Canvas() {
                 </ControlButton>
               </Controls>
               {showMinimap && (
-                <MiniMap
+                <GroupMiniMap
+                  items={groupOps.groupOverlayItems}
+                  nodes={decoratedNodes}
                   pannable
                   zoomable
                   nodeColor={(n) => (NODE_META[n.type]?.color || '#94a3b8')}
@@ -1273,6 +1276,7 @@ export default function Canvas() {
           onDragStartNode={crud.handleDragStartNode}
           onExecute={(type) => setExecuteState({ nodeType: type })}
           history={history}
+          assetCategories={assetCategories}
           onRemoveHistory={removeHistory}
           onClearHistory={handleClearHistoryAndReset}
           onRestoreFromNodes={handleRestoreHistoryFromNodes}

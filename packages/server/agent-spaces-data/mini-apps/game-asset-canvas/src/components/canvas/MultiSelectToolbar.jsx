@@ -55,8 +55,9 @@ export default function MultiSelectToolbar({
     setDistOpen(false);
   };
 
-  const baseBtn = 'flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium transition';
-  const labelBtn = `${baseBtn} border-border bg-background text-foreground hover:border-primary hover:text-primary`;
+  // 纯图标按钮基类（文字改用 title 原生 tooltip 展示）
+  const baseBtn = 'flex items-center justify-center rounded-md border p-1.5 transition';
+  const labelBtn = `${baseBtn} border-border bg-background text-muted-foreground hover:border-primary hover:text-primary`;
   const activeBtn = `${baseBtn} border-primary bg-primary/10 text-primary`;
   const iconBtn = 'flex items-center justify-center rounded-md border border-border bg-background p-1.5 text-muted-foreground transition hover:border-primary hover:text-primary';
   const numberInput = 'w-14 rounded-md border border-border bg-background px-1.5 py-1 text-xs text-foreground outline-none focus:border-primary';
@@ -69,23 +70,20 @@ export default function MultiSelectToolbar({
         <div className="mx-1 h-4 w-px bg-border" />
 
         {/* 合并成分组 */}
-        <button type="button" onClick={onCreateGroup} className={labelBtn}>
+        <button type="button" title="合并成分组" onClick={onCreateGroup} className={labelBtn}>
           <Layers className="h-3.5 w-3.5" />
-          合并成分组
         </button>
 
-        <button type="button" onClick={onRunSelected} className={labelBtn}>
+        <button type="button" title="批量运行" onClick={onRunSelected} className={labelBtn}>
           <Play className="h-3.5 w-3.5" />
-          批量运行
         </button>
 
         {/* 对齐：左/右/顶/底 —— Popover 向上弹出 */}
         <Popover open={alignOpen} onOpenChange={setAlignOpen}>
           <PopoverTrigger
             render={
-              <button type="button" className={alignOpen ? activeBtn : labelBtn}>
+              <button type="button" title="对齐" className={alignOpen ? activeBtn : labelBtn}>
                 <AlignStartVertical className="h-3.5 w-3.5" />
-                对齐
                 <ChevronDown className="h-3 w-3 opacity-60" />
               </button>
             }
@@ -116,9 +114,8 @@ export default function MultiSelectToolbar({
         >
           <PopoverTrigger
             render={
-              <button type="button" className={distOpen ? activeBtn : labelBtn}>
+              <button type="button" title="分布" className={distOpen ? activeBtn : labelBtn}>
                 <LayoutGrid className="h-3.5 w-3.5" />
-                分布
                 <ChevronDown className="h-3 w-3 opacity-60" />
               </button>
             }
@@ -181,11 +178,11 @@ export default function MultiSelectToolbar({
         {/* 批量删除 */}
         <button
           type="button"
+          title="批量删除"
           onClick={onDeleteSelected}
-          className="flex items-center gap-1.5 rounded-md border border-border bg-background px-2.5 py-1 text-xs font-medium text-foreground transition hover:border-destructive hover:text-destructive"
+          className="flex items-center justify-center rounded-md border border-border bg-background p-1.5 text-muted-foreground transition hover:border-destructive hover:text-destructive"
         >
           <Trash2 className="h-3.5 w-3.5" />
-          批量删除
         </button>
       </div>
     </div>

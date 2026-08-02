@@ -10,7 +10,7 @@ import {
 } from '@agent-spaces/ui';
 import {
   List, LayoutGrid, Send, Maximize2, ClipboardCopy, Trash2, Crosshair,
-  ArrowDownWideNarrow, RotateCcw, Checkbox,
+  ArrowDownWideNarrow, RotateCcw, Checkbox, Download,
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@agent-spaces/ui';
@@ -18,6 +18,7 @@ import { NODE_META } from '../../utils/constants';
 import { CANVAS_DROP_MIME } from '../../utils/canvas-constants';
 import { matchText, SearchBar } from './search';
 import { NODE_CATEGORIES, ADD_ITEMS } from './constants';
+import { downloadImages } from '../../utils/export';
 import ImageHoverCard from '../ImageHoverCard';
 import useSettings from '../../hooks/useSettings';
 
@@ -38,11 +39,15 @@ function ensureHighlightStyle() {
 export default function HistoryTab({
   history, groups, onRemoveHistory, onClearHistory, onRestoreFromNodes, onUseImage,
   onInsertHistory, onDragStartHistory, onAddToAssets,
-  onLocateNode, focusNodeId,
+  onLocateNode, focusNodeId, assetCategories,
 }) {
   const [activeCat, setActiveCat] = useState('all');
   const [activeGroup, setActiveGroup] = useState('all');
   const [query, setQuery] = useState('');
+  // 记录多选：选中 history item id 集合。右键菜单作用于选中集（无选中则作用于当前记录）。
+  const [selectedIds, setSelectedIds] = useState(() => new Set());
+  // masonry 图片级多选：选中图片 url 集合（masonry 默认开启多选，右上角 checkbox）。
+  const [selectedUrls, setSelectedUrls] = useState(() => new Set());
   const [confirmClear, setConfirmClear] = useState(false);
   // 清空记录时是否同时重置画布节点产出（默认勾选，保持原强绑定行为）
   const [clearAlsoResetNodes, setClearAlsoResetNodes] = useState(true);
@@ -74,6 +79,17 @@ export default function HistoryTab({
     }
     return m;
   }, [groups]);
+  // url → 素材库分类名 映射（用于图片右上角 badge：判断图片是否已在素材库）。
+  // 同一 url 可能在多个分类，取首个命中（按分类顺序）。
+  const assetLabelMap = useMemo(() => {
+    const m = new Map();
+    for (const cat of assetCategories || []) {
+      for (const ast of cat.assets || []) {
+        if (ast.url && !m.has(ast.url)) m.set(ast.url, cat.name || '未分类');
+      }
+    }
+    return m;
+  }, [assetCategories]);
   // 动态分类 chips：基于历史记录里实际出现过的 nodeType 推导 category，避免列空分类。
   // 同时统计每类记录数，用于 chips 计数显示。
   const cats = useMemo(() => {
@@ -141,6 +157,99 @@ export default function HistoryTab({
     return indexed.map((pair) => pair[0]);
   }, [history, activeCat, activeGroup, typeToCat, nodeToGroupName, hasQuery, query, sortOrder]);
 
+  // ---- 记录多选 + 批量操作 ----
+  // 选中集只保留当前可见记录（filtered）；切换过滤/工作区导致记录消失时自动清理悬空 id。
+  useEffect(() => {
+    setSelectedIds((prev) => {
+      if (prev.size === 0) return prev;
+      const visible = new Set(filtered.map((it) => it.id));
+      let changed = false;
+      const next = new Set();
+      for (const id of prev) {
+        if (visible.has(id)) next.add(id);
+        else changed = true;
+      }
+      return changed ? next : prev;
+    });
+  }, [filtered]);
+  const toggleSelect = (id, additive) => {
+    setSelectedIds((prev) => {
+      const next = additive ? new Set(prev) : new Set();
+      if (additive && next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+  const selectOnly = (id) => setSelectedIds(new Set([id]));
+  const clearSelection = () => setSelectedIds(new Set());
+  // 选中集对应的完整记录数组（用于工具条批量操作，不依赖"当前记录"）
+  const selectedItems = useMemo(
+    () => filtered.filter((it) => selectedIds.has(it.id)),
+    [filtered, selectedIds],
+  );
+  const selectAll = () => setSelectedIds(new Set(filtered.map((it) => it.id)));
+  // 工具条批量操作（作用于整个选中集）
+  const toolbarBatch = (action) => {
+    if (!selectedItems.length) return;
+    const urls = collectUrls(selectedItems);
+    if (action === 'useImage') {
+      if (!urls.length) { toast.error('选中记录无图片'); return; }
+      urls.forEach((u) => onUseImage?.(u));
+      toast.success(`已用作输入（${urls.length} 张）`);
+    } else if (action === 'addToAssets') {
+      if (!urls.length) { toast.error('选中记录无图片'); return; }
+      onAddToAssets?.(urls);
+    } else if (action === 'insert') {
+      selectedItems.forEach((it) => onInsertHistory?.(it, {}));
+      toast.success(`已插入 ${selectedItems.length} 条记录到画布`);
+    } else if (action === 'remove') {
+      selectedItems.forEach((it) => onRemoveHistory?.(it.id));
+      clearSelection();
+    }
+  };
+  // 计算操作目标集：有选中且当前记录在选中集 → 选中集；否则仅当前记录。
+  const resolveTargets = (item) => {
+    if (selectedIds.has(item.id) && selectedIds.size > 0) {
+      return filtered.filter((it) => selectedIds.has(it.id));
+    }
+    return [item];
+  };
+  // 批量操作：收集目标记录的所有图片 url（跳过文本记录无图）
+  const collectUrls = (items) => items.flatMap((it) => (Array.isArray(it.images) ? it.images.filter(Boolean) : []));
+  // 批量操作回调（作用于 resolveTargets 结果）
+  const batchUseImage = (item) => {
+    const urls = collectUrls(resolveTargets(item));
+    if (!urls.length) { toast.error('选中记录无图片'); return; }
+    urls.forEach((u) => onUseImage?.(u));
+    toast.success(`已用作输入（${urls.length} 张）`);
+  };
+  const batchAddToAssets = (item) => {
+    const urls = collectUrls(resolveTargets(item));
+    if (!urls.length) { toast.error('选中记录无图片'); return; }
+    onAddToAssets?.(urls);
+  };
+  const batchInsert = (item, opts) => {
+    resolveTargets(item).forEach((it) => onInsertHistory?.(it, opts));
+    const n = resolveTargets(item).length;
+    toast.success(`已插入 ${n} 条记录到画布`);
+  };
+  const batchViewGallery = (item) => {
+    const urls = collectUrls(resolveTargets(item));
+    if (!urls.length) { toast.error('选中记录无图片'); return; }
+    openMediaGallery(urls.map((src) => ({ src, type: 'image' })));
+  };
+  const batchCopyUrls = (item) => {
+    const urls = collectUrls(resolveTargets(item));
+    if (!urls.length) { toast.error('选中记录无图片'); return; }
+    navigator.clipboard?.writeText(urls.join('\n')).then(
+      () => toast.success(`已复制 ${urls.length} 个图片地址`),
+      () => toast.error('复制失败'),
+    );
+  };
+  const batchRemove = (item) => {
+    resolveTargets(item).forEach((it) => onRemoveHistory?.(it.id));
+  };
+
   // 瀑布流视图：把 filtered 中的图片记录展平成单张图条目。
   // 跳过音频/视频/文本记录（它们在列表视图查看）。key 用 `${item.id}:${index}` 保证唯一
   // （规避约束 #24：同一记录内可能有重复 URL，不能直接拿 url 当 key）。
@@ -154,6 +263,66 @@ export default function HistoryTab({
     }
     return out;
   }, [filtered]);
+
+  // ---- masonry 图片级多选（须在 flatImageItems 之后，避免 TDZ） ----
+  const toggleUrlSelect = (url) => {
+    setSelectedUrls((prev) => {
+      const next = new Set(prev);
+      if (next.has(url)) next.delete(url);
+      else next.add(url);
+      return next;
+    });
+  };
+  const clearUrlSelection = () => setSelectedUrls(new Set());
+  const selectAllUrls = () => setSelectedUrls(new Set(flatImageItems.map((it) => it.url)));
+  // 切换过滤/视图导致图片消失时，清理悬空 url
+  useEffect(() => {
+    setSelectedUrls((prev) => {
+      if (prev.size === 0) return prev;
+      const visible = new Set(flatImageItems.map((it) => it.url));
+      let changed = false;
+      const next = new Set();
+      for (const u of prev) {
+        if (visible.has(u)) next.add(u);
+        else changed = true;
+      }
+      return changed ? next : prev;
+    });
+  }, [flatImageItems]);
+  // masonry 操作目标 url：有图片选中 → 选中集；否则 → 当前图片
+  const resolveImageUrls = (url) => (selectedUrls.size > 0 && selectedUrls.has(url)
+    ? Array.from(selectedUrls)
+    : [url]);
+  // 下载（单张直接下载，多张打包 zip，复用 downloadImages）
+  const batchDownload = async (url) => {
+    const urls = resolveImageUrls(url);
+    if (!urls.length) return;
+    try {
+      const { ok, total, failed } = await downloadImages(urls);
+      if (failed === 0) toast.success(`已下载 ${ok}/${total} 张`);
+      else toast.warning(`下载完成 ${ok} 成功，${failed} 失败`);
+    } catch (e) {
+      toast.error(e?.message || '下载失败');
+    }
+  };
+  // masonry 图片级批量：素材库/用作输入/查看大图/复制地址 作用于选中图片集
+  const masonryBatchAddToAssets = (url) => onAddToAssets?.(resolveImageUrls(url));
+  const masonryBatchUseImage = (url) => {
+    const urls = resolveImageUrls(url);
+    urls.forEach((u) => onUseImage?.(u));
+    toast.success(`已用作输入（${urls.length} 张）`);
+  };
+  const masonryBatchViewGallery = (url) => {
+    const urls = resolveImageUrls(url);
+    openMediaGallery(urls.map((src) => ({ src, type: 'image' })));
+  };
+  const masonryBatchCopyUrls = (url) => {
+    const urls = resolveImageUrls(url);
+    navigator.clipboard?.writeText(urls.join('\n')).then(
+      () => toast.success(`已复制 ${urls.length} 个图片地址`),
+      () => toast.error('复制失败'),
+    );
+  };
 
   // ScrollArea 内部滚动视口 ref：传给 Masonry 让它在面板内监听滚动（否则默认监听 window）。
   // ScrollArea 用 base-ui（data-slot="scroll-area-viewport" 是真正的滚动节点）。
@@ -237,6 +406,53 @@ export default function HistoryTab({
       {history.length > 0 && (
         <>
           <SearchBar value={query} onChange={setQuery} placeholder="搜索记录（支持拼音）" />
+          {/* 批量操作工具条：有选中记录时显示，提供全选/清空 + 批量操作 */}
+          {selectedItems.length > 0 && (
+            <div className="nodrag nopan nowheel flex items-center gap-1 border-b border-border bg-primary/5 px-2 py-1.5">
+              <span className="shrink-0 text-[11px] font-medium text-primary">已选 {selectedItems.length} 条</span>
+              <button
+                type="button"
+                onClick={selectAll}
+                className="shrink-0 rounded px-1.5 py-0.5 text-[10px] text-muted-foreground transition hover:bg-muted hover:text-foreground"
+              >
+                全选
+              </button>
+              <div className="ml-auto flex items-center gap-0.5">
+                <button
+                  type="button"
+                  onClick={() => toolbarBatch('addToAssets')}
+                  title="添加到素材库"
+                  className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground transition hover:bg-muted hover:text-primary"
+                >
+                  <FolderPlus className="h-3.5 w-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => toolbarBatch('insert')}
+                  title="插入到画布"
+                  className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground transition hover:bg-muted hover:text-primary"
+                >
+                  <CopyPlus className="h-3.5 w-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => toolbarBatch('remove')}
+                  title="删除选中"
+                  className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground transition hover:bg-muted hover:text-red-500"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={clearSelection}
+                  title="取消选择"
+                  className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+          )}
           {/* 分类筛选 chips（搜索时隐藏，让结果跨分类展示） */}
           {!hasQuery && cats.length > 1 && (
             <div className="nodrag nopan nowheel scrollbar-none flex gap-1 overflow-x-auto border-b border-border p-2">
@@ -388,16 +604,40 @@ export default function HistoryTab({
         )}
         {/* 列表视图：原卡片形态 */}
         {history.length > 0 && viewMode === 'list' && (
-          <div className="flex flex-col gap-2 p-2">
+          <div className="flex flex-col gap-2 p-2" onClick={(e) => {
+            // 点击列表空白区域清空选中（点卡片内部由卡片自行 stopPropagation）
+            if (e.target === e.currentTarget) clearSelection();
+          }}>
             {filtered.map((it) => (
               <HistoryCard
                 key={it.id}
                 item={it}
+                selected={selectedIds.has(it.id)}
+                selectionCount={selectedIds.size}
+                assetLabelMap={assetLabelMap}
+                selectedUrls={selectedUrls}
+                onToggleUrlSelect={toggleUrlSelect}
+                onToggleSelect={toggleSelect}
+                onSelectOnly={selectOnly}
                 onRemove={onRemoveHistory}
                 onUseImage={onUseImage}
                 onInsert={onInsertHistory}
                 onDragStart={onDragStartHistory}
                 onAddToAssets={onAddToAssets}
+                onBatchUseImage={batchUseImage}
+                onBatchAddToAssets={batchAddToAssets}
+                onBatchInsert={batchInsert}
+                onBatchViewGallery={batchViewGallery}
+                onBatchCopyUrls={batchCopyUrls}
+                onBatchRemove={batchRemove}
+                onBatchDownload={(historyItem) => {
+                  const urls = collectUrls(resolveTargets(historyItem));
+                  if (!urls.length) { toast.error('选中记录无图片'); return; }
+                  downloadImages(urls).then(
+                    ({ ok, total, failed }) => failed === 0 ? toast.success(`已下载 ${ok}/${total} 张`) : toast.warning(`下载完成 ${ok} 成功，${failed} 失败`),
+                    (e) => toast.error(e?.message || '下载失败'),
+                  );
+                }}
               />
             ))}
             {filtered.length === 0 && (
@@ -425,11 +665,16 @@ export default function HistoryTab({
                 renderItem={(it) => (
                   <MasonryImageCell
                     item={it}
-                    onUseImage={onUseImage}
-                    onAddToAssets={onAddToAssets}
-                    onInsert={onInsertHistory}
-                    onRemove={onRemoveHistory}
-                    onLocateNode={onLocateNode}
+                    selected={selectedUrls.has(it.url)}
+                    assetLabel={assetLabelMap[it.url]}
+                    onToggleUrlSelect={toggleUrlSelect}
+                    onDownload={batchDownload}
+                    onMasonryAddToAssets={masonryBatchAddToAssets}
+                    onMasonryUseImage={masonryBatchUseImage}
+                    onMasonryViewGallery={masonryBatchViewGallery}
+                    onMasonryCopyUrls={masonryBatchCopyUrls}
+                    onBatchInsert={batchInsert}
+                    onBatchRemove={batchRemove}
                   />
                 )}
               />
@@ -491,7 +736,14 @@ export default function HistoryTab({
   );
 }
 
-function HistoryCard({ item, onRemove, onUseImage, onInsert, onDragStart, onAddToAssets }) {
+function HistoryCard({
+  item, selected, selectionCount, assetLabelMap,
+  onToggleSelect, onSelectOnly,
+  onRemove, onUseImage, onInsert, onDragStart, onAddToAssets,
+  onBatchUseImage, onBatchAddToAssets, onBatchInsert, onBatchViewGallery, onBatchCopyUrls, onBatchRemove,
+  onBatchDownload,
+  selectedUrls, onToggleUrlSelect,
+}) {
   const images = item.images || [];
   const cover = images[0];
   // 媒体产出（音频/视频）：渲染播放器而非图片网格，避免 broken img。
@@ -501,108 +753,167 @@ function HistoryCard({ item, onRemove, onUseImage, onInsert, onDragStart, onAddT
   const isVideo = mediaType === 'video';
   const mediaUrls = (isAudio || isVideo) && images.length ? images : (cover ? [cover] : []);
   const hasNodeType = !!item.nodeType && !!NODE_META[item.nodeType];
+  // 批量提示：有选中集且当前记录在选中集时，菜单操作作用于 N 条
+  const inSelection = selected && selectionCount > 1;
+  const batchSuffix = (label) => inSelection ? `${label}（${selectionCount} 条）` : label;
   return (
-    <div
-      className="rounded-md border border-border p-2 transition-shadow"
-      data-history-node-id={item.nodeId || undefined}
-    >
-      {/* 标题行作为「拖拽建 nodeType 节点」的手柄：拖标题=建节点，拖下方图片=拖图片到画布。
-          不再把整个卡片设为 draggable，否则会吞掉内部图片缩略图的 dragstart。 */}
-      <div
-        className="mb-1 flex cursor-grab items-center justify-between gap-2"
-        draggable={hasNodeType}
-        onDragStart={(e) => hasNodeType && onDragStart?.(item, e)}
-        title={hasNodeType ? '拖到画布新建节点' : undefined}
-      >
-        <span className="flex items-center gap-1 text-xs font-medium">
-          {NODE_META[item.nodeType]?.icon} {NODE_META[item.nodeType]?.label || item.nodeType}
-        </span>
-        <span className="text-[10px] text-muted-foreground">{formatTime(item.createdAt)}</span>
-      </div>
-      {item.prompt && (
-        <p className="mb-1.5 line-clamp-2 text-xs text-muted-foreground">{item.prompt}</p>
-      )}
-      {isAudio && mediaUrls.map((url, i) => (
-        <audio key={url + i} src={url} controls className="mb-1 w-full" />
-      ))}
-      {isVideo && mediaUrls.map((url, i) => (
-        <video key={url + i} src={url} controls className="mb-1 w-full rounded border border-border" />
-      ))}
-      {mediaType === 'text' && item.text && (
-        <pre className="nodrag nopan nowheel mb-1 max-h-32 overflow-auto whitespace-pre-wrap break-words rounded border border-border bg-muted/30 p-1.5 text-[10px] leading-snug text-foreground">
+    <ContextMenu>
+      <ContextMenuTrigger
+        render={
+          <div
+            className={
+              'rounded-md border p-2 transition-shadow ' +
+              (selected ? 'border-primary bg-primary/5 ring-1 ring-primary' : 'border-border')
+            }
+            data-history-node-id={item.nodeId || undefined}
+            // ctrl/cmd+点击切换选中；普通点击：若已选中则保持，否则单选当前
+            onClick={(e) => {
+              if (e.target.closest('button, audio, video, pre, a, [data-no-select]')) return;
+              if (e.ctrlKey || e.metaKey) onToggleSelect?.(item.id, true);
+              else if (selected && selectionCount > 1) { /* 保持选中集 */ }
+              else onSelectOnly?.(item.id);
+            }}
+          >
+            {/* 标题行作为「拖拽建 nodeType 节点」的手柄：拖标题=建节点，拖下方图片=拖图片到画布。
+                不再把整个卡片设为 draggable，否则会吞掉内部图片缩略图的 dragstart。 */}
+            <div className="mb-1 flex items-center justify-between gap-2">
+              <div className="flex min-w-0 flex-1 items-center gap-1.5">
+                <span
+                  data-no-select
+                  onClick={(e) => { e.stopPropagation(); onToggleSelect?.(item.id, e.ctrlKey || e.metaKey); }}
+                  className={
+                    'flex h-3.5 w-3.5 shrink-0 cursor-pointer items-center justify-center rounded border text-[9px] transition ' +
+                    (selected ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-background hover:border-primary/50')
+                  }
+                  title="点击选中（Ctrl/Cmd 多选）"
+                >
+                  {selected ? '✓' : ''}
+                </span>
+                <span
+                  className="flex min-w-0 flex-1 cursor-grab items-center gap-1 truncate text-xs font-medium"
+                  draggable={hasNodeType}
+                  onDragStart={(e) => hasNodeType && onDragStart?.(item, e)}
+                  title={hasNodeType ? '拖到画布新建节点' : undefined}
+                >
+                  {NODE_META[item.nodeType]?.icon} {NODE_META[item.nodeType]?.label || item.nodeType}
+                </span>
+              </div>
+              <span className="shrink-0 text-[10px] text-muted-foreground">{formatTime(item.createdAt)}</span>
+            </div>
+            {item.prompt && (
+              <p className="mb-1.5 line-clamp-2 text-xs text-muted-foreground">{item.prompt}</p>
+            )}
+            {isAudio && mediaUrls.map((url, i) => (
+              <audio key={url + i} src={url} controls className="mb-1 w-full" />
+            ))}
+            {isVideo && mediaUrls.map((url, i) => (
+              <video key={url + i} src={url} controls className="mb-1 w-full rounded border border-border" />
+            ))}
+            {mediaType === 'text' && item.text && (
+              <pre className="nodrag nopan nowheel mb-1 max-h-32 overflow-auto whitespace-pre-wrap break-words rounded border border-border bg-muted/30 p-1.5 text-[10px] leading-snug text-foreground">
 {item.text}
-        </pre>
-      )}
-      {!isAudio && !isVideo && mediaType !== 'text' && cover && (
-        <div
-          className="grid gap-1"
-          style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(56px, 1fr))' }}
-        >
-          {images.map((url, i) => (
-            <HistoryImageThumb
-              key={i}
-              url={url}
-              images={images}
-              index={i}
-              onAddToAssets={onAddToAssets}
-            />
-          ))}
-        </div>
-      )}
-      <div className="mt-1.5 flex items-center justify-end gap-2">
-        {cover && (
-          <button
-            type="button"
-            onClick={() => onUseImage?.(cover)}
-            className="text-[10px] text-muted-foreground transition hover:text-primary"
-          >
-            用作输入
-          </button>
-        )}
-        {images.length > 0 && (
-          <button
-            type="button"
-            onClick={() => onAddToAssets?.(images)}
-            title="把本条记录的所有输出图片添加到素材库分组"
-            className="flex items-center gap-1 text-[10px] text-muted-foreground transition hover:text-primary"
-          >
-            <FolderPlus className="h-3 w-3" />
-            添加到素材库
-          </button>
-        )}
-        {hasNodeType && (
-          <DropdownMenu>
-            <DropdownMenuTrigger
-              render={
+              </pre>
+            )}
+            {!isAudio && !isVideo && mediaType !== 'text' && cover && (
+              <div
+                className="grid gap-1"
+                style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(56px, 1fr))' }}
+              >
+                {images.map((url, i) => (
+                  <HistoryImageThumb
+                    key={i}
+                    url={url}
+                    images={images}
+                    index={i}
+                    assetLabel={assetLabelMap?.[url]}
+                    imgSelected={selectedUrls?.has(url)}
+                    onToggleUrlSelect={onToggleUrlSelect}
+                    onAddToAssets={onAddToAssets}
+                  />
+                ))}
+              </div>
+            )}
+            <div className="mt-1.5 flex items-center justify-end gap-2" data-no-select>
+              {cover && (
                 <button
                   type="button"
-                  title="插入到画布（新建节点并预填历史参数）"
+                  onClick={() => onUseImage?.(cover)}
+                  className="text-[10px] text-muted-foreground transition hover:text-primary"
+                >
+                  用作输入
+                </button>
+              )}
+              {images.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => onAddToAssets?.(images)}
+                  title="把本条记录的所有输出图片添加到素材库分组"
                   className="flex items-center gap-1 text-[10px] text-muted-foreground transition hover:text-primary"
-                />
-              }
-            >
-              <CopyPlus className="h-3 w-3" />
-              插入到画布
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => onInsert?.(item, {})}>
-                全部插入（独立节点）
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onInsert?.(item, { group: true })}>
-                插入到新分组
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
-        <button
-          type="button"
-          onClick={() => onRemove?.(item.id)}
-          className="text-[10px] text-muted-foreground transition hover:text-red-500"
-        >
-          删除
-        </button>
-      </div>
-    </div>
+                >
+                  <FolderPlus className="h-3 w-3" />
+                  添加到素材库
+                </button>
+              )}
+              {hasNodeType && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger
+                    render={
+                      <button
+                        type="button"
+                        title="插入到画布（新建节点并预填历史参数）"
+                        className="flex items-center gap-1 text-[10px] text-muted-foreground transition hover:text-primary"
+                      />
+                    }
+                  >
+                    <CopyPlus className="h-3 w-3" />
+                    插入到画布
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => onInsert?.(item, {})}>
+                      全部插入（独立节点）
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => onInsert?.(item, { group: true })}>
+                      插入到新分组
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+              <button
+                type="button"
+                onClick={() => onRemove?.(item.id)}
+                className="text-[10px] text-muted-foreground transition hover:text-red-500"
+              >
+                删除
+              </button>
+            </div>
+          </div>
+        }
+      />
+      <ContextMenuContent>
+        <ContextMenuItem onClick={() => onBatchUseImage?.(item)}>
+          <Send className="mr-2 h-3.5 w-3.5" /> {batchSuffix('用作输入')}
+        </ContextMenuItem>
+        <ContextMenuItem onClick={() => onBatchAddToAssets?.(item)}>
+          <FolderPlus className="mr-2 h-3.5 w-3.5" /> {batchSuffix('添加到素材库')}
+        </ContextMenuItem>
+        <ContextMenuItem onClick={() => onBatchDownload?.(item)}>
+          <Download className="mr-2 h-3.5 w-3.5" /> {batchSuffix('下载')}
+        </ContextMenuItem>
+        <ContextMenuItem onClick={() => onBatchInsert?.(item, {})}>
+          <CopyPlus className="mr-2 h-3.5 w-3.5" /> {batchSuffix('插入到画布')}
+        </ContextMenuItem>
+        <ContextMenuItem onClick={() => onBatchViewGallery?.(item)}>
+          <Maximize2 className="mr-2 h-3.5 w-3.5" /> {batchSuffix('查看大图')}
+        </ContextMenuItem>
+        <ContextMenuItem onClick={() => onBatchCopyUrls?.(item)}>
+          <ClipboardCopy className="mr-2 h-3.5 w-3.5" /> {batchSuffix('复制图片地址')}
+        </ContextMenuItem>
+        <ContextMenuSeparator />
+        <ContextMenuItem onClick={() => onBatchRemove?.(item)} className="text-red-500 focus:text-red-500">
+          <Trash2 className="mr-2 h-3.5 w-3.5" /> {batchSuffix('删除')}
+        </ContextMenuItem>
+      </ContextMenuContent>
+    </ContextMenu>
   );
 }
 
@@ -614,8 +925,10 @@ function formatTime(ts) {
 }
 
 // 生成记录单张图片缩略图：HoverCard 预览（复用 ImageHoverCard 通用组件）
-// delay=500ms 延迟显示；点击打开 mediaGallery 大图查看；右上角按钮把单张图加到素材库。
-function HistoryImageThumb({ url, images, index, onAddToAssets }) {
+// delay=500ms 延迟显示；点击打开 mediaGallery 大图查看。
+// 右上角：多选 checkbox（hover 显示；选中时常驻）；底部居中：添加到素材库（hover 显示）。
+// 左上角 badge：图片已在素材库时显示分类名（assetLabel）。
+function HistoryImageThumb({ url, images, index, assetLabel, imgSelected, onToggleUrlSelect, onAddToAssets }) {
   // 拖拽缩略图到画布：写入画布图片协议，落点建 imageDisplay 节点（拖图片，区别于拖卡片建 nodeType 节点）。
   // stopPropagation 防止冒泡到 HistoryCard 的 onDragStart（否则会被当作「拖节点」处理）。
   const handleImgDragStart = (setHoverOpen) => (e) => {
@@ -627,7 +940,7 @@ function HistoryImageThumb({ url, images, index, onAddToAssets }) {
   return (
     <ImageHoverCard
       url={url}
-      className="block"
+      className="relative block"
       renderTrigger={({ setHoverOpen }) => (
         <>
           <button
@@ -644,29 +957,60 @@ function HistoryImageThumb({ url, images, index, onAddToAssets }) {
               onDragStart={handleImgDragStart(setHoverOpen)}
             />
           </button>
-          {/* 右上角：把该单张图片添加到素材库分组（仅 hover 显示） */}
-          <button
-            type="button"
-            onClick={(e) => { e.stopPropagation(); onAddToAssets?.([url]); }}
-            title="添加到素材库"
-            className="absolute -right-1 -top-1 z-20 flex size-5 items-center justify-center rounded-full border border-border bg-background text-muted-foreground opacity-0 shadow-sm transition hover:bg-primary hover:text-primary-foreground group-hover:opacity-100"
-          >
-            <FolderPlus className="h-3 w-3" />
-          </button>
+          {/* 左上角：素材库 badge（图片已在素材库时显示分类名） */}
+          {assetLabel && (
+            <span
+              className="absolute left-0.5 top-0.5 z-20 max-w-[70%] truncate rounded bg-primary/90 px-1 py-0.5 text-[8px] font-medium text-primary-foreground shadow-sm"
+              title={`已在素材库：${assetLabel}`}
+            >
+              {assetLabel}
+            </span>
+          )}
+          {/* 右上角：多选 checkbox（hover 显示；选中时常驻高亮） */}
+          {onToggleUrlSelect && (
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onToggleUrlSelect?.(url); }}
+              title="选中（多选）"
+              className={
+                'absolute right-0.5 top-0.5 z-20 flex size-4 items-center justify-center rounded border text-[8px] shadow-sm transition ' +
+                (imgSelected
+                  ? 'border-primary bg-primary text-primary-foreground'
+                  : 'border-border bg-background/90 text-transparent opacity-0 hover:border-primary/50 group-hover:opacity-100')
+              }
+            >
+              ✓
+            </button>
+          )}
+          {/* 底部居中：添加到素材库（hover 显示） */}
+          <div className="absolute inset-x-0 bottom-0 z-20 flex justify-center pb-0.5 opacity-0 transition group-hover:opacity-100">
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onAddToAssets?.([url]); }}
+              title="添加到素材库"
+              className="flex h-5 w-5 items-center justify-center rounded-full border border-border bg-background/90 text-muted-foreground shadow-sm transition hover:bg-primary hover:text-primary-foreground"
+            >
+              <FolderPlus className="h-3 w-3" />
+            </button>
+          </div>
         </>
       )}
     />
   );
 }
 
-// 瀑布流视图单张图片单元格：右键全量菜单 + 悬浮底部精简按钮条。
-// - ContextMenu 包裹整格：右键弹出 7 项操作（输入/素材库/插入画布/定位源节点/查看大图/复制地址/删除整条记录）。
+// 瀑布流视图单张图片单元格：右键菜单 + 右上角多选 checkbox + 素材库 badge + 悬浮底部精简按钮条。
+// - 默认开启图片级多选：右上角 checkbox 切换选中，菜单操作作用于选中图片集。
+// - 右键菜单含下载（多图 zip）；图片操作作用于选中集，记录操作（插入/删除）作用于当前记录。
 // - ImageHoverCard：hover 500ms 预览大图；trigger 内含底部按钮条（hover 显）+ 可拖拽缩略图。
-// - 操作语义：单图级（用作输入/素材库/查看大图/复制地址）vs 记录级（插入画布/定位源节点/删除整条）。
-function MasonryImageCell({ item, onUseImage, onAddToAssets, onInsert, onRemove, onLocateNode }) {
+function MasonryImageCell({
+  item, selected, assetLabel, onToggleUrlSelect,
+  onDownload, onMasonryAddToAssets, onMasonryUseImage, onMasonryViewGallery, onMasonryCopyUrls,
+  onBatchInsert, onBatchRemove,
+}) {
   const { url, images, imgIndex } = item;
-  // 源节点 id：表单生成/工具栏派生记录可能为 null（无源节点），此时菜单项禁用。
-  const sourceNodeId = item.item?.nodeId || null;
+  const historyItem = item.item; // 原始 history 记录（flatImageItems 把图片展平时挂在 .item）
+  const sourceNodeId = historyItem?.nodeId || null;
   // 拖拽缩略图到画布：与 HistoryImageThumb 一致的协议（拖图片建 imageDisplay 节点）。
   const handleImgDragStart = (setHoverOpen) => (e) => {
     e.stopPropagation();
@@ -674,17 +1018,17 @@ function MasonryImageCell({ item, onUseImage, onAddToAssets, onInsert, onRemove,
     e.dataTransfer.effectAllowed = 'move';
     setHoverOpen(false);
   };
-  const handleCopyUrl = () => {
-    navigator.clipboard?.writeText(url).then(
-      () => toast.success('已复制图片地址'),
-      () => toast.error('复制失败'),
-    );
-  };
   return (
     <ContextMenu>
       <ContextMenuTrigger
         render={
-          <div className="h-full w-full" data-history-node-id={sourceNodeId || undefined}>
+          <div
+            className={
+              'relative h-full w-full ' +
+              (selected ? 'ring-2 ring-primary' : '')
+            }
+            data-history-node-id={sourceNodeId || undefined}
+          >
             <ImageHoverCard
               url={url}
               className="h-full w-full"
@@ -705,12 +1049,35 @@ function MasonryImageCell({ item, onUseImage, onAddToAssets, onInsert, onRemove,
                       onDragStart={handleImgDragStart(setHoverOpen)}
                     />
                   </button>
-                  {/* 悬浮底部精简按钮条：用作输入 / 添加到素材库。
-                      与 HistoryImageThumb 右上角按钮一致，靠 ImageHoverCard trigger 容器自带的 group + group-hover:opacity-100 显隐。 */}
+                  {/* 右上角：多选 checkbox（hover 显示；选中时常驻高亮） */}
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); onToggleUrlSelect?.(url); }}
+                    title="选中（多选）"
+                    className={
+                      'absolute right-1 top-1 z-20 flex size-5 items-center justify-center rounded border text-[10px] shadow-sm transition ' +
+                      (selected
+                        ? 'border-primary bg-primary text-primary-foreground'
+                        : 'border-border bg-background/90 text-transparent opacity-0 hover:border-primary/50 group-hover:opacity-100')
+                    }
+                  >
+                    ✓
+                  </button>
+                  {/* 左上角：素材库 badge（图片已在素材库时显示分类名） */}
+                  {assetLabel && (
+                    <span
+                      className="absolute left-1 top-1 z-20 max-w-[60%] truncate rounded bg-primary/90 px-1 py-0.5 text-[9px] font-medium text-primary-foreground shadow-sm"
+                      title={`已在素材库：${assetLabel}`}
+                    >
+                      {assetLabel}
+                    </span>
+                  )}
+                  {/* 悬浮底部精简按钮条：用作输入 / 添加到素材库 / 下载。
+                      靠 ImageHoverCard trigger 容器自带的 group + group-hover:opacity-100 显隐。 */}
                   <div className="absolute inset-x-0 bottom-0 z-20 flex justify-center gap-1 bg-gradient-to-t from-black/50 to-transparent py-1 opacity-0 transition group-hover:opacity-100">
                     <button
                       type="button"
-                      onClick={(e) => { e.stopPropagation(); onUseImage?.(url); }}
+                      onClick={(e) => { e.stopPropagation(); onMasonryUseImage?.(url); }}
                       title="用作输入"
                       className="flex h-6 w-6 items-center justify-center rounded bg-background/90 text-foreground shadow-sm transition hover:bg-primary hover:text-primary-foreground"
                     >
@@ -718,11 +1085,19 @@ function MasonryImageCell({ item, onUseImage, onAddToAssets, onInsert, onRemove,
                     </button>
                     <button
                       type="button"
-                      onClick={(e) => { e.stopPropagation(); onAddToAssets?.([url]); }}
+                      onClick={(e) => { e.stopPropagation(); onMasonryAddToAssets?.(url); }}
                       title="添加到素材库"
                       className="flex h-6 w-6 items-center justify-center rounded bg-background/90 text-foreground shadow-sm transition hover:bg-primary hover:text-primary-foreground"
                     >
                       <FolderPlus className="h-3 w-3" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); onDownload?.(url); }}
+                      title="下载"
+                      className="flex h-6 w-6 items-center justify-center rounded bg-background/90 text-foreground shadow-sm transition hover:bg-primary hover:text-primary-foreground"
+                    >
+                      <Download className="h-3 w-3" />
                     </button>
                   </div>
                 </>
@@ -732,30 +1107,26 @@ function MasonryImageCell({ item, onUseImage, onAddToAssets, onInsert, onRemove,
         }
       />
       <ContextMenuContent>
-        <ContextMenuItem onClick={() => onUseImage?.(url)}>
+        <ContextMenuItem onClick={() => onMasonryUseImage?.(url)}>
           <Send className="mr-2 h-3.5 w-3.5" /> 用作输入
         </ContextMenuItem>
-        <ContextMenuItem onClick={() => onAddToAssets?.([url])}>
+        <ContextMenuItem onClick={() => onMasonryAddToAssets?.(url)}>
           <FolderPlus className="mr-2 h-3.5 w-3.5" /> 添加到素材库
         </ContextMenuItem>
-        <ContextMenuItem onClick={() => onInsert?.(item.item, {})}>
+        <ContextMenuItem onClick={() => onDownload?.(url)}>
+          <Download className="mr-2 h-3.5 w-3.5" /> 下载
+        </ContextMenuItem>
+        <ContextMenuItem onClick={() => onBatchInsert?.(historyItem, {})}>
           <CopyPlus className="mr-2 h-3.5 w-3.5" /> 插入到画布…
         </ContextMenuItem>
-        <ContextMenuItem
-          disabled={!sourceNodeId}
-          onClick={() => sourceNodeId && onLocateNode?.(sourceNodeId)}
-          title={sourceNodeId ? '滚动并选中生成该记录的画布节点' : '该记录无关联的画布节点'}
-        >
-          <Crosshair className="mr-2 h-3.5 w-3.5" /> 定位到生成节点
-        </ContextMenuItem>
-        <ContextMenuItem onClick={() => openMediaGallery(images.map((src) => ({ src, type: 'image' })), imgIndex)}>
+        <ContextMenuItem onClick={() => onMasonryViewGallery?.(url)}>
           <Maximize2 className="mr-2 h-3.5 w-3.5" /> 查看大图
         </ContextMenuItem>
-        <ContextMenuItem onClick={handleCopyUrl}>
+        <ContextMenuItem onClick={() => onMasonryCopyUrls?.(url)}>
           <ClipboardCopy className="mr-2 h-3.5 w-3.5" /> 复制图片地址
         </ContextMenuItem>
         <ContextMenuSeparator />
-        <ContextMenuItem onClick={() => onRemove?.(item.item.id)} className="text-red-500 focus:text-red-500">
+        <ContextMenuItem onClick={() => onBatchRemove?.(historyItem)} className="text-red-500 focus:text-red-500">
           <Trash2 className="mr-2 h-3.5 w-3.5" /> 删除该记录
         </ContextMenuItem>
       </ContextMenuContent>
