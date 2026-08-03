@@ -41,6 +41,14 @@ test('frame player exposes a loop toggle and stops at the end when loop is disab
   assert.match(playerSource, /const next = current >= end \? start : current \+ 1/);
 });
 
+test('changing the playback range preserves player state and only clamps an out-of-range frame', () => {
+  assert.match(playerSource, /const frameSourceKey = frames\.join\('\|'\)/);
+  assert.match(playerSource, /\}, \[autoPlay, frameSourceKey\]\);/);
+  assert.doesNotMatch(playerSource, /const sequenceKey = `\$\{start\}:\$\{end\}/);
+  assert.match(playerSource, /const next = clamp\(currentFrameRef\.current, start, end\)/);
+  assert.match(playerSource, /if \(next === currentFrameRef\.current\) return;/);
+});
+
 test('frame list exposes clamped range inputs, quick group creation, and a wrapped scroll grid', () => {
   assert.match(dialogSource, /setFrameBoundary\('startFrame', event\.target\.value\)/);
   assert.match(dialogSource, /setFrameBoundary\('endFrame', event\.target\.value\)/);

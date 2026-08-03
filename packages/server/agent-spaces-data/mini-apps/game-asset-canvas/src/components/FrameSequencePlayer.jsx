@@ -29,7 +29,7 @@ export default function FrameSequencePlayer({
     () => (invalid ? [] : frames.slice(start, end + 1)),
     [frames, start, end, invalid],
   );
-  const sequenceKey = `${start}:${end}:${selectedFrames.join('|')}`;
+  const frameSourceKey = frames.join('|');
 
   useEffect(() => {
     setPlaying(autoPlay);
@@ -37,7 +37,17 @@ export default function FrameSequencePlayer({
     setError('');
     setCurrentFrame(start);
     currentFrameRef.current = start;
-  }, [autoPlay, sequenceKey, start]);
+    // 起止帧由下方 effect 单独处理，避免范围变化重置播放器。
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoPlay, frameSourceKey]);
+
+  useEffect(() => {
+    if (invalid || !frames.length) return;
+    const next = clamp(currentFrameRef.current, start, end);
+    if (next === currentFrameRef.current) return;
+    currentFrameRef.current = next;
+    setCurrentFrame(next);
+  }, [end, frames.length, invalid, start]);
 
   useEffect(() => {
     if (!active || !playing || !ready || invalid || selectedFrames.length < 2) return undefined;

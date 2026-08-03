@@ -157,7 +157,7 @@ diff packages/templates/plugins/ffmpeg/frames.js packages/server/agent-spaces-da
 ## 通用帧播放器（FrameSequencePlayer.jsx）
 - 直接使用 React state、`<img>` 和组件内 `setInterval` 播放，不依赖 iframe、`srcFileUrl` 或 dynamic import。
 - 支持播放/暂停、循环开关、帧滑杆、当前绝对帧号、循环区间与可选 FPS 修改；关闭循环后在终点暂停，再次播放从起点开始。
-- frames/区间变化时回到起始帧；播放状态或 FPS 变化时重建计时器，组件卸载时 `clearInterval()`。
+- 只有 frames 帧源变化时才回到起始帧；区间变化保留当前帧和播放状态，当前帧超出新范围时仅钳制到最近边界。播放状态或 FPS 变化时重建计时器，组件卸载时 `clearInterval()`。
 - 旧 `vendor/fast-image-sequence/` 文件仅为历史遗留，播放器运行时不再引用。
 - `components/nodes/FramePlayer.jsx` 只保留兼容 re-export，新代码直接引用 `components/FrameSequencePlayer.jsx`。
 

@@ -11,6 +11,11 @@ test('video editor requests source-resolution extraction and passes an enabled c
   assert.match(dialogSource, /<VideoCropOverlay/);
 });
 
+test('resetting the crop selection returns to the video player', () => {
+  assert.match(dialogSource, /const handleCropReset = useCallback\(\(\) => \{[\s\S]*set\(\{ cropRegion: null \}\);[\s\S]*setPreviewTab\('video'\)/);
+  assert.match(dialogSource, /onCropReset=\{handleCropReset\}/);
+});
+
 test('ffmpeg frame extraction uses lossless PNG output in every mode', () => {
   const extractionSource = pluginSource.slice(
     pluginSource.indexOf("name: 'ffmpeg_extract_frames'"),

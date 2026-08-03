@@ -115,6 +115,11 @@ export default function VideoEditorDialog({ open, data, onUpdate, onClose }) {
       setPreviewTab('video');
     }
   }, [set]);
+  const handleCropReset = useCallback(() => {
+    set({ cropRegion: null });
+    videoRef.current?.pause();
+    setPreviewTab('video');
+  }, [set]);
 
   // 上传视频（FileUpload onChange：接收已上传或待上传的文件列表，追加去重）
   const handleFilesChange = useCallback(async (files) => {
@@ -586,7 +591,7 @@ export default function VideoEditorDialog({ open, data, onUpdate, onClose }) {
                   cropEnabled={cropEnabled}
                   cropRegion={cropRegion}
                   onCropToggle={handleCropToggle}
-                  onCropReset={() => set({ cropRegion: null })}
+                  onCropReset={handleCropReset}
                 />
               ) : (
                 <AnimTab
