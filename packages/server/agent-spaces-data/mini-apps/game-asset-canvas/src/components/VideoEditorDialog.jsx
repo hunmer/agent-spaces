@@ -1,13 +1,14 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Dialog, DialogContent, DialogTitle,
-  FileUpload, Film, Trash2, FolderPlus, Loader, Download,
+  Checkbox, FileUpload, Film, Trash2, FolderPlus, Loader, Download,
 } from '@agent-spaces/ui';
 import FrameSequencePlayer from './FrameSequencePlayer';
 import { FRAME_EXTRACT_MODE_OPTIONS } from '../utils/constants';
 import { composeSpriteSheet } from '../utils/image-ops/spriteSheet';
 import { urlToImageData, imageDataToDataUrl, imageDataToUrl } from '../utils/image-ops/io';
 import { resolveFrameSelection, updateFrameSelection } from '../utils/frame-selection';
+import { cropPointFromClient, cropRegionFromPoints, normalizeCropRegion } from '../utils/video-crop';
 
 const FFMPEG_PLUGIN_ID = 'workflow.ffmpeg';
 const FFMPEG_PROBE = 'ffmpeg_probe';
@@ -32,11 +33,20 @@ const FFMPEG_FIRST_FRAME = 'ffmpeg_first_frame';
  * 所有改动经 onUpdate 回写节点 data（不在 Dialog 内独存 state 源真值）。
  */
 export default function VideoEditorDialog({ open, data, onUpdate, onClose }) {
-  const videos = Array.isArray(data?.videos) ? data.videos.filter(Boolean) : [];
-  const frames = Array.isArray(data?.frames) ? data.frames.filter(Boolean) : [];
-  const animGroups = Array.isArray(data?.animGroups) ? data.animGroups : [];
+  const videos = useMemo(
+    () => (Array.isArray(data?.videos) ? data.videos.filter(Boolean) : []),
+    [data?.videos],
+  );
+  const frames = useMemo(
+    () => (Array.isArray(data?.frames) ? data.frames.filter(Boolean) : []),
+    [data?.frames],
+  );
+  const animGroups = useMemo(
+    () => (Array.isArray(data?.animGroups) ? data.animGroups : []),
+    [data?.animGroups],
+  );
   const videoInfo = data?.videoInfo || null;
-  const params = data?.params || { mode: 'count', count: 8, fps: 1, interval: 2, secondsInterval: 1, maxWidth: 320 };
+  const params = data?.params || { mode: 'count', count: 8, fps: 1, interval: 2, secondsInterval: 1 };
   const framePreviewFps = Math.max(1, Number(data?.framePreviewFps) || 10);
   const frameSelection = resolveFrameSelection(frames.length, data?.frameSelection);
   const { startFrame: selectedStartFrame, endFrame: selectedEndFrame } = frameSelection;
@@ -47,6 +57,7 @@ export default function VideoEditorDialog({ open, data, onUpdate, onClose }) {
   const [busy, setBusy] = useState(false);
   const [busyMsg, setBusyMsg] = useState('');
   const [thumbs, setThumbs] = useState({}); // { [videoUrl]: dataUrl } 缩略图缓存
+  const videoRef = useRef(null);
 
   const currentVideo = videos[Math.min(activeVideoIdx, videos.length - 1)] || videos[0] || '';
 
@@ -80,6 +91,10 @@ export default function VideoEditorDialog({ open, data, onUpdate, onClose }) {
     if (activeVideoIdx > videos.length - 1) setActiveVideoIdx(Math.max(0, videos.length - 1));
   }, [videos.length, activeVideoIdx]);
 
+  useEffect(() => {
+    if (previewTab !== 'video') videoRef.current?.pause();
+  }, [previewTab]);
+
   // 切换视频时清空上一个视频的帧列表 / 动画组 / 探测信息（帧与视频绑定，不跨视频残留）
   useEffect(() => {
     setPreviewTab('video');
@@ -90,6 +105,16 @@ export default function VideoEditorDialog({ open, data, onUpdate, onClose }) {
   const set = useCallback((patch) => {
     onUpdate?.({ params: { ...params, ...patch } });
   }, [onUpdate, params]);
+
+  const cropEnabled = params.cropEnabled === true;
+  const cropRegion = normalizeCropRegion(params.cropRegion);
+  const handleCropToggle = useCallback((enabled) => {
+    set({ cropEnabled: Boolean(enabled) });
+    if (enabled) {
+      videoRef.current?.pause();
+      setPreviewTab('video');
+    }
+  }, [set]);
 
   // 上传视频（FileUpload onChange：接收已上传或待上传的文件列表，追加去重）
   const handleFilesChange = useCallback(async (files) => {
@@ -161,7 +186,7 @@ export default function VideoEditorDialog({ open, data, onUpdate, onClose }) {
         fps: Number(params.fps) || 1,
         interval: Math.max(1, Math.floor(Number(params.interval) || 1)),
         secondsInterval: Math.max(0.01, Number(params.secondsInterval) || 1),
-        maxWidth: params.maxWidth ? Number(params.maxWidth) : undefined,
+        cropRegion: params.cropEnabled ? normalizeCropRegion(params.cropRegion) : undefined,
       });
       if (ret?.success && Array.isArray(ret?.data?.frames)) {
         const nextFrames = ret.data.frames;
@@ -221,13 +246,15 @@ export default function VideoEditorDialog({ open, data, onUpdate, onClose }) {
     const group = {
       id: `grp-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
       name: `动画组 ${animGroups.length + 1}`,
-      frames: [],
+      frames: [...frames],
       startFrame: selectedStartFrame,
       endFrame: selectedEndFrame,
       fps: framePreviewFps,
+      cropRegion: cropRegion ? { ...cropRegion } : null,
     };
     onUpdate?.({ animGroups: [...animGroups, group], error: undefined });
-  }, [animGroups, framePreviewFps, frames.length, onUpdate, selectedEndFrame, selectedStartFrame]);
+    setActiveTab('anim');
+  }, [animGroups, cropRegion, framePreviewFps, frames, onUpdate, selectedEndFrame, selectedStartFrame]);
 
   const updateGroup = useCallback((id, patch) => {
     onUpdate?.({
@@ -246,6 +273,15 @@ export default function VideoEditorDialog({ open, data, onUpdate, onClose }) {
     setPreviewTab('frames');
   }, [frameSelection, onUpdate]);
 
+  const setFrameBoundary = useCallback((boundary, value) => {
+    const nextSelection = resolveFrameSelection(frames.length, {
+      ...frameSelection,
+      [boundary]: value,
+    });
+    onUpdate?.({ frameSelection: nextSelection, error: undefined });
+    setPreviewTab('frames');
+  }, [frameSelection, frames.length, onUpdate]);
+
   // —— 精灵图合成（sheet）——
   // 行/列布局：持久化到 data.sheetLayout，作为输出精灵图的全局网格设置
   const sheetLayout = data?.sheetLayout || { rows: 1, cols: 4 };
@@ -255,11 +291,12 @@ export default function VideoEditorDialog({ open, data, onUpdate, onClose }) {
 
   // 取某动画组实际参与的帧（startFrame..endFrame 闭区间，按序截取）
   const groupFrames = useCallback((g) => {
-    if (!frames.length) return [];
-    const s = Math.max(0, Math.min(g.startFrame ?? 0, frames.length - 1));
-    const e = Math.max(0, Math.min(g.endFrame ?? 0, frames.length - 1));
+    const sourceFrames = Array.isArray(g.frames) && g.frames.length ? g.frames : frames;
+    if (!sourceFrames.length) return [];
+    const s = Math.max(0, Math.min(g.startFrame ?? 0, sourceFrames.length - 1));
+    const e = Math.max(0, Math.min(g.endFrame ?? 0, sourceFrames.length - 1));
     if (e < s) return [];
-    return frames.slice(s, e + 1);
+    return sourceFrames.slice(s, e + 1);
   }, [frames]);
 
   // 合成精灵图预览（DataURL，不上传）：用于动画组下方实时展示
@@ -327,9 +364,9 @@ export default function VideoEditorDialog({ open, data, onUpdate, onClose }) {
 
         {/* 缩略图列表样式（视频列表已移入左侧栏，不再占整行顶栏） */}
         <style>{`
-          .video-thumb-upload { width: 96px; flex: 0 0 96px; }
+          .video-thumb-upload { width: 100%; }
           .video-thumb-upload > div:first-child {
-            width: 96px; height: 56px; min-height: 56px; padding: 4px; gap: 2px; border-radius: 6px;
+            width: 100%; height: 56px; min-height: 56px; padding: 4px; gap: 2px; border-radius: 6px;
           }
           .video-thumb-upload > div:first-child > svg { width: 16px; height: 16px; }
           .video-thumb-upload > div:first-child > div > p:first-child { font-size: 10px; line-height: 12px; }
@@ -355,12 +392,12 @@ export default function VideoEditorDialog({ open, data, onUpdate, onClose }) {
               accept={{ 'video/*': ['.mp4', '.webm', '.mov', '.avi', '.mkv'] }}
               maxFiles={0}
               placeholder="+ 视频"
-              className="video-thumb-upload mb-2"
+              className="video-thumb-upload mb-1"
             />
             {videos.length === 0 ? (
               <span className="text-[10px] leading-tight text-muted-foreground">上传或从上游连线接收</span>
             ) : (
-              <div className="flex flex-col gap-1.5">
+              <div className="flex flex-col gap-1">
                 {videos.map((url, i) => {
                   // 上游接收的视频（source=upstream）不允许删除；其余（用户上传/历史）均可删
                   const canDelete = data?.source !== 'upstream';
@@ -418,34 +455,81 @@ export default function VideoEditorDialog({ open, data, onUpdate, onClose }) {
                 </button>
               ))}
             </div>
-            <div className="flex items-center justify-center bg-black/90 p-3" style={{ minHeight: 300 }}>
-              {previewTab === 'video' ? (
-                currentVideo ? (
-                  <video key={currentVideo} src={currentVideo} controls className="max-h-[320px] max-w-full" />
+            <div className="relative bg-black/90 p-3" style={{ minHeight: 300 }}>
+              <div className={`${previewTab === 'video' ? 'flex' : 'hidden'} min-h-[276px] items-center justify-center`}>
+                {currentVideo ? (
+                  <div className="relative inline-block max-w-full leading-none">
+                    <video ref={videoRef} key={currentVideo} src={currentVideo} controls={!cropEnabled} className="block max-h-[320px] max-w-full" />
+                    <VideoCropOverlay
+                      enabled={cropEnabled}
+                      region={cropRegion}
+                      onChange={(region) => set({ cropRegion: region })}
+                    />
+                  </div>
                 ) : (
                   <span className="text-xs text-white/50">选择左侧视频或上传</span>
-                )
-              ) : (
+                )}
+              </div>
+              <div className={`${previewTab === 'frames' ? 'flex' : 'hidden'} min-h-[276px] items-center justify-center`}>
                 <FrameSequencePlayer
                   frames={frames}
                   startFrame={selectedStartFrame}
                   endFrame={selectedEndFrame}
                   fps={framePreviewFps}
+                  active={previewTab === 'frames'}
                   onFpsChange={(value) => onUpdate?.({ framePreviewFps: value })}
                   className="w-full max-w-3xl"
                 />
-              )}
+              </div>
             </div>
 
-            {/* 横向帧图片列表 */}
+            {/* 多行帧图片列表 */}
             <div className="flex min-h-0 flex-1 flex-col border-t border-border">
-              <div className="flex items-center justify-between bg-muted/20 px-3 py-1.5">
+              <div className="flex flex-wrap items-center justify-between gap-2 bg-muted/20 px-3 py-1.5">
                 <span className="text-xs font-medium text-muted-foreground">
                   帧列表 {frames.length > 0 && `（${frames.length}）`}
                 </span>
-                <span className="text-[10px] text-muted-foreground">单击设置起点，Ctrl/Command + 单击设置终点</span>
+                <div className="flex items-center gap-2">
+                  <label className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                    <span>起点</span>
+                    <input
+                      type="number"
+                      min="0"
+                      max={Math.max(0, frames.length - 1)}
+                      value={selectedStartFrame}
+                      disabled={!frames.length}
+                      onChange={(event) => setFrameBoundary('startFrame', event.target.value)}
+                      className="h-6 w-14 rounded border border-border bg-background px-1 text-xs text-foreground outline-none focus:border-primary disabled:opacity-50"
+                    />
+                  </label>
+                  <label className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                    <span>终点</span>
+                    <input
+                      type="number"
+                      min="0"
+                      max={Math.max(0, frames.length - 1)}
+                      value={selectedEndFrame}
+                      disabled={!frames.length}
+                      onChange={(event) => setFrameBoundary('endFrame', event.target.value)}
+                      className="h-6 w-14 rounded border border-border bg-background px-1 text-xs text-foreground outline-none focus:border-primary disabled:opacity-50"
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    onClick={addGroup}
+                    disabled={!frames.length || selectedEndFrame < selectedStartFrame}
+                    className="flex h-7 w-7 items-center justify-center rounded border border-border text-muted-foreground transition hover:border-primary hover:text-primary disabled:opacity-50"
+                    title="添加到动画组"
+                    aria-label="添加到动画组"
+                  >
+                    <FolderPlus className="h-3.5 w-3.5" />
+                  </button>
+                </div>
               </div>
-              <div className="flex flex-1 gap-1.5 overflow-x-auto overflow-y-hidden p-2">
+              <div
+                className="grid max-h-[240px] flex-1 content-start gap-1.5 overflow-y-auto p-2"
+                style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(112px, 1fr))', gridAutoRows: '80px' }}
+              >
                 {frames.length === 0 ? (
                   <div className="flex flex-1 items-center justify-center text-xs text-muted-foreground">
                     暂无帧，到「编辑」tab 点「截取帧」
@@ -459,7 +543,7 @@ export default function VideoEditorDialog({ open, data, onUpdate, onClose }) {
                       type="button"
                       key={url + i}
                       onClick={(event) => selectFrameBoundary(event, i)}
-                      className={`relative h-20 w-28 shrink-0 overflow-hidden rounded border-2 transition ${isStart ? 'border-emerald-500' : isEnd ? 'border-red-500' : inRange ? 'border-primary/60' : 'border-transparent hover:border-border'}`}
+                      className={`relative h-20 w-full overflow-hidden rounded border-2 transition ${isStart ? 'border-emerald-500' : isEnd ? 'border-red-500' : inRange ? 'border-primary/60' : 'border-transparent hover:border-border'}`}
                       title={isStart ? `起点：${i}` : isEnd ? `终点：${i}` : `帧 ${i}`}
                     >
                       <img src={url} alt={`frame ${i}`} className="h-full w-full object-cover" />
@@ -499,6 +583,10 @@ export default function VideoEditorDialog({ open, data, onUpdate, onClose }) {
                   resizeH={resizeH} setResizeH={setResizeH}
                   onResize={handleResize}
                   hasVideo={!!currentVideo}
+                  cropEnabled={cropEnabled}
+                  cropRegion={cropRegion}
+                  onCropToggle={handleCropToggle}
+                  onCropReset={() => set({ cropRegion: null })}
                 />
               ) : (
                 <AnimTab
@@ -531,8 +619,76 @@ export default function VideoEditorDialog({ open, data, onUpdate, onClose }) {
   );
 }
 
+function VideoCropOverlay({ enabled, region, onChange }) {
+  const startRef = useRef(null);
+  const [draft, setDraft] = useState(null);
+  const displayed = draft || region;
+
+  if (!enabled) return null;
+
+  const pointFromEvent = (event) => cropPointFromClient(
+    event.clientX,
+    event.clientY,
+    event.currentTarget.getBoundingClientRect(),
+  );
+
+  const handlePointerDown = (event) => {
+    event.preventDefault();
+    const point = pointFromEvent(event);
+    startRef.current = point;
+    setDraft({ x: point.x, y: point.y, width: 0, height: 0 });
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
+
+  const handlePointerMove = (event) => {
+    if (!startRef.current) return;
+    setDraft(cropRegionFromPoints(startRef.current, pointFromEvent(event), 0));
+  };
+
+  const finishSelection = (event) => {
+    if (!startRef.current) return;
+    const next = cropRegionFromPoints(startRef.current, pointFromEvent(event));
+    startRef.current = null;
+    setDraft(null);
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    if (next) onChange?.(next);
+  };
+
+  return (
+    <div
+      className="absolute inset-0 cursor-crosshair touch-none"
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={finishSelection}
+      onPointerCancel={() => {
+        startRef.current = null;
+        setDraft(null);
+      }}
+      aria-label="视频截取区域"
+    >
+      {displayed && (
+        <div
+          className="pointer-events-none absolute border-2 border-primary bg-primary/15 shadow-[0_0_0_9999px_rgba(0,0,0,0.35)]"
+          style={{
+            left: `${displayed.x * 100}%`,
+            top: `${displayed.y * 100}%`,
+            width: `${displayed.width * 100}%`,
+            height: `${displayed.height * 100}%`,
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
 /** 编辑 tab：截帧参数 + 视频信息 + 尺寸调整 */
-function EditTab({ params, set, videoInfo, onProbe, onExtract, resizeW, setResizeW, resizeH, setResizeH, onResize, hasVideo }) {
+function EditTab({
+  params, set, videoInfo, onProbe, onExtract,
+  resizeW, setResizeW, resizeH, setResizeH, onResize, hasVideo,
+  cropEnabled, cropRegion, onCropToggle, onCropReset,
+}) {
   return (
     <div className="flex flex-col gap-4">
       {/* 截取帧 */}
@@ -583,13 +739,20 @@ function EditTab({ params, set, videoInfo, onProbe, onExtract, resizeW, setResiz
             导出视频中的全部原始帧，不进行帧率采样。
           </p>
         )}
-        <label className="flex flex-col gap-1">
-          <span className="text-[11px] text-muted-foreground">最大宽度（留空=原尺寸）</span>
-          <input type="number" min="1" value={params.maxWidth ?? ''}
-            onChange={(e) => set({ maxWidth: e.target.value })}
-            placeholder="如 320"
-            className="w-full rounded-md border border-border bg-background px-2 py-1 text-xs outline-none focus:border-primary" />
-        </label>
+        <div className="flex flex-col gap-1.5 rounded-md border border-border p-2">
+          <label className="flex cursor-pointer items-center gap-2 text-xs font-medium text-foreground">
+            <Checkbox checked={cropEnabled} onCheckedChange={onCropToggle} disabled={!hasVideo} />
+            <span>区域截取</span>
+          </label>
+          {cropEnabled && (
+            <div className="flex items-center justify-between gap-2 text-[10px] text-muted-foreground">
+              <span>{cropRegion ? `选区 ${Math.round(cropRegion.width * 100)}% × ${Math.round(cropRegion.height * 100)}%` : '请在视频播放器上拖拽框选'}</span>
+              {cropRegion && (
+                <button type="button" onClick={onCropReset} className="shrink-0 text-primary hover:underline">重置选区</button>
+              )}
+            </div>
+          )}
+        </div>
         <button
           type="button"
           disabled={!hasVideo}
@@ -727,6 +890,7 @@ function AnimTab({
       )}
 
       {groups.map((g) => {
+        const groupSourceFrames = Array.isArray(g.frames) && g.frames.length ? g.frames : frames;
         const invalid = g.endFrame < g.startFrame;
         return (
           <div
@@ -769,7 +933,7 @@ function AnimTab({
 
             {/* 播放器 */}
             <FrameSequencePlayer
-              frames={frames}
+              frames={groupSourceFrames}
               startFrame={g.startFrame}
               endFrame={g.endFrame}
               fps={g.fps ?? 10}

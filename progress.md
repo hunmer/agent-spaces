@@ -33,3 +33,40 @@
 - Added `FrameSequencePlayer.test.js` to protect direct dialog integration, absence of iframe markup, local vendor loading, and renderer cleanup.
 - Final verification passed: 7 focused tests, JSX syntax checks, local vendor import/hash checks, and `git diff --check`.
 - No browser or service restart was performed because the project instructions default to no real-browser test, and no persistent service was started or changed.
+- User reported the real runtime failure: dynamic import of the vendored frame player receives HTML from `/src/file` because the generated token is empty.
+- Reopened the task with phases to remove this route dependency and verify the replacement.
+- Found an existing local animation pattern in `GridAnimationPreview.jsx`; plan is to replace only the frame player's failing third-party loader rather than alter shared `cdn.js` behavior used by unrelated tools.
+- Confirmed the host builds `srcFileUrl` with an optional token and the existing animation preview already uses local timer/image playback. Selected that established implementation pattern for the frame player.
+- Replaced the frame player engine with native `<img>` plus component-owned interval playback, removed `getFastImageSequence()` from the shared loader, and updated the regression assertions.
+- Updated both handoff documents to describe the native playback path and mark the old vendor dist as unused legacy files.
+- Verification passed: 7 focused tests, Babel syntax checks, removed-loader source scan, and `git diff --check`.
+- Final diff review confirmed the production change is limited to the frame player and removal of its dead loader export; unrelated dirty miniapp files remain untouched.
+- No persistent service was restarted because the required procm-mcp capability is unavailable in this session; `src/**` changes should be picked up by the existing miniapp reload flow.
+- User reported sprite-sheet preview refreshes continuously while animation groups play.
+- Traced the loop to unstable filtered arrays recreating the compose callback whenever `sheetBusyId` changes.
+- Memoized `videos`, `frames`, and `animGroups` in `VideoEditorDialog` and added a regression assertion for the stable callback chain.
+- Verification complete: 8 tests passed, JSX syntax checks passed, and `git diff --check` passed.
+- New request received: preserve both preview components across tab switches, extract lossless full-resolution frames, and add visual region cropping.
+- Confirmed current conditional rendering unmounts players, default `maxWidth: 320` scales output, and ffmpeg writes lossy JPEG files.
+- Located the second 320px default and established pointer-capture patterns. Chose normalized persisted crop coordinates and lossless PNG output.
+- Added normalized crop helpers/tests, persistent preview DOM, crop overlay UI, and hidden-player pause behavior.
+- First combined ffmpeg patch failed cleanly because escaped filter-string context did not match; switching to smaller exact patches.
+- Implemented lossless PNG extraction and normalized crop filtering in both plugin copies; removed the miniapp's 320px default and request argument.
+- Preliminary verification passed with 11 tests, frontend/backend syntax checks, and identical plugin copies.
+- Expanded coverage to 15 passing tests. First real ffmpeg smoke-test command was rejected before execution due to its temporary cleanup command.
+- Retried without deletion; real ffmpeg smoke test succeeded and produced the expected 80x60 PNG from a 160x120 source.
+- Finalized crop-mode controls and reran verification: 15 tests passed, syntax checks passed, plugin copies match, and diff checks are clean.
+- No browser test was run. The ffmpeg plugin change requires the existing web service to reload/restart; procm-mcp is unavailable in this session, so no manual restart was attempted.
+- New request received: add numeric frame-range controls and quick group creation, loop toggle, wrapped scrollable frame thumbnails, independent crop regions per animation group, and tighter full-width video upload/list styling.
+- Reopened the video-editor task and started tracing the current dialog/player/data flow before editing.
+- Confirmed the missing group crop snapshot and fixed-loop player behavior; continuing with the exact frame-list and animation-tab JSX contracts.
+- Root cause confirmed: all animation groups slice the mutable global frame array. Chosen fix is per-group full frame-array snapshots with a legacy fallback.
+- Implementation plan set: clamped header inputs, icon-only quick add, wrapped scroll list, local loop toggle, and compact full-width video sidebar items.
+- Implemented all five UI/data changes in the dialog and player. New groups now snapshot full source frames plus crop metadata, while legacy groups fall back to global frames.
+- Loop-off playback stops at the end and restarts from the beginning on the next play action.
+- One read-only icon search included nonexistent `packages/ui`; retrying against the actual host export file only.
+- Focused verification passed: 19 tests, Babel syntax checks for all touched JSX files, and `git diff --check`.
+- Final review identified one state-updater purity cleanup and stale handoff text; applying both before the final verification run.
+- Replaced the competing loop-stop effect with a current-frame ref owned by the timer, avoiding updater side effects and sequence-reset races.
+- Updated the video-editor handoff for range inputs, quick add, wrapped scrolling, loop behavior, and per-group frame snapshots.
+- Final verification passed again: 19 tests, touched JSX syntax checks, and scoped `git diff --check`.

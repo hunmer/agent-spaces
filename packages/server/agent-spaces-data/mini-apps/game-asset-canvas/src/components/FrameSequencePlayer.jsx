@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AlertCircle, Pause, Play } from '@agent-spaces/ui';
-import { getFastImageSequence } from '../utils/image-ops/cdn';
+import { AlertCircle, Pause, Play, Repeat2 } from '@agent-spaces/ui';
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 
@@ -12,15 +11,15 @@ export default function FrameSequencePlayer({
   fps = 10,
   onFpsChange,
   autoPlay = true,
+  active = true,
   className = '',
 }) {
-  const containerRef = useRef(null);
-  const sequenceRef = useRef(null);
-  const currentRef = useRef(0);
   const [playing, setPlaying] = useState(autoPlay);
+  const [loop, setLoop] = useState(true);
   const [ready, setReady] = useState(false);
   const [error, setError] = useState('');
   const [currentFrame, setCurrentFrame] = useState(0);
+  const currentFrameRef = useRef(0);
 
   const maxIndex = Math.max(0, frames.length - 1);
   const start = clamp(Number(startFrame) || 0, 0, maxIndex);
@@ -34,83 +33,55 @@ export default function FrameSequencePlayer({
 
   useEffect(() => {
     setPlaying(autoPlay);
-  }, [autoPlay, sequenceKey]);
-
-  useEffect(() => {
-    let cancelled = false;
-    let instance = null;
-    const container = containerRef.current;
     setReady(false);
     setError('');
     setCurrentFrame(start);
-    currentRef.current = start;
-    if (!container || !selectedFrames.length || invalid) return undefined;
-
-    (async () => {
-      try {
-        const FastImageSequence = await getFastImageSequence();
-        if (cancelled) return;
-        instance = new FastImageSequence(container, {
-          frames: selectedFrames.length,
-          src: {
-            imageURL: (index) => selectedFrames[index],
-            maxCachedImages: Math.min(selectedFrames.length, 64),
-          },
-          poster: selectedFrames[0],
-          loop: true,
-          objectFit: 'contain',
-          clearCanvas: true,
-          fillStyle: '#000000',
-        });
-        sequenceRef.current = instance;
-        instance.tick(() => {
-          const absoluteIndex = start + instance.index;
-          if (absoluteIndex !== currentRef.current) {
-            currentRef.current = absoluteIndex;
-            setCurrentFrame(absoluteIndex);
-          }
-        });
-        await instance.ready();
-        if (cancelled) return;
-        instance.progress = 0;
-        setReady(true);
-      } catch (err) {
-        if (!cancelled) setError(err?.message || String(err));
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-      if (sequenceRef.current === instance) sequenceRef.current = null;
-      instance?.destruct?.();
-    };
-  }, [sequenceKey, start, invalid]);
+    currentFrameRef.current = start;
+  }, [autoPlay, sequenceKey, start]);
 
   useEffect(() => {
-    const sequence = sequenceRef.current;
-    if (!sequence || !ready) return;
-    if (playing) sequence.play(Math.max(1, Number(fps) || 10));
-    else sequence.stop();
-  }, [playing, fps, ready]);
+    if (!active || !playing || !ready || invalid || selectedFrames.length < 2) return undefined;
+    const interval = Math.max(8, Math.round(1000 / Math.max(1, Number(fps) || 10)));
+    const timer = setInterval(() => {
+      const current = clamp(currentFrameRef.current, start, end);
+      if (!loop && current >= end) {
+        setPlaying(false);
+        return;
+      }
+      const next = current >= end ? start : current + 1;
+      currentFrameRef.current = next;
+      setCurrentFrame(next);
+    }, interval);
+    return () => clearInterval(timer);
+  }, [active, end, fps, invalid, loop, playing, ready, selectedFrames.length, start]);
 
   const handleSeek = useCallback((event) => {
     const absoluteIndex = Number(event.target.value);
-    const sequence = sequenceRef.current;
     setPlaying(false);
+    currentFrameRef.current = absoluteIndex;
     setCurrentFrame(absoluteIndex);
-    currentRef.current = absoluteIndex;
-    if (sequence) {
-      sequence.stop();
-      sequence.progress = selectedFrames.length > 1
-        ? (absoluteIndex - start) / (selectedFrames.length - 1)
-        : 0;
-    }
-  }, [selectedFrames.length, start]);
+  }, []);
+
+  const currentUrl = frames[clamp(currentFrame, start, Math.max(start, end))] || selectedFrames[0] || '';
 
   return (
     <div className={`flex min-w-0 flex-col gap-2 ${className}`}>
       <div className="relative w-full overflow-hidden rounded-md border border-border bg-black" style={{ aspectRatio: '16 / 9' }}>
-        <div ref={containerRef} className="absolute inset-0" />
+        {currentUrl && !invalid && (
+          <img
+            src={currentUrl}
+            alt={`帧 ${currentFrame}`}
+            className="absolute inset-0 h-full w-full object-contain"
+            onLoad={() => {
+              setReady(true);
+              setError('');
+            }}
+            onError={() => {
+              setPlaying(false);
+              setError(`帧 ${currentFrame} 加载失败`);
+            }}
+          />
+        )}
         {!frames.length && (
           <div className="absolute inset-0 flex items-center justify-center text-xs text-white/50">暂无帧</div>
         )}
@@ -162,8 +133,25 @@ export default function FrameSequencePlayer({
           )}
           <button
             type="button"
-            disabled={!ready || invalid}
-            onClick={() => setPlaying((value) => !value)}
+            disabled={!ready || invalid || selectedFrames.length < 2}
+            onClick={() => setLoop((value) => !value)}
+            className={`flex h-7 w-7 items-center justify-center rounded border transition disabled:opacity-50 ${loop ? 'border-primary bg-primary/10 text-primary' : 'border-border hover:border-primary hover:text-primary'}`}
+            title={loop ? '关闭循环播放' : '开启循环播放'}
+            aria-label={loop ? '关闭循环播放' : '开启循环播放'}
+            aria-pressed={loop}
+          >
+            <Repeat2 className="h-3.5 w-3.5" />
+          </button>
+          <button
+            type="button"
+            disabled={!ready || invalid || selectedFrames.length < 2}
+            onClick={() => {
+              if (!playing && !loop && currentFrame >= end) {
+                currentFrameRef.current = start;
+                setCurrentFrame(start);
+              }
+              setPlaying((value) => !value);
+            }}
             className="flex h-7 w-7 items-center justify-center rounded border border-border transition hover:border-primary hover:text-primary disabled:opacity-50"
             title={playing ? '暂停' : '播放'}
             aria-label={playing ? '暂停' : '播放'}

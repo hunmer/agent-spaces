@@ -20,15 +20,39 @@ Embed the frame player directly inside the `game-asset-canvas` miniapp, replacin
 - [complete] Confirm the frame player is already implemented as native miniapp components in current HEAD.
 - [complete] Assess existing regression coverage and add only missing focused coverage.
 - [complete] Run targeted checks and review the final diff.
+- [complete] Reproduce and trace the dynamic module MIME failure reported from the real runtime.
+- [complete] Remove the frame player dependency on the authenticated `/src/file` dynamic import route.
+- [complete] Update regression coverage and handoff documentation for the final loading strategy.
+- [complete] Run focused verification and review the fix.
+- [complete] Trace the animation-group sprite preview refresh loop.
+- [complete] Stabilize video editor derived data and compose callback dependencies.
+- [complete] Add regression coverage and run focused verification.
+- [complete] Trace preview mounting, frame quality defaults, and ffmpeg filter construction.
+- [complete] Keep both preview players mounted and preserve their state across tab switches.
+- [complete] Change frame extraction to lossless full-resolution PNG output.
+- [complete] Add persisted crop selection UI and pass normalized source coordinates to ffmpeg.
+- [complete] Update both ffmpeg plugin copies, tests, and handoff documentation.
+- [complete] Run focused frontend/backend verification and review the final diff.
+- [complete] Trace frame-list controls/layout, loop playback, animation-group crop ownership, and upload-list spacing.
+- [complete] Implement the five requested video-editor interaction and layout changes.
+- [complete] Add focused regression coverage for range controls, loop toggle, and per-group crop snapshots.
+- [complete] Run focused verification and update handoff notes if the data contract changes.
 
 ## Decisions
 - Preserve unrelated dirty-worktree changes.
 - Support both external file drags and internal file/image drags if they share the canvas drag events.
 - Preserve the unfinished drag auto-pan changes already present in `Canvas.jsx`.
 - Preserve all existing dirty-worktree changes and restrict edits to the embedded frame-player feature.
+- Snapshot the current source frame URL array on new animation groups; a crop-region-only snapshot cannot preserve already extracted pixels when global frames are replaced.
 
 ## Errors Encountered
 | Error | Attempt | Resolution |
 |---|---:|---|
 | `node --test` could not resolve the existing extensionless `./constants` import pulled in by `canvas-constants.js` | 1 | Keep the pure helper dependency-free and inject `CANVAS_DROP_MIME` from the runtime hook. |
 | Quoted wildcard dependency paths were treated literally by `rg` | 1 | Resolve the installed package directory with `find`, then inspect the explicit path. |
+| `getFastImageSequence()` dynamically imports a `srcFileUrl` whose response is `text/html` with an empty token | 1 | Replaced with direct React `<img>` rendering and a component-owned interval; no module URL is requested. |
+| Animation-group sprite previews continuously recomposed while playing | 1 | Memoized derived arrays so `groupFrames` and `onCompose` stay stable during local renders. |
+| Combined ffmpeg patch context did not match escaped filter strings | 1 | No partial changes applied; retry with smaller patches anchored on exact source lines. |
+| Tool wrapper parsed ffmpeg template literals inside a raw patch | 2 | No file changes applied; use small double-quoted patch strings without JavaScript template interpolation. |
+| ffmpeg smoke-test script was rejected because its temp cleanup used `rm -rf` | 1 | Command did not run; retry without any deletion command and retain the isolated temp directory. |
+| Icon export search included nonexistent `packages/ui` | 1 | No changes made; inspect the actual `packages/web/src/lib/ui-exports.ts` export surface only. |

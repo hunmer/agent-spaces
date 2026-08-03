@@ -115,8 +115,8 @@ Agent → api.js handler → ctx.requestClient(type, payload, timeoutMs)
 | 加 host 能力 | `use-mini-app-host-api.tsx` | window.AgentSpaces 上挂方法（需重启 web） |
 | 把宿主 Chat 嵌入右侧面板 | `manifest.json` + `mini-app-preview/index.tsx` + `mini-app-host-slots.ts` + `components/right-panel/index.jsx` | `agentChatPlacement: "mini-app-slot"`，宿主 Portal 到 `agent-chat` 插槽 |
 | 改 vendor 资源 | `vendor/` + 对应 Dialog/Node | 见下「Vendor 资源」 |
-| 视频编辑器节点 | `components/nodes/VideoEditorNode.jsx` + `components/VideoEditorDialog.jsx` + `components/FrameSequencePlayer.jsx` | 节点外壳 + 大对话框（双播放器/帧选区/动画组）+ fast-image-sequence 帧播放器 |
-| 视频帧截取/尺寸调整 | ffmpeg 插件（`ffmpeg_extract_frames` / `ffmpeg_custom` / `ffmpeg_probe`） | 经 `callPluginTool('workflow.ffmpeg', action, args)` 调用，产物落 mini-app data 目录 |
+| 视频编辑器节点 | `components/nodes/VideoEditorNode.jsx` + `components/VideoEditorDialog.jsx` + `components/FrameSequencePlayer.jsx` | 节点外壳 + 大对话框（双播放器/帧选区/动画组）+ React 内置帧播放器 |
+| 视频帧截取/区域截取/尺寸调整 | ffmpeg 插件（`ffmpeg_extract_frames` / `ffmpeg_custom` / `ffmpeg_probe`） | 经 `callPluginTool('workflow.ffmpeg', action, args)` 调用；帧为原分辨率无损 PNG，归一化 cropRegion 在插件内转 ffmpeg crop |
 | 插件访问 mini-app data 目录 | `plugin-runtime-api.ts`（getMiniAppDataDir/saveMiniAppDataFile）+ `routes/plugin.ts:187`（透传 workspaceId） | 打通了 workspaceId → 插件 api 断点，使 ffmpeg 产物能写到当前 mini-app 的 data 沙箱 |
 
 ## 核心约束 / 坑点（去重精选）
@@ -143,7 +143,8 @@ Agent → api.js handler → ctx.requestClient(type, payload, timeoutMs)
 20. **Spine gizmo 坐标只用本地变换**：角色和骨骼 Graphics 同挂 `spineContainer`，`_boneToContainer` 只能应用 `spine.transform.localTransform`；使用 `worldTransform` 会把父容器的 fit/zoom/pan 重复应用，导致首次加载骨骼偏到右下方。
 21. **videoEditor 上游视频是合并非覆盖**：videoEditor 是编辑器，用户会上传+编辑视频。`useDecoratedNodes` 对 videoEditor 的上游视频派生用**去重合并**（`[...own, ...upstream]`），不像 videoDisplay 那样覆盖。改这套逻辑见 `useDecoratedNodes.js` 的 upVids 分支。
 22. **ffmpeg 插件产物落 mini-app data 目录**：`routes/plugin.ts:187` 已把 workspaceId 透传给 `createBuiltinPluginApi`，插件 ctx.api 有 `getMiniAppDataDir()` / `saveMiniAppDataFile(relPath, buffer)`（返回 httpPath，走 `/api/mini-apps/:id/data/file`）。ffmpeg 的 extract_frames/custom/probe 都用这套，产物不落全局 public/uploads。
-23. **透传节点优先使用当前派生输入**：`imageDisplay` / `videoDisplay` 有连入边时，继续向下游转发必须优先取 `computeInputImages/computeInputVideos` 本轮派生值（包括空数组），不能回退到节点持久化的旧 `data.images/videos`，否则上游切换历史版本后会向更下游残留旧产出。`videoEditor` 仍按“自身上传 + 当前上游”去重合并。
+23. **videoEditor 播放器常驻且截帧无损**：视频播放器与 `FrameSequencePlayer` 切 tab 时只切显隐，不得条件卸载；隐藏播放器用 `active`/`pause()` 停止播放并保留当前位置。截帧输出原分辨率无损 PNG；`cropRegion` 使用 `0..1` 归一化坐标，框选宽或高小于 1% 无效，框选模式开启时暂停视频并隐藏原生 controls。动画组的派生 frames 必须用 `useMemo`/`useCallback` 保持稳定，精灵图仅随源帧、起止帧、FPS 或列数变化重算。
+24. **透传节点优先使用当前派生输入**：`imageDisplay` / `videoDisplay` 有连入边时，继续向下游转发必须优先取 `computeInputImages/computeInputVideos` 本轮派生值（包括空数组），不能回退到节点持久化的旧 `data.images/videos`，否则上游切换历史版本后会向更下游残留旧产出。`videoEditor` 仍按“自身上传 + 当前上游”去重合并。
 24. **媒体 URL 不能直接作为 React 列表 key**：工作流可能返回重复 URL（同一图片出现多次），`key={url}` 在历史版本 `1↔2` 张切换时会触发 React 错误复用并残留 DOM。上游输入列表统一用 `occurrenceKeys` 生成“同 URL 出现序号 + URL”的唯一 key。
 25. **文本连线是引用，不复制 params**：文字/反推节点的 `data.output.text` 经 `computeInputTexts` 派生到目标的 `data.textInputValues`；目标组件只在展示/执行时与持久化 `data.params` 合并，写回仍基于原始 params。edge 用 `data.inputType='text'` + `data.inputTarget=<字段 key>`；断线后应恢复目标节点原来的手动值。
 25. **编辑图片缩略图可直接绘制蒙版**：`EditImageNode` 的输入缩略图悬浮时在底部居中显示并排的编辑/删除图标，编辑动作通过本地 `FileUpload.onEditItem` 打开 `MaskPaintDialog`；蒙版缩略图传 `bottomActions` 复用该底部栏但只显示删除。显隐、绝对定位和按钮尺寸全部使用 `FileUpload` 内的 `.game-asset-upload-thumb*` 作用域 CSS，不依赖 mini-app 源码无法生成的 Tailwind `group-hover` / `bottom-*` 等工具类；绘制快照存 `data.editMaskPaintData`，导出的首张 URL 写入既有 `params.mask`。
@@ -228,7 +229,7 @@ generateImages(workflowId, input, {directory, historyId})   ← utils/workflow.j
 - `vendor/painterro.min.js` — 图片编辑器，loadVendor + esmSuffix 转 ESM。
 - `vendor/fabric.min.js` / `browser-image-compression.js` — `(0,eval)` 全局求值。
 - `vendor/{gifenc,gifuct-js,image-q,jszip}.js` — 图像处理，Blob URL dynamic import。
-- `vendor/fast-image-sequence/` — `@mediamonks/fast-image-sequence@2.2.0` CDN dist；入口含相对 chunk import，必须经本地 HTTP URL 原生 dynamic import。
+- `vendor/fast-image-sequence/` — 历史遗留 dist，当前帧播放器不再引用；播放由 `FrameSequencePlayer.jsx` 直接完成。
 
 ## 调试速查
 

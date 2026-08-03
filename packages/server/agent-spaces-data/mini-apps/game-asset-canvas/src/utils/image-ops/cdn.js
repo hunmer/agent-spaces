@@ -87,25 +87,6 @@ export async function getImageQ() {
 }
 
 /**
- * fast-image-sequence：高帧率图片序列播放器。
- * 官方 dist 入口包含相对 chunk import，因此直接 import 本地 HTTP URL，不能转 Blob URL。
- */
-export async function getFastImageSequence() {
-  const fileName = 'fast-image-sequence/fast-image-sequence.js';
-  if (moduleCache.has(fileName)) return moduleCache.get(fileName);
-  const AS = window.AgentSpaces;
-  if (!AS?.srcFileUrl) throw new Error('宿主未提供 srcFileUrl 能力（需更新 web 服务）');
-  const url = AS.srcFileUrl(VENDOR_BASE + fileName);
-  const dynImport = new Function('u', 'return import(u)');
-  const mod = await dynImport(url);
-  if (typeof mod?.FastImageSequence !== 'function') {
-    throw new Error('fast-image-sequence 加载后缺少 FastImageSequence 导出');
-  }
-  moduleCache.set(fileName, mod.FastImageSequence);
-  return mod.FastImageSequence;
-}
-
-/**
  * Painterro：浏览器端图像编辑器（画笔/文字/裁切/马赛克/旋转等）。
  * 官方 build 是 IIFE 赋值给 `var Painterro`（非 ESM），无法直接 dynamic import。
  * 这里 fetch 源码后追加 `\nexport default Painterro;` 转 ESM，浏览器原生 loader 求值。

@@ -22,6 +22,15 @@ function toNumber(value) {
   return Number.isFinite(n) ? n : null
 }
 
+function normalizeCropRegion(value) {
+  if (!value || typeof value !== 'object') return null
+  const x = Math.max(0, Math.min(1, toNumber(value.x) || 0))
+  const y = Math.max(0, Math.min(1, toNumber(value.y) || 0))
+  const width = Math.max(0, Math.min(1 - x, toNumber(value.width) || 0))
+  const height = Math.max(0, Math.min(1 - y, toNumber(value.height) || 0))
+  return width > 0 && height > 0 ? { x, y, width, height } : null
+}
+
 // 取 fluent-ffmpeg 内部记录的 ffmpeg 可执行路径（被 setFfmpegPath 设过），
 // 兜底系统 PATH（直接用 'ffmpeg'）。
 function resolveFfmpegBin(args) {
@@ -85,6 +94,7 @@ module.exports = (t) => [
       { key: 'fps', label: t('field.fps.label', 'FPS'), type: 'number', dataType: 'number', default: 1, tooltip: t('field.fps.tooltip', 'Frames per second to extract (mode=By FPS).') },
       { key: 'interval', label: t('field.frameInterval.label', 'Frame Interval'), type: 'number', dataType: 'number', default: 2, tooltip: t('field.frameInterval.tooltip', 'Extract one image every N source frames (mode=By Frame Interval).') },
       { key: 'secondsInterval', label: t('field.secondsInterval.label', 'Seconds Interval'), type: 'number', dataType: 'number', default: 1, tooltip: t('field.secondsInterval.tooltip', 'Extract one image every N seconds (mode=By Seconds Interval).') },
+      { key: 'cropRegion', label: t('field.cropRegion.label', 'Crop Region'), type: 'object', dataType: 'object', tooltip: t('field.cropRegion.tooltip', 'Normalized crop region: x, y, width and height are values from 0 to 1.') },
       { key: 'maxWidth', label: t('field.maxWidth.label', 'Max Width'), type: 'number', dataType: 'number', tooltip: t('field.maxWidth.tooltip', 'Scale frames to this max width (keeps aspect ratio).') },
       { key: 'maxHeight', label: t('field.maxHeight.label', 'Max Height'), type: 'number', dataType: 'number', tooltip: t('field.maxHeight.tooltip', 'Scale frames to this max height (keeps aspect ratio).') },
       { key: 'ffmpegPath', label: t('field.ffmpegPath.label', 'FFmpeg Path'), type: 'text', dataType: 'string', default: '{{ __config__["workflow.ffmpeg"]["ffmpegPath"] }}', tooltip: t('field.ffmpegPath.tooltip', 'Leave empty to use system PATH.') },
@@ -120,13 +130,19 @@ module.exports = (t) => [
       const secondsInterval = Math.max(0.01, toNumber(args.secondsInterval) || 1)
       const maxW = toNumber(args.maxWidth)
       const maxH = toNumber(args.maxHeight)
+      const cropRegion = normalizeCropRegion(args.cropRegion)
 
-      // scale 滤镜：W:H，-1 = 按比例自适应
-      const scalePart = (maxW || maxH) ? `,scale=${maxW || -1}:${maxH || -1}` : ''
-      // 逐帧 seek 时单独的 vf（scale 滤镜，无则不传 -vf）
-      const seekVf = (maxW || maxH) ? [`-vf`, `scale=${maxW || -1}:${maxH || -1}`] : []
+      const transformFilters = []
+      if (cropRegion) {
+        transformFilters.push(`crop=trunc(iw*${cropRegion.width}):trunc(ih*${cropRegion.height}):trunc(iw*${cropRegion.x}):trunc(ih*${cropRegion.y})`)
+      }
+      if (maxW || maxH) transformFilters.push(`scale=${maxW || -1}:${maxH || -1}`)
+      const filterArgs = (samplingFilter) => {
+        const filters = samplingFilter ? [samplingFilter, ...transformFilters] : transformFilters
+        return filters.length ? ['-vf', filters.join(',')] : []
+      }
       const bin = resolveFfmpegBin(args)
-      const outPattern = path.join(dir, 'frame-%04d.jpg')
+      const outPattern = path.join(dir, 'frame-%04d.png')
 
       ctx.logger.info(`按帧截取: ${inputPath} (mode=${mode}, count=${count}, fps=${fps}) -> ${dir}`)
 
@@ -139,21 +155,21 @@ module.exports = (t) => [
         // - count=1 特殊处理：取中点单帧 seek（fps 滤镜不好控制只出 1 帧）
         let ffArgs
         if (mode === 'all') {
-          ffArgs = ['-y', '-i', inputPath, ...seekVf, '-vsync', '0', '-q:v', '2', outPattern]
+          ffArgs = ['-y', '-i', inputPath, ...filterArgs(), '-vsync', '0', outPattern]
         } else if (mode === 'interval') {
-          ffArgs = ['-y', '-i', inputPath, '-vf', `select=not(mod(n\\,${interval}))${scalePart}`, '-vsync', '0', '-q:v', '2', outPattern]
+          ffArgs = ['-y', '-i', inputPath, ...filterArgs(`select=not(mod(n\\,${interval}))`), '-vsync', '0', outPattern]
         } else if (mode === 'seconds') {
-          ffArgs = ['-y', '-i', inputPath, '-vf', `fps=${(1 / secondsInterval).toFixed(8)}${scalePart}`, '-q:v', '2', outPattern]
+          ffArgs = ['-y', '-i', inputPath, ...filterArgs(`fps=${(1 / secondsInterval).toFixed(8)}`), outPattern]
         } else if (mode === 'fps') {
-          ffArgs = ['-y', '-i', inputPath, '-vf', `fps=${fps}${scalePart}`, '-q:v', '2', outPattern]
+          ffArgs = ['-y', '-i', inputPath, ...filterArgs(`fps=${fps}`), outPattern]
         } else if (count === 1) {
           // 单帧：取视频中点（避免首末帧边界问题）
           const duration = await probeDuration(inputPath, args, ctx)
           const t = duration ? duration / 2 : 1
           await runBin(bin, [
             '-y', '-ss', t.toFixed(3), '-i', inputPath,
-            '-frames:v', '1', ...seekVf, '-q:v', '2',
-            path.join(dir, 'frame-0001.jpg'),
+            '-frames:v', '1', ...filterArgs(),
+            path.join(dir, 'frame-0001.png'),
           ], ctx)
           ffArgs = null
         } else {
@@ -162,7 +178,7 @@ module.exports = (t) => [
           // 留 5% 余量算 fps，避免末尾帧取不到（fps 滤镜按时间均匀，末尾可能差一帧）
           const effDur = duration ? duration * 0.95 : Math.max(1, count)
           const targetFps = count / effDur
-          ffArgs = ['-y', '-i', inputPath, '-vf', `fps=${targetFps.toFixed(4)}${scalePart}`, '-q:v', '2', outPattern]
+          ffArgs = ['-y', '-i', inputPath, ...filterArgs(`fps=${targetFps.toFixed(4)}`), outPattern]
         }
 
         if (ffArgs) {
@@ -172,7 +188,7 @@ module.exports = (t) => [
         // 收集产物并转成 httpPath
         const entries = await fs.promises.readdir(dir)
         const files = entries
-          .filter((f) => /^frame.*\.jpe?g$/i.test(f))
+          .filter((f) => /^frame.*\.png$/i.test(f))
           .sort()
         const frames = []
         for (const f of files) {

@@ -195,7 +195,7 @@ export function initialData(type) {
       framePreviewFps: 10,
       animGroups: [],
       videoInfo: null,
-      params: { mode: 'count', count: 8, fps: 1, interval: 2, secondsInterval: 1, maxWidth: 320 },
+      params: { mode: 'count', count: 8, fps: 1, interval: 2, secondsInterval: 1, cropEnabled: false, cropRegion: null },
       sheetLayout: { rows: 1, cols: 4 },
       output: { video: null, images: [] },
     };

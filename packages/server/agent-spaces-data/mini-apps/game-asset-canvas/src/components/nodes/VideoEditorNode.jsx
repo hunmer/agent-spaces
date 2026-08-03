@@ -17,9 +17,9 @@ const FFMPEG_FIRST_FRAME = 'ffmpeg_first_frame';
  * data.videos: string[]      视频 http URL（上传 + 上游派生，由 computeInputVideos 写入）
  * data.frames: string[]      截取的帧 http URL
  * data.framesDir: string     帧文件在 data 目录的相对路径
- * data.animGroups: Array<{id,name,startFrame,endFrame,fps,frames:string[]}>
+ * data.animGroups: Array<{id,name,startFrame,endFrame,fps,frames:string[],cropRegion?:object}>
  * data.videoInfo: object     ffprobe 解析信息
- * data.params: {mode,count,fps,maxWidth}
+ * data.params: {mode,count,fps,interval,secondsInterval,cropEnabled,cropRegion}
  */
 export default function VideoEditorNode({ id, data, selected }) {
   const videos = Array.isArray(data?.videos) ? data.videos.filter(Boolean) : [];
