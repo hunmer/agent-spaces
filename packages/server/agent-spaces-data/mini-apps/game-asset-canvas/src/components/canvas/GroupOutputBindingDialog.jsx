@@ -8,6 +8,7 @@ import { collectGroupNodeIds } from '../../utils/group-helpers';
 import {
   GROUP_OUTPUT_FILTER_MODES,
   normalizeGroupOutputBinding,
+  resolveGroupOutputFilter,
   wouldCreateGroupOutputBindingCycle,
 } from '../../utils/group-execution';
 
@@ -32,9 +33,7 @@ export default function GroupOutputBindingDialog({
   const [nodeTypes, setNodeTypes] = useState(new Set());
 
   useEffect(() => {
-    const initial = currentBinding?.sourceGroupId === state?.sourceGroupId
-      ? currentBinding.filter
-      : { mode: GROUP_OUTPUT_FILTER_MODES.all, nodeIds: [], nodeTypes: [] };
+    const initial = resolveGroupOutputFilter(currentBinding, state?.sourceGroupId);
     setMode(initial.mode);
     setNodeIds(new Set(initial.nodeIds));
     setNodeTypes(new Set(initial.nodeTypes));

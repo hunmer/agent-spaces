@@ -6,6 +6,7 @@ import {
   collectGroupOutputAssets,
   ensureGroupExecution,
   normalizeGroupOutputBinding,
+  resolveGroupOutputFilter,
   wouldCreateGroupOutputBindingCycle,
 } from './group-execution.js';
 
@@ -87,4 +88,20 @@ test('绑定图片会应用到目标组的上传素材槽位', () => {
   );
   assert.deepEqual(result.target.uploadedImages, ['current-output.png']);
   assert.deepEqual(result.target.groupAssetInputUrls, ['current-output.png']);
+});
+
+test('对话框关闭时空绑定返回默认过滤器', () => {
+  assert.deepEqual(resolveGroupOutputFilter(null, undefined), {
+    mode: GROUP_OUTPUT_FILTER_MODES.all,
+    nodeIds: [],
+    nodeTypes: [],
+  });
+  assert.deepEqual(resolveGroupOutputFilter({
+    sourceGroupId: 'source',
+    filter: { mode: 'nodes', nodeIds: ['a'] },
+  }, 'source'), {
+    mode: GROUP_OUTPUT_FILTER_MODES.nodes,
+    nodeIds: ['a'],
+    nodeTypes: [],
+  });
 });

@@ -4,7 +4,7 @@
 为 game-asset-canvas 增加组级输入连线与过滤配置，并将来源组匹配节点的当前输出自动应用到目标组的“按上传素材执行”。
 
 ## Current Phase
-Phase 15 complete
+Phase 16 complete
 
 ## Phases
 
@@ -53,6 +53,9 @@ Phase 15 complete
 ### Phase 15: 定向验证与交付
 - **Status:** complete
 
+### Phase 16: 过滤对话框空状态崩溃修复
+- **Status:** complete
+
 ## Decisions
 - 配置字段：`agentChatPlacement?: "dock" | "mini-app-slot"`，缺省等同 `dock`。
 - Chat 状态、会话和权限继续归宿主管理，mini-app 只提供 DOM 插槽与 tab 切换。
@@ -75,3 +78,4 @@ Phase 15 complete
 | 开发态 `tsx` 导入 server 时 shared 无 exports | 2 | 构建 shared/server 后从正式 dist 入口验证 |
 | 新增纯函数测试无法解析 `./constants` | 1 | 将 `group-execution.js` 的既有 ESM import 补为 `./constants.js` |
 | 根目录执行 ESLint 找不到 flat config | 1 | 改用 `packages/web/eslint.config.mjs` 所在包执行定向 lint |
+| 对话框关闭状态读取 `null.filter` | 1 | `undefined === undefined` 误入已有绑定分支，增加 binding/state 显式非空判断 |

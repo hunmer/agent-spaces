@@ -15,6 +15,8 @@
 - 来源组被删除时目标组自动断开并恢复模板；手动上传新素材会清除既有自动绑定。
 - 已阻止组输出绑定环，避免互相作为来源时反复重置输出。
 - 验证结果：9 项 Node 测试通过，5 个受影响 JSX/Hook 文件 Babel 编译通过，`git diff --check` 通过，开发服务 3000 返回 HTTP 200。
+- 用户运行时报错 `Cannot read properties of null (reading 'filter')`：对话框关闭时 `currentBinding?.sourceGroupId` 和 `state?.sourceGroupId` 均为 undefined，宽松分支条件意外成立，随后读取 null 的 `filter`。
+- 修复为 `resolveGroupOutputFilter` 统一处理空绑定、来源不匹配和正常绑定；关闭状态稳定返回 all 默认过滤器。
 
 - `MiniAppPreview` 当前用 `chatDockOpen` 控制宿主外层 `ResizablePanel`，其中渲染 `MiniAppAgentDock`。
 - React mini-app 由同页面内独立 React Root 渲染，不是 iframe，因此宿主可以用 React Portal 挂载到 mini-app 提供的 DOM 节点。

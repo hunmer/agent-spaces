@@ -106,6 +106,12 @@ export function normalizeGroupOutputBinding(value) {
   };
 }
 
+export function resolveGroupOutputFilter(value, sourceGroupId) {
+  const binding = normalizeGroupOutputBinding(value);
+  if (binding && sourceGroupId && binding.sourceGroupId === sourceGroupId) return binding.filter;
+  return { mode: GROUP_OUTPUT_FILTER_MODES.all, nodeIds: [], nodeTypes: [] };
+}
+
 export function collectGroupOutputAssets(nodes, sourceNodeIds, binding) {
   const normalized = normalizeGroupOutputBinding(binding);
   if (!normalized) return [];
