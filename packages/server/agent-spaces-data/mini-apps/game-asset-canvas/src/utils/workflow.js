@@ -165,7 +165,7 @@ export function resolveReferenceImages(references) {
  * @param {string} html PromptTextEditor onChange 回传的 HTML
  * @returns {string} 纯文本指令（含 R0/R1 关键字）
  */
-export function promptHtmlToText(html) {
+export function promptToText(html) {
   if (!html) return '';
   // 用 DOMParser 解析，避免手写正则漏标签（mini-app 运行在浏览器，DOMParser 可用）
   let doc;

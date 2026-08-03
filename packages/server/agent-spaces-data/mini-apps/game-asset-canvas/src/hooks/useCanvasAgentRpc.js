@@ -8,6 +8,7 @@ import { genId } from '../utils/canvas-id';
 import { autoLayoutSubset, findFreePositions } from '../utils/layout';
 import { addNodeIdsToGroup, removeNodeIdFromGroups } from '../utils/agent-rpc-groups';
 import { ensureEdgeIds } from '../utils/canvas-edges';
+import { promptToText } from '../utils/workflow';
 
 /** 新增节点后按最新分组成员重新布局。 */
 function arrangeGroupAfterAdd(setNodes, edges, groups, groupName, addedNodeIds, layout) {
@@ -106,8 +107,6 @@ export function buildNodeExecution(node, textInputValues) {
   const params = { ...(node.data.params || {}), ...(textInputValues || {}) };
   const pickedPrompt = (params.pickedPrompt || '').toString().trim();
   const userPrompt = (params.prompt || '').toString().trim();
-  // EditImage 用 promptHtml 富文本，但 agent 通过 update_node 写入通常走 prompt 字段；
-  // 这里只看 pickedPrompt + prompt，不强依赖 promptHtml（agent 创建的节点一般没有 promptHtml）。
   const mergedPrompt = [pickedPrompt, userPrompt].filter(Boolean).join('\n');
   const count = Math.max(1, Number(params.count) || 1);
   const concurrency = Math.max(1, Math.min(count, Number(params.concurrency) || 1));
@@ -127,7 +126,8 @@ export function buildNodeExecution(node, textInputValues) {
     };
   }
   if (type === NODE_TYPES.editImage) {
-    if (!mergedPrompt) return null;
+    const editPrompt = [pickedPrompt, promptToText(userPrompt)].filter(Boolean).join('\n');
+    if (!editPrompt) return null;
     // 输入图：uploadedImages + 上游连线 images（合并去重，与 EditImageNode 一致）
     const uploaded = Array.isArray(node.data.uploadedImages) ? node.data.uploadedImages : [];
     const upstream = Array.isArray(node.data.images) ? node.data.images : [];
@@ -145,7 +145,7 @@ export function buildNodeExecution(node, textInputValues) {
       workflowId: WORKFLOWS.edit_image,
       input: {
         images: allInput.map((u) => (typeof u === 'string' && u.startsWith('http') ? u : `${window.location.origin}${u.startsWith('/') ? '' : '/'}${u}`)),
-        prompt: mergedPrompt,
+        prompt: editPrompt,
         model: params.model || DEFAULT_MODEL,
         aspect: params.aspect || '1:1',
         size: params.size || '1k',

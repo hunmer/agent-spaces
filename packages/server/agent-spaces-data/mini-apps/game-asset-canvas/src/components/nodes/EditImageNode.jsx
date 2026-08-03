@@ -8,19 +8,8 @@ import MaskPaintDialog from '../MaskPaintDialog';
 import { orderUpstream } from './UpstreamImageList';
 import CountAndConcurrency from './CountAndConcurrency';
 import { ASPECT_OPTIONS, DEFAULT_MODEL, MODEL_OPTIONS, NODE_TYPES, SIZE_OPTIONS, WORKFLOWS } from '../../utils/constants';
-import { normalizeImageUrls, resolveReferenceImages, promptHtmlToText, dedupeUrls } from '../../utils/workflow';
+import { normalizeImageUrls, resolveReferenceImages, promptToText, dedupeUrls } from '../../utils/workflow';
 import UploadSection from './UploadSection';
-
-function plainTextToPromptHtml(text) {
-  const escape = (value) => value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
-  return String(text || '')
-    .split(/\n{2,}/)
-    .map((paragraph) => `<p>${escape(paragraph).replace(/\n/g, '<br>')}</p>`)
-    .join('');
-}
 
 /**
  * 编辑图片节点。
@@ -127,11 +116,8 @@ export default function EditImageNode({ id, data, selected }) {
     })),
   ];
 
-  // 编辑指令的富文本 HTML（PromptTextEditor onChange 写入）。提交时转纯文本（@参考图 → R0/R1）。
-  const referencedPrompt = data?.textInputValues?.prompt;
-  const promptHtml = referencedPrompt !== undefined
-    ? plainTextToPromptHtml(referencedPrompt)
-    : (params.promptHtml || plainTextToPromptHtml(params.prompt));
+  // prompt 是编辑指令的唯一字段；可保存 PromptTextEditor 生成的 HTML，提交时再转纯文本。
+  const prompt = params.prompt || '';
 
   // 统一的输入图清单：参考图 + 上传图 + 连线图，按用户拖拽顺序持久化。
   // @ 列表、key(R0/R1…)映射、提交 images 三处都用它，保证「上传后 @ 能选到新图」且 key 与提交顺序一致。
@@ -155,7 +141,7 @@ export default function EditImageNode({ id, data, selected }) {
     // 至少有一张输入图才执行（allInputImages 已含全部来源 + 去重）
     if (!allInputImages.length) return;
     // 编辑指令 HTML → 纯文本（@参考图 mention → R0/R1 关键字）
-    const userPrompt = promptHtmlToText(promptHtml);
+    const userPrompt = promptToText(prompt);
     // 提示词库选中 + 用户输入 合并（去空去重）
     const merged = [params.pickedPrompt, userPrompt].map((s) => (s || '').trim()).filter(Boolean).join('\n');
     onGenerate?.(id, NODE_TYPES.editImage, {
@@ -173,7 +159,7 @@ export default function EditImageNode({ id, data, selected }) {
           : {}),
       },
     });
-  }, [onGenerate, id, params, promptHtml, allInputImages, connectedMask]);
+  }, [onGenerate, id, params, prompt, allInputImages, connectedMask]);
 
   return (
     <NodeShell id={id} nodeType={NODE_TYPES.editImage} data={data} selected={selected} targetHandle sourceHandle>
@@ -221,18 +207,18 @@ export default function EditImageNode({ id, data, selected }) {
         </div>
         <div className="nodrag nopan nowheel relative min-h-[56px] resize-y rounded-md border border-border bg-background px-2 py-1.5 pr-8 text-sm focus-within:border-primary">
           <PromptTextEditor
-            value={promptHtml}
-            onChange={(html) => set({ promptHtml: html })}
+            value={prompt}
+            onChange={(html) => set({ prompt: html })}
             references={editorReferences}
             placeholder="如：将背景改为星空，保持宝箱主体不变（输入 @ 插入参考图）"
           />
           <button
             type="button"
             onClick={() => openOptimize({
-              prompt: promptHtmlToText(promptHtml),
+              prompt: promptToText(prompt),
               agentConfig: data?.promptOptimizeAgent,
               onApply: (newPrompt) => {
-                set({ promptHtml: plainTextToPromptHtml(newPrompt) });
+                set({ prompt: newPrompt });
               },
             })}
             title="优化提示词"
@@ -304,7 +290,7 @@ export default function EditImageNode({ id, data, selected }) {
       ) : (
         <button
           type="button"
-          disabled={allInputImages.length === 0 || !((params.pickedPrompt || '').trim() || promptHtmlToText(promptHtml))}
+          disabled={allInputImages.length === 0 || !((params.pickedPrompt || '').trim() || promptToText(prompt))}
           onClick={handleRun}
           className="w-full rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
         >

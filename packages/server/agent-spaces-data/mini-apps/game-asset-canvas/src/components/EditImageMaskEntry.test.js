@@ -24,3 +24,10 @@ test('Edit Image thumbnails open mask painting and save the exported mask', () =
   assert.match(editNodeSource, /editMaskPaintData/);
   assert.match(editNodeSource, /placeholder="上传蒙版图片（白色=编辑区域）"[\s\S]*bottomActions/);
 });
+
+test('Edit Image stores rich editor content only in params.prompt', () => {
+  assert.doesNotMatch(editNodeSource, /promptHtml/);
+  assert.match(editNodeSource, /const prompt = params\.prompt \|\| ''/);
+  assert.match(editNodeSource, /onChange=\{\(html\) => set\(\{ prompt: html \}\)\}/);
+  assert.match(editNodeSource, /set\(\{ prompt: newPrompt \}\)/);
+});
