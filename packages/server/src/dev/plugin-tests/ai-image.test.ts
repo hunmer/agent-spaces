@@ -36,12 +36,13 @@ export default async function run(plugin: LoadedPlugin) {
   // stub globalThis.fetch：edit 的 multipart 提交 + resolveImage 图片下载
   const origFetch = globalThis.fetch;
   const fetchCalls: FetchRecord[] = [];
+  let editSubmitResponse: unknown = { task_id: 'task-edit-1' };
   (globalThis as { fetch: unknown }).fetch = (async (url: string, opts?: { method?: string; body?: Buffer; headers?: Record<string, string> }) => {
     const u = String(url);
     const method = (opts && opts.method) || 'GET';
     fetchCalls.push({ url: u, method, body: opts && opts.body, contentType: opts && opts.headers && opts.headers['Content-Type'] });
     if (u.includes('/images/edits')) {
-      return new Response(JSON.stringify({ task_id: 'task-edit-1' }), {
+      return new Response(JSON.stringify(editSubmitResponse), {
         status: 200,
         headers: { 'content-type': 'application/json' },
       });
@@ -107,7 +108,19 @@ export default async function run(plugin: LoadedPlugin) {
     assert.ok(editBody!.includes('戴上墨镜'), 'multipart should contain prompt');
     console.log('✓ edit (multipart submit)');
 
-    // 4) query SUCCESS
+    // 4) edit 同步返回：b64_json 结果 → 落盘成 httpPath
+    editSubmitResponse = { created: 1703, data: [{ b64_json: 'iVBORw0KGgo=' }] };
+    const r4 = (await plugin.runAction('ai_image_edit', {
+      image: 'https://example.com/in.png',
+      prompt: '直接返回图片',
+    })) as { success: boolean; data: { taskId: string; images: string[] } };
+    assert.equal(r4.success, true);
+    assert.equal(r4.data.taskId, '');
+    assert.equal(api.__saved().length, 1, 'direct b64_json should be saved once');
+    assert.match(r4.data.images[0], /\/static\/uploads\//);
+    console.log('✓ edit (direct b64 → saved)');
+
+    // 5) query SUCCESS
     api.__setScenario({
       submitResponse: {},
       pollSequence: [
@@ -119,7 +132,7 @@ export default async function run(plugin: LoadedPlugin) {
     assert.deepEqual(rq.data.images, ['https://example.com/q.png']);
     console.log('✓ query (success)');
 
-    // 5) query IN_PROGRESS（单次查询，不轮询）
+    // 6) query IN_PROGRESS（单次查询，不轮询）
     api.__setScenario({
       submitResponse: {},
       pollSequence: [
@@ -131,16 +144,16 @@ export default async function run(plugin: LoadedPlugin) {
     assert.equal(rip.data.progress, '30%');
     console.log('✓ query (in-progress)');
 
-    // 6) error: 缺 apiKey
+    // 7) error: 缺 apiKey
     await assert.rejects(plugin.runAction('ai_image_generate', { prompt: 'x', apiKey: '' }), /apiKey/i);
     console.log('✓ error: missing apiKey');
 
-    // 7) error: 提交无 task_id
+    // 8) error: 提交无 task_id
     api.__setScenario({ submitResponse: { code: 'error', message: 'bad model' }, pollSequence: [] });
     await assert.rejects(plugin.runAction('ai_image_generate', { prompt: 'x' }), /提交失败/);
     console.log('✓ error: submit without task_id');
 
-    // 8) error: 轮询 FAILURE
+    // 9) error: 轮询 FAILURE
     api.__setScenario({
       submitResponse: { task_id: 'task-f' },
       pollSequence: [
@@ -150,7 +163,7 @@ export default async function run(plugin: LoadedPlugin) {
     await assert.rejects(plugin.runAction('ai_image_generate', { prompt: 'x' }), /失败|policy/);
     console.log('✓ error: poll FAILURE');
 
-    return { success: true, cases: 8, fetchCalls: fetchCalls.length };
+    return { success: true, cases: 9, fetchCalls: fetchCalls.length };
   } finally {
     (globalThis as { setTimeout: unknown }).setTimeout = origSetTimeout;
     globalThis.fetch = origFetch;

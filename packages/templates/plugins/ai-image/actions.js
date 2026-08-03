@@ -318,7 +318,10 @@ function buildMultipart(fields) {
 // ── 任务结果解析 ────────────────────────────────────────────
 // 任务查询响应：result.data = { status, progress, fail_reason, data: { data: [{url,b64_json}], model, created, usage } }
 async function extractImages(taskData, ctx) {
-  const payload = taskData && taskData.data ? taskData.data : {}
+  // 异步查询结果把图片数据包在 data 中；部分兼容服务即使带 async=true，
+  // 仍会直接返回 OpenAI 格式 { created, data: [{ b64_json }] }。
+  const payload =
+    taskData && Array.isArray(taskData.data) ? taskData : taskData && taskData.data ? taskData.data : {}
   const items = Array.isArray(payload.data) ? payload.data : []
   const images = []
   const revisedPrompts = []
@@ -366,10 +369,17 @@ async function pollTask(ctx, args, baseUrl, taskId) {
   throw new Error(`轮询超时（约 ${Math.round((POLL_MAX_ATTEMPTS * POLL_INTERVAL) / 60000)} 分钟）`)
 }
 
-// 提交任务 → 拿 task_id → 轮询 → 提取图片
+// 提交后兼容两种响应：task_id 异步任务，或直接返回 OpenAI 格式图片数据。
 async function submitAndPoll(ctx, args, baseUrl, submitFn) {
-  const taskId = await submitFn()
-  if (!taskId) throw new Error('提交任务成功但未返回 task_id')
+  const submission = await submitFn()
+  const taskId = pickTaskId(submission)
+  if (!taskId) {
+    const out = await extractImages(submission, ctx)
+    if (out.images.length) return { taskId: '', ...out }
+    throw new Error(
+      `提交失败: ${submission && submission.code ? submission.code : ''} ${submission && submission.message ? submission.message : JSON.stringify(submission).slice(0, 200)}`,
+    )
+  }
   ctx.logger.info(`已提交任务 task_id=${taskId}，开始轮询...`)
   const taskData = await pollTask(ctx, args, baseUrl, taskId)
   const out = await extractImages(taskData, ctx)
@@ -542,11 +552,7 @@ module.exports = (t) => [
           body,
           timeout: 60000,
         })
-        const taskId = pickTaskId(r)
-        if (!taskId) {
-          throw new Error(`提交失败: ${r.code || ''} ${r.message || JSON.stringify(r).slice(0, 200)}`)
-        }
-        return taskId
+        return r
       })
       return {
         success: true,
@@ -763,11 +769,7 @@ module.exports = (t) => [
           throw new Error(`提交编辑失败: HTTP ${resp.status} ${text.slice(0, 200)}`)
         }
         const r = await resp.json()
-        const taskId = pickTaskId(r)
-        if (!taskId) {
-          throw new Error(`提交失败: ${r.code || ''} ${r.message || JSON.stringify(r).slice(0, 200)}`)
-        }
-        return taskId
+        return r
       })
 
       return {
