@@ -66,6 +66,10 @@ export function createEditorApi(http: HttpClient) {
     importPath: (workspaceId: string, absPath: string, targetDir: string): Promise<void> =>
       http.postVoid(`/api/workspaces/${workspaceId}/files/import-path`, { absPath, targetDir }),
 
+    /** Link a local folder into the workspace without copying it */
+    linkFolder: (workspaceId: string, sourcePath: string): Promise<{ ok: true; path: string }> =>
+      http.post(`/api/workspaces/${workspaceId}/files/link-folder`, { sourcePath }),
+
     /** Upload files */
     uploadFiles: (workspaceId: string, targetDir: string, files: Array<{ name: string; content: string }>): Promise<void> =>
       http.postVoid(`/api/workspaces/${workspaceId}/files/upload`, { targetDir, files }),

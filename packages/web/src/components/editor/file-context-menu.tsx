@@ -12,16 +12,21 @@ interface FileContextMenuProps {
   filePath: string
   workspaceId?: string
   boundDir?: string
+  onCopyPath?: () => void
   onRename?: () => void
   onMove?: () => void
   onCopyItem?: () => void
   onDelete?: () => void
 }
 
-export function FileContextMenu({ filePath, workspaceId, boundDir, onRename, onMove, onCopyItem, onDelete }: FileContextMenuProps) {
+export function FileContextMenu({ filePath, workspaceId, boundDir, onCopyPath, onRename, onMove, onCopyItem, onDelete }: FileContextMenuProps) {
   const t = useTranslations('editor')
 
   const handleCopyPath = () => {
+    if (onCopyPath) {
+      onCopyPath()
+      return
+    }
     const absPath = boundDir ? boundDir.replace(/\/+$/, '') + '/' + filePath : filePath
     copyToClipboard(absPath)
   }

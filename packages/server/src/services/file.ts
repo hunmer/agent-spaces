@@ -1,6 +1,6 @@
-import { readdir, stat, readFile, writeFile, mkdir, rm, rename as fsRename } from 'node:fs/promises';
+import { readdir, stat, readFile, writeFile, mkdir, rm, rename as fsRename, symlink } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
-import { join, resolve, relative, isAbsolute, dirname } from 'node:path';
+import { join, resolve, relative, isAbsolute, dirname, basename } from 'node:path';
 import type { FileNode } from '@agent-spaces/shared';
 import type { Workspace } from '@agent-spaces/shared';
 import { getWorkspace } from '../storage/workspace-store.js';
@@ -44,11 +44,11 @@ export async function readTree(workspace: Workspace, relPath = '', depth = Infin
     const fullPath = join(dirPath, entry.name);
     const entryRelPath = relPath ? `${relPath}/${entry.name}` : entry.name;
 
-    const isIgnored = ig.isIgnored(entryRelPath, entry.name, entry.isDirectory());
-
     const s = await stat(fullPath);
+    const isDirectory = s.isDirectory();
+    const isIgnored = ig.isIgnored(entryRelPath, entry.name, isDirectory);
 
-    if (entry.isDirectory()) {
+    if (isDirectory) {
       nodes.push({
         name: entry.name,
         path: entryRelPath,
@@ -178,6 +178,33 @@ export async function copyPath(workspace: Workspace, srcRelPath: string, destRel
     return true;
   } catch {
     return false;
+  }
+}
+
+export async function linkFolder(workspace: Workspace, sourcePath: string): Promise<string | null> {
+  return linkFolderToRoot(workspace.boundDirs[0], sourcePath);
+}
+
+export async function linkFolderToRoot(targetRoot: string, sourcePath: string): Promise<string | null> {
+  if (!isAbsolute(sourcePath)) return null;
+
+  const source = resolve(sourcePath);
+  const root = resolve(targetRoot);
+  const rootFromSource = relative(source, root);
+  if (!rootFromSource || (!rootFromSource.startsWith('..') && !isAbsolute(rootFromSource))) return null;
+
+  const name = basename(source);
+  const target = resolve(root, name);
+  const targetFromRoot = relative(root, target);
+  if (!name || targetFromRoot.startsWith('..') || isAbsolute(targetFromRoot) || existsSync(target)) return null;
+
+  try {
+    const sourceStat = await stat(source);
+    if (!sourceStat.isDirectory()) return null;
+    await symlink(source, target, process.platform === 'win32' ? 'junction' : 'dir');
+    return name;
+  } catch {
+    return null;
   }
 }
 

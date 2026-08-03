@@ -160,6 +160,10 @@ export default function DataFilesPage() {
       await sdk.data.copy(srcPath, destPath);
       await loadTree();
     },
+    linkFolder: async (sourcePath: string) => {
+      await sdk.data.linkFolder(sourcePath);
+      await loadTree();
+    },
   }), [loadDirectory, loadTree, loadingDirs, openFile, openFiles, tree, treeLoading]);
 
   // 面板内容抽成变量，桌面和小屏共用（参考 mobile-responsive-migration.md 模式一）

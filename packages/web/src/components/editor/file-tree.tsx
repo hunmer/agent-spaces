@@ -236,7 +236,7 @@ export const FileTreeFolder = ({
   children,
   ...props
 }: FileTreeFolderProps) => {
-  const { expandedPaths, togglePath, selectedPath, onFileSelect: _onFileSelect, workspaceId, variant, onDelete, onImport, onCopyPath: _onCopyPath, onCreateFile, onCreateFolder, onRename, onMove, onCopyItem, onLoadDirectory, loadingDirs, boundDir } = useContext(FileTreeContext)
+  const { expandedPaths, togglePath, selectedPath, onFileSelect: _onFileSelect, workspaceId, variant, onDelete, onImport, onCopyPath, onCreateFile, onCreateFolder, onRename, onMove, onCopyItem, onLoadDirectory, loadingDirs, boundDir } = useContext(FileTreeContext)
   const parentFolder = useContext(FileTreeFolderContext)
   const isExpanded = expandedPaths.has(path)
   const isIgnored = ignored || parentFolder.ignored
@@ -330,6 +330,10 @@ export const FileTreeFolder = ({
             {t('importFile')}
           </ContextMenuItem>
           <ContextMenuItem onClick={() => {
+            if (onCopyPath) {
+              onCopyPath(path);
+              return;
+            }
             const absPath = boundDir ? boundDir.replace(/\/+$/, '') + '/' + path : path;
             copyToClipboard(absPath);
           }}>
@@ -412,7 +416,7 @@ export const FileTreeFile = ({
   children,
   ...props
 }: FileTreeFileProps) => {
-  const { selectedPath, onFileSelect, workspaceId, variant, onDelete, onRename, onMove, onCopyItem, fileSizeMap, boundDir } = useContext(FileTreeContext)
+  const { selectedPath, onFileSelect, workspaceId, variant, onDelete, onRename, onMove, onCopyItem, onCopyPath, fileSizeMap, boundDir } = useContext(FileTreeContext)
   const parentFolder = useContext(FileTreeFolderContext)
   const isIgnored = ignored || parentFolder.ignored
   const isSelected = selectedPath === path
@@ -502,6 +506,7 @@ export const FileTreeFile = ({
           filePath={path}
           workspaceId={workspaceId}
           boundDir={boundDir}
+          onCopyPath={() => onCopyPath?.(path)}
           onRename={() => onRename?.(path)}
           onMove={() => onMove?.(path)}
           onCopyItem={() => onCopyItem?.(path)}

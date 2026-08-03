@@ -67,6 +67,13 @@ export async function readAgentFile(projectId: string, path: string, scope?: str
   return fileService.readFileContent(getAgentFilesWorkspace(projectId, scope), path);
 }
 
+export function getAgentFileAbsolutePath(projectId: string, path = '', scope?: string): string {
+  getProject(projectId);
+  const absolutePath = fileService.resolvePath(getAgentFilesWorkspace(projectId, scope), path);
+  if (!absolutePath) throw new Error('Invalid agent file path');
+  return absolutePath;
+}
+
 export async function writeAgentFile(projectId: string, path: string, content: string, scope?: string): Promise<boolean> {
   getProject(projectId);
   return fileService.writeFileContent(getAgentFilesWorkspace(projectId, scope), path, content);
@@ -80,6 +87,13 @@ export async function deleteAgentFile(projectId: string, path: string, scope?: s
 export async function renameAgentFile(projectId: string, from: string, to: string, scope?: string): Promise<boolean> {
   getProject(projectId);
   return fileService.renamePath(getAgentFilesWorkspace(projectId, scope), from, to);
+}
+
+export async function linkAgentFolder(projectId: string, sourcePath: string, scope?: string): Promise<string | null> {
+  getProject(projectId);
+  const path = await fileService.linkFolder(getAgentFilesWorkspace(projectId, scope), sourcePath);
+  if (path) store.touchProject(projectId);
+  return path;
 }
 
 export async function uploadAgentFiles(projectId: string, targetDir: string, files: Array<{ name: string; buffer: Buffer }>, scope?: string): Promise<Array<{ path: string; size: number }>> {

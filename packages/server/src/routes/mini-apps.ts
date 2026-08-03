@@ -245,6 +245,12 @@ router.get('/:id/agent-files/content', async (req: Request<{ id: string }, any, 
   } catch (error: any) { res.status(500).json({ error: error.message }); }
 });
 
+router.get('/:id/agent-files/absolute-path', (req: Request<{ id: string }, any, any, { path?: string; scope?: string }>, res: Response) => {
+  try {
+    res.json({ path: svc.getAgentFileAbsolutePath(req.params.id, req.query.path || '', req.query.scope) });
+  } catch (error: any) { res.status(error.message.includes('not found') ? 404 : 400).json({ error: error.message }); }
+});
+
 router.put('/:id/agent-files/content', async (req: Request<{ id: string }>, res: Response) => {
   try {
     const { path, content, scope } = req.body ?? {};
@@ -274,6 +280,16 @@ router.post('/:id/agent-files/rename', async (req: Request<{ id: string }>, res:
     if (!ok) { res.status(500).json({ error: 'Failed to rename path' }); return; }
     res.json({ ok: true });
   } catch (error: any) { res.status(500).json({ error: error.message }); }
+});
+
+router.post('/:id/agent-files/link-folder', async (req: Request<{ id: string }>, res: Response) => {
+  try {
+    const { sourcePath, scope } = req.body ?? {};
+    if (!sourcePath) { res.status(400).json({ error: 'sourcePath is required' }); return; }
+    const path = await svc.linkAgentFolder(req.params.id, sourcePath, scope);
+    if (!path) { res.status(409).json({ error: 'Failed to link folder. The folder may be invalid or the target name already exists.' }); return; }
+    res.json({ ok: true, path });
+  } catch (error: any) { res.status(error.message.includes('not found') ? 404 : 500).json({ error: error.message }); }
 });
 
 router.post('/:id/agent-files/upload', upload.array('files'), async (req: Request<{ id: string }>, res: Response) => {

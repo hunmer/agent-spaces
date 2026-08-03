@@ -210,6 +210,18 @@ router.post('/copy', async (req: Request<{ id: string }>, res: Response) => {
   res.json({ ok: true });
 });
 
+router.post('/link-folder', async (req: Request<{ id: string }>, res: Response) => {
+  const ws = fileService.getWorkspace(req.params.id);
+  if (!ws) { res.status(404).json({ error: 'Workspace not found' }); return; }
+
+  const { sourcePath } = req.body;
+  if (!sourcePath) { res.status(400).json({ error: 'sourcePath is required' }); return; }
+
+  const path = await fileService.linkFolder(ws, sourcePath);
+  if (!path) { res.status(409).json({ error: 'Failed to link folder. The folder may be invalid or the target name already exists.' }); return; }
+  res.json({ ok: true, path });
+});
+
 router.post('/import-url', async (req: Request<{ id: string }>, res: Response) => {
   const ws = fileService.getWorkspace(req.params.id);
   if (!ws) { res.status(404).json({ error: 'Workspace not found' }); return; }

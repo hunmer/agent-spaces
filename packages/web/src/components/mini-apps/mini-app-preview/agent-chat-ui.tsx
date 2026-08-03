@@ -192,6 +192,11 @@ function MiniAppAgentFilesDialog({ projectId, open, onOpenChange }: { projectId:
       await sdk.miniApp.renameAgentFile(projectId, oldPath, newPath, 'preview');
       await reloadTree();
     },
+    linkFolder: async (sourcePath: string) => {
+      await sdk.miniApp.linkAgentFolder(projectId, sourcePath, 'preview');
+      await reloadTree();
+    },
+    resolveAbsolutePath: (path: string) => sdk.miniApp.getAgentFileAbsolutePath(projectId, path, 'preview'),
     copyPath: async (_srcPath: string, _destPath: string) => {},
     uploadFiles,
   }), [loading, openFile, openFiles, projectId, reloadTree, tree, uploadFiles]);

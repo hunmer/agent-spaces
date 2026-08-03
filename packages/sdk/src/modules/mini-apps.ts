@@ -131,6 +131,9 @@ export function createMiniAppApi(http: HttpClient) {
     readAgentFile: (id: string, filePath: string, scope: 'preview' | 'editor' = 'preview'): Promise<{ content: string; encoding: string }> =>
       http.get(`/api/mini-apps/${encodeURIComponent(id)}/agent-files/content?path=${encodeURIComponent(filePath)}&scope=${encodeURIComponent(scope)}`),
 
+    getAgentFileAbsolutePath: (id: string, filePath = '', scope: 'preview' | 'editor' = 'preview'): Promise<string> =>
+      http.get<{ path: string }>(`/api/mini-apps/${encodeURIComponent(id)}/agent-files/absolute-path?path=${encodeURIComponent(filePath)}&scope=${encodeURIComponent(scope)}`).then((result) => result.path),
+
     writeAgentFile: (id: string, filePath: string, content: string, scope: 'preview' | 'editor' = 'preview'): Promise<void> =>
       http.putVoid(`/api/mini-apps/${encodeURIComponent(id)}/agent-files/content`, { path: filePath, content, scope }),
 
@@ -139,6 +142,9 @@ export function createMiniAppApi(http: HttpClient) {
 
     renameAgentFile: (id: string, from: string, to: string, scope: 'preview' | 'editor' = 'preview'): Promise<void> =>
       http.postVoid(`/api/mini-apps/${encodeURIComponent(id)}/agent-files/rename`, { from, to, scope }),
+
+    linkAgentFolder: (id: string, sourcePath: string, scope: 'preview' | 'editor' = 'preview'): Promise<{ ok: true; path: string }> =>
+      http.post(`/api/mini-apps/${encodeURIComponent(id)}/agent-files/link-folder`, { sourcePath, scope }),
 
     uploadAgentFiles: (id: string, formData: FormData): Promise<{ ok: true; files: { path: string; size: number }[] }> =>
       http.upload(`/api/mini-apps/${encodeURIComponent(id)}/agent-files/upload`, formData),

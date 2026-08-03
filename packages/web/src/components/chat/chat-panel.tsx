@@ -582,6 +582,11 @@ function MiniAppAgentFilesPopover({ directory }: { directory: { projectId: strin
       await sdk.miniApp.renameAgentFile(directory.projectId, oldPath, newPath, directory.scope);
       await reloadTree();
     },
+    linkFolder: async (sourcePath: string) => {
+      await sdk.miniApp.linkAgentFolder(directory.projectId, sourcePath, directory.scope);
+      await reloadTree();
+    },
+    resolveAbsolutePath: (path: string) => sdk.miniApp.getAgentFileAbsolutePath(directory.projectId, path, directory.scope),
     copyPath: async (_srcPath: string, _destPath: string) => {},
     uploadFiles,
   }), [directory.projectId, directory.scope, loading, reloadTree, tree, uploadFiles]);

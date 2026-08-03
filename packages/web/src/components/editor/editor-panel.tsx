@@ -6,7 +6,7 @@ import { SearchPanel } from "./search-panel";
 import { ImportFileDialog } from "./import-file-dialog";
 import { useEditorStore } from "@/stores/editor";
 import type { FileNode, FileSearchResult } from "@agent-spaces/shared";
-import { RefreshCw, Ellipsis, Upload, Copy, FolderPlus, FilePlus, Search, X } from "lucide-react";
+import { RefreshCw, Ellipsis, Upload, Copy, FolderPlus, FilePlus, Search, X, Link, Trash2 } from "lucide-react";
 import { FileIconImg } from "./file-icon";
 import { ContextMenu, ContextMenuTrigger } from "@/components/ui/context-menu";
 import { FileContextMenu } from "./file-context-menu";
@@ -16,6 +16,7 @@ import { cn, copyToClipboard } from "@/lib/utils";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuCheckboxItem } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FolderPicker } from "@/components/ui/folder-picker";
@@ -39,6 +40,8 @@ type FilePanelApi = {
   deletePath: (path: string) => Promise<void>;
   renamePath: (oldPath: string, newPath: string) => Promise<void>;
   copyPath: (srcPath: string, destPath: string) => Promise<void>;
+  resolveAbsolutePath?: (path: string) => Promise<string> | string;
+  linkFolder?: (sourcePath: string) => Promise<void>;
   uploadFiles?: (targetPath: string, files: File[]) => Promise<void>;
 };
 
@@ -164,10 +167,11 @@ function saveExpandedPaths(workspaceId: string, paths: Set<string>) {
   } catch {}
 }
 
-function FlatFileTree({ files, selectedPath, onSelect, workspaceId, boundDir, emptyText }: {
+function FlatFileTree({ files, selectedPath, onSelect, onCopyPath, workspaceId, boundDir, emptyText }: {
   files: FileNode[];
   selectedPath?: string;
   onSelect: (path: string) => void;
+  onCopyPath: (path: string) => void;
   workspaceId?: string;
   boundDir: string;
   emptyText: string;
@@ -183,6 +187,7 @@ function FlatFileTree({ files, selectedPath, onSelect, workspaceId, boundDir, em
       onExpandedChange={setExpanded}
       selectedPath={selectedPath}
       onFileSelect={onSelect}
+      onCopyPath={onCopyPath}
       workspaceId={workspaceId}
       boundDir={boundDir}
     >
@@ -262,6 +267,9 @@ export function CommonEditorPanel({
   const [expandedPaths, setExpandedPaths] = useState<Set<string>>(() => loadExpandedPaths(panelKey));
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [importTargetPath, setImportTargetPath] = useState('');
+  const [linkFolderDialog, setLinkFolderDialog] = useState({ open: false, path: '' });
+  const [clearFilesDialogOpen, setClearFilesDialogOpen] = useState(false);
+  const [clearingFiles, setClearingFiles] = useState(false);
   const [nameDialog, setNameDialog] = useState<{ open: boolean; mode: 'file' | 'folder'; targetDir: string; value: string }>({ open: false, mode: 'file', targetDir: '', value: '' });
   const [renameDialog, setRenameDialog] = useState<{ open: boolean; path: string; value: string }>({ open: false, path: '', value: '' });
   const [moveDialog, setMoveDialog] = useState<{ open: boolean; path: string; value: string; mode: 'move' | 'copy' }>({ open: false, path: '', value: '', mode: 'move' });
@@ -366,6 +374,58 @@ export function CommonEditorPanel({
     });
     save(fullPath).then(() => { loadTree(); setNameDialog((p) => ({ ...p, open: false })); });
   }, [api, nameDialog, loadTree, workspaceId]);
+
+  const handleLinkFolderConfirm = useCallback(async () => {
+    const sourcePath = linkFolderDialog.path.trim();
+    if (!sourcePath || (!api?.linkFolder && !workspaceId)) return;
+    try {
+      if (api?.linkFolder) {
+        await api.linkFolder(sourcePath);
+      } else if (workspaceId) {
+        await sdk.editor.linkFolder(workspaceId, sourcePath);
+      }
+      setLinkFolderDialog({ open: false, path: '' });
+      await loadTree();
+      toast.success(t('linkFolderSuccess'));
+    } catch {
+      toast.error(t('linkFolderFailed'));
+    }
+  }, [api, linkFolderDialog.path, loadTree, t, workspaceId]);
+
+  const handleCopyPath = useCallback(async (path: string) => {
+    try {
+      const absolutePath = api?.resolveAbsolutePath
+        ? await api.resolveAbsolutePath(path)
+        : path
+          ? (boundDir ? `${boundDir.replace(/\/+$/, '')}/${path}` : path)
+          : boundDir;
+      await copyToClipboard(absolutePath);
+      toast.success(t('copied'));
+    } catch {
+      toast.error(t('copyPathFailed'));
+    }
+  }, [api, boundDir, t]);
+
+  const handleClearFilesConfirm = useCallback(async () => {
+    if (tree.length === 0 || (!api?.deletePath && !workspaceId)) return;
+    setClearingFiles(true);
+    try {
+      await Promise.all(tree.map((node) => (
+        api?.deletePath
+          ? api.deletePath(node.path)
+          : sdk.editor.deleteFile(workspaceId!, node.path)
+      )));
+      setSelectedPath(undefined);
+      setClearFilesDialogOpen(false);
+      await loadTree();
+      toast.success(t('clearFilesSuccess'));
+    } catch {
+      await loadTree();
+      toast.error(t('clearFilesFailed'));
+    } finally {
+      setClearingFiles(false);
+    }
+  }, [api, loadTree, t, tree, workspaceId]);
 
   const openNameDialog = useCallback((mode: 'file' | 'folder', targetDir: string) => {
     setNameDialog({ open: true, mode, targetDir, value: '' });
@@ -679,11 +739,14 @@ export function CommonEditorPanel({
                     {t('importFile')}
                   </DropdownMenuItem>
                 ) : null}
+                {api?.linkFolder || workspaceId ? (
+                  <DropdownMenuItem onClick={() => setLinkFolderDialog({ open: true, path: '' })}>
+                    <Link className="size-4" />
+                    {t('linkFolder')}
+                  </DropdownMenuItem>
+                ) : null}
                 <DropdownMenuItem onClick={() => {
-                  const relPath = selectedPath || '';
-                  const absPath = relPath ? (boundDir ? boundDir.replace(/\/+$/, '') + '/' + relPath : relPath) : boundDir;
-                  copyToClipboard(absPath);
-                  toast.success(t('copied'));
+                  void handleCopyPath(selectedPath || '');
                 }}>
                   <Copy className="size-4" />
                   {t('copyPath')}
@@ -695,6 +758,14 @@ export function CommonEditorPanel({
                 <DropdownMenuItem onClick={() => openNameDialog('folder', '')}>
                   <FolderPlus className="size-4" />
                   {t('newFolder')}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="text-destructive focus:text-destructive"
+                  disabled={tree.length === 0}
+                  onClick={() => setClearFilesDialogOpen(true)}
+                >
+                  <Trash2 className="size-4" />
+                  {t('clearFiles')}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -779,7 +850,7 @@ export function CommonEditorPanel({
                       variant={variant}
                       onDelete={handleDelete}
                       onImport={showImport && workspaceId ? (targetPath) => { setImportTargetPath(targetPath); setImportDialogOpen(true); } : undefined}
-                      onCopyPath={(path) => { copyToClipboard(boundDir ? boundDir.replace(/\/+$/, '') + '/' + path : path); toast.success(t('copied')); }}
+                      onCopyPath={(path) => { void handleCopyPath(path); }}
                       onCreateFile={(targetDir) => openNameDialog('file', targetDir)}
                       onCreateFolder={(targetDir) => openNameDialog('folder', targetDir)}
                       onRename={handleRename}
@@ -820,6 +891,7 @@ export function CommonEditorPanel({
                 })()}
                 selectedPath={selectedPath}
                 onSelect={(path) => { setSelectedPath(path); openFile(path); useMobilePanelStore.getState().setActivePanel('code-editor'); }}
+                onCopyPath={(path) => { void handleCopyPath(path); }}
                 workspaceId={workspaceId}
                 boundDir={boundDir}
                 emptyText={t('noFiles')}
@@ -878,6 +950,36 @@ export function CommonEditorPanel({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <Dialog open={linkFolderDialog.open} onOpenChange={(open) => setLinkFolderDialog((p) => ({ ...p, open }))}>
+        <DialogContent className="sm:max-w-[480px]">
+          <DialogHeader>
+            <DialogTitle>{t('linkFolder')}</DialogTitle>
+          </DialogHeader>
+          <FolderPicker
+            value={linkFolderDialog.path}
+            onChange={(path) => setLinkFolderDialog((p) => ({ ...p, path }))}
+            placeholder={t('linkFolderPlaceholder')}
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setLinkFolderDialog({ open: false, path: '' })}>{tc('cancel')}</Button>
+            <Button onClick={handleLinkFolderConfirm} disabled={!linkFolderDialog.path.trim()}>{t('linkFolder')}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <AlertDialog open={clearFilesDialogOpen} onOpenChange={setClearFilesDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('clearFilesTitle')}</AlertDialogTitle>
+            <AlertDialogDescription>{t('clearFilesDesc')}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={clearingFiles}>{tc('cancel')}</AlertDialogCancel>
+            <AlertDialogAction variant="destructive" disabled={clearingFiles} onClick={handleClearFilesConfirm}>
+              {clearingFiles ? t('clearingFiles') : t('clearFiles')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <Dialog open={renameDialog.open} onOpenChange={(v) => setRenameDialog((p) => ({ ...p, open: v }))}>
         <DialogContent className="sm:max-w-[400px]">
           <DialogHeader>

@@ -32,6 +32,10 @@ export function createDataApi(http: HttpClient) {
     copy: (srcPath: string, destPath: string): Promise<void> =>
       http.postVoid('/api/data/files/copy', { srcPath, destPath }),
 
+    /** 软链接外部文件夹到数据目录 */
+    linkFolder: (sourcePath: string): Promise<{ ok: true; path: string }> =>
+      http.post('/api/data/files/link-folder', { sourcePath }),
+
     /** 导出数据为 ZIP */
     exportZip: (): Promise<Response> =>
       http.raw('/api/data/export'),

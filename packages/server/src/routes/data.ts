@@ -11,6 +11,7 @@ import { getDataDir } from '../storage/json-store.js';
 import * as agentStore from '../storage/agent-store.js';
 import * as databaseStore from '../storage/database-store.js';
 import type { FileNode } from '@agent-spaces/shared';
+import { linkFolderToRoot } from '../services/file.js';
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 500 * 1024 * 1024 } });
@@ -48,7 +49,7 @@ async function readDataTree(relPath = '', depth = Infinity): Promise<FileNode[]>
     const entryRelPath = relPath ? `${relPath}/${entry.name}` : entry.name;
     const s = statSync(fullPath);
 
-    if (entry.isDirectory()) {
+    if (s.isDirectory()) {
       nodes.push({
         name: entry.name,
         path: entryRelPath,
@@ -189,6 +190,15 @@ router.post('/files/copy', async (req, res) => {
   } catch {
     res.status(500).json({ error: 'Failed to copy' });
   }
+});
+
+router.post('/files/link-folder', async (req, res) => {
+  const { sourcePath } = req.body as { sourcePath?: string };
+  if (!sourcePath) { res.status(400).json({ error: 'sourcePath is required' }); return; }
+
+  const path = await linkFolderToRoot(getDataDir(), sourcePath);
+  if (!path) { res.status(409).json({ error: 'Failed to link folder. The folder may be invalid or the target name already exists.' }); return; }
+  res.json({ ok: true, path });
 });
 
 // GET /api/data/export — stream zip backup
