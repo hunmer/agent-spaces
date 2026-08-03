@@ -903,7 +903,7 @@
     }
   ],
   "createdAt": 1782287549292,
-  "updatedAt": 1785603566368,
+  "updatedAt": 1785753266240,
   "published": false,
   "enabledPlugins": [
     "workflow.openai",
@@ -912,7 +912,7 @@
     "workflow.jimeng",
     "workflow.ai-image"
   ],
-  "lastRunAt": 1785752995999,
+  "lastRunAt": 1785753272336,
   "groups": [],
   "description": "文字生成图片",
   "variables": [],
@@ -920,5 +920,7 @@
     "nodeDisplayMode": "normal"
   },
   "lastOpenedAt": 1785603546810,
-  "pluginConfigSchemes": {}
+  "pluginConfigSchemes": {
+    "workflow.ai-image": "muskapi"
+  }
 }

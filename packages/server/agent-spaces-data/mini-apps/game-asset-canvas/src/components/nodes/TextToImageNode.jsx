@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback } from 'react';
 import { SearchSelect, Wand2 } from '@agent-spaces/ui';
 import NodeShell from './NodeShell';
 import { useNodeDialog } from './NodeDialogContext';
@@ -6,6 +6,7 @@ import PickedPromptBadge from './PickedPromptBadge';
 import CountAndConcurrency from './CountAndConcurrency';
 import { ASPECT_OPTIONS, DEFAULT_MODEL, MODEL_OPTIONS, NODE_TYPES, SIZE_OPTIONS, WORKFLOWS } from '../../utils/constants';
 import { hasPrompt } from '../../utils/prompts';
+import AutoResizeTextarea from '../AutoResizeTextarea';
 
 /**
  * 文字生成图片节点。
@@ -66,15 +67,6 @@ export default function TextToImageNode({ id, data, selected }) {
   const onGenerate = data?.onGenerate;
   const onCancelProcess = data?.onCancelProcess;
   const { openPicker, openOptimize } = useNodeDialog();
-  const promptRef = useRef(null);
-
-  // textarea 自动调整高度：重置为 auto 后按 scrollHeight 撑开，上限 300px 后出现滚动条。
-  useEffect(() => {
-    const el = promptRef.current;
-    if (!el) return;
-    el.style.height = 'auto';
-    el.style.height = `${Math.min(el.scrollHeight, 300)}px`;
-  }, [params.prompt]);
 
   const set = useCallback((patch) => {
     onUpdate?.({ params: { ...storedParams, ...patch } });
@@ -117,10 +109,9 @@ export default function TextToImageNode({ id, data, selected }) {
           </button>
         </div>
         <div className="relative">
-          <textarea
-            ref={promptRef}
-            className="min-h-[64px] w-full resize-none overflow-auto rounded-md border border-border bg-background px-2 py-1.5 pr-8 text-sm outline-none focus:border-primary"
-            style={{ maxHeight: 300 }}
+          <AutoResizeTextarea
+            minHeight={64}
+            className="w-full rounded-md border border-border bg-background px-2 py-1.5 pr-8 text-sm outline-none focus:border-primary"
             placeholder="描述要生成的游戏资产，如：像素风宝箱，俯视角，无背景"
             value={params.prompt || ''}
             onChange={(e) => set({ prompt: e.target.value })}

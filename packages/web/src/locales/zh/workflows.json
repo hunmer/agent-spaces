@@ -30,7 +30,8 @@
     "exportSelected": "导出选中",
     "deleteSelected": "删除选中",
     "confirm": "确定",
-    "cancel": "取消"
+    "cancel": "取消",
+    "openInNewWindow": "新窗口打开"
   },
   "card": {
     "edit": "编辑",

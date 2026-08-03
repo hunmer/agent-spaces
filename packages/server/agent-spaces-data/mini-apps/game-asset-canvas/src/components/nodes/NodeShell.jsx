@@ -1,7 +1,11 @@
 import { Children, isValidElement, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { NodeResizer, NodeToolbar, Position } from '@xyflow/react';
-import { Badge, BorderGlide, Images, Loader, RotateCcw, Upload, EyeOff } from '@agent-spaces/ui';
+import {
+  Badge, BorderGlide, ClipboardCopy, Download, FolderPlus, Images, Loader, RotateCcw, Upload, EyeOff, toast,
+  ContextMenu, ContextMenuContent, ContextMenuGroup, ContextMenuItem, ContextMenuLabel, ContextMenuSeparator, ContextMenuTrigger,
+} from '@agent-spaces/ui';
 import { NODE_META, NODE_TYPES } from '../../utils/constants';
+import { downloadImages } from '../../utils/export';
 import useViewportActivation from '../../hooks/useViewportActivation';
 import ImageResult from './ImageResult';
 import SpinePreviewViewer from './SpinePreviewViewer';
@@ -17,6 +21,72 @@ const STATUS_TEXT = {
   done: '完成',
   error: '出错',
 };
+
+/**
+ * 从右键事件 target 向上找带 data-image-selection-url 的图片元素。
+ * 输入图（FileUpload）和输出图（ImageResult）都挂这个属性，统一识别。
+ * 返回图片 url 或 null。
+ */
+function resolveContextImageUrl(eventTarget) {
+  if (!eventTarget?.closest) return null;
+  const el = eventTarget.closest('[data-image-selection-url]');
+  const url = el?.dataset?.imageSelectionUrl;
+  return url || null;
+}
+
+/**
+ * 图片右键菜单内容：添加到素材库 / 下载图片 / 复制图片地址。
+ * 复用 @agent-spaces/ui 的 ContextMenuItem，与画布右键菜单风格统一。
+ */
+function ImageContextMenuItems({ url, onAddToAssets }) {
+  const [downloading, setDownloading] = useState(false);
+
+  const handleDownload = async () => {
+    if (downloading) return;
+    setDownloading(true);
+    try {
+      const { ok, total, failed } = await downloadImages([url]);
+      if (failed > 0) toast.warning(`下载失败：${failed}/${total}`);
+      else toast.success('已下载图片');
+    } catch (err) {
+      toast.error(err?.message || '下载失败');
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  const handleCopyUrl = async () => {
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success('已复制图片地址');
+    } catch {
+      toast.error('复制失败');
+    }
+  };
+
+  const handleAddToAssets = () => {
+    onAddToAssets?.({ url });
+  };
+
+  return (
+    <ContextMenuGroup>
+      <ContextMenuLabel>图片</ContextMenuLabel>
+      <ContextMenuSeparator />
+      <ContextMenuItem onClick={handleAddToAssets}>
+        <FolderPlus />
+        添加到素材库
+      </ContextMenuItem>
+      <ContextMenuItem onClick={handleDownload} disabled={downloading}>
+        {downloading ? <Loader className="animate-spin" /> : <Download />}
+        下载图片
+      </ContextMenuItem>
+      <ContextMenuItem onClick={handleCopyUrl}>
+        <ClipboardCopy />
+        复制图片地址
+      </ContextMenuItem>
+    </ContextMenuGroup>
+  );
+}
 
 function isNodeFooterAction(child) {
   if (!isValidElement(child) || child.props?.type !== 'button') return false;
@@ -120,6 +190,26 @@ export default function NodeShell({
   }, []);
   const rootRef = useRef(null);
   const footerRef = useRef(null);
+  // 图片右键菜单：右键命中图片缩略图才弹出 ContextMenu（与画布右键菜单同款组件、同款风格）；
+  // 命中节点空白/标题等非图片区域则放行浏览器原生菜单。
+  // urlRef 存当前右键命中的图片 url，避免 ContextMenuItem onClick 闭包读旧值。
+  const contextImageUrlRef = useRef(null);
+  const [contextImageOpen, setContextImageOpen] = useState(false);
+  const handleContextMenuOpenChange = useCallback((open, eventDetails) => {
+    if (!open) {
+      contextImageUrlRef.current = null;
+      setContextImageOpen(false);
+      return;
+    }
+    const url = resolveContextImageUrl(eventDetails.event?.target);
+    if (!url) {
+      // 未命中图片：cancel 放行给浏览器原生菜单（与画布右键菜单一致）
+      eventDetails.cancel();
+      return;
+    }
+    contextImageUrlRef.current = url;
+    setContextImageOpen(true);
+  }, []);
   const childItems = Children.toArray(children);
   let footerIndex = -1;
   for (let i = childItems.length - 1; i >= 0; i -= 1) {
@@ -259,7 +349,8 @@ export default function NodeShell({
 
   if (outputPreviewEnabled) {
     return (
-      <>
+      <ContextMenu onOpenChange={handleContextMenuOpenChange}>
+      <ContextMenuTrigger render={<div className="contents" />}>
       {/* 顶部行：版本数字按钮（可滚动）+ 类型 Badge。 */}
       <div className={`nodrag nopan relative z-20 mb-1 flex items-center gap-1.5 px-1 ${showFullNode ? '' : 'invisible'}`} style={{ width: nodeWidth || undefined }}>
         {Array.isArray(data?.versions) && data.versions.length > 1 && data?.onSwitchVersion && (
@@ -377,12 +468,22 @@ export default function NodeShell({
           />
         )}
       </div>
-      </>
+      </ContextMenuTrigger>
+      {contextImageOpen && contextImageUrlRef.current && (
+        <ContextMenuContent className="w-52">
+          <ImageContextMenuItems
+            url={contextImageUrlRef.current}
+            onAddToAssets={data?.onAddToAssets}
+          />
+        </ContextMenuContent>
+      )}
+      </ContextMenu>
     );
   }
 
   return (
-    <>
+    <ContextMenu onOpenChange={handleContextMenuOpenChange}>
+    <ContextMenuTrigger render={<div className="contents" />}>
     <div
       ref={rootRef}
       className="relative h-full w-full overflow-visible"
@@ -508,13 +609,24 @@ export default function NodeShell({
       )}
     </div>
     {/* 产出卡片：节点外部下方独立卡片，不随表单滚动，不受 resize 钳制。 */}
-    <div className={showFullNode ? '' : 'invisible pointer-events-none'}>
+    <div
+      className={showFullNode ? '' : 'invisible pointer-events-none'}
+    >
       <NodeOutput
         {...outputProps}
         width={nodeWidth || undefined}
       />
     </div>
-    </>
+    </ContextMenuTrigger>
+    {contextImageOpen && contextImageUrlRef.current && (
+      <ContextMenuContent className="w-52">
+        <ImageContextMenuItems
+          url={contextImageUrlRef.current}
+          onAddToAssets={data?.onAddToAssets}
+        />
+      </ContextMenuContent>
+    )}
+    </ContextMenu>
   );
 }
 

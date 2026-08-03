@@ -10,6 +10,7 @@ import { normalizeImageUrls, resolveReferenceImages } from '../utils/workflow';
 import PromptPickerDialog from './PromptPickerDialog';
 import PickedPromptBadge from './nodes/PickedPromptBadge';
 import FileUpload from './FileUpload';
+import AutoResizeTextarea from './AutoResizeTextarea';
 
 /**
  * 节点表单弹窗：从右侧【新增节点】tab 点文生图/编辑图片旁的按钮打开，
@@ -104,8 +105,9 @@ export default function NodeFormDialog({ open, nodeType, initialImages, settings
                 📋 提示词库
               </button>
             </div>
-            <textarea
-              className="min-h-[72px] w-full resize-y rounded-md border border-border bg-background px-2 py-1.5 text-sm outline-none focus:border-primary"
+            <AutoResizeTextarea
+              minHeight={72}
+              className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm outline-none focus:border-primary"
               placeholder={isEdit ? '描述如何编辑图片…' : '描述要生成的游戏资产…'}
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}

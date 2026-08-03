@@ -5,6 +5,7 @@ import PickedPromptBadge from './PickedPromptBadge';
 import CountAndConcurrency from './CountAndConcurrency';
 import { NODE_TYPES, VOICE_PROVIDER_OPTIONS, WORKFLOWS } from '../../utils/constants';
 import { hasPrompt } from '../../utils/prompts';
+import AutoResizeTextarea from '../AutoResizeTextarea';
 
 /**
  * 文字生成语音节点（text_to_voice 工作流）。
@@ -93,8 +94,9 @@ export default function TextToVoiceNode({ id, data, selected }) {
             📋 提示词库
           </button>
         </div>
-        <textarea
-          className="min-h-[72px] max-h-[300px] w-full resize-y rounded-md border border-border bg-background px-2 py-1.5 text-sm outline-none focus:border-primary"
+        <AutoResizeTextarea
+          minHeight={72}
+          className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm outline-none focus:border-primary"
           placeholder="输入要合成语音的文本，如：欢迎来到这片神秘大陆……"
           value={params.prompt || ''}
           onChange={(e) => set({ prompt: e.target.value })}

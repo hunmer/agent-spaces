@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
 import { NODE_TYPES } from '../../utils/constants';
 import EditableNodeTitle from './EditableNodeTitle';
+import AutoResizeTextarea from '../AutoResizeTextarea';
 
 /**
  * 便签节点：纯文本批注，不参与工作流，无 Handle。
@@ -30,8 +31,9 @@ export default function NoteNode({ id, data }) {
           inputClassName="h-5 w-full rounded px-1 text-xs font-semibold"
         />
       </div>
-      <textarea
-        className={`nodrag nopan nowheel min-h-[60px] max-h-[300px] w-full resize-y bg-transparent px-2.5 py-1.5 text-sm text-foreground outline-none placeholder:text-muted-foreground/60 ${showFullNode ? '' : 'invisible pointer-events-none'}`}
+      <AutoResizeTextarea
+        minHeight={60}
+        className={`nodrag nopan nowheel w-full bg-transparent px-2.5 py-1.5 text-sm text-foreground outline-none placeholder:text-muted-foreground/60 ${showFullNode ? '' : 'invisible pointer-events-none'}`}
         placeholder="写点备注…（如：这组资产用于森林关卡）"
         value={text}
         onChange={handleChange}

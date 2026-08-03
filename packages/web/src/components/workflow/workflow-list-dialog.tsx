@@ -7,7 +7,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Plus, Settings } from 'lucide-react';
+import { ExternalLink, Plus, Settings } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import {
   WorkflowFilterToolbar,
@@ -168,6 +168,18 @@ export function WorkflowListDialog({
                       <Settings className="h-3.5 w-3.5" />
                     </Button>
                   ) : null}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
+                    title={t('page.openInNewWindow')}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      window.open(`/workflows/${workflow.id}`, '_blank', 'noopener,noreferrer');
+                    }}
+                  >
+                    <ExternalLink className="h-3.5 w-3.5" />
+                  </Button>
                 </div>
               </div>
             );

@@ -4,6 +4,7 @@ import NodeShell from './NodeShell';
 import CountAndConcurrency from './CountAndConcurrency';
 import { NODE_TYPES } from '../../utils/constants';
 import { runWorkflow, normalizeImageUrls } from '../../utils/workflow';
+import AutoResizeTextarea from '../AutoResizeTextarea';
 
 // 宿主侧组件（已通过 ui-exports 暴露）
 const { MonacoCodeEditor } = window.AgentSpacesUI || {};
@@ -277,8 +278,9 @@ export default function WorkflowRunnerNode({ id, data, selected }) {
               }}
             />
           ) : (
-            <textarea
-              className="min-h-[120px] max-h-[300px] w-full resize-y bg-background p-2 font-mono text-xs outline-none"
+            <AutoResizeTextarea
+              minHeight={120}
+              className="w-full bg-background p-2 font-mono text-xs outline-none"
               placeholder='{"prompt":"..."}'
               value={params.inputText || ''}
               onChange={(e) => set({ inputText: e.target.value })}

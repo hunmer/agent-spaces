@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { FileUpload, Loader2, Spline, X } from '@agent-spaces/ui';
+import { FileUpload, Loader2, Slider, Spline, X } from '@agent-spaces/ui';
 import {
   GROUP_EXECUTION_MODES,
   MAX_GROUP_EXECUTION_COUNT,
@@ -43,6 +43,12 @@ export default function GroupExecutionToolbar({
 
   const commitCount = () => {
     const next = clampExecutionCount(countDraft);
+    setCountDraft(String(next));
+    if (next !== target) onSetCount(group.id, next);
+  };
+
+  const commitSliderCount = (value) => {
+    const next = clampExecutionCount(value);
     setCountDraft(String(next));
     if (next !== target) onSetCount(group.id, next);
   };
@@ -124,11 +130,30 @@ export default function GroupExecutionToolbar({
             )}
           </>
         )}
-        <GroupConnectButton
-          groupId={group.id}
-          disabled={busy || group.locked}
-          onConnect={onConnectGroup}
-        />
+        {mode === GROUP_EXECUTION_MODES.count && (
+          <label
+            className="ml-auto flex w-28 shrink-0 items-center gap-1.5 text-[10px] text-muted-foreground"
+            title={`一次批量处理 ${clampExecutionCount(countDraft)} 次`}
+          >
+            <span className="shrink-0 tabular-nums">批量 {clampExecutionCount(countDraft)}</span>
+            <Slider
+              min={1}
+              max={MAX_GROUP_EXECUTION_COUNT}
+              step={1}
+              value={clampExecutionCount(countDraft)}
+              disabled={busy}
+              onValueChange={(value) => setCountDraft(String(clampExecutionCount(value)))}
+              onValueCommitted={commitSliderCount}
+            />
+          </label>
+        )}
+        <div className={mode === GROUP_EXECUTION_MODES.count ? 'shrink-0' : 'ml-auto shrink-0'}>
+          <GroupConnectButton
+            groupId={group.id}
+            disabled={busy || group.locked}
+            onConnect={onConnectGroup}
+          />
+        </div>
       </div>
 
       {mode === GROUP_EXECUTION_MODES.count ? (
@@ -274,7 +299,7 @@ function GroupConnectButton({ groupId, disabled, onConnect }) {
       data-group-connect-id={groupId}
       disabled={disabled}
       onPointerDown={handlePointerDown}
-      className="ml-auto flex h-6 w-6 shrink-0 cursor-crosshair items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-primary disabled:pointer-events-none disabled:opacity-40"
+      className="flex h-6 w-6 shrink-0 cursor-crosshair items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-primary disabled:pointer-events-none disabled:opacity-40"
     >
       <Spline className="h-3.5 w-3.5" />
     </button>

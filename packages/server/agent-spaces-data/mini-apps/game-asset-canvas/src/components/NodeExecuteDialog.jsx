@@ -13,6 +13,7 @@ import {
   Button,
 } from '@agent-spaces/ui';
 import ParamField from './nodes/ParamField';
+import AutoResizeTextarea from './AutoResizeTextarea';
 import {
   ASPECT_OPTIONS, CUTOUT_MODES, CUTOUT_PARAMS, DEFAULT_CUTOUT_MODE, DEFAULT_MODEL,
   DEFAULT_VIDEO_MODEL, IMAGE_PROCESSORS, NODE_META, NODE_TYPES,
@@ -198,8 +199,9 @@ export default function NodeExecuteDialog({ open, nodeType, onClose, executions,
           {['generate-image', 'voice', 'video'].includes(kind) && (
             <div className="flex flex-col gap-1.5">
               <Label className="text-xs font-medium text-muted-foreground">提示词</Label>
-              <textarea
-                className="min-h-[72px] w-full resize-y rounded-md border border-border bg-background px-2 py-1.5 text-sm outline-none focus:border-primary"
+              <AutoResizeTextarea
+                minHeight={72}
+                className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm outline-none focus:border-primary"
                 placeholder={isEdit ? '描述如何编辑图片…' : '描述要生成的内容…'}
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}

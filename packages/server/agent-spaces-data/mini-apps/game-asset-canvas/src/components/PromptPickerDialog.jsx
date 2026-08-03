@@ -9,6 +9,7 @@ import { resolveReferenceImages } from '../utils/workflow';
 import { useCanvasGallery } from '../utils/canvas-gallery';
 import usePromptLibrary from '../hooks/usePromptLibrary';
 import ImageHoverCard from './ImageHoverCard';
+import AutoResizeTextarea from './AutoResizeTextarea';
 
 /**
  * 提示词选择器：内置库 + 用户自定义库合并展示。
@@ -269,8 +270,9 @@ function PromptEditor({ initial, scene, onSave, onCancel }) {
           onChange={(e) => setDesc(e.target.value)}
         />
       </div>
-      <textarea
-        className="min-h-[72px] w-full resize-y rounded-md border border-border bg-background px-2 py-1.5 text-sm outline-none focus:border-primary"
+      <AutoResizeTextarea
+        minHeight={72}
+        className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm outline-none focus:border-primary"
         placeholder="提示词正文 *"
         value={prompt}
         onChange={(e) => setPrompt(e.target.value)}

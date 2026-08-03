@@ -217,7 +217,7 @@ export function PromptTextEditor({
     ],
     editorProps: {
       attributes: {
-        class: cn('prompt-editor-body max-h-[300px] overflow-y-auto', className),
+        class: cn('prompt-editor-body min-h-[64px] max-h-[300px] overflow-y-auto', className),
       },
     },
     content: value || '',

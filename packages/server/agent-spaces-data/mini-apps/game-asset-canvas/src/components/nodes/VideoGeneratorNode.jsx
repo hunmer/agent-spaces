@@ -12,6 +12,7 @@ import {
 } from '../../utils/constants';
 import { dedupeUrls, normalizeImageUrls } from '../../utils/workflow';
 import { hasPrompt } from '../../utils/prompts';
+import AutoResizeTextarea from '../AutoResizeTextarea';
 
 /**
  * 生成视频节点（video_generator 工作流）。
@@ -181,8 +182,9 @@ export default function VideoGeneratorNode({ id, data, selected }) {
             📋 提示词库
           </button>
         </div>
-        <textarea
-          className="min-h-[64px] max-h-[300px] w-full resize-y rounded-md border border-border bg-background px-2 py-1.5 text-sm outline-none focus:border-primary"
+        <AutoResizeTextarea
+          minHeight={64}
+          className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm outline-none focus:border-primary"
           placeholder="描述要生成的视频，如：森林精灵转动魔杖，金色粒子飞溅"
           value={params.prompt || ''}
           onChange={(e) => set({ prompt: e.target.value })}

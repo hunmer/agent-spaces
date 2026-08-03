@@ -30,7 +30,8 @@
     "exportSelected": "Export",
     "deleteSelected": "Delete",
     "confirm": "Confirm",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "openInNewWindow": "Open in new window"
   },
   "card": {
     "edit": "Edit",
