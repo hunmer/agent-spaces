@@ -11,6 +11,10 @@
 - Phase 12-15 完成：组拖线、过滤对话框、持久化、当前输出自动同步、断开/删源恢复、循环保护和持久连线展示均已实现。
 - 开始 Phase 16：根据用户附件定位过滤对话框关闭状态的 null.filter 崩溃。
 - Phase 16 完成：新增空状态过滤器解析和回归断言；8 项绑定测试、2 文件编译及 diff check 全部通过。
+- 开始 Phase 17：确认 mini-app renderer 的 react-dom 映射缺少 createPortal，准备移除该运行时依赖。
+- Phase 17 完成：移除 react-dom/createPortal，增加拖线起止调试日志和 renderer 兼容回归测试；9 项测试、工具栏编译及 diff check 通过。
+- 开始 Phase 18：修复目标组工具栏连线手柄无法作为拖线落点的问题。
+- Phase 18 完成：目标输入手柄增加 6px 命中容差，共享组输出手柄接入 onConnectGroup；10 项测试、共享 TSX/mini-app JSX 编译及 diff check 通过。
 - 已阅读 handoff 与相关宿主/mini-app 源码。
 - 已确定采用配置驱动的通用 Host Slot + React Portal 方案。
 - 已创建任务计划，开始补齐端到端数据路径。

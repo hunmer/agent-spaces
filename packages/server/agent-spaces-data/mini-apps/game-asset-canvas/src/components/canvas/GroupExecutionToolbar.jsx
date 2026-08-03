@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
 import { FileUpload, Loader2, Spline, X } from '@agent-spaces/ui';
 import {
   GROUP_EXECUTION_MODES,
@@ -224,35 +223,39 @@ export default function GroupExecutionToolbar({
 }
 
 function GroupConnectButton({ groupId, disabled, onConnect }) {
-  const [drag, setDrag] = useState(null);
-  const startRef = useRef(null);
+  const cleanupRef = useRef(null);
+
+  useEffect(() => () => cleanupRef.current?.(), []);
 
   const handlePointerDown = (event) => {
     if (!onConnect || disabled) return;
+    cleanupRef.current?.();
     event.preventDefault();
     event.stopPropagation();
     const pointerId = event.pointerId;
     const element = event.currentTarget;
     const rect = element.getBoundingClientRect();
     const start = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
-    startRef.current = start;
-    setDrag(start);
+    const preview = createGroupConnectPreview(start);
+    console.debug('[GroupOutputBindingDebug] drag start', { sourceGroupId: groupId });
     element.setPointerCapture(pointerId);
 
     const handlePointerMove = (moveEvent) => {
-      if (moveEvent.pointerId === pointerId) setDrag({ x: moveEvent.clientX, y: moveEvent.clientY });
+      if (moveEvent.pointerId === pointerId) preview.update(moveEvent.clientX, moveEvent.clientY);
     };
     const cleanup = () => {
       if (element.hasPointerCapture(pointerId)) element.releasePointerCapture(pointerId);
       document.removeEventListener('pointermove', handlePointerMove);
       document.removeEventListener('pointerup', handlePointerUp);
       document.removeEventListener('pointercancel', handlePointerCancel);
-      setDrag(null);
+      preview.remove();
+      cleanupRef.current = null;
     };
     const handlePointerUp = (upEvent) => {
       if (upEvent.pointerId !== pointerId) return;
       const targetGroupId = getGroupAtScreenPoint(upEvent.clientX, upEvent.clientY);
       cleanup();
+      console.debug('[GroupOutputBindingDebug] drag end', { sourceGroupId: groupId, targetGroupId });
       if (targetGroupId && targetGroupId !== groupId) onConnect(groupId, targetGroupId);
     };
     const handlePointerCancel = (cancelEvent) => {
@@ -261,39 +264,64 @@ function GroupConnectButton({ groupId, disabled, onConnect }) {
     document.addEventListener('pointermove', handlePointerMove);
     document.addEventListener('pointerup', handlePointerUp);
     document.addEventListener('pointercancel', handlePointerCancel);
+    cleanupRef.current = cleanup;
   };
 
   return (
-    <>
-      <button
-        type="button"
-        title="拖拽连接到目标分组（把当前输出作为上传素材）"
-        disabled={disabled}
-        onPointerDown={handlePointerDown}
-        className="ml-auto flex h-6 w-6 shrink-0 cursor-crosshair items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-primary disabled:pointer-events-none disabled:opacity-40"
-      >
-        <Spline className="h-3.5 w-3.5" />
-      </button>
-      {drag && startRef.current && createPortal(
-        <svg className="pointer-events-none fixed inset-0 z-[9999] h-full w-full">
-          <line
-            x1={startRef.current.x}
-            y1={startRef.current.y}
-            x2={drag.x}
-            y2={drag.y}
-            stroke="var(--primary, hsl(var(--primary)))"
-            strokeWidth={2}
-            strokeDasharray="5,5"
-          />
-          <circle cx={drag.x} cy={drag.y} r={4} fill="var(--primary, hsl(var(--primary)))" />
-        </svg>,
-        document.body,
-      )}
-    </>
+    <button
+      type="button"
+      title="拖出本组输出；也可接收其他分组拖入"
+      data-group-connect-id={groupId}
+      disabled={disabled}
+      onPointerDown={handlePointerDown}
+      className="ml-auto flex h-6 w-6 shrink-0 cursor-crosshair items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-primary disabled:pointer-events-none disabled:opacity-40"
+    >
+      <Spline className="h-3.5 w-3.5" />
+    </button>
   );
 }
 
+function createGroupConnectPreview(start) {
+  const namespace = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(namespace, 'svg');
+  const line = document.createElementNS(namespace, 'line');
+  const endpoint = document.createElementNS(namespace, 'circle');
+  Object.assign(svg.style, {
+    position: 'fixed', inset: '0', width: '100%', height: '100%',
+    zIndex: '9999', pointerEvents: 'none',
+  });
+  line.setAttribute('x1', String(start.x));
+  line.setAttribute('y1', String(start.y));
+  line.setAttribute('x2', String(start.x));
+  line.setAttribute('y2', String(start.y));
+  line.setAttribute('stroke', 'var(--primary, currentColor)');
+  line.setAttribute('stroke-width', '2');
+  line.setAttribute('stroke-dasharray', '5,5');
+  endpoint.setAttribute('cx', String(start.x));
+  endpoint.setAttribute('cy', String(start.y));
+  endpoint.setAttribute('r', '4');
+  endpoint.setAttribute('fill', 'var(--primary, currentColor)');
+  svg.append(line, endpoint);
+  document.body.appendChild(svg);
+  return {
+    update(x, y) {
+      line.setAttribute('x2', String(x));
+      line.setAttribute('y2', String(y));
+      endpoint.setAttribute('cx', String(x));
+      endpoint.setAttribute('cy', String(y));
+    },
+    remove() { svg.remove(); },
+  };
+}
+
 function getGroupAtScreenPoint(x, y) {
+  const handleTarget = Array.from(document.querySelectorAll('[data-group-connect-id]'))
+    .map((element) => ({ element, rect: element.getBoundingClientRect() }))
+    .find(({ rect }) => (
+      x >= rect.left - 6 && x <= rect.right + 6 && y >= rect.top - 6 && y <= rect.bottom + 6
+    ));
+  if (handleTarget) return handleTarget.element.getAttribute('data-group-connect-id');
+
   return Array.from(document.querySelectorAll('[data-workflow-group-id]'))
     .map((element) => ({ element, rect: element.getBoundingClientRect() }))
     .filter(({ rect }) => x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom)

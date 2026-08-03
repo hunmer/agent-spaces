@@ -55,7 +55,7 @@ import useNodeCrud from '../hooks/useNodeCrud';
 import useNodeExecutions from '../hooks/useNodeExecutions';
 import useLastParams from '../hooks/useLastParams';
 import { runCutout } from '../utils/cutout';
-import { generateImageResources } from '../utils/workflow';
+import { generateImageResources, normalizeImageUrls } from '../utils/workflow';
 import { WORKFLOWS } from '../utils/constants';
 import useCanvasAgentRpc, { buildNodeExecution } from '../hooks/useCanvasAgentRpc';
 import useDecoratedNodes from '../hooks/useDecoratedNodes';
@@ -800,6 +800,36 @@ export default function Canvas({ hostConfig }) {
     addImageNodesGrouped(list, { source: 'assets', groupName: opts.groupName || '' });
   }, [addImageNodesFromUrls, addImageNodesGrouped]);
 
+  // —— 文件菜单「导入图片」：把本地图片文件上传到后端拿 http URL，每张图建一个 imageDisplay 节点。
+  // 上传走 window.AgentSpaces.uploadFile（返回 {url}），URL 用 normalizeImageUrls 补全 origin。
+  const handleImportImages = useCallback(async (files) => {
+    const AS = window.AgentSpaces;
+    if (!AS?.uploadFile) {
+      throw new Error('宿主 uploadFile 能力不可用');
+    }
+    let ok = 0;
+    let failed = 0;
+    const urls = [];
+    await Promise.all(files.map(async (file) => {
+      try {
+        const res = await AS.uploadFile(file);
+        const url = normalizeImageUrls(res?.url);
+        if (url) {
+          urls.push(url);
+          ok += 1;
+        } else {
+          failed += 1;
+        }
+      } catch {
+        failed += 1;
+      }
+    }));
+    if (urls.length) {
+      addImageNodesFromUrls(urls, { source: 'import' });
+    }
+    return { ok, failed };
+  }, [addImageNodesFromUrls]);
+
   // —— 生成记录「插入到画布」菜单：包装 crud.handleInsertHistory 支持分组 ——
   // opts.group=true 时，先建节点（crud.handleInsertHistory 返回新节点 id），再建一条 WorkflowGroup。
   const handleInsertHistoryWithMenu = useCallback((item, opts = {}) => {
@@ -1265,6 +1295,7 @@ export default function Canvas({ hostConfig }) {
             onImportAssetLibrary={handleImportAssetLibrary}
             onExportWorkspace={handleExportWorkspace}
             onImportWorkspace={handleImportWorkspace}
+            onImportImages={handleImportImages}
             onOpenSettings={() => setSettingsOpen(true)}
             onOpenPromptManager={() => setPromptManagerOpen(true)}
             onBackfillThumbnails={handleBackfillThumbnails}

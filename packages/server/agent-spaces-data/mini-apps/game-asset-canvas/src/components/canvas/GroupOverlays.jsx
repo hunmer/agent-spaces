@@ -76,6 +76,12 @@ export default function GroupOverlays({
             onAutoLayout={onAutoLayout}
             onDragPreviewChange={setDragPreview}
             onConnect={onConnect}
+            onConnectGroup={(sourceGroupId, targetGroupId) => {
+              console.debug('[GroupOutputBindingDebug] shared group handle connected', {
+                sourceGroupId, targetGroupId,
+              });
+              setBindingDialog({ sourceGroupId, targetGroupId });
+            }}
             screenDeltaToFlowDelta={screenDeltaToFlowDelta}
           />
           {(selectedGroupId === group.id || hasConfiguredExecution(group)) && (

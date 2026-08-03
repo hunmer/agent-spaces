@@ -17,6 +17,10 @@
 - 验证结果：9 项 Node 测试通过，5 个受影响 JSX/Hook 文件 Babel 编译通过，`git diff --check` 通过，开发服务 3000 返回 HTTP 200。
 - 用户运行时报错 `Cannot read properties of null (reading 'filter')`：对话框关闭时 `currentBinding?.sourceGroupId` 和 `state?.sourceGroupId` 均为 undefined，宽松分支条件意外成立，随后读取 null 的 `filter`。
 - 修复为 `resolveGroupOutputFilter` 统一处理空绑定、来源不匹配和正常绑定；关闭状态稳定返回 all 默认过滤器。
+- 第二次运行时错误来自宿主 `resolveExternalModule`：`react-dom` 与 `react-dom/client` 都返回从 `react-dom/client` 导入的 ReactDOM，因此 mini-app 的命名导出 `createPortal` 实际为 undefined。
+- 最终方案不修改宿主：拖线期间用 `document.createElementNS` 创建 body 级 SVG，pointerup/cancel/unmount 统一清理；保留 fixed 屏幕坐标效果。
+- 用户实际操作是从来源组连线手柄拖到目标组相同手柄；工具栏位于 group overlay 主体上方，原矩形命中不包含目标手柄区域，因此 drag end 日志中的 targetGroupId 会为空。
+- 进一步确认来源是宿主 `WorkflowGroupOverlay` 的通用输出手柄；已新增 `onConnectGroup` 协议，松手时优先识别 mini-app 的 `data-group-connect-id` 输入手柄，再回退普通节点连接。
 
 - `MiniAppPreview` 当前用 `chatDockOpen` 控制宿主外层 `ResizablePanel`，其中渲染 `MiniAppAgentDock`。
 - React mini-app 由同页面内独立 React Root 渲染，不是 iframe，因此宿主可以用 React Portal 挂载到 mini-app 提供的 DOM 节点。

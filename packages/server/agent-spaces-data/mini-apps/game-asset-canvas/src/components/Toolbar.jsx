@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import {
   Menubar,
   MenubarMenu,
@@ -33,14 +33,14 @@ import {
  * Menubar 布局：
  *   文件▾(导出[JSON/素材库]/导入[JSON/素材库]) | 画布▾(自动布局[横向/垂直]/清空) | 工具▾(...) | 选择▾(全选/反选/取消选择)
  *
- * @param {{ onClear, onAutoLayout, onExport, onExportAssetLibrary, onExportWorkspace, onImport, onImportAssetLibrary, onImportWorkspace, onOpenSettings, onOpenPromptManager, onBackfillThumbnails,
+ * @param {{ onClear, onAutoLayout, onExport, onExportAssetLibrary, onExportWorkspace, onImport, onImportAssetLibrary, onImportWorkspace, onImportImages, onOpenSettings, onOpenPromptManager, onBackfillThumbnails,
  *           edgePathStyle, edgeLineStyle, edgePathStyles, edgeLineStyles, onEdgePathStyleChange, onEdgeLineStyleChange,
  *           bgVariant, handlePosition, snapEnabled, onCanvasStyleChange,
  *           onSelectAll, onInvertSelect, onClearSelection,
  *           operationHistory, onUndo, onRedo, canUndo, canRedo, queueSlot, workspaceSlot }} props
  */
 export default function Toolbar({
-  onClear, onAutoLayout, onExport, onExportAssetLibrary, onExportWorkspace, onImport, onImportAssetLibrary, onImportWorkspace, onOpenSettings, onOpenPromptManager, onBackfillThumbnails,
+  onClear, onAutoLayout, onExport, onExportAssetLibrary, onExportWorkspace, onImport, onImportAssetLibrary, onImportWorkspace, onImportImages, onOpenSettings, onOpenPromptManager, onBackfillThumbnails,
   edgePathStyle, edgeLineStyle, edgePathStyles, edgeLineStyles, onEdgePathStyleChange, onEdgeLineStyleChange,
   bgVariant, handlePosition, snapEnabled, onCanvasStyleChange,
   onSelectAll, onInvertSelect, onClearSelection,
@@ -54,6 +54,9 @@ export default function Toolbar({
   const [debugBusy, setDebugBusy] = useState(false);
   // 清空画布需二次确认，防止误触清空全部节点。
   const [confirmClear, setConfirmClear] = useState(false);
+  // 隐藏的图片文件 input：菜单项「导入图片」点击后触发它，支持多选。
+  const importImagesInputRef = useRef(null);
+  const [importingImages, setImportingImages] = useState(false);
 
   // 导出素材库：toast.loading 实时反馈进度，完成/失败切 success/error。
   // 空库/全部失败由工具函数抛错，这里 catch 后 toast.error。
@@ -140,6 +143,13 @@ export default function Toolbar({
       setWorkspaceBusy(false);
     }
   };
+  // 导入图片：触发隐藏 input 选文件（多选图片）→ 调用方上传并加节点。
+  // 失败/取消静默，成功后由 onImportImages 决定后续 toast（上传逻辑在 Canvas 层）。
+  const handleImportImagesPick = () => {
+    if (importingImages || !onImportImages) return;
+    importImagesInputRef.current?.click();
+  };
+
   // 像素编辑器：新窗口打开本地 Pixelorama web 版（与节点内编辑器同源，独立全屏编辑，支持像素绘制与动画帧）。
   // 用 window.location.origin 拼，兼容 dev(3000)/dist(3100)。
   const openPixelEditor = () => {
@@ -213,6 +223,10 @@ export default function Toolbar({
                 <MenubarSeparator />
                 <MenubarItem disabled={workspaceBusy} onClick={handleImportWorkspace}>
                   {workspaceBusy ? '导入工作区中…' : '导入工作区'}
+                </MenubarItem>
+                <MenubarSeparator />
+                <MenubarItem disabled={importingImages || !onImportImages} onClick={handleImportImagesPick}>
+                  {importingImages ? '导入图片中…' : '导入图片'}
                 </MenubarItem>
               </MenubarSubContent>
             </MenubarSub>
@@ -320,6 +334,36 @@ export default function Toolbar({
           </MenubarContent>
         </MenubarMenu>
       </Menubar>
+
+      <input
+        ref={importImagesInputRef}
+        type="file"
+        accept="image/*"
+        multiple
+        className="hidden"
+        onChange={async (e) => {
+          const files = Array.from(e.target.files || []);
+          // 重置 value 以便同一文件可重复选择
+          e.target.value = '';
+          if (!files.length || !onImportImages) return;
+          setImportingImages(true);
+          const toastId = toast.loading(`正在导入 ${files.length} 张图片…`);
+          try {
+            const stats = await onImportImages(files);
+            if (stats.ok > 0 && stats.failed === 0) {
+              toast.success(`导入完成：共 ${stats.ok} 张`, { id: toastId });
+            } else if (stats.ok > 0) {
+              toast.success(`导入完成：成功 ${stats.ok} 张，失败 ${stats.failed} 张`, { id: toastId });
+            } else {
+              toast.error(`导入失败：${stats.failed} 张`, { id: toastId });
+            }
+          } catch (err) {
+            toast.error(`导入图片失败：${err?.message || err}`, { id: toastId });
+          } finally {
+            setImportingImages(false);
+          }
+        }}
+      />
 
       <div className="ml-auto flex items-center gap-2">
         {queueSlot}

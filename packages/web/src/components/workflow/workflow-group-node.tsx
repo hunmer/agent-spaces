@@ -26,6 +26,15 @@ function getNodeAtScreenPoint(x: number, y: number): string | null {
   return null;
 }
 
+function getGroupConnectTargetAtScreenPoint(x: number, y: number): string | null {
+  const target = Array.from(document.querySelectorAll<HTMLElement>('[data-group-connect-id]'))
+    .map(element => ({ element, rect: element.getBoundingClientRect() }))
+    .find(({ rect }) => (
+      x >= rect.left - 6 && x <= rect.right + 6 && y >= rect.top - 6 && y <= rect.bottom + 6
+    ));
+  return target?.element.dataset.groupConnectId || null;
+}
+
 /**
  * GroupNode — visual container overlay for grouping nodes on the canvas.
  * Rendered as an absolute-positioned div behind child nodes.
@@ -58,6 +67,8 @@ interface GroupOverlayProps {
    * 未传则不显示手柄（opt-in）。
    */
   onConnect?: (groupId: string, targetNodeId: string) => void;
+  /** 分组输出拖到 mini-app 提供的组输入手柄时回调。 */
+  onConnectGroup?: (sourceGroupId: string, targetGroupId: string) => void;
 }
 
 const GROUP_COLORS = [
@@ -82,7 +93,7 @@ function getGroupColor(color?: string) {
 export function WorkflowGroupOverlay({
   group, childNodes, collapsed, isSelected, isDropTarget,
   onCollapsedChange, onSelect, onDelete, onUpdate, onMove, onAutoLayout, layoutEngine, onDragPreviewChange, screenDeltaToFlowDelta,
-  onConnect, onSelectNodes, headerRight,
+  onConnect, onConnectGroup, onSelectNodes, headerRight,
 }: GroupOverlayProps) {
   const [isHovered, setIsHovered] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -239,7 +250,7 @@ export function WorkflowGroupOverlay({
   const connectStartRef = useRef<{ x: number; y: number } | null>(null);
 
   const handleConnectPointerDown = useCallback((event: React.PointerEvent<HTMLButtonElement>) => {
-    if (!onConnect || group.locked) return;
+    if ((!onConnect && !onConnectGroup) || group.locked) return;
     event.preventDefault();
     event.stopPropagation();
     const pointerId = event.pointerId;
@@ -259,6 +270,11 @@ export function WorkflowGroupOverlay({
       document.removeEventListener('pointerup', handlePointerUp);
       document.removeEventListener('pointercancel', handlePointerCancel);
       setConnectDrag(null);
+      const targetGroupId = getGroupConnectTargetAtScreenPoint(upEvent.clientX, upEvent.clientY);
+      if (targetGroupId && targetGroupId !== group.id) {
+        onConnectGroup?.(group.id, targetGroupId);
+        return;
+      }
       const targetId = getNodeAtScreenPoint(upEvent.clientX, upEvent.clientY);
       if (targetId && targetId !== group.id && !group.childNodeIds.includes(targetId)) {
         onConnect(group.id, targetId);
@@ -275,7 +291,7 @@ export function WorkflowGroupOverlay({
     document.addEventListener('pointermove', handlePointerMove);
     document.addEventListener('pointerup', handlePointerUp);
     document.addEventListener('pointercancel', handlePointerCancel);
-  }, [group.id, group.locked, group.childNodeIds, onConnect]);
+  }, [group.id, group.locked, group.childNodeIds, onConnect, onConnectGroup]);
 
   return (
     <div
@@ -391,7 +407,7 @@ export function WorkflowGroupOverlay({
             <button className="flex size-5 items-center justify-center rounded p-0 hover:bg-black/10" onPointerDown={stopButtonPointerDown} onClick={handleDelete}>
               <Trash2 className="size-3 text-destructive" />
             </button>
-            {onConnect && (
+            {(onConnect || onConnectGroup) && (
               <button
                 type="button"
                 title="拖拽连接到目标节点（把分组内节点的输出连过去）"

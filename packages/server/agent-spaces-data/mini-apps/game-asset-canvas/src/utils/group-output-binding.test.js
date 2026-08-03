@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import {
   GROUP_OUTPUT_FILTER_MODES,
   applyAssetToNodeStates,
@@ -104,4 +105,18 @@ test('对话框关闭时空绑定返回默认过滤器', () => {
     nodeIds: ['a'],
     nodeTypes: [],
   });
+});
+
+test('组拖线预览不依赖 renderer 未暴露的 react-dom createPortal', () => {
+  const source = readFileSync(new URL('../components/canvas/GroupExecutionToolbar.jsx', import.meta.url), 'utf8');
+  assert.doesNotMatch(source, /from ['"]react-dom['"]/);
+  assert.doesNotMatch(source, /\bcreatePortal\s*\(/);
+  assert.match(source, /data-group-connect-id=\{groupId\}/);
+  assert.match(source, /querySelectorAll\('\[data-group-connect-id\]'\)/);
+});
+
+test('共享组输出手柄支持连接到组输入手柄', () => {
+  const source = readFileSync(new URL('../../../../../../web/src/components/workflow/workflow-group-node.tsx', import.meta.url), 'utf8');
+  assert.match(source, /onConnectGroup\?: \(sourceGroupId: string, targetGroupId: string\)/);
+  assert.match(source, /getGroupConnectTargetAtScreenPoint\(upEvent\.clientX, upEvent\.clientY\)/);
 });

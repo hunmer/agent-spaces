@@ -4,7 +4,7 @@
 为 game-asset-canvas 增加组级输入连线与过滤配置，并将来源组匹配节点的当前输出自动应用到目标组的“按上传素材执行”。
 
 ## Current Phase
-Phase 16 complete
+Phase 18 complete
 
 ## Phases
 
@@ -56,6 +56,12 @@ Phase 16 complete
 ### Phase 16: 过滤对话框空状态崩溃修复
 - **Status:** complete
 
+### Phase 17: mini-app createPortal 运行时兼容修复
+- **Status:** complete
+
+### Phase 18: 目标组连线手柄命中修复
+- **Status:** complete
+
 ## Decisions
 - 配置字段：`agentChatPlacement?: "dock" | "mini-app-slot"`，缺省等同 `dock`。
 - Chat 状态、会话和权限继续归宿主管理，mini-app 只提供 DOM 插槽与 tab 切换。
@@ -79,3 +85,5 @@ Phase 16 complete
 | 新增纯函数测试无法解析 `./constants` | 1 | 将 `group-execution.js` 的既有 ESM import 补为 `./constants.js` |
 | 根目录执行 ESLint 找不到 flat config | 1 | 改用 `packages/web/eslint.config.mjs` 所在包执行定向 lint |
 | 对话框关闭状态读取 `null.filter` | 1 | `undefined === undefined` 误入已有绑定分支，增加 binding/state 显式非空判断 |
+| `react-dom.createPortal` 运行时不是函数 | 1 | renderer 将 react-dom 映射为 react-dom/client；拖线预览改为可清理的原生 SVG overlay |
+| 最终组合验证脚本正则引号解析失败 | 1 | 简化为普通文本搜索后重新执行完整验证 |
