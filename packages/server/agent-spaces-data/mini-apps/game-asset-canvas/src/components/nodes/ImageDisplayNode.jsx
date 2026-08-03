@@ -1,10 +1,11 @@
 import { useCallback, useRef, useState, useEffect } from 'react';
 import { NodeResizer, NodeToolbar, Position } from '@xyflow/react';
-import { ChevronLeft, ChevronRight, Upload } from '@agent-spaces/ui';
+import { ChevronLeft, ChevronRight, Download, Loader, Upload, toast } from '@agent-spaces/ui';
 import useViewportActivation from '../../hooks/useViewportActivation';
 import { getFloatingHandleProps } from '../canvas/floating-edge-utils';
 import FloatingHandle from './FloatingHandle';
 import { useCanvasGallery } from '../../utils/canvas-gallery';
+import { downloadImages } from '../../utils/export';
 
 /**
  * 图片展示节点：纯展示图片，无外壳边框/标题栏。
@@ -52,7 +53,8 @@ export default function ImageDisplayNode({ id, data, selected }) {
   const onEditImages = data?.onEditImages;
   const showProcessButtons = images.length > 0 && onProcessImage;
   const showEditButton = images.length > 0 && onEditImages;
-  const showToolbar = images.length > 0 && onExportImages || showProcessButtons || showEditButton;
+  const showDownloadButton = images.length > 0;
+  const showToolbar = showDownloadButton || images.length > 0 && onExportImages || showProcessButtons || showEditButton;
 
   // 图片加载完成：按自然尺寸回调 Canvas 自动调整节点尺寸
   const handleImgLoad = useCallback((e) => {
@@ -89,6 +91,22 @@ export default function ImageDisplayNode({ id, data, selected }) {
     if (!images.length) return;
     openCanvasGallery(images.map((src) => ({ src, type: 'image' })), Math.min(imgIndex, images.length - 1));
   }, [images, imgIndex, openCanvasGallery]);
+
+  // 下载图片到本地（单图直下载，多图打 zip）。复用 NodeShell 右键菜单同款逻辑。
+  const [downloading, setDownloading] = useState(false);
+  const handleDownload = useCallback(async () => {
+    if (downloading || images.length === 0) return;
+    setDownloading(true);
+    try {
+      const { ok, total, failed } = await downloadImages(images);
+      if (failed > 0) toast.warning(`下载失败：${failed}/${total}`);
+      else toast.success(`已下载 ${ok} 张图片`);
+    } catch (err) {
+      toast.error(err?.message || '下载失败');
+    } finally {
+      setDownloading(false);
+    }
+  }, [downloading, images]);
 
   const sourceLabel = data?.source === 'upstream' ? '来自连线'
     : source === 'url' ? '来自 URL'
@@ -130,6 +148,18 @@ export default function ImageDisplayNode({ id, data, selected }) {
               onClick={(e) => { e.stopPropagation(); onExportImages(images); }}
               className="rounded-md border border-border bg-background px-2.5 py-1 text-xs font-medium text-foreground shadow-sm transition hover:border-primary hover:text-primary"
             >导出图片</button>
+            {showDownloadButton && (
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); handleDownload(); }}
+                disabled={downloading}
+                title="下载到本地（多图打 zip）"
+                className="flex items-center gap-1 rounded-md border border-border bg-background px-2.5 py-1 text-xs font-medium text-foreground shadow-sm transition hover:border-primary hover:text-primary disabled:opacity-60"
+              >
+                {downloading ? <Loader className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+                下载
+              </button>
+            )}
           </div>
         </NodeToolbar>
       )}
@@ -259,7 +289,11 @@ export default function ImageDisplayNode({ id, data, selected }) {
       />
       </div>
       {!showFullNode && (
-        <div className="image-drag-handle absolute inset-0 z-20 flex cursor-move items-center justify-center overflow-hidden rounded-lg border border-border bg-card shadow-sm">
+        <div className={`image-drag-handle absolute inset-0 z-20 flex cursor-move items-center justify-center overflow-hidden rounded-lg border bg-card shadow-sm ${
+          selected
+            ? 'border-primary ring-4 ring-primary/70 ring-offset-2 ring-offset-background'
+            : 'border-border'
+        }`}>
           <div className="flex max-w-full items-center gap-3 px-4">
             <span className="text-3xl leading-none">🖼️</span>
             <span className="truncate text-xl font-semibold text-card-foreground">{data?.title || data?.label || '图片展示'}</span>

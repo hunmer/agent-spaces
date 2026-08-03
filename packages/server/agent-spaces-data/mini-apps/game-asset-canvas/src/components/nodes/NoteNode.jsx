@@ -7,7 +7,7 @@ import AutoResizeTextarea from '../AutoResizeTextarea';
  * 便签节点：纯文本批注，不参与工作流，无 Handle。
  * data.text: string
  */
-export default function NoteNode({ id, data }) {
+export default function NoteNode({ id, data, selected }) {
   const showFullNode = data?.compactView !== true;
   const text = data?.text || '';
   const onUpdate = data?.onUpdate;
@@ -39,7 +39,11 @@ export default function NoteNode({ id, data }) {
         onChange={handleChange}
       />
       {!showFullNode && (
-        <div className="pointer-events-none absolute inset-0 flex items-center justify-center gap-2 overflow-hidden rounded-md px-3">
+        <div className={`pointer-events-none absolute inset-0 flex items-center justify-center gap-2 overflow-hidden rounded-md border px-3 ${
+          selected
+            ? 'border-primary ring-4 ring-primary/70 ring-offset-2 ring-offset-background'
+            : 'border-transparent'
+        }`}>
           <span className="text-2xl leading-none">📝</span>
           <span className="truncate text-lg font-semibold text-amber-700 dark:text-amber-400">{data?.title || data?.label || '便签'}</span>
         </div>

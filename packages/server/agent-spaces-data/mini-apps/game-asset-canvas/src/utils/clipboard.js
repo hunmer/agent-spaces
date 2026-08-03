@@ -136,12 +136,28 @@ export function serializeClipboard() {
 
 /**
  * 粘贴：生成新 id（保留选中集内部连线映射），整体偏移避免与原节点重叠。
- * @param {object} opts { genId:(prefix)=>string, offset?:{x,y} }
+ * @param {object} opts { genId:(prefix)=>string, offset?:{x,y}, targetCenter?:{x,y} }
  * @returns {{ nodes: Node[], edges: Edge[] } | null} 待加入画布的新节点/边（调用方负责 setNodes/setEdges）
  */
-export function pasteNodes({ genId, offset }) {
+export function pasteNodes({ genId, offset, targetCenter }) {
   if (!hasClipboard()) return null;
-  const off = offset || { x: 40, y: 40 };
+  let off = offset || { x: 40, y: 40 };
+  if (!offset && Number.isFinite(targetCenter?.x) && Number.isFinite(targetCenter?.y)) {
+    const bounds = clipboard.nodes.reduce((result, node) => {
+      const width = Number(node.width || node.style?.width) || 200;
+      const height = Number(node.height || node.style?.height) || 100;
+      return {
+        minX: Math.min(result.minX, node.position.x),
+        minY: Math.min(result.minY, node.position.y),
+        maxX: Math.max(result.maxX, node.position.x + width),
+        maxY: Math.max(result.maxY, node.position.y + height),
+      };
+    }, { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity });
+    off = {
+      x: targetCenter.x - (bounds.minX + bounds.maxX) / 2,
+      y: targetCenter.y - (bounds.minY + bounds.maxY) / 2,
+    };
+  }
   const idMap = new Map(); // oldId -> newId
   const newNodes = clipboard.nodes.map((n) => {
     const newId = genId(n.type);

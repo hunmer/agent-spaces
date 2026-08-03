@@ -28,10 +28,11 @@ import { collectGroupNodeIds, findSmallestGroupContainingNodeIds } from '../util
  * @param {Function} deps.setSelectedId  外部 selectedId 的 setter
  * @param {Function} deps.addImageNodesFromUrls  生成记录「用作输入」复用
  * @param {Function} deps.onPasteImageFiles 系统剪贴板图片上传到视口中心
+ * @param {Function} deps.getPasteCenter 获取当前视口中心的 Flow 坐标
  */
 export default function useSelectionClipboard({
   nodes, edges, groups, setNodes, setEdges, setGroups, setSelectedId,
-  addImageNodesFromUrls, onPasteImageFiles,
+  addImageNodesFromUrls, onPasteImageFiles, getPasteCenter,
 }) {
   const [selectionCount, setSelectionCount] = useState(0);
   const [propertyPaste, setPropertyPaste] = useState(null);
@@ -113,7 +114,7 @@ export default function useSelectionClipboard({
 
   const requestNodePaste = useCallback(() => {
     if (!hasClipboard()) return;
-    const result = pasteNodes({ genId });
+    const result = pasteNodes({ genId, targetCenter: getPasteCenter?.() });
     if (!result) return;
     const sourceNode = result.nodes.length === 1 ? result.nodes[0] : null;
     const targets = nodesRef.current.filter((node) => node.selected);
@@ -122,7 +123,7 @@ export default function useSelectionClipboard({
       return;
     }
     commitPaste(result);
-  }, [commitPaste]);
+  }, [commitPaste, getPasteCenter]);
 
   const applyProperties = useCallback((propertyPaths) => {
     if (!propertyPaste) return;

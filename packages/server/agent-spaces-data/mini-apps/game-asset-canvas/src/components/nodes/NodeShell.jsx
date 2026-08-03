@@ -273,7 +273,11 @@ export default function NodeShell({
 
   const compactView = !showFullNode ? (
     <div
-      className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center overflow-hidden rounded-lg border border-border bg-card shadow-sm"
+      className={`pointer-events-none absolute inset-0 z-20 flex items-center justify-center overflow-hidden rounded-lg border bg-card shadow-sm ${
+        selected
+          ? 'border-primary ring-4 ring-primary/70 ring-offset-2 ring-offset-background'
+          : 'border-border'
+      }`}
       style={{ backgroundColor: `rgb(${hexToRgb(meta.color)} / 0.16)` }}
     >
       <div className="flex max-w-full items-center gap-3 px-4">

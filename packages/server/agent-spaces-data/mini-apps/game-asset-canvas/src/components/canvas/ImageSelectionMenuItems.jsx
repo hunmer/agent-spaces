@@ -5,7 +5,7 @@ import { downloadImages } from '../../utils/export';
 /** 图片选择工具栏与右键菜单共用的动作清单和调用逻辑。 */
 export default function ImageSelectionMenuItems({
   selectedUrls, onEditImages, onCutoutCreate, onProcessImage, onAddToAssets, onImportToCanvas, onClear,
-  renderItem, renderSeparator,
+  renderItem, renderSeparator, renderOverflow, overflowIds,
 }) {
   const [downloading, setDownloading] = useState(false);
   const urls = selectedUrls || [];
@@ -33,9 +33,14 @@ export default function ImageSelectionMenuItems({
     { id: 'import', label: '导入到画布', Icon: ImagePlus, onClick: () => onImportToCanvas?.(urls), disabled: !urls.length },
   ];
 
+  const overflowSet = overflowIds?.length ? new Set(overflowIds) : null;
+  const primary = overflowSet ? actions.filter((a) => !overflowSet.has(a.id)) : actions;
+  const overflow = overflowSet ? actions.filter((a) => overflowSet.has(a.id)) : [];
+
   return (
     <>
-      {actions.map(renderItem)}
+      {primary.map(renderItem)}
+      {renderOverflow?.(overflow)}
       {renderSeparator?.()}
       {renderItem({ id: 'clear', label: '取消选择', Icon: X, onClick: onClear, disabled: false })}
     </>

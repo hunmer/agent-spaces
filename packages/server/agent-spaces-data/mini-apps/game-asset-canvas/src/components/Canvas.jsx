@@ -54,6 +54,7 @@ import useGroupExecution from '../hooks/useGroupExecution';
 import useNodeCrud from '../hooks/useNodeCrud';
 import useNodeExecutions from '../hooks/useNodeExecutions';
 import useLastParams from '../hooks/useLastParams';
+import useCanvasDragAutoPan from '../hooks/useCanvasDragAutoPan';
 import { runCutout } from '../utils/cutout';
 import { generateImageResources, normalizeImageUrls } from '../utils/workflow';
 import { WORKFLOWS } from '../utils/constants';
@@ -296,6 +297,18 @@ export default function Canvas({ hostConfig }) {
     setDropNodeMenu, setContextMenu, setPendingConnection,
     getViewportCenter, getLastParams, saveLastParams,
   });
+  const panCanvasBy = useCallback(({ x, y }) => {
+    setViewport((current) => ({ ...current, x: current.x + x, y: current.y + y }));
+  }, [setViewport]);
+  const dragAutoPan = useCanvasDragAutoPan({ canvasRef: wrappingRef, onPan: panCanvasBy });
+  const handleCanvasDragOver = useCallback((event) => {
+    crud.handleDragOver(event);
+    dragAutoPan.handleDragOver(event);
+  }, [crud.handleDragOver, dragAutoPan.handleDragOver]);
+  const handleCanvasDrop = useCallback((event) => {
+    dragAutoPan.stop();
+    crud.handleDrop(event);
+  }, [crud.handleDrop, dragAutoPan.stop]);
 
   // —— 节点执行回调（工作流/媒体/本地算法/抠图/反推提示词）——
   const executions = useNodeExecutions({
@@ -308,9 +321,14 @@ export default function Canvas({ hostConfig }) {
     const position = screenCenter ? reactFlow.screenToFlowPosition(screenCenter) : null;
     return crud.handleDropFiles(files, position);
   }, [crud.handleDropFiles, getViewportCenter, reactFlow]);
+  const getPasteCenter = useCallback(() => {
+    const screenCenter = getViewportCenter();
+    return screenCenter ? reactFlow.screenToFlowPosition(screenCenter) : null;
+  }, [getViewportCenter, reactFlow]);
   const selection = useSelectionClipboard({
     nodes, edges, groups, setNodes, setEdges, setGroups, setSelectedId, addImageNodesFromUrls,
     onPasteImageFiles: handlePasteImageFiles,
+    getPasteCenter,
   });
 
   // —— 分组操作 + overlay 移动/连线 ——
@@ -1407,8 +1425,9 @@ export default function Canvas({ hostConfig }) {
               <div
                 className="relative min-h-0 flex-1"
                 ref={wrappingRef}
-                onDrop={crud.handleDrop}
-                onDragOver={crud.handleDragOver}
+                onDrop={handleCanvasDrop}
+                onDragOver={handleCanvasDragOver}
+                onDragLeave={dragAutoPan.handleDragLeave}
                 onContextMenu={crud.handleContextMenu}
               />
             }

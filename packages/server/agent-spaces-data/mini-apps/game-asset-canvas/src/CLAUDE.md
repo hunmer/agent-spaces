@@ -74,6 +74,7 @@ graph TD
 - **2026-07-31 编辑图片蒙版入口**：输入缩略图悬浮时在底部显示编辑/删除图标，可直接打开 `MaskPaintDialog`；绘制快照存 `data.editMaskPaintData`，导出结果复用 `params.mask`。
 - **2026-08-01 文本产物**：新增 Markdown `TextNode`；`computeInputTexts` 按 edge 的 `inputTarget` 派生文本引用，反推提示词结果改由节点外置 `NodeOutput` 展示并可继续连线。
 - **2026-08-01 画布样式菜单**：画布菜单支持切换背景、Handle 上下/左右方向和自动吸附，使用全局 settings 持久化。
+- **2026-08-04 文件拖拽自动平移**：系统文件或节点图片拖到画布 72px 边缘热区时按距离连续平移，四角支持双轴移动，离开或结束拖拽立即停止。
 - **建议下一步深挖**：
   - 如需精确节点组件实现细节，定点读 `components/nodes/<具体>.jsx`
   - 如需精确 image-ops 算法实现，定点读 `utils/image-ops/<具体>.js`（gif.js / matte.js / pixelate.js 等）

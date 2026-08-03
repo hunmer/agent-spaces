@@ -1,3 +1,6 @@
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, MoreVertical,
+} from '@agent-spaces/ui';
 import ImageSelectionMenuItems from './ImageSelectionMenuItems';
 
 /**
@@ -46,6 +49,7 @@ export default function ImageSelectionToolbar({
           onAddToAssets={onAddToAssets}
           onImportToCanvas={onImportToCanvas}
           onClear={onClear}
+          overflowIds={['enhance', 'download', 'assets']}
           renderSeparator={() => <div className="mx-1 h-4 w-px bg-border" />}
           renderItem={({ id, label, Icon, onClick, disabled, loading }) => (
             <button
@@ -61,6 +65,29 @@ export default function ImageSelectionToolbar({
               <Icon className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
               {id === 'clear' ? null : label}
             </button>
+          )}
+          renderOverflow={(items) => (
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                render={
+                  <button
+                    type="button"
+                    title="更多操作"
+                    className="flex flex-shrink-0 items-center justify-center rounded-md border border-border bg-background p-1.5 text-muted-foreground transition hover:border-primary hover:text-primary"
+                  >
+                    <MoreVertical className="h-3.5 w-3.5" />
+                  </button>
+                }
+              />
+              <DropdownMenuContent align="end" className="w-40">
+                {items.map(({ id, label, Icon, onClick, disabled, loading }) => (
+                  <DropdownMenuItem key={id} onClick={onClick} disabled={disabled}>
+                    <Icon className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
+                    {label}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
         />
       </div>
