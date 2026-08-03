@@ -119,6 +119,18 @@ const EDGE_SCHEMA = {
   required: ['sourceId', 'targetId'],
 };
 
+const NODE_DATA_SCHEMA = {
+  type: 'object',
+  description: '节点 data。生成节点优先传 {params:{prompt,model,aspect,fileName}}；note 传 {text}；text 传 {output:{text}}。必须传 JSON 对象，不要把 JSON 序列化成字符串。',
+  properties: {
+    text: { type: 'string' },
+    title: { type: 'string' },
+    params: { type: 'object', additionalProperties: true },
+    output: { type: 'object', additionalProperties: true },
+  },
+  additionalProperties: true,
+};
+
 export default [
   {
     name: 'add_node',
@@ -141,10 +153,7 @@ export default [
             y: { type: 'number' },
           },
         },
-        data: {
-          type: 'object',
-          description: '节点初始 data 字段（可选，合并到默认 data）。text 传 {output:{text:"Markdown 内容"}}；生成类节点（textToImage/editImage/textToVoice/videoGenerator）的 params 含枚举字段（如 model/aspect），改前先调 get_node_params(type) 查合法值。note 传 {text:"备注内容"}；图像处理节点（ip*）传 {params:{processorParams:{...}}}。',
-        },
+        data: NODE_DATA_SCHEMA,
         groupName: { type: 'string', description: '可选。把新建的节点归入此名称的分组（画布上的可视化 group）：同名分组不存在则自动创建，已存在则直接加入。用于把同一项目/同一角色的多个节点归类管理。' },
         groupLayout: GROUP_LAYOUT_SCHEMA,
         focus: { type: 'boolean', description: '创建后是否聚焦/居中到该节点（默认 true）' },
@@ -171,7 +180,7 @@ export default [
                 type: 'object',
                 properties: { x: { type: 'number' }, y: { type: 'number' } },
               },
-              data: { type: 'object' },
+              data: NODE_DATA_SCHEMA,
             },
             required: ['type'],
           },
@@ -313,10 +322,7 @@ export default [
       properties: {
         nodeId: { type: 'string', description: '目标节点 id' },
         title: { type: 'string', description: '新的节点显示标题（可选；传空字符串恢复类型默认中文名）' },
-        data: {
-          type: 'object',
-          description: '要合并的字段。如 {text:"新内容"} 或 {params:{prompt:"...",model:"jimeng-5.0"}}。生成类节点的 params 合法枚举值由 get_node_params 返回。',
-        },
+        data: NODE_DATA_SCHEMA,
       },
       required: ['nodeId'],
     },
@@ -334,7 +340,7 @@ export default [
             properties: {
               nodeId: { type: 'string', description: '目标节点 id' },
               title: { type: 'string', description: '新的节点显示标题' },
-              data: { type: 'object', description: '要合并到节点 data 的字段' },
+              data: NODE_DATA_SCHEMA,
             },
             required: ['nodeId'],
           },

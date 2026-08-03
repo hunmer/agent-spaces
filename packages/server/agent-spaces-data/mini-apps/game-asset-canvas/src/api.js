@@ -92,6 +92,25 @@ function asString(v, def = '') {
   return typeof v === 'string' ? v.trim() : def;
 }
 
+function parseNodeData(value, fieldName = 'data') {
+  if (value === undefined) return { ok: true, value: undefined };
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return { ok: false, message: `${fieldName} 必须是对象` };
+  }
+  if (Object.keys(value).length === 1 && typeof value.$text === 'string') {
+    try {
+      const parsed = JSON.parse(value.$text.trim());
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+        return { ok: false, message: `${fieldName}.$text 必须是 JSON 对象` };
+      }
+      return { ok: true, value: parsed };
+    } catch {
+      return { ok: false, message: `${fieldName}.$text 不是合法 JSON` };
+    }
+  }
+  return { ok: true, value };
+}
+
 function parseGroupLayout(value, fieldName = 'groupLayout') {
   if (value === undefined) return { ok: true, value: undefined };
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
@@ -216,9 +235,9 @@ export default {
       const y = Number(input.position.y);
       if (Number.isFinite(x) && Number.isFinite(y)) payload.position = { x, y };
     }
-    if (input?.data && typeof input?.data === 'object' && !Array.isArray(input.data)) {
-      payload.data = { ...input.data };
-    }
+    const parsedData = parseNodeData(input?.data);
+    if (!parsedData.ok) return parsedData;
+    if (parsedData.value) payload.data = { ...parsedData.value };
     if (title) payload.data = { ...(payload.data || {}), title };
     payload.focus = input?.focus !== false; // 默认聚焦
     // 可选 groupName：建完节点后归入同名分组（不存在则创建）
@@ -231,6 +250,7 @@ export default {
     if (groupName) payload.groupName = groupName;
     if (parsedGroupLayout.value) payload.groupLayout = parsedGroupLayout.value;
     const result = await rpc(ctx, 'canvas.addNode', payload);
+    if (result?.ok === false) return result;
     return {
       ok: true,
       nodeId: result?.nodeId,
@@ -406,7 +426,9 @@ export default {
         const y = Number(item.position.y);
         if (Number.isFinite(x) && Number.isFinite(y)) spec.position = { x, y };
       }
-      if (item.data && typeof item.data === 'object' && !Array.isArray(item.data)) spec.data = { ...item.data };
+      const parsedData = parseNodeData(item.data, `nodes[${i}].data`);
+      if (!parsedData.ok) return parsedData;
+      if (parsedData.value) spec.data = { ...parsedData.value };
       if (title) spec.data = { ...(spec.data || {}), title };
       cleaned.push(spec);
     }
@@ -459,6 +481,7 @@ export default {
       groupLayout: parsedGroupLayout.value,
       edges: cleanedEdges,
     });
+    if (result?.ok === false) return result;
     const ids = Array.isArray(result?.nodeIds) ? result.nodeIds : [];
     return {
       ok: true,
@@ -688,12 +711,11 @@ export default {
     if (hasTitle && typeof input.title !== 'string') {
       return { ok: false, message: 'title 必须是字符串' };
     }
-    const hasData = input?.data && typeof input.data === 'object' && !Array.isArray(input.data);
-    if (input?.data !== undefined && !hasData) {
-      return { ok: false, message: 'data 必须是对象（合并到节点 data 的字段）' };
-    }
+    const parsedData = parseNodeData(input?.data);
+    if (!parsedData.ok) return parsedData;
+    const hasData = parsedData.value !== undefined;
     if (!hasData && !hasTitle) return { ok: false, message: 'title 和 data 至少传一个' };
-    const patch = { ...(hasData ? input.data : {}) };
+    const patch = { ...(hasData ? parsedData.value : {}) };
     if (hasTitle) patch.title = input.title.trim();
     const result = await rpc(ctx, 'canvas.updateNodeData', { nodeId, data: patch });
     if (result?.ok === false) return result;
@@ -715,14 +737,13 @@ export default {
       if (hasTitle && typeof item.title !== 'string') {
         return { ok: false, message: `nodes[${i}].title 必须是字符串` };
       }
-      const hasData = item.data && typeof item.data === 'object' && !Array.isArray(item.data);
-      if (item.data !== undefined && !hasData) {
-        return { ok: false, message: `nodes[${i}].data 必须是对象` };
-      }
+      const parsedData = parseNodeData(item.data, `nodes[${i}].data`);
+      if (!parsedData.ok) return parsedData;
+      const hasData = parsedData.value !== undefined;
       if (!hasData && !hasTitle) {
         return { ok: false, message: `nodes[${i}] 的 title 和 data 至少传一个` };
       }
-      const data = { ...(hasData ? item.data : {}) };
+      const data = { ...(hasData ? parsedData.value : {}) };
       if (hasTitle) data.title = item.title.trim();
       cleaned.push({ nodeId, data });
     }

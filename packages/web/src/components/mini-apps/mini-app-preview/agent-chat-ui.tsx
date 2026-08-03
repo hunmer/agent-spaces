@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
+import { toast } from 'sonner';
 import type { FileNode } from '@agent-spaces/shared';
 import { sdk } from '@/lib/sdk';
+import { copyToClipboard } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -16,7 +18,7 @@ import { CommonEditorPanel } from '@/components/editor/editor-panel';
 import { CommonCodeEditor } from '@/components/editor/common-code-editor';
 import { type OpenFile } from '@/stores/editor';
 import { getModel, getModelUri, getOrCreateModel } from '@/lib/monaco-models';
-import { Loader2, Sparkles, Settings2, Eraser, FilesIcon, Trash2, RotateCcw, MessageSquareText, UploadIcon } from 'lucide-react';
+import { Copy, Loader2, Sparkles, Settings2, Eraser, FilesIcon, Trash2, RotateCcw, MessageSquareText, UploadIcon } from 'lucide-react';
 import { miniAppConfigToAgentPreset, agentPresetToMiniAppConfig } from '../mini-app-agent-adapter';
 import { useMiniAppAgentChat } from './use-agent-chat';
 
@@ -326,9 +328,19 @@ export function MiniAppAgentHeaderActions({ chat }: { chat: MiniAppAgentChat }) 
  */
 export function MiniAppAgentMenu({ chat }: { chat: MiniAppAgentChat }) {
   const t = useTranslations('mini-apps');
-  const { projectId, agentFilesEnabled, agentId, sending, messages, setClearOpen, resetOpen, setResetOpen, handleResetAgents } = chat;
+  const { projectId, agentFilesEnabled, agentId, sessionId, sending, messages, setClearOpen, resetOpen, setResetOpen, handleResetAgents } = chat;
   const [filesOpen, setFilesOpen] = useState(false);
   const clearDisabled = !agentId || sending || messages.length === 0;
+  const handleCopySessionDirectory = useCallback(async () => {
+    if (!sessionId) return;
+    try {
+      const path = await sdk.miniApp.getAgentSessionDirectory(projectId, sessionId);
+      await copyToClipboard(path);
+      toast.success(t('agent.sessionDirectoryCopied'));
+    } catch {
+      toast.error(t('agent.sessionDirectoryCopyFailed'));
+    }
+  }, [projectId, sessionId, t]);
   return (
     <>
       <DropdownMenuItem
@@ -345,6 +357,13 @@ export function MiniAppAgentMenu({ chat }: { chat: MiniAppAgentChat }) {
           {t('agent.files')}
         </DropdownMenuItem>
       ) : null}
+      <DropdownMenuItem
+        disabled={!sessionId}
+        onClick={() => void handleCopySessionDirectory()}
+      >
+        <Copy className="mr-2 h-4 w-4" />
+        {t('agent.copySessionDirectory')}
+      </DropdownMenuItem>
       <DropdownMenuSeparator />
       <DropdownMenuItem
         className="text-amber-600 focus:text-amber-600 dark:text-amber-400"

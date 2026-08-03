@@ -642,6 +642,11 @@ function chatSessionFile(projectId: string, sessionId: string): string {
   return join(chatRootDir(projectId), `${sessionId}.json`);
 }
 
+export function getChatSessionDirectory(projectId: string, sessionId: string): string | null {
+  safeSessionId(sessionId);
+  return existsSync(chatSessionFile(projectId, sessionId)) ? chatRootDir(projectId) : null;
+}
+
 function safeSessionId(sessionId: string): string {
   if (!/^[a-zA-Z0-9_-]{1,128}$/.test(sessionId)) {
     throw new Error('Invalid sessionId');

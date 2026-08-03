@@ -197,6 +197,10 @@ export function createMiniAppApi(http: HttpClient) {
     listAgentSessions: (id: string, agentId?: string): Promise<{ sessions: MiniAppChatSessionSummary[] }> =>
       http.get(`/api/mini-apps/${encodeURIComponent(id)}/agents/sessions${agentId ? `?agentId=${encodeURIComponent(agentId)}` : ''}`),
 
+    /** 获取 session 文件所在目录的绝对路径。 */
+    getAgentSessionDirectory: (id: string, sessionId: string): Promise<string> =>
+      http.get<{ path: string }>(`/api/mini-apps/${encodeURIComponent(id)}/agents/sessions/${encodeURIComponent(sessionId)}/directory`).then((result) => result.path),
+
     /** 重命名会话标题 */
     renameAgentSession: (id: string, sessionId: string, title: string): Promise<{ session: MiniAppChatSessionSummary & { messages?: MiniAppChatMessage[] } }> =>
       http.patch(`/api/mini-apps/${encodeURIComponent(id)}/agents/sessions/${encodeURIComponent(sessionId)}`, { title }),

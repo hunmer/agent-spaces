@@ -6,37 +6,9 @@ import { CONNECTION_INPUT_TYPES, getConnectionTargets } from '../utils/connectio
 import { computeInputTexts } from '../utils/input-images';
 import { genId } from '../utils/canvas-id';
 import { autoLayoutSubset, findFreePositions } from '../utils/layout';
+import { addNodeIdsToGroup, removeNodeIdFromGroups } from '../utils/agent-rpc-groups';
 
-/**
- * 把新建的节点 id 列表归入指定名称的分组。
- * 同名分组已存在 → 追加 childNodeIds（去重）；不存在 → 创建新分组。
- * @param {Function} setGroups
- * @param {string} groupName 分组名（非空才生效）
- * @param {string[]} nodeIds 要归入的节点 id
- */
-function ensureGroupByName(setGroups, groupName, nodeIds) {
-  if (!groupName || !nodeIds?.length) return;
-  setGroups((prev) => {
-    const idx = prev.findIndex((g) => g.name === groupName);
-    if (idx >= 0) {
-      const existing = new Set(prev[idx].childNodeIds);
-      for (const id of nodeIds) existing.add(id);
-      const next = [...prev];
-      next[idx] = { ...next[idx], childNodeIds: [...existing] };
-      return next;
-    }
-    return [...prev, {
-      id: genId('group'),
-      name: groupName,
-      childNodeIds: [...nodeIds],
-      childGroupIds: [],
-      locked: false,
-      disabled: false,
-      savedNodeStates: {},
-    }];
-  });
-}
-
+/** 新增节点后按最新分组成员重新布局。 */
 function arrangeGroupAfterAdd(setNodes, edges, groups, groupName, addedNodeIds, layout) {
   if (!layout || !groupName || !addedNodeIds?.length) return [];
   const existingGroup = groups.find((group) => group.name === groupName);
@@ -280,13 +252,24 @@ export default function useCanvasAgentRpc({ nodes, edges, groups = [], createNod
               { gap: 40, direction: 'right', cols: 3 },
             )[0];
             const id = createFn(payload.type, position, payload.data);
+            ctxRef.current.nodes = [...curNodes, {
+              id,
+              type: payload.type,
+              position,
+              width: size.w,
+              height: size.h,
+              style: { width: size.w, height: size.h },
+              data: payload.data || {},
+            }];
             if (payload.focus !== false) {
               setTimeout(() => focusFn(id), 0);
             }
             // 可选：归入同名分组
             if (payload.groupName && typeof payload.groupName === 'string') {
-              ensureGroupByName(setGroupsFn, payload.groupName, [id]);
-              const arrangedNodeIds = arrangeGroupAfterAdd(setNodesFn, curEdges, curGroups, payload.groupName, [id], payload.groupLayout);
+              const nextGroups = addNodeIdsToGroup(curGroups, payload.groupName, [id]);
+              ctxRef.current.groups = nextGroups;
+              setGroupsFn(nextGroups);
+              const arrangedNodeIds = arrangeGroupAfterAdd(setNodesFn, curEdges, nextGroups, payload.groupName, [id], payload.groupLayout);
               if (arrangedNodeIds.length) focusNodesFn?.(arrangedNodeIds);
             }
             result = { ok: true, nodeId: id, position };
@@ -296,56 +279,48 @@ export default function useCanvasAgentRpc({ nodes, edges, groups = [], createNod
             const specs = Array.isArray(payload.nodes) ? payload.nodes : [];
             if (!specs.length) throw new Error('nodes 不能为空');
             const ids = specs.map(() => genId('node'));
-            setNodesFn((prev) => {
-              // 先构造节点尺寸；显式坐标保持不变，自动坐标逐个避让。
-              // 障碍物包含已有节点、同批显式定位节点和已完成布局的新节点，
-              // 避免固定网格步长小于高节点尺寸时发生重叠。
-              const additions = specs.map((spec, i) => {
-                const type = spec.type;
-                const meta = NODE_META[type] || {};
-                const size = DEFAULT_SIZE[type] || DEFAULT_SIZE.default;
-                return {
-                  id: ids[i],
-                  type,
-                  position: spec.position || null,
-                  width: size.w,
-                  height: size.h,
-                  style: { width: size.w, height: size.h },
-                  data: { ...initialData(type), label: meta.label, ...(spec.data || {}) },
-                };
-              });
-              const obstacles = [
-                ...prev,
-                ...additions.filter((node) => node.position),
-              ];
-              for (const node of additions) {
-                if (node.position) continue;
-                node.position = findFreePositions(
-                  { x: 120, y: 120 },
-                  node.width,
-                  node.height,
-                  1,
-                  obstacles,
-                  { gap: 40, direction: 'right', cols: 3 },
-                )[0];
-                obstacles.push(node);
-              }
-              return [...prev, ...additions];
+            // 同步构造快照，让并发到达的下一次 RPC 能立即看到本批节点。
+            const additions = specs.map((spec, i) => {
+              const type = spec.type;
+              const meta = NODE_META[type] || {};
+              const size = DEFAULT_SIZE[type] || DEFAULT_SIZE.default;
+              return {
+                id: ids[i],
+                type,
+                position: spec.position || null,
+                width: size.w,
+                height: size.h,
+                style: { width: size.w, height: size.h },
+                data: { ...initialData(type), label: meta.label, ...(spec.data || {}) },
+              };
             });
+            const obstacles = [...curNodes, ...additions.filter((node) => node.position)];
+            for (const node of additions) {
+              if (node.position) continue;
+              node.position = findFreePositions(
+                { x: 120, y: 120 },
+                node.width,
+                node.height,
+                1,
+                obstacles,
+                { gap: 40, direction: 'right', cols: 3 },
+              )[0];
+              obstacles.push(node);
+            }
+            const futureNodes = [...curNodes, ...additions];
+            ctxRef.current.nodes = futureNodes;
+            setNodesFn((prev) => [...prev, ...additions]);
             if (payload.focusFirst !== false && ids.length) {
               setTimeout(() => focusFn(ids[0]), 0);
             }
             // 可选：本批节点一起归入同名分组
             if (payload.groupName && typeof payload.groupName === 'string') {
-              ensureGroupByName(setGroupsFn, payload.groupName, ids);
-              const arrangedNodeIds = arrangeGroupAfterAdd(setNodesFn, curEdges, curGroups, payload.groupName, ids, payload.groupLayout);
+              const nextGroups = addNodeIdsToGroup(curGroups, payload.groupName, ids);
+              ctxRef.current.groups = nextGroups;
+              setGroupsFn(nextGroups);
+              const arrangedNodeIds = arrangeGroupAfterAdd(setNodesFn, curEdges, nextGroups, payload.groupName, ids, payload.groupLayout);
               if (arrangedNodeIds.length) focusNodesFn?.(arrangedNodeIds);
             }
-            const futureNodes = [...curNodes, ...specs.map((spec, index) => ({
-              id: ids[index],
-              type: spec.type,
-              data: { ...initialData(spec.type), ...(spec.data || {}) },
-            }))];
             const edgeSpecs = (Array.isArray(payload.edges) ? payload.edges : []).map((edge) => ({
               sourceId: edge.sourceIndex !== undefined ? ids[edge.sourceIndex] : edge.sourceId,
               targetId: edge.targetIndex !== undefined ? ids[edge.targetIndex] : edge.targetId,
@@ -403,6 +378,9 @@ export default function useCanvasAgentRpc({ nodes, edges, groups = [], createNod
               result = { ok: false, message: `节点不存在：${payload.nodeId}` };
             } else {
               deleteFn(payload.nodeId);
+              const nextGroups = removeNodeIdFromGroups(curGroups, payload.nodeId);
+              ctxRef.current.groups = nextGroups;
+              setGroupsFn(nextGroups);
               result = { ok: true };
             }
             break;

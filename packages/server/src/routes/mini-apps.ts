@@ -7,7 +7,7 @@ import { randomUUID } from 'crypto';
 import { exec } from 'node:child_process';
 import * as svc from '../services/mini-apps.js';
 import { invokeService } from '../services/mini-app-services.js';
-import { getProject, readAgentsConfig, readAgentConfig, upsertAgentConfig, listAgentChats, clearAgentChats, listChatSessions, renameChatSession, branchChatSession, deleteChatMessage, resetAgentsConfig, DuplicateNameError } from '../storage/mini-app-store.js';
+import { getProject, readAgentsConfig, readAgentConfig, upsertAgentConfig, listAgentChats, clearAgentChats, listChatSessions, getChatSessionDirectory, renameChatSession, branchChatSession, deleteChatMessage, resetAgentsConfig, DuplicateNameError } from '../storage/mini-app-store.js';
 import { answerMiniAppAgentQuestion, getRegisteredMiniAppTools, rerunMiniAppAgentTool, runMiniAppAgent } from '../services/mini-app-agent.js';
 
 const router = Router();
@@ -662,6 +662,17 @@ router.get('/:id/agents/sessions', (req: Request<{ id: string }, any, any, { age
     res.json({ sessions });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
+  }
+});
+
+// GET /:id/agents/sessions/:sessionId/directory — 获取 session 文件所在目录
+router.get('/:id/agents/sessions/:sessionId/directory', (req: Request<{ id: string; sessionId: string }>, res: Response) => {
+  try {
+    const path = getChatSessionDirectory(req.params.id, req.params.sessionId);
+    if (!path) { res.status(404).json({ error: 'Session not found' }); return; }
+    res.json({ path });
+  } catch (error: any) {
+    res.status(error.message === 'Invalid sessionId' ? 400 : 500).json({ error: error.message });
   }
 });
 
