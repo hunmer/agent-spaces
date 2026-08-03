@@ -191,9 +191,11 @@ export function initialData(type) {
       upstreamOrder: [],
       frames: [],
       framesDir: '',
+      frameSelection: null,
+      framePreviewFps: 10,
       animGroups: [],
       videoInfo: null,
-      params: { mode: 'count', count: 8, fps: 1, maxWidth: 320 },
+      params: { mode: 'count', count: 8, fps: 1, interval: 2, secondsInterval: 1, maxWidth: 320 },
       sheetLayout: { rows: 1, cols: 4 },
       output: { video: null, images: [] },
     };

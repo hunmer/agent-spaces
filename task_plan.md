@@ -1,10 +1,10 @@
 # Task Plan: game-asset-canvas 组输出自动绑定
 
 ## Goal
-为 game-asset-canvas 增加组级输入连线与过滤配置，并将来源组匹配节点的当前输出自动应用到目标组的“按上传素材执行”。
+按指定 README 本地化帧播放器 dist，并重构视频编辑器的帧选区、双播放器 Tabs 与动画组创建流程。
 
 ## Current Phase
-Phase 24 complete
+Phase 41 complete
 
 ## Phases
 
@@ -80,7 +80,64 @@ Phase 24 complete
 ### Phase 24: 回归验证与交付
 - **Status:** complete
 
+### Phase 25: 视频拆帧参数链路诊断
+- **Status:** complete
+
+### Phase 26: 最小修复与回归覆盖
+- **Status:** complete
+
+### Phase 27: 用户视频实测
+- **Status:** complete
+
+### Phase 28: 交付
+- **Status:** complete
+
+### Phase 29: 帧间隔模式实现
+- **Status:** complete
+
+### Phase 30: 静态与真实视频验证
+- **Status:** complete
+
+### Phase 31: 交付
+- **Status:** complete
+
+### Phase 32: 全部素材实例执行链设计
+- **Status:** complete
+
+### Phase 33: 运行所有与缩略图状态实现
+- **Status:** complete
+
+### Phase 34: 执行时序回归验证
+- **Status:** complete
+
+### Phase 35: 秒间隔抽帧实现
+- **Status:** complete
+
+### Phase 36: 秒间隔真实视频验证
+- **Status:** complete
+
+### Phase 37: 秒间隔抽帧交付
+- **Status:** complete
+
+### Phase 38: README 与现有播放器结构分析
+- **Status:** complete
+
+### Phase 39: dist 本地化与通用播放器实现
+- **Status:** complete
+
+### Phase 40: 视频编辑器交互重构
+- **Status:** complete
+
+### Phase 41: 定向验证与交付
+- **Status:** complete
+
 ## Decisions
+- 使用固定 `@mediamonks/fast-image-sequence@2.2.0` CDN dist 的入口+核心 chunk，本地 HTTP URL 原生 dynamic import。
+- 当前帧选区持久化到 `data.frameSelection`，主帧预览和新建动画组共享。
+- 帧列表单击设置起点，Ctrl/Cmd+单击设置终点；新建动画组直接消费当前起止选区。
+- 秒间隔模式字段为 `params.secondsInterval`，支持大于 0 的小数；通过 `fps=1/N` 按时间均匀采样。
+- 帧间隔模式字段为 `params.interval`，取大于等于 1 的整数；N=1 等价全部原始帧。
+- 视频拆帧新增 `all` 模式输出全部原始帧；`fps` 继续表示每秒抽取张数，避免破坏既有配置。
 - 配置字段：`agentChatPlacement?: "dock" | "mini-app-slot"`，缺省等同 `dock`。
 - Chat 状态、会话和权限继续归宿主管理，mini-app 只提供 DOM 插槽与 tab 切换。
 - 插槽协议挂在 `window.AgentSpaces`，使用注册/注销和订阅机制，避免 DOM 轮询。
@@ -90,6 +147,7 @@ Phase 24 complete
 - 绑定关系持久化在目标组 `batchExecution.assets.binding`，自动素材 run 标记为 `group-output-binding`。
 - 分组属性应用的正确目标是“按上传素材执行”的其他素材 run 中同一 nodeId 的节点快照，不是画布分组内其他节点。
 - `groupAssetInputUrls` 标记的分组素材在目标节点上保留，来源节点同类素材不作为人工上传图传播。
+- “运行所有”按 execution runs 串行，单个 run 内的可执行节点并行；每轮完成后保存 nodeStates，最终恢复原 activeId。
 - 组连线使用矩形落点判断并持久展示虚线箭头；循环绑定被拒绝。
 
 ## Errors Encountered
@@ -108,3 +166,7 @@ Phase 24 complete
 | `react-dom.createPortal` 运行时不是函数 | 1 | renderer 将 react-dom 映射为 react-dom/client；拖线预览改为可清理的原生 SVG overlay |
 | 最终组合验证脚本正则引号解析失败 | 1 | 简化为普通文本搜索后重新执行完整验证 |
 | localhost:3000 健康检查超时 | 1 | mini-app 源码刷新即生效；当前无 procm-mcp，不启动或重启宿主服务 |
+| Phase 25 追加补丁上下文未命中 | 1 | 发现其他任务已追加 Phase 25-31，改为读取当前规划并从 Phase 32 继续 |
+| 运行所有结构测试未匹配条件文案 | 1 | 按实际 JSX 条件表达式改为匹配 `'运行所有'` 字符串 |
+| 视频编辑器组合补丁在默认数据上下文未命中 | 1 | 补丁整体未应用；拆为 Dialog 与 canvas defaults 两次精确修改 |
+| 默认数据与交接文档组合补丁在目录树未命中 | 1 | 补丁整体未应用；默认数据与文档分开修改 |

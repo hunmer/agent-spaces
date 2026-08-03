@@ -70,16 +70,21 @@ module.exports = (t) => [
     label: t('action.extractFrames.label', '按帧截取'),
     category: t('category', 'FFmpeg'),
     icon: 'Film',
-    description: t('action.extractFrames.description', '从视频中按数量或帧率截取帧图片，返回可直接访问的图片 URL 数组。'),
+    description: t('action.extractFrames.description', '从视频中导出全部原始帧，或按帧间隔、秒数间隔、数量、帧率截取帧图片，返回可直接访问的图片 URL 数组。'),
     tool: false,
     properties: [
       { key: 'inputPath', label: t('field.inputPath.label', 'Video URL or Path'), type: 'text', dataType: 'string', required: true, tooltip: t('field.inputUrlOrPath.tooltip', 'Local absolute path or a public http(s) URL of the video file.') },
       { key: 'mode', label: t('field.frameMode.label', 'Extract Mode'), type: 'select', dataType: 'string', default: 'count', options: [
+        { label: t('field.frameModeOption.all', 'All Source Frames'), value: 'all' },
+        { label: t('field.frameModeOption.interval', 'By Frame Interval'), value: 'interval' },
+        { label: t('field.frameModeOption.seconds', 'By Seconds Interval'), value: 'seconds' },
         { label: t('field.frameModeOption.count', 'By Count'), value: 'count' },
         { label: t('field.frameModeOption.fps', 'By FPS'), value: 'fps' },
       ] },
       { key: 'count', label: t('field.frameCount.label', 'Frame Count'), type: 'number', dataType: 'number', default: 8, tooltip: t('field.frameCount.tooltip', 'Number of frames to extract (mode=By Count).') },
       { key: 'fps', label: t('field.fps.label', 'FPS'), type: 'number', dataType: 'number', default: 1, tooltip: t('field.fps.tooltip', 'Frames per second to extract (mode=By FPS).') },
+      { key: 'interval', label: t('field.frameInterval.label', 'Frame Interval'), type: 'number', dataType: 'number', default: 2, tooltip: t('field.frameInterval.tooltip', 'Extract one image every N source frames (mode=By Frame Interval).') },
+      { key: 'secondsInterval', label: t('field.secondsInterval.label', 'Seconds Interval'), type: 'number', dataType: 'number', default: 1, tooltip: t('field.secondsInterval.tooltip', 'Extract one image every N seconds (mode=By Seconds Interval).') },
       { key: 'maxWidth', label: t('field.maxWidth.label', 'Max Width'), type: 'number', dataType: 'number', tooltip: t('field.maxWidth.tooltip', 'Scale frames to this max width (keeps aspect ratio).') },
       { key: 'maxHeight', label: t('field.maxHeight.label', 'Max Height'), type: 'number', dataType: 'number', tooltip: t('field.maxHeight.tooltip', 'Scale frames to this max height (keeps aspect ratio).') },
       { key: 'ffmpegPath', label: t('field.ffmpegPath.label', 'FFmpeg Path'), type: 'text', dataType: 'string', default: '{{ __config__["workflow.ffmpeg"]["ffmpegPath"] }}', tooltip: t('field.ffmpegPath.tooltip', 'Leave empty to use system PATH.') },
@@ -108,9 +113,11 @@ module.exports = (t) => [
       const dir = path.join(dataDir, 'video-frames', id)
       await fs.promises.mkdir(dir, { recursive: true })
 
-      const mode = args.mode === 'fps' ? 'fps' : 'count'
+      const mode = ['all', 'interval', 'seconds', 'fps'].includes(args.mode) ? args.mode : 'count'
       const count = Math.max(1, toNumber(args.count) || 8)
       const fps = Math.max(0.1, toNumber(args.fps) || 1)
+      const interval = Math.max(1, Math.floor(toNumber(args.interval) || 1))
+      const secondsInterval = Math.max(0.01, toNumber(args.secondsInterval) || 1)
       const maxW = toNumber(args.maxWidth)
       const maxH = toNumber(args.maxHeight)
 
@@ -124,12 +131,20 @@ module.exports = (t) => [
       ctx.logger.info(`按帧截取: ${inputPath} (mode=${mode}, count=${count}, fps=${fps}) -> ${dir}`)
 
       try {
-        // 统一用 fps 滤镜抽帧（比逐帧 -ss seek 稳定，不会因 duration 偏差 EOF）：
+        // - all 模式：不做帧率采样，逐一输出解码后的原始帧
+        // - interval 模式：按解码帧序号每 N 帧取一张，不按时间采样
+        // - seconds 模式：把秒数间隔换算为采样帧率
         // - fps 模式：直接用 fps 值
         // - count 模式：探测 duration，算 fps = count / duration（探测失败回退 fps=1）
         // - count=1 特殊处理：取中点单帧 seek（fps 滤镜不好控制只出 1 帧）
         let ffArgs
-        if (mode === 'fps') {
+        if (mode === 'all') {
+          ffArgs = ['-y', '-i', inputPath, ...seekVf, '-vsync', '0', '-q:v', '2', outPattern]
+        } else if (mode === 'interval') {
+          ffArgs = ['-y', '-i', inputPath, '-vf', `select=not(mod(n\\,${interval}))${scalePart}`, '-vsync', '0', '-q:v', '2', outPattern]
+        } else if (mode === 'seconds') {
+          ffArgs = ['-y', '-i', inputPath, '-vf', `fps=${(1 / secondsInterval).toFixed(8)}${scalePart}`, '-q:v', '2', outPattern]
+        } else if (mode === 'fps') {
           ffArgs = ['-y', '-i', inputPath, '-vf', `fps=${fps}${scalePart}`, '-q:v', '2', outPattern]
         } else if (count === 1) {
           // 单帧：取视频中点（避免首末帧边界问题）

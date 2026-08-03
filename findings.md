@@ -1,5 +1,74 @@
 # Findings
 
+## 视频编辑器帧播放器重构（2026-08-03）
+
+- README 指定库为 `@mediamonks/fast-image-sequence`，零依赖；核心类构造为 `new FastImageSequence(container, {frames, src:{imageURL}, loop, objectFit})`，通过 `play(fps)` / `stop()` / `progress` 控制。
+- README 提供 React 组件，但 mini-app 外部模块受 allowlist 限制，用户明确要求 dist CDN 本地化，预计应下载浏览器 dist 并通过 vendor loader 使用核心类。
+- 当前 `FramePlayer` 自行逐张解码全部图片并用 rAF 绘制；可替换为对本地 dist 的通用 React 包装组件。
+- `VideoEditorDialog` 当前主区只有原生 `<video>`，动画组卡片各自嵌入旧 `FramePlayer`；帧列表仍有 dots 菜单设置各组起止帧，需读取未截断源码确认完整回调链。
+- README 共 503 行，未提供 CDN/dist 文件名，仅给 npm 包名与源码构建方式；需查询 npm 包实际 exports/files 后确定稳定 CDN URL。
+- 当前动画组创建固定 `startFrame=0/endFrame=0`；dots 菜单按“帧→已有组”写边界。新交互应改为 Dialog 层 `selectedStartFrame/selectedEndFrame`，帧点击只更新选区，新建组读取该选区。
+- 主预览区域位于中栏顶部，可增加“视频播放器/帧预览”Tabs；帧预览使用当前选区，动画组卡片仍可复用同一通用播放器。
+- 切换视频和重新截帧时应重置当前选区，防止索引超出新 frames。
+- npm 当前版本为 `@mediamonks/fast-image-sequence@2.2.0`；主 ESM 入口是 `fast-image-sequence.js`，React 入口是 `fast-image-sequence-react.js`。固定版本 CDN 可用 jsDelivr 的包文件 URL。
+- 项目已有 `utils/image-ops/cdn.js`：从 mini-app `src/file/vendor/...` fetch 源码，转 Blob URL 后 dynamic import，适合加载本地 ESM dist，无需修改宿主 allowlist。
+- 包主入口仅 136 字节并相对 import `./FastImageSequence-jb1XI9BR.js`；核心 chunk 约 37KB。现有 fetch→Blob loader 无法解析该相对 import，应为此库直接 dynamic import 本地 `srcFileUrl`，让浏览器按 vendor HTTP 路径解析 chunk。
+- jsDelivr 包清单仅需核心入口与 chunk（图像 URL 模式）；React dist 额外依赖 React，不采用。
+- jsDelivr `.min.js` 仍保留相对 chunk import，不能单文件使用；固定下载 `fast-image-sequence.js` 与 `FastImageSequence-jb1XI9BR.js` 两个文件。
+- 核心类会自行创建 canvas，支持 `play/stop/progress`，并在容器脱离 DOM 时自动 `destruct()`；组件主动清理仍应调用 `destruct()`。
+- 图片 URL 源的 worker 代码内联在核心 chunk，不需要额外下载 worker 文件。
+- `FastImageSequence` 构造时向容器附加 canvas；`ready()` 等待 sources 初始化；`tick` 可读取 `sequence.index`；`destruct()` 会停止动画、断开 observers、删除 canvas并释放来源缓存。
+- 当前仓库只有 `VideoEditorDialog` 使用 `FramePlayer`，可新增 `components/FrameSequencePlayer.jsx` 并将旧 `nodes/FramePlayer.jsx` 改为兼容 re-export。
+- 通用播放器应提供播放/暂停、帧滑杆、当前绝对帧号、fps 展示/可选修改，并在 frames/range 改变或卸载时 destruct 旧实例。
+- 选区持久化为 `data.frameSelection`，主帧预览和新建动画组共享；重新截帧初始化为全范围，切换视频清空。
+- dist 已下载：入口 136B、核心 chunk 37042B，SHA-256 分别为 `a61377412a426c81d0b497063527695c08493a7d7fa1fba5fea4d69772dc242c` 与 `517f31505b21d089761f2e95c9d72d17998440926e6202fcbfa6ecf097e1e99e`。
+- 已新增 `getFastImageSequence` 直接 import 本地 HTTP 入口；新增通用播放器并将旧节点路径改为兼容 re-export。
+- 视频编辑器已改为主预览双 Tabs、帧点击选区和按当前选区创建动画组；旧 MoreVertical/DotsSubmenu 链路无残留。
+- 三个 JSX 文件 Babel 编译、两个本地工具 JS 和两个 vendor dist `node --check` 均通过，`git diff --check` 通过。
+- Node 原生导入本地 dist 成功，导出包含 `FastImageSequence/clamp/isMobile`，证明入口与相对 chunk 完整。
+- 最终审查发现两个可收紧点：sequenceKey 应显式包含 start/end，避免重复 URL 造成区间变化不重建；持久 selection 的非数值 end 应回退末帧而非传播 NaN。
+- 上述边界已修正，并新增 `frame-selection.js` 纯函数与 5 项测试，覆盖默认全范围、越界/非法值、单击起点、起点越过终点、Ctrl/Cmd 终点。
+- 当前 Web 的 mini-app 本地资源路由对 vendor 入口与相对 chunk 均返回 HTTP 200、`text/javascript`，本地原生 ESM 加载链路可用。
+- 5 项选区测试通过，三个受影响 JSX Babel 编译、工具 JS 语法和 `git diff --check` 全部通过。
+- 最终旧 dots 菜单实现与说明均已清除；主交接和视频交接已更新，vendor README 记录固定版本、CDN URL 与 SHA-256。
+
+## 视频编辑器按秒间隔抽帧（2026-08-03）
+
+- 新模式定义为从时间轴起点开始每 N 秒抽取一张，支持小数秒；ffmpeg 可用 `fps=1/N` 实现稳定的时间采样。
+- 参数字段使用 `secondsInterval`，避免与现有按源帧序号采样的 `interval` 混淆。
+- 实现已接入 `seconds` 模式，前后端均限制 `secondsInterval >= 0.01`，插件滤镜为 `fps=(1/secondsInterval)`。
+- 静态验证通过：插件与 constants 语法、Dialog Babel 编译、双副本 diff、`git diff --check` 均无错误；UI、调用参数和插件分支均已检出。
+- 用户视频真实插件结果：secondsInterval=0.5/1/2 分别输出 30/15/8 张，说明小数和大于 1 秒的间隔均生效。
+
+## 分组运行所有（2026-08-03）
+
+- 现有 `GroupOverlays`“批量运行”只调用 `onRunGroup(group.id)`，最终由 Canvas 将当前活动实例节点加入执行队列；它不会等待整组完成，不能在多个 run 之间直接复用。
+- `handleGenerate/handleGenerateMedia` 返回可等待 Promise，适合“单个 run 内并行、runs 之间串行”的运行所有编排。
+- 每轮需先切换 run 并等待 React 提交，再从最新 decoratedNodes 构建执行参数；执行结束后保存当前 nodeStates，才能安全切换下一实例。
+- 最终实现同时支持 count 与 assets 两种模式的全部 runs；素材缩略图显示等待、运行中、完成、失败，运行中禁用模式、实例、上传、删除、连线及原批量运行入口。
+- 验证结果：18 项相关 Node 测试通过，Canvas/GroupOverlays/GroupExecutionToolbar/useGroupExecution 均通过 Babel 编译，`git diff --check` 通过。
+
+## 视频编辑器按帧拆分（2026-08-03）
+
+- 新需求：增加按源帧序号间隔抽取模式；定义 N=1 取全部帧，N=2 取第 1、3、5…帧，362 帧源视频预期得到 181 张。
+- 实现采用 ffmpeg `select=not(mod(n\,N))` 按解码帧编号选择，并配合 `-vsync 0` 防止输出阶段按时间戳补帧。
+- UI/节点默认值新增 `interval: 2`，调用前向下取整并限制最小值 1；插件侧再次执行相同约束。
+- 静态验证通过：两份插件和两个 constants 文件通过 `node --check`，Dialog 通过 Babel JSX 编译，插件副本 diff 为空，`git diff --check` 通过。
+- 源码中的滤镜参数确认生成形式为 ``select=not(mod(n\\,${interval}))``，运行时会得到 ffmpeg 需要的单反斜杠转义逗号。
+- 运行时插件真实验证：interval=1 输出 362，interval=2 输出 181，interval=3 输出 121，均等于 `ceil(362/N)`。
+- 交接文档定义 `ffmpeg_extract_frames` 仅有 `count/fps` 两种模式；fps 模式执行 `-vf fps=N`。
+- 当前常量中的 UI 标签是“按帧率”，`1fps` 表示每秒抽 1 帧，因此 15 秒输出约 15 张符合现有算法。
+- 用户称其为“按帧”，目标很可能是逐原始帧全部导出；需核对当前 UI 和视频源帧率，再决定增加 all-frames 模式还是只修正文案。
+- 用户视频 `像素待机.mp4` 经 ffprobe 确认：24fps、15.083333 秒、362 帧。
+- UI 当前位于“按帧截取”区，模式标签为“按帧率”，字段为“帧率 (fps)”；插件收到 fps 模式后执行 `-vf fps=1`，15 张是准确结果，但“按帧”与“每秒采样”的表述容易误导。
+- 修复决策：不篡改 fps 单位语义，新增 `all`（全部原始帧）模式；该模式不加 fps 滤镜，仅可选缩放，因此用户视频应输出 362 帧。同时将字段文案明确为“每秒抽取帧数”。
+- 两份 `frames.js` 当前一致，mode 只接受 fps，否则回退 count；需同时扩展插件 action 元数据和运行分支。
+- `VideoEditorDialog` 对非 fps 模式一律显示“帧数”，新增 all 后必须改为三分支，避免全部帧模式仍出现 count 输入。
+- 工作区已有 manifest、mini-app 索引、panel-layout 等用户改动；本次不触碰。
+- 已实现 all 模式：插件使用 `-vsync 0` 且不加 fps 滤镜；UI 增加“全部原始帧”，fps 字段改为“每秒抽取帧数”。
+- 插件模板与运行时副本 diff 为空；两份插件通过 `node --check`，Dialog Babel 编译、constants 语法检查及 `git diff --check` 均通过。
+- 使用运行时 `frames.js` action 和用户视频做真实集成调用：all 模式成功输出 362 帧；fps=1 模式仍输出 15 帧。临时产物已清理。
+
 ## 分组内应用节点属性（2026-08-03）
 
 - `NodeShell` 上传区开关包含 `uploadHidden` 持久态、生成完成后自动折叠 effect、图标按钮及 `UploadCollapseContext.Provider`；`UploadSection` 还负责默认开启图片悬浮预览。

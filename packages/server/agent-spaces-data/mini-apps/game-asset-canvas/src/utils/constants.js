@@ -221,6 +221,9 @@ export function isAliyunVideoModel(model) {
 // ============ 视频编辑器（videoEditor 节点，ffmpeg_extract_frames）============
 // 帧截取模式（对应 ffmpeg plugin action mode select）
 export const FRAME_EXTRACT_MODE_OPTIONS = [
+  { value: 'all', label: '全部原始帧' },
+  { value: 'interval', label: '每 N 帧抽取' },
+  { value: 'seconds', label: '每 N 秒抽取' },
   { value: 'count', label: '按数量' },
   { value: 'fps', label: '按帧率' },
 ];
@@ -720,4 +723,3 @@ export function defaultDepthParams() {
   for (const p of DEPTH_PARAMS) out[p.key] = p.default;
   return out;
 }
-

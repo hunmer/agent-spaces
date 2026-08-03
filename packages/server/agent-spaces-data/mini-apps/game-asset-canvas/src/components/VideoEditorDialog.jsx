@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Dialog, DialogContent, DialogTitle,
-  FileUpload, Film, Trash2, MoreVertical, FolderPlus, Loader, Download,
+  FileUpload, Film, Trash2, FolderPlus, Loader, Download,
 } from '@agent-spaces/ui';
-import FramePlayer from './nodes/FramePlayer';
+import FrameSequencePlayer from './FrameSequencePlayer';
 import { FRAME_EXTRACT_MODE_OPTIONS } from '../utils/constants';
 import { composeSpriteSheet } from '../utils/image-ops/spriteSheet';
 import { urlToImageData, imageDataToDataUrl, imageDataToUrl } from '../utils/image-ops/io';
+import { resolveFrameSelection, updateFrameSelection } from '../utils/frame-selection';
 
 const FFMPEG_PLUGIN_ID = 'workflow.ffmpeg';
 const FFMPEG_PROBE = 'ffmpeg_probe';
@@ -21,11 +22,11 @@ const FFMPEG_FIRST_FRAME = 'ffmpeg_first_frame';
  * ┌───────────────────────────────────────┐
  * │ 顶部：横向视频缩略图列表（上传/切换/删除）│
  * ├────────────────────────┬──────────────┤
- * │  视频播放器             │ 右侧 tabs     │
- * │  <video controls>      │ [编辑][动画组]│
+ * │ [视频播放器][帧预览]    │ 右侧 tabs     │
+ * │  主播放器区域           │ [编辑][动画组]│
  * ├────────────────────────┤              │
  * │  横向帧图片列表          │              │
- * │  每帧右上角 dots dropdown│              │
+ * │  单击起点/组合键终点     │              │
  * └────────────────────────┴──────────────┘
  *
  * 所有改动经 onUpdate 回写节点 data（不在 Dialog 内独存 state 源真值）。
@@ -35,15 +36,17 @@ export default function VideoEditorDialog({ open, data, onUpdate, onClose }) {
   const frames = Array.isArray(data?.frames) ? data.frames.filter(Boolean) : [];
   const animGroups = Array.isArray(data?.animGroups) ? data.animGroups : [];
   const videoInfo = data?.videoInfo || null;
-  const params = data?.params || { mode: 'count', count: 8, fps: 1, maxWidth: 320 };
+  const params = data?.params || { mode: 'count', count: 8, fps: 1, interval: 2, secondsInterval: 1, maxWidth: 320 };
+  const framePreviewFps = Math.max(1, Number(data?.framePreviewFps) || 10);
+  const frameSelection = resolveFrameSelection(frames.length, data?.frameSelection);
+  const { startFrame: selectedStartFrame, endFrame: selectedEndFrame } = frameSelection;
 
   const [activeTab, setActiveTab] = useState('edit');
+  const [previewTab, setPreviewTab] = useState('video');
   const [activeVideoIdx, setActiveVideoIdx] = useState(0);
   const [busy, setBusy] = useState(false);
   const [busyMsg, setBusyMsg] = useState('');
-  const [dotsFrameIdx, setDotsFrameIdx] = useState(null);
   const [thumbs, setThumbs] = useState({}); // { [videoUrl]: dataUrl } 缩略图缓存
-  const dotsRef = useRef(null);
 
   const currentVideo = videos[Math.min(activeVideoIdx, videos.length - 1)] || videos[0] || '';
 
@@ -79,19 +82,10 @@ export default function VideoEditorDialog({ open, data, onUpdate, onClose }) {
 
   // 切换视频时清空上一个视频的帧列表 / 动画组 / 探测信息（帧与视频绑定，不跨视频残留）
   useEffect(() => {
-    onUpdate?.({ frames: [], framesDir: '', animGroups: [], videoInfo: null, error: undefined });
+    setPreviewTab('video');
+    onUpdate?.({ frames: [], framesDir: '', frameSelection: null, animGroups: [], videoInfo: null, error: undefined });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentVideo]);
-
-  // 点击外部关闭 dots dropdown
-  useEffect(() => {
-    if (dotsFrameIdx === null) return;
-    const handler = (e) => {
-      if (dotsRef.current && !dotsRef.current.contains(e.target)) setDotsFrameIdx(null);
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [dotsFrameIdx]);
 
   const set = useCallback((patch) => {
     onUpdate?.({ params: { ...params, ...patch } });
@@ -165,10 +159,18 @@ export default function VideoEditorDialog({ open, data, onUpdate, onClose }) {
         mode: params.mode || 'count',
         count: Number(params.count) || 8,
         fps: Number(params.fps) || 1,
+        interval: Math.max(1, Math.floor(Number(params.interval) || 1)),
+        secondsInterval: Math.max(0.01, Number(params.secondsInterval) || 1),
         maxWidth: params.maxWidth ? Number(params.maxWidth) : undefined,
       });
       if (ret?.success && Array.isArray(ret?.data?.frames)) {
-        onUpdate?.({ frames: ret.data.frames, framesDir: ret.data.dir || '' });
+        const nextFrames = ret.data.frames;
+        onUpdate?.({
+          frames: nextFrames,
+          framesDir: ret.data.dir || '',
+          frameSelection: { startFrame: 0, endFrame: Math.max(0, nextFrames.length - 1) },
+        });
+        setPreviewTab('frames');
       } else {
         onUpdate?.({ error: ret?.message || '截帧失败' });
       }
@@ -212,16 +214,20 @@ export default function VideoEditorDialog({ open, data, onUpdate, onClose }) {
 
   // —— 动画组操作 ——
   const addGroup = useCallback(() => {
+    if (!frames.length || selectedEndFrame < selectedStartFrame) {
+      onUpdate?.({ error: '请先在帧列表中选择有效的起点和终点' });
+      return;
+    }
     const group = {
       id: `grp-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
       name: `动画组 ${animGroups.length + 1}`,
       frames: [],
-      startFrame: 0,
-      endFrame: 0,
-      fps: 10,
+      startFrame: selectedStartFrame,
+      endFrame: selectedEndFrame,
+      fps: framePreviewFps,
     };
-    onUpdate?.({ animGroups: [...animGroups, group] });
-  }, [animGroups, onUpdate]);
+    onUpdate?.({ animGroups: [...animGroups, group], error: undefined });
+  }, [animGroups, framePreviewFps, frames.length, onUpdate, selectedEndFrame, selectedStartFrame]);
 
   const updateGroup = useCallback((id, patch) => {
     onUpdate?.({
@@ -233,11 +239,12 @@ export default function VideoEditorDialog({ open, data, onUpdate, onClose }) {
     onUpdate?.({ animGroups: animGroups.filter((g) => g.id !== id) });
   }, [animGroups, onUpdate]);
 
-  // dots dropdown：设起止帧到分组（点帧右上角 ⋮ → 选起点/终点 → 选分组）
-  const setFrameBoundary = useCallback((frameIdx, groupId, which) => {
-    updateGroup(groupId, which === 'start' ? { startFrame: frameIdx } : { endFrame: frameIdx });
-    setDotsFrameIdx(null);
-  }, [updateGroup]);
+  const selectFrameBoundary = useCallback((event, frameIdx) => {
+    const setEnd = event.ctrlKey || event.metaKey;
+    const nextSelection = updateFrameSelection(frameSelection, frameIdx, setEnd);
+    onUpdate?.({ frameSelection: nextSelection, error: undefined });
+    setPreviewTab('frames');
+  }, [frameSelection, onUpdate]);
 
   // —— 精灵图合成（sheet）——
   // 行/列布局：持久化到 data.sheetLayout，作为输出精灵图的全局网格设置
@@ -394,14 +401,39 @@ export default function VideoEditorDialog({ open, data, onUpdate, onClose }) {
             )}
           </aside>
 
-          {/* 中部：播放器 + 帧列表 */}
+          {/* 中部：双播放器 + 帧列表 */}
           <div className="flex min-w-0 flex-1 flex-col">
-            {/* 视频播放器 */}
-            <div className="flex items-center justify-center bg-black/90 p-3" style={{ minHeight: 240 }}>
-              {currentVideo ? (
-                <video key={currentVideo} src={currentVideo} controls className="max-h-[320px] max-w-full" />
+            <div className="flex border-b border-border bg-muted/20 px-3 pt-2">
+              {[
+                ['video', '视频播放器'],
+                ['frames', '帧预览'],
+              ].map(([key, label]) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setPreviewTab(key)}
+                  className={`px-3 py-1.5 text-xs font-medium transition ${previewTab === key ? 'border-b-2 border-primary text-primary' : 'text-muted-foreground hover:text-foreground'}`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <div className="flex items-center justify-center bg-black/90 p-3" style={{ minHeight: 300 }}>
+              {previewTab === 'video' ? (
+                currentVideo ? (
+                  <video key={currentVideo} src={currentVideo} controls className="max-h-[320px] max-w-full" />
+                ) : (
+                  <span className="text-xs text-white/50">选择左侧视频或上传</span>
+                )
               ) : (
-                <span className="text-xs text-white/50">选择上方视频或上传</span>
+                <FrameSequencePlayer
+                  frames={frames}
+                  startFrame={selectedStartFrame}
+                  endFrame={selectedEndFrame}
+                  fps={framePreviewFps}
+                  onFpsChange={(value) => onUpdate?.({ framePreviewFps: value })}
+                  className="w-full max-w-3xl"
+                />
               )}
             </div>
 
@@ -411,47 +443,32 @@ export default function VideoEditorDialog({ open, data, onUpdate, onClose }) {
                 <span className="text-xs font-medium text-muted-foreground">
                   帧列表 {frames.length > 0 && `（${frames.length}）`}
                 </span>
-                <span className="text-[10px] text-muted-foreground">点帧右上角 ⋮ 设为动画组起点/终点</span>
+                <span className="text-[10px] text-muted-foreground">单击设置起点，Ctrl/Command + 单击设置终点</span>
               </div>
               <div className="flex flex-1 gap-1.5 overflow-x-auto overflow-y-hidden p-2">
                 {frames.length === 0 ? (
                   <div className="flex flex-1 items-center justify-center text-xs text-muted-foreground">
                     暂无帧，到「编辑」tab 点「截取帧」
                   </div>
-                ) : frames.map((url, i) => (
-                  <div
-                    key={url + i}
-                    className="group relative shrink-0"
-                  >
-                    <img src={url} alt={`frame ${i}`} className="h-20 w-28 rounded border border-border object-cover" />
-                    <span className="absolute bottom-0 left-0 bg-black/60 px-1 text-[9px] text-white">{i}</span>
-                    {/* 右上角 dots dropdown：设为起点/终点 → 选分组 */}
-                    <div className="absolute right-0.5 top-0.5" ref={dotsFrameIdx === i ? dotsRef : null}>
-                      <button
-                        type="button"
-                        onClick={(e) => { e.stopPropagation(); setDotsFrameIdx(dotsFrameIdx === i ? null : i); }}
-                        className="rounded bg-black/60 p-0.5 text-white opacity-0 transition group-hover:opacity-100"
-                        title="更多"
-                      >
-                        <MoreVertical className="h-3 w-3" />
-                      </button>
-                      {dotsFrameIdx === i && (
-                        <div className="absolute right-0 top-full z-20 mt-1 min-w-[160px] rounded-md border border-border bg-popover py-1 shadow-lg">
-                          <DotsSubmenu
-                            label="设置为起点"
-                            groups={animGroups}
-                            onSelect={(gid) => setFrameBoundary(i, gid, 'start')}
-                          />
-                          <DotsSubmenu
-                            label="设置为终点"
-                            groups={animGroups}
-                            onSelect={(gid) => setFrameBoundary(i, gid, 'end')}
-                          />
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
+                ) : frames.map((url, i) => {
+                  const isStart = i === selectedStartFrame;
+                  const isEnd = i === selectedEndFrame;
+                  const inRange = selectedEndFrame >= selectedStartFrame && i >= selectedStartFrame && i <= selectedEndFrame;
+                  return (
+                    <button
+                      type="button"
+                      key={url + i}
+                      onClick={(event) => selectFrameBoundary(event, i)}
+                      className={`relative h-20 w-28 shrink-0 overflow-hidden rounded border-2 transition ${isStart ? 'border-emerald-500' : isEnd ? 'border-red-500' : inRange ? 'border-primary/60' : 'border-transparent hover:border-border'}`}
+                      title={isStart ? `起点：${i}` : isEnd ? `终点：${i}` : `帧 ${i}`}
+                    >
+                      <img src={url} alt={`frame ${i}`} className="h-full w-full object-cover" />
+                      <span className="absolute bottom-0 left-0 bg-black/60 px-1 text-[9px] text-white">{i}</span>
+                      {isStart && <span className="absolute left-0 top-0 bg-emerald-600 px-1 text-[9px] text-white">起</span>}
+                      {isEnd && <span className="absolute right-0 top-0 bg-red-600 px-1 text-[9px] text-white">终</span>}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -487,6 +504,8 @@ export default function VideoEditorDialog({ open, data, onUpdate, onClose }) {
                 <AnimTab
                   groups={animGroups}
                   frames={frames}
+                  selectedStartFrame={selectedStartFrame}
+                  selectedEndFrame={selectedEndFrame}
                   sheetLayout={sheetLayout}
                   onSetSheetLayout={setSheetLayout}
                   onComposeSheetDataUrl={composeSheetDataUrl}
@@ -512,34 +531,6 @@ export default function VideoEditorDialog({ open, data, onUpdate, onClose }) {
   );
 }
 
-/** dots dropdown 子菜单：列出分组供选择 */
-function DotsSubmenu({ label, groups, onSelect }) {
-  return (
-    <div className="group/sub relative">
-      <button type="button" className="flex w-full items-center justify-between px-3 py-1 text-xs text-foreground transition hover:bg-accent">
-        {label}
-        <span className="text-muted-foreground">›</span>
-      </button>
-      {groups.length === 0 ? (
-        <span className="block px-3 py-0.5 text-[10px] text-muted-foreground">无分组，先到动画组 tab 创建</span>
-      ) : (
-        <div className="invisible absolute left-full top-0 z-30 min-w-[140px] rounded-md border border-border bg-popover py-1 opacity-0 shadow-lg transition group-hover/sub:visible group-hover/sub:opacity-100">
-          {groups.map((g) => (
-            <button
-              key={g.id}
-              type="button"
-              onClick={() => onSelect(g.id)}
-              className="block w-full px-3 py-1 text-left text-xs text-foreground transition hover:bg-accent hover:text-primary"
-            >
-              {g.name}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
 /** 编辑 tab：截帧参数 + 视频信息 + 尺寸调整 */
 function EditTab({ params, set, videoInfo, onProbe, onExtract, resizeW, setResizeW, resizeH, setResizeH, onResize, hasVideo }) {
   return (
@@ -559,18 +550,38 @@ function EditTab({ params, set, videoInfo, onProbe, onExtract, resizeW, setResiz
         </label>
         {params.mode === 'fps' ? (
           <label className="flex flex-col gap-1">
-            <span className="text-[11px] text-muted-foreground">帧率 (fps)</span>
+            <span className="text-[11px] text-muted-foreground">每秒抽取帧数 (fps)</span>
             <input type="number" min="0.1" step="0.5" value={params.fps ?? 1}
               onChange={(e) => set({ fps: e.target.value })}
               className="w-full rounded-md border border-border bg-background px-2 py-1 text-xs outline-none focus:border-primary" />
           </label>
-        ) : (
+        ) : params.mode === 'interval' ? (
+          <label className="flex flex-col gap-1">
+            <span className="text-[11px] text-muted-foreground">帧间隔</span>
+            <input type="number" min="1" step="1" value={params.interval ?? 2}
+              onChange={(e) => set({ interval: e.target.value })}
+              className="w-full rounded-md border border-border bg-background px-2 py-1 text-xs outline-none focus:border-primary" />
+            <span className="text-[10px] text-muted-foreground">每隔此帧数抽取一张；设为 1 时导出全部帧。</span>
+          </label>
+        ) : params.mode === 'seconds' ? (
+          <label className="flex flex-col gap-1">
+            <span className="text-[11px] text-muted-foreground">时间间隔（秒）</span>
+            <input type="number" min="0.01" step="0.1" value={params.secondsInterval ?? 1}
+              onChange={(e) => set({ secondsInterval: e.target.value })}
+              className="w-full rounded-md border border-border bg-background px-2 py-1 text-xs outline-none focus:border-primary" />
+            <span className="text-[10px] text-muted-foreground">每隔此秒数抽取一张；支持 0.5 等小数。</span>
+          </label>
+        ) : params.mode === 'count' || !params.mode ? (
           <label className="flex flex-col gap-1">
             <span className="text-[11px] text-muted-foreground">帧数</span>
             <input type="number" min="1" value={params.count ?? 8}
               onChange={(e) => set({ count: e.target.value })}
               className="w-full rounded-md border border-border bg-background px-2 py-1 text-xs outline-none focus:border-primary" />
           </label>
+        ) : (
+          <p className="text-[11px] text-muted-foreground">
+            导出视频中的全部原始帧，不进行帧率采样。
+          </p>
         )}
         <label className="flex flex-col gap-1">
           <span className="text-[11px] text-muted-foreground">最大宽度（留空=原尺寸）</span>
@@ -661,10 +672,11 @@ function InfoRow({ label, value }) {
  * - 每个动画组：名称/起止帧/fps + 循环播放器 + 实时精灵图预览（按 cols 合成）
  * - 列表最下方：【输出到画布】按钮，把每个动画组的精灵图输出到节点 data.output.images
  *
- * 起止帧由帧列表 ⋮ 菜单设置。
+ * 新建动画组读取帧列表当前选中的起止帧。
  */
 function AnimTab({
   groups, frames,
+  selectedStartFrame, selectedEndFrame,
   sheetLayout, onSetSheetLayout,
   onComposeSheetDataUrl, sheetBusyId,
   onExportSheets, exporting,
@@ -703,9 +715,11 @@ function AnimTab({
       <button
         type="button"
         onClick={onAddGroup}
-        className="flex items-center justify-center gap-1 rounded-md border border-dashed border-border py-2 text-xs text-muted-foreground transition hover:border-primary hover:text-primary"
+        disabled={!frames.length || selectedEndFrame < selectedStartFrame}
+        className="flex items-center justify-center gap-1 rounded-md border border-dashed border-border py-2 text-xs text-muted-foreground transition hover:border-primary hover:text-primary disabled:opacity-50"
       >
-        <FolderPlus className="h-3.5 w-3.5" /> 新建动画组
+        <FolderPlus className="h-3.5 w-3.5" />
+        新建动画组{frames.length ? `（${selectedStartFrame}-${selectedEndFrame}）` : ''}
       </button>
 
       {groups.length === 0 && (
@@ -754,7 +768,7 @@ function AnimTab({
             </div>
 
             {/* 播放器 */}
-            <FramePlayer
+            <FrameSequencePlayer
               frames={frames}
               startFrame={g.startFrame}
               endFrame={g.endFrame}

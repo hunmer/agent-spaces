@@ -29,6 +29,7 @@ export default function GroupOverlays({
   inputSlotCounts, onSetExecutionMode, onSetExecutionCount,
   runningGroupIds,
   onRunGroup,
+  onRunAllExecution, onStopAllExecution, runAllStates,
   onSwitchExecutionRun, onUploadExecutionAssets, onRemoveExecutionAsset,
   onSetOutputBinding, onDisconnectOutputBinding,
 }) {
@@ -63,7 +64,8 @@ export default function GroupOverlays({
               <button
                 type="button"
                 title="运行分组内可执行节点"
-                className="flex h-5 items-center gap-1 rounded border border-border/70 bg-background/80 px-1.5 text-[10px] font-medium text-foreground shadow-sm transition hover:border-primary hover:text-primary"
+                disabled={runningGroupIds.has(group.id) || runAllStates?.[group.id]?.running}
+                className="flex h-5 items-center gap-1 rounded border border-border/70 bg-background/80 px-1.5 text-[10px] font-medium text-foreground shadow-sm transition hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-50"
                 onClick={() => onRunGroup(group.id)}
               >
                 <Play className="size-2.5" />
@@ -95,6 +97,9 @@ export default function GroupOverlays({
               onSwitchRun={onSwitchExecutionRun}
               onUploadFiles={onUploadExecutionAssets}
               onRemoveAsset={onRemoveExecutionAsset}
+              onRunAll={onRunAllExecution}
+              onStopAll={onStopAllExecution}
+              runAllState={runAllStates?.[group.id]}
               onConnectGroup={(sourceGroupId, targetGroupId) => {
                 setBindingDialog({ sourceGroupId, targetGroupId });
               }}

@@ -68,6 +68,7 @@ import { exportAssetLibraryZip, extractFileNameFromUrl, pickAssetLibraryZipFile,
 import { canvasConfigPath, historyConfigPath, assetLibraryConfigPath, saveCanvas } from '../utils/storage';
 import { decorateEdgesForSelection } from '../utils/edge-display';
 import { countNodesWithOutput } from '../utils/batch-run';
+import { collectGroupNodeIds } from '../utils/group-helpers';
 import { CanvasGalleryContextProvider } from '../utils/canvas-gallery';
 import { COMPACT_NODE_ZOOM_THRESHOLD } from './nodes/compact-node';
 
@@ -79,6 +80,15 @@ const DEFAULT_EDGE_OPTIONS = {
 const EDGE_PATH_STYLES = ['bezier', 'straight', 'step', 'smoothstep'];
 const EDGE_LINE_STYLES = ['solid', 'dashed'];
 const SNAP_GRID = [16, 16];
+
+function waitForCanvasState() {
+  return new Promise((resolve) => {
+    const schedule = typeof requestAnimationFrame === 'function'
+      ? requestAnimationFrame
+      : (callback) => setTimeout(callback, 0);
+    schedule(() => schedule(resolve));
+  });
+}
 
 /**
  * 游戏资产生成画布主组件（编排层）。
@@ -148,6 +158,8 @@ export default function Canvas({ hostConfig }) {
   // 同步在每次渲染后更新（useEffect 兜底 + 直接赋值保证同步读取）。
   const nodesRef = useRef(nodes);
   const edgesRef = useRef(edges);
+  const decoratedNodesRef = useRef([]);
+  const activeQueueNodeIdsRef = useRef(new Set());
   const reservedBatchNodeIdsRef = useRef(new Set());
   nodesRef.current = nodes;
   edgesRef.current = edges;
@@ -247,6 +259,7 @@ export default function Canvas({ hostConfig }) {
       .map((job) => job.placeholderNodeId)
       .filter(Boolean),
   ), [jobs]);
+  activeQueueNodeIdsRef.current = activeQueueNodeIds;
   useEffect(() => {
     for (const nodeId of reservedBatchNodeIdsRef.current) {
       if (!activeQueueNodeIds.has(nodeId)) reservedBatchNodeIdsRef.current.delete(nodeId);
@@ -1130,8 +1143,9 @@ export default function Canvas({ hostConfig }) {
     onOutputPreviewModeChange: handleOutputPreviewModeChange,
     settings, callbacks: nodeCallbacks,
   });
+  decoratedNodesRef.current = decoratedNodes;
   const collectBatchRunNodes = useCallback((nodeIds) => {
-    const nodeMap = new Map(decoratedNodes.map((node) => [node.id, node]));
+    const nodeMap = new Map(decoratedNodesRef.current.map((node) => [node.id, node]));
     const candidates = [];
     let skipped = 0;
     for (const nodeId of nodeIds || []) {
@@ -1139,7 +1153,7 @@ export default function Canvas({ hostConfig }) {
       if (
         !node
         || node.data?.status === 'running'
-        || activeQueueNodeIds.has(nodeId)
+        || activeQueueNodeIdsRef.current.has(nodeId)
         || reservedBatchNodeIdsRef.current.has(nodeId)
       ) {
         skipped += 1;
@@ -1153,7 +1167,44 @@ export default function Canvas({ hostConfig }) {
       candidates.push({ node, spec });
     }
     return { candidates, skipped };
-  }, [activeQueueNodeIds, decoratedNodes]);
+  }, []);
+
+  const executeCurrentGroupRun = useCallback(async (nodeIds) => {
+    const { candidates } = collectBatchRunNodes(nodeIds);
+    if (!candidates.length) throw new Error('分组内没有可执行的生成节点');
+    await Promise.all(candidates.map(({ node, spec }) => (
+      spec.kind === 'image'
+        ? handleGenerate(node.id, node.type, { workflowId: spec.workflowId, input: spec.input })
+        : handleGenerateMedia(node.id, node.type, spec.kind, { workflowId: spec.workflowId, input: spec.input })
+    )));
+    await waitForCanvasState();
+    const failed = nodesRef.current.filter((node) => (
+      nodeIds.includes(node.id) && node.data?.status === 'error'
+    ));
+    if (failed.length) throw new Error(`${failed.length} 个节点执行失败`);
+  }, [collectBatchRunNodes, handleGenerate, handleGenerateMedia]);
+
+  const handleRunAllGroup = useCallback((groupId, runIds) => {
+    void groupExecution.runAllRuns(groupId, runIds, executeCurrentGroupRun);
+  }, [executeCurrentGroupRun, groupExecution.runAllRuns]);
+
+  const handleStopAllGroup = useCallback((groupId) => {
+    if (groupExecution.runAllStates[groupId]?.running) groupExecution.stopAllRuns(groupId);
+    const nodeIds = new Set(collectGroupNodeIds(groupsRef.current, groupId));
+    const groupJobs = jobs.filter((job) => (
+        (job.status === 'queued' || job.status === 'running')
+        && nodeIds.has(job.placeholderNodeId)
+      ));
+    const queuedNodeIds = new Set(groupJobs.map((job) => job.placeholderNodeId).filter(Boolean));
+    groupJobs.forEach((job) => cancel(job.id));
+    nodesRef.current
+      .filter((node) => (
+        nodeIds.has(node.id)
+        && !queuedNodeIds.has(node.id)
+        && (node.data?.status === 'running' || node.data?.loading)
+      ))
+      .forEach((node) => handleCancelProcess(node.id));
+  }, [cancel, groupExecution.runAllStates, groupExecution.stopAllRuns, handleCancelProcess, jobs]);
 
   const submitBatchRun = useCallback((nodeIds) => {
     const { candidates, skipped } = collectBatchRunNodes(nodeIds);
@@ -1441,6 +1492,9 @@ export default function Canvas({ hostConfig }) {
                 inputSlotCounts={groupExecution.inputSlotCounts}
                 runningGroupIds={groupExecution.runningGroupIds}
                 onRunGroup={handleRunGroup}
+                onRunAllExecution={handleRunAllGroup}
+                onStopAllExecution={handleStopAllGroup}
+                runAllStates={groupExecution.runAllStates}
                 onSetExecutionMode={groupExecution.setMode}
                 onSetExecutionCount={groupExecution.setCount}
                 onSwitchExecutionRun={groupExecution.switchRun}

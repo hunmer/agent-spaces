@@ -4,7 +4,7 @@
 > 通用约定（节点注册/数据流/约束）查 `src/handoff.md`，本文只记录 videoEditor 专属内容。
 
 ## 节点一句话
-视频编辑器节点：接收上游或上传多个视频 → ffmpeg 按帧率/数量截取帧图片 → 帧分组（起止帧循环播放）→ 调整尺寸/查看视频信息。
+视频编辑器节点：接收上游或上传多个视频 → ffmpeg 导出全部原始帧或按帧率/数量截取帧图片 → 帧分组（起止帧循环播放）→ 调整尺寸/查看视频信息。
 
 ## 关键文件
 
@@ -13,15 +13,18 @@ mini-app 根: packages/server/agent-spaces-data/mini-apps/game-asset-canvas/
   src/
     components/
       VideoEditorDialog.jsx        # 大对话框（播放器/帧列表/动画组/编辑面板），~750 行
+      FrameSequencePlayer.jsx      # 通用帧序列播放器（fast-image-sequence React 包装）
       nodes/
         VideoEditorNode.jsx        # 节点外壳（摘要 + 打开编辑器按钮 + 缩略图预览）
-        FramePlayer.jsx            # Canvas 逐帧循环播放器（requestAnimationFrame）
+        FramePlayer.jsx            # FrameSequencePlayer 兼容导出
     utils/
       constants.js                 # NODE_TYPES.videoEditor + NODE_META + FRAME_EXTRACT_MODE_OPTIONS
       canvas-constants.js          # NODE_COMPONENTS 注册 + ADD_NODE_ITEMS + DEFAULT_SIZE + initialData
       input-images.js              # VIDEO_RECEIVER_TYPES / VIDEO_PASSTHROUGH_TYPES 含 videoEditor
       api.js                       # VALID_NODE_TYPES / NODE_LABELS 含 videoEditor
       tools.js                     # NODE_TYPE_ENUM / NODE_TYPE_DESC 含 videoEditor
+    vendor/
+      fast-image-sequence/         # @mediamonks/fast-image-sequence@2.2.0 CDN dist
     hooks/
       useDecoratedNodes.js         # videoEditor 上游视频派生（合并非覆盖，~70 行）
   manifest.json                    # enabledPlugins 含 "workflow.ffmpeg"
@@ -39,6 +42,8 @@ ffmpeg 插件（两份副本需同步！见下「ffmpeg 插件」）:
   source: 'upload'|'upstream',  // 来源标记（useDecoratedNodes 设置）
   frames: string[],        // 截取的帧 http URL
   framesDir: string,       // 帧文件在 data 目录的相对路径
+  frameSelection: {startFrame:number,endFrame:number}|null, // 当前帧选区
+  framePreviewFps: number, // 主帧预览播放速度
   animGroups: [{           // 动画组
     id, name,
     frames: string[],      // 该组包含的帧 URL
@@ -47,7 +52,7 @@ ffmpeg 插件（两份副本需同步！见下「ffmpeg 插件」）:
     fps: number,           // 播放帧率
   }],
   videoInfo: object|null,  // ffprobe 解析信息
-  params: { mode, count, fps, maxWidth },  // 截帧参数
+  params: { mode, count, fps, interval, secondsInterval, maxWidth },  // 截帧参数
   sheetLayout: { rows, cols },  // 精灵图输出网格布局
   output: { video: string|null, images: string[] },  // video=尺寸调整产出；images=精灵图输出（下游消费）
 }
@@ -60,12 +65,12 @@ ffmpeg 插件（两份副本需同步！见下「ffmpeg 插件」）:
 │ 标题栏 + busy 指示                            │
 ├─────┬──────────────────────┬────────────────┤
 │ 左  │                      │ [编辑][动画组]  │ tabs
-│ 侧  │   视频播放器          │ ─────────────  │
-│ 栏  │   <video controls>   │ 右侧面板内容    │
+│ 侧  │ [视频播放器][帧预览]   │ ─────────────  │
+│ 栏  │   主播放器区域         │ 右侧面板内容    │
 │ 视  ├──────────────────────┤                │
 │ 频  │ [帧1][帧2][帧3]...    │                │
 │ 列  │  横向帧图片列表        │                │
-│ 表  │  每帧右上角 ⋮ dropdown│                │
+│ 表  │ 单击起点 / 组合键终点  │                │
 │ +上 │                      │                │
 │ 传  │                      │                │
 └─────┴──────────────────────┴────────────────┘
@@ -74,7 +79,8 @@ ffmpeg 插件（两份副本需同步！见下「ffmpeg 插件」）:
 - **视频缩略图列表属于左侧栏**（`<aside>`，纵向排列），不再占整行顶栏 / 不出现在右侧面板上方。FileUpload 在左侧栏顶部。
 - 视频缩略图：用 `ffmpeg_first_frame` 获取首帧 base64（不用 `<video>`）
 - FileUpload 用内联 `<style>` + `.video-thumb-upload` class 缩成缩略图尺寸（参考 GroupExecutionToolbar）
-- 帧的 ⋮ dropdown：「设置为起点」「设置为终点」→ 各有分组子菜单（DotsSubmenu 组件）
+- 帧列表单击设置当前起点，Ctrl/Command + 单击设置当前终点；当前区间高亮并用于主帧预览。
+- 「新建动画组」直接使用当前选区创建，不再通过帧缩略图 ⋮ 菜单写入已有组。
 - 切换视频时清空 frames/animGroups/videoInfo（useEffect 监听 currentVideo）
 
 ### 动画组 tab（精灵图输出）
@@ -88,7 +94,7 @@ ffmpeg 插件（两份副本需同步！见下「ffmpeg 插件」）:
 | action | 用途 | 输入 | 输出 |
 |---|---|---|---|
 | ffmpeg_probe | 解析视频信息 | inputPath | format/video/audio/streams/duration |
-| ffmpeg_extract_frames | 截取帧 | inputPath, mode(count/fps), count, fps, maxWidth | frames[](httpPath), dir |
+| ffmpeg_extract_frames | 截取帧 | inputPath, mode(all/interval/seconds/count/fps), interval, secondsInterval, count, fps, maxWidth | frames[](httpPath), dir |
 | ffmpeg_first_frame | 取首帧 base64 | inputPath | dataUrl(data:image/png;base64,...) |
 | ffmpeg_custom | 自定义命令（尺寸调整） | inputPath, args, outputExt | httpPath, dir |
 | ffmpeg_format_convert | 格式转换 | inputPath, outputFormat | outputPath |
@@ -106,6 +112,9 @@ diff packages/templates/plugins/ffmpeg/frames.js packages/server/agent-spaces-da
 
 ### 截帧实现要点（frames.js）
 - 直接 spawn ffmpeg 进程（`child_process.execFile`），绕过 fluent-ffmpeg screenshots API 的怪异行为
+- all 模式：不加 fps 采样滤镜，使用 `-vsync 0` 输出全部解码帧
+- interval 模式：`select=not(mod(n\,N))` 按解码帧序号每 N 帧取一张，并用 `-vsync 0` 避免补帧
+- seconds 模式：把秒数间隔 N 换算为 `fps=1/N`，按时间均匀抽帧
 - count 模式：探测 duration → 算 `fps = count / (duration × 0.95)` → 用 fps 滤镜（留 5% 余量避免末尾 EOF）
 - count=1：取中点单帧 seek
 - fps 模式：`-vf fps=N` 滤镜
@@ -118,12 +127,11 @@ diff packages/templates/plugins/ffmpeg/frames.js packages/server/agent-spaces-da
 - `routes/plugin.ts:~187`：透传 workspaceId 给 `createBuiltinPluginApi({ workspaceId })`
 - `getMiniAppDataDir` 传 `'.'`（非空字符串，否则 safeProjectSubdirPath 抛 Invalid file path）
 
-## Canvas 逐帧播放器（FramePlayer.jsx）
-- 预加载帧为 ImageBitmap（createImageBitmap，降级 Image）
-- requestAnimationFrame 按 fps 定时切换 bitmap 绘制到 `<canvas>`
-- 循环区间 [startFrame, endFrame]
-- endFrame < startFrame → 显示错误信息，不播放
-- 支持 播放/暂停
+## 通用帧播放器（FrameSequencePlayer.jsx）
+- 使用本地 `@mediamonks/fast-image-sequence@2.2.0` dist，通过 `getFastImageSequence()` 原生 dynamic import。
+- 支持播放/暂停、帧滑杆、当前绝对帧号、循环区间与可选 FPS 修改。
+- frames/区间变化或组件卸载时调用 `destruct()`，释放 canvas、observer、worker 与图片缓存。
+- 官方入口有相对 chunk import，vendor 必须同时保留 `fast-image-sequence.js` 和 `FastImageSequence-jb1XI9BR.js`。
 
 ## 已知问题 / 待办
 1. **删除按钮不显示**（当前未解决）：视频缩略图右上角删除按钮始终不显示。已尝试 group-hover / opacity / hoveredVideo state / 始终渲染，均无效。canDelete 判断从 uploadedVideoUrls 改为 `data.source !== 'upstream'` 后用户反馈仍不行。下次排查建议：先用浏览器检查元素确认 `<button>` 是否在 DOM 中。
@@ -136,7 +144,7 @@ diff packages/templates/plugins/ffmpeg/frames.js packages/server/agent-spaces-da
 |---|---|
 | 对话框布局/交互 | `components/VideoEditorDialog.jsx` |
 | 节点本体外观 | `components/nodes/VideoEditorNode.jsx` |
-| 帧播放器 | `components/nodes/FramePlayer.jsx` |
+| 帧播放器 | `components/FrameSequencePlayer.jsx` |
 | 截帧/首帧/尺寸调整逻辑 | ffmpeg 插件 `frames.js`（两份同步） |
 | 节点注册 | `constants.js` + `canvas-constants.js` + `api.js` + `tools.js` |
 | 上游视频派生 | `hooks/useDecoratedNodes.js` + `utils/input-images.js` |

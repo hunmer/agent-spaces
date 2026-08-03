@@ -172,3 +172,36 @@ test('共享组输出手柄支持连接到组输入手柄', () => {
   assert.match(source, /onConnectGroup\?: \(sourceGroupId: string, targetGroupId: string\)/);
   assert.match(source, /getGroupConnectTargetAtScreenPoint\(upEvent\.clientX, upEvent\.clientY\)/);
 });
+
+test('分组工具栏支持运行所有并展示素材实例状态', () => {
+  const toolbarSource = readFileSync(
+    new URL('../components/canvas/GroupExecutionToolbar.jsx', import.meta.url),
+    'utf8',
+  );
+  const executionSource = readFileSync(
+    new URL('../hooks/useGroupExecution.js', import.meta.url),
+    'utf8',
+  );
+  const selectionDialogSource = readFileSync(
+    new URL('../components/canvas/GroupRunSelectionDialog.jsx', import.meta.url),
+    'utf8',
+  );
+  assert.match(toolbarSource, /'运行所有'/);
+  assert.match(toolbarSource, /'停止所有'/);
+  assert.match(toolbarSource, /function RunStatusLabel/);
+  assert.match(toolbarSource, /Loader2[^\n]*animate-spin/);
+  assert.match(selectionDialogSource, /全选/);
+  assert.match(selectionDialogSource, /反选/);
+  assert.match(selectionDialogSource, /runs\.map\(\(run\) => run\.id\)/);
+  assert.match(executionSource, /for \(const run of runs\)/);
+  assert.match(executionSource, /selectedRunIds\.has\(run\.id\)/);
+  assert.match(executionSource, /await executeCurrentRun\(context\.nodeIds, run\.id\)/);
+  assert.match(executionSource, /const stopAllRuns = useCallback/);
+  assert.match(executionSource, /activeId: initialActiveId/);
+  const switchRunSource = executionSource.slice(
+    executionSource.indexOf('const switchRun = useCallback'),
+    executionSource.indexOf('const uploadAssets = useCallback'),
+  );
+  assert.match(switchRunSource, /if \(!context\) return;/);
+  assert.doesNotMatch(switchRunSource, /context\.busy/);
+});

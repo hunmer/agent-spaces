@@ -21,12 +21,16 @@ import {
 
 export default function useGroupExecution({ groups, nodes, edges, setGroups, setNodes }) {
   const [propertyApply, setPropertyApply] = useState(null);
+  const [runAllStates, setRunAllStates] = useState({});
+  const runAllStatesRef = useRef(runAllStates);
+  const stoppedGroupIdsRef = useRef(new Set());
   const groupsRef = useRef(groups);
   const nodesRef = useRef(nodes);
   const edgesRef = useRef(edges);
   groupsRef.current = groups;
   nodesRef.current = nodes;
   edgesRef.current = edges;
+  runAllStatesRef.current = runAllStates;
 
   const inputSlotCounts = useMemo(() => {
     const result = new Map();
@@ -137,6 +141,140 @@ export default function useGroupExecution({ groups, nodes, edges, setGroups, set
 
   const cancelPropertyApply = useCallback(() => setPropertyApply(null), []);
 
+  const updateRunAllState = useCallback((groupId, updater) => {
+    const current = runAllStatesRef.current[groupId] || { running: false, statusByRun: {} };
+    const nextGroupState = typeof updater === 'function' ? updater(current) : updater;
+    const next = { ...runAllStatesRef.current, [groupId]: nextGroupState };
+    runAllStatesRef.current = next;
+    setRunAllStates(next);
+  }, []);
+
+  const commitRunState = useCallback((groupId, execution, nodeStates = null) => {
+    groupsRef.current = groupsRef.current.map((group) => (
+      group.id === groupId ? { ...group, batchExecution: execution } : group
+    ));
+    if (nodeStates) {
+      nodesRef.current = nodesRef.current.map((node) => (
+        Object.prototype.hasOwnProperty.call(nodeStates, node.id)
+          ? { ...node, data: cloneSerializable(nodeStates[node.id]) }
+          : node
+      ));
+    }
+    commit(groupId, execution, nodeStates);
+  }, [commit]);
+
+  const runAllRuns = useCallback(async (groupId, runIds, executeCurrentRun) => {
+    if (typeof executeCurrentRun !== 'function' || runAllStatesRef.current[groupId]?.running) return;
+    const initialContext = getContext(groupId);
+    if (!initialContext || initialContext.busy) return;
+    const mode = initialContext.execution.mode;
+    const section = initialContext.execution[mode];
+    const selectedRunIds = new Set(runIds || []);
+    const runs = (section?.runs || []).filter((run) => selectedRunIds.has(run.id));
+    if (!runs.length) return;
+    const initialActiveId = section.activeId;
+    stoppedGroupIdsRef.current.delete(groupId);
+    updateRunAllState(groupId, {
+      running: true,
+      mode,
+      statusByRun: Object.fromEntries(runs.map((run) => [run.id, 'queued'])),
+    });
+
+    for (const run of runs) {
+      if (stoppedGroupIdsRef.current.has(groupId)) break;
+      updateRunAllState(groupId, (state) => ({
+        ...state,
+        statusByRun: { ...state.statusByRun, [run.id]: 'running' },
+      }));
+      try {
+        const context = getContext(groupId);
+        if (!context) throw new Error('分组已不存在');
+        let execution = saveActiveRun(context.execution, context.currentStates);
+        const currentSection = execution[mode];
+        const targetRun = currentSection?.runs.find((item) => item.id === run.id);
+        if (!targetRun) throw new Error('素材实例已不存在');
+        execution = {
+          ...execution,
+          mode,
+          [mode]: { ...currentSection, activeId: run.id },
+        };
+        const targetStates = mergeRunNodeStates(
+          targetRun.nodeStates, context.currentNodes, context.nodeIds,
+        );
+        commitRunState(groupId, execution, targetStates);
+        await waitForCanvasCommit();
+        await executeCurrentRun(context.nodeIds, run.id);
+        await waitForCanvasCommit();
+
+        if (stoppedGroupIdsRef.current.has(groupId)) {
+          updateRunAllState(groupId, (state) => ({
+            ...state,
+            statusByRun: { ...state.statusByRun, [run.id]: 'stopped' },
+          }));
+          break;
+        }
+
+        const completedContext = getContext(groupId);
+        if (!completedContext) throw new Error('分组已不存在');
+        const savedExecution = saveActiveRun(
+          completedContext.execution, completedContext.currentStates,
+        );
+        commitRunState(groupId, savedExecution);
+        updateRunAllState(groupId, (state) => ({
+          ...state,
+          statusByRun: { ...state.statusByRun, [run.id]: 'done' },
+        }));
+      } catch (error) {
+        console.error('[GroupRunAll] run failed', { groupId, runId: run.id, error });
+        updateRunAllState(groupId, (state) => ({
+          ...state,
+          statusByRun: { ...state.statusByRun, [run.id]: 'error' },
+        }));
+      }
+    }
+
+    if (stoppedGroupIdsRef.current.has(groupId)) {
+      updateRunAllState(groupId, (state) => ({
+        ...state,
+        statusByRun: Object.fromEntries(Object.entries(state.statusByRun).map(([runId, status]) => [
+          runId,
+          status === 'queued' || status === 'running' ? 'stopped' : status,
+        ])),
+      }));
+    }
+
+    const finalContext = getContext(groupId);
+    if (finalContext) {
+      let execution = saveActiveRun(finalContext.execution, finalContext.currentStates);
+      const finalSection = execution[mode];
+      const restoreRun = finalSection?.runs.find((run) => run.id === initialActiveId);
+      if (restoreRun) {
+        execution = {
+          ...execution,
+          mode,
+          [mode]: { ...finalSection, activeId: initialActiveId },
+        };
+        commitRunState(groupId, execution, mergeRunNodeStates(
+          restoreRun.nodeStates, finalContext.currentNodes, finalContext.nodeIds,
+        ));
+      }
+    }
+    stoppedGroupIdsRef.current.delete(groupId);
+    updateRunAllState(groupId, (state) => ({ ...state, running: false }));
+  }, [commitRunState, getContext, updateRunAllState]);
+
+  const stopAllRuns = useCallback((groupId) => {
+    stoppedGroupIdsRef.current.add(groupId);
+    updateRunAllState(groupId, (state) => ({
+      ...state,
+      running: true,
+      statusByRun: Object.fromEntries(Object.entries(state.statusByRun || {}).map(([runId, status]) => [
+        runId,
+        status === 'queued' || status === 'running' ? 'stopped' : status,
+      ])),
+    }));
+  }, [updateRunAllState]);
+
   const setMode = useCallback((groupId, mode) => {
     if (mode !== GROUP_EXECUTION_MODES.count && mode !== GROUP_EXECUTION_MODES.assets) return;
     const context = getContext(groupId);
@@ -184,7 +322,7 @@ export default function useGroupExecution({ groups, nodes, edges, setGroups, set
 
   const switchRun = useCallback((groupId, mode, runId) => {
     const context = getContext(groupId);
-    if (!context || context.busy) return;
+    if (!context) return;
     let execution = saveActiveRun(context.execution, context.currentStates);
     const section = execution[mode];
     const run = section?.runs.find((item) => item.id === runId);
@@ -385,6 +523,9 @@ export default function useGroupExecution({ groups, nodes, edges, setGroups, set
     requestPropertyApply,
     applyPropertiesToRuns,
     cancelPropertyApply,
+    runAllStates,
+    runAllRuns,
+    stopAllRuns,
     setMode,
     setCount,
     switchRun,
@@ -393,4 +534,13 @@ export default function useGroupExecution({ groups, nodes, edges, setGroups, set
     setOutputBinding,
     disconnectOutputBinding,
   };
+}
+
+function waitForCanvasCommit() {
+  return new Promise((resolve) => {
+    const schedule = typeof requestAnimationFrame === 'function'
+      ? requestAnimationFrame
+      : (callback) => setTimeout(callback, 0);
+    schedule(() => schedule(resolve));
+  });
 }

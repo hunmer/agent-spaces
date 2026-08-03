@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { FileUpload, Loader2, Slider, Spline, X } from '@agent-spaces/ui';
+import { FileUpload, Loader2, Play, Slider, Spline, Square, X } from '@agent-spaces/ui';
 import {
   GROUP_EXECUTION_MODES,
   MAX_GROUP_EXECUTION_COUNT,
   clampExecutionCount,
 } from '../../utils/group-execution';
+import GroupRunSelectionDialog from './GroupRunSelectionDialog';
 
 const EMPTY_UPLOAD_FILES = [];
 
@@ -18,6 +19,9 @@ export default function GroupExecutionToolbar({
   onSwitchRun,
   onUploadFiles,
   onRemoveAsset,
+  onRunAll,
+  onStopAll,
+  runAllState,
   onConnectGroup,
   sourceGroupName,
 }) {
@@ -33,11 +37,15 @@ export default function GroupExecutionToolbar({
   const outputBinding = execution?.assets?.binding || null;
   const activeCountId = execution?.count?.activeId || countRuns[0]?.id;
   const activeAssetId = execution?.assets?.activeId || assetRuns[0]?.id;
+  const currentRuns = mode === GROUP_EXECUTION_MODES.assets ? assetRuns : countRuns;
+  const runAllRunning = runAllState?.running === true;
+  const toolbarBusy = busy || runAllRunning;
   const bounds = useMemo(() => getGroupBounds(group, childNodes), [childNodes, group]);
   const [countDraft, setCountDraft] = useState(String(target));
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
   const [hoveredAssetId, setHoveredAssetId] = useState(null);
+  const [runSelectionOpen, setRunSelectionOpen] = useState(false);
 
   useEffect(() => setCountDraft(String(target)), [target]);
 
@@ -91,12 +99,12 @@ export default function GroupExecutionToolbar({
         <div className="flex shrink-0 rounded border border-border bg-muted/40 p-0.5">
           <ModeButton
             active={mode === GROUP_EXECUTION_MODES.count}
-            disabled={busy}
+            disabled={toolbarBusy}
             onClick={() => onSetMode(group.id, GROUP_EXECUTION_MODES.count)}
           >按次数执行</ModeButton>
           <ModeButton
             active={mode === GROUP_EXECUTION_MODES.assets}
-            disabled={busy}
+            disabled={toolbarBusy}
             onClick={() => onSetMode(group.id, GROUP_EXECUTION_MODES.assets)}
           >按上传素材执行</ModeButton>
         </div>
@@ -109,7 +117,7 @@ export default function GroupExecutionToolbar({
               min="1"
               max={MAX_GROUP_EXECUTION_COUNT}
               value={countDraft}
-              disabled={busy}
+              disabled={toolbarBusy}
               onChange={(event) => setCountDraft(event.target.value)}
               onBlur={commitCount}
               onKeyDown={(event) => { if (event.key === 'Enter') event.currentTarget.blur(); }}
@@ -141,16 +149,33 @@ export default function GroupExecutionToolbar({
               max={MAX_GROUP_EXECUTION_COUNT}
               step={1}
               value={clampExecutionCount(countDraft)}
-              disabled={busy}
+              disabled={toolbarBusy}
               onValueChange={(value) => setCountDraft(String(clampExecutionCount(value)))}
               onValueCommitted={commitSliderCount}
             />
           </label>
         )}
-        <div className={mode === GROUP_EXECUTION_MODES.count ? 'shrink-0' : 'ml-auto shrink-0'}>
+        <button
+          type="button"
+          disabled={!toolbarBusy && currentRuns.length === 0}
+          onClick={() => {
+            if (toolbarBusy) onStopAll?.(group.id);
+            else setRunSelectionOpen(true);
+          }}
+          title={toolbarBusy ? '停止当前分组的全部执行' : '选择并运行项目实例'}
+          className={`ml-auto flex h-6 shrink-0 items-center gap-1 rounded border bg-background px-2 text-[10px] font-medium transition disabled:cursor-not-allowed disabled:opacity-50 ${
+            toolbarBusy
+              ? 'border-destructive text-destructive hover:bg-destructive/10'
+              : 'border-border text-foreground hover:border-primary hover:text-primary'
+          }`}
+        >
+          {toolbarBusy ? <Square className="h-3 w-3" fill="currentColor" /> : <Play className="h-3 w-3" />}
+          {toolbarBusy ? '停止所有' : '运行所有'}
+        </button>
+        <div className="shrink-0">
           <GroupConnectButton
             groupId={group.id}
-            disabled={busy || group.locked}
+            disabled={toolbarBusy || group.locked}
             onConnect={onConnectGroup}
           />
         </div>
@@ -162,7 +187,6 @@ export default function GroupExecutionToolbar({
             <button
               key={run.id}
               type="button"
-              disabled={busy}
               onClick={() => onSwitchRun(group.id, GROUP_EXECUTION_MODES.count, run.id)}
               className={`flex h-7 w-7 items-center justify-center rounded border text-[11px] tabular-nums transition ${
                 activeCountId === run.id
@@ -176,7 +200,7 @@ export default function GroupExecutionToolbar({
       ) : (
         <div
           className="flex items-start gap-2 overflow-x-auto pb-0.5"
-          style={{ minHeight: 80, paddingTop: 10, paddingRight: 10 }}
+          style={{ minHeight: 96, paddingTop: 10, paddingRight: 10 }}
           onDragOver={(event) => {
             event.preventDefault();
             event.stopPropagation();
@@ -191,7 +215,7 @@ export default function GroupExecutionToolbar({
             onChange={handleUpload}
             accept={{ 'image/*': ['.png', '.jpg', '.jpeg', '.webp', '.gif'] }}
             maxFiles={0}
-            disabled={busy || uploading || inputSlotCount === 0 || !!outputBinding}
+            disabled={toolbarBusy || uploading || inputSlotCount === 0 || !!outputBinding}
             placeholder={outputBinding ? '自动绑定' : '上传素材'}
             className="group-asset-file-upload"
           />
@@ -200,7 +224,7 @@ export default function GroupExecutionToolbar({
             ) : assetRuns.map((run, index) => (
               <div
                 key={run.id}
-                className="h-16 w-16 shrink-0"
+                className="h-20 w-16 shrink-0"
                 style={{ position: 'relative' }}
                 onMouseEnter={() => {
                   setHoveredAssetId(run.id);
@@ -210,7 +234,6 @@ export default function GroupExecutionToolbar({
               >
                 <button
                   type="button"
-                  disabled={busy}
                   onClick={() => onSwitchRun(group.id, GROUP_EXECUTION_MODES.assets, run.id)}
                   className={`h-16 w-16 overflow-hidden rounded border-2 bg-muted/40 transition ${
                     activeAssetId === run.id ? 'border-primary' : 'border-transparent hover:border-primary/60'
@@ -222,7 +245,7 @@ export default function GroupExecutionToolbar({
                 {hoveredAssetId === run.id && !outputBinding && (
                   <button
                     type="button"
-                    disabled={busy}
+                    disabled={toolbarBusy}
                     onPointerDown={(event) => { event.preventDefault(); event.stopPropagation(); }}
                     onClick={(event) => {
                       event.preventDefault();
@@ -236,13 +259,40 @@ export default function GroupExecutionToolbar({
                     <X className="h-3 w-3" />
                   </button>
                 )}
+                <RunStatusLabel
+                  status={runAllState?.statusByRun?.[run.id]
+                    || (busy && activeAssetId === run.id ? 'running' : null)}
+                />
               </div>
             ))}
         </div>
       )}
 
       {error && <p className="truncate text-[10px] text-destructive" title={error}>{error}</p>}
-      {busy && <p className="truncate text-[10px] text-muted-foreground">分组执行中，完成后可切换实例</p>}
+      <GroupRunSelectionDialog
+        open={runSelectionOpen}
+        mode={mode}
+        runs={currentRuns}
+        onClose={() => setRunSelectionOpen(false)}
+        onConfirm={(runIds) => onRunAll?.(group.id, runIds)}
+      />
+    </div>
+  );
+}
+
+function RunStatusLabel({ status }) {
+  if (!status) return null;
+  const labels = { queued: '等待', running: '运行中', done: '完成', error: '失败', stopped: '已停止' };
+  return (
+    <div className={`flex h-4 items-center justify-center gap-0.5 text-[9px] ${
+      status === 'error' ? 'text-destructive'
+        : status === 'done' ? 'text-emerald-600'
+          : 'text-primary'
+    }`}>
+      {(status === 'queued' || status === 'running') && (
+        <Loader2 className={`h-2.5 w-2.5 ${status === 'running' ? 'animate-spin' : ''}`} />
+      )}
+      <span>{labels[status] || status}</span>
     </div>
   );
 }

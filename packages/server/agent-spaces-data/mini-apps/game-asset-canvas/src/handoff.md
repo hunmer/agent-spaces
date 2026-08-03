@@ -115,7 +115,7 @@ Agent → api.js handler → ctx.requestClient(type, payload, timeoutMs)
 | 加 host 能力 | `use-mini-app-host-api.tsx` | window.AgentSpaces 上挂方法（需重启 web） |
 | 把宿主 Chat 嵌入右侧面板 | `manifest.json` + `mini-app-preview/index.tsx` + `mini-app-host-slots.ts` + `components/right-panel/index.jsx` | `agentChatPlacement: "mini-app-slot"`，宿主 Portal 到 `agent-chat` 插槽 |
 | 改 vendor 资源 | `vendor/` + 对应 Dialog/Node | 见下「Vendor 资源」 |
-| 视频编辑器节点 | `components/nodes/VideoEditorNode.jsx` + `components/VideoEditorDialog.jsx` + `components/nodes/FramePlayer.jsx` | 节点外壳 + 大对话框（播放器/帧列表/动画组）+ Canvas 逐帧播放器 |
+| 视频编辑器节点 | `components/nodes/VideoEditorNode.jsx` + `components/VideoEditorDialog.jsx` + `components/FrameSequencePlayer.jsx` | 节点外壳 + 大对话框（双播放器/帧选区/动画组）+ fast-image-sequence 帧播放器 |
 | 视频帧截取/尺寸调整 | ffmpeg 插件（`ffmpeg_extract_frames` / `ffmpeg_custom` / `ffmpeg_probe`） | 经 `callPluginTool('workflow.ffmpeg', action, args)` 调用，产物落 mini-app data 目录 |
 | 插件访问 mini-app data 目录 | `plugin-runtime-api.ts`（getMiniAppDataDir/saveMiniAppDataFile）+ `routes/plugin.ts:187`（透传 workspaceId） | 打通了 workspaceId → 插件 api 断点，使 ffmpeg 产物能写到当前 mini-app 的 data 沙箱 |
 
@@ -152,6 +152,7 @@ Agent → api.js handler → ctx.requestClient(type, payload, timeoutMs)
 28. **共享 FileUpload 图片预览走 Gallery**：宿主 `packages/web/src/components/ui/file-upload.tsx` 点击图片缩略图调用 `openMediaGallery`，Gallery 只包含有预览 URL 的图片文件并按图片子集定位；缩略图自身悬浮时用 `group/preview` 显示半透明遮罩和眼睛图标，最右侧删除按钮仅在文件行 hover/focus 时显示。该文件是宿主层，修改后必须重启 Web。
 29. **画布样式设置沿用工作流字段名**：`bgVariant`（dots/lines/cross）、`attributionPosition`（top-bottom/left-right）、`snapGrid` 存全局 settings；所有节点 Handle 方向统一走 `getFloatingHandleProps`，不要在节点内写死方位。
 29. **复制并应用节点属性有剪贴板与素材实例两个入口**：粘贴单个节点时，若当前至少选中一个节点且全部与来源同类型，先由 `PastePropertiesDialog` 选择字段；当节点所属分组处于“按上传素材执行”且至少有两个素材 run 时，节点顶部工具栏另有“应用到其他节点”入口，目标是其他素材 run 中同一 nodeId 的节点快照，不是画布分组内其他节点。字段默认全不选，列表顶部提供“全选/反选”；`params` 按子字段展开，`output/images/videos/status/loading/error` 等产出、派生输入和运行态字段不参与属性应用。素材实例模式复制 `uploadedImages` 时必须排除来源的 `groupAssetInputUrls`、保留每个目标 run 的 `groupAssetInputUrls`，只替换人工上传图；双槽 `first/second.uploadedImages` 同样处理，并同步更新 `assets.templateNodeStates` 供后续新 run 继承。多节点剪贴板直接沿用原粘贴行为。
+30. **分组“运行所有”必须先选 execution runs，再串行执行**：点击 `GroupExecutionToolbar` 的“运行所有”先弹出缩略图选择框，默认全选，支持全选/反选；仅选中的 runs 进入串行队列，单个 run 内沿用组内可执行节点的并行批量运行。每次切换后等待画布提交再构建执行参数，完成后把当前 nodes 保存回该 run，最后恢复启动前的 activeId。素材缩略图下显示 queued/running/done/error/stopped 标签；分组运行期间按钮改为“停止所有”，点击后停止后续队列并取消当前分组内正在执行的节点。运行期间允许切换实例，但禁止切模式、上传、删除和拖连线。
 29. **边高亮是展示态**：`decorateEdgesForSelection` 只基于 ReactFlow 原生 `node.selected` 派生输入蓝/输出绿、箭头颜色和居中编号标签，不把高亮字段写入持久化 `edges`；label 仅在边关联选中节点时显示。标签用原生 SVG `rect + text`，因为 mini-app renderer 未暴露 xyflow 的 `EdgeText`。
 30. **宿主 Chat 内嵌使用 Host Slot，不复制 Chat 实现**：manifest 配置 `agentChatPlacement: "mini-app-slot"` 后，`MiniAppPreview` 将现有 `MiniAppAgentDock` 通过 React Portal 挂到 RightPanel 注册的 `agent-chat` DOM 插槽。mini-app 经 `window.AgentSpaces.registerHostSlot/updateHostSlotState` 注册插槽和同步 tab 状态；Chat 会话、流式响应、权限和对话框仍归宿主管理。插槽激活状态独立于 DOM 保存，mini-app 重载后可恢复 Chat tab。
 30. **节点自定义标题存 `data.title`**：`NodeShell` 与 `NoteNode` 的 Header 通过 `EditableNodeTitle` 点击原位编辑，空标题回退节点类型中文名；Agent 使用 `add_node.title` / `add_nodes[].title` / `update_node.title`，旧 `label` 参数仅作兼容。
@@ -226,6 +227,7 @@ generateImages(workflowId, input, {directory, historyId})   ← utils/workflow.j
 - `vendor/painterro.min.js` — 图片编辑器，loadVendor + esmSuffix 转 ESM。
 - `vendor/fabric.min.js` / `browser-image-compression.js` — `(0,eval)` 全局求值。
 - `vendor/{gifenc,gifuct-js,image-q,jszip}.js` — 图像处理，Blob URL dynamic import。
+- `vendor/fast-image-sequence/` — `@mediamonks/fast-image-sequence@2.2.0` CDN dist；入口含相对 chunk import，必须经本地 HTTP URL 原生 dynamic import。
 
 ## 调试速查
 
