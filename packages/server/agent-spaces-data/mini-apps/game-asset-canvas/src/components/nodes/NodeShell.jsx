@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { Children, isValidElement, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { NodeResizer, NodeToolbar, Position } from '@xyflow/react';
 import { Badge, BorderGlide, Images, Loader, RotateCcw, Upload, EyeOff } from '@agent-spaces/ui';
 import { NODE_META, NODE_TYPES } from '../../utils/constants';
@@ -17,6 +17,11 @@ const STATUS_TEXT = {
   done: '完成',
   error: '出错',
 };
+
+function isNodeFooterAction(child) {
+  if (!isValidElement(child) || child.props?.type !== 'button') return false;
+  return typeof child.props?.className === 'string' && /(?:^|\s)w-full(?:\s|$)/.test(child.props.className);
+}
 
 /**
  * 节点外壳：统一标题栏、输入/输出 Handle、状态角标、可调整大小（NodeResizer）。
@@ -114,6 +119,21 @@ export default function NodeShell({
     if (toolbarLeaveTimerRef.current) clearTimeout(toolbarLeaveTimerRef.current);
   }, []);
   const rootRef = useRef(null);
+  const footerRef = useRef(null);
+  const childItems = Children.toArray(children);
+  let footerIndex = -1;
+  for (let i = childItems.length - 1; i >= 0; i -= 1) {
+    if (isNodeFooterAction(childItems[i])) {
+      footerIndex = i;
+      break;
+    }
+  }
+  const footerAction = footerIndex >= 0 ? childItems[footerIndex] : null;
+  const hasFooterAction = footerAction !== null;
+  // 节点直属的全宽按钮视为主操作，从滚动内容中抽出并固定到底部 footer。
+  const contentChildren = footerIndex >= 0
+    ? childItems.filter((_, index) => index !== footerIndex)
+    : childItems;
   // 跟踪节点主体宽度，让产出卡片与节点同宽（产出卡片在 fragment 第二根，不在节点 height 钳制内）
   const [nodeWidth, setNodeWidth] = useState(0);
   useLayoutEffect(() => {
@@ -165,14 +185,15 @@ export default function NodeShell({
       if (userResizedRef.current) return;
       const header = root.querySelector('[data-node-header]');
       if (!header) return;
-      const h = header.offsetHeight + inner.offsetHeight + 2;
+      const h = header.offsetHeight + inner.offsetHeight + (footerRef.current?.offsetHeight || 0) + 2;
       if (h > 0) onAutoSizeToContent(id, h);
     };
     const ro = new ResizeObserver(measure);
     ro.observe(inner);
+    if (footerRef.current) ro.observe(footerRef.current);
     measure();
     return () => ro.disconnect();
-  }, [viewportActivated, data?.onAutoSizeToContent, id, outputPreviewEnabled, showFullNode]);
+  }, [viewportActivated, data?.onAutoSizeToContent, id, outputPreviewEnabled, showFullNode, hasFooterAction]);
 
   const compactView = !showFullNode ? (
     <div
@@ -469,10 +490,15 @@ export default function NodeShell({
       <div data-node-content className={`scrollbar-none nodrag nopan nowheel flex min-h-0 flex-1 flex-col overflow-auto ${showFullNode ? '' : 'invisible pointer-events-none'}`}>
         <div ref={contentInnerRef} className="flex flex-col gap-2 p-3">
           <UploadCollapseContext.Provider value={uploadHidden}>
-            {viewportActivated ? children : null}
+            {viewportActivated ? contentChildren : null}
           </UploadCollapseContext.Provider>
         </div>
       </div>
+      {viewportActivated && footerAction && (
+        <div ref={footerRef} data-node-footer className="nodrag nopan nowheel shrink-0 border-t border-border bg-card p-3">
+          {footerAction}
+        </div>
+      )}
       </div>
       {sourceHandle && (
         <FloatingHandle

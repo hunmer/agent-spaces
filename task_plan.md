@@ -1,10 +1,10 @@
-# Task Plan: game-asset-canvas tools 优化
+# Task Plan: game-asset-canvas 组输出自动绑定
 
 ## Goal
-修复 game-asset-canvas 批量连线返回成功但仅一条 Handle edge 可见的问题，并保证持久化与重载一致。
+为 game-asset-canvas 增加组级输入连线与过滤配置，并将来源组匹配节点的当前输出自动应用到目标组的“按上传素材执行”。
 
 ## Current Phase
-Phase 11 complete
+Phase 12 in progress
 
 ## Phases
 
@@ -41,12 +41,25 @@ Phase 11 complete
 ### Phase 11: 8 条边持久化与显示验证
 - **Status:** complete
 
+### Phase 12: 参考实现与现有数据链路定位
+- **Status:** in_progress
+
+### Phase 13: 组连线、过滤配置与持久化实现
+- **Status:** pending
+
+### Phase 14: 自动绑定执行链实现
+- **Status:** pending
+
+### Phase 15: 定向验证与交付
+- **Status:** pending
+
 ## Decisions
 - 配置字段：`agentChatPlacement?: "dock" | "mini-app-slot"`，缺省等同 `dock`。
 - Chat 状态、会话和权限继续归宿主管理，mini-app 只提供 DOM 插槽与 tab 切换。
 - 插槽协议挂在 `window.AgentSpaces`，使用注册/注销和订阅机制，避免 DOM 轮询。
 - 工具优化同时修复数据输入兼容、并发分组快照、删除成员清理三条根因，不改节点业务模型。
 - 连线问题以用户提供的 8 组 source/target 和指定 workspace canvas.json 为验收样本。
+- 组过滤模式为全部、指定节点、按节点类型多选；绑定只消费来源节点当前输出。
 
 ## Errors Encountered
 | Error | Attempt | Resolution |

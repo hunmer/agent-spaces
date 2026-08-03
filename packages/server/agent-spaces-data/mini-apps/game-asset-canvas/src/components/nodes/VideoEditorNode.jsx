@@ -117,15 +117,18 @@ export default function VideoEditorNode({ id, data, selected }) {
           <div className="text-[11px] text-muted-foreground">
             {videos.length} 个视频 · {frames.length} 帧 · {animGroups.length} 动画组
           </div>
-          <button
-            type="button"
-            onClick={handleOpen}
-            className="flex w-full items-center justify-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition hover:bg-primary/90"
-          >
-            <Film className="h-4 w-4" />
-            打开编辑器
-          </button>
         </div>
+      )}
+
+      {videos.length > 0 && (
+        <button
+          type="button"
+          onClick={handleOpen}
+          className="flex w-full items-center justify-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition hover:bg-primary/90"
+        >
+          <Film className="h-4 w-4" />
+          打开编辑器
+        </button>
       )}
 
       {data?.uploading && <p className="text-[10px] text-primary">上传中…</p>}

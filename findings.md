@@ -1,5 +1,11 @@
 # Findings
 
+## 组输出自动绑定（2026-08-03）
+
+- 用户要求参考 `packages/web/src/components/workflow/workflow-group-node.tsx:394-405`，在 `GroupExecutionToolbar` 最右侧增加组连线入口。
+- 目标组需持久化过滤规则，支持全部、指定节点、按节点类型多选。
+- 连线后的自动绑定只读取来源组节点当前输出，并用于目标组“按上传素材执行”，不读取生成历史。
+
 - `MiniAppPreview` 当前用 `chatDockOpen` 控制宿主外层 `ResizablePanel`，其中渲染 `MiniAppAgentDock`。
 - React mini-app 由同页面内独立 React Root 渲染，不是 iframe，因此宿主可以用 React Portal 挂载到 mini-app 提供的 DOM 节点。
 - `RightPanel` 是受控 Tabs，`Canvas.jsx` 持有 `rightTab`，适合通过 Host Slot 激活事件切换到 `chat`。
