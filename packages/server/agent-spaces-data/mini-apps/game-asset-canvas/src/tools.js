@@ -86,6 +86,29 @@ const NODE_TYPE_DESC = [
   'note=便签（纯文本备注）',
 ].join(' / ');
 
+const GROUP_LAYOUT_SCHEMA = {
+  type: 'object',
+  description: '可选。与 groupName 一起使用；节点加入分组后立即自动编排整个分组。未传则保持现有位置。',
+  properties: {
+    direction: {
+      type: 'string',
+      enum: ['LR', 'TB'],
+      description: '布局方向：LR=从左到右，TB=从上到下；默认 LR。传 grid 时按网格布局。',
+    },
+    grid: {
+      type: 'object',
+      description: '可选网格布局参数。',
+      properties: {
+        rows: { type: 'integer', minimum: 1, description: '行数，至少 1。' },
+        columns: { type: 'integer', minimum: 1, description: '列数，至少 1。' },
+        horizontalGap: { type: 'number', minimum: 0, maximum: 300, description: '水平间距，0-300。' },
+        verticalGap: { type: 'number', minimum: 0, maximum: 300, description: '垂直间距，0-300。' },
+      },
+      required: ['rows', 'columns', 'horizontalGap', 'verticalGap'],
+    },
+  },
+};
+
 export default [
   {
     name: 'add_node',
@@ -113,6 +136,7 @@ export default [
           description: '节点初始 data 字段（可选，合并到默认 data）。text 传 {output:{text:"Markdown 内容"}}；生成类节点（textToImage/editImage/textToVoice/videoGenerator）的 params 含枚举字段（如 model/aspect），改前先调 get_node_params(type) 查合法值。note 传 {text:"备注内容"}；图像处理节点（ip*）传 {params:{processorParams:{...}}}。',
         },
         groupName: { type: 'string', description: '可选。把新建的节点归入此名称的分组（画布上的可视化 group）：同名分组不存在则自动创建，已存在则直接加入。用于把同一项目/同一角色的多个节点归类管理。' },
+        groupLayout: GROUP_LAYOUT_SCHEMA,
         focus: { type: 'boolean', description: '创建后是否聚焦/居中到该节点（默认 true）' },
       },
       required: ['type'],
@@ -144,6 +168,7 @@ export default [
         },
         focusFirst: { type: 'boolean', description: '是否聚焦到首个新增节点（默认 true）' },
         groupName: { type: 'string', description: '可选。把这批节点一起归入此名称的分组（同名分组不存在则自动创建）。用于一次性建一组相关节点并归类。' },
+        groupLayout: GROUP_LAYOUT_SCHEMA,
       },
       required: ['nodes'],
     },

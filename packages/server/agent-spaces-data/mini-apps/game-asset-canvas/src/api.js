@@ -92,6 +92,39 @@ function asString(v, def = '') {
   return typeof v === 'string' ? v.trim() : def;
 }
 
+function parseGroupLayout(value, fieldName = 'groupLayout') {
+  if (value === undefined) return { ok: true, value: undefined };
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return { ok: false, message: `${fieldName} 必须是对象 {direction?, grid?}` };
+  }
+
+  const direction = asString(value.direction) || 'LR';
+  if (direction !== 'LR' && direction !== 'TB') {
+    return { ok: false, message: `${fieldName}.direction 仅支持 LR（横向）或 TB（纵向）` };
+  }
+
+  let grid;
+  if (value.grid !== undefined) {
+    if (!value.grid || typeof value.grid !== 'object' || Array.isArray(value.grid)) {
+      return { ok: false, message: `${fieldName}.grid 必须是对象 {rows, columns, horizontalGap, verticalGap}` };
+    }
+    const rows = Number(value.grid.rows);
+    const columns = Number(value.grid.columns);
+    const horizontalGap = Number(value.grid.horizontalGap);
+    const verticalGap = Number(value.grid.verticalGap);
+    if (!Number.isInteger(rows) || rows < 1 || !Number.isInteger(columns) || columns < 1) {
+      return { ok: false, message: `${fieldName}.grid.rows 和 columns 必须是大于等于 1 的整数` };
+    }
+    if (!Number.isFinite(horizontalGap) || horizontalGap < 0 || horizontalGap > 300
+      || !Number.isFinite(verticalGap) || verticalGap < 0 || verticalGap > 300) {
+      return { ok: false, message: `${fieldName}.grid.horizontalGap 和 verticalGap 必须是 0 到 300 的数字` };
+    }
+    grid = { rows, columns, horizontalGap, verticalGap };
+  }
+
+  return { ok: true, value: { direction, ...(grid ? { grid } : {}) } };
+}
+
 // —— 素材库（asset library）——
 // 数据隔离在 configs/workspaces/<workspaceId>/asset-library.json
 // 结构：{ categories: [{ id, name, createdAt, assets: [{ id, url, name, size, uploadedAt }] }] }
@@ -166,6 +199,7 @@ export default {
    * @param {object} [input.position] 坐标 {x,y}；不传则由画布自动错落
    * @param {object} [input.data]   节点初始 data 覆盖（如 {text:'备注'} / {params:{prompt:'...'}}）
    * @param {boolean} [input.focus] 创建后是否聚焦到该节点（默认 true）
+   * @param {object} [input.groupLayout] 携带 groupName 时自动编排整个分组
    */
   add_node: async (input, ctx) => {
     const type = asString(input?.type);
@@ -189,7 +223,13 @@ export default {
     payload.focus = input?.focus !== false; // 默认聚焦
     // 可选 groupName：建完节点后归入同名分组（不存在则创建）
     const groupName = asString(input?.groupName);
+    const parsedGroupLayout = parseGroupLayout(input?.groupLayout);
+    if (!parsedGroupLayout.ok) return parsedGroupLayout;
+    if (parsedGroupLayout.value && !groupName) {
+      return { ok: false, message: 'groupLayout 仅可与 groupName 一起使用' };
+    }
     if (groupName) payload.groupName = groupName;
+    if (parsedGroupLayout.value) payload.groupLayout = parsedGroupLayout.value;
     const result = await rpc(ctx, 'canvas.addNode', payload);
     return {
       ok: true,
@@ -199,6 +239,7 @@ export default {
       title: title || NODE_LABELS[type] || type,
       position: result?.position,
       groupName: groupName || undefined,
+      groupLayout: parsedGroupLayout.value,
       message: `已新增「${NODE_LABELS[type] || type}」节点${result?.nodeId ? `（id=${result.nodeId}）` : ''}${groupName ? `并归入分组「${groupName}」` : ''}`,
     };
   },
@@ -343,6 +384,7 @@ export default {
    * @param {object} input
    * @param {Array} input.nodes  节点规格数组，每项 {type, title?, position?, data?, focus?}
    * @param {boolean} [input.focusFirst] 是否聚焦到首个新增节点（默认 true）
+   * @param {object} [input.groupLayout] 携带 groupName 时自动编排整个分组
    */
   add_nodes: async (input, ctx) => {
     const list = Array.isArray(input?.nodes) ? input.nodes : null;
@@ -368,19 +410,26 @@ export default {
       if (title) spec.data = { ...(spec.data || {}), title };
       cleaned.push(spec);
     }
+    const groupName = asString(input?.groupName);
+    const parsedGroupLayout = parseGroupLayout(input?.groupLayout);
+    if (!parsedGroupLayout.ok) return parsedGroupLayout;
+    if (parsedGroupLayout.value && !groupName) {
+      return { ok: false, message: 'groupLayout 仅可与 groupName 一起使用' };
+    }
     const result = await rpc(ctx, 'canvas.addNodes', {
       nodes: cleaned,
       focusFirst: input?.focusFirst !== false,
       // 可选 groupName：本次批量建的节点一起归入同名分组（不存在则创建）
-      groupName: asString(input?.groupName) || undefined,
+      groupName: groupName || undefined,
+      groupLayout: parsedGroupLayout.value,
     });
     const ids = Array.isArray(result?.nodeIds) ? result.nodeIds : [];
-    const groupName = asString(input?.groupName);
     return {
       ok: true,
       count: ids.length,
       nodeIds: ids,
       groupName: groupName || undefined,
+      groupLayout: parsedGroupLayout.value,
       message: `已新增 ${ids.length} 个节点：${ids.map((id) => id).join(', ')}${groupName ? `，并归入分组「${groupName}」` : ''}`,
     };
   },
@@ -467,29 +516,9 @@ export default {
       return { ok: false, message: 'groupId 和 groupName 至少传一个（可先用 get_canvas 查询）' };
     }
 
-    const direction = asString(input?.direction) || 'LR';
-    if (direction !== 'LR' && direction !== 'TB') {
-      return { ok: false, message: 'direction 仅支持 LR（横向）或 TB（纵向）' };
-    }
-
-    let grid;
-    if (input?.grid !== undefined) {
-      if (!input.grid || typeof input.grid !== 'object' || Array.isArray(input.grid)) {
-        return { ok: false, message: 'grid 必须是对象 {rows, columns, horizontalGap, verticalGap}' };
-      }
-      const rows = Number(input.grid.rows);
-      const columns = Number(input.grid.columns);
-      const horizontalGap = Number(input.grid.horizontalGap);
-      const verticalGap = Number(input.grid.verticalGap);
-      if (!Number.isInteger(rows) || rows < 1 || !Number.isInteger(columns) || columns < 1) {
-        return { ok: false, message: 'grid.rows 和 grid.columns 必须是大于等于 1 的整数' };
-      }
-      if (!Number.isFinite(horizontalGap) || horizontalGap < 0 || horizontalGap > 300
-        || !Number.isFinite(verticalGap) || verticalGap < 0 || verticalGap > 300) {
-        return { ok: false, message: 'grid.horizontalGap 和 grid.verticalGap 必须是 0 到 300 的数字' };
-      }
-      grid = { rows, columns, horizontalGap, verticalGap };
-    }
+    const parsedLayout = parseGroupLayout({ direction: input?.direction, grid: input?.grid }, '布局参数');
+    if (!parsedLayout.ok) return parsedLayout;
+    const { direction, grid } = parsedLayout.value;
 
     const result = await rpc(ctx, 'canvas.arrangeGroup', {
       groupId: groupId || undefined,

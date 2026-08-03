@@ -37,6 +37,25 @@ function ensureGroupByName(setGroups, groupName, nodeIds) {
   });
 }
 
+function arrangeGroupAfterAdd(setNodes, edges, groups, groupName, addedNodeIds, layout) {
+  if (!layout || !groupName || !addedNodeIds?.length) return;
+  const existingGroup = groups.find((group) => group.name === groupName);
+  const nodeIds = [...new Set([...(existingGroup?.childNodeIds || []), ...addedNodeIds])];
+  const options = {
+    nodeIds,
+    direction: layout.direction === 'TB' ? 'TB' : 'LR',
+  };
+  if (layout.grid) {
+    options.grid = {
+      rows: Math.max(1, Math.min(nodeIds.length, Number(layout.grid.rows) || 1)),
+      columns: Math.max(1, Math.min(nodeIds.length, Number(layout.grid.columns) || 1)),
+      horizontalGap: Math.max(0, Math.min(300, Number(layout.grid.horizontalGap) || 0)),
+      verticalGap: Math.max(0, Math.min(300, Number(layout.grid.verticalGap) || 0)),
+    };
+  }
+  setNodes((prev) => autoLayoutSubset(prev, edges, options));
+}
+
 function resolveRpcConnection(sourceNode, targetNode, requestedTarget) {
   const { inputType, targets } = getConnectionTargets(
     sourceNode?.type,
@@ -226,6 +245,7 @@ export default function useCanvasAgentRpc({ nodes, edges, groups = [], createNod
             // 可选：归入同名分组
             if (payload.groupName && typeof payload.groupName === 'string') {
               ensureGroupByName(setGroupsFn, payload.groupName, [id]);
+              arrangeGroupAfterAdd(setNodesFn, curEdges, curGroups, payload.groupName, [id], payload.groupLayout);
             }
             result = { ok: true, nodeId: id, position };
             break;
@@ -276,6 +296,7 @@ export default function useCanvasAgentRpc({ nodes, edges, groups = [], createNod
             // 可选：本批节点一起归入同名分组
             if (payload.groupName && typeof payload.groupName === 'string') {
               ensureGroupByName(setGroupsFn, payload.groupName, ids);
+              arrangeGroupAfterAdd(setNodesFn, curEdges, curGroups, payload.groupName, ids, payload.groupLayout);
             }
             result = { ok: true, nodeIds: ids };
             break;
