@@ -37,6 +37,7 @@ mini-app 根: packages/server/agent-spaces-data/mini-apps/game-asset-canvas/
   packages/web/src/components/mini-apps/react-renderer.tsx      # resolveExternalModule allowlist + 顶部 import
   packages/web/src/lib/ui-exports.ts                            # 导出到 window.AgentSpacesUI
   packages/web/src/components/mini-apps/use-mini-app-host-api.tsx # window.AgentSpaces 能力（WS/上传/CDN/插件）
+  packages/web/src/components/mini-apps/mini-app-host-slots.ts    # 宿主 UI 插槽注册/激活状态同步
   packages/server/src/services/builtin-tools/mini-app-tools.ts  # agent_run/list_agent_presets 内置工具
   packages/server/src/services/mini-app-client-rpc.ts           # RPC 双向通信（requestClient/respondClientRequest）
   packages/server/src/services/mini-app-agent.ts                # loadApiJs/loadMiniAppToolsJs（每次重读，改即生效）
@@ -112,6 +113,7 @@ Agent → api.js handler → ctx.requestClient(type, payload, timeoutMs)
 | 工作区数据目录（产图落本地） | `utils/workflow.js`（persistImagesToBackend/generateImages）+ `useWorkflow.js` + `useExecutionQueue.js` + Canvas `activeWorkspace?.directory` | 见下「工作区数据目录」 |
 | 暴露新第三方库到 mini-app | `react-renderer.tsx` + `ui-exports.ts` | allowlist + 顶部 import（两处都改，需重启 web） |
 | 加 host 能力 | `use-mini-app-host-api.tsx` | window.AgentSpaces 上挂方法（需重启 web） |
+| 把宿主 Chat 嵌入右侧面板 | `manifest.json` + `mini-app-preview/index.tsx` + `mini-app-host-slots.ts` + `components/right-panel/index.jsx` | `agentChatPlacement: "mini-app-slot"`，宿主 Portal 到 `agent-chat` 插槽 |
 | 改 vendor 资源 | `vendor/` + 对应 Dialog/Node | 见下「Vendor 资源」 |
 | 视频编辑器节点 | `components/nodes/VideoEditorNode.jsx` + `components/VideoEditorDialog.jsx` + `components/nodes/FramePlayer.jsx` | 节点外壳 + 大对话框（播放器/帧列表/动画组）+ Canvas 逐帧播放器 |
 | 视频帧截取/尺寸调整 | ffmpeg 插件（`ffmpeg_extract_frames` / `ffmpeg_custom` / `ffmpeg_probe`） | 经 `callPluginTool('workflow.ffmpeg', action, args)` 调用，产物落 mini-app data 目录 |
@@ -151,6 +153,7 @@ Agent → api.js handler → ctx.requestClient(type, payload, timeoutMs)
 29. **画布样式设置沿用工作流字段名**：`bgVariant`（dots/lines/cross）、`attributionPosition`（top-bottom/left-right）、`snapGrid` 存全局 settings；所有节点 Handle 方向统一走 `getFloatingHandleProps`，不要在节点内写死方位。
 29. **复制并应用节点属性只处理单节点剪贴板**：粘贴单个节点时，若当前至少选中一个节点且全部与来源同类型，先由 `PastePropertiesDialog` 选择字段；字段默认全不选，列表顶部提供“全选/反选”；“应用”更新目标节点，“继续粘贴”执行原粘贴。`params` 按子字段展开，`output/images/videos/status/loading/error` 等产出、派生输入和运行态字段不参与属性应用；多节点剪贴板直接沿用原粘贴行为。
 29. **边高亮是展示态**：`decorateEdgesForSelection` 只基于 ReactFlow 原生 `node.selected` 派生输入蓝/输出绿、箭头颜色和居中编号标签，不把高亮字段写入持久化 `edges`；label 仅在边关联选中节点时显示。标签用原生 SVG `rect + text`，因为 mini-app renderer 未暴露 xyflow 的 `EdgeText`。
+30. **宿主 Chat 内嵌使用 Host Slot，不复制 Chat 实现**：manifest 配置 `agentChatPlacement: "mini-app-slot"` 后，`MiniAppPreview` 将现有 `MiniAppAgentDock` 通过 React Portal 挂到 RightPanel 注册的 `agent-chat` DOM 插槽。mini-app 经 `window.AgentSpaces.registerHostSlot/updateHostSlotState` 注册插槽和同步 tab 状态；Chat 会话、流式响应、权限和对话框仍归宿主管理。插槽激活状态独立于 DOM 保存，mini-app 重载后可恢复 Chat tab。
 30. **节点自定义标题存 `data.title`**：`NodeShell` 与 `NoteNode` 的 Header 通过 `EditableNodeTitle` 点击原位编辑，空标题回退节点类型中文名；Agent 使用 `add_node.title` / `add_nodes[].title` / `update_node.title`，旧 `label` 参数仅作兼容。
 30. **图片原图与缩略图分离**：工作流图片仍以 `images: string[]` 保存和传给 Gallery/拖拽/下载/下游执行；并行保存 `resources: [{url,thumb}]`，其中 `thumb` 只用于 `<img>` 缩略展示。`computeInputImages` 会把资源派生到 `data.imageResources`，imageDisplay 使用 `data.resources`。旧数据或缩略图失败时必须回退 `thumb || url`，不要把 `images` 改成对象数组。
 31. **旧数据补缩略图走调试菜单**：Toolbar「调试 → 一键补缩略图」扫描当前工作区节点、生成记录和素材库，按原图 URL 去重并复用已有 thumb，最多 4 并发调用 `generateImageResources`。回写使用 `save_canvas` / `save_generation_history` / `save_asset_library`；后两者必须保留 resources/thumb，不能用逐条 add_history（会产生重复记录）。

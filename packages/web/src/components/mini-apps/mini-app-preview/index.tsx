@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslations } from 'next-intl';
 import type { PluginConfigField, Workflow } from '@agent-spaces/shared';
 import { sdk } from '@/lib/sdk';
@@ -27,6 +28,11 @@ import { listMiniAppWorkflowConfigs } from '@/lib/mini-app-workflow-config';
 import { DEVICE_FRAMES, expandDevices, DeviceFrame } from './device-frame';
 import { MiniAppInfoDialog } from './info-dialog';
 import { MiniAppAgentPopover, MiniAppAgentDock } from './agent-chat-ui';
+import {
+  activateMiniAppHostSlot,
+  subscribeMiniAppHostSlot,
+  subscribeMiniAppHostSlotActive,
+} from '../mini-app-host-slots';
 
 export interface MiniAppPreviewProps {
   type: 'react' | 'html';
@@ -40,6 +46,8 @@ export interface MiniAppPreviewProps {
   enabledPlugins?: string[];
   /** 开启 agent 对话（manifest.enableAgents） */
   enableAgents?: boolean;
+  /** Agent Chat 展示位置；mini-app-slot 由 mini-app 提供挂载插槽。 */
+  agentChatPlacement?: 'dock' | 'mini-app-slot';
   /** filename -> content map for multi-file import resolution */
   files?: Record<string, string>;
   /** entry point filename */
@@ -51,11 +59,37 @@ export interface MiniAppPreviewProps {
   onReload?: (onProgress?: (loaded: number, total: number) => void) => Promise<void> | void;
 }
 
-export function MiniAppPreview({ type, sourceCode, error, onError, projectId, projectName, hideHeader, enabledPlugins, files, mainFile, enableAgents, devices, allowScroll = false, onReload }: MiniAppPreviewProps) {
+export function MiniAppPreview({ type, sourceCode, error, onError, projectId, projectName, hideHeader, enabledPlugins, files, mainFile, enableAgents, agentChatPlacement, devices, allowScroll = false, onReload }: MiniAppPreviewProps) {
   const t = useTranslations('mini-apps');
   const workflowT = useTranslations('workflows');
   const [infoOpen, setInfoOpen] = useState(false);
   const [chatDockOpen, setChatDockOpen] = useState(false);
+  const [agentChatSlot, setAgentChatSlot] = useState<HTMLElement | null>(null);
+  const agentChatInMiniApp = agentChatPlacement === 'mini-app-slot';
+
+  useEffect(() => {
+    if (!projectId || !agentChatInMiniApp) {
+      setAgentChatSlot(null);
+      return;
+    }
+    const unsubscribeSlot = subscribeMiniAppHostSlot(projectId, 'agent-chat', setAgentChatSlot);
+    const unsubscribeActive = subscribeMiniAppHostSlotActive(projectId, 'agent-chat', setChatDockOpen);
+    return () => {
+      unsubscribeSlot();
+      unsubscribeActive();
+    };
+  }, [agentChatInMiniApp, projectId]);
+
+  const setAgentChatOpen = useCallback((open: boolean) => {
+    setChatDockOpen(open);
+    if (projectId && agentChatInMiniApp) {
+      activateMiniAppHostSlot(projectId, 'agent-chat', open);
+    }
+  }, [agentChatInMiniApp, projectId]);
+
+  const toggleAgentChat = useCallback(() => {
+    setAgentChatOpen(!chatDockOpen);
+  }, [chatDockOpen, setAgentChatOpen]);
   // 重载 mini-app：先由父组件重新拉取文件，再递增 key 重挂载渲染器
   const [reloadKey, setReloadKey] = useState(0);
   const [reloading, setReloading] = useState(false);
@@ -362,7 +396,7 @@ export function MiniAppPreview({ type, sourceCode, error, onError, projectId, pr
                 variant={chatDockOpen ? 'secondary' : 'ghost'}
                 size="icon"
                 className="h-7 w-7"
-                onClick={() => setChatDockOpen((v) => !v)}
+                onClick={toggleAgentChat}
                 title={chatDockOpen ? t('agent.dockClose') : t('agent.dockOpen')}
                 aria-label={chatDockOpen ? t('agent.dockClose') : t('agent.dockOpen')}
                 aria-pressed={chatDockOpen}
@@ -422,6 +456,7 @@ export function MiniAppPreview({ type, sourceCode, error, onError, projectId, pr
                 type={type}
                 sourceCode={sourceCode}
                 onError={handleRendererError}
+                componentProps={{ hostConfig: { agentChatPlacement } }}
                 taskEvents={taskEvents}
                 files={files}
                 mainFile={mainFile}
@@ -443,27 +478,34 @@ export function MiniAppPreview({ type, sourceCode, error, onError, projectId, pr
             </div>
           );
 
-          const showDock = enableAgents && !!projectId && chatDockOpen;
+          const showDock = enableAgents && !!projectId && chatDockOpen && !agentChatInMiniApp;
+          const showSlottedChat = enableAgents && !!projectId && chatDockOpen && agentChatInMiniApp && agentChatSlot;
 
           return (
-            <ResizablePanelGroup
-              orientation="horizontal"
-              className="min-h-0 flex-1"
-              defaultLayout={dockLayout}
-              onLayoutChange={handleDockLayoutChange}
-            >
-              <ResizablePanel id="mini-app-preview" defaultSize="70%" minSize="40%">
-                {previewPane}
-              </ResizablePanel>
-              {showDock && (
-                <>
-                  <ResizableHandle withHandle />
-                  <ResizablePanel id="mini-app-agent-dock" defaultSize="30%" minSize="20%" maxSize="60%">
-                    <MiniAppAgentDock projectId={projectId!} onClose={() => setChatDockOpen(false)} />
-                  </ResizablePanel>
-                </>
+            <>
+              <ResizablePanelGroup
+                orientation="horizontal"
+                className="min-h-0 flex-1"
+                defaultLayout={dockLayout}
+                onLayoutChange={handleDockLayoutChange}
+              >
+                <ResizablePanel id="mini-app-preview" defaultSize="70%" minSize="40%">
+                  {previewPane}
+                </ResizablePanel>
+                {showDock && (
+                  <>
+                    <ResizableHandle withHandle />
+                    <ResizablePanel id="mini-app-agent-dock" defaultSize="30%" minSize="20%" maxSize="60%">
+                      <MiniAppAgentDock projectId={projectId!} onClose={() => setAgentChatOpen(false)} />
+                    </ResizablePanel>
+                  </>
+                )}
+              </ResizablePanelGroup>
+              {showSlottedChat && createPortal(
+                <MiniAppAgentDock projectId={projectId!} onClose={() => setAgentChatOpen(false)} />,
+                agentChatSlot,
               )}
-            </ResizablePanelGroup>
+            </>
           );
         })()}
       </div>

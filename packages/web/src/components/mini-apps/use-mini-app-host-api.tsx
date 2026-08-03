@@ -18,6 +18,12 @@ import {
   sendNativeNotification,
 } from '@/lib/native-notification';
 import { ensureMiniAppWorkflowConfig, readMiniAppWorkflowConfig } from '@/lib/mini-app-workflow-config';
+import {
+  clearMiniAppHostSlots,
+  registerMiniAppHostSlot,
+  updateMiniAppHostSlotState,
+  type MiniAppHostSlotController,
+} from './mini-app-host-slots';
 
 const LAST_SELECTION_CONFIG = 'last-selection.json';
 
@@ -267,7 +273,10 @@ function WrappedFileUpload(props: any) {
  * Mount `window.AgentSpacesUI`, `window.AgentSpaces`, `window.AgentSpacesAPI`
  * for mini-app preview code. Cleans up on unmount.
  */
-export function useMiniAppHostApi(projectId: string, runtimeContext?: MiniAppRuntimeContext) {
+export function useMiniAppHostApi(
+  projectId: string,
+  runtimeContext?: MiniAppRuntimeContext,
+) {
   const executorIdRef = useRef<string>('');
   const runtimeContextRef = useRef<MiniAppRuntimeContext>(runtimeContext ?? { route: '/', params: {} });
   const configCacheRef = useRef<Map<string, unknown>>(new Map());
@@ -1098,6 +1107,10 @@ export function useMiniAppHostApi(projectId: string, runtimeContext?: MiniAppRun
       generateThumbnail,
       dataFileUrl,
       srcFileUrl,
+      registerHostSlot: (name: string, element: HTMLElement, controller?: MiniAppHostSlotController) =>
+        registerMiniAppHostSlot(projectId, name, element, controller),
+      updateHostSlotState: (name: string, state: { active?: boolean }) =>
+        updateMiniAppHostSlotState(projectId, name, state?.active === true),
     };
     (window as any).AgentSpacesAPI = {
       ...pluginApi,
@@ -1120,6 +1133,10 @@ export function useMiniAppHostApi(projectId: string, runtimeContext?: MiniAppRun
       generateThumbnail,
       dataFileUrl,
       srcFileUrl,
+      registerHostSlot: (name: string, element: HTMLElement, controller?: MiniAppHostSlotController) =>
+        registerMiniAppHostSlot(projectId, name, element, controller),
+      updateHostSlotState: (name: string, state: { active?: boolean }) =>
+        updateMiniAppHostSlotState(projectId, name, state?.active === true),
     };
 
     const handleOpenFile = (e: Event) => {
@@ -1149,6 +1166,7 @@ export function useMiniAppHostApi(projectId: string, runtimeContext?: MiniAppRun
       configChangeCallbacks.clear();
       configCacheRef.current = new Map();
       window.removeEventListener('agent-spaces:open-file', handleOpenFile);
+      clearMiniAppHostSlots(projectId);
       delete (window as any).AgentSpacesUI;
       delete (window as any).AgentSpaces;
       delete (window as any).AgentSpacesAPI;

@@ -410,6 +410,41 @@ export default {
       if (title) spec.data = { ...(spec.data || {}), title };
       cleaned.push(spec);
     }
+    const edgeList = input?.edges === undefined ? [] : input.edges;
+    if (!Array.isArray(edgeList)) {
+      return { ok: false, message: 'edges 必须是数组' };
+    }
+    const cleanedEdges = [];
+    for (let i = 0; i < edgeList.length; i++) {
+      const edge = edgeList[i] || {};
+      const sourceIndex = Number(edge.sourceIndex);
+      const targetIndex = Number(edge.targetIndex);
+      const hasSourceIndex = edge.sourceIndex !== undefined;
+      const hasTargetIndex = edge.targetIndex !== undefined;
+      const sourceId = asString(edge.sourceId);
+      const targetId = asString(edge.targetId);
+      if (hasSourceIndex && (!Number.isInteger(sourceIndex) || sourceIndex < 0 || sourceIndex >= cleaned.length)) {
+        return { ok: false, message: `edges[${i}].sourceIndex 必须是 nodes 的有效下标` };
+      }
+      if (hasTargetIndex && (!Number.isInteger(targetIndex) || targetIndex < 0 || targetIndex >= cleaned.length)) {
+        return { ok: false, message: `edges[${i}].targetIndex 必须是 nodes 的有效下标` };
+      }
+      if (!hasSourceIndex && !sourceId) {
+        return { ok: false, message: `edges[${i}] 必须提供 sourceIndex 或 sourceId` };
+      }
+      if (!hasTargetIndex && !targetId) {
+        return { ok: false, message: `edges[${i}] 必须提供 targetIndex 或 targetId` };
+      }
+      if ((hasSourceIndex && hasTargetIndex && sourceIndex === targetIndex)
+        || (!hasSourceIndex && !hasTargetIndex && sourceId === targetId)) {
+        return { ok: false, message: `edges[${i}] 不能连接到自己` };
+      }
+      cleanedEdges.push({
+        ...(hasSourceIndex ? { sourceIndex } : { sourceId }),
+        ...(hasTargetIndex ? { targetIndex } : { targetId }),
+        inputTarget: asString(edge.inputTarget),
+      });
+    }
     const groupName = asString(input?.groupName);
     const parsedGroupLayout = parseGroupLayout(input?.groupLayout);
     if (!parsedGroupLayout.ok) return parsedGroupLayout;
@@ -422,6 +457,7 @@ export default {
       // 可选 groupName：本次批量建的节点一起归入同名分组（不存在则创建）
       groupName: groupName || undefined,
       groupLayout: parsedGroupLayout.value,
+      edges: cleanedEdges,
     });
     const ids = Array.isArray(result?.nodeIds) ? result.nodeIds : [];
     return {
@@ -430,7 +466,8 @@ export default {
       nodeIds: ids,
       groupName: groupName || undefined,
       groupLayout: parsedGroupLayout.value,
-      message: `已新增 ${ids.length} 个节点：${ids.map((id) => id).join(', ')}${groupName ? `，并归入分组「${groupName}」` : ''}`,
+      edges: result?.edges,
+      message: `已新增 ${ids.length} 个节点：${ids.map((id) => id).join(', ')}${groupName ? `，并归入分组「${groupName}」` : ''}${cleanedEdges.length ? `；连线新增 ${result?.edges?.created || 0} 条` : ''}`,
     };
   },
 
@@ -661,6 +698,57 @@ export default {
     const result = await rpc(ctx, 'canvas.updateNodeData', { nodeId, data: patch });
     if (result?.ok === false) return result;
     return { ok: true, nodeId, title: patch.title, applied: Object.keys(patch), message: `已更新节点 ${nodeId} 的 ${Object.keys(patch).length} 个字段` };
+  },
+
+  /** 批量更新节点，并可同时新增节点连线。 */
+  update_nodes: async (input, ctx) => {
+    const list = Array.isArray(input?.nodes) ? input.nodes : null;
+    if (!list || !list.length) {
+      return { ok: false, message: 'nodes 必须是非空数组，每项 {nodeId, title?, data?}' };
+    }
+    const cleaned = [];
+    for (let i = 0; i < list.length; i++) {
+      const item = list[i] || {};
+      const nodeId = asString(item.nodeId);
+      if (!nodeId) return { ok: false, message: `nodes[${i}].nodeId 必填` };
+      const hasTitle = Object.prototype.hasOwnProperty.call(item, 'title');
+      if (hasTitle && typeof item.title !== 'string') {
+        return { ok: false, message: `nodes[${i}].title 必须是字符串` };
+      }
+      const hasData = item.data && typeof item.data === 'object' && !Array.isArray(item.data);
+      if (item.data !== undefined && !hasData) {
+        return { ok: false, message: `nodes[${i}].data 必须是对象` };
+      }
+      if (!hasData && !hasTitle) {
+        return { ok: false, message: `nodes[${i}] 的 title 和 data 至少传一个` };
+      }
+      const data = { ...(hasData ? item.data : {}) };
+      if (hasTitle) data.title = item.title.trim();
+      cleaned.push({ nodeId, data });
+    }
+
+    const edgeList = input?.edges === undefined ? [] : input.edges;
+    if (!Array.isArray(edgeList)) return { ok: false, message: 'edges 必须是数组' };
+    const edges = [];
+    for (let i = 0; i < edgeList.length; i++) {
+      const edge = edgeList[i] || {};
+      const sourceId = asString(edge.sourceId);
+      const targetId = asString(edge.targetId);
+      if (!sourceId || !targetId) {
+        return { ok: false, message: `edges[${i}] 的 sourceId 和 targetId 都必填` };
+      }
+      if (sourceId === targetId) return { ok: false, message: `edges[${i}] 不能连接到自己` };
+      edges.push({ sourceId, targetId, inputTarget: asString(edge.inputTarget) });
+    }
+
+    const result = await rpc(ctx, 'canvas.updateNodes', { nodes: cleaned, edges });
+    if (result?.ok === false) return result;
+    return {
+      ok: true,
+      updated: result?.updated || 0,
+      edges: result?.edges,
+      message: `已更新 ${result?.updated || 0} 个节点${edges.length ? `；连线新增 ${result?.edges?.created || 0} 条` : ''}`,
+    };
   },
 
   /**

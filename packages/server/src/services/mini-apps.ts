@@ -189,7 +189,7 @@ export default App;
 
 export function updateProject(
   projectId: string,
-  updates: Partial<Pick<MiniAppProject, 'name' | 'description' | 'tags' | 'enabledPlugins' | 'pluginConfigSchemes' | 'agentConfigId' | 'mainFile' | 'icon' | 'avatarUrl' | 'backgroundUrl' | 'devices'>>,
+  updates: Partial<Pick<MiniAppProject, 'name' | 'description' | 'tags' | 'enabledPlugins' | 'pluginConfigSchemes' | 'agentConfigId' | 'agentChatPlacement' | 'mainFile' | 'icon' | 'avatarUrl' | 'backgroundUrl' | 'devices'>>,
 ): MiniAppProject {
   return store.updateProject(projectId, updates);
 }
@@ -376,6 +376,11 @@ export async function importZip(
       mainFile,
       tags: projectManifest.tags,
       enabledPlugins: projectManifest.enabledPlugins,
+      enableAgents: projectManifest.enableAgents,
+      agents: projectManifest.agents,
+      agentPermissions: projectManifest.agentPermissions,
+      agentChatPlacement: projectManifest.agentChatPlacement,
+      devices: projectManifest.devices,
       icon: projectManifest.icon,
       avatarUrl: projectManifest.avatarUrl,
       // 商店导入：传稳定 id / storeUrl / storeChecksum，使服务端按 id 关联已安装项（新建或更新）

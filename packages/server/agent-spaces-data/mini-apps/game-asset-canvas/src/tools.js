@@ -109,6 +109,16 @@ const GROUP_LAYOUT_SCHEMA = {
   },
 };
 
+const EDGE_SCHEMA = {
+  type: 'object',
+  properties: {
+    sourceId: { type: 'string', description: '源节点 id' },
+    targetId: { type: 'string', description: '目标节点 id' },
+    inputTarget: { type: 'string', description: '可选目标输入字段 key' },
+  },
+  required: ['sourceId', 'targetId'],
+};
+
 export default [
   {
     name: 'add_node',
@@ -169,6 +179,20 @@ export default [
         focusFirst: { type: 'boolean', description: '是否聚焦到首个新增节点（默认 true）' },
         groupName: { type: 'string', description: '可选。把这批节点一起归入此名称的分组（同名分组不存在则自动创建）。用于一次性建一组相关节点并归类。' },
         groupLayout: GROUP_LAYOUT_SCHEMA,
+        edges: {
+          type: 'array',
+          description: '可选。创建节点时同时连线。用 sourceIndex/targetIndex 引用本次 nodes 数组下标，用 sourceId/targetId 引用画布已有节点；端点可混用。',
+          items: {
+            type: 'object',
+            properties: {
+              sourceIndex: { type: 'integer', minimum: 0, description: '源节点在本次 nodes 数组中的下标' },
+              targetIndex: { type: 'integer', minimum: 0, description: '目标节点在本次 nodes 数组中的下标' },
+              sourceId: { type: 'string', description: '画布已有源节点 id；与 sourceIndex 二选一' },
+              targetId: { type: 'string', description: '画布已有目标节点 id；与 targetIndex 二选一' },
+              inputTarget: { type: 'string', description: '可选目标输入字段 key' },
+            },
+          },
+        },
       },
       required: ['nodes'],
     },
@@ -295,6 +319,33 @@ export default [
         },
       },
       required: ['nodeId'],
+    },
+  },
+  {
+    name: 'update_nodes',
+    description: '批量更新多个节点，并可在同一次调用中新增节点连线。节点 data 使用 patch 合并，不会清空其他字段。',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        nodes: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              nodeId: { type: 'string', description: '目标节点 id' },
+              title: { type: 'string', description: '新的节点显示标题' },
+              data: { type: 'object', description: '要合并到节点 data 的字段' },
+            },
+            required: ['nodeId'],
+          },
+        },
+        edges: {
+          type: 'array',
+          description: '可选。更新节点时同时新增这些连线。',
+          items: EDGE_SCHEMA,
+        },
+      },
+      required: ['nodes'],
     },
   },
   {

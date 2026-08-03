@@ -172,6 +172,7 @@ export default function MiniAppPreviewPageClient() {
           onReload={loadProject}
           enabledPlugins={project.enabledPlugins}
           enableAgents={project.enableAgents}
+          agentChatPlacement={project.agentChatPlacement}
           devices={project.devices}
           files={allFiles}
           mainFile={project.mainFile}

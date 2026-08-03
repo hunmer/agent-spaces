@@ -38,7 +38,7 @@ function ensureGroupByName(setGroups, groupName, nodeIds) {
 }
 
 function arrangeGroupAfterAdd(setNodes, edges, groups, groupName, addedNodeIds, layout) {
-  if (!layout || !groupName || !addedNodeIds?.length) return;
+  if (!layout || !groupName || !addedNodeIds?.length) return [];
   const existingGroup = groups.find((group) => group.name === groupName);
   const nodeIds = [...new Set([...(existingGroup?.childNodeIds || []), ...addedNodeIds])];
   const options = {
@@ -54,6 +54,7 @@ function arrangeGroupAfterAdd(setNodes, edges, groups, groupName, addedNodeIds, 
     };
   }
   setNodes((prev) => autoLayoutSubset(prev, edges, options));
+  return nodeIds;
 }
 
 function resolveRpcConnection(sourceNode, targetNode, requestedTarget) {
@@ -76,6 +77,45 @@ function resolveRpcConnection(sourceNode, targetNode, requestedTarget) {
     ok: true,
     data: { inputType, inputTarget: requested || targets[0].id },
   };
+}
+
+function prepareBatchEdges(nodes, edges, specs) {
+  const nodeMap = new Map(nodes.map((node) => [node.id, node]));
+  const existingEdges = new Set(edges.map((edge) => `${edge.source}->${edge.target}`));
+  const toAdd = [];
+  let skipped = 0;
+  let invalid = 0;
+  for (const spec of specs) {
+    const sourceNode = nodeMap.get(spec.sourceId);
+    const targetNode = nodeMap.get(spec.targetId);
+    if (!sourceNode || !targetNode) { invalid++; continue; }
+    const edgeKey = `${spec.sourceId}->${spec.targetId}`;
+    if (existingEdges.has(edgeKey)) { skipped++; continue; }
+    const resolved = resolveRpcConnection(sourceNode, targetNode, spec.inputTarget);
+    if (!resolved.ok) { invalid++; continue; }
+    existingEdges.add(edgeKey);
+    toAdd.push({
+      source: spec.sourceId,
+      target: spec.targetId,
+      markerEnd: { type: MarkerType.ArrowClosed },
+      animated: true,
+      data: resolved.data,
+    });
+  }
+  return { toAdd, skipped, invalid };
+}
+
+function mergeNodeData(current, incoming) {
+  const merged = { ...incoming };
+  for (const key of Object.keys(incoming)) {
+    if (
+      incoming[key] && typeof incoming[key] === 'object' && !Array.isArray(incoming[key])
+      && current?.[key] && typeof current[key] === 'object' && !Array.isArray(current[key])
+    ) {
+      merged[key] = { ...current[key], ...incoming[key] };
+    }
+  }
+  return merged;
 }
 
 /**
@@ -196,16 +236,17 @@ export function buildNodeExecution(node, textInputValues) {
  * @param {Function} deps.updateNodeData
  * @param {Function} deps.handleDeleteNode
  * @param {Function} deps.focusNode
+ * @param {Function} deps.focusNodes                   聚焦一组节点的新位置
  * @param {Function} deps.setNodes
  * @param {Function} deps.setEdges
  * @param {Function} deps.setGroups                    分组数据 setState（用于 groupName 归组）
  * @param {Function} deps.onGenerate                   文生图/编辑图片执行回调（handleGenerate）
  * @param {Function} deps.onGenerateMedia              配音/视频执行回调（handleGenerateMedia）
  */
-export default function useCanvasAgentRpc({ nodes, edges, groups = [], createNodeAt, updateNodeData, handleDeleteNode, focusNode, setNodes, setEdges, setGroups, onGenerate, onGenerateMedia, settings }) {
+export default function useCanvasAgentRpc({ nodes, edges, groups = [], createNodeAt, updateNodeData, handleDeleteNode, focusNode, focusNodes, setNodes, setEdges, setGroups, onGenerate, onGenerateMedia, settings }) {
   // ref 持有最新值，effect 只订阅一次
-  const ctxRef = useRef({ nodes, edges, groups, createNodeAt, updateNodeData, handleDeleteNode, focusNode, setNodes, setEdges, setGroups, onGenerate, onGenerateMedia });
-  ctxRef.current = { nodes, edges, groups, createNodeAt, updateNodeData, handleDeleteNode, focusNode, setNodes, setEdges, setGroups, onGenerate, onGenerateMedia, settings };
+  const ctxRef = useRef({ nodes, edges, groups, createNodeAt, updateNodeData, handleDeleteNode, focusNode, focusNodes, setNodes, setEdges, setGroups, onGenerate, onGenerateMedia });
+  ctxRef.current = { nodes, edges, groups, createNodeAt, updateNodeData, handleDeleteNode, focusNode, focusNodes, setNodes, setEdges, setGroups, onGenerate, onGenerateMedia, settings };
 
   useEffect(() => {
     const AS = window.AgentSpaces;
@@ -223,7 +264,7 @@ export default function useCanvasAgentRpc({ nodes, edges, groups = [], createNod
       if (!requestId || !type) return;
 
       // 每次回调读最新闭包（ref）
-      const { nodes: curNodes, edges: curEdges, groups: curGroups, createNodeAt: createFn, updateNodeData: updateFn, handleDeleteNode: deleteFn, focusNode: focusFn, setNodes: setNodesFn, setEdges: setEdgesFn, setGroups: setGroupsFn, onGenerate, onGenerateMedia } = ctxRef.current;
+      const { nodes: curNodes, edges: curEdges, groups: curGroups, createNodeAt: createFn, updateNodeData: updateFn, handleDeleteNode: deleteFn, focusNode: focusFn, focusNodes: focusNodesFn, setNodes: setNodesFn, setEdges: setEdgesFn, setGroups: setGroupsFn, onGenerate, onGenerateMedia } = ctxRef.current;
 
       try {
         let result;
@@ -245,7 +286,8 @@ export default function useCanvasAgentRpc({ nodes, edges, groups = [], createNod
             // 可选：归入同名分组
             if (payload.groupName && typeof payload.groupName === 'string') {
               ensureGroupByName(setGroupsFn, payload.groupName, [id]);
-              arrangeGroupAfterAdd(setNodesFn, curEdges, curGroups, payload.groupName, [id], payload.groupLayout);
+              const arrangedNodeIds = arrangeGroupAfterAdd(setNodesFn, curEdges, curGroups, payload.groupName, [id], payload.groupLayout);
+              if (arrangedNodeIds.length) focusNodesFn?.(arrangedNodeIds);
             }
             result = { ok: true, nodeId: id, position };
             break;
@@ -296,9 +338,26 @@ export default function useCanvasAgentRpc({ nodes, edges, groups = [], createNod
             // 可选：本批节点一起归入同名分组
             if (payload.groupName && typeof payload.groupName === 'string') {
               ensureGroupByName(setGroupsFn, payload.groupName, ids);
-              arrangeGroupAfterAdd(setNodesFn, curEdges, curGroups, payload.groupName, ids, payload.groupLayout);
+              const arrangedNodeIds = arrangeGroupAfterAdd(setNodesFn, curEdges, curGroups, payload.groupName, ids, payload.groupLayout);
+              if (arrangedNodeIds.length) focusNodesFn?.(arrangedNodeIds);
             }
-            result = { ok: true, nodeIds: ids };
+            const futureNodes = [...curNodes, ...specs.map((spec, index) => ({
+              id: ids[index],
+              type: spec.type,
+              data: { ...initialData(spec.type), ...(spec.data || {}) },
+            }))];
+            const edgeSpecs = (Array.isArray(payload.edges) ? payload.edges : []).map((edge) => ({
+              sourceId: edge.sourceIndex !== undefined ? ids[edge.sourceIndex] : edge.sourceId,
+              targetId: edge.targetIndex !== undefined ? ids[edge.targetIndex] : edge.targetId,
+              inputTarget: edge.inputTarget,
+            }));
+            const preparedEdges = prepareBatchEdges(futureNodes, curEdges, edgeSpecs);
+            if (preparedEdges.toAdd.length) setEdgesFn((prev) => [...prev, ...preparedEdges.toAdd]);
+            result = {
+              ok: true,
+              nodeIds: ids,
+              edges: { created: preparedEdges.toAdd.length, skipped: preparedEdges.skipped, invalid: preparedEdges.invalid },
+            };
             break;
           }
           case 'canvas.updateNodeData': {
@@ -310,20 +369,32 @@ export default function useCanvasAgentRpc({ nodes, edges, groups = [], createNod
             // 这里读当前节点 data，对「对象型字段」做一层合并，其余字段保持浅合并语义。
             const node = curNodes.find((n) => n.id === payload.nodeId);
             if (node?.data) {
-              const merged = { ...incoming };
-              for (const k of Object.keys(incoming)) {
-                if (
-                  incoming[k] && typeof incoming[k] === 'object' && !Array.isArray(incoming[k])
-                  && node.data[k] && typeof node.data[k] === 'object' && !Array.isArray(node.data[k])
-                ) {
-                  merged[k] = { ...node.data[k], ...incoming[k] };
-                }
-              }
-              updateFn(payload.nodeId, merged);
+              updateFn(payload.nodeId, mergeNodeData(node.data, incoming));
             } else {
               updateFn(payload.nodeId, incoming);
             }
             result = { ok: true };
+            break;
+          }
+          case 'canvas.updateNodes': {
+            const updates = Array.isArray(payload.nodes) ? payload.nodes : [];
+            const missingIds = updates.map((item) => item.nodeId)
+              .filter((nodeId) => !curNodes.some((node) => node.id === nodeId));
+            if (missingIds.length) {
+              result = { ok: false, message: `节点不存在：${missingIds.join(', ')}` };
+              break;
+            }
+            setNodesFn((prev) => prev.map((node) => {
+              const update = updates.find((item) => item.nodeId === node.id);
+              return update ? { ...node, data: { ...node.data, ...mergeNodeData(node.data, update.data || {}) } } : node;
+            }));
+            const preparedEdges = prepareBatchEdges(curNodes, curEdges, Array.isArray(payload.edges) ? payload.edges : []);
+            if (preparedEdges.toAdd.length) setEdgesFn((prev) => [...prev, ...preparedEdges.toAdd]);
+            result = {
+              ok: true,
+              updated: updates.length,
+              edges: { created: preparedEdges.toAdd.length, skipped: preparedEdges.skipped, invalid: preparedEdges.invalid },
+            };
             break;
           }
           case 'canvas.deleteNode': {
@@ -375,32 +446,11 @@ export default function useCanvasAgentRpc({ nodes, edges, groups = [], createNod
           case 'canvas.connectBatch': {
             const specs = Array.isArray(payload.edges) ? payload.edges : [];
             if (!specs.length) throw new Error('edges 不能为空');
-            const existingIds = new Set(curNodes.map((n) => n.id));
-            const existingEdges = new Set(curEdges.map((e) => `${e.source}->${e.target}`));
-            const toAdd = [];
-            let skipped = 0;
-            let invalid = 0;
-            for (const spec of specs) {
-              const { sourceId, targetId } = spec;
-              if (!existingIds.has(sourceId) || !existingIds.has(targetId)) { invalid++; continue; }
-              if (existingEdges.has(`${sourceId}->${targetId}`)) { skipped++; continue; }
-              const sourceNode = curNodes.find((node) => node.id === sourceId);
-              const targetNode = curNodes.find((node) => node.id === targetId);
-              const resolved = resolveRpcConnection(sourceNode, targetNode, spec.inputTarget);
-              if (!resolved.ok) { invalid++; continue; }
-              existingEdges.add(`${sourceId}->${targetId}`);
-              toAdd.push({
-                source: sourceId,
-                target: targetId,
-                markerEnd: { type: MarkerType.ArrowClosed },
-                animated: true,
-                data: resolved.data,
-              });
-            }
-            if (toAdd.length) setEdgesFn((prev) => [...prev, ...toAdd]);
+            const prepared = prepareBatchEdges(curNodes, curEdges, specs);
+            if (prepared.toAdd.length) setEdgesFn((prev) => [...prev, ...prepared.toAdd]);
             result = {
-              ok: true, created: toAdd.length, skipped, invalid,
-              summary: `批量连线：新增 ${toAdd.length}，已存在 ${skipped}，无效 ${invalid}`,
+              ok: true, created: prepared.toAdd.length, skipped: prepared.skipped, invalid: prepared.invalid,
+              summary: `批量连线：新增 ${prepared.toAdd.length}，已存在 ${prepared.skipped}，无效 ${prepared.invalid}`,
             };
             break;
           }
@@ -475,6 +525,7 @@ export default function useCanvasAgentRpc({ nodes, edges, groups = [], createNod
             setNodesFn((prev) => prev.map((node) => positions.has(node.id)
               ? { ...node, position: positions.get(node.id) }
               : node));
+            focusNodesFn?.(nodeIds);
             result = {
               ok: true,
               groupId: group.id,

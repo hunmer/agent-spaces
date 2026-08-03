@@ -53,8 +53,8 @@ export default function EditableNodeTitle({ value, fallback, onChange, className
     <span
       role={onChange ? 'button' : undefined}
       tabIndex={onChange ? 0 : undefined}
-      title={onChange ? '点击编辑标题' : title}
-      onClick={beginEditing}
+      title={onChange ? '双击编辑标题' : title}
+      onDoubleClick={beginEditing}
       onKeyDown={(event) => {
         if (event.key === 'Enter' || event.key === ' ') beginEditing(event);
       }}

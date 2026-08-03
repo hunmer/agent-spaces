@@ -15,6 +15,8 @@ export interface MiniAppProject {
   agentPermissions?: string[];
   agentConfigId?: string;
   enableAgents?: boolean;
+  /** Agent Chat 的展示位置；缺省为宿主外层 dock。 */
+  agentChatPlacement?: 'dock' | 'mini-app-slot';
   mainFile: string;
   /** 支持的设备类型，如 ['mobile', 'ipad', 'pc'] */
   devices?: string[];
@@ -83,7 +85,7 @@ export function createMiniAppApi(http: HttpClient) {
     create: (data: { name: string; type: 'react' | 'html'; description?: string; tags?: string[] }): Promise<MiniAppProject> =>
       http.post('/api/mini-apps', data),
 
-    update: (id: string, data: Partial<Pick<MiniAppProject, 'name' | 'description' | 'tags' | 'enabledPlugins' | 'pluginConfigSchemes' | 'agentPermissions' | 'agentConfigId' | 'mainFile' | 'icon' | 'avatarUrl' | 'backgroundUrl' | 'devices'>>): Promise<MiniAppProject> =>
+    update: (id: string, data: Partial<Pick<MiniAppProject, 'name' | 'description' | 'tags' | 'enabledPlugins' | 'pluginConfigSchemes' | 'agentPermissions' | 'agentConfigId' | 'agentChatPlacement' | 'mainFile' | 'icon' | 'avatarUrl' | 'backgroundUrl' | 'devices'>>): Promise<MiniAppProject> =>
       http.put(`/api/mini-apps/${encodeURIComponent(id)}`, data),
 
     delete_: (id: string): Promise<void> =>

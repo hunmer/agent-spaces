@@ -89,7 +89,7 @@ const SNAP_GRID = [16, 16];
  * 数据流：useCanvasState 是 nodes/edges/groups 的单一数据源；computeInputImages 派生输入图；
  * decoratedNodes 注入回调后喂给 ReactFlow；各 hook 负责具体业务逻辑。
  */
-export default function Canvas() {
+export default function Canvas({ hostConfig }) {
   // —— 工作区 + 画布状态 + 设置 + 历史（基础数据源）——
   const { workspaces, activeId, createWorkspace, renameWorkspace, switchWorkspace, deleteWorkspace } = useWorkspaces();
   const activeWorkspace = workspaces.find((ws) => ws.id === activeId);
@@ -1068,10 +1068,22 @@ export default function Canvas() {
 
   // —— Agent RPC（WS message 监听，ref 持有最新值只订阅一次）——
   // 放在 handleGenerate/handleGenerateMedia 解构之后（TDZ：执行回调需先声明）。
+  const focusCanvasNodes = useCallback((nodeIds) => {
+    if (!nodeIds?.length) return;
+    requestAnimationFrame(() => {
+      reactFlow.fitView({
+        nodes: nodeIds.map((id) => ({ id })),
+        padding: 0.2,
+        duration: 300,
+      });
+    });
+  }, [reactFlow]);
+
   useCanvasAgentRpc({
     nodes, edges, groups,
     createNodeAt: crud.createNodeAt,
-    updateNodeData, handleDeleteNode: crud.handleDeleteNode, focusNode: crud.focusNode,
+    updateNodeData, handleDeleteNode: crud.handleDeleteNode,
+    focusNode: crud.focusNode, focusNodes: focusCanvasNodes,
     setNodes, setEdges, setGroups,
     onGenerate: handleGenerate, onGenerateMedia: handleGenerateMedia,
     settings,
@@ -1454,6 +1466,7 @@ export default function Canvas() {
           onActiveTabChange={setRightTab}
           historyFocusNodeId={historyFocusNodeId}
           workspaceId={activeId}
+          agentChatPlacement={hostConfig?.agentChatPlacement}
         />
       </ResizablePanel>
 

@@ -425,6 +425,7 @@
     ],
     "icon": "🎮",
     "enableAgents": true,
+    "agentChatPlacement": "mini-app-slot",
     "agents": [
       {
         "id": "canvas-assistant",
@@ -466,6 +467,6 @@
       }
     ],
     "createdAt": "2026-07-22T00:00:00.000Z",
-    "updatedAt": "2026-08-03T02:44:49.873Z"
+    "updatedAt": "2026-08-03T04:16:31.354Z"
   }
 ]

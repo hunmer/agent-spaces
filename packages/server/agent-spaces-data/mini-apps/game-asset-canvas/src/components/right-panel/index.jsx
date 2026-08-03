@@ -1,6 +1,7 @@
-// 右侧面板容器：新增节点 / 节点管理 / 生成记录 / 素材库 四个 tab。
+// 右侧面板容器：新增节点 / 节点管理 / 生成记录 / 素材库，以及可选的宿主 Chat tab。
 // 各 tab 的实现拆到同目录独立文件，本文件只做 Tabs 装配。
-import { Tabs, TabsList, TabsTrigger, TabsContent, Plus, Boxes, History, Images } from '@agent-spaces/ui';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Tabs, TabsList, TabsTrigger, TabsContent, Plus, Boxes, History, Images, MessageSquareText } from '@agent-spaces/ui';
 import AddNodeTab from './AddNodeTab';
 import NodeManageTab from './NodeManageTab';
 import HistoryTab from './HistoryTab';
@@ -31,6 +32,7 @@ import AssetLibrary from '../AssetLibrary';
  * @param {(urls:string[])=>void} props.onAddToAssets
  * @param {(urls:string[])=>void} props.onInsertImagesToCanvas
  * @param {string} props.workspaceId
+ * @param {'dock'|'mini-app-slot'} [props.agentChatPlacement]
  */
 export default function RightPanel({
   nodes, edges, groups, selectedNodeId,
@@ -40,13 +42,39 @@ export default function RightPanel({
   onInsertHistory, onDragStartHistory,
   onAddToAssets, onInsertImagesToCanvas,
   activeTab, onActiveTabChange, historyFocusNodeId, assetCategories,
-  workspaceId,
+  workspaceId, agentChatPlacement,
 }) {
+  const agentChatEmbedded = agentChatPlacement === 'mini-app-slot';
+  const [agentChatSlotElement, setAgentChatSlotElement] = useState(null);
+  const previousTabRef = useRef(activeTab && activeTab !== 'chat' ? activeTab : 'add');
+
+  const handleTabChange = useCallback((tab) => {
+    if (tab !== 'chat') previousTabRef.current = tab;
+    onActiveTabChange?.(tab);
+    if (agentChatEmbedded) {
+      window.AgentSpaces?.updateHostSlotState?.('agent-chat', { active: tab === 'chat' });
+    }
+  }, [agentChatEmbedded, onActiveTabChange]);
+
+  useEffect(() => {
+    if (!agentChatEmbedded || !agentChatSlotElement) return undefined;
+    return window.AgentSpaces?.registerHostSlot?.('agent-chat', agentChatSlotElement, {
+      onActiveChange: (active) => {
+        onActiveTabChange?.(active ? 'chat' : previousTabRef.current);
+      },
+    });
+  }, [agentChatEmbedded, agentChatSlotElement, onActiveTabChange]);
+
+  useEffect(() => {
+    if (!agentChatEmbedded) return;
+    window.AgentSpaces?.updateHostSlotState?.('agent-chat', { active: activeTab === 'chat' });
+  }, [activeTab, agentChatEmbedded]);
+
   return (
     <div className="flex h-full min-h-0 flex-col border-l border-border bg-card">
       <Tabs
         value={activeTab}
-        onValueChange={onActiveTabChange}
+        onValueChange={handleTabChange}
         defaultValue="add"
         className="flex h-full min-h-0 flex-col"
       >
@@ -68,6 +96,11 @@ export default function RightPanel({
           <TabsTrigger value="assets" title="素材库" aria-label="素材库" className="flex-1">
             <Images className="h-4 w-4" />
           </TabsTrigger>
+          {agentChatEmbedded && (
+            <TabsTrigger value="chat" title="Agent Chat" aria-label="Agent Chat" className="flex-1">
+              <MessageSquareText className="h-4 w-4" />
+            </TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="add" keepMounted className="mt-0 min-h-0 flex-1 overflow-hidden">
@@ -106,6 +139,12 @@ export default function RightPanel({
         <TabsContent value="assets" keepMounted className="mt-0 min-h-0 flex-1 overflow-hidden">
           <AssetLibrary workspaceId={workspaceId} onInsertImagesToCanvas={onInsertImagesToCanvas} />
         </TabsContent>
+
+        {agentChatEmbedded && (
+          <TabsContent value="chat" keepMounted className="mt-0 min-h-0 flex-1 overflow-hidden">
+            <div ref={setAgentChatSlotElement} className="h-full min-h-0 w-full" />
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );
