@@ -31,7 +31,7 @@ export default function NoteNode({ id, data }) {
         />
       </div>
       <textarea
-        className={`nodrag nopan nowheel min-h-[60px] w-full resize-y bg-transparent px-2.5 py-1.5 text-sm text-foreground outline-none placeholder:text-muted-foreground/60 ${showFullNode ? '' : 'invisible pointer-events-none'}`}
+        className={`nodrag nopan nowheel min-h-[60px] max-h-[300px] w-full resize-y bg-transparent px-2.5 py-1.5 text-sm text-foreground outline-none placeholder:text-muted-foreground/60 ${showFullNode ? '' : 'invisible pointer-events-none'}`}
         placeholder="写点备注…（如：这组资产用于森林关卡）"
         value={text}
         onChange={handleChange}

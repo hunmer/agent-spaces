@@ -7,6 +7,7 @@ import { computeInputTexts } from '../utils/input-images';
 import { genId } from '../utils/canvas-id';
 import { autoLayoutSubset, findFreePositions } from '../utils/layout';
 import { addNodeIdsToGroup, removeNodeIdFromGroups } from '../utils/agent-rpc-groups';
+import { ensureEdgeIds } from '../utils/canvas-edges';
 
 /** 新增节点后按最新分组成员重新布局。 */
 function arrangeGroupAfterAdd(setNodes, edges, groups, groupName, addedNodeIds, layout) {
@@ -74,7 +75,8 @@ function prepareBatchEdges(nodes, edges, specs) {
       data: resolved.data,
     });
   }
-  return { toAdd, skipped, invalid };
+  const normalized = ensureEdgeIds([...edges, ...toAdd]);
+  return { toAdd: normalized.slice(edges.length), skipped, invalid };
 }
 
 function mergeNodeData(current, incoming) {

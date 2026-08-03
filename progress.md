@@ -21,3 +21,13 @@
 - Shared/Server 正式构建通过；从 server dist 真实加载 game-asset-canvas tools/API 并重放 session 输入通过。
 - Mini-app 相关源码 Babel 编译通过；最终目标测试 10 项通过，diff check 通过。
 - 工具优化完成：核心 API 会逐次热加载；tools schema 需服务重启后刷新缓存。
+- 开始排查 connect_batch 创建计数与 ReactFlow 可见 edge 不一致问题。
+- 已确认根因：connect_batch 创建的 edge 缺少唯一 id，持久化中 8 条边均为 id=undefined。
+- 已确认手动 addEdge 与批量裸 edge 构造的实现差异，确定增加统一 edge ID 规范化与旧数据迁移。
+- 已从续作上下文恢复 Phase 9，复核 planning-with-files 约束及已有根因记录，准备开始最小修复。
+- Phase 9 诊断完成：三个批量边入口共用 `prepareBatchEdges`；开始 Phase 10，新增统一 edge ID 规范化并接入创建和加载路径。
+- 已新增 `canvas-edges.js` 与 3 项测试；批量边创建会补 ID，画布初次加载及远端同步会规范化缺失/重复 ID 并回写。
+- 复核后补强：新边 ID 会避开所有现有 edge ID；远端同步在本地 dirty 时不执行迁移回写；edge 工具测试增至 4 项。
+- 9 项针对性测试通过；指定 canvas.json 的 8 条边规范化后 uniqueIds=8、missingIds=0；diff check 通过。
+- 两个受影响 hook 的 Babel 编译通过，现有 3000 开发服务健康检查为 200；环境无 procm-mcp，未执行持久服务重启。
+- Phase 10-11 完成：批量边创建、旧数据加载迁移、指定 8 条边唯一 ID 验证均已覆盖。

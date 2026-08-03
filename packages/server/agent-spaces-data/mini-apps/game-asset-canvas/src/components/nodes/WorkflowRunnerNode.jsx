@@ -278,7 +278,7 @@ export default function WorkflowRunnerNode({ id, data, selected }) {
             />
           ) : (
             <textarea
-              className="min-h-[120px] w-full resize-y bg-background p-2 font-mono text-xs outline-none"
+              className="min-h-[120px] max-h-[300px] w-full resize-y bg-background p-2 font-mono text-xs outline-none"
               placeholder='{"prompt":"..."}'
               value={params.inputText || ''}
               onChange={(e) => set({ inputText: e.target.value })}

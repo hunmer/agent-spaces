@@ -7,6 +7,7 @@ import {
   canvasHistorySignature, canvasStateSyncSignature, createCanvasSnapshot, describeCanvasChange,
   restoreHistoryNodes,
 } from '../utils/canvas-history';
+import { ensureEdgeIds } from '../utils/canvas-edges';
 
 const DEFAULT_VIEWPORT = { x: 0, y: 0, zoom: 1 };
 const MAX_OPERATION_HISTORY = 50;
@@ -36,20 +37,24 @@ export default function useCanvasState(workspaceId) {
   // 初次加载 + 工作区切换时重新读取
   useEffect(() => {
     const applyState = (state) => {
+      const normalizedState = normalizeCanvasEdgeIds(state);
       remoteRef.current = true;
       resetOperationHistoryRef.current = true;
-      lastSavedRef.current = state;
-      if (state && Array.isArray(state.nodes)) {
-        setNodes(migrateLegacyPreviewMode(state));
-        setEdges(state.edges || []);
-        setGroups(Array.isArray(state.groups) ? state.groups : []);
+      lastSavedRef.current = normalizedState;
+      if (normalizedState && Array.isArray(normalizedState.nodes)) {
+        setNodes(migrateLegacyPreviewMode(normalizedState));
+        setEdges(normalizedState.edges || []);
+        setGroups(Array.isArray(normalizedState.groups) ? normalizedState.groups : []);
+        if (normalizedState !== state) {
+          saveCanvas(workspaceId, normalizedState).catch((err) => console.warn('edge ID migration failed:', err));
+        }
       } else {
         // 新工作区：清空，避免上个工作区的节点残留
         setNodes([]);
         setEdges([]);
         setGroups([]);
       }
-      const savedViewport = normalizeViewport(state?.viewport);
+      const savedViewport = normalizeViewport(normalizedState?.viewport);
       setViewport(savedViewport || DEFAULT_VIEWPORT);
       setHasSavedViewport(Boolean(savedViewport));
       setLoadedWorkspaceId(workspaceId);
@@ -70,16 +75,20 @@ export default function useCanvasState(workspaceId) {
   useEffect(() => {
     const unsub = onCanvasChanged(workspaceId, (value) => {
       if (!value || !Array.isArray(value.nodes)) return;
-      const sig = canvasStateSyncSignature(value);
+      const normalizedValue = normalizeCanvasEdgeIds(value);
+      const sig = canvasStateSyncSignature(normalizedValue);
       if (lastSavedRef.current && canvasStateSyncSignature(lastSavedRef.current) === sig) return;
       if (dirtyRef.current) return;
+      if (normalizedValue !== value) {
+        saveCanvas(workspaceId, normalizedValue).catch((err) => console.warn('edge ID migration failed:', err));
+      }
       remoteRef.current = true;
       resetOperationHistoryRef.current = true;
-      lastSavedRef.current = value;
-      setNodes(migrateLegacyPreviewMode(value));
-      setEdges(value.edges || []);
-      setGroups(Array.isArray(value.groups) ? value.groups : []);
-      const savedViewport = normalizeViewport(value.viewport);
+      lastSavedRef.current = normalizedValue;
+      setNodes(migrateLegacyPreviewMode(normalizedValue));
+      setEdges(normalizedValue.edges || []);
+      setGroups(Array.isArray(normalizedValue.groups) ? normalizedValue.groups : []);
+      const savedViewport = normalizeViewport(normalizedValue.viewport);
       setViewport(savedViewport || DEFAULT_VIEWPORT);
       setHasSavedViewport(Boolean(savedViewport));
     });
@@ -229,6 +238,12 @@ function normalizeViewport(viewport) {
   if (!viewport || !Number.isFinite(viewport.x) || !Number.isFinite(viewport.y)
     || !Number.isFinite(viewport.zoom) || viewport.zoom <= 0) return null;
   return { x: viewport.x, y: viewport.y, zoom: viewport.zoom };
+}
+
+function normalizeCanvasEdgeIds(state) {
+  if (!state || !Array.isArray(state.edges)) return state;
+  const edges = ensureEdgeIds(state.edges);
+  return edges === state.edges ? state : { ...state, edges };
 }
 
 function migrateLegacyPreviewMode(state) {

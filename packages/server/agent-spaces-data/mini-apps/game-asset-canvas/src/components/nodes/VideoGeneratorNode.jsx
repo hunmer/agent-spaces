@@ -182,7 +182,7 @@ export default function VideoGeneratorNode({ id, data, selected }) {
           </button>
         </div>
         <textarea
-          className="min-h-[64px] w-full resize-y rounded-md border border-border bg-background px-2 py-1.5 text-sm outline-none focus:border-primary"
+          className="min-h-[64px] max-h-[300px] w-full resize-y rounded-md border border-border bg-background px-2 py-1.5 text-sm outline-none focus:border-primary"
           placeholder="描述要生成的视频，如：森林精灵转动魔杖，金色粒子飞溅"
           value={params.prompt || ''}
           onChange={(e) => set({ prompt: e.target.value })}

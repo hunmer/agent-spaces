@@ -31,3 +31,24 @@
 - 重要运行时约束：`compileApiJs` 会剥离 `api.js` 的所有 import 后用 `new Function` 加载，因此 API 入口不能依赖新增模块 import；数据解析函数必须内置在 `api.js`。
 - 已从正式 server dist 调用真实 `compileApiJs/compileToolsJs`：成功加载 24 个 tools、24 个 API handler，`$text` 重放后 RPC 收到结构化 params。
 - 最终回归新增“8 个增量归组节点 → 4×2 网格 → 8 个唯一位置”场景；最终目标测试 10 项全部通过。
+
+## 批量连线显示问题
+
+- `connect_batch` 返回 created=8/invalid=0，但用户观察到仅一个目标节点显示 Handle edge；图生图参考图已显示，说明输入派生链路至少读取到了连接关系。
+- 验收数据：workspace `ws-ms7oxb6j-uar4` 的 `canvas.json`，8 条期望边为 `node-mscmg3ya-{1..8}` → `node-mscusvbg-{1..8}`。
+- 指定 `canvas.json` 实际包含 16 节点、8 条边，source/target 与 inputType/inputTarget 全部正确，但所有 edge 都缺少 `id`。
+- ReactFlow 以 `edge.id` 标识渲染元素；8 条边的 id 全是 undefined 会发生渲染键冲突，因此数据派生仍能读取全部边，UI Handle 连线却只稳定显示一条。
+- 手动连线路径使用 ReactFlow `addEdge`，会自动补 edge.id；`prepareBatchEdges` 直接 push 裸 edge 对象，没有 id，导致仅批量工具路径出错。
+- `useCanvasState` 初次加载和远端同步都直接 `setEdges(state.edges || [])`，现有持久化数据没有迁移机会。
+- 修复策略：统一纯函数 `ensureEdgeIds`，保留合法唯一旧 ID，为缺失/重复 ID 生成稳定 ID；批量建边与画布加载共同使用，并在发现迁移时回写 canvas.json。
+- 2026-08-03 续作复核：规划文件与交接结论一致，Phase 9 仍在进行，后续直接实施统一 edge ID 规范化和旧数据迁移。
+- 当前工作区已有 manifest、panel-layout、mini-app 索引和旧规划文件删除等无关改动，修复时不触碰、不回退。
+- `useCanvasState` 的初次加载与远端同步均直接保存原始 state 到 `lastSavedRef` 并设置原始 edges；迁移需先构造规范化 state，再写入 ref/state，才能避免同步签名循环。
+- 复核发现批量新边生成 ID 时还需把现有 edges 纳入保留集合，避免与既有自定义 ID 冲突。
+- 远端同步若 `dirtyRef.current` 为真，不应为远端旧数据执行迁移回写，否则可能覆盖本地未保存状态；迁移保存必须置于 dirty 判断之后（保存回声例外可直接忽略）。
+- 新增 edge 工具及既有工具回归共 9 项通过，`git diff --check` 通过。
+- 使用用户指定 `canvas.json` 实测规范化：8 条 edges 得到 8 个唯一 ID，缺失 ID 为 0；生成结果与 8 组 source/target 一一对应。
+- 根目录已安装 `@babel/core` 与 `@babel/preset-react`，可直接对两个受影响 hook 做无输出编译检查。
+- 加载迁移流程先设置规范化 `lastSavedRef`，再异步 `saveCanvas`；保存回声的同步签名会被现有判断拦截，不产生回环。
+- 两个受影响 hook 均通过 Babel 编译；现有开发服务 3000 端口健康检查为 200。
+- 当前可用工具中没有 `procm-mcp`，无法按项目约定重启持久化服务；开发服务可由热更新或页面刷新载入改动。

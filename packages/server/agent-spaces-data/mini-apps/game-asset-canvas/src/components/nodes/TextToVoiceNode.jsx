@@ -94,7 +94,7 @@ export default function TextToVoiceNode({ id, data, selected }) {
           </button>
         </div>
         <textarea
-          className="min-h-[72px] w-full resize-y rounded-md border border-border bg-background px-2 py-1.5 text-sm outline-none focus:border-primary"
+          className="min-h-[72px] max-h-[300px] w-full resize-y rounded-md border border-border bg-background px-2 py-1.5 text-sm outline-none focus:border-primary"
           placeholder="输入要合成语音的文本，如：欢迎来到这片神秘大陆……"
           value={params.prompt || ''}
           onChange={(e) => set({ prompt: e.target.value })}

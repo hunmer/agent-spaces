@@ -1,10 +1,10 @@
 # Task Plan: game-asset-canvas tools 优化
 
 ## Goal
-根据 game-asset-canvas 指定 session 的实际工具调用记录，定位并修复工具定义或执行逻辑中的主要问题。
+修复 game-asset-canvas 批量连线返回成功但仅一条 Handle edge 可见的问题，并保证持久化与重载一致。
 
 ## Current Phase
-Phase 8 complete
+Phase 11 complete
 
 ## Phases
 
@@ -32,11 +32,21 @@ Phase 8 complete
 ### Phase 8: 验证与交付
 - **Status:** complete
 
+### Phase 9: Edge 数据与渲染链路诊断
+- **Status:** complete
+
+### Phase 10: 批量连线修复
+- **Status:** complete
+
+### Phase 11: 8 条边持久化与显示验证
+- **Status:** complete
+
 ## Decisions
 - 配置字段：`agentChatPlacement?: "dock" | "mini-app-slot"`，缺省等同 `dock`。
 - Chat 状态、会话和权限继续归宿主管理，mini-app 只提供 DOM 插槽与 tab 切换。
 - 插槽协议挂在 `window.AgentSpaces`，使用注册/注销和订阅机制，避免 DOM 轮询。
 - 工具优化同时修复数据输入兼容、并发分组快照、删除成员清理三条根因，不改节点业务模型。
+- 连线问题以用户提供的 8 组 source/target 和指定 workspace canvas.json 为验收样本。
 
 ## Errors Encountered
 | Error | Attempt | Resolution |
