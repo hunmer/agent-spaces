@@ -1,8 +1,9 @@
 import { Children, isValidElement, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { NodeResizer, NodeToolbar, Position } from '@xyflow/react';
 import {
-  Badge, BorderGlide, ClipboardCopy, Download, FolderPlus, Images, Loader, RotateCcw, toast,
+  Badge, BorderGlide, ClipboardCopy, Download, FolderPlus, Images, Loader, MoreVertical, RotateCcw, toast,
   ContextMenu, ContextMenuContent, ContextMenuGroup, ContextMenuItem, ContextMenuLabel, ContextMenuSeparator, ContextMenuTrigger,
+  Popover, PopoverContent, PopoverTrigger,
 } from '@agent-spaces/ui';
 import { NODE_META, NODE_TYPES } from '../../utils/constants';
 import { downloadImages } from '../../utils/export';
@@ -159,7 +160,8 @@ export default function NodeShell({
   // 多选（选中数 > 1）时隐藏节点 toolbar：避免每个被选节点都冒出一排按钮，干扰多选操作
   const selectionCount = data?.selectionCount ?? 1;
   const [toolbarHovered, setToolbarHovered] = useState(false);
-  const toolbarVisible = showFullNode && (!!selected || toolbarHovered) && selectionCount <= 1;
+  const [nodeMenuOpen, setNodeMenuOpen] = useState(false);
+  const toolbarVisible = showFullNode && (!!selected || toolbarHovered || nodeMenuOpen) && selectionCount <= 1;
   const toolbarLeaveTimerRef = useRef(null);
   const showToolbar = () => {
     if (toolbarLeaveTimerRef.current) clearTimeout(toolbarLeaveTimerRef.current);
@@ -284,11 +286,23 @@ export default function NodeShell({
     </div>
   ) : null;
 
-  // 统一的 toolbar 按钮组：预览/正常分支共用，避免进入预览后按钮消失。
-  // 切换预览 + 节点自定义按钮（toolbarActions）+ 导出图片。
+  const handleCopyNodeInfo = async () => {
+    try {
+      const nodeJson = data?.nodeJson || JSON.stringify({ id, type: nodeType, data }, null, 2);
+      await navigator.clipboard.writeText(nodeJson);
+      toast.success('已复制节点信息');
+    } catch {
+      toast.error('复制节点信息失败');
+    } finally {
+      setNodeMenuOpen(false);
+    }
+  };
+
+  // 统一的全图标 toolbar：预览/正常分支共用，避免进入预览后按钮消失。
   // 【编辑】【抠图】【放大】已移到画布级 ImageSelectionToolbar（图片选中后顶部浮出）。
   const hasExtraButtons = outputImages.length > 0 && onExportImages;
-  const shouldShowToolbar = canPreviewOutput || hasExtraButtons || toolbarActions?.length || data?.onApplyToGroup;
+  const shouldShowToolbar = true;
+  const toolbarButtonClass = 'flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-border bg-background text-muted-foreground shadow-sm transition hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-50';
   const toolbarButtons = (
     <>
       {data?.onApplyToGroup && (
@@ -300,48 +314,82 @@ export default function NodeShell({
             event.stopPropagation();
             data.onApplyToGroup();
           }}
-          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-border bg-background text-muted-foreground shadow-sm transition hover:border-primary hover:text-primary"
+          className={toolbarButtonClass}
         >
           <ClipboardCopy className="h-3.5 w-3.5" />
         </button>
       )}
-      {/* 切换预览：始终展示，点击在表单/预览模式间切换 */}
-      <button
-        type="button"
-        title={outputPreviewEnabled ? '切换到表单' : '切换到预览'}
-        onClick={(event) => {
-          event.stopPropagation();
-          data?.onOutputPreviewModeChange?.(!outputPreviewEnabled);
-        }}
-        className="flex items-center gap-1.5 rounded-md border border-border bg-background px-2.5 py-1 text-xs font-medium text-foreground shadow-sm transition hover:border-primary hover:text-primary"
-      >
-        <Images className="h-3.5 w-3.5" />
-        切换预览
-      </button>
+      {canPreviewOutput && (
+        <button
+          type="button"
+          title={outputPreviewEnabled ? '切换到表单' : '切换到预览'}
+          aria-label={outputPreviewEnabled ? '切换到表单' : '切换到预览'}
+          onClick={(event) => {
+            event.stopPropagation();
+            data?.onOutputPreviewModeChange?.(!outputPreviewEnabled);
+          }}
+          className={toolbarButtonClass}
+        >
+          <Images className="h-3.5 w-3.5" />
+        </button>
+      )}
       {/* 节点自定义 toolbar 按钮（如「打开骨骼编辑器」「打开图片编辑」等对话框入口） */}
       {toolbarActions?.map((action, i) => (
         <button
           key={i}
           type="button"
           title={action.title || action.label}
+          aria-label={action.title || action.label}
           disabled={action.disabled}
           onClick={(e) => { e.stopPropagation(); action.onClick?.(); }}
-          className="flex items-center gap-1.5 rounded-md border border-border bg-background px-2.5 py-1 text-xs font-medium text-foreground shadow-sm transition hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-50"
+          className={toolbarButtonClass}
         >
           {action.icon}
-          {action.label}
         </button>
       ))}
       {/* 编辑/抠图/放大 已移到画布级 ImageSelectionToolbar（图片选中后顶部浮出） */}
       {outputImages.length > 0 && onExportImages && (
         <button
           type="button"
+          title="导出图片"
+          aria-label="导出图片"
           onClick={(e) => { e.stopPropagation(); onExportImages(outputImages); }}
-          className="rounded-md border border-border bg-background px-2.5 py-1 text-xs font-medium text-foreground shadow-sm transition hover:border-primary hover:text-primary"
+          className={toolbarButtonClass}
         >
-          导出图片
+          <Download className="h-3.5 w-3.5" />
         </button>
       )}
+      <Popover open={nodeMenuOpen} onOpenChange={setNodeMenuOpen}>
+        <PopoverTrigger
+          render={(
+            <button
+              type="button"
+              title="更多操作"
+              aria-label="更多操作"
+              className={`${toolbarButtonClass} nodrag nowheel`}
+              onClick={(event) => event.stopPropagation()}
+            />
+          )}
+        >
+          <MoreVertical className="h-3.5 w-3.5" />
+        </PopoverTrigger>
+        <PopoverContent
+          side="top"
+          align="end"
+          className="w-44 p-1"
+          onClick={(event) => event.stopPropagation()}
+          onWheelCapture={(event) => event.stopPropagation()}
+        >
+          <button
+            type="button"
+            onClick={handleCopyNodeInfo}
+            className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm text-foreground outline-none transition hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent"
+          >
+            <ClipboardCopy className="h-3.5 w-3.5" />
+            复制节点信息
+          </button>
+        </PopoverContent>
+      </Popover>
     </>
   );
 

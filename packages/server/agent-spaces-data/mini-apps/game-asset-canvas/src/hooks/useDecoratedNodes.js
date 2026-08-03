@@ -118,6 +118,7 @@ export default function useDecoratedNodes({
           ? '.image-drag-handle' : nd.dragHandle,
         data: {
           ...data,
+          nodeJson: JSON.stringify(nd, null, 2),
           selectionCount,
           floatingHandlePosition: settings.attributionPosition === 'left-right' ? 'left-right' : 'top-bottom',
           onOutputPreviewHeight: (height) => onOutputPreviewHeight?.(nd.id, height),
