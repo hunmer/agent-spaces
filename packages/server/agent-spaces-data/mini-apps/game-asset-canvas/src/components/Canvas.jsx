@@ -1297,6 +1297,11 @@ export default function Canvas({ hostConfig }) {
     if (!urls?.length) return;
     handleAddToAssets(urls);
   }, [handleAddToAssets]);
+  const handleImportSelectedImagesToCanvas = useCallback((urls) => {
+    if (!urls?.length) return;
+    addImageNodesFromUrls(urls, { source: 'import' });
+    imageSelection.clear();
+  }, [addImageNodesFromUrls, imageSelection.clear]);
   const imageSelectionMenuProps = useMemo(() => ({
     selectedCount: imageSelection.selectedCount,
     selectedUrls: imageSelection.selectedUrls,
@@ -1304,11 +1309,12 @@ export default function Canvas({ hostConfig }) {
     onCutoutCreate: handleCutoutSelectedImages,
     onProcessImage: handleProcessSelectedImages,
     onAddToAssets: handleAddSelectedImagesToAssets,
+    onImportToCanvas: handleImportSelectedImagesToCanvas,
     onClear: imageSelection.clear,
   }), [
     imageSelection.selectedCount, imageSelection.selectedUrls, imageSelection.clear,
     handleEditSelectedImages, handleCutoutSelectedImages, handleProcessSelectedImages,
-    handleAddSelectedImagesToAssets,
+    handleAddSelectedImagesToAssets, handleImportSelectedImagesToCanvas,
   ]);
 
   // —— 工作区操作（切换/创建/删除）——

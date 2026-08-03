@@ -8,6 +8,7 @@ import ImageSelectionMenuItems from './ImageSelectionMenuItems';
  * - 放大：对选中图执行 enhance 工作流（onProcessImage）
  * - 下载：单张下载原图，多张打包成 zip
  * - 添加到素材库：把选中图喂给素材库分组选择器（onAddToAssets）
+ * - 导入到画布：把选中图作为 imageDisplay 节点添加到画布（onImportToCanvas）
  * - 取消选择：清空选中
  *
  * 定位顶部居中（与底部 MultiSelectToolbar 错开，两者可同时显示）。
@@ -20,19 +21,20 @@ import ImageSelectionMenuItems from './ImageSelectionMenuItems';
  * @param {(urls:string[])=>void} props.onCutoutCreate 抠图回调
  * @param {(urls:string[], processType:string)=>void} props.onProcessImage 处理回调（放大）
  * @param {(payload:string|string[]|{url,fileName?}|Array<string|{url,fileName?}>)=>void} props.onAddToAssets 添加到素材库回调
+ * @param {(urls:string[])=>void} props.onImportToCanvas 导入到画布回调
  * @param {()=>void} props.onClear 清空选中
  */
 export default function ImageSelectionToolbar({
-  selectedCount, selectedUrls, onEditImages, onCutoutCreate, onProcessImage, onAddToAssets, onClear,
+  selectedCount, selectedUrls, onEditImages, onCutoutCreate, onProcessImage, onAddToAssets, onImportToCanvas, onClear,
 }) {
   if (!(selectedCount > 0)) return null;
 
-  const baseBtn = 'flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium transition';
+  const baseBtn = 'flex flex-shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md border px-3 py-1 text-xs font-medium transition';
   const labelBtn = `${baseBtn} border-border bg-background text-foreground hover:border-primary hover:text-primary`;
 
   return (
     <div className="nodrag nopan pointer-events-auto absolute left-1/2 top-4 z-20 -translate-x-1/2">
-      <div className="flex items-center gap-1 rounded-lg border border-border bg-card px-2 py-1.5 text-card-foreground shadow-md">
+      <div className="flex flex-nowrap items-center gap-1.5 rounded-lg border border-border bg-card px-2.5 py-2 text-card-foreground shadow-md">
         <span className="px-1 text-xs text-muted-foreground">已选 {selectedCount} 张</span>
         <div className="mx-1 h-4 w-px bg-border" />
 
@@ -42,6 +44,7 @@ export default function ImageSelectionToolbar({
           onCutoutCreate={onCutoutCreate}
           onProcessImage={onProcessImage}
           onAddToAssets={onAddToAssets}
+          onImportToCanvas={onImportToCanvas}
           onClear={onClear}
           renderSeparator={() => <div className="mx-1 h-4 w-px bg-border" />}
           renderItem={({ id, label, Icon, onClick, disabled, loading }) => (

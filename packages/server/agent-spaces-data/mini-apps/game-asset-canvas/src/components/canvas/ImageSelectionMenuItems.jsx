@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { Download, FolderPlus, Loader2, Scissors, SquarePen, toast, X, ZoomIn } from '@agent-spaces/ui';
+import { Download, FolderPlus, ImagePlus, Loader2, Scissors, SquarePen, toast, X, ZoomIn } from '@agent-spaces/ui';
 import { downloadImages } from '../../utils/export';
 
 /** 图片选择工具栏与右键菜单共用的动作清单和调用逻辑。 */
 export default function ImageSelectionMenuItems({
-  selectedUrls, onEditImages, onCutoutCreate, onProcessImage, onAddToAssets, onClear,
+  selectedUrls, onEditImages, onCutoutCreate, onProcessImage, onAddToAssets, onImportToCanvas, onClear,
   renderItem, renderSeparator,
 }) {
   const [downloading, setDownloading] = useState(false);
@@ -30,6 +30,7 @@ export default function ImageSelectionMenuItems({
     { id: 'enhance', label: '放大', Icon: ZoomIn, onClick: () => onProcessImage(urls, 'enhance'), disabled: !urls.length },
     { id: 'download', label: '下载', Icon: downloading ? Loader2 : Download, onClick: handleDownload, disabled: !urls.length || downloading, loading: downloading },
     { id: 'assets', label: '素材库', Icon: FolderPlus, onClick: () => onAddToAssets(urls), disabled: !urls.length },
+    { id: 'import', label: '导入到画布', Icon: ImagePlus, onClick: () => onImportToCanvas?.(urls), disabled: !urls.length },
   ];
 
   return (

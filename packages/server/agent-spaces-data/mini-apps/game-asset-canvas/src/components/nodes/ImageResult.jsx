@@ -1,5 +1,5 @@
 import { useCallback, useContext, useEffect, useRef, useState } from 'react';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, Check, debugCanvasImageDrag, FolderPlus, ImageOff, Loader2, Plus, Trash2, Popover, PopoverContent, PopoverTrigger, setCanvasImageDragData } from '@agent-spaces/ui';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, Check, debugCanvasImageDrag, FolderPlus, ImageOff, Layers, Loader2, Plus, Trash2, Popover, PopoverContent, PopoverTrigger, setCanvasImageDragData } from '@agent-spaces/ui';
 import { IMAGE_REORDER_MIME } from '../../utils/canvas-constants';
 import { ImageSelectionContext } from '../../context/ImageSelectionContext';
 import { useCanvasGallery } from '../../utils/canvas-gallery';
@@ -21,7 +21,7 @@ function BrokenImagePlaceholder({ url }) {
  * @param {number} [props.max] 单网格最多展示张数，0 或缺省表示全部（GIF 拆帧等可能产出数十帧）
  * @param {boolean} [props.preview] 输出预览模式：无标签/边框，图片全宽纵向排列
  * @param {Function} [props.onImageLoad] 图片加载完成回调
- * @param {Function} [props.onAddToAssets] 传入则缩略图底部操作栏显示「添加到素材库」按钮，点击回传 {url, fileName}
+ * @param {Function} [props.onAddToAssets] 传入则：①缩略图底部操作栏显示「添加到素材库」按钮（单张，回传 {url, fileName}）；②标题栏显示「添加当前产出」按钮（当前版本全部图，回传数组）；③版本数>1 时标题栏额外显示「添加所有产出」按钮（所有历史版本图，回传数组）
  * @param {string} [props.fileName] 该批产出的下载/入库文件名（多张时自动加序号后缀），传给 MediaGallery 的 download 字段
  * @param {Function} [props.onAddImages] 传入则标题右侧显示「添加」按钮（Popover 内上传），上传成功后回传新增 url 数组
  * @param {Function} [props.onRemoveImage] 传入则缩略图底部操作栏显示删除按钮，点击回传被删图索引
@@ -39,7 +39,7 @@ export default function ImageResult({ nodeId, images, resources = [], max = 0, p
   const resourceByUrl = new Map(resources.map((item) => [item?.url, item]));
   const resourceFor = (url) => resourceByUrl.get(url) || { url, thumb: url };
   // 跨节点图片选中状态：checkbox 点击增删切换，ctrl+点击图片本体增删切换（跨节点累加）
-  const { isSelected, toggle } = useContext(ImageSelectionContext);
+  const { isSelected, toggle, selectedUrls } = useContext(ImageSelectionContext);
   if (!list.length && !onAddImages && !hasVersions) return null;
 
   // 拖拽排序（原生 HTML5 DnD，参考 UpstreamImageList）：仅在非预览态 + 注入 onReorderImages + 多图时启用。
@@ -57,6 +57,14 @@ export default function ImageResult({ nodeId, images, resources = [], max = 0, p
     onReorderImages(next);
   };
   const onReorderDragStart = (i, url) => (e) => {
+    // 被拖图处于选中态：拖出全部选中图（跨节点多选集合），不参与节点内排序，
+    // 也不写 reorder 互斥标记——让画布 handleDrop 按 CANVAS_DROP_MIME 建节点。
+    if (nodeId && isSelected(nodeId, url) && selectedUrls.length > 0) {
+      setCanvasImageDragData(e.dataTransfer, selectedUrls);
+      debugCanvasImageDrag('output:dragstart:selected', e.dataTransfer, { url, count: selectedUrls.length });
+      e.dataTransfer.effectAllowed = 'copy';
+      return;
+    }
     setCanvasImageDragData(e.dataTransfer, [url]);
     debugCanvasImageDrag('output:dragstart', e.dataTransfer, { url, sortable, index: i });
     if (!sortable) {
@@ -97,6 +105,19 @@ export default function ImageResult({ nodeId, images, resources = [], max = 0, p
     const ext = dot > 0 ? fileName.slice(dot) : '';
     return `${base}_${i + 1}${ext}`;
   };
+
+  // 收集当前版本的所有产出资源（带 fileName），用于「添加当前产出」批量入库
+  const currentResources = () => list.map((url, i) => ({ ...resourceFor(url), fileName: nameFor(i) }));
+  // 收集所有历史版本的产出资源，用于「添加所有产出」批量入库。
+  // 仅当前版本的 resource 在 resources 内，其他版本 fallback {url}（与 HistoryTab collectResources 一致）
+  const allResources = () => {
+    if (!Array.isArray(versions) || versions.length === 0) return currentResources();
+    return versions.flatMap((v) => {
+      const imgs = Array.isArray(v?.output?.images) ? v.output.images : [];
+      return imgs.map((url) => resourceFor(url));
+    });
+  };
+  const versionsCount = Array.isArray(versions) ? versions.length : 0;
 
   // gallery 列表：包含所有历史版本的产出图（按版本顺序合并），点击当前版本第 i 张时
   // 定位到 gallery 里的全局索引（当前版本之前所有版本的图数之和 + i）。
@@ -194,6 +215,28 @@ export default function ImageResult({ nodeId, images, resources = [], max = 0, p
         <div className="flex items-center gap-1">
           {/* 添加：Popover 内嵌上传，复用 window.AgentSpaces.uploadFile，上传成功回传新 url 数组 */}
           {onAddImages && <AddImagesButton onAddImages={onAddImages} />}
+          {/* 添加当前产出：把当前版本的产出图一次性入库（对齐 HistoryTab 单条记录行为） */}
+          {onAddToAssets && all.length > 0 && (
+            <button
+              type="button"
+              title={`添加当前产出到素材库（${all.length} 张）`}
+              onClick={(e) => { e.stopPropagation(); onAddToAssets(currentResources()); }}
+              className="flex items-center gap-0.5 rounded p-1 text-muted-foreground transition hover:bg-foreground/10 hover:text-primary"
+            >
+              <FolderPlus className="h-3.5 w-3.5" />
+            </button>
+          )}
+          {/* 添加所有产出：版本数>1 时显示，把所有历史版本的产出图一次性入库 */}
+          {onAddToAssets && versionsCount > 1 && (
+            <button
+              type="button"
+              title={`添加所有产出到素材库（${versionsCount} 个版本）`}
+              onClick={(e) => { e.stopPropagation(); onAddToAssets(allResources()); }}
+              className="flex items-center gap-0.5 rounded p-1 text-muted-foreground transition hover:bg-foreground/10 hover:text-primary"
+            >
+              <Layers className="h-3.5 w-3.5" />
+            </button>
+          )}
           {/* 清空：仅在有产出时显示 */}
           {onClearImages && all.length > 0 && (
             <button
