@@ -5,6 +5,16 @@
 - 用户要求参考 `packages/web/src/components/workflow/workflow-group-node.tsx:394-405`，在 `GroupExecutionToolbar` 最右侧增加组连线入口。
 - 目标组需持久化过滤规则，支持全部、指定节点、按节点类型多选。
 - 连线后的自动绑定只读取来源组节点当前输出，并用于目标组“按上传素材执行”，不读取生成历史。
+- 宿主 `WorkflowGroupOverlay` 已实现自定义 pointer 拖线，但现有回调目标是 ReactFlow 单节点；mini-app 的 `handleGroupConnect` 会把来源组叶子节点连到该节点。
+- `GroupExecutionToolbar` 当前最右侧没有组输入入口，素材模式仅支持本地上传，所有执行配置位于 `group.batchExecution` 并随 groups 持久化。
+- 本次应建立独立的组到组素材绑定，不复用普通 ReactFlow edge，避免把组语义展开为节点边并污染节点输入派生。
+- 绑定方向确定为：从来源组工具栏拖到目标组 overlay；目标组保存 `batchExecution.assets.binding`。
+- 绑定素材只提取匹配节点的 `data.output.images`；一张当前输出图对应目标组的一个 assets run。
+- 过滤配置采用互斥模式 `all/nodes/types`，其中 nodes/types 允许多选；断开连接需清理自动绑定 run 并恢复素材模板状态。
+- 最终实现会持久展示来源组到目标组的虚线箭头；拖拽落点按所有 group 屏幕矩形中面积最小者判断，兼容 `pointer-events:none` 和嵌套组。
+- 来源组被删除时目标组自动断开并恢复模板；手动上传新素材会清除既有自动绑定。
+- 已阻止组输出绑定环，避免互相作为来源时反复重置输出。
+- 验证结果：9 项 Node 测试通过，5 个受影响 JSX/Hook 文件 Babel 编译通过，`git diff --check` 通过，开发服务 3000 返回 HTTP 200。
 
 - `MiniAppPreview` 当前用 `chatDockOpen` 控制宿主外层 `ResizablePanel`，其中渲染 `MiniAppAgentDock`。
 - React mini-app 由同页面内独立 React Root 渲染，不是 iframe，因此宿主可以用 React Portal 挂载到 mini-app 提供的 DOM 节点。

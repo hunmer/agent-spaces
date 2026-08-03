@@ -4,7 +4,7 @@
 为 game-asset-canvas 增加组级输入连线与过滤配置，并将来源组匹配节点的当前输出自动应用到目标组的“按上传素材执行”。
 
 ## Current Phase
-Phase 12 in progress
+Phase 15 complete
 
 ## Phases
 
@@ -42,16 +42,16 @@ Phase 12 in progress
 - **Status:** complete
 
 ### Phase 12: 参考实现与现有数据链路定位
-- **Status:** in_progress
+- **Status:** complete
 
 ### Phase 13: 组连线、过滤配置与持久化实现
-- **Status:** pending
+- **Status:** complete
 
 ### Phase 14: 自动绑定执行链实现
-- **Status:** pending
+- **Status:** complete
 
 ### Phase 15: 定向验证与交付
-- **Status:** pending
+- **Status:** complete
 
 ## Decisions
 - 配置字段：`agentChatPlacement?: "dock" | "mini-app-slot"`，缺省等同 `dock`。
@@ -60,6 +60,8 @@ Phase 12 in progress
 - 工具优化同时修复数据输入兼容、并发分组快照、删除成员清理三条根因，不改节点业务模型。
 - 连线问题以用户提供的 8 组 source/target 和指定 workspace canvas.json 为验收样本。
 - 组过滤模式为全部、指定节点、按节点类型多选；绑定只消费来源节点当前输出。
+- 绑定关系持久化在目标组 `batchExecution.assets.binding`，自动素材 run 标记为 `group-output-binding`。
+- 组连线使用矩形落点判断并持久展示虚线箭头；循环绑定被拒绝。
 
 ## Errors Encountered
 | Error | Attempt | Resolution |
@@ -71,3 +73,5 @@ Phase 12 in progress
 | RPC 自查修正补丁上下文未匹配 | 1 | 读取精确行后缩小补丁范围 |
 | `tsx --eval` 不支持 CJS 顶层 await | 1 | 改用 async IIFE 执行真实加载验证 |
 | 开发态 `tsx` 导入 server 时 shared 无 exports | 2 | 构建 shared/server 后从正式 dist 入口验证 |
+| 新增纯函数测试无法解析 `./constants` | 1 | 将 `group-execution.js` 的既有 ESM import 补为 `./constants.js` |
+| 根目录执行 ESLint 找不到 flat config | 1 | 改用 `packages/web/eslint.config.mjs` 所在包执行定向 lint |

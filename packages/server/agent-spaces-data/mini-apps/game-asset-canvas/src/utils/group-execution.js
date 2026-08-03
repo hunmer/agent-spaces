@@ -1,8 +1,14 @@
-import { NODE_TYPES, isImageProcessNodeType } from './constants';
+import { NODE_TYPES, isImageProcessNodeType } from './constants.js';
 
 export const GROUP_EXECUTION_MODES = {
   count: 'count',
   assets: 'assets',
+};
+
+export const GROUP_OUTPUT_FILTER_MODES = {
+  all: 'all',
+  nodes: 'nodes',
+  types: 'types',
 };
 
 export const DEFAULT_GROUP_EXECUTION_COUNT = 1;
@@ -49,6 +55,8 @@ export function createGroupExecution(nodes, nodeIds) {
       activeId: null,
       templateNodeStates: null,
       runs: [],
+      binding: null,
+      sourceSignature: null,
     },
   };
 }
@@ -76,8 +84,75 @@ export function ensureGroupExecution(value, nodes, nodeIds) {
       activeId: assetActiveId,
       templateNodeStates: value.assets?.templateNodeStates || null,
       runs: assetRuns,
+      binding: normalizeGroupOutputBinding(value.assets?.binding),
+      sourceSignature: value.assets?.sourceSignature || null,
     },
   };
+}
+
+export function normalizeGroupOutputBinding(value) {
+  if (!value?.sourceGroupId) return null;
+  const requestedMode = value.filter?.mode;
+  const mode = Object.values(GROUP_OUTPUT_FILTER_MODES).includes(requestedMode)
+    ? requestedMode
+    : GROUP_OUTPUT_FILTER_MODES.all;
+  return {
+    sourceGroupId: value.sourceGroupId,
+    filter: {
+      mode,
+      nodeIds: uniqueStrings(value.filter?.nodeIds),
+      nodeTypes: uniqueStrings(value.filter?.nodeTypes),
+    },
+  };
+}
+
+export function collectGroupOutputAssets(nodes, sourceNodeIds, binding) {
+  const normalized = normalizeGroupOutputBinding(binding);
+  if (!normalized) return [];
+  const sourceIds = new Set(sourceNodeIds || []);
+  const selectedNodeIds = new Set(normalized.filter.nodeIds);
+  const selectedTypes = new Set(normalized.filter.nodeTypes);
+  const assets = [];
+  for (const node of nodes || []) {
+    if (!sourceIds.has(node.id)) continue;
+    if (normalized.filter.mode === GROUP_OUTPUT_FILTER_MODES.nodes && !selectedNodeIds.has(node.id)) continue;
+    if (normalized.filter.mode === GROUP_OUTPUT_FILTER_MODES.types && !selectedTypes.has(node.type)) continue;
+    const images = Array.isArray(node.data?.output?.images) ? node.data.output.images : [];
+    images.forEach((url, index) => {
+      if (typeof url !== 'string' || !url) return;
+      assets.push({
+        id: `group-output-${node.id}-${index + 1}`,
+        name: `${node.data?.label || node.id} ${index + 1}`,
+        url,
+        sourceNodeId: node.id,
+        sourceNodeType: node.type,
+      });
+    });
+  }
+  return assets;
+}
+
+export function groupOutputAssetsSignature(binding, assets) {
+  return JSON.stringify({
+    binding: normalizeGroupOutputBinding(binding),
+    assets: (assets || []).map((item) => [item.id, item.url]),
+  });
+}
+
+export function wouldCreateGroupOutputBindingCycle(groups, sourceGroupId, targetGroupId) {
+  if (!sourceGroupId || !targetGroupId) return false;
+  if (sourceGroupId === targetGroupId) return true;
+  const byId = new Map((groups || []).map((group) => [group.id, group]));
+  const visited = new Set();
+  let currentId = sourceGroupId;
+  while (currentId && !visited.has(currentId)) {
+    if (currentId === targetGroupId) return true;
+    visited.add(currentId);
+    currentId = normalizeGroupOutputBinding(
+      byId.get(currentId)?.batchExecution?.assets?.binding,
+    )?.sourceGroupId;
+  }
+  return false;
 }
 
 export function clampExecutionCount(value) {
@@ -195,4 +270,10 @@ function countIncomingEdges(edges) {
   const counts = new Map();
   for (const edge of edges) counts.set(edge.target, (counts.get(edge.target) || 0) + 1);
   return counts;
+}
+
+function uniqueStrings(values) {
+  return Array.from(new Set((Array.isArray(values) ? values : []).filter((value) => (
+    typeof value === 'string' && value
+  ))));
 }

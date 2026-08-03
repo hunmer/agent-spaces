@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { genId } from '../utils/canvas-id';
 import { collectGroupNodeIds } from '../utils/group-helpers';
 import {
@@ -6,12 +6,16 @@ import {
   applyAssetToNodeStates,
   clampExecutionCount,
   cloneSerializable,
+  collectGroupOutputAssets,
   countManualImageSlots,
   createFreshNodeStates,
   ensureGroupExecution,
+  groupOutputAssetsSignature,
   mergeRunNodeStates,
+  normalizeGroupOutputBinding,
   saveActiveRun,
   snapshotNodeStates,
+  wouldCreateGroupOutputBindingCycle,
 } from '../utils/group-execution';
 
 export default function useGroupExecution({ groups, nodes, edges, setGroups, setNodes }) {
@@ -183,6 +187,8 @@ export default function useGroupExecution({ groups, nodes, edges, setGroups, set
         templateNodeStates: cloneSerializable(template),
         activeId,
         runs,
+        binding: null,
+        sourceSignature: null,
       },
     };
     commit(groupId, execution, newRuns[0].nodeStates);
@@ -223,6 +229,95 @@ export default function useGroupExecution({ groups, nodes, edges, setGroups, set
     commit(groupId, execution, targetStates);
   }, [commit, getContext]);
 
+  const setOutputBinding = useCallback((targetGroupId, value) => {
+    const binding = normalizeGroupOutputBinding(value);
+    if (!binding || wouldCreateGroupOutputBindingCycle(
+      groupsRef.current,
+      binding.sourceGroupId,
+      targetGroupId,
+    )) return;
+    const context = getContext(targetGroupId);
+    if (!context || context.busy) return;
+    let execution = saveActiveRun(context.execution, context.currentStates);
+    execution = {
+      ...execution,
+      mode: GROUP_EXECUTION_MODES.assets,
+      assets: {
+        ...execution.assets,
+        templateNodeStates: execution.assets.templateNodeStates || cloneSerializable(context.currentStates),
+        binding,
+        sourceSignature: null,
+      },
+    };
+    commit(targetGroupId, execution);
+  }, [commit, getContext]);
+
+  const disconnectOutputBinding = useCallback((targetGroupId) => {
+    const context = getContext(targetGroupId);
+    if (!context || context.busy || !context.execution.assets.binding) return;
+    const template = context.execution.assets.templateNodeStates || context.currentStates;
+    const execution = {
+      ...context.execution,
+      assets: {
+        ...context.execution.assets,
+        activeId: null,
+        runs: [],
+        binding: null,
+        sourceSignature: null,
+      },
+    };
+    commit(targetGroupId, execution, template);
+  }, [commit, getContext]);
+
+  useEffect(() => {
+    for (const targetGroup of groups) {
+      const binding = normalizeGroupOutputBinding(targetGroup.batchExecution?.assets?.binding);
+      if (!binding || binding.sourceGroupId === targetGroup.id) continue;
+      const sourceGroup = groups.find((group) => group.id === binding.sourceGroupId);
+      if (!sourceGroup) {
+        disconnectOutputBinding(targetGroup.id);
+        continue;
+      }
+      const context = getContext(targetGroup.id);
+      if (!context || context.busy) continue;
+      const sourceNodeIds = collectGroupNodeIds(groups, sourceGroup.id);
+      const assets = collectGroupOutputAssets(nodes, sourceNodeIds, binding);
+      const sourceSignature = groupOutputAssetsSignature(binding, assets);
+      if (context.execution.assets.sourceSignature === sourceSignature) continue;
+
+      const template = context.execution.assets.templateNodeStates || context.currentStates;
+      const runs = assets.map((asset) => ({
+        ...asset,
+        origin: 'group-output-binding',
+        nodeStates: applyAssetToNodeStates(
+          template,
+          context.currentNodes,
+          edgesRef.current,
+          context.nodeIds,
+          asset.url,
+        ),
+      }));
+      const previousActiveId = context.execution.assets.activeId;
+      const activeId = runs.some((run) => run.id === previousActiveId)
+        ? previousActiveId
+        : runs[0]?.id || null;
+      const activeRun = runs.find((run) => run.id === activeId);
+      const execution = {
+        ...context.execution,
+        mode: GROUP_EXECUTION_MODES.assets,
+        assets: {
+          ...context.execution.assets,
+          templateNodeStates: cloneSerializable(template),
+          activeId,
+          runs,
+          binding,
+          sourceSignature,
+        },
+      };
+      commit(targetGroup.id, execution, activeRun?.nodeStates || template);
+    }
+  }, [commit, disconnectOutputBinding, getContext, groups, nodes]);
+
   return {
     inputSlotCounts,
     runningGroupIds,
@@ -232,5 +327,7 @@ export default function useGroupExecution({ groups, nodes, edges, setGroups, set
     switchRun,
     uploadAssets,
     removeAsset,
+    setOutputBinding,
+    disconnectOutputBinding,
   };
 }

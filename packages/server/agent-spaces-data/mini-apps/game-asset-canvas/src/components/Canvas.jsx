@@ -1392,6 +1392,8 @@ export default function Canvas({ hostConfig }) {
               {/* 分组 overlay：ViewportPortal 内跟随画布 pan/zoom */}
               <GroupOverlays
                 items={groupOps.groupOverlayItems}
+                groups={groups}
+                nodes={nodes}
                 selectedGroupId={groupOps.selectedGroupId}
                 dropTargetGroupId={groupOps.dropTargetGroupId}
                 onSelect={groupOps.setSelectedGroupId}
@@ -1410,6 +1412,8 @@ export default function Canvas({ hostConfig }) {
                 onSwitchExecutionRun={groupExecution.switchRun}
                 onUploadExecutionAssets={groupExecution.uploadAssets}
                 onRemoveExecutionAsset={groupExecution.removeAsset}
+                onSetOutputBinding={groupExecution.setOutputBinding}
+                onDisconnectOutputBinding={groupExecution.disconnectOutputBinding}
               />
             </ReactFlow>
 

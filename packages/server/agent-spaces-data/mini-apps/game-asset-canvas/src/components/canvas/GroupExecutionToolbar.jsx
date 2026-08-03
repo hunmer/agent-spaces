@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
-import { FileUpload, Loader2, X } from '@agent-spaces/ui';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { FileUpload, Loader2, Spline, X } from '@agent-spaces/ui';
 import {
   GROUP_EXECUTION_MODES,
   MAX_GROUP_EXECUTION_COUNT,
@@ -18,6 +19,8 @@ export default function GroupExecutionToolbar({
   onSwitchRun,
   onUploadFiles,
   onRemoveAsset,
+  onConnectGroup,
+  sourceGroupName,
 }) {
   const execution = group.batchExecution;
   const mode = execution?.mode === GROUP_EXECUTION_MODES.assets
@@ -28,6 +31,7 @@ export default function GroupExecutionToolbar({
     ? execution.count.runs
     : Array.from({ length: target }, (_, index) => ({ id: `count-${index + 1}`, index: index + 1 }));
   const assetRuns = execution?.assets?.runs || [];
+  const outputBinding = execution?.assets?.binding || null;
   const activeCountId = execution?.count?.activeId || countRuns[0]?.id;
   const activeAssetId = execution?.assets?.activeId || assetRuns[0]?.id;
   const bounds = useMemo(() => getGroupBounds(group, childNodes), [childNodes, group]);
@@ -110,7 +114,9 @@ export default function GroupExecutionToolbar({
         ) : (
           <>
             <span className="truncate text-[10px] text-muted-foreground">
-              {inputSlotCount > 0 ? `自动替换 ${inputSlotCount} 个输入槽位` : '无可替换输入槽位'}
+              {outputBinding
+                ? `已连接 ${sourceGroupName || '来源分组'} · ${assetRuns.length} 个当前输出`
+                : (inputSlotCount > 0 ? `自动替换 ${inputSlotCount} 个输入槽位` : '无可替换输入槽位')}
             </span>
             {uploading && (
               <span className="flex shrink-0 items-center gap-1 text-[10px] text-primary">
@@ -119,6 +125,11 @@ export default function GroupExecutionToolbar({
             )}
           </>
         )}
+        <GroupConnectButton
+          groupId={group.id}
+          disabled={busy || group.locked}
+          onConnect={onConnectGroup}
+        />
       </div>
 
       {mode === GROUP_EXECUTION_MODES.count ? (
@@ -156,8 +167,8 @@ export default function GroupExecutionToolbar({
             onChange={handleUpload}
             accept={{ 'image/*': ['.png', '.jpg', '.jpeg', '.webp', '.gif'] }}
             maxFiles={0}
-            disabled={busy || uploading || inputSlotCount === 0}
-            placeholder="上传素材"
+            disabled={busy || uploading || inputSlotCount === 0 || !!outputBinding}
+            placeholder={outputBinding ? '自动绑定' : '上传素材'}
             className="group-asset-file-upload"
           />
             {assetRuns.length === 0 ? (
@@ -184,7 +195,7 @@ export default function GroupExecutionToolbar({
                 >
                   <img src={run.url} alt={run.name || `素材 ${index + 1}`} draggable={false} className="h-full w-full object-cover" />
                 </button>
-                {hoveredAssetId === run.id && (
+                {hoveredAssetId === run.id && !outputBinding && (
                   <button
                     type="button"
                     disabled={busy}
@@ -210,6 +221,84 @@ export default function GroupExecutionToolbar({
       {busy && <p className="truncate text-[10px] text-muted-foreground">分组执行中，完成后可切换实例</p>}
     </div>
   );
+}
+
+function GroupConnectButton({ groupId, disabled, onConnect }) {
+  const [drag, setDrag] = useState(null);
+  const startRef = useRef(null);
+
+  const handlePointerDown = (event) => {
+    if (!onConnect || disabled) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const pointerId = event.pointerId;
+    const element = event.currentTarget;
+    const rect = element.getBoundingClientRect();
+    const start = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+    startRef.current = start;
+    setDrag(start);
+    element.setPointerCapture(pointerId);
+
+    const handlePointerMove = (moveEvent) => {
+      if (moveEvent.pointerId === pointerId) setDrag({ x: moveEvent.clientX, y: moveEvent.clientY });
+    };
+    const cleanup = () => {
+      if (element.hasPointerCapture(pointerId)) element.releasePointerCapture(pointerId);
+      document.removeEventListener('pointermove', handlePointerMove);
+      document.removeEventListener('pointerup', handlePointerUp);
+      document.removeEventListener('pointercancel', handlePointerCancel);
+      setDrag(null);
+    };
+    const handlePointerUp = (upEvent) => {
+      if (upEvent.pointerId !== pointerId) return;
+      const targetGroupId = getGroupAtScreenPoint(upEvent.clientX, upEvent.clientY);
+      cleanup();
+      if (targetGroupId && targetGroupId !== groupId) onConnect(groupId, targetGroupId);
+    };
+    const handlePointerCancel = (cancelEvent) => {
+      if (cancelEvent.pointerId === pointerId) cleanup();
+    };
+    document.addEventListener('pointermove', handlePointerMove);
+    document.addEventListener('pointerup', handlePointerUp);
+    document.addEventListener('pointercancel', handlePointerCancel);
+  };
+
+  return (
+    <>
+      <button
+        type="button"
+        title="拖拽连接到目标分组（把当前输出作为上传素材）"
+        disabled={disabled}
+        onPointerDown={handlePointerDown}
+        className="ml-auto flex h-6 w-6 shrink-0 cursor-crosshair items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-primary disabled:pointer-events-none disabled:opacity-40"
+      >
+        <Spline className="h-3.5 w-3.5" />
+      </button>
+      {drag && startRef.current && createPortal(
+        <svg className="pointer-events-none fixed inset-0 z-[9999] h-full w-full">
+          <line
+            x1={startRef.current.x}
+            y1={startRef.current.y}
+            x2={drag.x}
+            y2={drag.y}
+            stroke="var(--primary, hsl(var(--primary)))"
+            strokeWidth={2}
+            strokeDasharray="5,5"
+          />
+          <circle cx={drag.x} cy={drag.y} r={4} fill="var(--primary, hsl(var(--primary)))" />
+        </svg>,
+        document.body,
+      )}
+    </>
+  );
+}
+
+function getGroupAtScreenPoint(x, y) {
+  return Array.from(document.querySelectorAll('[data-workflow-group-id]'))
+    .map((element) => ({ element, rect: element.getBoundingClientRect() }))
+    .filter(({ rect }) => x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom)
+    .sort((a, b) => (a.rect.width * a.rect.height) - (b.rect.width * b.rect.height))[0]
+    ?.element.getAttribute('data-workflow-group-id') || null;
 }
 
 function ModeButton({ active, disabled, onClick, children }) {
