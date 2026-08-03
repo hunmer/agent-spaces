@@ -4,7 +4,7 @@
 为 game-asset-canvas 增加组级输入连线与过滤配置，并将来源组匹配节点的当前输出自动应用到目标组的“按上传素材执行”。
 
 ## Current Phase
-Phase 18 complete
+Phase 24 complete
 
 ## Phases
 
@@ -62,6 +62,24 @@ Phase 18 complete
 ### Phase 18: 目标组连线手柄命中修复
 - **Status:** complete
 
+### Phase 19: 节点头部与属性应用链路定位
+- **Status:** complete
+
+### Phase 20: 分组内批量应用属性实现
+- **Status:** complete
+
+### Phase 21: 定向验证与交付
+- **Status:** complete
+
+### Phase 22: 素材实例目标范围纠正
+- **Status:** complete
+
+### Phase 23: 素材 run 属性同步实现
+- **Status:** complete
+
+### Phase 24: 回归验证与交付
+- **Status:** complete
+
 ## Decisions
 - 配置字段：`agentChatPlacement?: "dock" | "mini-app-slot"`，缺省等同 `dock`。
 - Chat 状态、会话和权限继续归宿主管理，mini-app 只提供 DOM 插槽与 tab 切换。
@@ -70,6 +88,8 @@ Phase 18 complete
 - 连线问题以用户提供的 8 组 source/target 和指定 workspace canvas.json 为验收样本。
 - 组过滤模式为全部、指定节点、按节点类型多选；绑定只消费来源节点当前输出。
 - 绑定关系持久化在目标组 `batchExecution.assets.binding`，自动素材 run 标记为 `group-output-binding`。
+- 分组属性应用的正确目标是“按上传素材执行”的其他素材 run 中同一 nodeId 的节点快照，不是画布分组内其他节点。
+- `groupAssetInputUrls` 标记的分组素材在目标节点上保留，来源节点同类素材不作为人工上传图传播。
 - 组连线使用矩形落点判断并持久展示虚线箭头；循环绑定被拒绝。
 
 ## Errors Encountered
@@ -87,3 +107,4 @@ Phase 18 complete
 | 对话框关闭状态读取 `null.filter` | 1 | `undefined === undefined` 误入已有绑定分支，增加 binding/state 显式非空判断 |
 | `react-dom.createPortal` 运行时不是函数 | 1 | renderer 将 react-dom 映射为 react-dom/client；拖线预览改为可清理的原生 SVG overlay |
 | 最终组合验证脚本正则引号解析失败 | 1 | 简化为普通文本搜索后重新执行完整验证 |
+| localhost:3000 健康检查超时 | 1 | mini-app 源码刷新即生效；当前无 procm-mcp，不启动或重启宿主服务 |

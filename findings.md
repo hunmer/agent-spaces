@@ -1,5 +1,19 @@
 # Findings
 
+## 分组内应用节点属性（2026-08-03）
+
+- `NodeShell` 上传区开关包含 `uploadHidden` 持久态、生成完成后自动折叠 effect、图标按钮及 `UploadCollapseContext.Provider`；`UploadSection` 还负责默认开启图片悬浮预览。
+- 现有 `PastePropertiesDialog` 由 `useSelectionClipboard.propertyPaste` 驱动，字段来源为原始节点 data；`params` 展开，`images/output/status` 等派生或运行字段排除。
+- 手动上传图存 `data.uploadedImages`；连线参考图只在 `useDecoratedNodes` 中派生为 `data.images`，原始节点不被覆盖。
+- 分组素材执行也会写 `uploadedImages`，但同时用 `groupAssetInputUrls` 标识；双槽 `imageCompare` 写入 `first/second.uploadedImages`。
+- 因此分组属性应用需排除来源 `groupAssetInputUrls`，并在目标 `uploadedImages` 及双槽上传字段中保留目标的 `groupAssetInputUrls`。
+- 用户纠正：目标不是分组内其他节点，而是 `GroupExecutionToolbar` 的“按上传素材执行”下其他素材实例中的同一节点。
+- 每个素材实例存于 `group.batchExecution.assets.runs[]`，节点快照为 `run.nodeStates[nodeId]`；画布当前节点对应 `assets.activeId` 的可见状态。
+- 应用前需用当前画布状态保存 active run；随后更新其他 runs 的同一 nodeId，并更新 `assets.templateNodeStates[nodeId]`，避免后续上传或输出绑定重建时丢失应用属性。
+- 按钮只对素材模式、存在 activeId 且 runs 数量至少为 2 的分组节点注入；嵌套分组命中时选择节点数最少的素材分组。
+- 最终验证：相关 27 项测试通过，7 个受影响 JSX/Hook 文件 Babel 编译通过，`git diff --check` 通过。
+- 验证结果：相关 26 项 Node 测试通过，6 个受影响 JSX/Hook 文件 Babel 编译通过，`git diff --check` 通过。
+
 ## 组输出自动绑定（2026-08-03）
 
 - 用户要求参考 `packages/web/src/components/workflow/workflow-group-node.tsx:394-405`，在 `GroupExecutionToolbar` 最右侧增加组连线入口。

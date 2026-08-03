@@ -1,7 +1,7 @@
 import { Children, isValidElement, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { NodeResizer, NodeToolbar, Position } from '@xyflow/react';
 import {
-  Badge, BorderGlide, ClipboardCopy, Download, FolderPlus, Images, Loader, RotateCcw, Upload, EyeOff, toast,
+  Badge, BorderGlide, ClipboardCopy, Download, FolderPlus, Images, Loader, RotateCcw, toast,
   ContextMenu, ContextMenuContent, ContextMenuGroup, ContextMenuItem, ContextMenuLabel, ContextMenuSeparator, ContextMenuTrigger,
 } from '@agent-spaces/ui';
 import { NODE_META, NODE_TYPES } from '../../utils/constants';
@@ -12,7 +12,6 @@ import SpinePreviewViewer from './SpinePreviewViewer';
 import NodeOutput from './NodeOutput';
 import FloatingHandle from './FloatingHandle';
 import EditableNodeTitle from './EditableNodeTitle';
-import { UploadCollapseContext } from './UploadSection';
 import { getFloatingHandleProps } from '../canvas/floating-edge-utils';
 
 const STATUS_TEXT = {
@@ -157,21 +156,6 @@ export default function NodeShell({
   };
   const onExportImages = data?.onExportImages;
   const onResetParams = data?.onResetParams;
-  // 上传控件折叠态（持久化到 data.uploadHidden）。首次 status 变 done 时自动折叠一次（用户手动切过则不再自动）。
-  const uploadHidden = data?.uploadHidden === true;
-  const userToggledUploadRef = useRef(false);
-  useEffect(() => {
-    if (userToggledUploadRef.current) return;
-    // 首次完成：status 从非 done → done 时自动折叠上传区
-    if (status === 'done' && !uploadHidden) {
-      userToggledUploadRef.current = true;
-      onUpdate?.({ uploadHidden: true });
-    }
-  }, [status, uploadHidden, onUpdate]);
-  const toggleUpload = useCallback(() => {
-    userToggledUploadRef.current = true;
-    onUpdate?.({ uploadHidden: !uploadHidden });
-  }, [uploadHidden, onUpdate]);
   // 多选（选中数 > 1）时隐藏节点 toolbar：避免每个被选节点都冒出一排按钮，干扰多选操作
   const selectionCount = data?.selectionCount ?? 1;
   const [toolbarHovered, setToolbarHovered] = useState(false);
@@ -304,9 +288,23 @@ export default function NodeShell({
   // 切换预览 + 节点自定义按钮（toolbarActions）+ 导出图片。
   // 【编辑】【抠图】【放大】已移到画布级 ImageSelectionToolbar（图片选中后顶部浮出）。
   const hasExtraButtons = outputImages.length > 0 && onExportImages;
-  const shouldShowToolbar = canPreviewOutput || hasExtraButtons || toolbarActions?.length;
+  const shouldShowToolbar = canPreviewOutput || hasExtraButtons || toolbarActions?.length || data?.onApplyToGroup;
   const toolbarButtons = (
     <>
+      {data?.onApplyToGroup && (
+        <button
+          type="button"
+          title="应用到其他节点"
+          aria-label="应用到其他节点"
+          onClick={(event) => {
+            event.stopPropagation();
+            data.onApplyToGroup();
+          }}
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-border bg-background text-muted-foreground shadow-sm transition hover:border-primary hover:text-primary"
+        >
+          <ClipboardCopy className="h-3.5 w-3.5" />
+        </button>
+      )}
       {/* 切换预览：始终展示，点击在表单/预览模式间切换 */}
       <button
         type="button"
@@ -571,18 +569,6 @@ export default function NodeShell({
               <RotateCcw className="h-3.5 w-3.5" />
             </button>
           )}
-          {/* 切换上传控件显隐：折叠态持久化到 data.uploadHidden */}
-          <button
-            type="button"
-            title={uploadHidden ? '显示上传区' : '隐藏上传区'}
-            onClick={(e) => { e.stopPropagation(); toggleUpload(); }}
-            className={
-              'rounded p-1 transition hover:bg-foreground/10 hover:text-foreground ' +
-              (uploadHidden ? 'text-foreground' : 'text-muted-foreground')
-            }
-          >
-            {uploadHidden ? <EyeOff className="h-3.5 w-3.5" /> : <Upload className="h-3.5 w-3.5" />}
-          </button>
         </div>
       </div>
       {compactView}
@@ -590,9 +576,7 @@ export default function NodeShell({
           避免在节点内滚动/选文本/操作输入框时误触画布 */}
       <div data-node-content className={`scrollbar-none nodrag nopan nowheel flex min-h-0 flex-1 flex-col overflow-auto ${showFullNode ? '' : 'invisible pointer-events-none'}`}>
         <div ref={contentInnerRef} className="flex flex-col gap-2 p-3">
-          <UploadCollapseContext.Provider value={uploadHidden}>
-            {viewportActivated ? contentChildren : null}
-          </UploadCollapseContext.Provider>
+          {viewportActivated ? contentChildren : null}
         </div>
       </div>
       {viewportActivated && footerAction && (

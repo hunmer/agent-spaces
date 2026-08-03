@@ -1,4 +1,5 @@
 import { NODE_TYPES, isImageProcessNodeType } from './constants.js';
+import { applyGroupClipboardProperties } from './clipboard.js';
 
 export const GROUP_EXECUTION_MODES = {
   count: 'count',
@@ -176,6 +177,37 @@ export function saveActiveRun(execution, nodeStates) {
       ...section,
       runs: section.runs.map((run) => (
         run.id === section.activeId ? { ...run, nodeStates: cloneSerializable(nodeStates) } : run
+      )),
+    },
+  };
+}
+
+/** 把当前素材实例的一个节点属性应用到其他素材实例，并同步更新实例模板。 */
+export function applyNodePropertiesToAssetRuns(execution, nodeId, sourceData, propertyPaths) {
+  const assets = execution?.assets;
+  if (!assets || !nodeId) return execution;
+  const applyTo = (targetData) => applyGroupClipboardProperties(
+    targetData || {}, sourceData || {}, propertyPaths,
+  );
+  const templateNodeStates = {
+    ...(assets.templateNodeStates || {}),
+    [nodeId]: applyTo(assets.templateNodeStates?.[nodeId]),
+  };
+  return {
+    ...execution,
+    assets: {
+      ...assets,
+      templateNodeStates,
+      runs: (assets.runs || []).map((run) => (
+        run.id === assets.activeId
+          ? run
+          : {
+            ...run,
+            nodeStates: {
+              ...(run.nodeStates || {}),
+              [nodeId]: applyTo(run.nodeStates?.[nodeId]),
+            },
+          }
       )),
     },
   };

@@ -13,6 +13,7 @@ const CLIPBOARD_KIND = 'agent-spaces/game-asset-canvas-nodes';
 const TRANSIENT_DATA_KEYS = new Set([
   'output', 'images', 'videos', 'textInputValues',
   'status', 'loading', 'error', 'progress', 'executionId', 'source',
+  'groupAssetInputUrls', 'uploadHidden',
 ]);
 
 /**
@@ -88,6 +89,41 @@ export function applyClipboardProperties(targetData, sourceData, propertyPaths) 
     } else if (Object.prototype.hasOwnProperty.call(sourceData || {}, path)) {
       next[path] = sourceData[path];
     }
+  }
+  return next;
+}
+
+function mergeManualUploads(sourceValues, targetGroupAssets, sourceGroupAssets) {
+  const protectedTarget = (Array.isArray(targetGroupAssets) ? targetGroupAssets : [])
+    .filter((url) => typeof url === 'string' && url);
+  const protectedSource = new Set(Array.isArray(sourceGroupAssets) ? sourceGroupAssets : []);
+  const sourceManual = (Array.isArray(sourceValues) ? sourceValues : [])
+    .filter((url) => typeof url === 'string' && url && !protectedSource.has(url));
+  return Array.from(new Set([...protectedTarget, ...sourceManual]));
+}
+
+/** 分组内应用属性：只替换人工上传图，保留目标节点的分组素材输入。 */
+export function applyGroupClipboardProperties(targetData, sourceData, propertyPaths) {
+  const next = applyClipboardProperties(targetData, sourceData, propertyPaths);
+  const paths = new Set(propertyPaths || []);
+  const targetGroupAssets = targetData?.groupAssetInputUrls;
+  const sourceGroupAssets = sourceData?.groupAssetInputUrls;
+
+  if (paths.has('uploadedImages')) {
+    next.uploadedImages = mergeManualUploads(
+      sourceData?.uploadedImages, targetGroupAssets, sourceGroupAssets,
+    );
+  }
+  for (const slot of ['first', 'second']) {
+    if (!paths.has(slot) && !paths.has(`${slot}.uploadedImages`)) continue;
+    next[slot] = {
+      ...(next[slot] || {}),
+      uploadedImages: mergeManualUploads(
+        sourceData?.[slot]?.uploadedImages,
+        targetGroupAssets,
+        sourceGroupAssets,
+      ),
+    };
   }
   return next;
 }

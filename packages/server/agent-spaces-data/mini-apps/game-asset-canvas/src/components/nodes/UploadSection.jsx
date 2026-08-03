@@ -1,27 +1,12 @@
-import { createContext, useContext } from 'react';
-
 /**
- * 上传控件折叠态 context。
- * NodeShell 提供（value=true 表示折叠），各节点的 <UploadSection> 消费。
- * 默认 false（不折叠），保证未包裹 Provider 时上传区正常显示。
- */
-export const UploadCollapseContext = createContext(false);
-
-/**
- * 上传控件区容器：被 NodeShell 的折叠态统一控制。
- *
- * 折叠语义：只隐藏 FileUpload 的「上传区域（dropzone）」，保留已上传文件列表展示。
- * 实现：从 context 读折叠态，并为子 FileUpload 注入节点专用展示参数。
- *
- * 用法：各节点把 <FileUpload .../> 放进 <UploadSection> 即可，无需手动传 hideDropzone。
+ * 节点上传控件容器：为子 FileUpload 默认开启图片悬浮预览。
  */
 export default function UploadSection({ children }) {
-  const collapsed = useContext(UploadCollapseContext);
-  return injectFileUploadProps(children, collapsed);
+  return injectFileUploadProps(children);
 }
 
 // 递归注入节点上传控件参数（处理 Fragment/数组等情况）
-function injectFileUploadProps(node, collapsed) {
+function injectFileUploadProps(node) {
   if (node == null || typeof node !== 'object') return node;
   // FileUpload 类型（type 为函数且名为 FileUpload）直接注入
   const typeName =
@@ -30,12 +15,11 @@ function injectFileUploadProps(node, collapsed) {
   if (typeName === 'FileUpload') {
     const props = { ...node.props };
     if (!Object.prototype.hasOwnProperty.call(props, 'imageHoverPreview')) props.imageHoverPreview = true;
-    if (collapsed && !Object.prototype.hasOwnProperty.call(props, 'hideDropzone')) props.hideDropzone = true;
     return { ...node, props };
   }
   // Fragment 或其他容器：递归处理 children
   if (node.props && node.props.children) {
-    return { ...node, props: { ...node.props, children: injectFileUploadProps(node.props.children, collapsed) } };
+    return { ...node, props: { ...node.props, children: injectFileUploadProps(node.props.children) } };
   }
   return node;
 }

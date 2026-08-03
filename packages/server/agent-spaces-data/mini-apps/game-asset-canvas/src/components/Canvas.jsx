@@ -1088,12 +1088,14 @@ export default function Canvas({ hostConfig }) {
     onDeleteUpstreamImage: handleDeleteUpstreamImage,
     // 视频导出到画布（生成 videoDisplay 节点）
     onExportVideos: handleExportVideosWithPicker,
+    onApplyToGroup: groupExecution.requestPropertyApply,
   }), [
     makeOnUpdate, handleGenerate, handleGenerateMedia, handleProcessImage,
     handleProcessLocal, handleCutout, handleCutoutCreate, handleDepth, handleCancelProcess, handlePromptReverse,
     handleExportImagesWithPicker, handleAutoSize, handleAutoSizeToContent, handleBBoxCutout, handleResetParams,
     handleAddToAssets, handleAddOutputImages, handleRemoveOutputImage, handleClearOutputImages, handleReorderOutputImages,
     handleSwitchVersion, handleDeleteUpstreamImage, handleExportVideosWithPicker,
+    groupExecution.requestPropertyApply,
   ]);
 
   // —— Agent RPC（WS message 监听，ref 持有最新值只订阅一次）——
@@ -1120,7 +1122,8 @@ export default function Canvas({ hostConfig }) {
   });
 
   const { decoratedNodes } = useDecoratedNodes({
-    nodes, edges, protectedImageUrls: groupExecution.protectedImageUrls,
+    nodes, edges, propertyApplyNodeIds: groupExecution.propertyApplyNodeIds,
+    protectedImageUrls: groupExecution.protectedImageUrls,
     selectionCount: selection.selectionCount,
     outputPreviewState,
     onOutputPreviewHeight: handleOutputPreviewHeight,
@@ -1690,6 +1693,11 @@ export default function Canvas({ hostConfig }) {
         onClose={selection.cancelPropertyPaste}
         onApply={selection.applyProperties}
         onContinuePaste={selection.continuePaste}
+      />
+      <PastePropertiesDialog
+        state={groupExecution.propertyApply}
+        onClose={groupExecution.cancelPropertyApply}
+        onApply={groupExecution.applyPropertiesToRuns}
       />
     </ResizablePanelGroup>
     </ImageSelectionContext.Provider>

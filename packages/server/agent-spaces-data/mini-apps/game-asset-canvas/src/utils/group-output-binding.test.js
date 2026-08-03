@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import {
   GROUP_OUTPUT_FILTER_MODES,
   applyAssetToNodeStates,
+  applyNodePropertiesToAssetRuns,
   collectGroupOutputAssets,
   ensureGroupExecution,
   normalizeGroupOutputBinding,
@@ -89,6 +90,57 @@ test('绑定图片会应用到目标组的上传素材槽位', () => {
   );
   assert.deepEqual(result.target.uploadedImages, ['current-output.png']);
   assert.deepEqual(result.target.groupAssetInputUrls, ['current-output.png']);
+});
+
+test('节点属性只应用到其他素材实例并保留各自素材图', () => {
+  const execution = {
+    mode: 'assets',
+    assets: {
+      activeId: 'run-a',
+      templateNodeStates: {
+        target: { params: { prompt: 'template' }, uploadedImages: ['template-manual.png'] },
+      },
+      runs: [
+        {
+          id: 'run-a',
+          nodeStates: {
+            target: {
+              params: { prompt: 'active' },
+              uploadedImages: ['asset-a.png', 'active-manual.png'],
+              groupAssetInputUrls: ['asset-a.png'],
+            },
+          },
+        },
+        {
+          id: 'run-b',
+          nodeStates: {
+            target: {
+              params: { prompt: 'old' },
+              uploadedImages: ['asset-b.png', 'old-manual.png'],
+              groupAssetInputUrls: ['asset-b.png'],
+            },
+          },
+        },
+      ],
+    },
+  };
+  const result = applyNodePropertiesToAssetRuns(
+    execution,
+    'target',
+    execution.assets.runs[0].nodeStates.target,
+    ['params.prompt', 'uploadedImages'],
+  );
+
+  assert.deepEqual(result.assets.runs[0], execution.assets.runs[0]);
+  assert.deepEqual(result.assets.runs[1].nodeStates.target, {
+    params: { prompt: 'active' },
+    uploadedImages: ['asset-b.png', 'active-manual.png'],
+    groupAssetInputUrls: ['asset-b.png'],
+  });
+  assert.deepEqual(result.assets.templateNodeStates.target, {
+    params: { prompt: 'active' },
+    uploadedImages: ['active-manual.png'],
+  });
 });
 
 test('对话框关闭时空绑定返回默认过滤器', () => {

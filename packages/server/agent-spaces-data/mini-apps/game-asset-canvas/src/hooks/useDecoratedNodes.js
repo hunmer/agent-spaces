@@ -28,7 +28,7 @@ import { dedupeTags } from '../utils/canvas-constants';
  * @returns {{ decoratedNodes: Array }}
  */
 export default function useDecoratedNodes({
-  nodes, edges, protectedImageUrls = [], selectionCount, outputPreviewState,
+  nodes, edges, propertyApplyNodeIds, protectedImageUrls = [], selectionCount, outputPreviewState,
   onOutputPreviewHeight, onOutputPreviewModeChange, settings, callbacks,
 }) {
   const upstreamMap = useMemo(() => computeInputImages(nodes, edges), [nodes, edges]);
@@ -52,6 +52,7 @@ export default function useDecoratedNodes({
       onSwitchVersion,
       onDeleteUpstreamImage,
       onExportVideos,
+      onApplyToGroup,
     } = callbacks || {};
     return nodes.map((nd) => {
       const up = upstreamMap.get(nd.id);
@@ -170,11 +171,15 @@ export default function useDecoratedNodes({
           onSwitchVersion: onSwitchVersion ? (index) => onSwitchVersion(nd.id, index) : undefined,
           // 删除一张上游输入图（断开产出该图的连入边）
           onDeleteUpstreamImage: onDeleteUpstreamImage ? (url) => onDeleteUpstreamImage(nd.id, url) : undefined,
+          onApplyToGroup: propertyApplyNodeIds?.has(nd.id) && onApplyToGroup
+            ? () => onApplyToGroup(nd.id)
+            : undefined,
         },
       };
     });
   }, [
-    nodes, upstreamMap, upstreamTextsMap, upstreamVideosMap, protectedImageUrls, selectionCount, outputPreviewState,
+    nodes, upstreamMap, upstreamTextsMap, upstreamVideosMap, propertyApplyNodeIds,
+    protectedImageUrls, selectionCount, outputPreviewState,
     onOutputPreviewHeight, onOutputPreviewModeChange, settings, callbacks,
   ]);
 

@@ -41,8 +41,8 @@ export default function PastePropertiesDialog({ state, onClose, onApply, onConti
         <DialogHeader>
           <DialogTitle>复制并应用节点属性</DialogTitle>
           <DialogDescription>
-            选择要应用到 {state?.targetIds?.length || 0} 个
-            {NODE_META[state?.sourceNode?.type]?.label || '同类型'}节点的属性。
+            选择要应用到 {state?.targetIds?.length || 0} 个{state?.targetLabel || '目标节点'}的
+            {NODE_META[state?.sourceNode?.type]?.label || '节点'}属性。
           </DialogDescription>
         </DialogHeader>
 
@@ -81,7 +81,7 @@ export default function PastePropertiesDialog({ state, onClose, onApply, onConti
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={onContinuePaste}>继续粘贴</Button>
+          {onContinuePaste && <Button variant="outline" onClick={onContinuePaste}>继续粘贴</Button>}
           <Button disabled={!checked.size} onClick={() => onApply([...checked])}>应用</Button>
         </DialogFooter>
       </DialogContent>

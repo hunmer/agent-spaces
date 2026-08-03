@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { genId } from '../utils/canvas-id';
 import { collectGroupNodeIds } from '../utils/group-helpers';
 import {
   GROUP_EXECUTION_MODES,
+  applyNodePropertiesToAssetRuns,
   applyAssetToNodeStates,
   clampExecutionCount,
   cloneSerializable,
@@ -19,6 +20,7 @@ import {
 } from '../utils/group-execution';
 
 export default function useGroupExecution({ groups, nodes, edges, setGroups, setNodes }) {
+  const [propertyApply, setPropertyApply] = useState(null);
   const groupsRef = useRef(groups);
   const nodesRef = useRef(nodes);
   const edgesRef = useRef(edges);
@@ -54,6 +56,17 @@ export default function useGroupExecution({ groups, nodes, edges, setGroups, set
     return active?.url ? [active.url] : [];
   }), [groups]);
 
+  const propertyApplyNodeIds = useMemo(() => {
+    const result = new Set();
+    for (const group of groups) {
+      const assets = group.batchExecution?.assets;
+      if (group.batchExecution?.mode !== GROUP_EXECUTION_MODES.assets
+        || !assets?.activeId || (assets.runs?.length || 0) < 2) continue;
+      collectGroupNodeIds(groups, group.id).forEach((nodeId) => result.add(nodeId));
+    }
+    return result;
+  }, [groups]);
+
   const commit = useCallback((groupId, execution, nodeStates = null) => {
     setGroups((prev) => prev.map((group) => (
       group.id === groupId ? { ...group, batchExecution: execution } : group
@@ -78,6 +91,51 @@ export default function useGroupExecution({ groups, nodes, edges, setGroups, set
       && (node.data?.status === 'running' || node.data?.loading));
     return { group, nodeIds, currentNodes, currentStates, execution, busy };
   }, []);
+
+  const requestPropertyApply = useCallback((nodeId) => {
+    const currentGroups = groupsRef.current;
+    const sourceNode = nodesRef.current.find((node) => node.id === nodeId);
+    if (!sourceNode) return;
+    const candidates = currentGroups
+      .map((group) => ({
+        group,
+        nodeIds: collectGroupNodeIds(currentGroups, group.id),
+      }))
+      .filter(({ group, nodeIds }) => (
+        nodeIds.includes(nodeId)
+        && group.batchExecution?.mode === GROUP_EXECUTION_MODES.assets
+        && group.batchExecution?.assets?.activeId
+        && (group.batchExecution?.assets?.runs?.length || 0) > 1
+      ))
+      .sort((left, right) => left.nodeIds.length - right.nodeIds.length);
+    const target = candidates[0];
+    if (!target) return;
+    const assets = target.group.batchExecution.assets;
+    setPropertyApply({
+      mode: 'asset-runs',
+      groupId: target.group.id,
+      nodeId,
+      sourceNode,
+      targetIds: assets.runs.filter((run) => run.id !== assets.activeId).map((run) => run.id),
+      targetLabel: '其他素材分组实例',
+    });
+  }, []);
+
+  const applyPropertiesToRuns = useCallback((propertyPaths) => {
+    if (!propertyApply) return;
+    const context = getContext(propertyApply.groupId);
+    if (!context || context.busy) return;
+    const sourceData = nodesRef.current.find((node) => node.id === propertyApply.nodeId)?.data
+      || propertyApply.sourceNode.data;
+    let execution = saveActiveRun(context.execution, context.currentStates);
+    execution = applyNodePropertiesToAssetRuns(
+      execution, propertyApply.nodeId, sourceData, propertyPaths,
+    );
+    commit(propertyApply.groupId, execution);
+    setPropertyApply(null);
+  }, [commit, getContext, propertyApply]);
+
+  const cancelPropertyApply = useCallback(() => setPropertyApply(null), []);
 
   const setMode = useCallback((groupId, mode) => {
     if (mode !== GROUP_EXECUTION_MODES.count && mode !== GROUP_EXECUTION_MODES.assets) return;
@@ -322,6 +380,11 @@ export default function useGroupExecution({ groups, nodes, edges, setGroups, set
     inputSlotCounts,
     runningGroupIds,
     protectedImageUrls,
+    propertyApplyNodeIds,
+    propertyApply,
+    requestPropertyApply,
+    applyPropertiesToRuns,
+    cancelPropertyApply,
     setMode,
     setCount,
     switchRun,
