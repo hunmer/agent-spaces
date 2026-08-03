@@ -12,6 +12,7 @@ import {
   ChevronRight as ChevronRightIcon,
   Copy,
   FileText,
+  GitBranch,
   RefreshCw,
   Trash2,
   Wrench,
@@ -61,6 +62,7 @@ export interface ChatMessageListProps<TMessage extends DisplayChatMessage> {
     onChange?: (index: number) => void;
   } | null | undefined;
   onRegenerateMessage?: (message: TMessage) => void;
+  onBranchMessage?: (message: TMessage) => void | Promise<void>;
   isStreamingMessage?: (message: TMessage) => boolean;
   onRerunTool?: (message: TMessage, item: Extract<WorkflowAgentTimelineItem, { type: "tool" }>) => void;
   onAnswerAskUserQuestion?: (message: TMessage, item: Extract<WorkflowAgentTimelineItem, { type: "tool" }>, answer: string) => void | Promise<void>;
@@ -224,6 +226,7 @@ export function ChatMessageList<TMessage extends DisplayChatMessage>({
   serializeForCopy,
   versionInfo,
   onRegenerateMessage,
+  onBranchMessage,
   isStreamingMessage,
   onRerunTool,
   onAnswerAskUserQuestion,
@@ -427,6 +430,17 @@ export function ChatMessageList<TMessage extends DisplayChatMessage>({
               </button>
             ) : null}
             <div className="flex items-center gap-0.5 opacity-0 transition-opacity group-hover/message:opacity-100">
+              {onBranchMessage && !streaming ? (
+                <button
+                  type="button"
+                  className="flex size-5 items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground"
+                  onClick={() => void onBranchMessage(msg)}
+                  title={t("branch")}
+                  aria-label={t("branch")}
+                >
+                  <GitBranch className="size-3" />
+                </button>
+              ) : null}
               <button
                 type="button"
                 className="flex size-5 items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground"

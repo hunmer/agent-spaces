@@ -389,7 +389,7 @@ export function MiniAppAgentPopover({ projectId }: { projectId: string }) {
   useEffect(() => { if (open) loadHistoryRef.current(); }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const { messages, input, setInput, sending, handleSend, handleStop, current, suggestions, agentFileMentions,
-    handleAnswerAskUserQuestion, handleRerunTool, handleDeleteMessage, handleRegenerateMessage, sessionDetailForMessage, introduction,
+    handleAnswerAskUserQuestion, handleRerunTool, handleDeleteMessage, handleRegenerateMessage, handleBranchMessage, sessionDetailForMessage, introduction,
     agents, agentId, setAgentId } = chat;
 
   return (
@@ -418,6 +418,7 @@ export function MiniAppAgentPopover({ projectId }: { projectId: string }) {
           onRerunTool={handleRerunTool}
           onDeleteMessage={handleDeleteMessage}
           onRegenerateMessage={handleRegenerateMessage}
+          onBranchMessage={handleBranchMessage}
           sessionDetailForMessage={sessionDetailForMessage}
           inputPlaceholder={t('agent.inputPlaceholder')}
           suggestions={suggestions}
@@ -443,7 +444,7 @@ export function MiniAppAgentDock({ projectId, onClose }: { projectId: string; on
   useEffect(() => { loadHistoryRef.current(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const { messages, input, setInput, sending, handleSend, handleStop, current, suggestions, agentFileMentions,
-    handleAnswerAskUserQuestion, handleRerunTool, handleDeleteMessage, handleRegenerateMessage, sessionDetailForMessage, introduction,
+    handleAnswerAskUserQuestion, handleRerunTool, handleDeleteMessage, handleRegenerateMessage, handleBranchMessage, sessionDetailForMessage, introduction,
     agents, agentId, setAgentId } = chat;
 
   return (
@@ -470,6 +471,7 @@ export function MiniAppAgentDock({ projectId, onClose }: { projectId: string; on
         onRerunTool={handleRerunTool}
         onDeleteMessage={handleDeleteMessage}
         onRegenerateMessage={handleRegenerateMessage}
+        onBranchMessage={handleBranchMessage}
         introduction={introduction}
         sessionDetailForMessage={sessionDetailForMessage}
         inputPlaceholder={t('agent.inputPlaceholder')}

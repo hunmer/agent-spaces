@@ -180,6 +180,19 @@ export function useMiniAppAgentChat(projectId: string) {
     } catch { /* ignore */ }
   }, [projectId]);
 
+  const handleBranchMessage = useCallback(async (message: ChatMessage) => {
+    const sourceSessionId = sessionIdRef.current;
+    if (!projectId || !sourceSessionId || sending) return;
+    try {
+      const { session } = await sdk.miniApp.branchAgentSession(projectId, sourceSessionId, message.id);
+      sessionIdRef.current = session.id;
+      setSessionId(session.id);
+      setMessages(session.messages.map((item) => miniAppMessageToChatMessage(item, session.id)));
+      setSessions((prev) => [session, ...prev.filter((item) => item.id !== session.id)]);
+      setInput('');
+    } catch { /* 保持当前会话不变 */ }
+  }, [projectId, sending]);
+
   const handleSend = useCallback(async (overrideText?: string) => {
     const text = (overrideText ?? input).trim();
     if (!text || !agentId || sending) return;
@@ -457,7 +470,7 @@ export function useMiniAppAgentChat(projectId: string) {
     agentFileMentions,
     loadHistory,
     handleAnswerAskUserQuestion, handleRerunTool,
-    handleDeleteMessage, handleRegenerateMessage, sessionDetailForMessage,
+    handleDeleteMessage, handleRegenerateMessage, handleBranchMessage, sessionDetailForMessage,
     introduction,
     // 多会话
     sessions, sessionId,

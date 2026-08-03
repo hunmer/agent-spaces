@@ -201,6 +201,10 @@ export function createMiniAppApi(http: HttpClient) {
     renameAgentSession: (id: string, sessionId: string, title: string): Promise<{ session: MiniAppChatSessionSummary & { messages?: MiniAppChatMessage[] } }> =>
       http.patch(`/api/mini-apps/${encodeURIComponent(id)}/agents/sessions/${encodeURIComponent(sessionId)}`, { title }),
 
+    /** 保留指定消息及之前的历史，创建一个分支会话。 */
+    branchAgentSession: (id: string, sessionId: string, messageId: string): Promise<{ session: MiniAppChatSessionSummary & { messages: MiniAppChatMessage[] } }> =>
+      http.post(`/api/mini-apps/${encodeURIComponent(id)}/agents/sessions/${encodeURIComponent(sessionId)}/branch`, { messageId }),
+
     /** 清空某 session 的历史（可选按 agentId 过滤）。 */
     clearAgentHistory: (id: string, sessionId: string, agentId?: string): Promise<void> =>
       http.delete(`/api/mini-apps/${encodeURIComponent(id)}/agents/chat?sessionId=${encodeURIComponent(sessionId)}${agentId ? `&agentId=${encodeURIComponent(agentId)}` : ''}`),

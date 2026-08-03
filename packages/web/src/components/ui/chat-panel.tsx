@@ -81,6 +81,8 @@ export interface ChatPanelProps {
   onAnswerAskUserQuestion?: (message: ChatMessage, item: Extract<WorkflowAgentTimelineItem, { type: 'tool' }>, answer: string) => void | Promise<void>;
   /** 重新生成 agent 消息（删除该消息后基于上一条 user 消息重跑） */
   onRegenerateMessage?: (message: ChatMessage) => void;
+  /** 保留目标消息及之前的历史，创建并进入一个新会话。 */
+  onBranchMessage?: (message: ChatMessage) => void | Promise<void>;
   /** 提供"查看上下文"对话框数据；返回非 null 时显示按钮 */
   sessionDetailForMessage?: (message: ChatMessage) => { record: AgentUsageRecord; detail: AgentUsageSessionDetail } | null | undefined;
   width?: number;
@@ -140,6 +142,7 @@ export function ChatPanel({
   onRerunTool,
   onAnswerAskUserQuestion,
   onRegenerateMessage,
+  onBranchMessage,
   sessionDetailForMessage,
   width = 400,
   height = 360,
@@ -443,6 +446,7 @@ export function ChatPanel({
           onRerunTool={onRerunTool}
           onAnswerAskUserQuestion={onAnswerAskUserQuestion}
           onRegenerateMessage={onRegenerateMessage}
+          onBranchMessage={onBranchMessage}
           sessionRecordForMessage={sessionDetailForMessage ? (msg) => sessionDetailForMessage(msg)?.record ?? null : undefined}
           sessionDetailForMessage={sessionDetailForMessage ? (msg) => sessionDetailForMessage(msg)?.detail ?? null : undefined}
         />

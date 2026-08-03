@@ -7,7 +7,7 @@ import { randomUUID } from 'crypto';
 import { exec } from 'node:child_process';
 import * as svc from '../services/mini-apps.js';
 import { invokeService } from '../services/mini-app-services.js';
-import { getProject, readAgentsConfig, readAgentConfig, upsertAgentConfig, listAgentChats, clearAgentChats, listChatSessions, renameChatSession, deleteChatMessage, resetAgentsConfig, DuplicateNameError } from '../storage/mini-app-store.js';
+import { getProject, readAgentsConfig, readAgentConfig, upsertAgentConfig, listAgentChats, clearAgentChats, listChatSessions, renameChatSession, branchChatSession, deleteChatMessage, resetAgentsConfig, DuplicateNameError } from '../storage/mini-app-store.js';
 import { answerMiniAppAgentQuestion, getRegisteredMiniAppTools, rerunMiniAppAgentTool, runMiniAppAgent } from '../services/mini-app-agent.js';
 
 const router = Router();
@@ -672,6 +672,19 @@ router.patch('/:id/agents/sessions/:sessionId', (req: Request<{ id: string; sess
     if (!title) { res.status(400).json({ error: 'title is required' }); return; }
     const session = renameChatSession(req.params.id, req.params.sessionId, title);
     if (!session) { res.status(404).json({ error: 'Session not found' }); return; }
+    res.json({ session });
+  } catch (error: any) {
+    res.status(error.message === 'Invalid sessionId' ? 400 : 500).json({ error: error.message });
+  }
+});
+
+// POST /:id/agents/sessions/:sessionId/branch — 截断复制历史并创建新会话
+router.post('/:id/agents/sessions/:sessionId/branch', (req: Request<{ id: string; sessionId: string }, any, { messageId?: string }>, res: Response) => {
+  try {
+    const messageId = typeof req.body?.messageId === 'string' ? req.body.messageId : '';
+    if (!messageId) { res.status(400).json({ error: 'messageId is required' }); return; }
+    const session = branchChatSession(req.params.id, req.params.sessionId, randomUUID(), messageId);
+    if (!session) { res.status(404).json({ error: 'Session or message not found' }); return; }
     res.json({ session });
   } catch (error: any) {
     res.status(error.message === 'Invalid sessionId' ? 400 : 500).json({ error: error.message });

@@ -752,6 +752,38 @@ export function renameChatSession(projectId: string, sessionId: string, title: s
   return session;
 }
 
+/** 从指定消息处截断历史并复制为新会话。 */
+export function branchChatSession(
+  projectId: string,
+  sourceSessionId: string,
+  newSessionId: string,
+  messageId: string,
+): MiniAppChatSession | null {
+  safeSessionId(sourceSessionId);
+  safeSessionId(newSessionId);
+  const source = readChatSession(projectId, sourceSessionId);
+  if (!source) return null;
+  const messageIndex = source.messages.findIndex((message) => message.id === messageId);
+  if (messageIndex < 0) return null;
+
+  const now = new Date().toISOString();
+  const messages = source.messages.slice(0, messageIndex + 1).map((message) => ({
+    ...message,
+    sessionId: newSessionId,
+  }));
+  const session: MiniAppChatSession = {
+    id: newSessionId,
+    agentId: source.agentId,
+    title: deriveTitle(messages),
+    messages,
+    createdAt: now,
+    updatedAt: now,
+  };
+  ensureDir(chatRootDir(projectId));
+  writeFileSync(chatSessionFile(projectId, newSessionId), JSON.stringify(session, null, 2), 'utf-8');
+  return session;
+}
+
 /** 删除单条消息。返回更新后的会话（null 表示 session 或消息不存在）。 */
 export function deleteChatMessage(projectId: string, sessionId: string, messageId: string): MiniAppChatSession | null {
   safeSessionId(sessionId);
