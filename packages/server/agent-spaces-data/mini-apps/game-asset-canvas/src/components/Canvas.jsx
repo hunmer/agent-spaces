@@ -447,7 +447,9 @@ export default function Canvas({ hostConfig }) {
   const deleteKeyCode = useMemo(() => (['Backspace', 'Delete']), []);
   const nodeTypes = useMemo(() => NODE_COMPONENTS, []);
   const floatingEdges = useMemo(
-    () => decorateEdgesForSelection(edges, nodes, edgePathStyle, edgeLineStyle),
+    () => decorateEdgesForSelection(
+      edges, nodes, edgePathStyle, edgeLineStyle, NODE_PARAMS_SCHEMA,
+    ),
     [edgeLineStyle, edgePathStyle, edges, nodes],
   );
   const connectionLineStyle = useMemo(() => ({

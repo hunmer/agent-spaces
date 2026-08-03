@@ -4,7 +4,7 @@
 > 通用约定（节点注册/数据流/约束）查 `src/handoff.md`，本文只记录 videoEditor 专属内容。
 
 ## 节点一句话
-视频编辑器节点：接收上游或上传多个视频 → ffmpeg 导出全部原始帧或按帧率/数量截取帧图片 → 帧分组（起止帧循环播放）→ 调整尺寸/查看视频信息。
+视频编辑器节点：接收上游或上传多个视频 → ffmpeg 按全部原始帧/帧间隔/秒间隔/数量/帧率拆帧 → 选择起止帧并预览动画 → 创建动画组/输出精灵图 → 调整视频尺寸与查看信息。
 
 ## 关键文件
 
@@ -12,7 +12,7 @@
 mini-app 根: packages/server/agent-spaces-data/mini-apps/game-asset-canvas/
   src/
     components/
-      VideoEditorDialog.jsx        # 大对话框（播放器/帧列表/动画组/编辑面板），~750 行
+      VideoEditorDialog.jsx        # 大对话框（双播放器/帧选区/动画组/编辑面板）
       FrameSequencePlayer.jsx      # 通用帧序列播放器（fast-image-sequence React 包装）
       nodes/
         VideoEditorNode.jsx        # 节点外壳（摘要 + 打开编辑器按钮 + 缩略图预览）
@@ -20,6 +20,9 @@ mini-app 根: packages/server/agent-spaces-data/mini-apps/game-asset-canvas/
     utils/
       constants.js                 # NODE_TYPES.videoEditor + NODE_META + FRAME_EXTRACT_MODE_OPTIONS
       canvas-constants.js          # NODE_COMPONENTS 注册 + ADD_NODE_ITEMS + DEFAULT_SIZE + initialData
+      frame-selection.js           # 选区归一化 + 单击/组合键边界更新纯函数
+      frame-selection.test.js      # 选区交互回归测试
+      image-ops/cdn.js             # getFastImageSequence，本地 dist 原生 dynamic import
       input-images.js              # VIDEO_RECEIVER_TYPES / VIDEO_PASSTHROUGH_TYPES 含 videoEditor
       api.js                       # VALID_NODE_TYPES / NODE_LABELS 含 videoEditor
       tools.js                     # NODE_TYPE_ENUM / NODE_TYPE_DESC 含 videoEditor
@@ -46,7 +49,7 @@ ffmpeg 插件（两份副本需同步！见下「ffmpeg 插件」）:
   framePreviewFps: number, // 主帧预览播放速度
   animGroups: [{           // 动画组
     id, name,
-    frames: string[],      // 该组包含的帧 URL
+    frames: string[],      // 兼容字段；实际帧由全局 frames[startFrame..endFrame] 派生
     startFrame: number,    // 起始帧索引（相对 frames 全集）
     endFrame: number,      // 结束帧索引
     fps: number,           // 播放帧率
@@ -81,10 +84,15 @@ ffmpeg 插件（两份副本需同步！见下「ffmpeg 插件」）:
 - FileUpload 用内联 `<style>` + `.video-thumb-upload` class 缩成缩略图尺寸（参考 GroupExecutionToolbar）
 - 帧列表单击设置当前起点，Ctrl/Command + 单击设置当前终点；当前区间高亮并用于主帧预览。
 - 「新建动画组」直接使用当前选区创建，不再通过帧缩略图 ⋮ 菜单写入已有组。
-- 切换视频时清空 frames/animGroups/videoInfo（useEffect 监听 currentVideo）
+- 拆帧成功后选区初始化为 `0..frames.length-1`，并自动切到「帧预览」。
+- 普通单击若新起点超过旧终点，会同时把终点移动到该帧；Ctrl/Command + 单击只更新终点。
+- 终点小于起点时帧播放器显示错误，且「新建动画组」禁用。
+- 切换视频时清空 `frames/framesDir/frameSelection/animGroups/videoInfo`，并切回「视频播放器」。
+- 主播放器 tab (`previewTab`) 是 Dialog 本地展示态；选区与预览 FPS 分别持久化在 `data.frameSelection` / `data.framePreviewFps`。
 
 ### 动画组 tab（精灵图输出）
 - 顶部「精灵图布局」：行（rows）/ 列（cols）输入，持久化到 `data.sheetLayout`。
+- 「新建动画组」复制当前 `frameSelection`，播放 FPS 默认取 `framePreviewFps`。
 - 每个动画组下方有「精灵图预览」（`GroupSheetPreview` 组件）：按起止帧取帧 → `composeSpriteSheet` 合成 → `imageDataToDataUrl` 展示。依赖起止帧/fps/cols 变化时刷新（切 fps 也会重算）。
 - 列表最下方【输出到画布】按钮：把每个有效动画组合成精灵图 → `imageDataToUrl` 上传 → 收集 URL 写入 `data.output.images`（节点统一输出约定，下游图片节点据此消费）。
 - sheet 合成能力复用 `utils/image-ops/spriteSheet.js` 的 `composeSpriteSheet`（同 sprite-merge 处理器），URL↔ImageData 用 `utils/image-ops/io.js`。
@@ -120,6 +128,16 @@ diff packages/templates/plugins/ffmpeg/frames.js packages/server/agent-spaces-da
 - fps 模式：`-vf fps=N` 滤镜
 - 产物落 mini-app data 目录（`getMiniAppDataDir` + `saveMiniAppDataFile`），返回 httpPath
 
+### 模式与参数
+
+| mode | UI | 参数 | 语义 |
+|---|---|---|---|
+| `all` | 全部原始帧 | - | 输出全部解码帧 |
+| `interval` | 每 N 帧抽取 | `interval >= 1` | 按源帧序号每 N 帧取一张 |
+| `seconds` | 每 N 秒抽取 | `secondsInterval >= 0.01` | 按时间间隔均匀采样，支持小数秒 |
+| `count` | 按数量 | `count >= 1` | 在全片均匀取得目标数量 |
+| `fps` | 按帧率 | `fps >= 0.1` | 每秒抽取 N 张 |
+
 ## 服务端改动（需重启 web）
 
 ### workspaceId → 插件 api 断点
@@ -132,6 +150,28 @@ diff packages/templates/plugins/ffmpeg/frames.js packages/server/agent-spaces-da
 - 支持播放/暂停、帧滑杆、当前绝对帧号、循环区间与可选 FPS 修改。
 - frames/区间变化或组件卸载时调用 `destruct()`，释放 canvas、observer、worker 与图片缓存。
 - 官方入口有相对 chunk import，vendor 必须同时保留 `fast-image-sequence.js` 和 `FastImageSequence-jb1XI9BR.js`。
+- `getFastImageSequence()` 必须直接 import `srcFileUrl(...)` 返回的本地 HTTP URL；不能走 fetch→Blob，因为 Blob URL 会破坏入口的相对 chunk 路径。
+- vendor 固定版本、CDN 来源和 SHA-256 记录在 `vendor/fast-image-sequence/README.md`。
+- `components/nodes/FramePlayer.jsx` 只保留兼容 re-export，新代码直接引用 `components/FrameSequencePlayer.jsx`。
+
+## 状态流
+
+```text
+ffmpeg_extract_frames
+  → data.frames + data.framesDir
+  → data.frameSelection = {startFrame: 0, endFrame: last}
+  → 帧列表点击更新 frameSelection
+  → 主 FrameSequencePlayer 实时预览当前区间
+  → 新建动画组复制 frameSelection + framePreviewFps
+  → groupFrames(group) 从 data.frames 派生闭区间帧
+  → FrameSequencePlayer 播放 / composeSpriteSheet 输出精灵图
+```
+
+**约束：**
+- `frameSelection` 是节点业务数据，必须经 `onUpdate` 持久化，不能只放 Dialog state。
+- `resolveFrameSelection` 负责旧数据缺省、非法值和越界索引；不要在 JSX 内重复实现边界规则。
+- Command 键必须检查 `event.metaKey`，同时保留 Windows/Linux 的 `event.ctrlKey`。
+- 帧 URL 可能重复，帧缩略图 key 继续使用 `url + index`，不能只用 URL。
 
 ## 已知问题 / 待办
 1. **删除按钮不显示**（当前未解决）：视频缩略图右上角删除按钮始终不显示。已尝试 group-hover / opacity / hoveredVideo state / 始终渲染，均无效。canDelete 判断从 uploadedVideoUrls 改为 `data.source !== 'upstream'` 后用户反馈仍不行。下次排查建议：先用浏览器检查元素确认 `<button>` 是否在 DOM 中。
@@ -145,10 +185,30 @@ diff packages/templates/plugins/ffmpeg/frames.js packages/server/agent-spaces-da
 | 对话框布局/交互 | `components/VideoEditorDialog.jsx` |
 | 节点本体外观 | `components/nodes/VideoEditorNode.jsx` |
 | 帧播放器 | `components/FrameSequencePlayer.jsx` |
+| 帧选区规则/测试 | `utils/frame-selection.js` + `utils/frame-selection.test.js` |
+| 本地播放器 dist 加载 | `utils/image-ops/cdn.js` + `vendor/fast-image-sequence/` |
 | 截帧/首帧/尺寸调整逻辑 | ffmpeg 插件 `frames.js`（两份同步） |
 | 节点注册 | `constants.js` + `canvas-constants.js` + `api.js` + `tools.js` |
 | 上游视频派生 | `hooks/useDecoratedNodes.js` + `utils/input-images.js` |
 | 插件路径规整 | `plugin-runtime-api.ts`（resolveInputPath） |
+
+## 验证速查
+
+```bash
+# 选区交互纯函数
+node --test packages/server/agent-spaces-data/mini-apps/game-asset-canvas/src/utils/frame-selection.test.js
+
+# JSX 语法（逐个文件执行）
+node -e "require('@babel/core').transformFileSync('文件.jsx',{presets:['@babel/preset-react']})"
+
+# 本地 dist 入口及相对 chunk 完整性
+node -e "import('./packages/server/agent-spaces-data/mini-apps/game-asset-canvas/src/vendor/fast-image-sequence/fast-image-sequence.js').then(m=>{if(typeof m.FastImageSequence!=='function')process.exit(1)})"
+
+# ffmpeg 两份副本一致性
+diff packages/templates/plugins/ffmpeg/frames.js packages/server/agent-spaces-data/plugins/ffmpeg/frames.js
+
+git diff --check
+```
 
 ## Suggested Skills
 - handoff（继续交接）

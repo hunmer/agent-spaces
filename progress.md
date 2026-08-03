@@ -23,3 +23,13 @@
 - Wired `Canvas.jsx` viewport Flow center into `useSelectionClipboard` and added clipboard placement tests.
 - Added compact renderer regression coverage for standard, image display, and note nodes.
 - Verification complete: 8 focused tests passed, six touched modules compiled with esbuild, and `git diff --check` passed.
+- New request received: replace the video editor/frame-player iframe with a player rendered directly inside the miniapp.
+- Added implementation phases; starting from the handoff document and CodeGraph context.
+- Read the video editor handoff and searched iframe usage. The documented frame player is already a React component; no iframe hit exists in the video editor files, so the remaining implementation state needs direct inspection.
+- Inspected the concrete player and dialog integration plus dirty diff. The player is already mounted directly without iframe, but its rendering engine is loaded dynamically from the miniapp vendor directory.
+- Confirmed the rendering engine files are local vendored assets and searched all miniapps for another iframe-based frame player; none exists.
+- Traced file history: the direct, iframe-free player landed in commit `f06c304c` on 2026-08-03 and is already part of HEAD. Proceeding with focused verification instead of duplicating the implementation.
+- Reviewed the landing commit and test inventory. Functional selection tests exist, but there is no focused regression check for the iframe-free integration boundary.
+- Added `FrameSequencePlayer.test.js` to protect direct dialog integration, absence of iframe markup, local vendor loading, and renderer cleanup.
+- Final verification passed: 7 focused tests, JSX syntax checks, local vendor import/hash checks, and `git diff --check`.
+- No browser or service restart was performed because the project instructions default to no real-browser test, and no persistent service was started or changed.
