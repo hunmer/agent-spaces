@@ -23,3 +23,8 @@
 - 2026-08-04：完成 HoverCard 版变量引用；Mini-app Babel、diff check、PromptTextEditor 定向 TypeScript 均通过，计划与文档已同步。当前环境无 procm-mcp，未执行 Web 重启。
 - 2026-08-04：修复 HoverCard 固定显示在左上角：触发时缓存变量 span 的定位矩形，并在 Decoration 替换旧 DOM 后回退到缓存位置。
 - 2026-08-04：定位修复验证完成；PromptTextEditor 定向 TypeScript 无错误，相关测试 20/20 通过，git diff check 通过。
+- 2026-08-04：用户日志确认 delegate 的变量 reference 在 `onTrigger` 时已经断开且为零矩形，并会对新 Decoration span 无限创建 Popover。
+- 2026-08-04：移除变量 span 上的 Tippy delegate，改为编辑器外稳定 anchor + 手动悬停定位；调试日志已清理，相关测试 20/20 与定向 TypeScript 检查通过。
+- 2026-08-04：修复变量高亮内容：binding 携带与执行链一致的纯文本，Decoration 有值时显示替换文本，无值时保留 `{变量名}`。
+- 2026-08-04：修复点击编辑器误开提示词库：文生图、语音、视频提示词区域由隐式 `<label>` 改为 `<div>`，避免浏览器把点击转发给按钮。
+- 2026-08-04：本轮验证通过：相关测试 22/22、宿主定向 TypeScript、6 文件 Babel 语法转换及 git diff check。

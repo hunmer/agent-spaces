@@ -168,7 +168,7 @@ export default function VideoGeneratorNode({ id, data, selected }) {
         pickedPrompt={params.pickedPrompt}
         onClear={() => set({ pickedPrompt: undefined })}
       />
-      <label className="flex flex-col gap-1">
+      <div className="flex flex-col gap-1">
         <div className="flex items-center justify-between">
           <span className="text-xs font-medium text-muted-foreground">提示词</span>
           <button
@@ -192,7 +192,7 @@ export default function VideoGeneratorNode({ id, data, selected }) {
             onChange={(value) => set({ prompt: value })}
           />
         </div>
-      </label>
+      </div>
 
       {/* 参考图片：FileUpload 上传 + 上游连线 */}
       <UploadSection>

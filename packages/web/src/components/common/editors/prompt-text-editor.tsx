@@ -10,7 +10,7 @@ import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
 import Mention from '@tiptap/extension-mention';
 import { Trash2 } from 'lucide-react';
-import tippy, { delegate, type Instance } from 'tippy.js';
+import tippy, { type Instance } from 'tippy.js';
 import type { SuggestionProps } from '@tiptap/suggestion';
 import { cn } from '@/lib/utils';
 
@@ -38,11 +38,13 @@ export type PromptVariableConnection = {
   edgeId: string;
   color: string;
   label?: string;
+  value?: string;
 };
 
 export type PromptVariableBinding = {
   key: string;
   value?: string;
+  displayValue?: string;
   connections?: PromptVariableConnection[];
 };
 
@@ -105,11 +107,6 @@ function variableDecorationStyle(binding?: PromptVariableBinding) {
   ].join(';');
 }
 
-function createStableReferenceClientRect(reference: Element) {
-  const snapshot = reference.getBoundingClientRect();
-  return () => (reference.isConnected ? reference.getBoundingClientRect() : snapshot);
-}
-
 function PromptVariablePopover({
   binding,
   onValueChange,
@@ -170,12 +167,6 @@ function createPromptVariableExtension(runtimeRef: React.RefObject<PromptVariabl
   return Extension.create({
     name: 'promptVariableHighlight',
     addProseMirrorPlugins() {
-      const renderers = new Map<Instance, ReactRenderer>();
-      const destroyRenderer = (instance: Instance) => {
-        renderers.get(instance)?.destroy();
-        renderers.delete(instance);
-      };
-
       return [new Plugin({
         key: promptVariablePluginKey,
         props: {
@@ -194,6 +185,8 @@ function createPromptVariableExtension(runtimeRef: React.RefObject<PromptVariabl
                   {
                     'data-prompt-variable': key,
                     'data-connected': binding?.connections?.length ? 'true' : 'false',
+                    class: 'prompt-variable-token',
+                    ...(binding?.displayValue ? { 'data-variable-display': binding.displayValue } : {}),
                     style: variableDecorationStyle(binding),
                   },
                 ));
@@ -203,34 +196,86 @@ function createPromptVariableExtension(runtimeRef: React.RefObject<PromptVariabl
           },
         },
         view: (view) => {
-          const delegated = delegate(view.dom, {
-            target: '[data-prompt-variable]',
-            trigger: 'mouseenter focus',
+          const ownerDocument = view.dom.ownerDocument;
+          const anchor = ownerDocument.createElement('span');
+          ownerDocument.body.appendChild(anchor);
+
+          let activeKey = '';
+          let activeRect = anchor.getBoundingClientRect();
+          let renderer: ReactRenderer | null = null;
+          let showTimer: ReturnType<typeof setTimeout> | null = null;
+          let hideTimer: ReturnType<typeof setTimeout> | null = null;
+          let hoverCard: Instance;
+
+          const clearShowTimer = () => {
+            if (showTimer !== null) clearTimeout(showTimer);
+            showTimer = null;
+          };
+          const clearHideTimer = () => {
+            if (hideTimer !== null) clearTimeout(hideTimer);
+            hideTimer = null;
+          };
+          const destroyRenderer = () => {
+            renderer?.destroy();
+            renderer = null;
+          };
+          const renderActiveVariable = () => {
+            if (!activeKey) return false;
+            destroyRenderer();
+            const runtime = runtimeRef.current;
+            const binding = runtime.bindings.find((item) => item.key === activeKey) || { key: activeKey };
+            renderer = new ReactRenderer(PromptVariablePopover, {
+              editor: this.editor,
+              props: {
+                binding,
+                onValueChange: runtime.onValueChange,
+                onDisconnect: runtime.onDisconnect,
+              },
+            });
+            hoverCard.setContent(renderer.element);
+            return true;
+          };
+          const scheduleHide = () => {
+            clearShowTimer();
+            clearHideTimer();
+            hideTimer = setTimeout(() => hoverCard.hide(), 100);
+          };
+          const handleMouseOver = (event: MouseEvent) => {
+            const variable = (event.target as Element | null)?.closest?.('[data-prompt-variable]');
+            if (!variable || !view.dom.contains(variable)) return;
+            const key = variable.getAttribute('data-prompt-variable');
+            if (!key) return;
+
+            clearShowTimer();
+            clearHideTimer();
+            activeKey = key;
+            activeRect = variable.getBoundingClientRect();
+            showTimer = setTimeout(() => {
+              if (hoverCard.state.isVisible) {
+                renderActiveVariable();
+                hoverCard.popperInstance?.update();
+              } else {
+                hoverCard.show();
+              }
+            }, 150);
+          };
+          const handleMouseOut = (event: MouseEvent) => {
+            const related = event.relatedTarget as Node | null;
+            if (related && hoverCard.popper.contains(related)) return;
+            const nextVariable = (related as Element | null)?.closest?.('[data-prompt-variable]');
+            if (nextVariable && view.dom.contains(nextVariable)) return;
+            scheduleHide();
+          };
+
+          hoverCard = tippy(anchor, {
+            trigger: 'manual',
             interactive: true,
-            delay: [150, 100],
-            appendTo: () => document.body,
+            appendTo: () => ownerDocument.body,
             placement: 'bottom-start',
-            onTrigger: (instance) => {
-              instance.setProps({
-                getReferenceClientRect: createStableReferenceClientRect(instance.reference),
-              });
-            },
+            getReferenceClientRect: () => activeRect,
+            aria: { content: null, expanded: false },
             onShow: (instance) => {
-              const key = instance.reference.getAttribute('data-prompt-variable');
-              if (!key) return false;
-              destroyRenderer(instance);
-              const runtime = runtimeRef.current;
-              const binding = runtime.bindings.find((item) => item.key === key) || { key };
-              const renderer = new ReactRenderer(PromptVariablePopover, {
-                editor: this.editor,
-                props: {
-                  binding,
-                  onValueChange: runtime.onValueChange,
-                  onDisconnect: runtime.onDisconnect,
-                },
-              });
-              renderers.set(instance, renderer);
-              instance.setContent(renderer.element);
+              if (!renderActiveVariable()) return false;
               return undefined;
             },
             onMount: (instance) => {
@@ -239,12 +284,21 @@ function createPromptVariableExtension(runtimeRef: React.RefObject<PromptVariabl
             onHidden: destroyRenderer,
             onDestroy: destroyRenderer,
           });
-          const instances = Array.isArray(delegated) ? delegated : [delegated];
+          view.dom.addEventListener('mouseover', handleMouseOver);
+          view.dom.addEventListener('mouseout', handleMouseOut);
+          hoverCard.popper.addEventListener('mouseenter', clearHideTimer);
+          hoverCard.popper.addEventListener('mouseleave', scheduleHide);
+
           return {
             destroy() {
-              for (const instance of instances) instance.destroy();
-              for (const renderer of renderers.values()) renderer.destroy();
-              renderers.clear();
+              clearShowTimer();
+              clearHideTimer();
+              view.dom.removeEventListener('mouseover', handleMouseOver);
+              view.dom.removeEventListener('mouseout', handleMouseOut);
+              hoverCard.popper.removeEventListener('mouseenter', clearHideTimer);
+              hoverCard.popper.removeEventListener('mouseleave', scheduleHide);
+              hoverCard.destroy();
+              anchor.remove();
             },
           };
         },

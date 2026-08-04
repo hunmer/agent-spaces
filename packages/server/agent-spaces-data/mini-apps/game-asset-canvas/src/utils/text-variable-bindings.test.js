@@ -5,8 +5,8 @@ import { getEdgeColor } from './edge-display.js';
 
 test('computeTextVariableBindings groups connections by target field and variable with edge colors', () => {
   const nodes = [
-    { id: 'source-a', type: 'text', data: { title: '角色文本' } },
-    { id: 'source-b', type: 'text', data: { label: '风格文本' } },
+    { id: 'source-a', type: 'text', data: { title: '角色文本', output: { text: '<p>骑士</p>' } } },
+    { id: 'source-b', type: 'text', data: { label: '风格文本', output: { text: '像素风' } } },
     { id: 'target', type: 'textToImage', data: {} },
   ];
   const edges = [
@@ -17,10 +17,10 @@ test('computeTextVariableBindings groups connections by target field and variabl
 
   const target = computeTextVariableBindings(nodes, edges).get('target');
   assert.deepEqual(target.prompt.subject, [{
-    edgeId: 'edge-a', sourceId: 'source-a', color: getEdgeColor(edges[0], 0), label: '角色文本',
+    edgeId: 'edge-a', sourceId: 'source-a', color: getEdgeColor(edges[0], 0), label: '角色文本', value: '骑士',
   }]);
   assert.deepEqual(target.prompt.style, [{
-    edgeId: 'edge-b', sourceId: 'source-b', color: getEdgeColor(edges[1], 1), label: '风格文本',
+    edgeId: 'edge-b', sourceId: 'source-b', color: getEdgeColor(edges[1], 1), label: '风格文本', value: '像素风',
   }]);
   assert.equal(target.images, undefined);
 });

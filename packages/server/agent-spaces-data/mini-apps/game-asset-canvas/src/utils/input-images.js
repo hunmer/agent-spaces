@@ -148,7 +148,7 @@ export function computeInputImages(nodes, edges) {
  * 把富文本（tiptap/HTML）产物转成纯文本：剥离 HTML 标签、块级元素补换行、解码实体、合并空白。
  * 兼容普通文本（无标签时原样返回）。运行在浏览器侧，用 DOMParser 解析最稳。
  */
-function htmlToPlainText(html) {
+export function htmlToPlainText(html) {
   if (!html) return '';
   // 快速判断：完全不含 < > 视为纯文本，直接返回（避免 DOMParser 开销）
   if (!/[<>]/.test(html)) return html;

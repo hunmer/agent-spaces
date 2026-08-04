@@ -94,7 +94,7 @@ export default function TextToImageNode({ id, data, selected }) {
         pickedPrompt={params.pickedPrompt}
         onClear={() => set({ pickedPrompt: undefined })}
       />
-      <label className="flex flex-col gap-1">
+      <div className="flex flex-col gap-1">
         <div className="flex items-center justify-between">
           <span className="text-xs font-medium text-muted-foreground">提示词</span>
           <button
@@ -131,7 +131,7 @@ export default function TextToImageNode({ id, data, selected }) {
             <Wand2 className="h-3.5 w-3.5" />
           </button>
         </div>
-      </label>
+      </div>
 
       {/* 模型：优先用设置页自定义列表，回退内置 MODEL_OPTIONS；支持临时输入列表外的值 */}
       <label className="flex flex-col gap-1">

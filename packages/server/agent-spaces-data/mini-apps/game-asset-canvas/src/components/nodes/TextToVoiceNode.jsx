@@ -80,7 +80,7 @@ export default function TextToVoiceNode({ id, data, selected }) {
         pickedPrompt={params.pickedPrompt}
         onClear={() => set({ pickedPrompt: undefined })}
       />
-      <label className="flex flex-col gap-1">
+      <div className="flex flex-col gap-1">
         <div className="flex items-center justify-between">
           <span className="text-xs font-medium text-muted-foreground">文本</span>
           <button
@@ -104,7 +104,7 @@ export default function TextToVoiceNode({ id, data, selected }) {
             onChange={(value) => set({ prompt: value })}
           />
         </div>
-      </label>
+      </div>
 
       <div className="grid grid-cols-1 gap-2">
         <LabeledSelect

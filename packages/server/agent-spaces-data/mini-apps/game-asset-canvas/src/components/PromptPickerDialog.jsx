@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
-  Input, ScrollArea, Button,
+  Input, ScrollArea, Button, SearchSelect,
 } from '@agent-spaces/ui';
 import { PROMPT_CATEGORIES } from '../utils/prompts';
 import { ASPECT_OPTIONS } from '../utils/constants';
@@ -310,15 +310,14 @@ function PromptEditor({ open, initial, scene, onSave, onCancel }) {
             />
           </div>
           <div className="flex items-center gap-2">
-            <select
-              className="h-8 rounded-md border border-border bg-background px-2 text-sm outline-none focus:border-primary"
+            <SearchSelect
               value={category}
-              onChange={(e) => setCategory(e.target.value)}
-            >
-              {PROMPT_CATEGORIES.map((c) => (
-                <option key={c.id} value={c.id}>{c.icon} {c.label}</option>
-              ))}
-            </select>
+              onChange={setCategory}
+              options={PROMPT_CATEGORIES.map((c) => ({ value: c.id, label: `${c.icon} ${c.label}` }))}
+              placeholder="分类 *"
+              searchPlaceholder="搜索或输入新分类…"
+              className="w-40"
+            />
             <select
               className="h-8 rounded-md border border-border bg-background px-2 text-sm outline-none focus:border-primary"
               value={aspect}

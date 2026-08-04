@@ -762,6 +762,17 @@
   display: none;
 }
 
+.prompt-variable-token[data-variable-display] {
+  font-size: 0;
+}
+
+.prompt-variable-token[data-variable-display]::after {
+  content: attr(data-variable-display);
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  white-space: pre-wrap;
+}
+
 .suggestion-empty {
   padding: 16px 12px;
   text-align: center;

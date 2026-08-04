@@ -1,4 +1,5 @@
 import { getEdgeColor } from './edge-display.js';
+import { htmlToPlainText } from './input-images.js';
 
 /**
  * 把文本变量边整理成节点编辑器可消费的字段绑定。
@@ -22,6 +23,7 @@ export function computeTextVariableBindings(nodes, edges) {
       sourceId: edge.source,
       color: getEdgeColor(edge, edgeIndex),
       label: source?.data?.title || source?.data?.label || source?.type || edge.source,
+      value: htmlToPlainText(source?.data?.output?.text || ''),
     });
   });
 

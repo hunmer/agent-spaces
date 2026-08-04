@@ -18,11 +18,17 @@ export default function TextVariableEditor({
   const editorValue = templateVariables.length ? value : (resolvedValue ?? value);
   const manualValues = data?.textVariableValues?.[field] || {};
   const fieldBindings = data?.textVariableBindings?.[field] || {};
-  const variables = useMemo(() => templateVariables.map((key) => ({
-    key,
-    value: manualValues[key] || '',
-    connections: Array.isArray(fieldBindings[key]) ? fieldBindings[key] : [],
-  })), [fieldBindings, manualValues, templateVariables]);
+  const variables = useMemo(() => templateVariables.map((key) => {
+    const connections = Array.isArray(fieldBindings[key]) ? fieldBindings[key] : [];
+    const connectedValue = Array.from(new Set(connections.map((item) => item.value).filter(Boolean))).join('\n\n');
+    const manualValue = manualValues[key] || '';
+    return {
+      key,
+      value: manualValue,
+      displayValue: connectedValue || manualValue,
+      connections,
+    };
+  }), [fieldBindings, manualValues, templateVariables]);
 
   const handleVariableValueChange = useCallback((key, nextValue) => {
     const nextField = { ...manualValues };
