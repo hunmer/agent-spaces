@@ -1,8 +1,9 @@
-import { useCallback, useContext, useEffect, useRef, useState } from 'react';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, Check, debugCanvasImageDrag, FolderPlus, ImageOff, Layers, Loader2, Plus, Trash2, Popover, PopoverContent, PopoverTrigger, setCanvasImageDragData } from '@agent-spaces/ui';
+import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, Badge, Check, ChevronDown, debugCanvasImageDrag, FolderPlus, ImageOff, Layers, Loader2, Plus, Trash2, Popover, PopoverContent, PopoverTrigger, setCanvasImageDragData } from '@agent-spaces/ui';
 import { IMAGE_REORDER_MIME } from '../../utils/canvas-constants';
 import { ImageSelectionContext } from '../../context/ImageSelectionContext';
 import { useCanvasGallery } from '../../utils/canvas-gallery';
+import { createOutputAssetItems, groupOutputAssetItems } from '../../utils/output-resources';
 import ImageHoverCard from '../ImageHoverCard';
 
 // 图片加载失败占位：onError 时切换为该块，显示破损图标 + url
@@ -17,7 +18,7 @@ function BrokenImagePlaceholder({ url }) {
 
 /**
  * 节点内的图片网格结果展示，点击用 MediaGallery 打开大图（可翻页）。
- * @param {{ images: string[], max?: number, preview?: boolean, onImageLoad?: Function, onAddToAssets?: (payload:string|{url,fileName?}|Array<string|{url,fileName?}>)=>void, fileName?: string, onAddImages?:(urls:string[])=>void, onRemoveImage?:(index:number)=>void, onClearImages?:()=>void, versions?:Array, activeVersion?:number, onSwitchVersion?:(index:number)=>void }} props
+ * @param {{ images: string[], resources?: Array<{url:string,thumb?:string,groupName?:string,label?:string}>, max?: number, preview?: boolean, onImageLoad?: Function, onAddToAssets?: (payload:string|{url,fileName?}|Array<string|{url,fileName?}>)=>void, fileName?: string, onAddImages?:(urls:string[])=>void, onRemoveImage?:(index:number)=>void, onClearImages?:()=>void, versions?:Array, activeVersion?:number, onSwitchVersion?:(index:number)=>void }} props
  * @param {number} [props.max] 单网格最多展示张数，0 或缺省表示全部（GIF 拆帧等可能产出数十帧）
  * @param {boolean} [props.preview] 输出预览模式：无标签/边框，图片全宽纵向排列
  * @param {Function} [props.onImageLoad] 图片加载完成回调
@@ -26,7 +27,7 @@ function BrokenImagePlaceholder({ url }) {
  * @param {Function} [props.onAddImages] 传入则标题右侧显示「添加」按钮（Popover 内上传），上传成功后回传新增 url 数组
  * @param {Function} [props.onRemoveImage] 传入则缩略图底部操作栏显示删除按钮，点击回传被删图索引
  * @param {Function} [props.onClearImages] 传入则标题右侧显示「清空」按钮，点击清空所有产出
- * @param {Function} [props.onReorderImages] 传入则产出网格支持拖拽排序，回传重排后的 url 数组
+ * @param {Function} [props.onReorderImages] 传入则产出网格支持拖拽排序，回传重排后的 url 与 resource 数组
  * @param {Array} [props.versions] 历史版本数组 [{params, output, createdAt}]
  * @param {number} [props.activeVersion] 当前选中的版本索引
  * @param {Function} [props.onSwitchVersion] 版本切换回调，回传版本索引
@@ -34,10 +35,14 @@ function BrokenImagePlaceholder({ url }) {
 export default function ImageResult({ nodeId, images, resources = [], max = 0, preview = false, onImageLoad, onAddToAssets, fileName, onAddImages, onRemoveImage, onClearImages, onReorderImages, versions, activeVersion, onSwitchVersion }) {
   const openCanvasGallery = useCanvasGallery();
   const all = images || [];
-  const list = max > 0 ? all.slice(0, max) : all;
+  const assetItems = useMemo(() => createOutputAssetItems(all, resources), [all, resources]);
+  const list = max > 0 ? assetItems.slice(0, max) : assetItems;
+  const sections = useMemo(() => groupOutputAssetItems(list), [list]);
   const hasVersions = Array.isArray(versions) && versions.length > 1 && onSwitchVersion;
   const resourceByUrl = new Map(resources.map((item) => [item?.url, item]));
-  const resourceFor = (url) => resourceByUrl.get(url) || { url, thumb: url };
+  const resourceFor = (url, index) => assetItems[index]?.url === url
+    ? assetItems[index].resource
+    : (resourceByUrl.get(url) || { url, thumb: url });
   // 跨节点图片选中状态：checkbox 点击增删切换，ctrl+点击图片本体增删切换（跨节点累加）
   const { isSelected, toggle, selectedUrls } = useContext(ImageSelectionContext);
   if (!list.length && !onAddImages && !hasVersions) return null;
@@ -54,7 +59,7 @@ export default function ImageResult({ nodeId, images, resources = [], max = 0, p
     const next = [...list];
     const [m] = next.splice(from, 1);
     next.splice(to, 0, m);
-    onReorderImages(next);
+    onReorderImages(next.map((item) => item.url), next.map((item) => item.resource));
   };
   const onReorderDragStart = (i, url) => (e) => {
     // 被拖图处于选中态：拖出全部选中图（跨节点多选集合），不参与节点内排序，
@@ -107,14 +112,14 @@ export default function ImageResult({ nodeId, images, resources = [], max = 0, p
   };
 
   // 收集当前版本的所有产出资源（带 fileName），用于「添加当前产出」批量入库
-  const currentResources = () => list.map((url, i) => ({ ...resourceFor(url), fileName: nameFor(i) }));
+  const currentResources = () => list.map((item) => ({ ...item.resource, fileName: nameFor(item.index) }));
   // 收集所有历史版本的产出资源，用于「添加所有产出」批量入库。
   // 仅当前版本的 resource 在 resources 内，其他版本 fallback {url}（与 HistoryTab collectResources 一致）
   const allResources = () => {
     if (!Array.isArray(versions) || versions.length === 0) return currentResources();
     return versions.flatMap((v) => {
       const imgs = Array.isArray(v?.output?.images) ? v.output.images : [];
-      return imgs.map((url) => resourceFor(url));
+      return imgs.map((url, index) => resourceFor(url, index));
     });
   };
   const versionsCount = Array.isArray(versions) ? versions.length : 0;
@@ -124,7 +129,7 @@ export default function ImageResult({ nodeId, images, resources = [], max = 0, p
   // 无 versions 或仅一个版本时退化为当前 list，行为与旧版一致。
   const galleryItems = (() => {
     if (!Array.isArray(versions) || versions.length === 0) {
-      return list.map((src, i) => ({ src, type: 'image', fileName: nameFor(i) }));
+      return list.map((item) => ({ src: item.url, type: 'image', fileName: nameFor(item.index) }));
     }
     return versions
       .filter((v) => Array.isArray(v?.output?.images))
@@ -143,71 +148,38 @@ export default function ImageResult({ nodeId, images, resources = [], max = 0, p
   })();
 
   const open = (index) => {
-    openCanvasGallery(galleryItems.length ? galleryItems : list.map((src, i) => ({ src, type: 'image', fileName: nameFor(i) })), galleryOffset + index);
+    openCanvasGallery(
+      galleryItems.length ? galleryItems : list.map((item) => ({ src: item.url, type: 'image', fileName: nameFor(item.index) })),
+      galleryOffset + index,
+    );
   };
 
-  if (preview) {
-    return (
-      <div className="flex w-full flex-col gap-2">
-        {list.map((url, i) => (
-          <PreviewImage
-            key={i}
-            url={url}
-            thumb={resourceFor(url).thumb}
-            onOpen={() => open(i)}
-            onImageLoad={onImageLoad}
-            onDragStart={onReorderDragStart(i, url)}
-          />
-        ))}
-      </div>
-    );
-  }
+  if (preview) return (
+    <div className="flex w-full flex-col gap-2">
+      <OutputStyles />
+      {sections.map((section) => (
+        <OutputAssetSection key={section.key} section={section} preview>
+          <div className="flex w-full flex-col gap-2">
+            {section.items.map((item) => (
+              <PreviewImage
+                key={item.key}
+                url={item.url}
+                thumb={item.resource.thumb}
+                label={item.label}
+                onOpen={() => open(item.index)}
+                onImageLoad={onImageLoad}
+                onDragStart={onReorderDragStart(item.index, item.url)}
+              />
+            ))}
+          </div>
+        </OutputAssetSection>
+      ))}
+    </div>
+  );
 
   return (
     <div className="flex flex-col gap-1.5">
-      <style>{`
-        .game-asset-output-thumb {
-          position: relative;
-        }
-        .game-asset-output-actions {
-          position: absolute;
-          left: 50%;
-          bottom: 2px;
-          z-index: 20;
-          display: flex;
-          align-items: center;
-          gap: 4px;
-          opacity: 0;
-          pointer-events: none;
-          transform: translateX(-50%);
-          transition: opacity 150ms ease;
-        }
-        .game-asset-output-action {
-          display: flex;
-          width: 20px;
-          height: 20px;
-          flex: 0 0 20px;
-          align-items: center;
-          justify-content: center;
-        }
-        .game-asset-output-thumb:hover .game-asset-output-actions,
-        .game-asset-output-thumb:focus-within .game-asset-output-actions {
-          opacity: 1;
-          pointer-events: auto;
-        }
-        /* 右上角选择 checkbox：选中时常驻显示，未选中时仅 hover 显示 */
-        .game-asset-output-checkbox {
-          opacity: 0;
-          pointer-events: none;
-          transition: opacity 150ms ease;
-        }
-        .game-asset-output-thumb:hover .game-asset-output-checkbox,
-        .game-asset-output-thumb:focus-within .game-asset-output-checkbox,
-        .game-asset-output-checkbox.game-asset-output-checkbox-on {
-          opacity: 1;
-          pointer-events: auto;
-        }
-      `}</style>
+      <OutputStyles />
       <div className="flex items-center justify-between">
         <span className="text-xs font-medium text-muted-foreground">
           产出（{all.length}）{sortable ? '· 可拖拽排序' : ''}
@@ -273,13 +245,15 @@ export default function ImageResult({ nodeId, images, resources = [], max = 0, p
           ))}
         </div>
       )}
-      {list.length > 0 && (
-        <div className="grid grid-cols-3 gap-1">
-          {list.map((url, i) => {
+      {list.length > 0 && sections.map((section) => (
+        <OutputAssetSection key={section.key} section={section}>
+          <div className="grid grid-cols-3 gap-1">
+          {section.items.map((item) => {
+            const { index: i, url } = item;
             const sel = nodeId ? isSelected(nodeId, url) : false;
             return (
             <div
-              key={i}
+              key={item.key}
               data-image-selection-node-id={nodeId || undefined}
               data-image-selection-url={nodeId ? url : undefined}
               draggable
@@ -300,15 +274,16 @@ export default function ImageResult({ nodeId, images, resources = [], max = 0, p
               } ${sortable ? 'cursor-grab active:cursor-grabbing' : ''}`}
             >
               <ImageHoverCard url={url} triggerShape="fixed" className="h-full w-full border-0">
-                <GridImage url={resourceFor(url).thumb || url} />
+                <GridImage url={item.resource.thumb || url} />
               </ImageHoverCard>
-              {/* 右上角选择 checkbox：hover 显示空框，选中时常驻显示实心勾。点击切换选中（天然多选）。 */}
+              {item.label && <OutputLabelBadge label={item.label} />}
+              {/* 左上角选择 checkbox：为右上角素材 label 留出固定位置。 */}
               {nodeId && (
                 <button
                   type="button"
                   onClick={(e) => { e.stopPropagation(); toggle(nodeId, url, e.metaKey || e.ctrlKey); }}
                   title={sel ? '取消选择' : '选择'}
-                  className={`game-asset-output-checkbox nodrag nopan nowheel ${sel ? 'game-asset-output-checkbox-on' : ''} absolute right-1 top-1 z-20 flex h-4 w-4 items-center justify-center rounded-full border shadow ${
+                  className={`game-asset-output-checkbox nodrag nopan nowheel ${sel ? 'game-asset-output-checkbox-on' : ''} absolute left-1 top-1 z-20 flex h-4 w-4 items-center justify-center rounded-full border shadow ${
                     sel ? 'border-primary bg-primary text-primary-foreground' : 'border-background bg-background/90 text-foreground hover:border-primary hover:text-primary'
                   }`}
                 >
@@ -320,7 +295,7 @@ export default function ImageResult({ nodeId, images, resources = [], max = 0, p
                   {onAddToAssets && (
                     <button
                       type="button"
-                      onClick={(e) => { e.stopPropagation(); onAddToAssets({ ...resourceFor(url), fileName: nameFor(i) }); }}
+                      onClick={(e) => { e.stopPropagation(); onAddToAssets({ ...item.resource, fileName: nameFor(i) }); }}
                       title="添加到素材库"
                       className="game-asset-output-action rounded border border-border bg-background/90 text-muted-foreground shadow-sm hover:bg-primary hover:text-primary-foreground"
                     >
@@ -342,8 +317,9 @@ export default function ImageResult({ nodeId, images, resources = [], max = 0, p
             </div>
             );
           })}
-        </div>
-      )}
+          </div>
+        </OutputAssetSection>
+      ))}
       <AlertDialog open={confirmClear} onOpenChange={setConfirmClear}>
         <AlertDialogContent size="sm" onClick={(e) => e.stopPropagation()}>
           <AlertDialogHeader>
@@ -382,13 +358,14 @@ function ImageLoadingPlaceholder() {
  * 预览态单图：加载中显示 spinner 占位，加载完毕才展示；失败切换占位块（点击仍可尝试打开 gallery）。
  * 单击打开 gallery。
  */
-function PreviewImage({ url, thumb, onOpen, onImageLoad, onDragStart }) {
+function PreviewImage({ url, thumb, label, onOpen, onImageLoad, onDragStart }) {
   const [failed, setFailed] = useState(false);
   const [loaded, setLoaded] = useState(false);
   // url 变化（版本切换）时重置状态：重新进入 loading，允许重新加载新图
   const displayUrl = thumb || url;
   useEffect(() => { setFailed(false); setLoaded(false); }, [displayUrl]);
   return (
+    <div className="game-asset-output-thumb relative w-full">
     <ImageHoverCard url={url} triggerShape="fixed" className="w-full border-0">
       <button
         type="button"
@@ -413,7 +390,101 @@ function PreviewImage({ url, thumb, onOpen, onImageLoad, onDragStart }) {
         )}
       </button>
     </ImageHoverCard>
+    {label && <OutputLabelBadge label={label} />}
+    </div>
   );
+}
+
+function OutputAssetSection({ section, preview = false, children }) {
+  const [expanded, setExpanded] = useState(true);
+  if (!section.groupName) return children;
+  return (
+    <div className="overflow-hidden rounded-md border border-border bg-card">
+      <button
+        type="button"
+        aria-expanded={expanded}
+        onClick={(event) => { event.stopPropagation(); setExpanded((value) => !value); }}
+        className="flex w-full items-center gap-1.5 bg-muted/60 px-2 py-1.5 text-left text-[11px] font-medium text-foreground hover:bg-muted"
+      >
+        <ChevronDown className={`h-3.5 w-3.5 shrink-0 transition-transform ${expanded ? '' : '-rotate-90'}`} />
+        <span className="min-w-0 flex-1 truncate" title={section.groupName}>{section.groupName}</span>
+        <Badge variant="secondary" className="h-4 shrink-0 px-1 text-[9px]">{section.items.length}</Badge>
+      </button>
+      {expanded && <div className={preview ? 'p-2' : 'p-1.5'}>{children}</div>}
+    </div>
+  );
+}
+
+function OutputLabelBadge({ label }) {
+  return (
+    <Badge
+      variant="secondary"
+      className="game-asset-output-label"
+      title={label}
+    >
+      {label}
+    </Badge>
+  );
+}
+
+function OutputStyles() {
+  return <style>{`
+    .game-asset-output-thumb { position: relative; }
+    .game-asset-output-label {
+      position: absolute;
+      top: 4px;
+      right: 4px;
+      z-index: 18;
+      display: block;
+      pointer-events: none;
+      max-width: calc(100% - 28px);
+      height: 18px;
+      overflow: hidden;
+      padding: 0 5px;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 9px;
+      line-height: 18px;
+      box-shadow: 0 1px 3px rgb(0 0 0 / 0.2);
+    }
+    .game-asset-output-actions {
+      position: absolute;
+      left: 50%;
+      bottom: 2px;
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      opacity: 0;
+      pointer-events: none;
+      transform: translateX(-50%);
+      transition: opacity 150ms ease;
+    }
+    .game-asset-output-action {
+      display: flex;
+      width: 20px;
+      height: 20px;
+      flex: 0 0 20px;
+      align-items: center;
+      justify-content: center;
+    }
+    .game-asset-output-thumb:hover .game-asset-output-actions,
+    .game-asset-output-thumb:focus-within .game-asset-output-actions {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .game-asset-output-checkbox {
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 150ms ease;
+    }
+    .game-asset-output-thumb:hover .game-asset-output-checkbox,
+    .game-asset-output-thumb:focus-within .game-asset-output-checkbox,
+    .game-asset-output-checkbox.game-asset-output-checkbox-on {
+      opacity: 1;
+      pointer-events: auto;
+    }
+  `}</style>;
 }
 
 /**

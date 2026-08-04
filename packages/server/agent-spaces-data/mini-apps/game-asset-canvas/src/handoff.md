@@ -163,6 +163,8 @@ Agent → api.js handler → ctx.requestClient(type, payload, timeoutMs)
 31. **旧数据补缩略图走调试菜单**：Toolbar「调试 → 一键补缩略图」扫描当前工作区节点、生成记录和素材库，按原图 URL 去重并复用已有 thumb，最多 4 并发调用 `generateImageResources`。回写使用 `save_canvas` / `save_generation_history` / `save_asset_library`；后两者必须保留 resources/thumb，不能用逐条 add_history（会产生重复记录）。
 30. **队列中断必须同步清节点状态**：`useExecutionQueue.cancel` 通过 `onCancel(job)` 立即让 Canvas 把 `placeholderNodeId` 写为 `loading:false,status:'cancelled'`；异步任务的晚到结果用 `cancelledJobIdsRef` 丢弃，中断异常不能再走 `onError` 覆盖节点状态。
 30. **宿主 taskEvents 必须增量全量分发**：`mini-app-renderer.tsx` 不能只取 `taskEvents.at(-1)`；React 会批处理多个并发 WS 事件，只发最后一条会让其余 `ctx.requestClient` 请求超时。使用事件对象游标把本轮新增项逐条送给 `onTaskEvent` 监听器。
+31. **输出分组/标签只扩展 resources**：图片协议保持 `output.images: string[]`；对应的 `output.resources[]` 可选增加 `groupName`、`label`。`ImageResult` 用 `groupName` 渲染可折叠分组、用 `label` 在缩略图右上角显示 badge；缺字段的旧数据保持原布局。视频编辑器导出的每张精灵图把动画组名称写入对应 resource 的 `groupName`，不得把 images 改为对象数组。
+32. **视频切换清理不能在首次挂载执行**：`VideoEditorDialog` 的 `currentVideo` effect 仅在前后视频 URL 确实变化时清空 `frames/animGroups/videoInfo`；必须用 ref 记录前值并跳过首次挂载，否则刷新页面会把已持久化动画组立即写成空数组。
 
 ## 工作区数据目录（产图落本地）
 

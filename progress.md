@@ -1,5 +1,23 @@
 # Progress: Canvas drag edge auto-pan
 
+## 2026-08-04 - Output grouping and labels
+- Diagnosed the refresh reset: the video-switch effect runs on initial dialog mount and persists an empty `animGroups` array.
+- Added a regression assertion for an initial-mount guard; running it red before applying the fix.
+- Confirmed the regression test fails on the old effect (10 pass, 1 fail), then added a previous-video ref guard while retaining real video-switch cleanup.
+- Post-fix verification passed: 26 focused tests, Babel transforms for the dialog/test, and `git diff --check`.
+- Read the current handoff, `planning-with-files`, and the complete `write-mini-app-code` project guide.
+- Added a scoped implementation plan; no source code changed yet.
+- Confirmed `NodeOutput` delegates image rendering to `ImageResult`, while output metadata lives in the parallel `output.resources` objects and propagates downstream.
+- One read-only query failed due to an incorrect `HistoryTab.jsx` path; logged it and switched to file discovery.
+- Traced output rendering, version snapshots, downstream propagation, and video-editor sprite-sheet export.
+- A second read-only query used an incorrect image utility filename; logged it and continued with the discovered path.
+- Chosen contract: optional metadata stays on parallel resource objects; grouped and ungrouped items share original global indexes so existing actions remain valid.
+- Implemented output normalization/grouping, collapsible sections, right-side label badges, preview-mode support, and video-editor animation group metadata.
+- Initial targeted run passed 22 tests and Babel compilation; diff review found and fixed a Gallery fallback type mismatch before final verification.
+- Fixed reorder/delete synchronization so normalized objects can never enter `output.images` and duplicate URL metadata remains aligned.
+- Final parallel audit output was discarded because one `rg` pattern used unsupported look-ahead; rerunning all checks with compatible searches.
+- Final verification passed: 25 focused tests, Babel compilation for 8 related source files, no `asChild` in changed UI files, and `git diff --check` clean.
+
 ## 2026-08-04
 - Initialized task planning files.
 - Traced `ImageResult.jsx`: it publishes drag payloads through the shared canvas MIME helper.

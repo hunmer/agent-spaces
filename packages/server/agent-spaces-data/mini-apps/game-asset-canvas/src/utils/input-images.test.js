@@ -18,7 +18,7 @@ test('computeInputImages replaces stale passthrough data after an upstream versi
 });
 
 test('computeInputImages propagates thumbnail resources through passthrough nodes', () => {
-  const resource = { url: 'full.png', thumb: 'thumb.jpg' };
+  const resource = { url: 'full.png', thumb: 'thumb.jpg', groupName: '动作', label: '待机' };
   const nodes = [
     { id: 'source', type: NODE_TYPES.editImage, data: { output: { images: ['full.png'], resources: [resource] } } },
     { id: 'display', type: NODE_TYPES.imageDisplay, data: {} },

@@ -113,8 +113,9 @@ export function computeInputImages(nodes, edges) {
         fileUploads,
         isDisplay: node.type === NODE_TYPES.imageDisplay,
       });
-      const resourcesSignature = resources.map((item) => `${item?.url || ''}\u0000${item?.thumb || ''}`).join('|');
-      const previousResourcesSignature = (prevResources || []).map((item) => `${item?.url || ''}\u0000${item?.thumb || ''}`).join('|');
+      const resourceSignature = (item) => [item?.url, item?.thumb, item?.groupName, item?.label].map((value) => value || '').join('\u0000');
+      const resourcesSignature = resources.map(resourceSignature).join('|');
+      const previousResourcesSignature = (prevResources || []).map(resourceSignature).join('|');
       if (!prev || prev.join('|') !== upstream.join('|') || resourcesSignature !== previousResourcesSignature) {
         derived.set(node.id, upstream);
         derivedResources.set(node.id, resources);

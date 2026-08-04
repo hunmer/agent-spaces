@@ -12,7 +12,7 @@ import TextResult from './TextResult';
  * @param {string} [props.status] 节点状态：idle/running/done/error
  * @param {string} [props.statusMsg] running 时自定义提示文案
  * @param {Array<string>} [props.images] 产出图（data.output.images）
- * @param {Array<{url:string,thumb?:string}>} [props.resources] 产出资源（缩略展示用）
+ * @param {Array<{url:string,thumb?:string,groupName?:string,label?:string}>} [props.resources] 产出资源（缩略图、分组和标签展示用）
  * @param {string} [props.fileName] 下载/入库文件名（data.params.fileName）
  * @param {Function} [props.onAddToAssets]
  * @param {Function} [props.onAddImages]

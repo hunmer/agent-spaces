@@ -167,7 +167,7 @@ export default function useDecoratedNodes({
           onAddImages: onAddOutputImages ? (urls) => onAddOutputImages(nd.id, urls) : undefined,
           onRemoveImage: onRemoveOutputImage ? (index) => onRemoveOutputImage(nd.id, index) : undefined,
           onClearImages: onClearOutputImages ? () => onClearOutputImages(nd.id) : undefined,
-          onReorderImages: onReorderOutputImages ? (next) => onReorderOutputImages(nd.id, next) : undefined,
+          onReorderImages: onReorderOutputImages ? (next, nextResources) => onReorderOutputImages(nd.id, next, nextResources) : undefined,
           // 版本切换（还原 params/output/status 到历史版本；节点 ImageResult 渲染版本标记）
           onSwitchVersion: onSwitchVersion ? (index) => onSwitchVersion(nd.id, index) : undefined,
           // 删除一张上游输入图（断开产出该图的连入边）

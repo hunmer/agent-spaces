@@ -9,8 +9,8 @@
 
 1. [complete] 定位创建入口与现有自动尺寸逻辑。
 2. [complete] 添加尺寸算法回归测试并实现公共工具。
-3. [in_progress] 接入 URL、拖拽文件及节点旋转交互。
-4. [pending] 运行测试与 JSX 语法检查。
+3. [complete] 接入 URL、拖拽文件及节点旋转交互。
+4. [complete] 运行测试与 JSX 语法检查。
 
 ## 约束
 
@@ -23,3 +23,5 @@
 | Error | Attempt | Resolution |
 |---|---:|---|
 | 测试找不到 `image-display-size.js` | 1 | 预期红灯；随后实现该模块 |
+| 全量测试 2 项 FFmpeg PNG 断言失败 | 1 | 属于工作区既有插件改动，与本任务无关；未修改 |
+| 并行验证中的 `rg` 无匹配返回 1 | 1 | 改为分别执行测试和 Babel 编译 |

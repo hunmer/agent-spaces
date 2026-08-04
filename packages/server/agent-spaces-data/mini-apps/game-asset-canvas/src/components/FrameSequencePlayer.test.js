@@ -63,6 +63,17 @@ test('animation groups retain their own extracted frame source', () => {
   assert.match(dialogSource, /frames=\{groupSourceFrames\}/);
 });
 
+test('video editor exports animation sheets with resource group names', () => {
+  assert.match(dialogSource, /resources\.push\(groupName \? \{ url, thumb: url, groupName \}/);
+  assert.match(dialogSource, /output: \{ images: urls, resources \}/);
+});
+
+test('video editor does not clear persisted animation groups on initial mount', () => {
+  assert.match(dialogSource, /const previousVideoRef = useRef\(currentVideo\)/);
+  assert.match(dialogSource, /if \(previousVideo === currentVideo\) return/);
+  assert.match(dialogSource, /previousVideoRef\.current = currentVideo/);
+});
+
 test('video upload and thumbnails fill the sidebar with compact spacing', () => {
   assert.match(dialogSource, /\.video-thumb-upload \{ width: 100%; \}/);
   assert.match(dialogSource, /className="video-thumb-upload mb-1"/);

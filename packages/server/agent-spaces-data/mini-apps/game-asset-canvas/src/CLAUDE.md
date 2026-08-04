@@ -75,6 +75,8 @@ graph TD
 - **2026-08-01 文本产物**：新增 Markdown `TextNode`；`computeInputTexts` 按 edge 的 `inputTarget` 派生文本引用，反推提示词结果改由节点外置 `NodeOutput` 展示并可继续连线。
 - **2026-08-01 画布样式菜单**：画布菜单支持切换背景、Handle 上下/左右方向和自动吸附，使用全局 settings 持久化。
 - **2026-08-04 文件拖拽自动平移**：系统文件或节点图片拖到画布 72px 边缘热区时按距离连续平移，四角支持双轴移动，离开或结束拖拽立即停止。
+- **2026-08-04 输出分组与标签**：`output.images` 继续保存 URL 数组；并行 `output.resources[]` 可选携带 `groupName`/`label`，节点输出按组折叠并在缩略图右上角展示标签。视频编辑器导出的精灵图以动画组名称写入 `groupName`。
+- **2026-08-04 动画组刷新持久化**：视频编辑器的 currentVideo 清理 effect 用 ref 跳过首次挂载，仅在用户实际切换视频时清空帧和动画组，避免刷新后覆盖已保存数据。
 - **建议下一步深挖**：
   - 如需精确节点组件实现细节，定点读 `components/nodes/<具体>.jsx`
   - 如需精确 image-ops 算法实现，定点读 `utils/image-ops/<具体>.js`（gif.js / matte.js / pixelate.js 等）

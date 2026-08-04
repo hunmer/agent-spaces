@@ -1,6 +1,9 @@
 const DEFAULT_SIZE = { w: 260, h: 240 };
 const DISPLAY_LONG_SIDE = 320;
 const DISPLAY_PADDING = 24;
+const MIN_NODE_WIDTH = 180;
+const MIN_NODE_HEIGHT = 120;
+const LOAD_TIMEOUT_MS = 10000;
 
 const dimensionCache = new Map();
 
@@ -22,8 +25,8 @@ export function getImageDisplayNodeSize(naturalWidth, naturalHeight, rotation = 
   const contentHeight = ratio >= 1 ? Math.round(DISPLAY_LONG_SIDE / ratio) : DISPLAY_LONG_SIDE;
 
   return {
-    w: contentWidth + DISPLAY_PADDING,
-    h: contentHeight + DISPLAY_PADDING,
+    w: Math.max(MIN_NODE_WIDTH, contentWidth + DISPLAY_PADDING),
+    h: Math.max(MIN_NODE_HEIGHT, contentHeight + DISPLAY_PADDING),
   };
 }
 
@@ -33,10 +36,20 @@ export function loadImageDimensions(src) {
 
   const pending = new Promise((resolve) => {
     const image = new Image();
-    image.onload = () => resolve(image.naturalWidth && image.naturalHeight
+    let settled = false;
+    const finish = (value) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      image.onload = null;
+      image.onerror = null;
+      resolve(value);
+    };
+    const timer = setTimeout(() => finish(null), LOAD_TIMEOUT_MS);
+    image.onload = () => finish(image.naturalWidth && image.naturalHeight
       ? { width: image.naturalWidth, height: image.naturalHeight }
       : null);
-    image.onerror = () => resolve(null);
+    image.onerror = () => finish(null);
     image.src = src;
   });
   dimensionCache.set(src, pending);

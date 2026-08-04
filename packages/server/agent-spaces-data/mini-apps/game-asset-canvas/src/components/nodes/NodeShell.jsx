@@ -505,7 +505,7 @@ export default function NodeShell({
                   onHeightChange={reportOutputPreviewHeight}
                 />
               ) : (
-                <ImageResult nodeId={id} images={previewImages} preview onImageLoad={reportOutputPreviewHeight} />
+                <ImageResult nodeId={id} images={previewImages} resources={data?.output?.resources || []} preview onImageLoad={reportOutputPreviewHeight} />
               )
             ) : null}
           </div>

@@ -57,7 +57,15 @@ data.params = {
   aspect: string,                // ASPECT_OPTIONS（如 '16:9'）
   size: string,                  // SIZE_OPTIONS（'1k'/'2k'/'4k'）
 }
-data.output = { images: string[] };  // 产出图 URL 数组
+data.output = {
+  images: string[];                  // 原图 URL 数组，保持下游执行/下载/Gallery 的稳定协议
+  resources?: Array<{
+    url: string;
+    thumb?: string;                  // 仅用于缩略展示
+    groupName?: string;              // 可选 UI 分组名，同名素材折叠到同一组
+    label?: string;                  // 可选缩略图右上角标签
+  }>;
+};
 data.images?: string[];          // 编辑图片节点：上游推入的输入图
 data.uploadedImages?: string[];  // 编辑图片节点：用户上传的输入图
 data.params.mask?: string;       // 编辑图片节点：上传/绘制得到的单张蒙版 URL

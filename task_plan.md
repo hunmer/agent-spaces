@@ -56,3 +56,46 @@ Embed the frame player directly inside the `game-asset-canvas` miniapp, replacin
 | Tool wrapper parsed ffmpeg template literals inside a raw patch | 2 | No file changes applied; use small double-quoted patch strings without JavaScript template interpolation. |
 | ffmpeg smoke-test script was rejected because its temp cleanup used `rm -rf` | 1 | Command did not run; retry without any deletion command and retain the isolated temp directory. |
 | Icon export search included nonexistent `packages/ui` | 1 | No changes made; inspect the actual `packages/web/src/lib/ui-exports.ts` export surface only. |
+| Output research referenced nonexistent `components/HistoryTab.jsx` | 1 | No changes made; locate the actual history component with `rg --files` before reading. |
+| Output research referenced nonexistent `utils/image-ops/image-data.js` | 1 | No changes made; use the discovered `utils/image-ops/io.js` path. |
+| Gallery fallback initially received normalized item objects instead of URL strings | 1 | Found during diff review before handoff; changed Gallery items to use `item.url` and retained global indexes. |
+| Output reorder initially passed normalized resource objects as `output.images` | 1 | Found during second review; split the callback into URL and resource arrays and synchronized delete by original index. |
+| Final audit regex used unsupported `rg` look-ahead | 1 | No source changes; replace it with simple independent searches and rerun the full verification set. |
+
+## Current Task: Output grouping and labels
+
+### Goal
+Add optional `groupName` and `label` metadata to existing output asset objects without changing result container shapes. Render grouped assets in collapsible UI, show labels as thumbnail badges, preserve all legacy string/object data, and assign video-editor animation exports to named groups.
+
+### Phases
+- [complete] Trace output asset models, renderers, and video-editor export flow.
+- [complete] Define a backward-compatible UI normalization/grouping helper.
+- [complete] Implement collapsible groups, label badges, and animation-group export metadata.
+- [complete] Add focused regression coverage and update project documentation.
+- [complete] Run targeted syntax/tests and inspect the final diff.
+
+### Decisions
+- Keep `images`/`videos` and existing result arrays structurally unchanged.
+- Treat `groupName` and `label` as optional per-asset metadata; legacy entries remain valid.
+- Restrict the implementation to the mini-app UI/data objects already produced by the video editor.
+
+## Current Bug: Animation groups reset after refresh
+
+### Goal
+Preserve persisted video-editor animation groups across page refresh while still clearing video-bound state when the user actually switches videos.
+
+### Phases
+- [complete] Trace save/load and dialog mount paths; inspect persisted runtime data.
+- [complete] Add a failing regression test for initial-mount reset behavior.
+- [complete] Guard the video-switch reset effect against initial mount.
+- [complete] Run focused regression and syntax verification.
+
+### Root Cause Evidence
+- Canvas save/load preserves arbitrary node data without a field whitelist.
+- The persisted node has `animGroups: []` while its exported resource still has `groupName: "动画组 1"`, proving a group existed before a later clear.
+- `VideoEditorDialog` clears `animGroups` in a `[currentVideo]` effect that runs on initial mount after refresh.
+
+### Resolution
+- Initialize `previousVideoRef` from the current persisted video and return when the URL has not changed.
+- Preserve the existing reset behavior for actual video URL transitions.
+- Regression test changed from 10 pass / 1 fail before the fix to 11 / 11 passing after it; the broader focused set passes 26 / 26.

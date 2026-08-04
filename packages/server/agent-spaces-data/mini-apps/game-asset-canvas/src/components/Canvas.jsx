@@ -73,6 +73,7 @@ import { decorateEdgesForSelection } from '../utils/edge-display';
 import { countNodesWithOutput } from '../utils/batch-run';
 import { collectGroupNodeIds } from '../utils/group-helpers';
 import { CanvasGalleryContextProvider } from '../utils/canvas-gallery';
+import { createOutputAssetItems } from '../utils/output-resources';
 import { COMPACT_NODE_ZOOM_THRESHOLD } from './nodes/compact-node';
 
 const EDGE_TYPES = { floating: FloatingEdge };
@@ -914,13 +915,34 @@ export default function Canvas({ hostConfig }) {
     handleOutputImagesChange(nodeId, (prev) => [...prev, ...urls.filter(Boolean)]);
   }, [handleOutputImagesChange]);
   const handleRemoveOutputImage = useCallback((nodeId, index) => {
-    handleOutputImagesChange(nodeId, (prev) => prev.filter((_, i) => i !== index));
-  }, [handleOutputImagesChange]);
+    updateNodeData(nodeId, (data) => {
+      const images = Array.isArray(data?.output?.images) ? data.output.images : [];
+      const resources = Array.isArray(data?.output?.resources) ? data.output.resources : [];
+      const nextItems = createOutputAssetItems(images, resources).filter((item) => item.index !== index);
+      return {
+        __versionSkip: true,
+        output: {
+          ...(data?.output || {}),
+          images: nextItems.map((item) => item.url),
+          resources: nextItems.map((item) => item.resource),
+        },
+      };
+    });
+  }, [updateNodeData]);
   // 产出图重排序：拖拽调整顺序，写回 data.output.images
-  const handleReorderOutputImages = useCallback((nodeId, next) => {
+  const handleReorderOutputImages = useCallback((nodeId, next, nextResources) => {
     if (!Array.isArray(next)) return;
-    handleOutputImagesChange(nodeId, () => next);
-  }, [handleOutputImagesChange]);
+    updateNodeData(nodeId, (data) => ({
+      __versionSkip: true,
+      output: {
+        ...(data?.output || {}),
+        images: next,
+        resources: Array.isArray(nextResources)
+          ? nextResources
+          : createOutputAssetItems(next, data?.output?.resources).map((item) => item.resource),
+      },
+    }));
+  }, [updateNodeData]);
   const handleClearOutputImages = useCallback((nodeId) => {
     // 清空产出同时清空版本历史：避免清空后 versions 残留，刷新页面版本按钮又出现
     console.log('[clear] handleClearOutputImages', nodeId);

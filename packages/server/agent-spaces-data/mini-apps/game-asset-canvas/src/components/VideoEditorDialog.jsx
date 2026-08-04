@@ -61,6 +61,7 @@ export default function VideoEditorDialog({ open, data, onUpdate, onClose }) {
   const videoRef = useRef(null);
 
   const currentVideo = videos[Math.min(activeVideoIdx, videos.length - 1)] || videos[0] || '';
+  const previousVideoRef = useRef(currentVideo);
 
   // 获取单个视频的首帧作为缩略图（ffmpeg_first_frame → base64 dataUrl）
   const fetchingRef = useRef(new Set()); // 正在请求的 url，防重复
@@ -98,6 +99,9 @@ export default function VideoEditorDialog({ open, data, onUpdate, onClose }) {
 
   // 切换视频时清空上一个视频的帧列表 / 动画组 / 探测信息（帧与视频绑定，不跨视频残留）
   useEffect(() => {
+    const previousVideo = previousVideoRef.current;
+    if (previousVideo === currentVideo) return;
+    previousVideoRef.current = currentVideo;
     setPreviewTab('video');
     onUpdate?.({ frames: [], framesDir: '', frameSelection: null, animGroups: [], videoInfo: null, error: undefined });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -335,6 +339,7 @@ export default function VideoEditorDialog({ open, data, onUpdate, onClose }) {
     setBusy(true); setBusyMsg('合成精灵图并输出…');
     try {
       const urls = [];
+      const resources = [];
       for (const g of valid) {
         const fs = groupFrames(g);
         const imgs = await Promise.all(fs.map((u) => urlToImageData(u)));
@@ -342,9 +347,11 @@ export default function VideoEditorDialog({ open, data, onUpdate, onClose }) {
         const sheet = composeSpriteSheet(imgs, { columns: cols });
         const url = await imageDataToUrl(sheet);
         urls.push(url);
+        const groupName = typeof g.name === 'string' ? g.name.trim() : '';
+        resources.push(groupName ? { url, thumb: url, groupName } : { url, thumb: url });
       }
       // output.images 是节点输出的统一约定（下游图片节点据此消费）
-      onUpdate?.({ output: { images: urls }, status: 'done', error: undefined });
+      onUpdate?.({ output: { images: urls, resources }, status: 'done', error: undefined });
     } catch (err) {
       onUpdate?.({ error: `输出失败：${err?.message || err}` });
     } finally {
@@ -354,7 +361,10 @@ export default function VideoEditorDialog({ open, data, onUpdate, onClose }) {
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose?.()}>
-      <DialogContent className="!w-[80vw] !max-w-[80vw] flex max-h-[92vh] flex-col gap-0 p-0 nodrag nopan nowheel">
+      <DialogContent
+        className="!w-[80vw] !max-w-[80vw] flex flex-col gap-0 p-0 nodrag nopan nowheel"
+        style={{ height: 'calc(var(--app-content-height) - 2rem)', maxHeight: 'none' }}
+      >
         <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
           <DialogTitle className="flex items-center gap-2 text-sm font-semibold">
             <Film className="h-4 w-4 text-primary" />

@@ -1,5 +1,24 @@
 # Findings: Canvas drag edge auto-pan
 
+## Current Research: Output grouping and labels
+
+## Current Diagnosis: Animation groups reset after refresh
+
+- The canvas service and `useCanvasState` save/load full node data; neither strips `animGroups`.
+- The real workspace canvas contains an empty `animGroups` array but an exported resource with `groupName: "动画组 1"`, proving the data was cleared after an animation group existed.
+- `VideoEditorDialog` has an unconditional `[currentVideo]` effect that writes `animGroups: []`; React runs it on initial mount, including immediately after refresh.
+- The confirmed fix is a previous-video ref initialized from `currentVideo`; equal URLs return before any write, while genuine URL transitions keep the reset behavior.
+
+- The request is UI-only and requires backward compatibility with existing string URL arrays and current resource objects.
+- The project guide requires edits to remain inside the mini-app root and `src/CLAUDE.md`/handoff documentation to be updated when the output UI contract changes.
+- `NodeShell` passes `data.output.images` and `data.output.resources` to the single `ImageResult` renderer; downstream image derivation also propagates resource objects.
+- The stable compatibility shape is `output.images: string[]` plus `output.resources: [{ url, thumb?, groupName?, label? }]`.
+- Resource lookup by URL alone is insufficient because duplicate URLs may carry distinct metadata; UI normalization must align by index first and preserve original global indexes for actions.
+- Video editor currently exports one URL per animation group but writes no `resources`; it can add `{ url, thumb: url, groupName: group.name }` without changing `output.images`.
+- Existing manual output delete/reorder rebuilds `resources` by URL, which preserves metadata for unique URLs but needs occurrence-aware alignment to remain correct for duplicate URLs.
+- Diff review caught and fixed the Gallery fallback after UI normalization; it now passes `item.url`, while delete/open/drag actions use the original global index.
+- Reorder/delete must carry the parallel resource array explicitly; deriving it only from URLs loses occurrence-specific metadata when duplicate URLs exist.
+
 ## Research Notes
 - `ImageResult.jsx` starts native HTML5 drag operations and writes shared canvas image drag MIME data through `setCanvasImageDragData`.
 - Auto-pan belongs at the canvas container drag-event layer so internal image drags and external OS file drags share behavior.
