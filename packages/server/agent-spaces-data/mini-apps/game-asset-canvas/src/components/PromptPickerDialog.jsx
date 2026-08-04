@@ -10,6 +10,7 @@ import { useCanvasGallery } from '../utils/canvas-gallery';
 import usePromptLibrary from '../hooks/usePromptLibrary';
 import ImageHoverCard from './ImageHoverCard';
 import AutoResizeTextarea from './AutoResizeTextarea';
+import FileUpload from './FileUpload';
 
 /**
  * 提示词选择器：内置库 + 用户自定义库合并展示。
@@ -238,6 +239,11 @@ function PromptEditor({ initial, scene, onSave, onCancel }) {
   const [prompt, setPrompt] = useState(initial.prompt || '');
   const [category, setCategory] = useState(initial.category || 'character');
   const [aspect, setAspect] = useState(initial.aspect || '');
+  // references 内部用「已 resolve 的 http URL 数组」展示与编辑（FileUpload value 即 URL 数组）。
+  // 保存时原样写回，无相对路径场景（编辑器只产生上传 URL）。
+  const [references, setReferences] = useState(
+    () => resolveReferenceImages(initial.references).slice(0, 6)
+  );
 
   const valid = title.trim() && prompt.trim();
 
@@ -251,6 +257,7 @@ function PromptEditor({ initial, scene, onSave, onCancel }) {
       category,
       scene: initial.scene || scene,
       ...(aspect ? { aspect } : {}),
+      ...(references.length > 0 ? { references } : {}),
     });
   };
 
@@ -276,6 +283,12 @@ function PromptEditor({ initial, scene, onSave, onCancel }) {
         placeholder="提示词正文 *"
         value={prompt}
         onChange={(e) => setPrompt(e.target.value)}
+      />
+      <FileUpload
+        value={references}
+        onChange={setReferences}
+        max={6}
+        placeholder="上传参考图（可选，最多 6 张）"
       />
       <div className="flex items-center gap-2">
         <select

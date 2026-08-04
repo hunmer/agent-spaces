@@ -1,8 +1,9 @@
-// 右侧面板容器：新增节点 / 节点管理 / 生成记录 / 素材库，以及可选的宿主 Chat tab。
+// 右侧面板容器：新增节点 / 节点预设 / 节点管理 / 生成记录 / 素材库，以及可选的宿主 Chat tab。
 // 各 tab 的实现拆到同目录独立文件，本文件只做 Tabs 装配。
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Tabs, TabsList, TabsTrigger, TabsContent, Plus, Boxes, History, Images, MessageSquareText } from '@agent-spaces/ui';
+import { Tabs, TabsList, TabsTrigger, TabsContent, Plus, Boxes, History, Images, Bookmark, MessageSquareText } from '@agent-spaces/ui';
 import AddNodeTab from './AddNodeTab';
+import PresetsTab from './PresetsTab';
 import NodeManageTab from './NodeManageTab';
 import HistoryTab from './HistoryTab';
 import AssetLibrary from '../AssetLibrary';
@@ -19,6 +20,10 @@ import AssetLibrary from '../AssetLibrary';
  * @param {(type:string)=>void} props.onAdd
  * @param {(type:string,e:object)=>void} props.onDragStartNode
  * @param {(type:string)=>void} props.onExecute
+ * @param {Array} [props.presets]                 节点预设列表（全局共享）
+ * @param {(presetId:string)=>void} [props.onAddPreset]            点击「+」实例化预设到视口中心
+ * @param {(presetId:string,e:object)=>void} [props.onDragStartPreset]  预设卡片拖拽起始
+ * @param {(presetId:string)=>void} [props.onDeletePreset]         删除预设
  * @param {Array} props.history
  * @param {(id:string)=>void} props.onRemoveHistory
  * @param {()=>void} props.onClearHistory
@@ -38,6 +43,7 @@ export default function RightPanel({
   nodes, edges, groups, selectedNodeId,
   onSelectNode, onLocateNode, onDeleteNode,
   onAdd, onDragStartNode, onExecute,
+  presets, onAddPreset, onDragStartPreset, onDeletePreset,
   history, onRemoveHistory, onClearHistory, onRestoreFromNodes, onUseImage,
   onInsertHistory, onDragStartHistory,
   onAddToAssets, onInsertImagesToCanvas,
@@ -82,6 +88,14 @@ export default function RightPanel({
           <TabsTrigger value="add" title="新增节点" aria-label="新增节点" className="flex-1">
             <Plus className="h-4 w-4" />
           </TabsTrigger>
+          <TabsTrigger value="presets" title="节点预设" aria-label="节点预设" className="group flex-1">
+            <Bookmark className="h-4 w-4" />
+            {presets?.length > 0 && (
+              <span className="ml-1 rounded-full bg-muted px-1.5 text-[10px] font-medium leading-none text-muted-foreground group-data-[state=active]:bg-primary-foreground/20 group-data-[state=active]:text-primary-foreground">
+                {presets.length}
+              </span>
+            )}
+          </TabsTrigger>
           <TabsTrigger value="nodes" title="节点管理" aria-label="节点管理" className="group flex-1">
             <Boxes className="h-4 w-4" />
             {nodes.length > 0 && (
@@ -105,6 +119,15 @@ export default function RightPanel({
 
         <TabsContent value="add" keepMounted className="mt-0 min-h-0 flex-1 overflow-hidden">
           <AddNodeTab onAdd={onAdd} onDragStartNode={onDragStartNode} onExecute={onExecute} />
+        </TabsContent>
+
+        <TabsContent value="presets" keepMounted className="mt-0 min-h-0 flex-1 overflow-hidden">
+          <PresetsTab
+            presets={presets || []}
+            onAdd={onAddPreset}
+            onDragStartPreset={onDragStartPreset}
+            onDelete={onDeletePreset}
+          />
         </TabsContent>
 
         <TabsContent value="nodes" keepMounted className="mt-0 min-h-0 flex-1 overflow-hidden">

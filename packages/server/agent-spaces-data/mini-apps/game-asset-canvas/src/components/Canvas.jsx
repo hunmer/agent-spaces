@@ -38,6 +38,7 @@ import DeleteGroupDialog from './DeleteGroupDialog';
 import ConnectionTargetDialog from './ConnectionTargetDialog';
 import PastePropertiesDialog from './PastePropertiesDialog';
 import BatchRunConfirmDialog from './BatchRunConfirmDialog';
+import SavePresetDialog from './SavePresetDialog';
 import useAssetLibrary from '../hooks/useAssetLibrary';
 import { getConnectionTargets, getNodeOutputType } from '../utils/connection-targets';
 
@@ -62,11 +63,13 @@ import { generateImageResources, normalizeImageUrls } from '../utils/workflow';
 import { WORKFLOWS } from '../utils/constants';
 import useCanvasAgentRpc, { buildNodeExecution } from '../hooks/useCanvasAgentRpc';
 import useDecoratedNodes from '../hooks/useDecoratedNodes';
+import useNodePresets from '../hooks/useNodePresets';
 
 import { IMAGE_TAGS, NODE_TYPES, NODE_META } from '../utils/constants';
-import { NODE_COMPONENTS, NODE_PARAMS_SCHEMA, PANEL_ID_MAIN, PANEL_ID_RIGHT, dedupeTags } from '../utils/canvas-constants';
+import { NODE_COMPONENTS, NODE_PARAMS_SCHEMA, PANEL_ID_MAIN, PANEL_ID_RIGHT, dedupeTags, NODE_PRESET_MIME } from '../utils/canvas-constants';
 import { genId } from '../utils/canvas-id';
 import { copyNodes, pasteNodes } from '../utils/clipboard';
+import { serializePreset, instantiatePreset, presetBoundingBox } from '../utils/node-preset';
 import { exportAssetLibraryZip, extractFileNameFromUrl, pickAssetLibraryZipFile, importAssetLibraryZip, exportWorkspaceZip, pickWorkspaceZipFile, importWorkspaceZip } from '../utils/export';
 import { canvasConfigPath, historyConfigPath, assetLibraryConfigPath, saveCanvas } from '../utils/storage';
 import { decorateEdgesForSelection } from '../utils/edge-display';
@@ -116,6 +119,10 @@ export default function Canvas({ hostConfig }) {
   const runWorkflow = useWorkflow(activeWorkspace?.directory);
   const { history, addHistory, removeHistory, clearHistory } = useGenerationHistory(activeId);
   const { settings, saveSettings } = useSettings();
+  // 节点预设库（全局共享，存顶层 node-presets.json）
+  const { presets, addPreset, removePreset } = useNodePresets();
+  const presetsRef = useRef(presets);
+  presetsRef.current = presets;
   // 上次提交参数（按工作区+nodeType 隔离）：saveLastParams 给执行回调用，getLastParams 给 createNodeAt 预填用
   const { saveLastParams, getLastParams } = useLastParams(activeId);
 
@@ -153,6 +160,8 @@ export default function Canvas({ hostConfig }) {
   const [nodeContextMenu, setNodeContextMenu] = useState(null);
   // 历史记录定位焦点：节点右键「定位到历史记录」时设为目标节点 id，HistoryTab 滚动+高亮后清空。
   const [historyFocusNodeId, setHistoryFocusNodeId] = useState(null);
+  // 保存预设对话框：{ pendingNodes, groupCount } | null。底部多选工具栏【保存预设】触发。
+  const [savePresetState, setSavePresetState] = useState(null);
 
   const reactFlow = useReactFlow();
   const wrappingRef = useRef(null);
@@ -294,11 +303,59 @@ export default function Canvas({ hostConfig }) {
     const rect = el.getBoundingClientRect();
     return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
   }, []);
+
+  // —— 节点预设：实例化（视口中心 / 拖拽落点）——
+  // 把预设还原为节点+内部连线+分组。offset 为左上角落点（flow 坐标）。
+  const instantiatePresetAt = useCallback((preset, offset) => {
+    if (!preset?.nodes?.length) return;
+    const { nodes: newNodes, edges: newEdges, groups: newGroups } = instantiatePreset(preset, { genId, offset });
+    setNodes((prev) => [...prev, ...newNodes]);
+    setEdges((prev) => [...prev, ...newEdges]);
+    if (newGroups.length) setGroups((prev) => [...prev, ...newGroups]);
+    return newNodes.map((n) => n.id);
+  }, [setNodes, setEdges, setGroups]);
+
+  // 预设卡片「+」点击：实例化到视口中心（按预设包围盒居中）
+  const handleAddPreset = useCallback((presetId) => {
+    const preset = presetsRef.current.find((p) => p.id === presetId);
+    if (!preset) return;
+    let offset = { x: 120, y: 120 };
+    if (reactFlow.screenToFlowPosition) {
+      const center = getViewportCenter();
+      if (center) {
+        const flowCenter = reactFlow.screenToFlowPosition(center);
+        const box = presetBoundingBox(preset);
+        offset = { x: flowCenter.x - box.width / 2, y: flowCenter.y - box.height / 2 };
+      }
+    }
+    const ids = instantiatePresetAt(preset, offset);
+    if (ids?.length) {
+      toast.success(`已添加预设「${preset.name}」（${ids.length} 个节点）`);
+      requestAnimationFrame(() => reactFlow.fitView({ nodes: ids.map((id) => ({ id })), padding: 0.2, duration: 300 }));
+    }
+  }, [getViewportCenter, instantiatePresetAt, reactFlow]);
+
+  // 预设卡片拖拽起始：写 MIME（payload = 预设 id）
+  const handleDragStartPreset = useCallback((presetId, event) => {
+    try { event.dataTransfer.setData(NODE_PRESET_MIME, presetId); } catch {}
+    event.dataTransfer.setData('application/reactflow', '__preset__');
+    event.dataTransfer.effectAllowed = 'move';
+  }, []);
+
+  // 拖拽落到画布：在落点实例化预设（左上角对齐落点）
+  const handleDropPreset = useCallback((presetId, position) => {
+    const preset = presetsRef.current.find((p) => p.id === presetId);
+    if (!preset) return;
+    instantiatePresetAt(preset, position);
+    toast.success(`已添加预设「${preset.name}」`);
+  }, [instantiatePresetAt]);
+
   const crud = useNodeCrud({
     nodes, edges, groups, setNodes, setEdges, setGroups,
     reactFlow, selectedId, setSelectedId, updateNodeData, settings, submit,
     setDropNodeMenu, setContextMenu, setPendingConnection,
     getViewportCenter, getLastParams, saveLastParams,
+    onDropPreset: handleDropPreset,
   });
   const panCanvasBy = useCallback(({ x, y }) => {
     setViewport((current) => ({ ...current, x: current.x + x, y: current.y + y }));
@@ -1011,6 +1068,31 @@ export default function Canvas({ hostConfig }) {
     setRightTab('history');
     setHistoryFocusNodeId(`${nodeId}:${Date.now()}`);
   }, []);
+  // 保存为预设：收集当前选中节点（用 ref 读最新值），暂存快照后弹对话框。
+  // 统计涉及的分组数（任一子节点在选中集合内）。
+  const handleSavePreset = useCallback(() => {
+    const curNodes = nodesRef.current;
+    const selected = curNodes.filter((n) => n.selected);
+    if (selected.length < 1) {
+      toast.warning('请先选中节点');
+      return;
+    }
+    const idSet = new Set(selected.map((n) => n.id));
+    const groupCount = groups.filter((g) => (g.childNodeIds || []).some((id) => idSet.has(id))).length;
+    setSavePresetState({ pendingNodes: selected, groupCount });
+  }, [groups]);
+  // 对话框确认：序列化选中快照 + 入库 + 切到预设 tab。
+  const confirmSavePreset = useCallback((name) => {
+    const info = savePresetState;
+    if (!info?.pendingNodes?.length) return;
+    const preset = serializePreset(info.pendingNodes, edgesRef.current, groups, name);
+    if (preset) {
+      addPreset(preset);
+      setRightTab('presets');
+      toast.success(`已保存预设「${preset.name}」`);
+    }
+    setSavePresetState(null);
+  }, [addPreset, groups, savePresetState]);
   // 节点右键菜单执行 action 后关闭菜单。
   const runNodeContextAction = useCallback((action, nodeId) => {
     setNodeContextMenu(null);
@@ -1575,6 +1657,7 @@ export default function Canvas({ hostConfig }) {
               onAlignDistribute={selection.alignDistribute}
               onApplyGridLayout={selection.applyGridLayout}
               onDeleteSelected={selection.deleteSelectedNodes}
+              onSavePreset={handleSavePreset}
             />
 
             {/* 顶部图片选中 toolbar：跨节点选中图片后浮出，编辑/抠图/放大作用于选中图并集 */}
@@ -1606,6 +1689,10 @@ export default function Canvas({ hostConfig }) {
           onAdd={crud.handleAdd}
           onDragStartNode={crud.handleDragStartNode}
           onExecute={(type) => setExecuteState({ nodeType: type })}
+          presets={presets}
+          onAddPreset={handleAddPreset}
+          onDragStartPreset={handleDragStartPreset}
+          onDeletePreset={removePreset}
           history={history}
           assetCategories={assetCategories}
           onRemoveHistory={removeHistory}
@@ -1814,6 +1901,14 @@ export default function Canvas({ hostConfig }) {
         state={groupExecution.propertyApply}
         onClose={groupExecution.cancelPropertyApply}
         onApply={groupExecution.applyPropertiesToRuns}
+      />
+
+      <SavePresetDialog
+        open={!!savePresetState}
+        pendingNodes={savePresetState?.pendingNodes}
+        groupCount={savePresetState?.groupCount || 0}
+        onClose={() => setSavePresetState(null)}
+        onConfirm={confirmSavePreset}
       />
     </ResizablePanelGroup>
     </ImageSelectionContext.Provider>

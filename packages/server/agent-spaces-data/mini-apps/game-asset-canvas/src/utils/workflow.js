@@ -142,16 +142,26 @@ export function dedupeUrls(urls) {
 }
 
 /**
- * 把提示词条目的 references（相对 src 目录的路径数组，如 ['assets/references/<id>/ref1.png']）
- * 解析为可直接用于 <img>/提交给工作流的 http URL 数组。
- * 走 host 暴露的 window.AgentSpaces.srcFileUrl（对应 /api/mini-apps/<id>/src/file 路由）。
- * references 为空/缺省时返回空数组。
+ * 把提示词条目的 references 解析为可直接用于 <img>/提交给工作流的 http URL 数组。
+ *
+ * - 完整 http(s)/data:/blob: URL（用户经 FileUpload 上传的参考图）原样返回。
+ * - 相对 src 目录的路径（内置参考图，如 'assets/references/<id>/ref1.png'）走
+ *   host 暴露的 window.AgentSpaces.srcFileUrl（对应 /api/mini-apps/<id>/src/file 路由）。
+ * - references 为空/缺省时返回空数组。
+ *
+ * 兼容两种格式使得内置项（相对路径）与用户自定义项（上传 http URL）可在同一字段混存。
  */
 export function resolveReferenceImages(references) {
   if (!Array.isArray(references) || references.length === 0) return [];
   const srcFileUrl = window?.AgentSpaces?.srcFileUrl;
-  if (typeof srcFileUrl !== 'function') return [];
-  return references.map((rel) => srcFileUrl(rel)).filter(Boolean);
+  const isAbsolute = (s) => /^https?:\/\//i.test(s) || /^(data|blob):/i.test(s);
+  return references
+    .map((rel) => {
+      if (isAbsolute(rel)) return rel;
+      if (typeof srcFileUrl !== 'function') return '';
+      return srcFileUrl(rel);
+    })
+    .filter(Boolean);
 }
 
 /**

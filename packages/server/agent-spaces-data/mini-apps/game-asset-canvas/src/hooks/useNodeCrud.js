@@ -2,7 +2,7 @@ import { useCallback, useRef } from 'react';
 import { addEdge, MarkerType } from '@xyflow/react';
 import { debugCanvasImageDrag } from '@agent-spaces/ui';
 import { NODE_TYPES, NODE_META, IMAGE_TAGS, WORKFLOWS } from '../utils/constants';
-import { DEFAULT_SIZE, initialData, NODE_PARAMS_SCHEMA, CANVAS_DROP_MIME, IMAGE_REORDER_MIME } from '../utils/canvas-constants';
+import { DEFAULT_SIZE, initialData, NODE_PARAMS_SCHEMA, CANVAS_DROP_MIME, IMAGE_REORDER_MIME, NODE_PRESET_MIME } from '../utils/canvas-constants';
 import { getConnectionTargets } from '../utils/connection-targets';
 import { genId, autoPosition } from '../utils/canvas-id';
 import { autoLayoutSubset, autoLayoutTopLevel } from '../utils/layout';
@@ -70,6 +70,7 @@ export default function useNodeCrud({
   reactFlow, selectedId, setSelectedId, updateNodeData, settings, submit,
   setDropNodeMenu, setContextMenu, setPendingConnection,
   getViewportCenter, getLastParams, saveLastParams,
+  onDropPreset,
 }) {
   const dragTypeRef = useRef(null);
 
@@ -338,6 +339,12 @@ export default function useNodeCrud({
         if (type) { createNodeAt(type, position, patch); return; }
       } catch {}
     }
+    // 节点预设拖拽：交给 Canvas 层实例化（多节点 + 内部连线 + 分组）
+    const presetId = event.dataTransfer.getData(NODE_PRESET_MIME);
+    if (presetId && onDropPreset) {
+      onDropPreset(presetId, position);
+      return;
+    }
     // 历史记录/素材库的图片缩略图拖入：按图片 URL 在落点建 imageDisplay 节点
     if (imgRaw) {
       try {
@@ -354,7 +361,7 @@ export default function useNodeCrud({
     dragTypeRef.current = null;
     if (!type) return;
     createNodeAt(type, position);
-  }, [reactFlow, createNodeAt, handleDropFiles, addImageNodesAt]);
+  }, [reactFlow, createNodeAt, handleDropFiles, addImageNodesAt, onDropPreset]);
 
   // 画布右键：记录右键处的画布坐标供建节点
   const handleContextMenu = useCallback((event) => {

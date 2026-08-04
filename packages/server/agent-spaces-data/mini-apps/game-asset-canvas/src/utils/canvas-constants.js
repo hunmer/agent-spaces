@@ -165,6 +165,10 @@ export const CANVAS_DROP_MIME = 'application/x-canvas-drop-images';
 // 与 CANVAS_DROP_MIME（建节点）方向相反——本标记是「抑制建节点」。
 export const IMAGE_REORDER_MIME = 'application/x-image-reorder';
 
+// 节点预设拖拽协议：右侧「节点预设库」tab 的卡片拖到画布时写入此 MIME，
+// payload 为预设 id 字符串。画布 handleDrop 识别后实例化整个预设（多节点+连线+分组）。
+export const NODE_PRESET_MIME = 'application/x-node-preset';
+
 // tags 去重保序（图片展示节点 data.tags 用）
 export function dedupeTags(tags) {
   const seen = new Set();
