@@ -17,13 +17,13 @@ mini-app 根: packages/server/agent-spaces-data/mini-apps/game-asset-canvas/
     api.js               # Agent 工具实现（RPC 到浏览器）—— 改 agent 能力改这里
     tools.js             # Agent 工具元数据（description/inputSchema）—— 改 agent 工具描述改这里
     components/
-      Canvas.jsx         # 编排层（hook 装配 + ReactFlow 回调 + JSX），~400 行
+      Canvas.jsx         # 编排层（状态/hook 装配 + ReactFlow 回调）
       RightPanel.jsx     # 右侧三 tab：新增节点/节点管理/生成记录
       Toolbar.jsx / SettingsDialog.jsx / ExecutionQueuePopover.jsx
       NodeFormDialog.jsx / NodeExecuteDialog.jsx
       PromptPickerDialog.jsx / FileUpload.jsx
       nodes/             # 各节点组件（含 PARAMS_SCHEMA export）
-      canvas/            # Canvas 子组件（菜单/多选 toolbar/分组 overlay）
+      canvas/            # Canvas 子组件（CanvasWorkspace 主视图/CanvasOverlayDialogs 弹窗层/菜单/分组 overlay）
     hooks/               # 状态/业务逻辑（见下「数据流」）
     utils/
       constants.js       # 节点类型/工作流 ID/各 OPTIONS 枚举（单一数据源）
@@ -166,6 +166,7 @@ Agent → api.js handler → ctx.requestClient(type, payload, timeoutMs)
 31. **输出分组/标签只扩展 resources**：图片协议保持 `output.images: string[]`；对应的 `output.resources[]` 可选增加 `groupName`、`label`。`ImageResult` 用 `groupName` 渲染可折叠分组、用 `label` 在缩略图右上角显示 badge；缺字段的旧数据保持原布局。视频编辑器导出的每张精灵图把动画组名称写入对应 resource 的 `groupName`，不得把 images 改为对象数组。
 32. **视频切换清理不能在首次挂载执行**：`VideoEditorDialog` 的 `currentVideo` effect 仅在前后视频 URL 确实变化时清空 `frames/animGroups/videoInfo`；必须用 ref 记录前值并跳过首次挂载，否则刷新页面会把已持久化动画组立即写成空数组。
 33. **网格拼接编辑态独立持久化**：原 `ipSpriteMerge` 节点对外名称为“网格拼接”，仍走 `sprite-merge` 与 `onProcessLocal` 的历史/状态链路。编辑器顺序及列数、间隔、抠图、统一背景存 `data.gridStitchData`，混合上传/上游输入通过 URL 顺序表恢复；输入删除时丢弃旧 URL，新输入追加。`CutoutSettings` 与 Sheet 拆分编辑器共享，修改时必须保留拆分器普通模式常驻吸色入口；网格编辑器的吸管从左侧原图取色，坐标必须按 `object-contain` 显示范围映射。左侧网格固定铺满可用高度、图片保持 contain，禁止恢复滚动容器或正方形单元格约束。
+34. **边标签跟随节点 hover**：`decorateEdgesForSelection` 的选中态只负责边强调样式；关联边 label 由 `Canvas` 传入的 `hoveredNodeId` 控制，鼠标离开节点后立即隐藏，不把 hover 状态写入持久化 edges。
 
 ## 工作区数据目录（产图落本地）
 

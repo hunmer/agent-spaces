@@ -18,7 +18,7 @@ export function getEdgeColor(edge, index = 0) {
 }
 
 export function decorateEdgesForSelection(
-  edges, nodes, pathStyle, lineStyle, nodeParamsSchema = {},
+  edges, nodes, pathStyle, lineStyle, nodeParamsSchema = {}, hoveredNodeId = null,
 ) {
   const selectedIds = new Set(nodes.filter((node) => node.selected).map((node) => node.id));
   const nodeMap = new Map(nodes.map((node) => [node.id, node]));
@@ -33,8 +33,11 @@ export function decorateEdgesForSelection(
 
     const isInput = selectedIds.has(edge.target);
     const isOutput = !isInput && selectedIds.has(edge.source);
+    // 选中态只控制边强调；标签跟随节点 hover，避免点击后常驻遮挡画布。
+    const isHoveredInput = hoveredNodeId === edge.target;
+    const isHoveredOutput = !isHoveredInput && hoveredNodeId === edge.source;
     const highlightColor = getEdgeColor(edge, edgeIndex);
-    const targetLabel = isInput || isOutput
+    const targetLabel = isHoveredInput || isHoveredOutput
       ? getEdgeTargetLabel(edge, nodeMap, nodeParamsSchema)
       : null;
 
@@ -42,9 +45,9 @@ export function decorateEdgesForSelection(
       ...edge,
       type: 'floating',
       animated: false,
-      label: isInput
+      label: isHoveredInput
         ? (targetLabel || `输入${inputIndex}`)
-        : (isOutput ? (targetLabel || `输出${outputIndex}`) : null),
+        : (isHoveredOutput ? (targetLabel || `输出${outputIndex}`) : null),
       data: { ...(edge.data || {}), pathStyle, lineStyle, highlightColor },
       markerEnd: { ...(edge.markerEnd || { type: 'arrowclosed' }), color: highlightColor },
       style: {

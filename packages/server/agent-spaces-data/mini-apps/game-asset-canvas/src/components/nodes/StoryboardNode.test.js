@@ -9,6 +9,7 @@ const dialogSource = fs.readFileSync(new URL('../StoryboardGenerationDialog.jsx'
 const operationSource = fs.readFileSync(new URL('../../hooks/useStoryboardOperations.js', import.meta.url), 'utf8');
 const connectionDialogSource = fs.readFileSync(new URL('../ConnectionTargetDialog.jsx', import.meta.url), 'utf8');
 const canvasSource = fs.readFileSync(new URL('../Canvas.jsx', import.meta.url), 'utf8');
+const canvasOverlaySource = fs.readFileSync(new URL('../canvas/CanvasOverlayDialogs.jsx', import.meta.url), 'utf8');
 const rendererSource = fs.readFileSync(new URL('../../../../../../../web/src/components/mini-apps/react-renderer.tsx', import.meta.url), 'utf8');
 
 test('storyboard form keeps AI import collapsed behind its entry button', () => {
@@ -119,6 +120,6 @@ test('canvas persists the selected storyboard asset on the edge', () => {
   assert.match(canvasSource, /resolveStoryboardHandleAssets\(sourceNode, conn\.sourceHandle\)/);
   assert.match(canvasSource, /getConnectionTargetsByInputType/);
   assert.match(canvasSource, /\.\.\.\(sourceAsset \? \{ sourceAsset \} : \{\}\)/);
-  assert.match(canvasSource, /pendingConnection\?\.assets \|\| \[\]/);
+  assert.match(canvasOverlaySource, /pendingConnection\?\.assets \|\| \[\]/);
   assert.match(canvasSource, /inputVariable/);
 });

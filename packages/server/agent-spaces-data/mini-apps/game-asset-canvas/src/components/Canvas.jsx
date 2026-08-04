@@ -1,44 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Background, BackgroundVariant, Controls, ControlButton, MarkerType,
-  ReactFlow, addEdge, applyEdgeChanges, useReactFlow,
+  BackgroundVariant, addEdge, applyEdgeChanges, useReactFlow,
 } from '@xyflow/react';
 import {
-  ResizablePanelGroup, ResizablePanel, ResizableHandle,
-  Images, MapPinned, toast, Checkbox,
-  CopyPlus, Crosshair, Trash2, FolderPlus,
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
-  openMediaGallery,
+  toast, CopyPlus, FolderPlus, openMediaGallery,
 } from '@agent-spaces/ui';
 
-import Toolbar from './Toolbar';
-import RightPanel from './RightPanel';
-import ConnectionLine from './ConnectionLine';
-import SettingsDialog from './SettingsDialog';
-import ExecutionQueuePopover from './ExecutionQueuePopover';
-import NodeFormDialog from './NodeFormDialog';
-import NodeExecuteDialog from './NodeExecuteDialog';
-import PromptPickerDialog from './PromptPickerDialog';
-import WorkspaceSwitcher from './WorkspaceSwitcher';
-import CanvasContextMenu from './canvas/CanvasContextMenu';
-import DropNodeMenu from './canvas/DropNodeMenu';
-import MultiSelectToolbar from './canvas/MultiSelectToolbar';
-import ImageSelectionToolbar from './canvas/ImageSelectionToolbar';
-import GroupOverlays from './canvas/GroupOverlays';
-import GroupMiniMap from './canvas/GroupMiniMap';
-import FloatingEdge from './canvas/FloatingEdge';
-import AlignmentGuides from './canvas/AlignmentGuides';
+import CanvasWorkspace from './canvas/CanvasWorkspace';
+import CanvasOverlayDialogs from './canvas/CanvasOverlayDialogs';
 import { ImageSelectionContext } from '../context/ImageSelectionContext';
 import useImageSelection from '../hooks/useImageSelection';
-import AssetLibraryPickerDialog from './AssetLibraryPickerDialog';
-import ExportImagesDialog from './ExportImagesDialog';
-import GroupConfirmDialog from './GroupConfirmDialog';
-import DeleteGroupDialog from './DeleteGroupDialog';
-import ConnectionTargetDialog from './ConnectionTargetDialog';
-import PastePropertiesDialog from './PastePropertiesDialog';
-import BatchRunConfirmDialog from './BatchRunConfirmDialog';
-import SavePresetDialog from './SavePresetDialog';
 import useAssetLibrary from '../hooks/useAssetLibrary';
 import {
   CONNECTION_INPUT_TYPES, getConnectionTargets, getConnectionTargetsByInputType, getNodeOutputType,
@@ -72,7 +43,7 @@ import useCharacterLibrary from '../hooks/useCharacterLibrary';
 import useStoryboardOperations from '../hooks/useStoryboardOperations';
 
 import { IMAGE_TAGS, NODE_TYPES, NODE_META } from '../utils/constants';
-import { NODE_COMPONENTS, NODE_PARAMS_SCHEMA, PANEL_ID_MAIN, PANEL_ID_RIGHT, dedupeTags, NODE_PRESET_MIME } from '../utils/canvas-constants';
+import { NODE_COMPONENTS, NODE_PARAMS_SCHEMA, dedupeTags, NODE_PRESET_MIME } from '../utils/canvas-constants';
 import { genId } from '../utils/canvas-id';
 import { copyNodes, pasteNodes } from '../utils/clipboard';
 import { serializePreset, instantiatePreset, presetBoundingBox } from '../utils/node-preset';
@@ -85,14 +56,8 @@ import { CanvasGalleryContextProvider } from '../utils/canvas-gallery';
 import { createOutputAssetItems } from '../utils/output-resources';
 import { COMPACT_NODE_ZOOM_THRESHOLD } from './nodes/compact-node';
 
-const EDGE_TYPES = { floating: FloatingEdge };
-const DEFAULT_EDGE_OPTIONS = {
-  type: 'floating',
-  markerEnd: { type: MarkerType.ArrowClosed },
-};
 const EDGE_PATH_STYLES = ['bezier', 'straight', 'step', 'smoothstep'];
 const EDGE_LINE_STYLES = ['solid', 'dashed'];
-const SNAP_GRID = [16, 16];
 
 function waitForCanvasState() {
   return new Promise((resolve) => {
@@ -563,9 +528,9 @@ export default function Canvas({ hostConfig }) {
   const nodeTypes = useMemo(() => NODE_COMPONENTS, []);
   const floatingEdges = useMemo(
     () => decorateEdgesForSelection(
-      edges, nodes, edgePathStyle, edgeLineStyle, NODE_PARAMS_SCHEMA,
+      edges, nodes, edgePathStyle, edgeLineStyle, NODE_PARAMS_SCHEMA, hoveredNodeId,
     ),
-    [edgeLineStyle, edgePathStyle, edges, nodes],
+    [edgeLineStyle, edgePathStyle, edges, hoveredNodeId, nodes],
   );
   const connectionLineStyle = useMemo(() => ({
     pathStyle: edgePathStyle,
@@ -1532,453 +1497,287 @@ export default function Canvas({ hostConfig }) {
 
   return (
     <CanvasGalleryContextProvider value={openCanvasGallery}>
-    <ImageSelectionContext.Provider value={imageSelection}>
-    <ResizablePanelGroup
-      direction="horizontal"
-      className="h-full min-h-0"
-      defaultLayout={panelLayout}
-      onLayoutChange={handlePanelLayoutChange}
-    >
-      <ResizablePanel id={PANEL_ID_MAIN} order={1} minSize="40%">
-        <div className="flex h-full min-h-0 flex-col bg-background text-foreground">
-          <Toolbar
-            onClear={crud.handleClear}
-            onAutoLayout={crud.handleAutoLayout}
-            onExport={crud.handleExport}
-            onExportAssetLibrary={handleExportAssetLibrary}
-            onImport={crud.handleImport}
-            onImportAssetLibrary={handleImportAssetLibrary}
-            onExportWorkspace={handleExportWorkspace}
-            onImportWorkspace={handleImportWorkspace}
-            onImportImages={handleImportImages}
-            onOpenSettings={() => setSettingsOpen(true)}
-            onOpenPromptManager={() => setPromptManagerOpen(true)}
-            onBackfillThumbnails={handleBackfillThumbnails}
-            edgePathStyle={edgePathStyle}
-            edgeLineStyle={edgeLineStyle}
-            edgePathStyles={EDGE_PATH_STYLES}
-            edgeLineStyles={EDGE_LINE_STYLES}
-            onEdgePathStyleChange={setEdgePathStyle}
-            onEdgeLineStyleChange={setEdgeLineStyle}
-            bgVariant={settings.bgVariant}
-            handlePosition={handlePosition}
-            snapEnabled={snapEnabled}
-            onCanvasStyleChange={handleCanvasStyleChange}
-            onSelectAll={selection.handleSelectAll}
-            onInvertSelect={selection.handleInvertSelect}
-            onClearSelection={selection.handleClearSelection}
-            operationHistory={operationHistory}
-            onUndo={undo}
-            onRedo={redo}
-            canUndo={canUndo}
-            canRedo={canRedo}
-            workspaceSlot={(
-              <WorkspaceSwitcher
-                workspaces={workspaces}
-                activeId={activeId}
-                onSwitch={handleSwitch}
-                onCreate={handleCreate}
-                onDelete={handleDelete}
-                onRename={renameWorkspace}
-              />
-            )}
-            queueSlot={(
-              <ExecutionQueuePopover
-                jobs={jobs}
-                runningNodes={standaloneRunningNodes}
-                runningCount={runningCount + queuedCount + standaloneRunningNodes.length}
-                concurrency={settings.executionConcurrency}
-                onConcurrencyChange={handleExecutionConcurrencyChange}
-                onCancel={cancel}
-                onCancelNode={handleCancelProcess}
-                onCancelAll={handleCancelAllTasks}
-                onClearFinished={clearFinished}
-              />
-            )}
+      <ImageSelectionContext.Provider value={imageSelection}>
+        <CanvasWorkspace
+          activeId={activeId}
+          panelLayout={panelLayout}
+          onPanelLayoutChange={handlePanelLayoutChange}
+          toolbarProps={{
+            onClear: crud.handleClear,
+            onAutoLayout: crud.handleAutoLayout,
+            onExport: crud.handleExport,
+            onExportAssetLibrary: handleExportAssetLibrary,
+            onImport: crud.handleImport,
+            onImportAssetLibrary: handleImportAssetLibrary,
+            onExportWorkspace: handleExportWorkspace,
+            onImportWorkspace: handleImportWorkspace,
+            onImportImages: handleImportImages,
+            onOpenSettings: () => setSettingsOpen(true),
+            onOpenPromptManager: () => setPromptManagerOpen(true),
+            onBackfillThumbnails: handleBackfillThumbnails,
+            edgePathStyle,
+            edgeLineStyle,
+            edgePathStyles: EDGE_PATH_STYLES,
+            edgeLineStyles: EDGE_LINE_STYLES,
+            onEdgePathStyleChange: setEdgePathStyle,
+            onEdgeLineStyleChange: setEdgeLineStyle,
+            bgVariant: settings.bgVariant,
+            handlePosition,
+            snapEnabled,
+            onCanvasStyleChange: handleCanvasStyleChange,
+            onSelectAll: selection.handleSelectAll,
+            onInvertSelect: selection.handleInvertSelect,
+            onClearSelection: selection.handleClearSelection,
+            operationHistory,
+            onUndo: undo,
+            onRedo: redo,
+            canUndo,
+            canRedo,
+          }}
+          workspaceSwitcherProps={{
+            workspaces,
+            activeId,
+            onSwitch: handleSwitch,
+            onCreate: handleCreate,
+            onDelete: handleDelete,
+            onRename: renameWorkspace,
+          }}
+          queueProps={{
+            jobs,
+            runningNodes: standaloneRunningNodes,
+            runningCount: runningCount + queuedCount + standaloneRunningNodes.length,
+            concurrency: settings.executionConcurrency,
+            onConcurrencyChange: handleExecutionConcurrencyChange,
+            onCancel: cancel,
+            onCancelNode: handleCancelProcess,
+            onCancelAll: handleCancelAllTasks,
+            onClearFinished: clearFinished,
+          }}
+          canvasContainerProps={{
+            ref: wrappingRef,
+            onDrop: handleCanvasDrop,
+            onDragOver: handleCanvasDragOver,
+            onDragLeave: dragAutoPan.handleDragLeave,
+            onContextMenu: crud.handleContextMenu,
+          }}
+          canvasContextMenuProps={{
+            onPick: crud.handleAddAtMenu,
+            imageSelectionMenuProps,
+            onSelectContextImage: imageSelection.selectForContextMenu,
+          }}
+          reactFlowProps={{
+            nodes: renderedNodes,
+            edges: floatingEdges,
+            viewport,
+            onViewportChange: setViewport,
+            onNodesChange,
+            onEdgesChange,
+            onConnect,
+            onConnectStart: () => setIsConnecting(true),
+            onConnectEnd,
+            onNodeMouseEnter,
+            onNodeMouseLeave,
+            onNodeContextMenu: handleNodeContextMenu,
+            onPaneClick: clearGroupSelection,
+            onNodeClick: clearGroupSelection,
+            onEdgeClick: clearGroupSelection,
+            onNodeDragStart: groupOps.handleNodeDragStart,
+            onNodeDrag: groupOps.handleNodeDrag,
+            onNodeDragStop: handleNodeDragStop,
+            connectionLineStyle,
+            onSelectionChange: selection.onSelectionChange,
+            onNodesDelete,
+            deleteKeyCode: (groupOps.selectedGroupId || groupOps.deleteGroupId) ? null : deleteKeyCode,
+            nodeTypes,
+            snapToGrid: snapEnabled,
+            fitView: !hasSavedViewport,
+          }}
+          backgroundVariant={backgroundVariant}
+          alignmentProps={{ guides: alignment.guides, viewport }}
+          previewControl={{
+            enabled: allNodePreviewsEnabled,
+            title: allNodePreviewsEnabled ? '关闭所有节点的预览模式' : '开启所有节点的预览模式',
+            onToggle: enableAllNodePreviews,
+          }}
+          minimapControl={{ visible: showMinimap, onToggle: toggleMinimap }}
+          minimapProps={{ items: groupOps.groupOverlayItems, nodes: decoratedNodes }}
+          groupOverlayProps={{
+            items: groupOps.groupOverlayItems,
+            groups,
+            nodes,
+            selectedGroupId: groupOps.selectedGroupId,
+            dropTargetGroupId: groupOps.dropTargetGroupId,
+            onSelect: groupOps.setSelectedGroupId,
+            onSelectNodes: groupOps.selectGroupNodes,
+            onDelete: groupOps.requestDeleteGroup,
+            onUpdate: groupOps.updateGroup,
+            onMove: groupOps.handleGroupMove,
+            onAutoLayout: crud.handleAutoLayout,
+            onConnect: groupOps.handleGroupConnect,
+            screenDeltaToFlowDelta: groupOps.screenDeltaToFlowDelta,
+            inputSlotCounts: groupExecution.inputSlotCounts,
+            runningGroupIds: groupExecution.runningGroupIds,
+            onRunGroup: handleRunGroup,
+            onRunAllExecution: handleRunAllGroup,
+            onStopAllExecution: handleStopAllGroup,
+            runAllStates: groupExecution.runAllStates,
+            onSetExecutionMode: groupExecution.setMode,
+            onSetExecutionCount: groupExecution.setCount,
+            onSwitchExecutionRun: groupExecution.switchRun,
+            onUploadExecutionAssets: groupExecution.uploadAssets,
+            onRemoveExecutionAsset: groupExecution.removeAsset,
+            onSetOutputBinding: groupExecution.setOutputBinding,
+            onDisconnectOutputBinding: groupExecution.disconnectOutputBinding,
+          }}
+          multiSelectProps={{
+            selectionCount: selection.selectionCount,
+            onCreateGroup: groupOps.createGroupFromSelection,
+            onRunSelected: handleRunSelected,
+            onAlignDistribute: selection.alignDistribute,
+            onApplyGridLayout: selection.applyGridLayout,
+            onDeleteSelected: selection.deleteSelectedNodes,
+            onSavePreset: handleSavePreset,
+          }}
+          imageSelectionMenuProps={imageSelectionMenuProps}
+          dropNodeMenuProps={{
+            dropNodeMenu,
+            onClose: () => setDropNodeMenu(null),
+            onPick: crud.handleAddAtDrop,
+          }}
+          rightPanelProps={{
+            nodes,
+            edges,
+            groups,
+            selectedNodeId: selectedId,
+            onSelectNode: crud.handleSelectNode,
+            onLocateNode: crud.handleLocateNode,
+            onDeleteNode: handleDeleteNodeWithHistoryCheck,
+            onAdd: crud.handleAdd,
+            onDragStartNode: crud.handleDragStartNode,
+            onExecute: (type) => setExecuteState({ nodeType: type }),
+            presets,
+            onAddPreset: handleAddPreset,
+            onDragStartPreset: handleDragStartPreset,
+            onDeletePreset: removePreset,
+            history,
+            assetCategories,
+            onRemoveHistory: removeHistory,
+            onClearHistory: handleClearHistoryAndReset,
+            onRestoreFromNodes: handleRestoreHistoryFromNodes,
+            onUseImage: selection.handleUseImage,
+            onInsertHistory: handleInsertHistoryWithMenu,
+            onDragStartHistory: crud.handleDragStartHistory,
+            onAddToAssets: handleAddToAssets,
+            onInsertImagesToCanvas: handleInsertImagesToCanvas,
+            activeTab: rightTab,
+            onActiveTabChange: setRightTab,
+            historyFocusNodeId,
+            workspaceId: activeId,
+            agentChatPlacement: hostConfig?.agentChatPlacement,
+          }}
+        >
+          <CanvasOverlayDialogs
+            nodeContextMenu={nodeContextMenu}
+            onCloseNodeContextMenu={() => setNodeContextMenu(null)}
+            onNodeContextAction={runNodeContextAction}
+            settingsDialog={{
+              open: settingsOpen,
+              value: settings,
+              onClose: () => setSettingsOpen(false),
+              onSave: saveSettings,
+            }}
+            batchRunDialog={{
+              open: !!batchRunConfirm,
+              outputCount: batchRunConfirm?.outputCount || 0,
+              onCancel: () => setBatchRunConfirm(null),
+              onConfirm: () => {
+                const pending = batchRunConfirm;
+                setBatchRunConfirm(null);
+                if (pending?.nodeIds?.length) submitBatchRun(pending.nodeIds);
+              },
+            }}
+            deleteNodeDialog={{
+              state: deleteNodeHistoryConfirm,
+              onClose: () => setDeleteNodeHistoryConfirm(null),
+              onToggleHistory: (checked) => setDeleteNodeHistoryConfirm((current) => (
+                current ? { ...current, alsoDeleteHistory: !!checked } : current
+              )),
+              onConfirm: confirmDeleteNodeWithHistory,
+            }}
+            promptManagerDialog={{
+              open: promptManagerOpen,
+              onClose: () => setPromptManagerOpen(false),
+            }}
+            assetPickerDialog={{
+              open: assetsPickerOpen,
+              onClose: () => setAssetsPickerOpen(false),
+              workspaceId: activeId,
+              title: '添加到素材库（选择目标分组）',
+              confirmLabel: '添加 ' + assetsPickerImages.length + ' 张图',
+              onConfirm: handleAssetsPickerConfirm,
+            }}
+            nodeFormDialog={{
+              open: !!formState,
+              nodeType: formState?.nodeType,
+              initialImages: formState?.initialImages,
+              settings,
+              onClose: () => setFormState(null),
+              onSubmit: crud.handleFormSubmit,
+            }}
+            nodeExecuteDialog={{
+              open: !!executeState,
+              nodeType: executeState?.nodeType,
+              executions,
+              settings,
+              onClose: () => setExecuteState(null),
+            }}
+            exportImagesDialog={{
+              open: !!exportState,
+              images: exportState?.images || [],
+              onClose: () => setExportState(null),
+              onExport: (urls) => {
+                setExportState(null);
+                handleExportSelection(urls);
+              },
+            }}
+            groupConfirmDialog={{
+              state: groupState,
+              onClose: () => setGroupState(null),
+              onComplete: completeImageExport,
+            }}
+            deleteGroupDialog={{
+              open: !!groupOps.deleteGroupId,
+              group: groups.find((group) => group.id === groupOps.deleteGroupId) || null,
+              nodeCount: groupOps.deleteGroupNodeCount,
+              onClose: groupOps.cancelDeleteGroup,
+              onConfirm: groupOps.confirmDeleteGroup,
+            }}
+            connectionTargetDialog={{
+              state: pendingConnection,
+              onClose: () => setPendingConnection(null),
+              onConnect: addConnections,
+            }}
+            selectionPropertyPaste={{
+              state: selection.propertyPaste,
+              onClose: selection.cancelPropertyPaste,
+              onApply: selection.applyProperties,
+              onContinuePaste: selection.continuePaste,
+            }}
+            groupPropertyPaste={{
+              state: groupExecution.propertyApply,
+              onClose: groupExecution.cancelPropertyApply,
+              onApply: groupExecution.applyPropertiesToRuns,
+            }}
+            savePresetDialog={{
+              open: !!savePresetState,
+              pendingNodes: savePresetState?.pendingNodes,
+              groupCount: savePresetState?.groupCount || 0,
+              onClose: () => setSavePresetState(null),
+              onConfirm: confirmSavePreset,
+            }}
           />
-          {/* 右键菜单：ContextMenuTrigger 用 render prop 包裹画布容器（Base UI render 合并 ref/props/children） */}
-          <CanvasContextMenu
-            triggerElement={
-              <div
-                className="relative min-h-0 flex-1"
-                ref={wrappingRef}
-                onDrop={handleCanvasDrop}
-                onDragOver={handleCanvasDragOver}
-                onDragLeave={dragAutoPan.handleDragLeave}
-                onContextMenu={crud.handleContextMenu}
-              />
-            }
-            onPick={crud.handleAddAtMenu}
-            imageSelectionMenuProps={imageSelectionMenuProps}
-            onSelectContextImage={imageSelection.selectForContextMenu}
-          >
-            <ReactFlow
-              key={activeId}
-              nodes={renderedNodes}
-              edges={floatingEdges}
-              viewport={viewport}
-              onViewportChange={setViewport}
-              onNodesChange={onNodesChange}
-              onEdgesChange={onEdgesChange}
-              onConnect={onConnect}
-              onConnectStart={() => setIsConnecting(true)}
-              onConnectEnd={onConnectEnd}
-              onNodeMouseEnter={onNodeMouseEnter}
-              onNodeMouseLeave={onNodeMouseLeave}
-              onNodeContextMenu={handleNodeContextMenu}
-              onPaneClick={clearGroupSelection}
-              onNodeClick={clearGroupSelection}
-              onEdgeClick={clearGroupSelection}
-              onNodeDragStart={groupOps.handleNodeDragStart}
-              onNodeDrag={groupOps.handleNodeDrag}
-              onNodeDragStop={handleNodeDragStop}
-              connectionLineComponent={ConnectionLine}
-              connectionLineStyle={connectionLineStyle}
-              connectionRadius={160}
-              onSelectionChange={selection.onSelectionChange}
-              onNodesDelete={onNodesDelete}
-              deleteKeyCode={(groupOps.selectedGroupId || groupOps.deleteGroupId) ? null : deleteKeyCode}
-              nodeTypes={nodeTypes}
-              edgeTypes={EDGE_TYPES}
-              defaultEdgeOptions={DEFAULT_EDGE_OPTIONS}
-              snapToGrid={snapEnabled}
-              snapGrid={SNAP_GRID}
-              minZoom={0.01}
-              fitView={!hasSavedViewport}
-              proOptions={{ hideAttribution: true }}
-            >
-              <Background variant={backgroundVariant} gap={16} size={1} />
-              <AlignmentGuides guides={alignment.guides} viewport={viewport} />
-              <Controls>
-                <ControlButton
-                  title={allNodePreviewsEnabled ? '关闭所有节点的预览模式' : '开启所有节点的预览模式'}
-                  aria-label={allNodePreviewsEnabled ? '关闭所有节点的预览模式' : '开启所有节点的预览模式'}
-                  aria-pressed={allNodePreviewsEnabled}
-                  onClick={enableAllNodePreviews}
-                  style={{ background: allNodePreviewsEnabled ? 'var(--accent)' : undefined }}
-                >
-                  <Images className="h-4 w-4" />
-                </ControlButton>
-                <ControlButton
-                  title={showMinimap ? '隐藏小地图' : '显示小地图'}
-                  onClick={toggleMinimap}
-                  style={{ background: showMinimap ? undefined : 'var(--accent)' }}
-                >
-                  <MapPinned className="h-4 w-4" />
-                </ControlButton>
-              </Controls>
-              {showMinimap && (
-                <GroupMiniMap
-                  items={groupOps.groupOverlayItems}
-                  nodes={decoratedNodes}
-                  pannable
-                  zoomable
-                  nodeColor={(n) => (NODE_META[n.type]?.color || '#94a3b8')}
-                  maskColor="rgb(0 0 0 / 0.05)"
-                />
-              )}
-              {/* 分组 overlay：ViewportPortal 内跟随画布 pan/zoom */}
-              <GroupOverlays
-                items={groupOps.groupOverlayItems}
-                groups={groups}
-                nodes={nodes}
-                selectedGroupId={groupOps.selectedGroupId}
-                dropTargetGroupId={groupOps.dropTargetGroupId}
-                onSelect={groupOps.setSelectedGroupId}
-                onSelectNodes={groupOps.selectGroupNodes}
-                onDelete={groupOps.requestDeleteGroup}
-                onUpdate={groupOps.updateGroup}
-                onMove={groupOps.handleGroupMove}
-                onAutoLayout={crud.handleAutoLayout}
-                onConnect={groupOps.handleGroupConnect}
-                screenDeltaToFlowDelta={groupOps.screenDeltaToFlowDelta}
-                inputSlotCounts={groupExecution.inputSlotCounts}
-                runningGroupIds={groupExecution.runningGroupIds}
-                onRunGroup={handleRunGroup}
-                onRunAllExecution={handleRunAllGroup}
-                onStopAllExecution={handleStopAllGroup}
-                runAllStates={groupExecution.runAllStates}
-                onSetExecutionMode={groupExecution.setMode}
-                onSetExecutionCount={groupExecution.setCount}
-                onSwitchExecutionRun={groupExecution.switchRun}
-                onUploadExecutionAssets={groupExecution.uploadAssets}
-                onRemoveExecutionAsset={groupExecution.removeAsset}
-                onSetOutputBinding={groupExecution.setOutputBinding}
-                onDisconnectOutputBinding={groupExecution.disconnectOutputBinding}
-              />
-            </ReactFlow>
-
-            {/* 底部多选 toolbar */}
-            <MultiSelectToolbar
-              selectionCount={selection.selectionCount}
-              onCreateGroup={groupOps.createGroupFromSelection}
-              onRunSelected={handleRunSelected}
-              onAlignDistribute={selection.alignDistribute}
-              onApplyGridLayout={selection.applyGridLayout}
-              onDeleteSelected={selection.deleteSelectedNodes}
-              onSavePreset={handleSavePreset}
-            />
-
-            {/* 顶部图片选中 toolbar：跨节点选中图片后浮出，编辑/抠图/放大作用于选中图并集 */}
-            <ImageSelectionToolbar
-              {...imageSelectionMenuProps}
-            />
-
-            {/* 拖拽连线到空白处的「添加节点」菜单 */}
-            <DropNodeMenu
-              dropNodeMenu={dropNodeMenu}
-              onClose={() => setDropNodeMenu(null)}
-              onPick={crud.handleAddAtDrop}
-            />
-          </CanvasContextMenu>
-        </div>
-      </ResizablePanel>
-
-      <ResizableHandle />
-
-      <ResizablePanel id={PANEL_ID_RIGHT} order={2} minSize="18%" maxSize="48%">
-        <RightPanel
-          nodes={nodes}
-          edges={edges}
-          groups={groups}
-          selectedNodeId={selectedId}
-          onSelectNode={crud.handleSelectNode}
-          onLocateNode={crud.handleLocateNode}
-          onDeleteNode={handleDeleteNodeWithHistoryCheck}
-          onAdd={crud.handleAdd}
-          onDragStartNode={crud.handleDragStartNode}
-          onExecute={(type) => setExecuteState({ nodeType: type })}
-          presets={presets}
-          onAddPreset={handleAddPreset}
-          onDragStartPreset={handleDragStartPreset}
-          onDeletePreset={removePreset}
-          history={history}
-          assetCategories={assetCategories}
-          onRemoveHistory={removeHistory}
-          onClearHistory={handleClearHistoryAndReset}
-          onRestoreFromNodes={handleRestoreHistoryFromNodes}
-          onUseImage={selection.handleUseImage}
-          onInsertHistory={handleInsertHistoryWithMenu}
-          onDragStartHistory={crud.handleDragStartHistory}
-          onAddToAssets={handleAddToAssets}
-          onInsertImagesToCanvas={handleInsertImagesToCanvas}
-          activeTab={rightTab}
-          onActiveTabChange={setRightTab}
-          historyFocusNodeId={historyFocusNodeId}
-          workspaceId={activeId}
-          agentChatPlacement={hostConfig?.agentChatPlacement}
-        />
-      </ResizablePanel>
-
-      {/* 节点右键菜单：自定义浮层（克隆 / 定位到历史记录 / 删除）。
-          透明遮罩捕获外部点击关闭；菜单项点击后调 runNodeContextAction。 */}
-      {nodeContextMenu && (
-        <>
-          <div
-            className="fixed inset-0 z-[40]"
-            onPointerDown={() => setNodeContextMenu(null)}
-            onContextMenu={(e) => { e.preventDefault(); setNodeContextMenu(null); }}
-          />
-          <div
-            className="nodrag nopan nowheel fixed z-[41] min-w-40 overflow-hidden rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md"
-            style={{ left: nodeContextMenu.clientX, top: nodeContextMenu.clientY }}
-            onPointerDown={(e) => e.stopPropagation()}
-          >
-            <button
-              type="button"
-              onClick={() => runNodeContextAction('clone', nodeContextMenu.nodeId)}
-              className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs transition hover:bg-accent"
-            >
-              <CopyPlus className="h-3.5 w-3.5" />
-              克隆节点
-            </button>
-            <button
-              type="button"
-              onClick={() => runNodeContextAction('locateHistory', nodeContextMenu.nodeId)}
-              className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs transition hover:bg-accent"
-            >
-              <Crosshair className="h-3.5 w-3.5" />
-              定位到历史记录
-            </button>
-            <button
-              type="button"
-              onClick={() => runNodeContextAction('delete', nodeContextMenu.nodeId)}
-              className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs text-red-500 transition hover:bg-accent"
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-              删除节点
-            </button>
-          </div>
-        </>
-      )}
-
-      <SettingsDialog
-        open={settingsOpen}
-        value={settings}
-        onClose={() => setSettingsOpen(false)}
-        onSave={async (cfg) => {
-          await saveSettings(cfg);
-        }}
-      />
-
-      <BatchRunConfirmDialog
-        open={!!batchRunConfirm}
-        outputCount={batchRunConfirm?.outputCount || 0}
-        onCancel={() => setBatchRunConfirm(null)}
-        onConfirm={() => {
-          const pending = batchRunConfirm;
-          setBatchRunConfirm(null);
-          if (pending?.nodeIds?.length) submitBatchRun(pending.nodeIds);
-        }}
-      />
-      {/* 删节点联动历史确认：该节点有关联生成记录时弹出，问是否同时删记录 */}
-      <AlertDialog
-        open={!!deleteNodeHistoryConfirm}
-        onOpenChange={(next) => { if (!next) setDeleteNodeHistoryConfirm(null); }}
-      >
-        <AlertDialogContent size="sm">
-          <AlertDialogHeader>
-            <AlertDialogTitle>删除节点？</AlertDialogTitle>
-            <AlertDialogDescription>
-              {deleteNodeHistoryConfirm?.nodeLabel} 有 {deleteNodeHistoryConfirm?.relatedCount} 条关联的生成记录。
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <label className="nodrag nopan nowheel flex cursor-pointer items-center gap-2 py-1 text-sm">
-            <Checkbox
-              checked={!!deleteNodeHistoryConfirm?.alsoDeleteHistory}
-              onCheckedChange={(checked) => setDeleteNodeHistoryConfirm((cur) => cur ? { ...cur, alsoDeleteHistory: !!checked } : cur)}
-            />
-            <span>同时删除关联的生成记录</span>
-          </label>
-          <AlertDialogFooter>
-            <AlertDialogCancel>取消</AlertDialogCancel>
-            <AlertDialogAction
-              variant="destructive"
-              onClick={() => confirmDeleteNodeWithHistory(!!deleteNodeHistoryConfirm?.alsoDeleteHistory)}
-            >
-              删除
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* 顶部菜单「提示词管理」入口：pickerMode=false 纯管理（不填充、不关闭） */}
-      <PromptPickerDialog
-        open={promptManagerOpen}
-        pickerMode={false}
-        onClose={() => setPromptManagerOpen(false)}
-      />
-
-      <AssetLibraryPickerDialog
-        open={assetsPickerOpen}
-        onClose={() => setAssetsPickerOpen(false)}
-        workspaceId={activeId}
-        mode="group"
-        multi
-        title="添加到素材库（选择目标分组）"
-        confirmLabel={`添加 ${assetsPickerImages.length} 张图`}
-        onConfirm={handleAssetsPickerConfirm}
-      />
-
-      <NodeFormDialog
-        open={!!formState}
-        nodeType={formState?.nodeType}
-        initialImages={formState?.initialImages}
-        settings={settings}
-        onClose={() => setFormState(null)}
-        onSubmit={crud.handleFormSubmit}
-      />
-
-      <NodeExecuteDialog
-        open={!!executeState}
-        nodeType={executeState?.nodeType}
-        executions={executions}
-        settings={settings}
-        onClose={() => setExecuteState(null)}
-      />
-
-      <ExportImagesDialog
-        open={!!exportState}
-        images={exportState?.images || []}
-        onClose={() => setExportState(null)}
-        onExport={(urls) => {
-          // 多图选完 → 关闭选择框 → 弹分组确认框
-          setExportState(null);
-          handleExportSelection(urls);
-        }}
-      />
-
-      <GroupConfirmDialog
-        open={!!groupState}
-        count={groupState?.urls?.length}
-        defaultGroupName={groupState?.sourceNode
-          ? `${NODE_META[groupState.sourceNode.type]?.label || '导出'} ${new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}`
-          : ''}
-        onClose={() => setGroupState(null)}
-        onConfirm={(groupName) => {
-          // 创建分组（groupName 为 null 表示用户未填名，用默认）
-          if (groupState?.sourceNode) {
-            completeImageExport(groupState.sourceNode, groupState.urls, { groupName: groupName ?? '' });
-          }
-        }}
-        onCancel={() => {
-          // 不分组：独立节点加入画布
-          if (groupState?.sourceNode) {
-            completeImageExport(groupState.sourceNode, groupState.urls);
-          }
-        }}
-      />
-
-      <DeleteGroupDialog
-        open={!!groupOps.deleteGroupId}
-        group={groups.find((group) => group.id === groupOps.deleteGroupId) || null}
-        nodeCount={groupOps.deleteGroupNodeCount}
-        onClose={groupOps.cancelDeleteGroup}
-        onConfirm={groupOps.confirmDeleteGroup}
-      />
-
-      <ConnectionTargetDialog
-        open={!!pendingConnection}
-        targets={pendingConnection?.targets || []}
-        targetsByInputType={pendingConnection?.targetsByInputType}
-        assets={pendingConnection?.assets || []}
-        inputType={pendingConnection?.inputType}
-        onClose={() => setPendingConnection(null)}
-        onSelect={(inputTarget, sourceAsset, inputType, inputVariable) => {
-          if (pendingConnection?.conn) {
-            addConnections(
-              pendingConnection.conn,
-              inputTarget,
-              inputType || pendingConnection.inputType,
-              sourceAsset,
-              inputVariable,
-            );
-          }
-          setPendingConnection(null);
-        }}
-      />
-
-      <PastePropertiesDialog
-        state={selection.propertyPaste}
-        onClose={selection.cancelPropertyPaste}
-        onApply={selection.applyProperties}
-        onContinuePaste={selection.continuePaste}
-      />
-      <PastePropertiesDialog
-        state={groupExecution.propertyApply}
-        onClose={groupExecution.cancelPropertyApply}
-        onApply={groupExecution.applyPropertiesToRuns}
-      />
-
-      <SavePresetDialog
-        open={!!savePresetState}
-        pendingNodes={savePresetState?.pendingNodes}
-        groupCount={savePresetState?.groupCount || 0}
-        onClose={() => setSavePresetState(null)}
-        onConfirm={confirmSavePreset}
-      />
-    </ResizablePanelGroup>
-    </ImageSelectionContext.Provider>
+        </CanvasWorkspace>
+      </ImageSelectionContext.Provider>
     </CanvasGalleryContextProvider>
   );
 }
