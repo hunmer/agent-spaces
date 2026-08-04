@@ -1060,11 +1060,11 @@
     "workflow.jimeng",
     "workflow.ai-image"
   ],
-  "lastRunAt": 1785833633240,
+  "lastRunAt": 1785864798935,
   "groups": [],
   "description": "编辑图片",
   "variables": [],
-  "lastOpenedAt": 1785740797078,
+  "lastOpenedAt": 1785862763347,
   "pluginConfigSchemes": {
     "workflow.ai-image": "muskapi"
   }

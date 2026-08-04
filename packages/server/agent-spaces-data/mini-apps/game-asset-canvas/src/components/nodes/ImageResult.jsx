@@ -273,7 +273,7 @@ export default function ImageResult({ nodeId, images, resources = [], max = 0, p
                   : 'border-border'
               } ${sortable ? 'cursor-grab active:cursor-grabbing' : ''}`}
             >
-              <ImageHoverCard url={url} triggerShape="fixed" className="h-full w-full border-0">
+              <ImageHoverCard disabled={draggingIdx !== null} url={url} triggerShape="fixed" className="h-full w-full border-0">
                 <GridImage url={item.resource.thumb || url} />
               </ImageHoverCard>
               {item.label && <OutputLabelBadge label={item.label} />}

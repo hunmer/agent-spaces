@@ -167,6 +167,7 @@ Agent → api.js handler → ctx.requestClient(type, payload, timeoutMs)
 32. **视频切换清理不能在首次挂载执行**：`VideoEditorDialog` 的 `currentVideo` effect 仅在前后视频 URL 确实变化时清空 `frames/animGroups/videoInfo`；必须用 ref 记录前值并跳过首次挂载，否则刷新页面会把已持久化动画组立即写成空数组。
 33. **网格拼接编辑态独立持久化**：原 `ipSpriteMerge` 节点对外名称为“网格拼接”，仍走 `sprite-merge` 与 `onProcessLocal` 的历史/状态链路。编辑器顺序及列数、间隔、抠图、统一背景存 `data.gridStitchData`，混合上传/上游输入通过 URL 顺序表恢复；输入删除时丢弃旧 URL，新输入追加。`CutoutSettings` 与 Sheet 拆分编辑器共享，修改时必须保留拆分器普通模式常驻吸色入口；网格编辑器的吸管从左侧原图取色，坐标必须按 `object-contain` 显示范围映射。左侧网格固定铺满可用高度、图片保持 contain，禁止恢复滚动容器或正方形单元格约束。
 34. **边标签跟随节点 hover**：`decorateEdgesForSelection` 的选中态只负责边强调样式；关联边 label 由 `Canvas` 传入的 `hoveredNodeId` 控制，鼠标离开节点后立即隐藏，不把 hover 状态写入持久化 edges。
+35. **图片排序时隐藏 HoverCard**：`FileUpload`、`UpstreamImageList`、`ImageResult` 在排序拖拽期间统一向 `ImageHoverCard` 传 `disabled`；拖拽开始立即关闭预览，结束后恢复普通悬浮预览。
 
 ## 工作区数据目录（产图落本地）
 

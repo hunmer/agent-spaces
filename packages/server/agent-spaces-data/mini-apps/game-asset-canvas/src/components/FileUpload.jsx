@@ -301,7 +301,7 @@ export default function FileUpload({ nodeId, value = [], onChange, max = 6, plac
                     : item.kind === 'extra' ? 'border-border bg-muted/40' : 'border-border'
                 } ${sortable ? 'cursor-grab active:cursor-grabbing' : ''}`}
               >
-                <ImageHoverCard url={item.src} triggerShape="fixed" className="h-full w-full border-0">
+                <ImageHoverCard disabled={draggingIdx !== null} url={item.src} triggerShape="fixed" className="h-full w-full border-0">
                   <img src={item.src} alt="" draggable={false} className="h-full w-full object-cover" />
                 </ImageHoverCard>
                 {/* 右上角选择 checkbox：hover 显示空框，选中时常驻显示实心勾。点击切换选中（天然多选）。 */}

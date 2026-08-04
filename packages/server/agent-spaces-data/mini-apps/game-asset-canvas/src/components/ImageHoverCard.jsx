@@ -33,6 +33,7 @@ import {
  *   className?: string,                // trigger 容器额外 className
  *   triggerShape?: 'square'|'fixed',   // 'square'(默认 aspect-square) | 'fixed'(不强制形状，配合 className 的 w/h)
  *   hoverDelay?: number,               // HoverCard 显示延迟 ms（默认 500）
+ *   disabled?: boolean,                // 禁止打开；变为 true 时立即关闭
  *   closeOnScroll?: boolean,           // 任意祖先滚动时立即关闭
  *   onDragStart?: (e:Event)=>void,
  *   children: React.ReactNode,
@@ -46,6 +47,7 @@ export default function ImageHoverCard({
   className,
   triggerShape = 'square',
   hoverDelay = 500,
+  disabled = false,
   closeOnScroll = false,
   onOpenChange,
   renderTrigger,
@@ -54,9 +56,16 @@ export default function ImageHoverCard({
   const [hoverOpen, setHoverOpen] = useState(false);
 
   const handleOpenChange = (open) => {
-    setHoverOpen(open);
-    onOpenChange?.(open);
+    const nextOpen = disabled ? false : open;
+    setHoverOpen(nextOpen);
+    onOpenChange?.(nextOpen);
   };
+
+  useEffect(() => {
+    if (!disabled || !hoverOpen) return;
+    setHoverOpen(false);
+    onOpenChange?.(false);
+  }, [disabled, hoverOpen, onOpenChange]);
 
   useEffect(() => {
     if (!hoverOpen || !closeOnScroll || typeof document === 'undefined') return;
@@ -75,7 +84,7 @@ export default function ImageHoverCard({
   const shapeClass = triggerShape === 'fixed' ? '' : 'aspect-square ';
 
   return (
-    <HoverCard open={hoverOpen} onOpenChange={handleOpenChange}>
+    <HoverCard open={!disabled && hoverOpen} onOpenChange={handleOpenChange}>
       <HoverCardTrigger
         delay={hoverDelay}
         render={

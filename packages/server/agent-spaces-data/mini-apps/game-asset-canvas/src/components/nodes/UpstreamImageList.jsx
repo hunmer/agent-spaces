@@ -128,7 +128,7 @@ export default function UpstreamImageList({
                 <span className="shrink-0 text-[10px] leading-none text-muted-foreground select-none">⠿</span>
               )}
               <div className="relative flex h-8 w-8 shrink-0 items-center justify-center overflow-visible rounded">
-                <ImageHoverCard url={url} triggerShape="fixed" className="flex h-full w-full items-center justify-center border-0">
+                <ImageHoverCard disabled={draggingIdx !== null} url={url} triggerShape="fixed" className="flex h-full w-full items-center justify-center border-0">
                   <img
                     src={resourceByUrl.get(url)?.thumb || url}
                     alt=""

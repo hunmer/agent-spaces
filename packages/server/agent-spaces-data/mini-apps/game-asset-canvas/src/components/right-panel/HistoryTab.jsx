@@ -11,6 +11,7 @@ import {
 import {
   List, LayoutGrid, Send, Maximize2, ClipboardCopy, Trash2, Crosshair,
   ArrowDownWideNarrow, RotateCcw, Checkbox, Download,
+  FlipHorizontal2, CheckCheck, X,
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@agent-spaces/ui';
@@ -293,16 +294,42 @@ export default function HistoryTab({
   );
 
   // ---- masonry 图片级多选（须在 flatImageItems 之后，避免 TDZ） ----
-  const toggleUrlSelect = (url) => {
+  // shift+click checkbox 进行范围选择（masonry 视图）：以「上次点击的 url」为 anchor，
+  // 把 anchor 到当前 url 之间的所有图片一次性加入选中集。
+  // 普通点击保持原 toggle 行为，并把 anchor 更新为当前 url。
+  const lastAnchorUrlRef = useRef(null);
+  const toggleUrlSelect = (url, shiftKey) => {
     setSelectedUrls((prev) => {
+      if (shiftKey && lastAnchorUrlRef.current && lastAnchorUrlRef.current !== url) {
+        const urls = flatImageItems.map((it) => it.url);
+        const start = urls.indexOf(lastAnchorUrlRef.current);
+        const end = urls.indexOf(url);
+        if (start !== -1 && end !== -1) {
+          const next = new Set(prev);
+          const lo = Math.min(start, end);
+          const hi = Math.max(start, end);
+          for (let i = lo; i <= hi; i++) next.add(urls[i]);
+          return next; // 范围选择不更新 anchor，保留起点便于继续扩展
+        }
+      }
       const next = new Set(prev);
       if (next.has(url)) next.delete(url);
       else next.add(url);
+      lastAnchorUrlRef.current = url;
       return next;
     });
   };
   const clearUrlSelection = () => setSelectedUrls(new Set());
   const selectAllUrls = () => setSelectedUrls(new Set(flatImageItems.map((it) => it.url)));
+  // 反选：可见图片集合减去当前选中集
+  const invertUrlSelection = () => {
+    const visible = new Set(flatImageItems.map((it) => it.url));
+    setSelectedUrls((prev) => {
+      const next = new Set();
+      for (const u of visible) if (!prev.has(u)) next.add(u);
+      return next;
+    });
+  };
   // 切换过滤/视图导致图片消失时，清理悬空 url
   useEffect(() => {
     setSelectedUrls((prev) => {
@@ -317,10 +344,12 @@ export default function HistoryTab({
       return changed ? next : prev;
     });
   }, [flatImageItems]);
-  // masonry 操作目标 url：有图片选中 → 选中集；否则 → 当前图片
-  const resolveImageUrls = (url) => (selectedUrls.size > 0 && selectedUrls.has(url)
-    ? Array.from(selectedUrls)
-    : [url]);
+  // masonry 操作目标 url：有图片选中 → 选中集；否则 → 当前图片。
+  // 工具条调用时传 null/undefined（无具体 url），此时必须作用于选中集。
+  const resolveImageUrls = (url) => {
+    if (url == null) return Array.from(selectedUrls);
+    return selectedUrls.size > 0 && selectedUrls.has(url) ? Array.from(selectedUrls) : [url];
+  };
   // 下载（单张直接下载，多张打包 zip，复用 downloadImages）
   const batchDownload = async (url) => {
     const urls = resolveImageUrls(url);
@@ -354,6 +383,28 @@ export default function HistoryTab({
       () => toast.success(`已复制 ${urls.length} 个图片地址`),
       () => toast.error('复制失败'),
     );
+  };
+  // masonry 记录级删除：按「选中 url → 反查涉及的 history 记录」全部删除。
+  // 不能复用列表视图的 batchRemove（它基于 selectedIds，与 masonry 的 selectedUrls 不互通）。
+  // 注意：MasonryImageCell 右键菜单传入的是当前 cell 的 url（字符串），不是 historyItem。
+  const masonryBatchRemove = (url) => {
+    const urls = resolveImageUrls(url);
+    const urlToItemId = new Map();
+    for (const fi of flatImageItems) {
+      if (fi.item?.id) urlToItemId.set(fi.url, fi.item.id);
+    }
+    const ids = new Set();
+    for (const u of urls) {
+      const id = urlToItemId.get(u);
+      if (id) ids.add(id);
+    }
+    if (ids.size === 0) {
+      toast.error('未找到对应记录');
+      return;
+    }
+    ids.forEach((id) => onRemoveHistory?.(id));
+    toast.success(`已删除 ${ids.size} 条记录`);
+    clearUrlSelection();
   };
 
   // ScrollArea 内部滚动视口 ref：传给 Masonry 让它在面板内监听滚动（否则默认监听 window）。
@@ -668,6 +719,71 @@ export default function HistoryTab({
         {/* 瀑布流视图：图片展平 + 按真实宽高比错落排布 */}
         {history.length > 0 && viewMode === 'masonry' && (
           flatImageItems.length > 0 ? (
+            <div className="flex flex-col">
+              {/* 图片多选工具条：有选中图片时显示，提供全选/反选/取消选择 + 批量操作 */}
+              {selectedUrls.size > 0 && (
+                <div className="nodrag nopan nowheel flex items-center gap-1 border-b border-border bg-primary/5 px-2 py-1.5">
+                  <span className="shrink-0 text-[11px] font-medium text-primary">已选 {selectedUrls.size} 张</span>
+                  <button
+                    type="button"
+                    onClick={selectAllUrls}
+                    title="全选"
+                    className="shrink-0 rounded px-1.5 py-0.5 text-[10px] text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                  >
+                    全选
+                  </button>
+                  <button
+                    type="button"
+                    onClick={invertUrlSelection}
+                    title="反选"
+                    className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground transition hover:bg-muted hover:text-primary"
+                  >
+                    <FlipHorizontal2 className="h-3.5 w-3.5" />
+                  </button>
+                  <div className="ml-auto flex items-center gap-0.5">
+                    <button
+                      type="button"
+                      onClick={() => masonryBatchAddToAssets(null)}
+                      title="添加到素材库"
+                      className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground transition hover:bg-muted hover:text-primary"
+                    >
+                      <FolderPlus className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => masonryBatchUseImage(null)}
+                      title="用作输入"
+                      className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground transition hover:bg-muted hover:text-primary"
+                    >
+                      <Send className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => batchDownload(null)}
+                      title="下载（多张打包 zip）"
+                      className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground transition hover:bg-muted hover:text-primary"
+                    >
+                      <Download className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => masonryBatchRemove(null)}
+                      title="删除选中图片所在记录"
+                      className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground transition hover:bg-muted hover:text-red-500"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={clearUrlSelection}
+                      title="取消选择"
+                      className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                </div>
+              )}
             <div className="p-2">
               <Masonry
                 data={flatImageItems}
@@ -686,18 +802,19 @@ export default function HistoryTab({
                     galleryItems={galleryItems}
                     selected={selectedUrls.has(it.url)}
                     assetLabel={assetLabelMap.get(it.url)}
-                    onToggleUrlSelect={toggleUrlSelect}
+                    onToggleUrlSelect={(url, shiftKey) => toggleUrlSelect(url, shiftKey)}
                     onDownload={batchDownload}
                     onMasonryAddToAssets={masonryBatchAddToAssets}
                     onMasonryUseImage={masonryBatchUseImage}
                     onMasonryViewGallery={masonryBatchViewGallery}
                     onMasonryCopyUrls={masonryBatchCopyUrls}
                     onBatchInsert={batchInsert}
-                    onBatchRemove={batchRemove}
+                    onBatchRemove={masonryBatchRemove}
                     onImageLoad={handleMasonryImageLoad}
                   />
                 )}
               />
+            </div>
             </div>
           ) : (
             <p className="px-2 py-8 text-center text-xs text-muted-foreground">
@@ -1044,12 +1161,32 @@ function MasonryImageCell({
   const { url, resource, galleryIndex } = item;
   const historyItem = item.item; // 原始 history 记录（flatImageItems 把图片展平时挂在 .item）
   const sourceNodeId = historyItem?.nodeId || null;
+  // 单击=选中（toggle，支持 Shift 范围），双击=查看大图。
+  // 用延时区分：250ms 内无第二次点击视为单击；双击时取消单击定时器，不触发选中。
+  const clickTimerRef = useRef(null);
+  const handleImgClick = (e) => {
+    if (clickTimerRef.current) {
+      // 第二次点击（双击）：取消单击定时器，打开大图
+      clearTimeout(clickTimerRef.current);
+      clickTimerRef.current = null;
+      openCanvasGallery(galleryItems, galleryIndex);
+      return;
+    }
+    clickTimerRef.current = setTimeout(() => {
+      clickTimerRef.current = null;
+      onToggleUrlSelect?.(url, e.shiftKey);
+    }, 250);
+  };
+  useEffect(() => () => {
+    if (clickTimerRef.current) clearTimeout(clickTimerRef.current);
+  }, []);
   // 拖拽缩略图到画布：与 HistoryImageThumb 一致的协议（拖图片建 imageDisplay 节点）。
   const handleImgDragStart = (setHoverOpen) => (e) => {
     e.stopPropagation();
     setCanvasImageDragData(e.dataTransfer, [url]);
     e.dataTransfer.effectAllowed = 'copy';
     setHoverOpen(false);
+    if (clickTimerRef.current) { clearTimeout(clickTimerRef.current); clickTimerRef.current = null; }
   };
   return (
     <ContextMenu>
@@ -1072,14 +1209,14 @@ function MasonryImageCell({
                   <button
                     ref={imageButtonRef}
                     type="button"
-                    onClick={() => openCanvasGallery(galleryItems, galleryIndex)}
+                    onClick={handleImgClick}
                     className="block h-full w-full overflow-hidden rounded bg-muted/40"
                   >
                     {imageActivated && (
                       <img
                         src={resource?.thumb || url}
                         alt=""
-                        className="h-full w-full cursor-grab object-cover transition hover:opacity-80 active:cursor-grabbing"
+                        className="h-full w-full cursor-pointer object-cover transition hover:opacity-80"
                         loading="lazy"
                         draggable
                         onLoad={(e) => onImageLoad?.(url, e.currentTarget)}
@@ -1090,8 +1227,8 @@ function MasonryImageCell({
                   {/* 右上角：多选 checkbox（hover 显示；选中时常驻高亮） */}
                   <button
                     type="button"
-                    onClick={(e) => { e.stopPropagation(); onToggleUrlSelect?.(url); }}
-                    title="选中（多选）"
+                    onClick={(e) => { e.stopPropagation(); onToggleUrlSelect?.(url, e.shiftKey); }}
+                    title="选中（多选；Shift 范围选择）"
                     className={
                       'absolute right-1 top-1 z-20 flex size-5 items-center justify-center rounded border text-[10px] shadow-sm transition ' +
                       (selected
@@ -1164,7 +1301,7 @@ function MasonryImageCell({
           <ClipboardCopy className="mr-2 h-3.5 w-3.5" /> 复制图片地址
         </ContextMenuItem>
         <ContextMenuSeparator />
-        <ContextMenuItem onClick={() => onBatchRemove?.(historyItem)} className="text-red-500 focus:text-red-500">
+        <ContextMenuItem onClick={() => onBatchRemove?.(url)} className="text-red-500 focus:text-red-500">
           <Trash2 className="mr-2 h-3.5 w-3.5" /> 删除该记录
         </ContextMenuItem>
       </ContextMenuContent>
