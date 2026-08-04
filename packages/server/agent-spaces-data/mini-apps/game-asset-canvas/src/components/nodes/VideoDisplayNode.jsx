@@ -75,6 +75,7 @@ export default function VideoDisplayNode({ id, data, selected }) {
 
   const sourceLabel = data?.source === 'upstream' ? '来自连线'
     : source === 'history' ? '来自记录'
+    : source === 'storyboard' ? '来自分镜'
     : '已上传';
 
   return (

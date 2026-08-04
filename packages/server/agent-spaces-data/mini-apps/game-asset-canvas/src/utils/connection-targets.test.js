@@ -49,3 +49,14 @@ test('reverse-prompt nodes use text targets while image products keep upload tar
     },
   );
 });
+
+test('media display nodes expose media-specific connection targets', () => {
+  assert.deepEqual(getConnectionTargets(NODE_TYPES.videoDisplay, NODE_TYPES.videoEditor), {
+    inputType: CONNECTION_INPUT_TYPES.video,
+    targets: [{ id: 'videos', label: '输入视频', description: '作为节点的视频输入' }],
+  });
+  assert.deepEqual(getConnectionTargets(NODE_TYPES.audioDisplay, NODE_TYPES.audioDisplay), {
+    inputType: CONNECTION_INPUT_TYPES.audio,
+    targets: [{ id: 'audios', label: '输入音频', description: '作为节点的音频输入' }],
+  });
+});

@@ -55,6 +55,9 @@ export const DEFAULT_SETTINGS = {
   promptOptimizeAgentConfigId: '',
   promptOptimizeAgentName: '',
   promptOptimizeUserPrompt: PROMPT_OPTIMIZE_USER_PROMPT,
+  // 分镜创作（agent_run；系统提示词配置在 Agent preset 内）
+  storyboardAgentConfigId: '',
+  storyboardAgentName: '',
   // 完成后通知：节点生成成功后调 sendNotification 推送通知（默认关闭）
   notifyOnComplete: false,
   // 执行队列同时运行的任务数

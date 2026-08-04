@@ -7,6 +7,7 @@ import {
   DEFAULT_TEXT_TO_IMAGE_MODELS, DEFAULT_EDIT_IMAGE_MODELS,
 } from '../utils/settings';
 import { BBOX_AGENT_INIT_NAME, BBOX_AI_SYSTEM_PROMPT, BBOX_AI_USER_PROMPT, PROMPT_REVERSE_AGENT_INIT_NAME, PROMPT_REVERSE_SYSTEM_PROMPT, PROMPT_REVERSE_USER_PROMPT, PROMPT_OPTIMIZE_AGENT_INIT_NAME, PROMPT_OPTIMIZE_SYSTEM_PROMPT, PROMPT_OPTIMIZE_USER_PROMPT } from '../utils/constants';
+import { STORYBOARD_AGENT_INIT_NAME, STORYBOARD_AGENT_SYSTEM_PROMPT } from '../utils/storyboard';
 
 const {
   Dialog, DialogContent, DialogHeader, DialogTitle,
@@ -176,6 +177,33 @@ export default function SettingsDialog({ open, value, onClose, onSave }) {
     }));
   };
 
+  const configureStoryboardAgent = async () => {
+    if (!AS?.openAgentEditor) { setError('宿主未提供 openAgentEditor'); return; }
+    setAgentBusy(true);
+    setError('');
+    try {
+      const saved = await AS.openAgentEditor({
+        initialName: STORYBOARD_AGENT_INIT_NAME,
+        initialPrompt: STORYBOARD_AGENT_SYSTEM_PROMPT,
+        agentId: cfg.storyboardAgentConfigId || undefined,
+      });
+      if (!saved) return;
+      setCfg((prev) => ({
+        ...prev,
+        storyboardAgentConfigId: saved.id,
+        storyboardAgentName: saved.name || STORYBOARD_AGENT_INIT_NAME,
+      }));
+    } catch (e) {
+      setError('打开模型配置失败：' + (e?.message || e));
+    } finally {
+      setAgentBusy(false);
+    }
+  };
+
+  const resetStoryboardAgent = () => {
+    setCfg((prev) => ({ ...prev, storyboardAgentConfigId: '', storyboardAgentName: '' }));
+  };
+
   // 打开宿主工作流选择器
   const openPicker = async (slotKey) => {
     try {
@@ -287,6 +315,36 @@ export default function SettingsDialog({ open, value, onClose, onSave }) {
               checked={!!cfg.notifyOnComplete}
               onCheckedChange={(v) => setCfg((prev) => ({ ...prev, notifyOnComplete: v }))}
             />
+          </div>
+
+          {/* 分镜创作 Agent 配置 */}
+          <div className="mt-1 border-t border-border pt-4 sm:col-span-2">
+            <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-muted-foreground">
+              <Bot className="h-4 w-4" /> 分镜创作 AI
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                className="flex flex-1 items-center gap-2 rounded-md border border-border bg-background px-3 py-2 text-sm transition hover:border-primary disabled:opacity-60"
+                onClick={configureStoryboardAgent}
+                disabled={agentBusy}
+                title={cfg.storyboardAgentConfigId || '未配置'}
+              >
+                <Bot className="h-4 w-4 shrink-0 text-muted-foreground" />
+                <span className="flex-1 truncate text-left">
+                  {cfg.storyboardAgentName || cfg.storyboardAgentConfigId || '点击配置分镜创作 Agent'}
+                </span>
+                {agentBusy && <span className="shrink-0 text-[10px] text-muted-foreground">打开中…</span>}
+              </button>
+              {cfg.storyboardAgentConfigId && (
+                <Button size="sm" variant="ghost" className="shrink-0" onClick={resetStoryboardAgent}>
+                  <RotateCcw className="h-3.5 w-3.5" />
+                </Button>
+              )}
+            </div>
+            <p className="mt-2 text-xs text-muted-foreground">
+              分镜创作节点的「AI 拆镜」使用该 Agent。系统提示词在 Agent 配置弹窗中维护。
+            </p>
           </div>
 
           {/* BBox AI 分析配置 */}

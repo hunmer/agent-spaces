@@ -9,6 +9,7 @@
 
 const NODE_TYPE_ENUM = [
   'text',
+  'storyboard',
   'textToImage',
   'editImage',
   'imageDisplay',
@@ -42,6 +43,7 @@ const NODE_TYPE_ENUM = [
   'spineEditor',
   'spineDisplay',
   'videoDisplay',
+  'audioDisplay',
   'videoEditor',
   'maskPaint',
   'note',
@@ -49,6 +51,7 @@ const NODE_TYPE_ENUM = [
 
 const NODE_TYPE_DESC = [
   'text=文字（Markdown 编辑/展示，产出可连接到其它节点的文本输入）',
+  'storyboard=分镜创作（文案拆镜、角色引用、图片/视频/语音生成）',
   'textToImage=文字生成图片',
   'editImage=编辑图片',
   'imageDisplay=图片展示（接收上游图片）',
@@ -81,6 +84,7 @@ const NODE_TYPE_DESC = [
   'spineEditor=骨骼编辑器（Spine骨骼姿势编辑+动画预览，上传.skel/.atlas/.png）',
   'spineDisplay=Spine展示（只读预览Spine动画/皮肤切换，上传三件套，可连线输出给spineEditor）',
   'videoDisplay=视频展示（接收上游视频，上传/播放/导出）',
+  'audioDisplay=音频展示（上传/播放音频，可继续连线）',
   'videoEditor=视频编辑器（接收/上传多视频，ffmpeg按帧截取，帧拖拽分组循环播放，调整尺寸）',
   'maskPaint=蒙版绘制（fabric画笔/自由套索/矩形选区，产出黑白蒙版图供edit_image等消费）',
   'note=便签（纯文本备注）',

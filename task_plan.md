@@ -58,6 +58,9 @@ Embed the frame player directly inside the `game-asset-canvas` miniapp, replacin
 | Icon export search included nonexistent `packages/ui` | 1 | No changes made; inspect the actual `packages/web/src/lib/ui-exports.ts` export surface only. |
 | Output research referenced nonexistent `components/HistoryTab.jsx` | 1 | No changes made; locate the actual history component with `rg --files` before reading. |
 | Output research referenced nonexistent `utils/image-ops/image-data.js` | 1 | No changes made; use the discovered `utils/image-ops/io.js` path. |
+| Parallel storyboard verification wrapper returned no child output | 1 | Split tests, Babel transforms, and source scans into separate commands to expose the concrete failure. |
+| Source audit wrapper treated `rg` no-match exit code 1 as failure | 1 | Rerun the no-match audit with an explicit success fallback and keep diff inspection separate. |
+| Combined PowerShell source-audit regex still failed in wrapper quoting | 1 | Stop combining regex audits; use simple independent searches and direct file checks. |
 | Gallery fallback initially received normalized item objects instead of URL strings | 1 | Found during diff review before handoff; changed Gallery items to use `item.url` and retained global indexes. |
 | Output reorder initially passed normalized resource objects as `output.images` | 1 | Found during second review; split the callback into URL and resource arrays and synchronized delete by original index. |
 | Final audit regex used unsupported `rg` look-ahead | 1 | No source changes; replace it with simple independent searches and rerun the full verification set. |
@@ -99,3 +102,74 @@ Preserve persisted video-editor animation groups across page refresh while still
 - Initialize `previousVideoRef` from the current persisted video and return when the URL has not changed.
 - Preserve the existing reset behavior for actual video URL transitions.
 - Regression test changed from 10 pass / 1 fail before the fix to 11 / 11 passing after it; the broader focused set passes 26 / 26.
+
+## Current Task: Storyboard creation node migration
+
+### Goal
+Migrate the useful storyboard-writing and built-in character capabilities from the `文案转分镜` mini-app into `game-asset-canvas`: expose storyboard editing directly in a canvas node form, add character management as a new RightPanel tab, omit source project management and dialogs, and materialize generated image/video/audio outputs as connectable display nodes.
+
+### Phases
+- [complete] Read project instructions and map the source app's storyboard, character, persistence, and generation flows.
+- [complete] Map target canvas extension points and define the minimal compatible data model.
+- [complete] Implement character-library persistence and the RightPanel tab.
+- [complete] Implement the storyboard creation node and its inline form/list workflow.
+- [complete] Create connectable media display nodes from storyboard outputs.
+- [complete] Add focused regression coverage and update handoff documentation.
+- [complete] Run syntax/tests and inspect the scoped diff.
+
+### Decisions
+- Do not migrate source project management.
+- Do not open the storyboard editor in a dialog; the node body owns the storyboard list UI.
+- Reuse existing image/video/audio display node contracts so storyboard media remains connectable.
+- Preserve unrelated dirty-worktree changes.
+
+### Errors Encountered
+| Error | Attempt | Resolution |
+|---|---:|---|
+| Node ESM could not resolve extensionless `./constants` from the new storyboard utility | 1 | Use explicit `./constants.js` so the utility works in both the renderer and Node tests. |
+
+## Follow-up: Storyboard node interaction adjustments
+
+### Goal
+Move character management into the storyboard node form, collapse AI storyboard import behind an explicit entry button, configure the storyboard Agent through the global Settings dialog, and persist drag-and-drop scene ordering.
+
+### Phases
+- [complete] Reuse the character manager as an embedded storyboard-node section and remove the RightPanel tab.
+- [complete] Add global storyboard Agent settings using the established `openAgentEditor` pattern.
+- [complete] Add collapsed AI import UI and remove per-node Agent ID input.
+- [complete] Add handle-based scene drag sorting with normalized indexes.
+- [complete] Update tests/docs and run focused verification.
+
+### Decisions
+- Character data remains workspace-scoped; only its management UI moves.
+- Use native HTML5 drag events on a dedicated grip handle; no dependency addition.
+- Storyboard Agent configuration is global, matching other Agent-backed features.
+
+## Follow-up: Character dialog and handoff
+
+### Goal
+Open the workspace character library from a storyboard-node Dialog and produce a dedicated continuation handoff in the mini-app root.
+
+### Phases
+- [complete] Replace the inline character section with a Dialog entry and reusable character panel body.
+- [complete] Update focused tests and project documentation.
+- [complete] Create `handoff-storyboard.md` using the requested handoff workflow.
+- [complete] Run focused syntax/tests and diff validation.
+
+## Follow-up: Storyboard generation dialogs and presets
+
+### Goal
+Add a two-tab image generation dialog to the character library, label all three storyboard output fields, and replace inline generation parameters with four dedicated preset dialogs whose submitted values persist on the storyboard node and drive image, video, and voice workflow calls.
+
+### Phases
+- [complete] Read the mini-app guide and trace current storyboard forms, workflow parameter contracts, and persistence flow.
+- [complete] Define backward-compatible preset defaults and dialog ownership.
+- [complete] Implement the character image dialog, storyboard field labels, and four preset dialogs.
+- [complete] Wire saved presets into scene media generation and add focused regression coverage.
+- [complete] Run targeted tests/syntax checks and review the scoped diff.
+
+### Decisions
+- Preserve the existing workspace-scoped character library and node-scoped storyboard data.
+- Reuse existing node form controls and workflow helpers instead of duplicating workflow execution logic.
+- Preserve unrelated dirty-worktree changes.
+- Select the storyboard image preset from actual inputs: selected character references use `editImage`, otherwise use `textToImage`.

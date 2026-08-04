@@ -3,6 +3,8 @@ import { NODE_TYPES } from './constants.js';
 export const CONNECTION_INPUT_TYPES = {
   image: 'image',
   text: 'text',
+  video: 'video',
+  audio: 'audio',
 };
 
 export const DEFAULT_FILE_UPLOAD_TARGET = 'images';
@@ -34,6 +36,17 @@ const TEXT_OUTPUT_NODE_TYPES = new Set([
   NODE_TYPES.promptReverse,
 ]);
 
+const VIDEO_OUTPUT_NODE_TYPES = new Set([
+  NODE_TYPES.videoGenerator,
+  NODE_TYPES.videoDisplay,
+  NODE_TYPES.videoEditor,
+]);
+
+const AUDIO_OUTPUT_NODE_TYPES = new Set([
+  NODE_TYPES.textToVoice,
+  NODE_TYPES.audioDisplay,
+]);
+
 export function getTextInputTargets(paramsSchema = []) {
   return paramsSchema
     .filter((field) => field?.key && (field.type === 'text' || field.type === 'textarea'))
@@ -45,9 +58,10 @@ export function getTextInputTargets(paramsSchema = []) {
 }
 
 export function getNodeOutputType(nodeType) {
-  return TEXT_OUTPUT_NODE_TYPES.has(nodeType)
-    ? CONNECTION_INPUT_TYPES.text
-    : CONNECTION_INPUT_TYPES.image;
+  if (TEXT_OUTPUT_NODE_TYPES.has(nodeType)) return CONNECTION_INPUT_TYPES.text;
+  if (VIDEO_OUTPUT_NODE_TYPES.has(nodeType)) return CONNECTION_INPUT_TYPES.video;
+  if (AUDIO_OUTPUT_NODE_TYPES.has(nodeType)) return CONNECTION_INPUT_TYPES.audio;
+  return CONNECTION_INPUT_TYPES.image;
 }
 
 export function getConnectionTargets(sourceNodeType, targetNodeType, targetParamsSchema = []) {
@@ -56,6 +70,10 @@ export function getConnectionTargets(sourceNodeType, targetNodeType, targetParam
     inputType,
     targets: inputType === CONNECTION_INPUT_TYPES.text
       ? getTextInputTargets(targetParamsSchema)
-      : getFileUploadTargets(targetNodeType),
+      : inputType === CONNECTION_INPUT_TYPES.video
+        ? [{ id: 'videos', label: '输入视频', description: '作为节点的视频输入' }]
+        : inputType === CONNECTION_INPUT_TYPES.audio
+          ? [{ id: 'audios', label: '输入音频', description: '作为节点的音频输入' }]
+          : getFileUploadTargets(targetNodeType),
   };
 }

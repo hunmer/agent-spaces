@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { NODE_TYPES, IMAGE_TAGS, modelValuesToOptions } from '../utils/constants';
-import { computeInputImages, computeInputTexts, computeInputVideos, computeInputSpineAssets } from '../utils/input-images';
+import { computeInputAudios, computeInputImages, computeInputTexts, computeInputVideos, computeInputSpineAssets } from '../utils/input-images';
 import { dedupeTags } from '../utils/canvas-constants';
 
 /**
@@ -29,11 +29,12 @@ import { dedupeTags } from '../utils/canvas-constants';
  */
 export default function useDecoratedNodes({
   nodes, edges, propertyApplyNodeIds, protectedImageUrls = [], selectionCount, outputPreviewState,
-  onOutputPreviewHeight, onOutputPreviewModeChange, settings, callbacks,
+  onOutputPreviewHeight, onOutputPreviewModeChange, settings, callbacks, storyboardCharacters = [],
 }) {
   const upstreamMap = useMemo(() => computeInputImages(nodes, edges), [nodes, edges]);
   const upstreamTextsMap = useMemo(() => computeInputTexts(nodes, edges), [nodes, edges]);
   const upstreamVideosMap = useMemo(() => computeInputVideos(nodes, edges), [nodes, edges]);
+  const upstreamAudiosMap = useMemo(() => computeInputAudios(nodes, edges), [nodes, edges]);
   const upstreamSpineMap = useMemo(() => computeInputSpineAssets(nodes, edges), [nodes, edges]);
 
   const decoratedNodes = useMemo(() => {
@@ -53,11 +54,16 @@ export default function useDecoratedNodes({
       onDeleteUpstreamImage,
       onExportVideos,
       onApplyToGroup,
+      onImportStoryboard,
+      onGenerateStoryboardMedia,
+      onSaveStoryboardCharacter,
+      onDeleteStoryboardCharacter,
     } = callbacks || {};
     return nodes.map((nd) => {
       const up = upstreamMap.get(nd.id);
       const upTexts = upstreamTextsMap.get(nd.id);
       const upVids = upstreamVideosMap.get(nd.id);
+      const upAudios = upstreamAudiosMap.get(nd.id);
       const upSpine = upstreamSpineMap.get(nd.id);
       const data = { ...nd.data };
       if (up) {
@@ -87,6 +93,10 @@ export default function useDecoratedNodes({
           }
         }
       }
+      if (upAudios) {
+        data.audios = upAudios.audios;
+        if (upAudios.isDisplay) data.source = 'upstream';
+      }
       // Spine 三件套派生注入：
       // - 节点自身已上传（data.spineAssets 完整）→ 保留自身，不覆盖
       // - 自身无资源但有上游 → 注入上游 spineAssets + source='upstream'
@@ -115,7 +125,8 @@ export default function useDecoratedNodes({
         } : {}),
         // 图片/视频展示节点：限定只能从 .image-drag-handle 拖动（媒体区域可点选/播放不触发拖拽）
         dragHandle: (nd.type === NODE_TYPES.imageDisplay || nd.type === NODE_TYPES.videoDisplay)
-          ? '.image-drag-handle' : nd.dragHandle,
+          ? '.image-drag-handle'
+          : nd.type === NODE_TYPES.audioDisplay ? '.audio-drag-handle' : nd.dragHandle,
         data: {
           ...data,
           nodeJson: JSON.stringify(nd, null, 2),
@@ -175,13 +186,23 @@ export default function useDecoratedNodes({
           onApplyToGroup: propertyApplyNodeIds?.has(nd.id) && onApplyToGroup
             ? () => onApplyToGroup(nd.id)
             : undefined,
+          storyboardCharacters: nd.type === NODE_TYPES.storyboard ? storyboardCharacters : undefined,
+          onImportStoryboard: nd.type === NODE_TYPES.storyboard ? onImportStoryboard : undefined,
+          onGenerateStoryboardMedia: nd.type === NODE_TYPES.storyboard ? onGenerateStoryboardMedia : undefined,
+          onSaveStoryboardCharacter: nd.type === NODE_TYPES.storyboard ? onSaveStoryboardCharacter : undefined,
+          onDeleteStoryboardCharacter: nd.type === NODE_TYPES.storyboard ? onDeleteStoryboardCharacter : undefined,
+          storyboardAgent: nd.type === NODE_TYPES.storyboard ? {
+            id: settings.storyboardAgentConfigId || '',
+            name: settings.storyboardAgentName || '',
+          } : undefined,
+          storyboardSettings: nd.type === NODE_TYPES.storyboard ? settings : undefined,
         },
       };
     });
   }, [
-    nodes, upstreamMap, upstreamTextsMap, upstreamVideosMap, propertyApplyNodeIds,
+    nodes, upstreamMap, upstreamTextsMap, upstreamVideosMap, upstreamAudiosMap, propertyApplyNodeIds,
     protectedImageUrls, selectionCount, outputPreviewState,
-    onOutputPreviewHeight, onOutputPreviewModeChange, settings, callbacks,
+    onOutputPreviewHeight, onOutputPreviewModeChange, settings, callbacks, storyboardCharacters,
   ]);
 
   return { decoratedNodes };

@@ -154,10 +154,12 @@ export function dedupeUrls(urls) {
 export function resolveReferenceImages(references) {
   if (!Array.isArray(references) || references.length === 0) return [];
   const srcFileUrl = window?.AgentSpaces?.srcFileUrl;
-  const isAbsolute = (s) => /^https?:\/\//i.test(s) || /^(data|blob):/i.test(s);
+  // 仅「不以 / 开头且非 http/data/blob」的才是相对 src 目录路径（如 'assets/references/<id>/ref1.png'），
+  // 需经 srcFileUrl 解析；其余（站内绝对路径 /static/uploads/...、完整 http URL、data/blob）原样返回。
+  const needsSrcResolve = (s) => !s.startsWith('/') && !/^(https?:|data:|blob:)/i.test(s);
   return references
     .map((rel) => {
-      if (isAbsolute(rel)) return rel;
+      if (!needsSrcResolve(rel)) return rel;
       if (typeof srcFileUrl !== 'function') return '';
       return srcFileUrl(rel);
     })

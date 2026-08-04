@@ -239,6 +239,42 @@ export function computeInputVideos(nodes, edges) {
   return map;
 }
 
+/** 音频展示节点的多跳转发，契约对称 videoDisplay。 */
+export function computeInputAudios(nodes, edges) {
+  const byId = new Map(nodes.map((node) => [node.id, node]));
+  const incomingByTarget = new Map();
+  for (const edge of edges) {
+    if (!incomingByTarget.has(edge.target)) incomingByTarget.set(edge.target, []);
+    incomingByTarget.get(edge.target).push(edge);
+  }
+  const derived = new Map();
+  const result = new Map();
+  const sourceAudios = (node) => {
+    const data = node?.data || {};
+    const output = Array.isArray(data.output?.audios) ? data.output.audios : (data.output?.audio ? [data.output.audio] : []);
+    if (output.length) return output;
+    if (node?.type !== NODE_TYPES.audioDisplay) return [];
+    return derived.has(node.id) ? derived.get(node.id) : (data.audios || []);
+  };
+  for (let iteration = 0; iteration < nodes.length; iteration += 1) {
+    let changed = false;
+    for (const node of nodes) {
+      if (node.type !== NODE_TYPES.audioDisplay) continue;
+      const incoming = incomingByTarget.get(node.id);
+      if (!incoming?.length) continue;
+      const audios = incoming.flatMap((edge) => sourceAudios(byId.get(edge.source))).filter(Boolean);
+      const previous = derived.get(node.id);
+      if (!previous || previous.join('|') !== audios.join('|')) {
+        derived.set(node.id, audios);
+        result.set(node.id, { audios, isDisplay: true });
+        changed = true;
+      }
+    }
+    if (!changed) break;
+  }
+  return result;
+}
+
 /**
  * 计算 Spine 三件套的派生转发（与 computeInputImages/computeInputVideos 对称的第三套）。
  *

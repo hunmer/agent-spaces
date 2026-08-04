@@ -194,6 +194,21 @@ generateImages(workflowId, input, {directory, historyId})   ← utils/workflow.j
 
 **未覆盖**：媒体节点（音频/视频）仍走 data 落地，未接工作区目录。
 
+## 分镜创作节点
+
+- `storyboard` 节点在节点表单内直接维护 `sourceText + scenes[] + params`，不使用独立分镜编辑对话框，也没有源“文案转分镜”应用的项目管理。
+- “AI 拆镜”是节点顶部按钮入口，默认不渲染文案输入区；展开后调用设置中配置的 `storyboardAgentConfigId` + `agent_run`，解析后把角色按名称合并到当前工作区角色库。
+- 分镜 Agent 在全局 `SettingsDialog` 里通过 `openAgentEditor` 配置，与 BBox/反推/提示词优化 Agent 同款；节点内不保存 Agent ID。
+- storyboard 节点顶部“角色库”按钮打开宿主 `Dialog`，对话框内复用角色管理面板；数据仍持久化到 `configs/workspaces/<id>/storyboard-characters.json`，写入统一走 `services/canvas.js`。
+- 角色库“生图”打开 `CharacterImageGenerationDialog`，使用文生图/图生图两个 Tabs；提交时立即把模式、两个图片预设和图生图参考图写入角色 `generationParams`。
+- 分镜卡片的旁白、画面提示词、动画提示词均有可见 label。节点生成参数通过四个按钮分别打开文生图、图生图、视频、配音表单，并保存为 `params.textToImage/editImage/video/voice`；`utils/storyboard-generation.js` 负责兼容旧扁平字段。
+- 分镜卡片仅通过 `GripVertical` 手柄触发 HTML5 拖拽；落点排序后统一重写 `scenes[].index = 1..N` 并经节点 `data` 持久化。
+- 单镜/批量图片、视频、语音生成复用 `generateImages/generateVideo/generateAudio`，结果分别创建 `imageDisplay/videoDisplay/audioDisplay` 节点。展示节点带 source handle，可继续手动连线到下游。
+- 图片生成有角色主参考图时使用 `editImageWorkflowId + params.editImage`，否则使用 `textToImageWorkflowId + params.textToImage`；视频、配音分别透传 `params.video`、`params.voice`。
+- 不自动连接 storyboard → display：展示节点只要存在入边就会采用上游派生值，而 storyboard 是多分镜聚合数据，当前没有 per-edge 场景输出选择器，自动边会覆盖展示节点的独立媒体。
+
+**关键文件**：`components/nodes/StoryboardNode.jsx`、`components/StoryboardGenerationDialog.jsx`、`components/nodes/AudioDisplayNode.jsx`、`components/right-panel/CharactersTab.jsx`（仅作为角色对话框内容复用）、`hooks/useStoryboardOperations.js`、`hooks/useCharacterLibrary.js`、`utils/storyboard.js`、`utils/storyboard-generation.js`。
+
 ## 新增节点 Checklist
 
 1. `utils/constants.js`：`NODE_TYPES` 加 key，`NODE_META` 加 {label, color}，`IMAGE_TAGS`（如产出图）。

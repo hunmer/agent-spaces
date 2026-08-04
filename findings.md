@@ -1,6 +1,46 @@
 # Findings: Canvas drag edge auto-pan
 
+## Current Research: Storyboard creation node migration
+
+- The requested source is the standalone `packages/server/agent-spaces-data/mini-apps/文案转分镜` mini-app.
+- The target is the existing `game-asset-canvas` node system; source project-management UI/state is explicitly out of scope.
+- Storyboard editing must render inline in the node form, while built-in characters move to a dedicated `RightPanel` tab.
+- Generated images, videos, and audio must be represented by existing display-node types and connected through normal ReactFlow edges.
+- Source files are compact and separated into `CharacterPanel.jsx`, `ScenePanel.jsx`, `utils/workflow.js`, `utils/constants.js`, `hooks/useStore.js`, and `services/store.js`; project management can be excluded without copying the whole app shell.
+- Source storyboard fields include `index`, narration text, image prompt, animation prompt, and participating character IDs; image generation uses selected character images/prompts, video generation prefers the latest scene image, and voice generation consumes narration.
+- Target project rules require all shared persistence through `services/canvas.js`, ReactFlow node dimensions at both top-level and `style`, and inline node interaction classes `nodrag nopan nowheel`.
+- The target already exposes `addImageNodesFromUrls` and `addVideoNodesFromUrls`; the audio display-node creation contract still needs exact inspection.
+- Target `NODE_TYPES` has `imageDisplay` and `videoDisplay`, but no independent audio display type; fulfilling the request cleanly requires adding `audioDisplay` rather than repurposing the executable `textToVoice` node.
+- Target workflow IDs already match the source defaults for text-to-image, edit-image, video, and voice, so no new plugin or manifest permission is needed.
+- `useImageOutputs.js` owns non-overlapping creation of image/video display nodes. It is the appropriate extension point for audio display-node construction and returning created node IDs for edge creation.
+- Character data should be workspace-scoped shared config because the RightPanel library is global to the active canvas workspace, while storyboard scenes and generated-media references belong in each storyboard node's `data`.
+- RightPanel is already split into tab components, so the character library can be added as `right-panel/CharactersTab.jsx` and wired in `right-panel/index.jsx` without expanding the forwarding `RightPanel.jsx` file.
+- The storyboard node can persist its entire editable state through the existing `data.onUpdate` callback; no new storyboard service is needed.
+- Target settings/workflow constants already supply the four required workflows. Generation parameters will live inline in `storyboard.data.params`, avoiding all source generation/settings dialogs.
+- Display-node creation must also append ReactFlow edges from the storyboard node. Image creation is asynchronous due to dimension probing, so helpers need an `onAdded(ids)` callback; video/audio helpers should use the same callback contract.
+- Implemented a workspace-scoped `storyboard-characters.json` library with service-owned writes and the standard three-read subscription pattern.
+- Implemented `storyboard` node data as `{sourceText, scenes[], params}`; each scene owns editable prompts, role references, and arrays of generated media URLs.
+- Added `audioDisplay` as a pure upload/playback node with both target and source handles, matching the existing image/video display-node role.
+- Storyboard generation uses target `generateImages`/`generateVideo`/`generateAudio`, then creates independent display nodes beside the storyboard. Display nodes expose source handles for normal downstream connections.
+- Do not auto-connect storyboard to its display nodes: target input derivation treats any incoming edge as authoritative, while a multi-scene storyboard has no per-edge output selector. An automatic edge would overwrite each display node's assigned media with an empty or aggregate source value.
+- AI storyboard import accepts an optional Agent preset ID and otherwise selects the first available preset from `list_agent_presets`; imported characters merge into the active workspace library by name.
+- Current built-in `agent_run` ignores a caller-supplied `systemPrompt` field and uses the selected preset's stored system prompt. The follow-up therefore configures a dedicated storyboard preset through `openAgentEditor`; runtime prompts contain only the source-copy task so user edits to the preset remain authoritative.
+- Follow-up UI keeps character persistence workspace-scoped but embeds the manager under the storyboard node's collapsed role section; RightPanel no longer exposes a character tab.
+- AI copy input is guarded by local `aiOpen` state and is absent from the rendered node body until the entry button is clicked.
+- Scene ordering uses a dedicated `GripVertical` HTML5 drag handle and `reorderStoryboardScenes`, which rewrites indexes after every move.
+
 ## Current Research: Output grouping and labels
+
+## Current Research: Storyboard generation dialogs and presets
+
+- The handoff identifies `StoryboardNode.jsx`, `CharactersTab.jsx`, and `useStoryboardOperations.js` as the primary implementation surface.
+- Existing storyboard work is uncommitted and overlaps this request; all edits must preserve it in place.
+- CodeGraph is unavailable in this session, so repository discovery uses `rg` as the instructed fallback.
+- The existing flat `params.imageModel/videoModel/voiceModel/aspect/...` shape must remain readable because previously saved storyboard nodes may already contain it.
+- The stable shape is four nested node presets: `params.textToImage`, `params.editImage`, `params.video`, and `params.voice`; the character library stores its last image mode and both image presets on each character's `generationParams`.
+- Scene image generation already derives selected character reference images, making that input presence the compatible discriminator between the saved text-to-image and image-to-image presets.
+- `generateImages`, `generateVideo`, and `generateAudio` accept the same workflow input fields as their standalone nodes; count and concurrency can be passed through with the preset.
+- The project UI exports the required host `Dialog`, `Tabs`, form, and icon components; no dependency or manifest change is needed.
 
 ## Current Diagnosis: Animation groups reset after refresh
 

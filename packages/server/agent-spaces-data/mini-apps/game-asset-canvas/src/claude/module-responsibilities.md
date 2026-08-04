@@ -5,6 +5,7 @@
 | type | label | 说明 | 是否 receiver |
 |------|-------|------|--------------|
 | textToImage | 文字生成图片 ✍️ | 调 text_to_image 工作流 | 否 |
+| storyboard | 分镜创作 🎞️ | 文案拆镜 + 角色引用 + 分镜图片/视频/语音生成 | 否 |
 | editImage | 编辑图片 🖌️ | 调 edit_image 工作流（需上游图） | 是 |
 | imageDisplay | 图片展示 🖼️ | 上传/URL/上游/历史均可入 | 是 |
 | imageProcess | 图像处理 🔧 | 旧单节点（兼容已有 canvas.json，新画布不再添加） | 是 |
@@ -15,6 +16,8 @@
 | bboxViewer | UI拆分 📦 | JSON bbox 可视化 + AI 分析 + 批量导出 | 是（单图） |
 | promptReverse | 反推提示词 🔍 | agent_run + 多图 → 文本产出 | 是 |
 | textToVoice | 生成配音 🔊 | 调 text_to_voice 工作流，`<audio>` 产出 | 否 |
+| audioDisplay | 音频展示 🔊 | 上传/播放音频，带输入输出 Handle | 否 |
+| videoDisplay | 视频展示 🎬 | 上传/播放/转发视频 | 是 |
 | videoGenerator | 生成视频 🎬 | 调 video_generator 工作流，`<video>` 产出 | 是（参考图） |
 | imageCompare | 图片对比 🔀 | img-comparison-slider 双图滑块 | 是 |
 | note | 便签 📝 | 纯文本备注，不参与工作流，无 Handle | 否 |
@@ -43,6 +46,8 @@
 | useCanvasAgentRpc | WS message 监听（ref 持有最新值，effect 只订阅一次） |
 | useDecoratedNodes | 节点 data 注入回调（与 settings/selectionCount 联动） |
 | useAssetLibrary | 素材库（asset-library.json，按工作区隔离） |
+| useCharacterLibrary | 分镜角色库（storyboard-characters.json，按工作区隔离） |
+| useStoryboardOperations | AI 拆镜、分镜媒体生成、展示节点落点 |
 | useViewportActivation | 节点首次进入视窗后永久激活正文，离屏不卸载已加载图片 |
 
 ## utils 纯函数/单例（src/utils/，16 个文件 + image-ops/）
@@ -56,6 +61,7 @@
 | processing-controllers.js | AbortController 注册表单例（register/abort/clear/get），跨 hook 共享取消 |
 | input-images.js | computeInputImages（fixed-point 多跳转发派生输入图） |
 | workflow.js | runWorkflow/generateImages/generateAudio/generateVideo/runAgentVisionText + URL 工具 |
+| storyboard.js | 分镜 Agent 提示词、JSON 容错解析、角色合并与场景标准化 |
 | cutout.js | runCutout 统一执行入口（4 mode 分流：本地算法/工作流/rembg 插件） |
 | storage.js | loadCanvas/saveCanvas/onAnyConfigChanged + debounce + 面板布局读写 |
 | settings.js | DEFAULT_SETTINGS/WORKFLOW_SLOTS/mergeSettings |
@@ -86,7 +92,7 @@
 ### 顶层（17 个）
 - `Canvas.jsx`：编排层（hook 装配 + ReactFlow 变更回调 + JSX）
 - `Toolbar.jsx`：顶栏（工作区切换插槽/自动布局/画布样式/导出/设置/队列插槽/清空）
-- `RightPanel.jsx`：右侧 Tabs（新增节点 / 节点管理 / 生成记录）
+- `RightPanel.jsx`：右侧 Tabs 转发入口；`components/right-panel/` 装配新增节点/预设/节点/记录/素材/Chat（`CharactersTab` 仅作为 storyboard 角色库 Dialog 内容复用）
 - `SettingsDialog.jsx`：设置页（工作流槽位 + BBox AI 分析 + 反推提示词 AI）
 - `ExecutionQueuePopover.jsx`：执行队列弹窗 + 中断
 - `NodeFormDialog.jsx`：文生图/编辑图片表单（提示词库 + pickedPrompt + 合并提交）

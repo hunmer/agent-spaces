@@ -36,10 +36,13 @@ import VideoEditorNode from '../components/nodes/VideoEditorNode';
 import MaskPaintNode from '../components/nodes/MaskPaintNode';
 import NoteNode from '../components/nodes/NoteNode';
 import TextNode from '../components/nodes/TextNode';
+import StoryboardNode from '../components/nodes/StoryboardNode';
+import AudioDisplayNode from '../components/nodes/AudioDisplayNode';
 
 // 节点类型 -> 渲染组件
 export const NODE_COMPONENTS = {
   [NODE_TYPES.text]: TextNode,
+  [NODE_TYPES.storyboard]: StoryboardNode,
   [NODE_TYPES.textToImage]: TextToImageNode,
   [NODE_TYPES.editImage]: EditImageNode,
   [NODE_TYPES.imageDisplay]: ImageDisplayNode,
@@ -73,6 +76,7 @@ export const NODE_COMPONENTS = {
   [NODE_TYPES.spineEditor]: SpineEditorNode,
   [NODE_TYPES.spineDisplay]: SpineDisplayNode,
   [NODE_TYPES.videoDisplay]: VideoDisplayNode,
+  [NODE_TYPES.audioDisplay]: AudioDisplayNode,
   [NODE_TYPES.videoEditor]: VideoEditorNode,
   [NODE_TYPES.maskPaint]: MaskPaintNode,
   [NODE_TYPES.note]: NoteNode,
@@ -92,9 +96,11 @@ export const NODE_PARAMS_SCHEMA = {
 // 右键菜单 / 落空菜单的节点类型列表（与 RightPanel 新增节点 tab 保持一致）
 export const ADD_NODE_ITEMS = [
   { type: NODE_TYPES.text },
+  { type: NODE_TYPES.storyboard },
   { type: NODE_TYPES.textToImage },
   { type: NODE_TYPES.editImage },
   { type: NODE_TYPES.imageDisplay },
+  { type: NODE_TYPES.audioDisplay },
   // 12 个图像处理节点
   { type: NODE_TYPES.ipGifSplit },
   { type: NODE_TYPES.ipGifMerge },
@@ -130,6 +136,7 @@ export const ADD_NODE_ITEMS = [
 // 各节点默认尺寸（NodeResizer 需要节点有显式 width/height）
 export const DEFAULT_SIZE = {
   [NODE_TYPES.text]: { w: 420, h: 360 },
+  [NODE_TYPES.storyboard]: { w: 520, h: 720 },
   [NODE_TYPES.note]: { w: 200, h: 120 },
   [NODE_TYPES.imageDisplay]: { w: 260, h: 240 },
   [NODE_TYPES.pixelEditor]: { w: 300, h: 260 },
@@ -145,6 +152,7 @@ export const DEFAULT_SIZE = {
   [NODE_TYPES.spineEditor]: { w: 300, h: 260 },
   [NODE_TYPES.spineDisplay]: { w: 320, h: 360 },
   [NODE_TYPES.videoDisplay]: { w: 320, h: 240 },
+  [NODE_TYPES.audioDisplay]: { w: 320, h: 160 },
   [NODE_TYPES.videoEditor]: { w: 360, h: 280 },
   [NODE_TYPES.maskPaint]: { w: 300, h: 240 },
   default: { w: 290, h: 240 },
@@ -184,9 +192,21 @@ export function dedupeTags(tags) {
 // 每种节点的初始 data
 export function initialData(type) {
   if (type === NODE_TYPES.text) return { output: { text: '' } };
+  if (type === NODE_TYPES.storyboard) return {
+    status: 'idle',
+    sourceText: '',
+    scenes: [],
+    params: {
+      textToImage: { model: 'gpt-image-1', aspect: '16:9', size: '1k', count: 1, concurrency: 1 },
+      editImage: { model: 'gpt-image-1', aspect: '16:9', size: '1k', count: 1, concurrency: 1 },
+      video: { model: 'jimeng-video-3.0', aspect: '16:9', quality: '720', duration: '5', count: 1, concurrency: 1 },
+      voice: { model: 'fish-audio', voiceId: '', count: 1, concurrency: 1 },
+    },
+  };
   if (type === NODE_TYPES.note) return { text: '' };
   if (type === NODE_TYPES.imageDisplay) return { images: [], source: '' };
   if (type === NODE_TYPES.videoDisplay) return { videos: [], source: '' };
+  if (type === NODE_TYPES.audioDisplay) return { audios: [], source: '' };
   if (type === NODE_TYPES.videoEditor) {
     // 视频编辑器：多视频输入 + ffmpeg 截帧 + 动画组（起止帧循环播放）
     return {

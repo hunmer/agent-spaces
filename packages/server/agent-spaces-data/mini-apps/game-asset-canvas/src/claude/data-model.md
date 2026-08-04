@@ -113,6 +113,22 @@ data.params = {
 }
 ```
 
+#### 分镜创作（storyboard）
+```typescript
+data.sourceText: string;
+data.params: { imageModel, videoModel, voiceModel, voiceId?, aspect, size, quality, duration };
+data.scenes: Array<{
+  id: string; index: number;
+  narration: string; visualPrompt: string; animationPrompt: string;
+  characterIds: string[];
+  images: string[]; videos: string[]; audios: string[];
+}>;
+```
+
+分镜 Agent 是全局设置：`settings.storyboardAgentConfigId/storyboardAgentName`，不写入节点 `data.params`。`scenes[]` 数组顺序是真值，拖拽后同步把 `index` 归一化为 `1..N`。
+
+`audioDisplay` 使用 `data.audios: string[]`；`videoDisplay` 使用 `data.videos: string[]`。两者是独立展示/透传节点，不承载生成参数。
+
 #### 反推提示词（promptReverse）
 ```typescript
 data.uploadedImages?: string[];
@@ -335,6 +351,21 @@ interface Asset {
   name: string;
   size: number;
   uploadedAt: number;
+}
+```
+
+## 分镜角色库
+
+存 `configs/workspaces/<id>/storyboard-characters.json`：
+
+```typescript
+{
+  characters: Array<{
+    id: string;
+    name: string;
+    prompt: string;
+    images: Array<{ id: string; url: string; selected: boolean }>;
+  }>;
 }
 ```
 

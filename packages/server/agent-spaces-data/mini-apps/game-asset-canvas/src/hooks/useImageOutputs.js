@@ -112,6 +112,31 @@ function buildVideoNodes(prevNodes, urls, opts) {
   return { additions, positions };
 }
 
+function buildAudioNodes(prevNodes, urls, opts) {
+  if (!urls?.length) return { additions: [], positions: [] };
+  const size = DEFAULT_SIZE[NODE_TYPES.audioDisplay];
+  const gap = 40;
+  const anchor = opts.sourceNode ? rightAnchorOf(opts.sourceNode, gap) : { x: 420, y: 120 };
+  const positions = findFreePositions(anchor, size.w, size.h, urls.length, prevNodes, {
+    gap, direction: 'right', cols: Math.min(3, Math.max(1, urls.length)),
+  });
+  const additions = urls.map((url, index) => ({
+    id: genId(NODE_TYPES.audioDisplay),
+    type: NODE_TYPES.audioDisplay,
+    position: positions[index],
+    width: size.w, height: size.h,
+    style: { width: size.w, height: size.h },
+    data: {
+      ...initialData(NODE_TYPES.audioDisplay),
+      audios: [url],
+      source: opts.source || 'queue',
+      tags: dedupeTags(opts.tags),
+      label: NODE_META[NODE_TYPES.audioDisplay].label,
+    },
+  }));
+  return { additions, positions };
+}
+
 /**
  * 图片节点批量产出相关操作。
  * 从 Canvas.jsx 抽出（原 B7）。被 useExecutionQueue.onComplete（队列完成建图）
@@ -206,11 +231,15 @@ export default function useImageOutputs({ setNodes, setGroups }) {
  */
 export function useVideoOutputs({ setNodes }) {
   const addVideoNodesFromUrls = useCallback((urls, opts = {}) => {
-    if (!urls?.length) return;
+    if (!urls?.length) return [];
+    const nodeIds = urls.map(() => genId(NODE_TYPES.videoDisplay));
     setNodes((prev) => {
       const { additions } = buildVideoNodes(prev, urls, opts);
+      additions.forEach((node, index) => { node.id = nodeIds[index]; });
       return [...prev, ...additions];
     });
+    setTimeout(() => opts.onAdded?.(nodeIds), 0);
+    return nodeIds;
   }, [setNodes]);
 
   // 导出视频到画布：单视频独立节点，多视频也独立节点（视频一般不分组成 WorkflowGroup）
@@ -221,4 +250,20 @@ export function useVideoOutputs({ setNodes }) {
   }, [addVideoNodesFromUrls]);
 
   return { addVideoNodesFromUrls, handleExportVideos };
+}
+
+export function useAudioOutputs({ setNodes }) {
+  const addAudioNodesFromUrls = useCallback((urls, opts = {}) => {
+    if (!urls?.length) return [];
+    const nodeIds = urls.map(() => genId(NODE_TYPES.audioDisplay));
+    setNodes((prev) => {
+      const { additions } = buildAudioNodes(prev, urls, opts);
+      additions.forEach((node, index) => { node.id = nodeIds[index]; });
+      return [...prev, ...additions];
+    });
+    setTimeout(() => opts.onAdded?.(nodeIds), 0);
+    return nodeIds;
+  }, [setNodes]);
+
+  return { addAudioNodesFromUrls };
 }

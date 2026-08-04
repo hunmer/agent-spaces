@@ -16,6 +16,7 @@ export const ADD_ITEMS = [
   // 生成
   { type: NODE_TYPES.textToImage, label: '文生图', category: 'generate' },
   { type: NODE_TYPES.editImage, label: '图生图', category: 'generate' },
+  { type: NODE_TYPES.storyboard, label: '分镜创作', category: 'generate' },
   // 工具
   { type: NODE_TYPES.text, label: '文字', category: 'util' },
   { type: NODE_TYPES.imageDisplay, label: '图片展示', category: 'util' },
@@ -51,6 +52,7 @@ export const ADD_ITEMS = [
   { type: NODE_TYPES.textToVoice, label: '生成配音', category: 'media' },
   { type: NODE_TYPES.videoGenerator, label: '生成视频', category: 'media' },
   { type: NODE_TYPES.videoDisplay, label: '视频展示', category: 'media' },
+  { type: NODE_TYPES.audioDisplay, label: '音频展示', category: 'media' },
   { type: NODE_TYPES.videoEditor, label: '视频编辑器', category: 'media' },
 ];
 

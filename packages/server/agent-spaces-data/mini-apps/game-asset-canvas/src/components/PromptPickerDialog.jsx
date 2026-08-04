@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
   Input, ScrollArea, Button,
@@ -123,23 +123,21 @@ export default function PromptPickerDialog({ open, scene = 'text', pickerMode = 
           </div>
         </div>
 
-        {/* 新增/编辑表单（内联） */}
-        {editing && (
-          <PromptEditor
-            key={editing.id || 'new'}
-            initial={editing}
-            scene={scene}
-            onSave={async (item) => {
-              try {
-                await savePrompt({ ...item, id: item.id || `cust-${Date.now().toString(36)}`, custom: true });
-                setEditing(null);
-              } catch (err) {
-                console.error('savePrompt failed:', err);
-              }
-            }}
-            onCancel={() => setEditing(null)}
-          />
-        )}
+        {/* 新增/编辑表单：独立对话框，避免与列表布局互相挤压 */}
+        <PromptEditor
+          open={!!editing}
+          initial={editing}
+          scene={scene}
+          onSave={async (item) => {
+            try {
+              await savePrompt({ ...item, id: item.id || `cust-${Date.now().toString(36)}`, custom: true });
+              setEditing(null);
+            } catch (err) {
+              console.error('savePrompt failed:', err);
+            }
+          }}
+          onCancel={() => setEditing(null)}
+        />
 
         {/* 提示词卡片列表 */}
         <ScrollArea className="min-h-0 flex-1">
@@ -232,90 +230,113 @@ export default function PromptPickerDialog({ open, scene = 'text', pickerMode = 
   );
 }
 
-/** 新增/编辑自定义提示词的内联表单 */
-function PromptEditor({ initial, scene, onSave, onCancel }) {
-  const [title, setTitle] = useState(initial.title || '');
-  const [desc, setDesc] = useState(initial.desc || '');
-  const [prompt, setPrompt] = useState(initial.prompt || '');
-  const [category, setCategory] = useState(initial.category || 'character');
-  const [aspect, setAspect] = useState(initial.aspect || '');
+/** 新增/编辑自定义提示词的独立对话框 */
+function PromptEditor({ open, initial, scene, onSave, onCancel }) {
+  // open=false 时 initial 可能为 null，统一兜底为空对象避免解构报错
+  const init = initial || {};
+  const [title, setTitle] = useState(init.title || '');
+  const [desc, setDesc] = useState(init.desc || '');
+  const [prompt, setPrompt] = useState(init.prompt || '');
+  const [category, setCategory] = useState(init.category || 'character');
+  const [aspect, setAspect] = useState(init.aspect || '');
   // references 内部用「已 resolve 的 http URL 数组」展示与编辑（FileUpload value 即 URL 数组）。
-  // 保存时原样写回，无相对路径场景（编辑器只产生上传 URL）。
+  // 保存时原样写回；站内绝对路径（/static/uploads/...）和完整 http URL 都不再被误解析为 src 相对路径。
   const [references, setReferences] = useState(
-    () => resolveReferenceImages(initial.references).slice(0, 6)
+    () => resolveReferenceImages(init.references).slice(0, 6)
   );
+
+  // 每次打开时用最新 initial 重置表单（支持连续编辑不同条目）
+  useEffect(() => {
+    if (!open || !initial) return;
+    setTitle(initial.title || '');
+    setDesc(initial.desc || '');
+    setPrompt(initial.prompt || '');
+    setCategory(initial.category || 'character');
+    setAspect(initial.aspect || '');
+    setReferences(resolveReferenceImages(initial.references).slice(0, 6));
+  }, [open, initial]);
 
   const valid = title.trim() && prompt.trim();
 
   const submit = () => {
     if (!valid) return;
     onSave({
-      id: initial.id,
+      id: init.id,
       title: title.trim(),
       desc: desc.trim(),
       prompt: prompt.trim(),
       category,
-      scene: initial.scene || scene,
+      scene: init.scene || scene,
       ...(aspect ? { aspect } : {}),
       ...(references.length > 0 ? { references } : {}),
     });
   };
 
   return (
-    <div className="shrink-0 space-y-2 border-b border-border bg-muted/30 px-4 py-3">
-      <div className="grid grid-cols-2 gap-2">
-        <input
-          className="h-8 rounded-md border border-border bg-background px-2 text-sm outline-none focus:border-primary"
-          placeholder="标题 *"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-        />
-        <input
-          className="h-8 rounded-md border border-border bg-background px-2 text-sm outline-none focus:border-primary"
-          placeholder="简短描述"
-          value={desc}
-          onChange={(e) => setDesc(e.target.value)}
-        />
-      </div>
-      <AutoResizeTextarea
-        minHeight={72}
-        className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm outline-none focus:border-primary"
-        placeholder="提示词正文 *"
-        value={prompt}
-        onChange={(e) => setPrompt(e.target.value)}
-      />
-      <FileUpload
-        value={references}
-        onChange={setReferences}
-        max={6}
-        placeholder="上传参考图（可选，最多 6 张）"
-      />
-      <div className="flex items-center gap-2">
-        <select
-          className="h-8 rounded-md border border-border bg-background px-2 text-sm outline-none focus:border-primary"
-          value={category}
-          onChange={(e) => setCategory(e.target.value)}
-        >
-          {PROMPT_CATEGORIES.map((c) => (
-            <option key={c.id} value={c.id}>{c.icon} {c.label}</option>
-          ))}
-        </select>
-        <select
-          className="h-8 rounded-md border border-border bg-background px-2 text-sm outline-none focus:border-primary"
-          value={aspect}
-          onChange={(e) => setAspect(e.target.value)}
-        >
-          <option value="">比例（可选）</option>
-          {ASPECT_OPTIONS.map((a) => (
-            <option key={a} value={a}>{a}</option>
-          ))}
-        </select>
-        <div className="ml-auto flex gap-2">
+    <Dialog open={open} onOpenChange={(next) => { if (!next) onCancel?.(); }}>
+      <DialogContent className="flex max-h-[85vh] !w-[640px] !max-w-[640px] flex-col gap-0 p-0">
+        <DialogHeader className="shrink-0 border-b border-border px-4 py-3">
+          <DialogTitle>{init.id ? '✏️ 编辑提示词' : '➕ 新建提示词'}</DialogTitle>
+        </DialogHeader>
+        <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-auto px-4 py-4">
+          <div className="grid grid-cols-2 gap-2">
+            <input
+              className="h-8 rounded-md border border-border bg-background px-2 text-sm outline-none focus:border-primary"
+              placeholder="标题 *"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+            />
+            <input
+              className="h-8 rounded-md border border-border bg-background px-2 text-sm outline-none focus:border-primary"
+              placeholder="简短描述"
+              value={desc}
+              onChange={(e) => setDesc(e.target.value)}
+            />
+          </div>
+          <AutoResizeTextarea
+            minHeight={120}
+            className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm outline-none focus:border-primary"
+            placeholder="提示词正文 *"
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+          />
+          <div>
+            <p className="mb-1.5 text-xs font-medium text-muted-foreground">参考图（可选，最多 6 张）</p>
+            <FileUpload
+              value={references}
+              onChange={setReferences}
+              max={6}
+              placeholder="上传参考图"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <select
+              className="h-8 rounded-md border border-border bg-background px-2 text-sm outline-none focus:border-primary"
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+            >
+              {PROMPT_CATEGORIES.map((c) => (
+                <option key={c.id} value={c.id}>{c.icon} {c.label}</option>
+              ))}
+            </select>
+            <select
+              className="h-8 rounded-md border border-border bg-background px-2 text-sm outline-none focus:border-primary"
+              value={aspect}
+              onChange={(e) => setAspect(e.target.value)}
+            >
+              <option value="">比例（可选）</option>
+              {ASPECT_OPTIONS.map((a) => (
+                <option key={a} value={a}>{a}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+        <div className="flex shrink-0 justify-end gap-2 border-t border-border px-4 py-3">
           <Button type="button" variant="outline" size="sm" onClick={onCancel}>取消</Button>
           <Button type="button" size="sm" disabled={!valid} onClick={submit}>保存</Button>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 

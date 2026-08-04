@@ -86,3 +86,13 @@ test('save_asset_library preserves thumbnail metadata', () => {
   assert.equal(asset.url, 'full.png');
   assert.equal(asset.thumb, 'thumb.jpg');
 });
+
+test('storyboard characters are isolated per workspace and upsert by id', () => {
+  const ctx = createContext();
+  canvasService.save_storyboard_character({ workspaceId: 'ws-a', character: { id: 'char-1', name: '旧名' } }, ctx);
+  canvasService.save_storyboard_character({ workspaceId: 'ws-a', character: { id: 'char-1', name: '新名' } }, ctx);
+  canvasService.save_storyboard_character({ workspaceId: 'ws-b', character: { id: 'char-2', name: '另一个' } }, ctx);
+
+  assert.deepEqual(ctx.configs.get('workspaces/ws-a/storyboard-characters.json').characters, [{ id: 'char-1', name: '新名' }]);
+  assert.deepEqual(ctx.configs.get('workspaces/ws-b/storyboard-characters.json').characters, [{ id: 'char-2', name: '另一个' }]);
+});

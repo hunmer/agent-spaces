@@ -7,6 +7,7 @@ const SETTINGS_CONFIG = 'settings.json';
 const PROMPT_CONFIG = 'prompt-library.json';
 const WORKSPACES_CONFIG = 'workspaces.json';
 const ASSET_LIBRARY_FILE = 'asset-library.json';
+const STORYBOARD_CHARACTERS_FILE = 'storyboard-characters.json';
 const SPINE_RESKIN_HISTORY_FILE = 'spine-reskin-history.json';
 const HISTORY_MAX = 200;
 const SPINE_RESKIN_HISTORY_MAX = 20;
@@ -15,6 +16,10 @@ const ASSET_MAX_PER_CATEGORY = 500; // 单分类资产上限，避免无限膨�
 // 素材库文件路径（工作区隔离）
 function assetLibPath(workspaceId) {
   return wsPath(workspaceId, ASSET_LIBRARY_FILE);
+}
+
+function storyboardCharactersPath(workspaceId) {
+  return wsPath(workspaceId, STORYBOARD_CHARACTERS_FILE);
 }
 
 // 读取素材库（兜底返回空结构，保证调用方总有数据）
@@ -103,6 +108,29 @@ export default {
   // 清空生成记录
   clear_history: ({ workspaceId }, ctx) => {
     ctx.writeConfig(wsPath(workspaceId, HISTORY_FILE), []);
+    return { ok: true };
+  },
+
+  // —— 分镜角色库（按工作区隔离）——
+  save_storyboard_characters: ({ workspaceId, characters }, ctx) => {
+    const list = Array.isArray(characters) ? characters.filter((item) => item?.id) : [];
+    ctx.writeConfig(storyboardCharactersPath(workspaceId), { characters: list });
+    return { ok: true, characters: list };
+  },
+
+  save_storyboard_character: ({ workspaceId, character }, ctx) => {
+    if (!character?.id) return { ok: false };
+    ctx.updateConfig(storyboardCharactersPath(workspaceId), (prev) => {
+      const list = Array.isArray(prev?.characters) ? prev.characters : [];
+      return { characters: [character, ...list.filter((item) => item.id !== character.id)] };
+    });
+    return { ok: true };
+  },
+
+  delete_storyboard_character: ({ workspaceId, id }, ctx) => {
+    ctx.updateConfig(storyboardCharactersPath(workspaceId), (prev) => ({
+      characters: (Array.isArray(prev?.characters) ? prev.characters : []).filter((item) => item.id !== id),
+    }));
     return { ok: true };
   },
 
@@ -246,6 +274,7 @@ export default {
     ctx.writeConfig(wsPath(id, CANVAS_FILE), { nodes: [], edges: [], savedAt: Date.now() });
     ctx.writeConfig(wsPath(id, HISTORY_FILE), []);
     ctx.writeConfig(assetLibPath(id), { categories: [] });
+    ctx.writeConfig(storyboardCharactersPath(id), { characters: [] });
     return next;
   },
 

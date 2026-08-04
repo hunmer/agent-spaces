@@ -11,6 +11,7 @@
 // 合法节点类型（与 utils/constants.js NODE_TYPES 同步；handler 不能 import）
 const VALID_NODE_TYPES = [
   'text',          // Markdown 文字
+  'storyboard',    // 分镜创作
   'textToImage',   // 文字生成图片
   'editImage',     // 编辑图片
   'imageDisplay',  // 图片展示
@@ -44,6 +45,7 @@ const VALID_NODE_TYPES = [
   'spineEditor',   // 骨骼编辑器
   'spineDisplay',  // Spine 展示
   'videoDisplay',  // 视频展示
+  'audioDisplay',  // 音频展示
   'videoEditor',   // 视频编辑器
   'maskPaint',     // 蒙版绘制（fabric 画笔/套索/矩形）
   'note',          // 便签
@@ -51,6 +53,7 @@ const VALID_NODE_TYPES = [
 
 const NODE_LABELS = {
   text: '文字',
+  storyboard: '分镜创作',
   textToImage: '文字生成图片',
   editImage: '编辑图片',
   imageDisplay: '图片展示',
@@ -83,6 +86,7 @@ const NODE_LABELS = {
   spineEditor: '骨骼编辑器',
   spineDisplay: 'Spine展示',
   videoDisplay: '视频展示',
+  audioDisplay: '音频展示',
   videoEditor: '视频编辑器',
   note: '便签',
   maskPaint: '蒙版绘制',

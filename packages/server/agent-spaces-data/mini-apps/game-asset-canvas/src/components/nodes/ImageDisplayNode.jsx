@@ -126,6 +126,7 @@ export default function ImageDisplayNode({ id, data, selected }) {
   const sourceLabel = data?.source === 'upstream' ? '来自连线'
     : source === 'url' ? '来自 URL'
     : source === 'history' ? '来自记录'
+    : source === 'storyboard' ? '来自分镜'
     : source === 'segment' ? '抠图结果'
     : source === 'enhance' ? '放大结果'
     : source === 'error' ? '处理失败'

@@ -1,5 +1,19 @@
 # Progress: Canvas drag edge auto-pan
 
+## 2026-08-04 - Storyboard generation dialogs and presets
+- Read the storyboard handoff and current planning state.
+- Confirmed the requested work is a follow-up to the existing uncommitted storyboard implementation.
+- Started tracing current forms, workflow contracts, and persistence behavior.
+- Added shared generation preset normalization, four storyboard parameter dialogs, a two-tab character image dialog, scene field labels, and preset-driven workflow calls.
+- The first combined verification wrapper failed without child output; switching to separate commands for actionable diagnostics.
+- Added legacy-compatible `resolveStoryboardGenerationParams` and nested defaults for four independent presets.
+- Added `StoryboardGenerationDialog.jsx`: four preset forms plus the character image dialog with text-to-image/image-to-image tabs and reference uploads.
+- Replaced the inline storyboard parameter details with four configuration buttons and added visible labels to narration, visual prompt, and animation prompt fields.
+- Updated scene media generation to use `textToImage` or `editImage` based on selected character references, and to pass saved video/voice presets.
+- Character generation now persists prompt and dialog settings immediately on submit, then appends generated images on success.
+- Updated `handoff-storyboard.md`, `src/handoff.md`, and `src/CLAUDE.md` with the new contracts.
+- Final verification passed: 32 focused tests, Babel transforms for six affected modules, forbidden-pattern scan, and `git diff --check`.
+
 ## 2026-08-04 - Output grouping and labels
 - Diagnosed the refresh reset: the video-switch effect runs on initial dialog mount and persists an empty `animGroups` array.
 - Added a regression assertion for an initial-mount guard; running it red before applying the fix.
@@ -88,3 +102,25 @@
 - Replaced the competing loop-stop effect with a current-frame ref owned by the timer, avoiding updater side effects and sequence-reset races.
 - Updated the video-editor handoff for range inputs, quick add, wrapped scrolling, loop behavior, and per-group frame snapshots.
 - Final verification passed again: 19 tests, touched JSX syntax checks, and scoped `git diff --check`.
+## 2026-08-04: Storyboard creation node migration
+
+- Read `src/handoff.md` from the prior turn.
+- Activated `planning-with-files` and began reading `docs/skills/write-mini-app-code/SKILL.md`.
+- Added a scoped implementation plan; no product code changed yet.
+- Read the target mini-app conventions and mapped source/target symbols with `rg` because CodeGraph MCP is not available in this session.
+- Confirmed target workflow IDs match the source app and identified the missing `audioDisplay` node type.
+- Added storyboard parsing/import helpers, workspace character persistence, a character-library RightPanel tab, inline storyboard node UI, audio display node, and Canvas generation/display-node wiring.
+- First focused test run exposed only the new utility's extensionless Node ESM import; changed it to explicit `.js` before rerunning.
+- Added media-specific connection classification and real multi-hop `audioDisplay` forwarding after final behavior review.
+- Updated `handoff.md`, `CLAUDE.md`, data-model, and module-responsibility documentation.
+- Final verification: 25 focused tests passed, 19 changed source files passed Babel transformation, and `git diff --check` passed.
+
+## 2026-08-04: Storyboard interaction follow-up
+
+- Mapped existing Settings Agent configuration patterns and selected embedded character-manager plus native drag-handle implementation.
+- Moved character management into the storyboard node, removed the RightPanel character tab, and injected workspace character actions into node data.
+- Added collapsed AI import entry and global storyboard Agent configuration through `SettingsDialog.openAgentEditor`.
+- Added persisted handle-based scene drag sorting and focused regressions.
+- Verification passed: 29 focused tests, 9 changed files passed Babel syntax transformation, and `git diff --check` passed.
+- Replaced the inline character editor with a storyboard-node Dialog; 7 focused tests and 2-file Babel validation passed.
+- Used the requested `handoff` skill and created `game-asset-canvas/handoff-storyboard.md` in the user-specified mini-app directory.

@@ -49,7 +49,7 @@ import useSettings from '../hooks/useSettings';
 import useExecutionQueue from '../hooks/useExecutionQueue';
 import useWorkspaces from '../hooks/useWorkspaces';
 import usePanelLayout from '../hooks/usePanelLayout';
-import useImageOutputs, { useVideoOutputs } from '../hooks/useImageOutputs';
+import useImageOutputs, { useAudioOutputs, useVideoOutputs } from '../hooks/useImageOutputs';
 import useSelectionClipboard from '../hooks/useSelectionClipboard';
 import useGroupOperations from '../hooks/useGroupOperations';
 import useGroupExecution from '../hooks/useGroupExecution';
@@ -64,6 +64,8 @@ import { WORKFLOWS } from '../utils/constants';
 import useCanvasAgentRpc, { buildNodeExecution } from '../hooks/useCanvasAgentRpc';
 import useDecoratedNodes from '../hooks/useDecoratedNodes';
 import useNodePresets from '../hooks/useNodePresets';
+import useCharacterLibrary from '../hooks/useCharacterLibrary';
+import useStoryboardOperations from '../hooks/useStoryboardOperations';
 
 import { IMAGE_TAGS, NODE_TYPES, NODE_META } from '../utils/constants';
 import { NODE_COMPONENTS, NODE_PARAMS_SCHEMA, PANEL_ID_MAIN, PANEL_ID_RIGHT, dedupeTags, NODE_PRESET_MIME } from '../utils/canvas-constants';
@@ -118,6 +120,7 @@ export default function Canvas({ hostConfig }) {
   // 落地策略由 directory 驱动：设了则产图落到工作区目录，否则落 data（详见 useWorkflow/generateImages）
   const runWorkflow = useWorkflow(activeWorkspace?.directory);
   const { history, addHistory, removeHistory, clearHistory } = useGenerationHistory(activeId);
+  const characterLibrary = useCharacterLibrary(activeId);
   const { settings, saveSettings } = useSettings();
   // 节点预设库（全局共享，存顶层 node-presets.json）
   const { presets, addPreset, removePreset } = useNodePresets();
@@ -215,7 +218,16 @@ export default function Canvas({ hostConfig }) {
   // —— 图片节点批量产出（先抽，被执行队列 onComplete 前向引用）——
   const { addImageNodesFromUrls, addImageNodesGrouped, handleExportImages } = useImageOutputs({ setNodes, setGroups });
   // —— 视频节点批量产出（视频导出到画布）——
-  const { handleExportVideos } = useVideoOutputs({ setNodes });
+  const { addVideoNodesFromUrls, handleExportVideos } = useVideoOutputs({ setNodes });
+  const { addAudioNodesFromUrls } = useAudioOutputs({ setNodes });
+  const storyboardOperations = useStoryboardOperations({
+    nodesRef, updateNodeData,
+    characters: characterLibrary.characters,
+    saveCharacters: characterLibrary.saveCharacters,
+    settings,
+    directory: activeWorkspace?.directory,
+    addImageNodesFromUrls, addVideoNodesFromUrls, addAudioNodesFromUrls,
+  });
 
   // —— 执行队列（onComplete/onError 用 imageOutputs + updateNodeData + addHistory）——
   const { jobs, submit, cancel, clearFinished, runningCount, queuedCount } = useExecutionQueue({
@@ -1238,6 +1250,10 @@ export default function Canvas({ hostConfig }) {
     // 视频导出到画布（生成 videoDisplay 节点）
     onExportVideos: handleExportVideosWithPicker,
     onApplyToGroup: groupExecution.requestPropertyApply,
+    onImportStoryboard: storyboardOperations.importStoryboard,
+    onGenerateStoryboardMedia: storyboardOperations.generateSceneMedia,
+    onSaveStoryboardCharacter: characterLibrary.saveCharacter,
+    onDeleteStoryboardCharacter: characterLibrary.deleteCharacter,
   }), [
     makeOnUpdate, handleGenerate, handleGenerateMedia, handleProcessImage,
     handleProcessLocal, handleCutout, handleCutoutCreate, handleDepth, handleCancelProcess, handlePromptReverse,
@@ -1245,6 +1261,8 @@ export default function Canvas({ hostConfig }) {
     handleAddToAssets, handleAddOutputImages, handleRemoveOutputImage, handleClearOutputImages, handleReorderOutputImages,
     handleSwitchVersion, handleDeleteUpstreamImage, handleExportVideosWithPicker,
     groupExecution.requestPropertyApply,
+    storyboardOperations.importStoryboard, storyboardOperations.generateSceneMedia,
+    characterLibrary.saveCharacter, characterLibrary.deleteCharacter,
   ]);
 
   // —— Agent RPC（WS message 监听，ref 持有最新值只订阅一次）——
@@ -1277,7 +1295,7 @@ export default function Canvas({ hostConfig }) {
     outputPreviewState,
     onOutputPreviewHeight: handleOutputPreviewHeight,
     onOutputPreviewModeChange: handleOutputPreviewModeChange,
-    settings, callbacks: nodeCallbacks,
+    settings, callbacks: nodeCallbacks, storyboardCharacters: characterLibrary.characters,
   });
   decoratedNodesRef.current = decoratedNodes;
   const collectBatchRunNodes = useCallback((nodeIds) => {

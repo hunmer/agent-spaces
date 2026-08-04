@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { computeInputImages, computeInputTexts, computeInputVideos } from './input-images.js';
+import { computeInputAudios, computeInputImages, computeInputTexts, computeInputVideos } from './input-images.js';
 import { NODE_TYPES } from './constants.js';
 
 const edge = (source, target) => ({ id: `${source}-${target}`, source, target });
@@ -129,4 +129,15 @@ test('computeInputTexts ignores image edges and keeps separate text targets', ()
     prompt: 'voice line',
     voiceId: 'voice line',
   });
+});
+
+test('computeInputAudios forwards generated audio through display nodes', () => {
+  const nodes = [
+    { id: 'source', type: NODE_TYPES.textToVoice, data: { output: { audios: ['voice.mp3'] } } },
+    { id: 'display-a', type: NODE_TYPES.audioDisplay, data: { audios: [] } },
+    { id: 'display-b', type: NODE_TYPES.audioDisplay, data: { audios: [] } },
+  ];
+  const result = computeInputAudios(nodes, [edge('source', 'display-a'), edge('display-a', 'display-b')]);
+  assert.deepEqual(result.get('display-a')?.audios, ['voice.mp3']);
+  assert.deepEqual(result.get('display-b')?.audios, ['voice.mp3']);
 });
