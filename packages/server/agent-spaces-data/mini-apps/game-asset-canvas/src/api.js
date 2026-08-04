@@ -20,7 +20,7 @@ const VALID_NODE_TYPES = [
   'ipGifSplit',       // GIF 拆帧
   'ipGifMerge',       // GIF 合成
   'ipSpriteSplit',    // Sheet 拆分
-  'ipSpriteMerge',    // Sheet 合成
+  'ipSpriteMerge',    // 网格拼接
   'ipPixelate',       // 像素化
   'ipResizeNearest',  // 最近邻缩放
   'ipInnerStroke',    // 内描边
@@ -61,7 +61,7 @@ const NODE_LABELS = {
   ipGifSplit: 'GIF 拆帧',
   ipGifMerge: 'GIF 合成',
   ipSpriteSplit: 'Sheet 拆分',
-  ipSpriteMerge: 'Sheet 合成',
+  ipSpriteMerge: '网格拼接',
   ipPixelate: '像素化',
   ipResizeNearest: '最近邻缩放',
   ipInnerStroke: '内描边',

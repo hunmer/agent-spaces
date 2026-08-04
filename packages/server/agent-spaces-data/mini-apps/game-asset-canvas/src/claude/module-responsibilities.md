@@ -82,7 +82,7 @@
 | io.js | urlToImageData/imageDataToBlob/imageDataToUrl（统一 canvas I/O） |
 | imageDataOps.js | 纯函数 ImageData 操作（缩放/裁切/alpha 提取） |
 | gif.js | GIF 拆帧 decodeGifToFrames + 合成 encodeFramesToGif |
-| spriteSheet.js | splitSpriteSheet/splitByTransparent/composeSpriteSheet |
+| spriteSheet.js | splitSpriteSheet/splitByTransparent/composeSpriteSheet + 网格拼接抠图/背景合成 |
 | sprite-splitter.js | Sprite Sheet 拆分辅助 |
 | pixelate.js | pixelate（降采样 + Wu 量化，依赖 image-q） |
 | matte.js | chromaKey/whiteKey/erodeAlpha/hexToRgb |
@@ -105,6 +105,7 @@
 - `ConnectionLine.jsx`：自定义连线样式
 - `PromptPickerDialog.jsx`：提示词库选择器（搜索/分类/增删）
 - `UiSplitterDialog.jsx`：雪碧图拆分对话框（fabric + 连通域检测 + 多图切片导出）
+- `GridStitchDialog.jsx`：网格拼接编辑器（拖拽排序 + 网格/抠图/统一背景设置 + 输出）
 - `BBoxViewerDialog.jsx`：UI 拆分对话框（fabric + JSON bbox + AI 分析 + ZIP 导出）
 - `PixelEditorDialog.jsx`：Pixelorama iframe + postMessage 双向通信
 - `FileUpload.jsx`：通用文件上传（onChange uploadFile 拿 http URL）
@@ -122,7 +123,7 @@
 - `NodeShell.jsx`：节点外壳（Handle/状态/NodeResizer/NodeToolbar/nodrag nopan nowheel）
 - `TextToImageNode.jsx` / `EditImageNode.jsx`：提示词库按钮 + pickedPrompt + 合并提交
 - `ImageDisplayNode.jsx`：上传用 uploadFile 拿 http URL
-- `ImageProcessNode.jsx`：12 个 ip* 节点 + 旧 imageProcess 共用（按 nodeType 反查 processorId，无下拉）
+- `ImageProcessNode.jsx`：12 个 ip* 节点 + 旧 imageProcess 共用；`ipSpriteMerge` 额外挂载网格拼接编辑器
 - `ImageEditorNode.jsx`：Painterro 浏览器端编辑
 - `PixelEditorNode.jsx`：Pixelorama iframe
 - `UiSplitterNode.jsx`：雪碧图拆分（多图）

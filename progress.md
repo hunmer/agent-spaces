@@ -1,5 +1,26 @@
 # Progress: Canvas drag edge auto-pan
 
+## 2026-08-04 - Grid stitch editor
+- Received the request to rename Sheet composition and add a visual grid editor.
+- Restored existing planning context and read the complete `write-mini-app-code` guide.
+- CodeGraph MCP is unavailable in this session; using the instructed `rg` fallback.
+- Added a scoped implementation plan; no product source changed yet.
+- A parallel targeted search stopped on an expected `rg` no-match exit; switching to independent tolerant searches.
+- Confirmed `ipSpriteMerge` uses the generic image-process form and local sprite-sheet processor.
+- Identified the reusable cutout boundary as the Sheet split toolbar's local method/tolerance/color controls.
+- Chose existing `onProcessLocal` as the confirm/output path so node runtime and history behavior remain unchanged.
+- A second mixed read/search wrapper hit the same no-match exit class; all remaining searches will explicitly normalize exit code 1.
+- Completed implementation design: shared cutout settings, full-frame cutout preprocessing, pure preview composition, and node-persisted combined ordering.
+- Confirmed there is no mini-app-local package manifest; validation will use direct Node/Babel commands like existing tests.
+- The first combined sprite algorithm patch failed cleanly on stale registry context; retrying as smaller exact patches.
+- Diff review found a splitter pick-color visibility regression; the first combined correction patch failed cleanly and is being split per file.
+- Added `GridStitchDialog`, shared `CutoutSettings`, persisted grid helpers, and cutout/background-aware sprite composition.
+- Renamed all user-visible `Sheet 合成` labels to `网格拼接` across node metadata, panel, Agent API, and tool descriptions.
+- Preserved the splitter's existing always-available color picker/pipette behavior after extracting the shared control.
+- Added four focused grid-stitch regressions; combined with API tests, final targeted verification passes 6/6.
+- Babel compilation passes for 10 related modules; forbidden-pattern scan and `git diff --check` pass.
+- No browser test was run per project default. No service restart was needed for mini-app source refresh, and `procm-mcp` is unavailable in this session.
+
 ## 2026-08-04 - Storyboard output handles and asset-aware connections
 - Received follow-up to add one output handle per storyboard scene and make connection target selection asset-aware.
 - Restored the existing planning context and started tracing the current storyboard/connection implementation.

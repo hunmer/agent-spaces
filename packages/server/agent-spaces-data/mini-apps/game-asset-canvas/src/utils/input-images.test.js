@@ -131,6 +131,40 @@ test('computeInputTexts ignores image edges and keeps separate text targets', ()
   });
 });
 
+test('computeInputTexts replaces only selected variables in the persisted target template', () => {
+  const nodes = [
+    { id: 'subject', type: NODE_TYPES.text, data: { output: { text: '<p>机械骑士</p>' } } },
+    { id: 'style', type: NODE_TYPES.text, data: { output: { text: '像素风' } } },
+    {
+      id: 'target',
+      type: NODE_TYPES.textToImage,
+      data: { params: { prompt: '<p>绘制 {subject}，使用 {style}，保留 {lighting}</p>' } },
+    },
+  ];
+  const edges = [
+    { ...edge('subject', 'target'), data: { inputType: 'text', inputTarget: 'prompt', inputVariable: 'subject' } },
+    { ...edge('style', 'target'), id: 'style-target', data: { inputType: 'text', inputTarget: 'prompt', inputVariable: 'style' } },
+  ];
+
+  assert.deepEqual(computeInputTexts(nodes, edges).get('target'), {
+    prompt: '绘制 机械骑士，使用 像素风，保留 {lighting}',
+  });
+});
+
+test('computeInputTexts keeps legacy whole-field replacement ahead of variable edges', () => {
+  const nodes = [
+    { id: 'whole', type: NODE_TYPES.text, data: { output: { text: '完整提示词' } } },
+    { id: 'subject', type: NODE_TYPES.text, data: { output: { text: '机械骑士' } } },
+    { id: 'target', type: NODE_TYPES.textToImage, data: { params: { prompt: '绘制 {subject}' } } },
+  ];
+  const edges = [
+    { ...edge('whole', 'target'), data: { inputType: 'text', inputTarget: 'prompt' } },
+    { ...edge('subject', 'target'), id: 'subject-target', data: { inputType: 'text', inputTarget: 'prompt', inputVariable: 'subject' } },
+  ];
+
+  assert.deepEqual(computeInputTexts(nodes, edges).get('target'), { prompt: '完整提示词' });
+});
+
 test('computeInputAudios forwards generated audio through display nodes', () => {
   const nodes = [
     { id: 'source', type: NODE_TYPES.textToVoice, data: { output: { audios: ['voice.mp3'] } } },

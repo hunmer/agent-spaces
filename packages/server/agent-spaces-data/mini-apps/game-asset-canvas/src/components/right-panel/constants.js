@@ -24,7 +24,7 @@ export const ADD_ITEMS = [
   { type: NODE_TYPES.ipGifSplit, label: 'GIF 拆帧', category: 'image-process' },
   { type: NODE_TYPES.ipGifMerge, label: 'GIF 合成', category: 'image-process' },
   { type: NODE_TYPES.ipSpriteSplit, label: 'Sheet 拆分', category: 'image-process' },
-  { type: NODE_TYPES.ipSpriteMerge, label: 'Sheet 合成', category: 'image-process' },
+  { type: NODE_TYPES.ipSpriteMerge, label: '网格拼接', category: 'image-process' },
   { type: NODE_TYPES.ipPixelate, label: '像素化', category: 'image-process' },
   { type: NODE_TYPES.ipResizeNearest, label: '最近邻缩放', category: 'image-process' },
   { type: NODE_TYPES.ipInnerStroke, label: '内描边', category: 'image-process' },

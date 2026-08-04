@@ -5,8 +5,10 @@ function edgeIdBase(edge) {
     edge?.target,
     edge?.targetHandle,
     edge?.data?.inputTarget,
-  ].map((value) => encodeURIComponent(String(value || '')));
-  return `edge-${parts.join('-')}`;
+  ];
+  if (edge?.data?.inputVariable) parts.push(edge.data.inputVariable);
+  const encodedParts = parts.map((value) => encodeURIComponent(String(value || '')));
+  return `edge-${encodedParts.join('-')}`;
 }
 
 /** 保留已有唯一 ID，并为缺失或重复 ID 的边生成稳定唯一 ID。 */

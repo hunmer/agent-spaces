@@ -4,7 +4,8 @@ import { NODE_TYPES } from './constants.js';
 import {
   CONNECTION_INPUT_TYPES, DEFAULT_FILE_UPLOAD_TARGET, getConnectionTargets,
   getConnectionTargetsByInputType, getConnectionTargetsForInputType,
-  getFileUploadTargets, getTextInputTargets, resolveFileUploadTarget,
+  extractTemplateVariables, getFileUploadTargets, getTextInputTargets,
+  resolveFileUploadTarget, withTextTargetVariables,
 } from './connection-targets.js';
 
 test('edit image exposes both regular image and mask connection targets', () => {
@@ -34,6 +35,21 @@ test('text products discover text fields from the target node schema', () => {
       { id: 'fileName', label: '文件名', description: '写入「文件名」文本输入' },
     ],
   });
+});
+
+test('text targets expose unique template variables from plain text or html values', () => {
+  assert.deepEqual(
+    extractTemplateVariables('<p>让 {角色} 使用 {武器}，保持 {角色}</p>'),
+    ['角色', '武器'],
+  );
+  assert.deepEqual(extractTemplateVariables('忽略 {two words} 和 {}'), []);
+  assert.deepEqual(withTextTargetVariables(
+    [{ id: 'prompt', label: '提示词' }, { id: 'fileName', label: '文件名' }],
+    { prompt: '生成 {subject}', fileName: 'hero.png' },
+  ), [
+    { id: 'prompt', label: '提示词', variables: ['subject'] },
+    { id: 'fileName', label: '文件名', variables: [] },
+  ]);
 });
 
 test('reverse-prompt nodes use text targets while image products keep upload targets', () => {

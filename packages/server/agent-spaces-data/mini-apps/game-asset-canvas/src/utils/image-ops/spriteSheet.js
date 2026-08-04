@@ -3,8 +3,37 @@
  * 来源：FrameRonin SpriteSheetTool.tsx splitSpriteSheet + ParamsStep/utils.ts composeSpriteSheetClient +
  * lib/superSplitTransparent.ts 的透明检测。全部改为 ImageData 出入参。
  *
- * 零依赖（纯像素操作）。
+ * 纯像素操作。
  */
+
+import { colorDistance, cornerColor } from './sprite-splitter.js';
+
+function parseHexColor(value, fallback = [255, 255, 255]) {
+  let hex = String(value || '').trim().replace('#', '');
+  if (hex.length === 3) hex = hex.split('').map((char) => char + char).join('');
+  if (!/^[0-9a-f]{6}$/i.test(hex)) return fallback;
+  const number = Number.parseInt(hex, 16);
+  return [(number >> 16) & 255, (number >> 8) & 255, number & 255];
+}
+
+export function applySpriteSheetCutout(frame, opts = {}) {
+  const method = opts.cutoutMethod || 'none';
+  const output = new ImageData(new Uint8ClampedArray(frame.data), frame.width, frame.height);
+  if (method === 'none' || method === 'alpha') return output;
+
+  const tolerance = Math.max(0, Number(opts.tolerance) || 0);
+  const background = method === 'picked'
+    ? parseHexColor(opts.cutoutColor, cornerColor(frame))
+    : cornerColor(frame);
+  for (let index = 0; index < output.data.length; index += 4) {
+    const brightness = output.data[index] + output.data[index + 1] + output.data[index + 2];
+    const remove = method === 'brightness'
+      ? brightness >= tolerance * 3
+      : colorDistance(output.data[index], output.data[index + 1], output.data[index + 2], background) <= tolerance;
+    if (remove) output.data[index + 3] = 0;
+  }
+  return output;
+}
 
 /**
  * 按行列均匀切分 Sprite Sheet。
@@ -139,23 +168,32 @@ export function splitByTransparent(img) {
  * 多帧合成 Sprite Sheet（网格布局）。
  * 来源：composeSpriteSheetClient，简化为统一帧尺寸 + 列数布局。
  * @param {ImageData[]} frames
- * @param {{ columns?: number, spacing?: number }} opts
+ * @param {{ columns?: number, spacing?: number, cutoutMethod?: string, tolerance?: number, cutoutColor?: string, backgroundColor?: string }} opts
  * @returns {ImageData}
  */
 export function composeSpriteSheet(frames, opts = {}) {
   if (!frames.length) throw new Error('无帧可合成');
+  const preparedFrames = frames.map((frame) => applySpriteSheetCutout(frame, opts));
   const columns = Math.max(1, Math.floor(opts.columns ?? Math.min(frames.length, 4)));
   const spacing = Math.max(0, Math.floor(opts.spacing ?? 0));
   // 取最大帧尺寸作为格子尺寸
-  const cellW = Math.max(...frames.map((f) => f.width));
-  const cellH = Math.max(...frames.map((f) => f.height));
-  const rows = Math.ceil(frames.length / columns);
+  const cellW = Math.max(...preparedFrames.map((f) => f.width));
+  const cellH = Math.max(...preparedFrames.map((f) => f.height));
+  const rows = Math.ceil(preparedFrames.length / columns);
   const sheetW = columns * cellW + (columns - 1) * spacing;
   const sheetH = rows * cellH + (rows - 1) * spacing;
   const sheet = new ImageData(sheetW, sheetH);
-  // 默认全透明，无需显式 fill（ImageData 默认 0）
+  const canvasBackground = opts.backgroundColor ? parseHexColor(opts.backgroundColor) : null;
+  if (canvasBackground) {
+    for (let index = 0; index < sheet.data.length; index += 4) {
+      sheet.data[index] = canvasBackground[0];
+      sheet.data[index + 1] = canvasBackground[1];
+      sheet.data[index + 2] = canvasBackground[2];
+      sheet.data[index + 3] = 255;
+    }
+  }
 
-  frames.forEach((frame, i) => {
+  preparedFrames.forEach((frame, i) => {
     const col = i % columns;
     const row = Math.floor(i / columns);
     const baseX = col * (cellW + spacing);
@@ -168,10 +206,18 @@ export function composeSpriteSheet(frames, opts = {}) {
         const dx = baseX + offX + x;
         const dy = baseY + offY + y;
         const oi = (dy * sheetW + dx) * 4;
-        sheet.data[oi] = frame.data[si];
-        sheet.data[oi + 1] = frame.data[si + 1];
-        sheet.data[oi + 2] = frame.data[si + 2];
-        sheet.data[oi + 3] = frame.data[si + 3];
+        if (canvasBackground) {
+          const alpha = frame.data[si + 3] / 255;
+          sheet.data[oi] = Math.round(frame.data[si] * alpha + canvasBackground[0] * (1 - alpha));
+          sheet.data[oi + 1] = Math.round(frame.data[si + 1] * alpha + canvasBackground[1] * (1 - alpha));
+          sheet.data[oi + 2] = Math.round(frame.data[si + 2] * alpha + canvasBackground[2] * (1 - alpha));
+          sheet.data[oi + 3] = 255;
+        } else {
+          sheet.data[oi] = frame.data[si];
+          sheet.data[oi + 1] = frame.data[si + 1];
+          sheet.data[oi + 2] = frame.data[si + 2];
+          sheet.data[oi + 3] = frame.data[si + 3];
+        }
       }
     }
   });

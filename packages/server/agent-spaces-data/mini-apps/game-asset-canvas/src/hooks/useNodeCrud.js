@@ -3,7 +3,10 @@ import { addEdge, MarkerType } from '@xyflow/react';
 import { debugCanvasImageDrag } from '@agent-spaces/ui';
 import { NODE_TYPES, NODE_META, IMAGE_TAGS, WORKFLOWS } from '../utils/constants';
 import { DEFAULT_SIZE, initialData, NODE_PARAMS_SCHEMA, CANVAS_DROP_MIME, IMAGE_REORDER_MIME, NODE_PRESET_MIME } from '../utils/canvas-constants';
-import { getConnectionTargets, getConnectionTargetsByInputType } from '../utils/connection-targets';
+import {
+  CONNECTION_INPUT_TYPES, getConnectionTargets, getConnectionTargetsByInputType,
+  withTextTargetVariables,
+} from '../utils/connection-targets';
 import { resolveStoryboardHandleAssets } from '../utils/storyboard-assets.js';
 import { genId, autoPosition } from '../utils/canvas-id';
 import { autoLayoutSubset, autoLayoutTopLevel } from '../utils/layout';
@@ -124,6 +127,10 @@ export default function useNodeCrud({
       const newId = createNodeAt(type, position, dataPatch);
       const sourceNode = nodesRef.current.find((node) => node.id === cur.source);
       const targetParamsSchema = NODE_PARAMS_SCHEMA[type] || [];
+      const baseParams = initialData(type)?.params || {};
+      const targetParams = dataPatch?.params
+        ? { ...baseParams, ...dataPatch.params }
+        : { ...baseParams, ...(getLastParams?.(type) || {}) };
       const storyboardAssets = resolveStoryboardHandleAssets(sourceNode, cur.sourceHandle);
       if (storyboardAssets?.length > 1) {
         setPendingConnection?.({
@@ -145,17 +152,20 @@ export default function useNodeCrud({
         targetParamsSchema,
         sourceAsset?.type,
       );
-      if (connection.targets.length > 1) {
+      const targets = connection.inputType === CONNECTION_INPUT_TYPES.text
+        ? withTextTargetVariables(connection.targets, targetParams)
+        : connection.targets;
+      if (targets.length > 1 || targets.some((target) => target.variables?.length)) {
         setPendingConnection?.({
           conn: { source: cur.source, target: newId, sourceHandle: cur.sourceHandle },
-          targets: connection.targets,
+          targets,
           inputType: connection.inputType,
           assets: sourceAsset ? [sourceAsset] : [],
         });
         return null;
       }
       setEdges((prev) => {
-        if (!connection.targets.length) return prev;
+        if (!targets.length) return prev;
         const key = `${cur.source}->${newId}`;
         if (prev.some((e) => `${e.source}->${e.target}` === key)) return prev;
         return addEdge(
@@ -167,7 +177,7 @@ export default function useNodeCrud({
             animated: true,
             data: {
               inputType: connection.inputType,
-              inputTarget: connection.targets[0].id,
+              inputTarget: targets[0].id,
               ...(sourceAsset ? { sourceAsset } : {}),
             },
           },
@@ -176,7 +186,7 @@ export default function useNodeCrud({
       });
       return null; // 关闭菜单
     });
-  }, [reactFlow, createNodeAt, setEdges, setDropNodeMenu, setPendingConnection]);
+  }, [reactFlow, createNodeAt, getLastParams, setEdges, setDropNodeMenu, setPendingConnection]);
 
   // 点击添加：定位到画布可视区域中心（由调用方提供屏幕中心坐标，hook 内转 flow 坐标）
   const handleAdd = useCallback((type) => {

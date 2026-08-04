@@ -41,7 +41,8 @@ import BatchRunConfirmDialog from './BatchRunConfirmDialog';
 import SavePresetDialog from './SavePresetDialog';
 import useAssetLibrary from '../hooks/useAssetLibrary';
 import {
-  getConnectionTargets, getConnectionTargetsByInputType, getNodeOutputType,
+  CONNECTION_INPUT_TYPES, getConnectionTargets, getConnectionTargetsByInputType, getNodeOutputType,
+  withTextTargetVariables,
 } from '../utils/connection-targets';
 import { resolveStoryboardHandleAssets } from '../utils/storyboard-assets.js';
 
@@ -446,7 +447,7 @@ export default function Canvas({ hostConfig }) {
 
   // 连线：多选增强（参考 xyflow MultiConnect）——若 source 选中，把所有选中节点都连到 target。
   // 用 nodesRef 读最新 nodes（多选判断），callback deps 不含 nodes → 稳定引用。
-  const addConnections = useCallback((conn, inputTarget, inputType, sourceAsset) => {
+  const addConnections = useCallback((conn, inputTarget, inputType, sourceAsset, inputVariable) => {
     setEdges((prev) => {
       const curNodes = nodesRef.current;
       const originOutputType = inputType || getNodeOutputType(
@@ -458,14 +459,15 @@ export default function Canvas({ hostConfig }) {
           .map((n) => n.id)
         : [conn.source];
       let next = prev;
-      const edgeKey = (source, sourceHandle, target, targetHandle, targetInput) => (
-        [source, sourceHandle, target, targetHandle, targetInput].map((value) => String(value || '')).join('\u0000')
+      const edgeKey = (source, sourceHandle, target, targetHandle, targetInput, targetVariable) => (
+        [source, sourceHandle, target, targetHandle, targetInput, targetVariable].map((value) => String(value || '')).join('\u0000')
       );
       const existing = new Set(prev.map((e) => edgeKey(
         e.source, e.sourceHandle, e.target, e.targetHandle, e.data?.inputTarget,
+        e.data?.inputVariable,
       )));
       for (const source of sources) {
-        const key = edgeKey(source, conn.sourceHandle, conn.target, conn.targetHandle, inputTarget);
+        const key = edgeKey(source, conn.sourceHandle, conn.target, conn.targetHandle, inputTarget, inputVariable);
         if (existing.has(key)) continue;
         existing.add(key);
         next = addEdge(
@@ -478,6 +480,7 @@ export default function Canvas({ hostConfig }) {
               lineStyle: edgeLineStyle,
               inputTarget,
               inputType: originOutputType,
+              ...(inputVariable ? { inputVariable } : {}),
               ...(sourceAsset ? { sourceAsset } : {}),
             },
           },
@@ -511,17 +514,21 @@ export default function Canvas({ hostConfig }) {
       return;
     }
     const sourceAsset = storyboardAssets?.[0] || null;
-    const { inputType, targets } = getConnectionTargets(
+    const connection = getConnectionTargets(
       sourceNode?.type,
       targetNode?.type,
       targetParamsSchema,
       sourceAsset?.type,
     );
+    const { inputType } = connection;
+    const targets = inputType === CONNECTION_INPUT_TYPES.text
+      ? withTextTargetVariables(connection.targets, targetNode?.data?.params)
+      : connection.targets;
     if (!targets.length) {
       toast.error(inputType === 'text' ? '目标节点没有可接收文本的输入框' : '目标节点不支持该输入');
       return;
     }
-    if (targets.length > 1) {
+    if (targets.length > 1 || targets.some((target) => target.variables?.length)) {
       setPendingConnection({ conn, targets, inputType, assets: sourceAsset ? [sourceAsset] : [] });
       return;
     }
@@ -1931,13 +1938,14 @@ export default function Canvas({ hostConfig }) {
         assets={pendingConnection?.assets || []}
         inputType={pendingConnection?.inputType}
         onClose={() => setPendingConnection(null)}
-        onSelect={(inputTarget, sourceAsset, inputType) => {
+        onSelect={(inputTarget, sourceAsset, inputType, inputVariable) => {
           if (pendingConnection?.conn) {
             addConnections(
               pendingConnection.conn,
               inputTarget,
               inputType || pendingConnection.inputType,
               sourceAsset,
+              inputVariable,
             );
           }
           setPendingConnection(null);

@@ -109,7 +109,10 @@ test('connection dialog selects multi-assets before showing compatible targets',
   assert.match(connectionDialogSource, /先选择该分镜中的一个素材/);
   assert.match(connectionDialogSource, /needsAssetSelection && !selectedAsset\s*\? \[\]/);
   assert.match(connectionDialogSource, /targetsByInputType\[activeInputType\]/);
-  assert.match(connectionDialogSource, /onSelect\?\.\(target\.id, selectedAsset \|\| null, activeInputType\)/);
+  assert.match(connectionDialogSource, /onSelect\?\.\(target\.id, selectedAsset \|\| null, activeInputType, undefined\)/);
+  assert.match(connectionDialogSource, /selectedTargetId === target\.id/);
+  assert.match(connectionDialogSource, /替换整个字段/);
+  assert.match(connectionDialogSource, /activeInputType, variable\)/);
 });
 
 test('canvas persists the selected storyboard asset on the edge', () => {
@@ -117,4 +120,5 @@ test('canvas persists the selected storyboard asset on the edge', () => {
   assert.match(canvasSource, /getConnectionTargetsByInputType/);
   assert.match(canvasSource, /\.\.\.\(sourceAsset \? \{ sourceAsset \} : \{\}\)/);
   assert.match(canvasSource, /pendingConnection\?\.assets \|\| \[\]/);
+  assert.match(canvasSource, /inputVariable/);
 });

@@ -1,15 +1,19 @@
 import UploadSection from './UploadSection';
-import { useCallback } from 'react';
-import { FileUpload } from '@agent-spaces/ui';
+import { useCallback, useState } from 'react';
+import { FileUpload, Pencil } from '@agent-spaces/ui';
 import NodeShell from './NodeShell';
 import UpstreamImageList, { orderUpstream } from './UpstreamImageList';
 import ParamField from './ParamField';
+import GridStitchDialog from '../GridStitchDialog';
 import {
   IMAGE_PROCESSORS,
   NODE_TYPES,
   NODE_TYPE_TO_PROCESSOR,
 } from '../../utils/constants';
 import { dedupeUrls } from '../../utils/workflow';
+import {
+  gridStitchProcessorParams, normalizeGridStitchData, orderGridStitchInputs,
+} from '../../utils/grid-stitch';
 
 /**
  * 图像处理节点：固定处理器 + 调参 + 执行 → 产出图（本地算法/云端工作流）。
@@ -33,6 +37,7 @@ import { dedupeUrls } from '../../utils/workflow';
  * 断网或 CDN 不可达时执行报错，不影响其他节点。
  */
 export default function ImageProcessNode({ id, type, data, selected }) {
+  const [gridDialogOpen, setGridDialogOpen] = useState(false);
   const params = data?.params || {};
   // 拆分后节点：nodeType 反查固定 processorId；旧 imageProcess 单节点：从 data.params.processor 读
   const processorId = NODE_TYPE_TO_PROCESSOR[type] || params.processor || 'pixelate';
@@ -44,7 +49,12 @@ export default function ImageProcessNode({ id, type, data, selected }) {
   const upstreamOrder = Array.isArray(data?.upstreamOrder) ? data.upstreamOrder : [];
   const upstreamImages = orderUpstream(rawUpstream, upstreamOrder);
   // 合并输入：上传图在前 + 上游连线图（已排序）在后，去重保序
-  const inputImages = dedupeUrls([...uploadedImages, ...upstreamImages]);
+  const mergedInputImages = dedupeUrls([...uploadedImages, ...upstreamImages]);
+  const isGridStitch = processorId === 'sprite-merge';
+  const gridStitchData = normalizeGridStitchData(data?.gridStitchData, mergedInputImages, processorParams);
+  const inputImages = isGridStitch
+    ? orderGridStitchInputs(mergedInputImages, gridStitchData.order)
+    : mergedInputImages;
   const status = data?.status || 'idle';
   const error = data?.error;
   const running = status === 'running';
@@ -102,9 +112,29 @@ export default function ImageProcessNode({ id, type, data, selected }) {
 
   const handleRun = useCallback(() => {
     if (!inputImages.length) return;
+    const executionParams = isGridStitch
+      ? { ...processorParams, ...gridStitchProcessorParams(gridStitchData) }
+      : processorParams;
     // 传 type（节点类型）供 Canvas 记录到生成历史的 nodeType（区分 12 个处理器节点）
-    onProcessLocal?.(id, processorId, processorParams, inputImages, type);
-  }, [onProcessLocal, id, processorId, processorParams, inputImages, type]);
+    onProcessLocal?.(id, processorId, executionParams, inputImages, type);
+  }, [onProcessLocal, id, processorId, processorParams, inputImages, type, isGridStitch, gridStitchData]);
+
+  const handleGridDataChange = useCallback((next) => {
+    onUpdate?.({
+      gridStitchData: next,
+      params: { ...params, processorParams: { ...processorParams, ...gridStitchProcessorParams(next) } },
+    });
+  }, [onUpdate, params, processorParams]);
+
+  const handleGridConfirm = useCallback((next) => {
+    const orderedImages = orderGridStitchInputs(mergedInputImages, next.order);
+    const nextParams = { ...processorParams, ...gridStitchProcessorParams(next) };
+    onUpdate?.({
+      gridStitchData: next,
+      params: { ...params, processorParams: nextParams },
+    });
+    onProcessLocal?.(id, processorId, nextParams, orderedImages, type);
+  }, [id, mergedInputImages, onProcessLocal, onUpdate, params, processorId, processorParams, type]);
 
   // FileUpload value：把持久化的 uploadedImages URL 转回 FileUploadFile 格式（带预览）
   const fileUploadValue = uploadedImages.map((url, i) => ({
@@ -195,14 +225,28 @@ export default function ImageProcessNode({ id, type, data, selected }) {
           </button>
         </div>
       ) : (
-        <button
-          type="button"
-          onClick={handleRun}
-          disabled={uploading || !inputImages.length || (multipleIn && inputImages.length < minInputs)}
-          className="w-full rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          ⚡ 执行
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={handleRun}
+            disabled={uploading || !inputImages.length || (multipleIn && inputImages.length < minInputs)}
+            className="flex-1 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            ⚡ 执行
+          </button>
+          {isGridStitch && (
+            <button
+              type="button"
+              onClick={() => setGridDialogOpen(true)}
+              disabled={uploading || inputImages.length < minInputs}
+              title="打开网格拼接编辑器"
+              aria-label="打开网格拼接编辑器"
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border bg-background text-foreground transition hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <Pencil className="h-4 w-4" />
+            </button>
+          )}
+        </div>
       )}
 
       {cancelled && (
@@ -211,6 +255,18 @@ export default function ImageProcessNode({ id, type, data, selected }) {
 
       {error && (
         <p className="rounded-md bg-red-500/10 px-2 py-1 text-xs text-red-500">{error}</p>
+      )}
+
+      {isGridStitch && (
+        <GridStitchDialog
+          open={gridDialogOpen}
+          inputImages={mergedInputImages}
+          initialData={gridStitchData}
+          processorParams={processorParams}
+          onDataChange={handleGridDataChange}
+          onConfirm={handleGridConfirm}
+          onClose={() => setGridDialogOpen(false)}
+        />
       )}
 
     </NodeShell>

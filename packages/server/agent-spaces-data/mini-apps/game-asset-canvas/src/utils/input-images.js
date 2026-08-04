@@ -179,17 +179,36 @@ export function computeInputTexts(nodes, edges) {
     if (typeof sourceText !== 'string' || !sourceText.trim()) continue;
     if (!valuesByTarget.has(edge.target)) valuesByTarget.set(edge.target, {});
     const targetValues = valuesByTarget.get(edge.target);
-    if (!targetValues[edge.data.inputTarget]) targetValues[edge.data.inputTarget] = [];
-    targetValues[edge.data.inputTarget].push(htmlToPlainText(sourceText));
+    const field = edge.data.inputTarget;
+    if (!targetValues[field]) targetValues[field] = { whole: [], variables: {} };
+    const plainText = htmlToPlainText(sourceText);
+    const variable = edge.data?.inputVariable;
+    if (typeof variable === 'string' && variable) {
+      if (!targetValues[field].variables[variable]) targetValues[field].variables[variable] = [];
+      targetValues[field].variables[variable].push(plainText);
+    } else {
+      targetValues[field].whole.push(plainText);
+    }
   }
 
   return new Map(Array.from(valuesByTarget, ([nodeId, fields]) => [
     nodeId,
-    Object.fromEntries(Object.entries(fields).map(([field, values]) => [
-      field,
-      Array.from(new Set(values)).join('\n\n'),
-    ])),
+    Object.fromEntries(Object.entries(fields).map(([field, values]) => {
+      const wholeValue = joinUniqueText(values.whole);
+      if (wholeValue) return [field, wholeValue];
+
+      const targetNode = byId.get(nodeId);
+      let result = htmlToPlainText(targetNode?.data?.params?.[field] || '');
+      for (const [variable, texts] of Object.entries(values.variables)) {
+        result = result.split(`{${variable}}`).join(joinUniqueText(texts));
+      }
+      return [field, result];
+    })),
   ]));
+}
+
+function joinUniqueText(values = []) {
+  return Array.from(new Set(values.filter(Boolean))).join('\n\n');
 }
 
 /**

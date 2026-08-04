@@ -259,3 +259,31 @@ Move the storyboard output rail outside `NodeShell` so every scene handle is vis
 ### Resolution
 - Wrap `NodeShell` in a root `overflow-visible` container and render the output rail after `</NodeShell>` at `left: calc(100% + 10px)`.
 - Keep the source `Handle` inside each external thumbnail item; dynamic handle remeasurement remains driven by `useUpdateNodeInternals`.
+
+## Current Task: Grid stitch editor
+
+### Goal
+Rename the Sheet composition node to `网格拼接` and add an 80vw x 80vh visual editor with draggable image ordering, grid settings, reusable cutout controls, unified background color, and confirm-to-output behavior.
+
+### Phases
+- [complete] Trace the current Sheet composition form/execution flow and Sheet split editor cutout implementation.
+- [complete] Define the minimal shared cutout component and persisted editor data contract.
+- [complete] Implement node rename, editor dialog, drag sorting, preview, settings, and output wiring.
+- [complete] Add focused regression coverage and update project documentation.
+- [complete] Run targeted syntax/tests and inspect the scoped diff.
+
+### Decisions
+- Preserve the current Sheet composition execution path and output structure unless source evidence requires a contract change.
+- Keep all product edits inside the `game-asset-canvas` mini-app root.
+- Preserve unrelated dirty-worktree changes.
+- Store editor state under `data.gridStitchData` with ordered URLs and processor-compatible settings.
+- Reuse `exportBox` over each full frame for cutout semantics, then compose with `composeSpriteSheet` for preview and execution.
+
+### Errors Encountered
+| Error | Attempt | Resolution |
+|---|---:|---|
+| Parallel targeted `rg` wrapper stopped when one pattern had no matches | 1 | No product changes occurred; rerun searches independently with no-match treated as valid output. |
+| A later mixed read/search wrapper again omitted no-match handling on one `rg` pipeline | 2 | No product changes occurred; make every search command explicitly accept exit code 1 before continuing. |
+| Assumed the mini-app had its own `package.json`, but it does not | 1 | Use the repository's established direct Node/Babel test commands instead of package-local scripts. |
+| Combined sprite algorithm/registry patch missed the current `sprite-merge` branch context | 1 | Patch was not applied; split the edit by file and anchor on exact current lines. |
+| Combined shared-control regression patch mixed contexts from two files | 1 | Patch was not applied; edit the shared component, caller, and dialog in separate patches. |

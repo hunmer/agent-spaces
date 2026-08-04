@@ -2,7 +2,7 @@
 
 ## 一句话定位
 
-Agent Spaces 宿主里的 React mini-app，用 ReactFlow 搭一个**节点化的游戏资产生成画布**：节点调工作流（文生图/编辑/抠图/放大/语音/视频）或跑本地图像算法（GIF/像素化/Sheet 合成），节点间连线传图，支持多工作区隔离 + 复制粘贴 + 分组 overlay + Agent RPC 操控画布。
+Agent Spaces 宿主里的 React mini-app，用 ReactFlow 搭一个**节点化的游戏资产生成画布**：节点调工作流（文生图/编辑/抠图/放大/语音/视频）或跑本地图像算法（GIF/像素化/网格拼接），节点间连线传图，支持多工作区隔离 + 复制粘贴 + 分组 overlay + Agent RPC 操控画布。
 
 ## 在宿主中的位置
 

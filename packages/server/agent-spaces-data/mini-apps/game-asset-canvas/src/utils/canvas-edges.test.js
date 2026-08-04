@@ -50,3 +50,17 @@ test('does not generate an ID already reserved by another edge', () => {
   assert.equal(normalized[0].id, edges[0].id);
   assert.equal(normalized[1].id, 'edge-source-1--target-1--images-2');
 });
+
+test('uses the selected text variable in generated edge IDs without changing legacy IDs', () => {
+  const normalized = ensureEdgeIds([
+    { source: 'source', target: 'target', data: { inputTarget: 'prompt' } },
+    { source: 'source', target: 'target', data: { inputTarget: 'prompt', inputVariable: 'subject' } },
+    { source: 'source', target: 'target', data: { inputTarget: 'prompt', inputVariable: 'style' } },
+  ]);
+
+  assert.deepEqual(normalized.map((edge) => edge.id), [
+    'edge-source--target--prompt',
+    'edge-source--target--prompt-subject',
+    'edge-source--target--prompt-style',
+  ]);
+});

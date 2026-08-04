@@ -58,7 +58,9 @@ function getEdgeTargetLabel(edge, nodeMap, nodeParamsSchema) {
     edge.data?.inputType,
   );
   const targetId = edge.data?.inputTarget;
-  return (targets.find((target) => target.id === targetId) || targets[0])?.label || targetId || null;
+  const targetLabel = (targets.find((target) => target.id === targetId) || targets[0])?.label || targetId || null;
+  const inputVariable = edge.data?.inputVariable;
+  return targetLabel && inputVariable ? `${targetLabel} · {${inputVariable}}` : targetLabel;
 }
 
 function withoutDash(style) {

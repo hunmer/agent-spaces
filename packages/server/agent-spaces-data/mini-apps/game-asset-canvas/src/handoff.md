@@ -146,7 +146,7 @@ Agent → api.js handler → ctx.requestClient(type, payload, timeoutMs)
 23. **videoEditor 播放器常驻且截帧无损**：视频播放器与 `FrameSequencePlayer` 切 tab 时只切显隐，不得条件卸载；隐藏播放器用 `active`/`pause()` 停止播放并保留当前位置。截帧输出原分辨率无损 PNG；`cropRegion` 使用 `0..1` 归一化坐标，框选宽或高小于 1% 无效，框选模式开启时暂停视频并隐藏原生 controls。动画组的派生 frames 必须用 `useMemo`/`useCallback` 保持稳定，精灵图仅随源帧、起止帧、FPS 或列数变化重算。
 24. **透传节点优先使用当前派生输入**：`imageDisplay` / `videoDisplay` 有连入边时，继续向下游转发必须优先取 `computeInputImages/computeInputVideos` 本轮派生值（包括空数组），不能回退到节点持久化的旧 `data.images/videos`，否则上游切换历史版本后会向更下游残留旧产出。`videoEditor` 仍按“自身上传 + 当前上游”去重合并。
 24. **媒体 URL 不能直接作为 React 列表 key**：工作流可能返回重复 URL（同一图片出现多次），`key={url}` 在历史版本 `1↔2` 张切换时会触发 React 错误复用并残留 DOM。上游输入列表统一用 `occurrenceKeys` 生成“同 URL 出现序号 + URL”的唯一 key。
-25. **文本连线是引用，不复制 params**：文字/反推节点的 `data.output.text` 经 `computeInputTexts` 派生到目标的 `data.textInputValues`；目标组件只在展示/执行时与持久化 `data.params` 合并，写回仍基于原始 params。edge 用 `data.inputType='text'` + `data.inputTarget=<字段 key>`；断线后应恢复目标节点原来的手动值。
+25. **文本连线是引用，不复制 params**：文字/反推节点的 `data.output.text` 经 `computeInputTexts` 派生到目标的 `data.textInputValues`；目标组件只在展示/执行时与持久化 `data.params` 合并，写回仍基于原始 params。edge 用 `data.inputType='text'` + `data.inputTarget=<字段 key>`；可选 `data.inputVariable=<变量名>` 只替换目标字段中的同名 `{变量}`，未设置时仍替换整个字段，且整字段边优先。断线后应恢复目标节点原来的手动值。
 25. **编辑图片缩略图可直接绘制蒙版**：`EditImageNode` 的输入缩略图悬浮时在底部居中显示并排的编辑/删除图标，编辑动作通过本地 `FileUpload.onEditItem` 打开 `MaskPaintDialog`；蒙版缩略图传 `bottomActions` 复用该底部栏但只显示删除。显隐、绝对定位和按钮尺寸全部使用 `FileUpload` 内的 `.game-asset-upload-thumb*` 作用域 CSS，不依赖 mini-app 源码无法生成的 Tailwind `group-hover` / `bottom-*` 等工具类；绘制快照存 `data.editMaskPaintData`，导出的首张 URL 写入既有 `params.mask`。
 26. **本地 FileUpload 上传入口属于缩略图网格**：未达到 `max` 时，紧凑上传入口始终渲染为三列缩略图网格的第一个单元格，后接已有图片；不要恢复为缩略图整行 + 下方独立上传行。
 27. **节点产出缩略图操作栏底部居中**：`ImageResult` 的“添加到素材库/删除”按钮统一放在 `.game-asset-output-actions`，悬浮时在图片内部底部居中并排显示；定位、尺寸、显隐必须用组件内作用域 CSS，不要恢复右上/右下负偏移或 Tailwind `group-hover`。
@@ -165,6 +165,7 @@ Agent → api.js handler → ctx.requestClient(type, payload, timeoutMs)
 30. **宿主 taskEvents 必须增量全量分发**：`mini-app-renderer.tsx` 不能只取 `taskEvents.at(-1)`；React 会批处理多个并发 WS 事件，只发最后一条会让其余 `ctx.requestClient` 请求超时。使用事件对象游标把本轮新增项逐条送给 `onTaskEvent` 监听器。
 31. **输出分组/标签只扩展 resources**：图片协议保持 `output.images: string[]`；对应的 `output.resources[]` 可选增加 `groupName`、`label`。`ImageResult` 用 `groupName` 渲染可折叠分组、用 `label` 在缩略图右上角显示 badge；缺字段的旧数据保持原布局。视频编辑器导出的每张精灵图把动画组名称写入对应 resource 的 `groupName`，不得把 images 改为对象数组。
 32. **视频切换清理不能在首次挂载执行**：`VideoEditorDialog` 的 `currentVideo` effect 仅在前后视频 URL 确实变化时清空 `frames/animGroups/videoInfo`；必须用 ref 记录前值并跳过首次挂载，否则刷新页面会把已持久化动画组立即写成空数组。
+33. **网格拼接编辑态独立持久化**：原 `ipSpriteMerge` 节点对外名称为“网格拼接”，仍走 `sprite-merge` 与 `onProcessLocal` 的历史/状态链路。编辑器顺序及列数、间隔、抠图、统一背景存 `data.gridStitchData`，混合上传/上游输入通过 URL 顺序表恢复；输入删除时丢弃旧 URL，新输入追加。`CutoutSettings` 与 Sheet 拆分编辑器共享，修改时必须保留拆分器普通模式常驻吸色入口。
 
 ## 工作区数据目录（产图落本地）
 

@@ -83,8 +83,8 @@ export const PROCESSORS = {
   'sprite-merge': {
     multipleIn: true,
     async run(inputs, params) {
-      if (inputs.length < 2) throw new Error('Sheet 合成需要至少 2 帧输入');
-      return [composeSpriteSheet(inputs, { columns: params.columns, spacing: params.spacing })];
+      if (inputs.length < 2) throw new Error('网格拼接需要至少 2 张输入图');
+      return [composeSpriteSheet(inputs, params)];
     },
   },
 

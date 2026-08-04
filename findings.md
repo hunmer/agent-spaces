@@ -1,5 +1,25 @@
 # Findings: Canvas drag edge auto-pan
 
+## Current Research: Grid stitch editor
+
+- User requires Sheet composition to be renamed to `网格拼接`.
+- The new editor must use explicit inline dialog dimensions (`80vw` width/height and matching max dimensions) to override host defaults.
+- Reuse and extract the Sheet split editor's cutout UI/logic into a shared component rather than duplicating it.
+- Product source has not been modified yet.
+- `ipSpriteMerge` currently renders through generic `ImageProcessNode`; its execute button calls `onProcessLocal(id, 'sprite-merge', processorParams, inputImages, type)`.
+- Existing Sheet split cutout means local background removal (`none/corner/white/picked`) in `SplitterToolbar`, not the cloud/rembg `CutoutDialog`.
+- The new editor can preserve the existing processor/output contract by composing locally and uploading one PNG before writing `data.output.images`.
+- `ImageProcessNode` already merges uploaded and ordered upstream URLs, so the dialog should receive that derived sequence and persist only editor-specific settings/order overrides.
+- Preserve history/status/cancellation by having the dialog confirm through the existing `onProcessLocal` callback instead of uploading/writing output independently.
+- Extend `sprite-merge` processor params with shared local cutout settings and canvas background color; preview and execution should call the same pure composition function.
+- Persist a combined URL order in node editor data so drag sorting can span uploaded and upstream inputs without mutating derived `data.images`.
+- `exportBox(imageData, fullFrameBox, options)` already applies the splitter editor's background-to-alpha behavior and can be reused without duplicating pixel logic.
+- `imageDataToDataUrl` supports non-persistent dialog preview, while the normal processor path still uploads only the confirmed final PNG.
+- No matching focused Sheet/image-process test file exists; add a small pure-function test plus structural assertions for the editor wiring.
+- Final implementation keeps the normal execute path and adds the editor only for `sprite-merge`; confirm starts processing with the editor's ordered URLs and closes the dialog.
+- Shared `CutoutSettings` preserves the splitter's normal-mode always-visible color/pipette controls via explicit props.
+- Mini-app source refresh is sufficient; no host-layer file was changed for this task.
+
 ## Current Research: Storyboard creation node migration
 
 - The requested source is the standalone `packages/server/agent-spaces-data/mini-apps/文案转分镜` mini-app.

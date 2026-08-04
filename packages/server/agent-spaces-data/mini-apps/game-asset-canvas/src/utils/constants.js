@@ -242,7 +242,7 @@ export const NODE_META = {
   [NODE_TYPES.ipGifSplit]: { label: 'GIF 拆帧', icon: '🎬', color: '#14b8a6' },
   [NODE_TYPES.ipGifMerge]: { label: 'GIF 合成', icon: '🎞️', color: '#14b8a6' },
   [NODE_TYPES.ipSpriteSplit]: { label: 'Sheet 拆分', icon: '🔲', color: '#14b8a6' },
-  [NODE_TYPES.ipSpriteMerge]: { label: 'Sheet 合成', icon: '▦', color: '#14b8a6' },
+  [NODE_TYPES.ipSpriteMerge]: { label: '网格拼接', icon: '▦', color: '#14b8a6' },
   [NODE_TYPES.ipPixelate]: { label: '像素化', icon: '🟦', color: '#14b8a6' },
   [NODE_TYPES.ipResizeNearest]: { label: '最近邻缩放', icon: '🔍', color: '#14b8a6' },
   [NODE_TYPES.ipInnerStroke]: { label: '内描边', icon: '✏️', color: '#14b8a6' },
@@ -375,8 +375,8 @@ export const IMAGE_PROCESSORS = [
     ],
   },
   {
-    id: 'sprite-merge', label: 'Sheet 合成', category: 'sprite', multipleIn: true,
-    desc: '多帧合成 Sprite Sheet 网格图（需 ≥2 帧输入）',
+    id: 'sprite-merge', label: '网格拼接', category: 'sprite', multipleIn: true,
+    desc: '多图按网格拼接，可调整顺序、抠图和统一背景（需 ≥2 张输入）',
     params: [
       { key: 'columns', label: '列数', type: 'number', default: 4, min: 1, max: 32 },
       { key: 'spacing', label: '间隔(px)', type: 'number', default: 0, min: 0, max: 64 },

@@ -37,3 +37,19 @@ test('选中来源节点时边标签显示目标节点的文本属性名', () =>
   const [edge] = decorateEdgesForSelection(edges, nodes, 'bezier', 'solid', schemas);
   assert.equal(edge.label, '提示词');
 });
+
+test('变量级文本边标签同时显示目标属性和变量名', () => {
+  const nodes = [
+    { id: 'source', type: NODE_TYPES.text, selected: true },
+    { id: 'target', type: NODE_TYPES.textToImage },
+  ];
+  const edges = [{
+    id: 'edge',
+    source: 'source',
+    target: 'target',
+    data: { inputType: 'text', inputTarget: 'prompt', inputVariable: 'subject' },
+  }];
+
+  const [edge] = decorateEdgesForSelection(edges, nodes, 'bezier', 'solid', schemas);
+  assert.equal(edge.label, '提示词 · {subject}');
+});

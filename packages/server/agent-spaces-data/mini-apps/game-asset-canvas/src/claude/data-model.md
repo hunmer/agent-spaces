@@ -176,6 +176,7 @@ interface Edge {
   data?: {
     inputTarget?: string;         // 目标 FileUpload id；缺省/无效值回退到 images
     inputType?: 'image' | 'text' | 'video' | 'audio';
+    inputVariable?: string;       // 文本边可选；仅替换 inputTarget 字段里的同名 {变量}
     sourceAsset?: {               // 分镜多素材 handle 选中的单个素材；旧边可缺省
       sceneId: string;
       type: 'image' | 'video' | 'audio';
@@ -192,6 +193,7 @@ interface Edge {
 - Handle 位置由全局设置决定：上下时 source=Bottom、target=Top；左右时 source=Right、target=Left。
 - 连线语义：「source 产出图 → target 输入区」。旧边或 `inputTarget='images'` 由 `computeInputImages` 派生到 target 的 `data.images`；其它目标派生到 `data.fileUploadInputs[inputTarget]`。
 - 多上传区声明集中在 `utils/connection-targets.js`。当前编辑图片节点声明 `images`（输入图片）和 `mask`（蒙版图片），手动连线时由用户选择。
+- 文本边缺少 `inputVariable` 时保持整字段覆盖；存在时以目标节点持久化的 `data.params[inputTarget]` 为纯文本模板，只替换对应 `{变量}`。同一字段若同时存在整字段边和变量边，整字段边优先。
 - storyboard 每个 scene 使用 `storyboard-scene:<encodeURIComponent(sceneId)>` 作为 source handle。多素材连接把选中项写入 `sourceAsset`，`computeInputImages/Videos/Audios` 优先消费该素材；无该字段的历史边保持原行为。
 
 ## 分组（WorkflowGroup）

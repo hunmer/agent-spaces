@@ -85,6 +85,28 @@ export function getTextInputTargets(paramsSchema = []) {
     }));
 }
 
+/** 提取纯文本或富文本字段里的 {变量} 占位符，按出现顺序去重。 */
+export function extractTemplateVariables(value) {
+  if (typeof value !== 'string' || !value) return [];
+  const variables = [];
+  const seen = new Set();
+  for (const match of value.matchAll(/\{([^{}\s]+)\}/g)) {
+    const name = match[1];
+    if (seen.has(name)) continue;
+    seen.add(name);
+    variables.push(name);
+  }
+  return variables;
+}
+
+/** 给文本连接目标附加当前字段中可选的变量，供连接弹窗展示。 */
+export function withTextTargetVariables(targets = [], params = {}) {
+  return targets.map((target) => ({
+    ...target,
+    variables: extractTemplateVariables(params?.[target.id]),
+  }));
+}
+
 export function getNodeOutputType(nodeType) {
   if (TEXT_OUTPUT_NODE_TYPES.has(nodeType)) return CONNECTION_INPUT_TYPES.text;
   if (VIDEO_OUTPUT_NODE_TYPES.has(nodeType)) return CONNECTION_INPUT_TYPES.video;
