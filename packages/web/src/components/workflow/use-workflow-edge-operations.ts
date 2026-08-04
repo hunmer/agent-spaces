@@ -39,6 +39,7 @@ import {
   getWorkflowHandleValueType,
 } from './workflow-handle-types';
 import { syncWorkflowReferenceEdges } from './workflow-reference-edges';
+import { countsTowardTargetConnectionLimit } from './workflow-edge-capacity';
 import { alignAutoLayoutLayers, getGridLayoutPositions } from './workflow-canvas-helpers';
 
 interface UseEdgeOperationsParams {
@@ -480,6 +481,7 @@ export function useEdgeOperations({
     const existingTargetConnectionCount = workflow.edges.filter(edge =>
       edge.target === connection.target
       && (edge.targetHandle || undefined) === targetHandle
+      && countsTowardTargetConnectionLimit(edge)
     ).length;
     let remainingTargetConnections = Math.max(0, targetConnectionCount - existingTargetConnectionCount);
     if (remainingTargetConnections === 0) {

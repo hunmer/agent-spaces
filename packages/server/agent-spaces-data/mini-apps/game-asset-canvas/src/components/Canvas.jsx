@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Background, BackgroundVariant, Controls, ControlButton, MarkerType,
-  ReactFlow, addEdge, applyEdgeChanges, applyNodeChanges, useReactFlow,
+  ReactFlow, addEdge, applyEdgeChanges, useReactFlow,
 } from '@xyflow/react';
 import {
   ResizablePanelGroup, ResizablePanel, ResizableHandle,
@@ -28,6 +28,7 @@ import ImageSelectionToolbar from './canvas/ImageSelectionToolbar';
 import GroupOverlays from './canvas/GroupOverlays';
 import GroupMiniMap from './canvas/GroupMiniMap';
 import FloatingEdge from './canvas/FloatingEdge';
+import AlignmentGuides from './canvas/AlignmentGuides';
 import { ImageSelectionContext } from '../context/ImageSelectionContext';
 import useImageSelection from '../hooks/useImageSelection';
 import AssetLibraryPickerDialog from './AssetLibraryPickerDialog';
@@ -55,6 +56,7 @@ import useNodeCrud from '../hooks/useNodeCrud';
 import useNodeExecutions from '../hooks/useNodeExecutions';
 import useLastParams from '../hooks/useLastParams';
 import useCanvasDragAutoPan from '../hooks/useCanvasDragAutoPan';
+import useAlignmentGuides from '../hooks/useAlignmentGuides';
 import { runCutout } from '../utils/cutout';
 import { generateImageResources, normalizeImageUrls } from '../utils/workflow';
 import { WORKFLOWS } from '../utils/constants';
@@ -198,7 +200,7 @@ export default function Canvas({ hostConfig }) {
   );
 
   // —— 面板布局持久化 ——
-  const { panelLayout, showMinimap, handlePanelLayoutChange, toggleMinimap } = usePanelLayout();
+  const { panelLayout, showMinimap, handlePanelLayoutChange, toggleMinimap, layoutReady } = usePanelLayout();
 
   // —— 图片节点批量产出（先抽，被执行队列 onComplete 前向引用）——
   const { addImageNodesFromUrls, addImageNodesGrouped, handleExportImages } = useImageOutputs({ setNodes, setGroups });
@@ -354,10 +356,18 @@ export default function Canvas({ hostConfig }) {
   }, [groupOps.setSelectedGroupId, imageSelection]);
   const groupExecution = useGroupExecution({ groups, nodes, edges, setGroups, setNodes });
 
-  // —— ReactFlow 变更回调（逻辑简单，留在编排层）——
-  const onNodesChange = useCallback((changes) => {
-    setNodes((prev) => applyNodeChanges(changes, prev));
-  }, [setNodes]);
+  // —— ReactFlow 节点拖拽 + 辅助线对齐 ——
+  const alignment = useAlignmentGuides({
+    nodes,
+    setNodes,
+    enabled: settings.snapGrid !== false,
+    zoom: viewport.zoom,
+  });
+  const onNodesChange = alignment.onNodesChange;
+  const handleNodeDragStop = useCallback((event, node) => {
+    alignment.clearGuides();
+    groupOps.handleNodeDragStop(event, node);
+  }, [alignment.clearGuides, groupOps.handleNodeDragStop]);
 
   const onEdgesChange = useCallback((changes) => {
     setEdges((prev) => applyEdgeChanges(changes, prev));
@@ -793,9 +803,11 @@ export default function Canvas({ hostConfig }) {
   const [exportState, setExportState] = useState(null);
   const [groupState, setGroupState] = useState(null);
   const completeImageExport = useCallback((sourceNode, imgs, opts) => {
-    const nodeIds = handleExportImages(sourceNode, imgs, opts);
+    const nodeIds = handleExportImages(sourceNode, imgs, {
+      ...opts,
+      onAdded: (addedIds) => crud.focusNode(addedIds[0]),
+    });
     if (!nodeIds?.length) return;
-    setTimeout(() => crud.focusNode(nodeIds[0]), 0);
     toast.success(`已导出 ${nodeIds.length} 张图片到画布`);
   }, [handleExportImages, crud.focusNode]);
   const handleExportImagesWithPicker = useCallback((sourceNode, imgs) => {
@@ -1351,7 +1363,7 @@ export default function Canvas({ hostConfig }) {
   };
 
   // —— loading guard ——
-  if (!activeId || !loaded) {
+  if (!activeId || !loaded || !layoutReady) {
     return <div className="flex h-full items-center justify-center text-sm text-muted-foreground">加载中…</div>;
   }
 
@@ -1456,7 +1468,7 @@ export default function Canvas({ hostConfig }) {
               onEdgeClick={clearGroupSelection}
               onNodeDragStart={groupOps.handleNodeDragStart}
               onNodeDrag={groupOps.handleNodeDrag}
-              onNodeDragStop={groupOps.handleNodeDragStop}
+              onNodeDragStop={handleNodeDragStop}
               connectionLineComponent={ConnectionLine}
               connectionLineStyle={connectionLineStyle}
               connectionRadius={160}
@@ -1473,6 +1485,7 @@ export default function Canvas({ hostConfig }) {
               proOptions={{ hideAttribution: true }}
             >
               <Background variant={backgroundVariant} gap={16} size={1} />
+              <AlignmentGuides guides={alignment.guides} viewport={viewport} />
               <Controls>
                 <ControlButton
                   title={allNodePreviewsEnabled ? '关闭所有节点的预览模式' : '开启所有节点的预览模式'}

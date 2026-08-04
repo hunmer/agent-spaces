@@ -17,6 +17,7 @@ import { getWorkflowNodeSize } from './workflow-node-size';
 import { NODE_COLOR_MAP, type HandlePositionMode, type WorkflowLogPanelLayout, type WorkflowNodeDisplayMode, type WorkflowPropertyModeBadgePosition } from './workflow-node-types';
 import { WORKFLOW_NODE_DRAG_HANDLE_CLASS } from './workflow-node-handles';
 import { parseWorkflowFieldHandleId } from './workflow-field-handles';
+import { isGeneratedRuntimeReferenceEdge } from './workflow-edge-capacity';
 import type { WorkflowFieldKeyRenameParams } from './workflow-properties-io-sections';
 
 const DEFAULT_SOURCE_HANDLE_ID = 'source';
@@ -24,7 +25,6 @@ const LOOP_BODY_NODE_Z_INDEX = -100;
 const DEFAULT_NODE_Z_INDEX = 1;
 const SCOPED_CHILD_NODE_Z_INDEX = 1000;
 const ACTIVE_NODE_Z_INDEX = 2000;
-const REFERENCE_RUNTIME_EDGE_ID_SUFFIX = '--reference-runtime';
 
 function getStepSortTime(step: ExecutionStep): number {
   return step.finishedAt ?? step.startedAt;
@@ -120,15 +120,6 @@ function getSourceHandleColor(nodeData: Record<string, unknown>, sourceHandle: s
   return typeof colorKey === 'string' ? NODE_COLOR_MAP[colorKey] : undefined;
 }
 
-function isGeneratedReferenceRuntimeEdge(edge: Workflow['edges'][number]): boolean {
-  return edge.id.endsWith(REFERENCE_RUNTIME_EDGE_ID_SUFFIX)
-    && edge.composite?.generated === true
-    && !edge.composite.hidden
-    && !edge.composite.locked
-    && !edge.sourceHandle
-    && !edge.targetHandle;
-}
-
 function canShowPropertyNodeView(node: WorkflowNode, nodeDisplayMode: WorkflowNodeDisplayMode): boolean {
   if (nodeDisplayMode !== 'properties') return false;
   if (node.type === LOOP_BODY_NODE_TYPE) return false;
@@ -178,7 +169,7 @@ function getNormalDisplayEdgeKey(edge: Pick<Edge, 'source' | 'target'>): string 
 function createNormalNodeLevelAdjacency(edges: Workflow['edges']): Map<string, string[]> {
   const adjacency = new Map<string, string[]>();
   for (const edge of edges) {
-    if (isHiddenWorkflowEdge(edge) || isGeneratedReferenceRuntimeEdge(edge)) continue;
+    if (isHiddenWorkflowEdge(edge) || isGeneratedRuntimeReferenceEdge(edge)) continue;
     const sourceHandle = parseWorkflowFieldHandleId(edge.sourceHandle);
     const targetHandle = parseWorkflowFieldHandleId(edge.targetHandle);
     if (edge.edgeKind === 'reference' || sourceHandle?.kind !== undefined || targetHandle?.kind !== undefined) continue;
@@ -427,7 +418,7 @@ export function useCanvasData({
     const mappedEdges: Edge[] = [];
     workflow.edges.filter(edge => (
       !isHiddenWorkflowEdge(edge)
-      && (nodeDisplayMode === 'properties' || !isGeneratedReferenceRuntimeEdge(edge))
+      && !isGeneratedRuntimeReferenceEdge(edge)
     )).forEach((e) => {
       const sourceNode = nodeById.get(e.source);
       const targetNode = nodeById.get(e.target);

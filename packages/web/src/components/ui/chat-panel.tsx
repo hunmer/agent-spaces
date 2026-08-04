@@ -15,6 +15,7 @@ import Placeholder from '@tiptap/extension-placeholder';
 import StarterKit from '@tiptap/starter-kit';
 import { useEditor, useEditorState } from '@tiptap/react';
 import { motion, type Variants } from 'framer-motion';
+import { useTranslations } from 'next-intl';
 import { ArrowDown, Lightbulb, MessageCircle, MoreVertical, Pencil, Send, Sparkles } from 'lucide-react';
 import { useEffect, useId, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 
@@ -152,6 +153,7 @@ export function ChatPanel({
   fillContainer = false,
 }: ChatPanelProps) {
   const widgetId = useId();
+  const t = useTranslations('chat.panel');
   const listRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<Editor | null>(null);
   const inputRef = useRef(input);
@@ -203,7 +205,7 @@ export function ChatPanel({
     immediatelyRender: false,
     extensions: [
       StarterKit,
-      Placeholder.configure({ placeholder: inputPlaceholder || `Message ${agent.name}...` }),
+      Placeholder.configure({ placeholder: inputPlaceholder || t('messagePlaceholder', { name: agent.name }) }),
       mentionExtension,
     ],
     editorProps: {
@@ -273,7 +275,7 @@ export function ChatPanel({
             variant="ghost"
             size="sm"
             className="h-7 w-7 shrink-0 rounded-full p-0 text-muted-foreground hover:bg-background/60 hover:text-foreground"
-            aria-label="消息建议"
+            aria-label={t('suggestions')}
           />
         }
       >
@@ -294,8 +296,8 @@ export function ChatPanel({
               <button
                 type="button"
                 onClick={() => applySuggestion(suggestion)}
-                title="填入输入框"
-                aria-label="填入输入框"
+                title={t('fillInput')}
+                aria-label={t('fillInput')}
                 className="flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-opacity hover:bg-background hover:text-foreground group-hover:opacity-100"
               >
                 <Pencil className="size-3.5" />
@@ -303,8 +305,8 @@ export function ChatPanel({
               <button
                 type="button"
                 onClick={() => sendSuggestion(suggestion)}
-                title="发送"
-                aria-label="发送"
+                title={t('send')}
+                aria-label={t('send')}
                 className="flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-opacity hover:bg-background hover:text-primary group-hover:opacity-100"
               >
                 <Send className="size-3.5" />
@@ -374,7 +376,7 @@ export function ChatPanel({
               <div>
                 <h3 className="text-sm font-semibold text-foreground">{agent.name}</h3>
                 <div className="flex items-center gap-1.5">
-                  <span className="text-xs text-muted-foreground">{agent.role || (sending ? 'typing...' : 'online')}</span>
+                  <span className="text-xs text-muted-foreground">{agent.role || (sending ? t('typing') : t('online'))}</span>
                 </div>
               </div>
             </div>
@@ -384,7 +386,7 @@ export function ChatPanel({
             {menuItems ? (
               <DropdownMenu>
                 <DropdownMenuTrigger render={
-                  <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-background/50" aria-label="Menu" />
+                  <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-background/50" aria-label={t('menu')} />
                 }>
                   <MoreVertical className="h-4 w-4" />
                 </DropdownMenuTrigger>
@@ -420,7 +422,7 @@ export function ChatPanel({
                   <div className="whitespace-pre-wrap break-words text-sm text-foreground">{introduction}</div>
                 </div>
               ) : (
-                <div className="text-xs text-muted-foreground">暂无消息</div>
+                <div className="text-xs text-muted-foreground">{t('empty')}</div>
               )}
               {(suggestions ?? []).filter((s) => s.trim()).length > 0 && (
                 <div className="flex w-full max-w-md flex-col items-stretch gap-2">

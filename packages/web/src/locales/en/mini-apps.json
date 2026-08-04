@@ -202,6 +202,12 @@
     "resetAgents": "Reset agents.json",
     "resetAgentsConfirm": "Reset all agents to manifest seed values? Provider, model and runtime kind already configured will be kept; other fields (system prompt, suggestions, introduction, tools, etc.) will be overwritten.",
     "resetAgentsCancel": "Cancel",
-    "resetAgentsAction": "Reset"
+    "resetAgentsAction": "Reset",
+    "notifyOnComplete": "Desktop notification on completion",
+    "notifyOn": "Desktop notifications on",
+    "notifyOff": "Desktop notifications off",
+    "notifyDenied": "Notification permission denied. Please allow it in browser settings.",
+    "notifyUnsupported": "Desktop notifications are not supported by this browser.",
+    "notifyDefaultBody": "Reply completed"
   }
 }

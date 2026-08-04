@@ -78,7 +78,7 @@ export function debounce(fn, wait) {
 // ============ 面板布局 / 视图偏好持久化 ============
 // react-resizable-panels@4: Layout = { [panelId]: number(percentage) }
 // 同文件存其它全局视图偏好（不按工作区隔离），如 MiniMap 显隐。
-const PANEL_LAYOUT_CONFIG = 'panel-layout.json';
+export const PANEL_LAYOUT_CONFIG = 'panel-layout.json';
 
 /**
  * 读取面板布局（{ panelId: percentage } 形式）。

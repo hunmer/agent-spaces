@@ -202,6 +202,12 @@
     "resetAgents": "重置 agents.json",
     "resetAgentsConfirm": "将所有 agent 重置为 manifest 种子配置？已配置的 provider、model、runtimeKind 会保留，其余字段（系统提示词、建议、介绍、工具等）将被覆盖。",
     "resetAgentsCancel": "取消",
-    "resetAgentsAction": "重置"
+    "resetAgentsAction": "重置",
+    "notifyOnComplete": "完成时桌面通知",
+    "notifyOn": "桌面通知已开启",
+    "notifyOff": "桌面通知已关闭",
+    "notifyDenied": "通知权限被拒绝，请在浏览器设置中允许",
+    "notifyUnsupported": "当前浏览器不支持桌面通知",
+    "notifyDefaultBody": "回复已完成"
   }
 }

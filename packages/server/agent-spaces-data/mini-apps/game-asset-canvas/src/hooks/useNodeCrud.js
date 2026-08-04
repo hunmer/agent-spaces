@@ -7,6 +7,12 @@ import { getConnectionTargets } from '../utils/connection-targets';
 import { genId, autoPosition } from '../utils/canvas-id';
 import { autoLayoutSubset, autoLayoutTopLevel } from '../utils/layout';
 import { downloadJson, serializeCanvas, pickAndParseCanvasFile } from '../utils/export';
+import {
+  getImageDisplayNodeSize,
+  loadImageDimensions,
+  loadImageFileDimensions,
+  normalizeImageRotation,
+} from '../utils/image-display-size';
 
 const debuggedCanvasImageDrags = new WeakSet();
 
@@ -204,14 +210,21 @@ export default function useNodeCrud({
 
   // 按 URL 在落点批量建图片展示节点（历史记录/素材库图片拖入画布复用）。
   // 多张时网格排列；source 统一标记为 'drop'（拖拽落点来源）。
-  const addImageNodesAt = useCallback((urls, position) => {
+  const addImageNodesAt = useCallback(async (urls, position) => {
     if (!urls?.length) return;
-    const size = DEFAULT_SIZE[NODE_TYPES.imageDisplay];
+    const dimensions = await Promise.all(urls.map(loadImageDimensions));
+    const fallbackSize = DEFAULT_SIZE[NODE_TYPES.imageDisplay];
+    const sizes = dimensions.map((value) => value
+      ? getImageDisplayNodeSize(value.width, value.height)
+      : fallbackSize);
+    const cellW = Math.max(...sizes.map((size) => size.w));
+    const cellH = Math.max(...sizes.map((size) => size.h));
     const meta = NODE_META[NODE_TYPES.imageDisplay];
     const gap = 20;
     const cols = 3;
     setNodes((prev) => {
       const additions = urls.map((url, i) => {
+        const size = sizes[i];
         const col = i % cols;
         const row = Math.floor(i / cols);
         const cx = position?.x ?? 120;
@@ -219,10 +232,16 @@ export default function useNodeCrud({
         return {
           id: genId(NODE_TYPES.imageDisplay),
           type: NODE_TYPES.imageDisplay,
-          position: { x: cx + col * (size.w + gap) - size.w / 2, y: cy + row * (size.h + gap) - size.h / 2 },
+          position: { x: cx + col * (cellW + gap) - size.w / 2, y: cy + row * (cellH + gap) - size.h / 2 },
           width: size.w, height: size.h,
           style: { width: size.w, height: size.h },
-          data: { ...initialData(NODE_TYPES.imageDisplay), images: [url], source: 'drop', label: meta.label },
+          data: {
+            ...initialData(NODE_TYPES.imageDisplay),
+            images: [url],
+            source: 'drop',
+            label: meta.label,
+            ...(dimensions[i] ? { imageSize: dimensions[i] } : {}),
+          },
         };
       });
       return [...prev, ...additions];
@@ -236,27 +255,40 @@ export default function useNodeCrud({
     const AS = window.AgentSpaces;
     if (!AS?.uploadFile) return;
 
-    const size = DEFAULT_SIZE[NODE_TYPES.imageDisplay];
+    const dimensions = await Promise.all(files.map(loadImageFileDimensions));
+    const fallbackSize = DEFAULT_SIZE[NODE_TYPES.imageDisplay];
+    const sizes = dimensions.map((value) => value
+      ? getImageDisplayNodeSize(value.width, value.height)
+      : fallbackSize);
+    const cellW = Math.max(...sizes.map((size) => size.w));
+    const cellH = Math.max(...sizes.map((size) => size.h));
     const gap = 20;
     const cols = 3;
-    const ids = [];
+    const ids = files.map(() => genId(NODE_TYPES.imageDisplay));
     setNodes((prev) => {
-      const base = prev.length;
       const additions = files.map((_, i) => {
-        const id = genId(NODE_TYPES.imageDisplay);
-        ids.push(id);
+        const id = ids[i];
+        const size = sizes[i];
         const col = i % cols;
         const row = Math.floor(i / cols);
         return {
           id,
           type: NODE_TYPES.imageDisplay,
           position: {
-            x: (position?.x || 120) + col * (size.w + gap) - size.w / 2,
-            y: (position?.y || 120) + row * (size.h + gap) - size.h / 2,
+            x: (position?.x || 120) + col * (cellW + gap) - size.w / 2,
+            y: (position?.y || 120) + row * (cellH + gap) - size.h / 2,
           },
           width: size.w, height: size.h,
           style: { width: size.w, height: size.h },
-          data: { ...initialData(NODE_TYPES.imageDisplay), source: 'upload', loading: true, images: [], tags: [IMAGE_TAGS.upload], label: NODE_META[NODE_TYPES.imageDisplay].label },
+          data: {
+            ...initialData(NODE_TYPES.imageDisplay),
+            source: 'upload',
+            loading: true,
+            images: [],
+            tags: [IMAGE_TAGS.upload],
+            label: NODE_META[NODE_TYPES.imageDisplay].label,
+            ...(dimensions[i] ? { imageSize: dimensions[i] } : {}),
+          },
         };
       });
       return [...prev, ...additions];
@@ -416,17 +448,24 @@ export default function useNodeCrud({
     setGroups([]);
   }, [setNodes, setEdges, setGroups]);
 
-  // 图片加载完成后自动调整节点尺寸（图片展示节点 <img onLoad> 触发）
-  const handleAutoSize = useCallback((nodeId, naturalWidth, naturalHeight) => {
+  // 图片加载/旋转后按当前展示方向同步节点尺寸。
+  const handleAutoSize = useCallback((nodeId, naturalWidth, naturalHeight, rotation = 0) => {
     if (!naturalWidth || !naturalHeight) return;
-    const minW = 220, maxW = 520;
-    const padX = 32, chromeH = 80;
-    const w = Math.max(minW, Math.min(maxW, Math.round(naturalWidth)));
-    const imgH = Math.min(320, Math.round((w - padX) * naturalHeight / naturalWidth));
-    const h = Math.max(160, imgH + chromeH);
+    const nextRotation = normalizeImageRotation(rotation);
+    const { w, h } = getImageDisplayNodeSize(naturalWidth, naturalHeight, nextRotation);
     setNodes((prev) => prev.map((nd) => {
       if (nd.id !== nodeId) return nd;
-      return { ...nd, width: w, height: h, style: { ...nd.style, width: w, height: h } };
+      return {
+        ...nd,
+        width: w,
+        height: h,
+        style: { ...nd.style, width: w, height: h },
+        data: {
+          ...nd.data,
+          rotation: nextRotation,
+          imageSize: { width: naturalWidth, height: naturalHeight },
+        },
+      };
     }));
   }, [setNodes]);
 

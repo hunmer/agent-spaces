@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
-import { loadPanelLayout, loadShowMinimap, onAnyConfigChanged, savePanelLayout } from '../utils/storage';
+import {
+  PANEL_LAYOUT_CONFIG, loadPanelLayout, loadShowMinimap, onAnyConfigChanged, savePanelLayout,
+} from '../utils/storage';
 import { DEFAULT_PANEL_LAYOUT } from '../utils/canvas-constants';
 
 /**
@@ -9,16 +11,36 @@ import { DEFAULT_PANEL_LAYOUT } from '../utils/canvas-constants';
  * panel-layout.json 同时存 layout（{panelId:percentage}）和 showMinimap（bool），
  * 任意一项变化都广播 miniApp.configChanged，这里订阅并同步到 state。
  *
- * @returns {{ panelLayout, showMinimap, setPanelLayout, setShowMinimap, handlePanelLayoutChange, toggleMinimap }}
+ * 三重读取（getConfig 快照 + onConfigReady 兜底 + onAnyConfigChanged 同步）：
+ * 挂载时 config 缓存可能未 ready，单次 getConfig 会拿空 → 布局丢失。
+ * onConfigReady 在缓存就绪后补读一次，保证刷新后能恢复。
+ *
+ * @returns {{ panelLayout, showMinimap, setPanelLayout, setShowMinimap, handlePanelLayoutChange, toggleMinimap, layoutReady }}
  */
 export default function usePanelLayout() {
   const [panelLayout, setPanelLayout] = useState(() => loadPanelLayout() || DEFAULT_PANEL_LAYOUT);
   const [showMinimap, setShowMinimap] = useState(() => loadShowMinimap());
+  const [layoutReady, setLayoutReady] = useState(false);
+
+  // 三重读取之一：挂载时若 config 未 ready，等 onConfigReady 再读一次（补初始快照缺失）
+  useEffect(() => {
+    const as = window.AgentSpaces;
+    if (as?.isConfigReady?.() === false) {
+      return as.onConfigReady?.((configs) => {
+        const v = configs?.[PANEL_LAYOUT_CONFIG];
+        if (v?.layout && typeof v.layout === 'object') setPanelLayout(v.layout);
+        if (typeof v?.showMinimap === 'boolean') setShowMinimap(v.showMinimap);
+        setLayoutReady(true);
+      });
+    }
+    setLayoutReady(true);
+    return undefined;
+  }, []);
 
   // 订阅 panel-layout.json 变化（多端同步）
   useEffect(() => {
     const unsub = onAnyConfigChanged((path, value) => {
-      if (path === 'panel-layout.json') {
+      if (path === PANEL_LAYOUT_CONFIG) {
         if (value?.layout && typeof value.layout === 'object') setPanelLayout(value.layout);
         if (typeof value?.showMinimap === 'boolean') setShowMinimap(value.showMinimap);
       }
@@ -41,5 +63,5 @@ export default function usePanelLayout() {
     });
   }, [panelLayout]);
 
-  return { panelLayout, showMinimap, setPanelLayout, setShowMinimap, handlePanelLayoutChange, toggleMinimap };
+  return { panelLayout, showMinimap, setPanelLayout, setShowMinimap, handlePanelLayoutChange, toggleMinimap, layoutReady };
 }

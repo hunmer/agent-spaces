@@ -5,6 +5,10 @@ import { createWorkflowEdgeId } from '@/lib/workflow-edge-id';
 import { getNodeDefinition } from '@/lib/workflow-nodes';
 import { getWorkflowFieldHandleId, parseWorkflowFieldHandleId } from './workflow-field-handles';
 import { parseVariableExpression } from './workflow-variable-path';
+import {
+  isGeneratedRuntimeReferenceEdge,
+  REFERENCE_RUNTIME_EDGE_ID_SUFFIX,
+} from './workflow-edge-capacity';
 
 type ReferenceEdge = {
   source: string;
@@ -13,7 +17,6 @@ type ReferenceEdge = {
   targetHandle: string;
 };
 
-const REFERENCE_RUNTIME_EDGE_ID_SUFFIX = '--reference-runtime';
 type WorkflowWithDisplayMode = Pick<Workflow, 'nodes' | 'edges'> & {
   layoutSnapshot?: {
     nodeDisplayMode?: unknown;
@@ -146,15 +149,6 @@ function getRuntimeCompensationKey(edge: Pick<WorkflowEdge, 'source' | 'target'>
     sourceHandle: undefined,
     targetHandle: undefined,
   });
-}
-
-function isGeneratedRuntimeReferenceEdge(edge: WorkflowEdge): boolean {
-  return edge.id.endsWith(REFERENCE_RUNTIME_EDGE_ID_SUFFIX)
-    && edge.composite?.generated === true
-    && !edge.composite.hidden
-    && !edge.composite.locked
-    && !edge.sourceHandle
-    && !edge.targetHandle;
 }
 
 function hasNodeLevelRuntimePath(edges: WorkflowEdge[], source: string, target: string): boolean {

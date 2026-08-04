@@ -1,5 +1,5 @@
 // 新增节点 tab：可点击添加、可拖拽到画布；可执行节点 hover 右上角 ⚡ 直接执行。
-// 顶部搜索框（支持拼音/首字母）+ 分类筛选 + 列表按分组展示（每组标题 + 计数 + 卡片网格，2~5 列自适应）。
+// 顶部搜索框（支持拼音/首字母）+ 分类筛选 + 列表按分组展示（每组标题 + 计数 + 卡片网格，按容器宽度自适应列数）。
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ScrollArea, Plus, Zap } from '@agent-spaces/ui';
 import { NODE_META } from '../../utils/constants';

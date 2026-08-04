@@ -28,6 +28,7 @@
 |------|------|
 | useWorkspaces | 工作区清单（workspaces.json：getConfig + onConfigReady + onAnyConfigChanged 三重读取；invokeService 写） |
 | useCanvasState(workspaceId) | 节点/边/分组单一数据源 + 按工作区隔离持久化（防抖 600ms）+ 多端同步 |
+| useAlignmentGuides | 单节点拖拽辅助线计算接入 + 对齐位置修正；多选拖拽放行 |
 | useWorkflow | callPluginTool 调工作流（max_wait_ms=600000）|
 | useGenerationHistory(workspaceId) | 生成记录持久化（按工作区隔离） |
 | useSettings | settings.json 读写（全局共享，mergeSettings 补默认值） |
@@ -101,7 +102,8 @@
 - `FileUpload.jsx`：通用文件上传（onChange uploadFile 拿 http URL）
 - `AssetLibrary.jsx`：素材库面板（分类 + 资产网格）
 
-### canvas 子目录（5 个）
+### canvas 子目录
+- `AlignmentGuides.jsx`：节点拖拽时的横纵辅助线覆盖层
 - `AddNodeMenuItems.jsx`：render-prop 菜单项（同时适配 ContextMenu 和 DropdownMenu）
 - `MultiSelectToolbar.jsx`：底部多选浮出 toolbar（分组/对齐/删除）
 - `DropNodeMenu.jsx`：拖拽落空菜单

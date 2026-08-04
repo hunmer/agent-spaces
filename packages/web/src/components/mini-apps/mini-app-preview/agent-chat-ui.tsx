@@ -18,7 +18,7 @@ import { CommonEditorPanel } from '@/components/editor/editor-panel';
 import { CommonCodeEditor } from '@/components/editor/common-code-editor';
 import { type OpenFile } from '@/stores/editor';
 import { getModel, getModelUri, getOrCreateModel } from '@/lib/monaco-models';
-import { Copy, Loader2, Sparkles, Settings2, Eraser, FilesIcon, Trash2, RotateCcw, MessageSquareText, UploadIcon } from 'lucide-react';
+import { Copy, Loader2, Sparkles, Settings2, Eraser, FilesIcon, Trash2, RotateCcw, MessageSquareText, UploadIcon, Bell, BellOff } from 'lucide-react';
 import { miniAppConfigToAgentPreset, agentPresetToMiniAppConfig } from '../mini-app-agent-adapter';
 import { useMiniAppAgentChat } from './use-agent-chat';
 
@@ -262,11 +262,21 @@ function MiniAppAgentFilesDialog({ projectId, open, onOpenChange }: { projectId:
   );
 }
 
-/** ChatPanel 顶部工具区（切换会话 / agent / 设置），popover 与 dock 共用。 */
+/** ChatPanel 顶部工具区（切换会话 / agent / 设置 / 通知），popover 与 dock 共用。 */
 export function MiniAppAgentHeaderActions({ chat }: { chat: MiniAppAgentChat }) {
   const t = useTranslations('mini-apps');
   const { agentId, openSettings,
-    sessions, sessionId, handleSwitchSession, handleNewSession, handleDeleteSession } = chat;
+    sessions, sessionId, handleSwitchSession, handleNewSession, handleDeleteSession,
+    notifyOnComplete, toggleNotify } = chat;
+
+  const handleToggleNotify = useCallback(async () => {
+    const result = await toggleNotify();
+    if (result === 'on') toast.success(t('agent.notifyOn'));
+    else if (result === 'off') toast.message(t('agent.notifyOff'));
+    else if (result === 'denied') toast.error(t('agent.notifyDenied'));
+    else if (result === 'unsupported') toast.error(t('agent.notifyUnsupported'));
+  }, [toggleNotify, t]);
+
   return (
     <>
       {/* 会话切换 */}
@@ -306,6 +316,18 @@ export function MiniAppAgentHeaderActions({ chat }: { chat: MiniAppAgentChat }) 
           </SelectContent>
         </Select>
       )}
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        className="h-8 w-8 rounded-full hover:bg-background/50"
+        onClick={handleToggleNotify}
+        title={t('agent.notifyOnComplete')}
+        aria-label={t('agent.notifyOnComplete')}
+        aria-pressed={notifyOnComplete}
+      >
+        {notifyOnComplete ? <Bell className="h-4 w-4" /> : <BellOff className="h-4 w-4" />}
+      </Button>
       <Button
         type="button"
         variant="ghost"

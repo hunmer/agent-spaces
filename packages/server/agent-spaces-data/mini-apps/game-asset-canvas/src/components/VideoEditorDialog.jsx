@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Dialog, DialogContent, DialogTitle,
   Checkbox, FileUpload, Film, Trash2, FolderPlus, Loader, Download,
+  Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription,
 } from '@agent-spaces/ui';
 import FrameSequencePlayer from './FrameSequencePlayer';
 import { FRAME_EXTRACT_MODE_OPTIONS } from '../utils/constants';
@@ -536,8 +537,16 @@ export default function VideoEditorDialog({ open, data, onUpdate, onClose }) {
                 style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(112px, 1fr))', gridAutoRows: '80px' }}
               >
                 {frames.length === 0 ? (
-                  <div className="flex flex-1 items-center justify-center text-xs text-muted-foreground">
-                    暂无帧，到「编辑」tab 点「截取帧」
+                  <div style={{ gridColumn: '1 / -1' }}>
+                    <Empty>
+                      <EmptyHeader>
+                        <EmptyMedia variant="icon"><Film className="h-4 w-4" /></EmptyMedia>
+                        <EmptyTitle>暂无帧</EmptyTitle>
+                        <EmptyDescription>
+                          到「编辑」tab 点「截取帧」
+                        </EmptyDescription>
+                      </EmptyHeader>
+                    </Empty>
                   </div>
                 ) : frames.map((url, i) => {
                   const isStart = i === selectedStartFrame;

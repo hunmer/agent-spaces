@@ -336,6 +336,16 @@
     "generate": "生成"
   },
   "user": "用户",
+  "panel": {
+    "messagePlaceholder": "给 {name} 发送消息…",
+    "typing": "正在输入…",
+    "online": "在线",
+    "menu": "菜单",
+    "suggestions": "消息建议",
+    "fillInput": "填入输入框",
+    "send": "发送",
+    "empty": "暂无消息"
+  },
   "tour": {
     "workspaceSwitcherTitle": "工作区切换",
     "workspaceSwitcher": "在此切换不同的工作区，每个工作区拥有独立的 agent 和会话。",

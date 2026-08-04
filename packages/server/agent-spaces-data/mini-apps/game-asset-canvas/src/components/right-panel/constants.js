@@ -69,9 +69,10 @@ export const EXECUTABLE_TYPES = new Set([
 
 // 每张卡片最小宽度（px），用于响应式推算列数
 export const MIN_CARD_WIDTH = 96;
-// 列数范围
+// 列数范围：上限对齐最大分组项数（图像处理 12 项），面板足够宽时可整组一行展示；
+// MIN_CARD_WIDTH 仍作为自然下限保护，避免卡片过窄。
 export const MIN_COLS = 2;
-export const MAX_COLS = 5;
+export const MAX_COLS = 12;
 
 // 连通分量着色板 —— bar 为色条实色，bg 为分区淡色背景。完整类名，供 Tailwind 静态扫描。
 export const GROUP_PALETTE = [

@@ -1,10 +1,16 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { EditorContent, type Editor } from '@tiptap/react';
 import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Maximize2, Send, Square, X } from 'lucide-react';
 
 interface ComposerShellProps {
@@ -41,36 +47,44 @@ export function ComposerShell({
   const t = useTranslations('composer');
   const [fullscreen, setFullscreen] = useState(false);
 
+  useEffect(() => {
+    if (fullscreen) {
+      editor?.commands.focus();
+    }
+  }, [fullscreen, editor]);
+
   if (fullscreen) {
-    editor?.commands.focus();
+    // 早返回：编辑器仅在 Dialog 内挂载，关闭瞬间卸载后再挂载主区域，
+    // 保证同一时刻只有一个 EditorContent，避免 tiptap view 双挂载导致内容丢失。
     return (
-      <div className="fixed inset-0 z-50 flex flex-col bg-popover">
-        <div className="absolute inset-0 bg-black/10 backdrop-blur-xs" onClick={() => setFullscreen(false)} />
-        <div className="relative z-10 flex h-full max-w-3xl w-full mx-auto flex-col rounded-xl bg-popover ring-1 ring-foreground/10 m-4 overflow-hidden">
-          <div className="flex items-center justify-between border-b px-4 py-3">
-            <span className="text-base font-medium">{t('shell.fullscreen')}</span>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setFullscreen(false)}
-              >
-                {t('shell.cancel')}
-              </Button>
-              <Button
-                size="sm"
-                disabled={!canSubmit}
-                onClick={() => { setFullscreen(false); onSubmit(contextLength); }}
-              >
-                <Send className="size-3.5 mr-1.5" />
-                {t('shell.send')}
-              </Button>
+      <div className={className}>
+        <Dialog open onOpenChange={(open) => { if (!open) setFullscreen(false); }}>
+          <DialogContent
+            showCloseButton={false}
+            className="sm:max-w-3xl flex flex-col gap-0 p-0 overflow-hidden"
+            style={{ maxHeight: 'calc(var(--app-content-height) - 2rem)' }}
+          >
+            <DialogHeader className="flex-row items-center justify-between border-b px-4 py-3 gap-2">
+              <DialogTitle>{t('shell.fullscreen')}</DialogTitle>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={() => setFullscreen(false)}>
+                  {t('shell.cancel')}
+                </Button>
+                <Button
+                  size="sm"
+                  disabled={!canSubmit}
+                  onClick={() => { setFullscreen(false); onSubmit(contextLength); }}
+                >
+                  <Send className="size-3.5 mr-1.5" />
+                  {t('shell.send')}
+                </Button>
+              </div>
+            </DialogHeader>
+            <div className="tiptap-fullscreen flex-1 flex flex-col overflow-y-auto p-4 min-h-[40vh] [&>div]:flex-1 [&>div]:flex [&>div]:flex-col [&_.tiptap]:flex-1 [&_.tiptap]:min-h-0 [&_.tiptap]:outline-none">
+              <EditorContent editor={editor} />
             </div>
-          </div>
-          <div className="tiptap-fullscreen flex-1 flex flex-col overflow-y-auto p-4 [&>div]:flex-1 [&>div]:flex [&>div]:flex-col [&_.tiptap]:flex-1 [&_.tiptap]:min-h-0 [&_.tiptap]:outline-none">
-            <EditorContent editor={editor} />
-          </div>
-        </div>
+          </DialogContent>
+        </Dialog>
       </div>
     );
   }
@@ -91,7 +105,7 @@ export function ComposerShell({
               className="inline-flex size-5 shrink-0 items-center justify-center rounded hover:bg-muted hover:text-foreground cursor-pointer"
               title={t('shell.cancelReply')}
             >
-              <X className="size-3" />
+              <X className="size-3.5" />
             </button>
           </div>
         ) : null}

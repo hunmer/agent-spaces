@@ -1,11 +1,12 @@
 import { useCallback, useRef, useState, useEffect } from 'react';
 import { NodeResizer, NodeToolbar, Position } from '@xyflow/react';
-import { ChevronLeft, ChevronRight, Download, Loader, Upload, toast } from '@agent-spaces/ui';
+import { ChevronLeft, ChevronRight, Download, Loader, RotateCw, Upload, toast } from '@agent-spaces/ui';
 import useViewportActivation from '../../hooks/useViewportActivation';
 import { getFloatingHandleProps } from '../canvas/floating-edge-utils';
 import FloatingHandle from './FloatingHandle';
 import { useCanvasGallery } from '../../utils/canvas-gallery';
 import { downloadImages } from '../../utils/export';
+import { normalizeImageRotation } from '../../utils/image-display-size';
 
 /**
  * 图片展示节点：纯展示图片，无外壳边框/标题栏。
@@ -46,6 +47,7 @@ export default function ImageDisplayNode({ id, data, selected }) {
   const isMulti = images.length > 1;
   const current = images[Math.min(imgIndex, images.length - 1)] || images[0];
   const currentThumb = resources.find((item) => item?.url === current)?.thumb || current;
+  const rotation = normalizeImageRotation(data?.rotation);
 
   // 工具栏按钮可见性（与原 NodeShell 逻辑一致：有产出图且有回调）
   const onExportImages = data?.onExportImages;
@@ -61,8 +63,21 @@ export default function ImageDisplayNode({ id, data, selected }) {
     const img = e.currentTarget;
     const nw = img?.naturalWidth;
     const nh = img?.naturalHeight;
-    if (nw && nh && onAutoSize && autoSizeEnabled) onAutoSize(id, nw, nh);
-  }, [autoSizeEnabled, id, onAutoSize]);
+    if (nw && nh && onAutoSize && autoSizeEnabled) onAutoSize(id, nw, nh, rotation);
+  }, [autoSizeEnabled, id, onAutoSize, rotation]);
+
+  const handleRotate = useCallback((event) => {
+    event.stopPropagation();
+    const nextRotation = normalizeImageRotation(rotation + 90);
+    const image = rootRef.current?.querySelector('img');
+    const width = image?.naturalWidth || data?.imageSize?.width;
+    const height = image?.naturalHeight || data?.imageSize?.height;
+    if (width && height && onAutoSize) {
+      onAutoSize(id, width, height, nextRotation);
+      return;
+    }
+    onUpdate?.({ rotation: nextRotation });
+  }, [data?.imageSize?.height, data?.imageSize?.width, id, onAutoSize, onUpdate, rotation]);
 
   const handleFile = useCallback(async (e) => {
     const file = e.target.files?.[0];
@@ -129,6 +144,15 @@ export default function ImageDisplayNode({ id, data, selected }) {
                 className="rounded-md border border-border bg-background px-2.5 py-1 text-xs font-medium text-foreground shadow-sm transition hover:border-primary hover:text-primary"
               >编辑</button>
             )}
+            <button
+              type="button"
+              onClick={handleRotate}
+              title="顺时针旋转 90°"
+              aria-label="顺时针旋转 90°"
+              className="flex h-7 w-7 items-center justify-center rounded-md border border-border bg-background text-foreground shadow-sm transition hover:border-primary hover:text-primary"
+            >
+              <RotateCw className="h-3.5 w-3.5" />
+            </button>
             {showProcessButtons && (
               <>
                 <button
@@ -218,6 +242,7 @@ export default function ImageDisplayNode({ id, data, selected }) {
                 alt=""
                 draggable={false}
                 className="max-h-full max-w-full select-none object-contain"
+                style={{ transform: `rotate(${rotation}deg)` }}
                 onLoad={handleImgLoad}
               />
             )}

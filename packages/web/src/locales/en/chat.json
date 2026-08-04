@@ -336,6 +336,16 @@
     "generate": "Generate"
   },
   "user": "User",
+  "panel": {
+    "messagePlaceholder": "Message {name}…",
+    "typing": "typing…",
+    "online": "online",
+    "menu": "Menu",
+    "suggestions": "Message suggestions",
+    "fillInput": "Fill into input",
+    "send": "Send",
+    "empty": "No messages"
+  },
   "tour": {
     "workspaceSwitcherTitle": "Workspace Switcher",
     "workspaceSwitcher": "Switch between different workspaces here. Each workspace groups its own agents and chat sessions.",

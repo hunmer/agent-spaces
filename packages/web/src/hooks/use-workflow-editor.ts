@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { getWorkflowEditorStore } from '@/stores/workflow-editor';
 import type { WorkflowNode, WorkflowEdge } from '@agent-spaces/shared';
 import { copyToClipboard } from '@/lib/utils';
+import { remapPastedNodeData } from './workflow-clipboard';
 
 // ---- useWorkflowEditor ----
 
@@ -174,17 +175,23 @@ export function useClipboard() {
     const target = record ?? recordsRef.current[0];
     if (!target) return null;
     const idMap = new Map<string, string>();
-    const newNodes = target.nodes.map(n => {
-      const newId = `node_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-      idMap.set(n.id, newId);
-      return { ...n, id: newId, position: { ...n.position } };
-    });
-    const newEdges = target.edges.map(e => ({
-      ...e,
-      id: `edge_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-      source: idMap.get(e.source) || e.source,
-      target: idMap.get(e.target) || e.target,
+    for (const node of target.nodes) {
+      idMap.set(node.id, `node_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`);
+    }
+    const newNodes = target.nodes.map(n => ({
+      ...n,
+      id: idMap.get(n.id)!,
+      position: { ...n.position },
+      data: remapPastedNodeData(n.data, idMap),
     }));
+    const newEdges = target.edges
+      .filter(e => idMap.has(e.source) && idMap.has(e.target))
+      .map(e => ({
+        ...e,
+        id: `edge_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+        source: idMap.get(e.source)!,
+        target: idMap.get(e.target)!,
+      }));
     return { nodes: newNodes, edges: newEdges };
   }, []);
 

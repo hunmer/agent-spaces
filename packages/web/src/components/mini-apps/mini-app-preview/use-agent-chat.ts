@@ -35,6 +35,48 @@ export function useMiniAppAgentChat(projectId: string) {
   const [agentFileMentions, setAgentFileMentions] = useState<ChatPanelMentionFile[]>([]);
   const abortRef = useRef<AbortController | null>(null);
 
+  // 完成时桌面通知开关（持久化到 localStorage，按项目隔离）
+  const notifyOnCompleteRef = useRef(false);
+  const [notifyOnComplete, setNotifyOnComplete] = useState<boolean>(() => {
+    if (typeof window === 'undefined' || !projectId) return false;
+    try { return window.localStorage.getItem(`mini-app-agent-notify:${projectId}`) === '1'; } catch { return false; }
+  });
+  useEffect(() => { notifyOnCompleteRef.current = notifyOnComplete; }, [notifyOnComplete]);
+  useEffect(() => {
+    if (typeof window === 'undefined' || !projectId) return;
+    try {
+      if (notifyOnComplete) window.localStorage.setItem(`mini-app-agent-notify:${projectId}`, '1');
+      else window.localStorage.removeItem(`mini-app-agent-notify:${projectId}`);
+    } catch { /* ignore */ }
+  }, [projectId, notifyOnComplete]);
+
+  const toggleNotify = useCallback(async (): Promise<'on' | 'off' | 'denied' | 'unsupported'> => {
+    // 关闭：直接关
+    if (notifyOnCompleteRef.current) {
+      setNotifyOnComplete(false);
+      return 'off';
+    }
+    // 开启：先请求通知权限
+    if (typeof window === 'undefined' || !('Notification' in window)) return 'unsupported';
+    if (Notification.permission !== 'granted') {
+      const perm = await Notification.requestPermission();
+      if (perm !== 'granted') return 'denied';
+    }
+    setNotifyOnComplete(true);
+    return 'on';
+  }, []);
+
+  // agent 完成回复时弹桌面通知
+  const notifyComplete = useCallback((agentName: string, preview: string) => {
+    if (!notifyOnCompleteRef.current) return;
+    if (typeof window === 'undefined' || !('Notification' in window) || Notification.permission !== 'granted') return;
+    try {
+      new Notification(agentName, {
+        body: preview.slice(0, 200) || t('agent.notifyDefaultBody'),
+      });
+    } catch { /* ignore */ }
+  }, [t]);
+
   // 多会话：sessions 列表 + 当前 sessionId（'' 表示新建草稿，尚未落盘）
   const [sessions, setSessions] = useState<Array<{ id: string; agentId: string; title: string; updatedAt: string }>>([]);
   // 持久化恢复：记住该 (项目, agent) 上次选中的会话
@@ -193,6 +235,10 @@ export function useMiniAppAgentChat(projectId: string) {
     } catch { /* 保持当前会话不变 */ }
   }, [projectId, sending]);
 
+  const current = agents.find((a) => a.id === agentId);
+  const suggestions = current?.suggestions ?? [];
+  const introduction = current?.introduction ?? '';
+
   const handleSend = useCallback(async (overrideText?: string) => {
     const text = (overrideText ?? input).trim();
     if (!text || !agentId || sending) return;
@@ -210,12 +256,14 @@ export function useMiniAppAgentChat(projectId: string) {
     setSending(true);
     const ac = new AbortController();
     abortRef.current = ac;
+    let agentText = ''; // 累积 agent 回复纯文本，用于完成时桌面通知预览
     try {
       const res = await sdk.miniApp.agentChat(projectId, agentId, { sessionId: activeSessionId, message: text, route }, { signal: ac.signal });
       await consumeSse(res, (event, data) => {
         const d = data as Record<string, unknown>;
         if (event === 'text' && typeof d.line === 'string') {
           const line = d.line;
+          agentText += line;
           setMessages((prev) => prev.map((m) => {
             if (m.id !== agentMsgId) return m;
             const timeline = appendMiniAppTimelineText(m.timeline, 'message', line);
@@ -265,8 +313,12 @@ export function useMiniAppAgentChat(projectId: string) {
     finally {
       setSending(false);
       abortRef.current = null;
+      // 完成时桌面通知（仅在正常收到回复、非用户中断时）
+      if (agentText) {
+        notifyComplete(current?.name ?? 'Agent', agentText);
+      }
     }
-  }, [input, agentId, sending, projectId, sessionId, route, loadSessions]);
+  }, [input, agentId, sending, projectId, sessionId, route, loadSessions, current, notifyComplete]);
 
   const handleStop = useCallback(() => {
     abortRef.current?.abort();
@@ -452,10 +504,6 @@ export function useMiniAppAgentChat(projectId: string) {
     }
   }, [projectId]);
 
-  const current = agents.find((a) => a.id === agentId);
-  const suggestions = current?.suggestions ?? [];
-  const introduction = current?.introduction ?? '';
-
   return {
     agents, agentId, setAgentId,
     messages, input, setInput, sending,
@@ -475,5 +523,7 @@ export function useMiniAppAgentChat(projectId: string) {
     // 多会话
     sessions, sessionId,
     handleSwitchSession, handleNewSession, handleDeleteSession, handleRenameSession,
+    // 完成通知
+    notifyOnComplete, toggleNotify,
   };
 }

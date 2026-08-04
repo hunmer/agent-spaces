@@ -41,6 +41,7 @@ import { useCanvasExport } from './use-workflow-canvas-export';
 import { getNodeDefinition } from '@/lib/workflow-nodes';
 import { getWorkflowNodeSize } from './workflow-node-size';
 import { parseWorkflowFieldHandleId } from './workflow-field-handles';
+import { countsTowardTargetConnectionLimit } from './workflow-edge-capacity';
 import type { WorkflowFieldKeyRenameParams } from './workflow-properties-io-sections';
 import {
   areWorkflowHandleValueTypesCompatible,
@@ -520,6 +521,7 @@ export function WorkflowCanvas({
       edge.target === connection.target
       && (edge.targetHandle || undefined) === targetHandle
       && edge.id !== ('id' in connection ? connection.id : undefined)
+      && countsTowardTargetConnectionLimit(edge)
     ).length;
     if (existingTargetConnectionCount >= targetConnectionCount) {
       return reject();

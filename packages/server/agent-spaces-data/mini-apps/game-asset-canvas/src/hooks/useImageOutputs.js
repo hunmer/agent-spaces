@@ -3,6 +3,7 @@ import { NODE_TYPES, NODE_META, IMAGE_TAGS } from '../utils/constants';
 import { DEFAULT_SIZE, dedupeTags, initialData } from '../utils/canvas-constants';
 import { findFreePositions } from '../utils/layout';
 import { genId } from '../utils/canvas-id';
+import { getImageDisplayNodeSize, loadImageDimensions } from '../utils/image-display-size';
 
 const DEFAULT_NODE_W = 280;
 const DEFAULT_NODE_H = 220;
@@ -35,34 +36,45 @@ const rightAnchorOf = (sourceNode, gap) => {
  */
 function buildImageNodes(prevNodes, urls, opts) {
   if (!urls?.length) return { additions: [], positions: [] };
-  const size = DEFAULT_SIZE[NODE_TYPES.imageDisplay];
+  const fallbackSize = DEFAULT_SIZE[NODE_TYPES.imageDisplay];
   const meta = NODE_META[NODE_TYPES.imageDisplay];
   const source = opts.source || 'queue';
   const tags = dedupeTags(opts.tags);
+  const dimensions = opts.dimensions || [];
+  const sizes = urls.map((_, i) => {
+    const value = dimensions[i];
+    return value ? getImageDisplayNodeSize(value.width, value.height) : fallbackSize;
+  });
+  const cellW = Math.max(...sizes.map((size) => size.w));
+  const cellH = Math.max(...sizes.map((size) => size.h));
   const gap = 40;
   const anchor = opts.sourceNode
     ? rightAnchorOf(opts.sourceNode, gap)
     : { x: 420, y: 120 };
   const positions = findFreePositions(
-    anchor, size.w, size.h, urls.length, prevNodes,
+    anchor, cellW, cellH, urls.length, prevNodes,
     { gap, direction: 'right', cols: Math.min(3, Math.max(1, urls.length)) },
   );
-  const additions = urls.map((url, i) => ({
-    id: genId(NODE_TYPES.imageDisplay),
-    type: NODE_TYPES.imageDisplay,
-    position: positions[i],
-    width: size.w, height: size.h,
-    style: { width: size.w, height: size.h },
-    data: {
-      ...initialData(NODE_TYPES.imageDisplay),
-      images: [url],
-      resources: [opts.resources?.[i] || { url, thumb: url }],
-      source,
-      tags,
-      label: meta.label,
-      ...(opts.autoSize === false ? { autoSize: false } : {}),
-    },
-  }));
+  const additions = urls.map((url, i) => {
+    const size = sizes[i];
+    return {
+      id: genId(NODE_TYPES.imageDisplay),
+      type: NODE_TYPES.imageDisplay,
+      position: positions[i],
+      width: size.w, height: size.h,
+      style: { width: size.w, height: size.h },
+      data: {
+        ...initialData(NODE_TYPES.imageDisplay),
+        images: [url],
+        resources: [opts.resources?.[i] || { url, thumb: url }],
+        source,
+        tags,
+        label: meta.label,
+        ...(dimensions[i] ? { imageSize: dimensions[i] } : {}),
+        ...(opts.autoSize === false ? { autoSize: false } : {}),
+      },
+    };
+  });
   return { additions, positions };
 }
 
@@ -120,10 +132,13 @@ export default function useImageOutputs({ setNodes, setGroups }) {
   const addImageNodesFromUrls = useCallback((urls, opts = {}) => {
     if (!urls?.length) return [];
     const nodeIds = urls.map(() => genId(NODE_TYPES.imageDisplay));
-    setNodes((prev) => {
-      const { additions } = buildImageNodes(prev, urls, opts);
-      additions.forEach((node, i) => { node.id = nodeIds[i]; });
-      return [...prev, ...additions];
+    Promise.all(urls.map(loadImageDimensions)).then((dimensions) => {
+      setNodes((prev) => {
+        const { additions } = buildImageNodes(prev, urls, { ...opts, dimensions });
+        additions.forEach((node, i) => { node.id = nodeIds[i]; });
+        return [...prev, ...additions];
+      });
+      setTimeout(() => opts.onAdded?.(nodeIds), 0);
     });
     return nodeIds;
   }, [setNodes]);
@@ -134,12 +149,14 @@ export default function useImageOutputs({ setNodes, setGroups }) {
   const addImageNodesGrouped = useCallback((urls, opts = {}) => {
     if (!urls?.length) return [];
     const childIds = urls.map(() => genId(NODE_TYPES.imageDisplay));
-    setNodes((prev) => {
-      // 分组布局按统一默认尺寸计算；禁止图片加载后按自然尺寸放大节点，避免破坏既有间距。
-      const { additions } = buildImageNodes(prev, urls, { ...opts, autoSize: false });
-      // 用预生成的 id 覆盖（保持 childIds 与最终节点一致）
-      additions.forEach((node, i) => { node.id = childIds[i]; });
-      return [...prev, ...additions];
+    Promise.all(urls.map(loadImageDimensions)).then((dimensions) => {
+      setNodes((prev) => {
+        // 分组节点创建时已按图片比例定好尺寸，禁止渲染后再次改变间距。
+        const { additions } = buildImageNodes(prev, urls, { ...opts, dimensions, autoSize: false });
+        additions.forEach((node, i) => { node.id = childIds[i]; });
+        return [...prev, ...additions];
+      });
+      setTimeout(() => opts.onAdded?.(childIds), 0);
     });
     const srcLabel = opts.sourceNode ? (NODE_META[opts.sourceNode.type]?.label || '导出') : '导出';
     const now = new Date();
@@ -165,7 +182,7 @@ export default function useImageOutputs({ setNodes, setGroups }) {
   const handleExportImages = useCallback((sourceNode, imgs, opts = {}) => {
     if (!imgs?.length) return [];
     const tags = dedupeTags([IMAGE_TAGS.export]);
-    const baseOpts = { sourceNode, tags, source: 'export' };
+    const baseOpts = { sourceNode, tags, source: 'export', onAdded: opts.onAdded };
     // 单图：保持原行为，直接加一个独立图片节点（不分组）
     if (imgs.length === 1) {
       return addImageNodesFromUrls(imgs, baseOpts);

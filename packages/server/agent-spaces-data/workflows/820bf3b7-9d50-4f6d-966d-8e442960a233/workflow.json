@@ -8,8 +8,8 @@
       "type": "start",
       "label": "开始",
       "position": {
-        "x": 0,
-        "y": 270
+        "x": -21.47239263803681,
+        "y": 248.5276073619632
       },
       "data": {
         "inputFields": [
@@ -72,7 +72,7 @@
       "label": "结束",
       "position": {
         "x": 900,
-        "y": 540
+        "y": 558.0703125
       },
       "data": {
         "outputPreviewEnabled": true,
@@ -99,8 +99,8 @@
       "type": "switch",
       "label": "nodes.switch.label",
       "position": {
-        "x": 600,
-        "y": 270
+        "x": 585,
+        "y": 225
       },
       "data": {
         "sourceNodeId": "node_1782281779113_6rk17s",
@@ -253,7 +253,7 @@
       "label": "nodes.run_code.label",
       "position": {
         "x": 300,
-        "y": 270
+        "y": 225
       },
       "data": {
         "code": "async function main({ params }) {\n  let target = ''\n  const model = params.model || ''\n  if (model === 'fish-audio') {\n    target = 'case-0'\n  } else if (model === 'minimax') {\n    target = 'case-1'\n  } else if (model === 'qianyin') {\n    target = 'case-2'\n  }\n  return { target }\n}",
@@ -298,7 +298,7 @@
       "label": "FishAudio TTS",
       "position": {
         "x": 900,
-        "y": 360
+        "y": 359.5
       },
       "data": {
         "apiKey": "{{ __config__[\"workflow.fish-audio\"][\"apiKey\"]}}",
@@ -395,7 +395,7 @@
       "label": "千音 TTS",
       "position": {
         "x": 900,
-        "y": 0
+        "y": -18.0703125
       },
       "data": {
         "appkey": "{{ __config__[\"workflow.qianyin\"][\"appkey\"]}}",
@@ -481,7 +481,7 @@
       "label": "MiniMax TTS",
       "position": {
         "x": 900,
-        "y": 180
+        "y": 180.5
       },
       "data": {
         "apiKey": "{{ __config__[\"workflow.minimax\"][\"apiKey\"] }}",
@@ -765,7 +765,7 @@
     }
   ],
   "createdAt": 1782530195481,
-  "updatedAt": 1785588204273,
+  "updatedAt": 1785810253269,
   "published": true,
   "enabledPlugins": [
     "workflow.openai",
@@ -787,7 +787,8 @@
     "canvasTheme": "default",
     "bgVariant": "dots",
     "floatingHandles": false,
-    "attributionPosition": "left-right"
+    "attributionPosition": "left-right",
+    "snapGrid": true
   },
-  "lastOpenedAt": 1785601766309
+  "lastOpenedAt": 1785810187109
 }
