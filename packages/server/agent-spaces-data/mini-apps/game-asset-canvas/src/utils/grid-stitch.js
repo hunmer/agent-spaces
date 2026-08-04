@@ -43,6 +43,22 @@ export function moveGridStitchItem(items, fromIndex, toIndex) {
   return next;
 }
 
+export function mapObjectContainPoint(point, box, image) {
+  if (!box?.width || !box?.height || !image?.width || !image?.height) return null;
+  const scale = Math.min(box.width / image.width, box.height / image.height);
+  const renderedWidth = image.width * scale;
+  const renderedHeight = image.height * scale;
+  const offsetX = (box.width - renderedWidth) / 2;
+  const offsetY = (box.height - renderedHeight) / 2;
+  const localX = point.x - offsetX;
+  const localY = point.y - offsetY;
+  if (localX < 0 || localY < 0 || localX >= renderedWidth || localY >= renderedHeight) return null;
+  return {
+    x: Math.min(image.width - 1, Math.floor(localX / scale)),
+    y: Math.min(image.height - 1, Math.floor(localY / scale)),
+  };
+}
+
 export function gridStitchProcessorParams(data) {
   return {
     columns: data.columns,

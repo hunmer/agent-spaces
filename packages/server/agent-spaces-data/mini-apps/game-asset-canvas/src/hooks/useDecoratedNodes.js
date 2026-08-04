@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { NODE_TYPES, IMAGE_TAGS, modelValuesToOptions } from '../utils/constants';
 import { computeInputAudios, computeInputImages, computeInputTexts, computeInputVideos, computeInputSpineAssets } from '../utils/input-images';
+import { computeTextVariableBindings } from '../utils/text-variable-bindings.js';
 import { dedupeTags } from '../utils/canvas-constants';
 
 /**
@@ -33,6 +34,7 @@ export default function useDecoratedNodes({
 }) {
   const upstreamMap = useMemo(() => computeInputImages(nodes, edges), [nodes, edges]);
   const upstreamTextsMap = useMemo(() => computeInputTexts(nodes, edges), [nodes, edges]);
+  const textVariableBindingsMap = useMemo(() => computeTextVariableBindings(nodes, edges), [nodes, edges]);
   const upstreamVideosMap = useMemo(() => computeInputVideos(nodes, edges), [nodes, edges]);
   const upstreamAudiosMap = useMemo(() => computeInputAudios(nodes, edges), [nodes, edges]);
   const upstreamSpineMap = useMemo(() => computeInputSpineAssets(nodes, edges), [nodes, edges]);
@@ -58,6 +60,7 @@ export default function useDecoratedNodes({
       onGenerateStoryboardMedia,
       onSaveStoryboardCharacter,
       onDeleteStoryboardCharacter,
+      onDeleteEdge,
     } = callbacks || {};
     return nodes.map((nd) => {
       const up = upstreamMap.get(nd.id);
@@ -66,6 +69,8 @@ export default function useDecoratedNodes({
       const upAudios = upstreamAudiosMap.get(nd.id);
       const upSpine = upstreamSpineMap.get(nd.id);
       const data = { ...nd.data };
+      const textVariableBindings = textVariableBindingsMap.get(nd.id);
+      if (textVariableBindings) data.textVariableBindings = textVariableBindings;
       if (up) {
         data.images = up.images;
         data.imageResources = up.resources;
@@ -183,6 +188,7 @@ export default function useDecoratedNodes({
           onSwitchVersion: onSwitchVersion ? (index) => onSwitchVersion(nd.id, index) : undefined,
           // 删除一张上游输入图（断开产出该图的连入边）
           onDeleteUpstreamImage: onDeleteUpstreamImage ? (url) => onDeleteUpstreamImage(nd.id, url) : undefined,
+          onDeleteEdge,
           onApplyToGroup: propertyApplyNodeIds?.has(nd.id) && onApplyToGroup
             ? () => onApplyToGroup(nd.id)
             : undefined,
@@ -200,7 +206,7 @@ export default function useDecoratedNodes({
       };
     });
   }, [
-    nodes, upstreamMap, upstreamTextsMap, upstreamVideosMap, upstreamAudiosMap, propertyApplyNodeIds,
+    nodes, upstreamMap, upstreamTextsMap, textVariableBindingsMap, upstreamVideosMap, upstreamAudiosMap, propertyApplyNodeIds,
     protectedImageUrls, selectionCount, outputPreviewState,
     onOutputPreviewHeight, onOutputPreviewModeChange, settings, callbacks, storyboardCharacters,
   ]);

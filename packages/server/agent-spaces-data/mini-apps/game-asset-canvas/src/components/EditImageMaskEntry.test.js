@@ -27,7 +27,9 @@ test('Edit Image thumbnails open mask painting and save the exported mask', () =
 
 test('Edit Image stores rich editor content only in params.prompt', () => {
   assert.doesNotMatch(editNodeSource, /promptHtml/);
-  assert.match(editNodeSource, /const prompt = params\.prompt \|\| ''/);
+  assert.match(editNodeSource, /const prompt = storedParams\.prompt \|\| ''/);
+  assert.match(editNodeSource, /<TextVariableEditor[\s\S]*field="prompt"[\s\S]*resolvedValue=\{params\.prompt \|\| ''\}[\s\S]*valueFormat="html"/);
+  assert.match(editNodeSource, /promptToText\(params\.prompt \|\| ''\)/);
   assert.match(editNodeSource, /onChange=\{\(html\) => set\(\{ prompt: html \}\)\}/);
   assert.match(editNodeSource, /set\(\{ prompt: newPrompt \}\)/);
 });

@@ -1238,6 +1238,11 @@ export default function Canvas({ hostConfig }) {
     setEdges((prev) => prev.filter((e) => !removeSet.has(e.id)));
   }, [setEdges]);
 
+  const handleDeleteEdgeById = useCallback((edgeId) => {
+    if (!edgeId) return;
+    setEdges((prev) => prev.filter((edge) => edge.id !== edgeId));
+  }, [setEdges]);
+
   // 版本切换：把节点 params/output/status 还原到指定历史版本。加 __switchVersion 标记，
   // updateNodeData 不会把这次写入当作新版本存档，仅更新 activeVersion。
   const handleSwitchVersion = useCallback((nodeId, versionIndex) => {
@@ -1289,6 +1294,7 @@ export default function Canvas({ hostConfig }) {
     onGenerateStoryboardMedia: storyboardOperations.generateSceneMedia,
     onSaveStoryboardCharacter: characterLibrary.saveCharacter,
     onDeleteStoryboardCharacter: characterLibrary.deleteCharacter,
+    onDeleteEdge: handleDeleteEdgeById,
   }), [
     makeOnUpdate, handleGenerate, handleGenerateMedia, handleProcessImage,
     handleProcessLocal, handleCutout, handleCutoutCreate, handleDepth, handleCancelProcess, handlePromptReverse,
@@ -1297,7 +1303,7 @@ export default function Canvas({ hostConfig }) {
     handleSwitchVersion, handleDeleteUpstreamImage, handleExportVideosWithPicker,
     groupExecution.requestPropertyApply,
     storyboardOperations.importStoryboard, storyboardOperations.generateSceneMedia,
-    characterLibrary.saveCharacter, characterLibrary.deleteCharacter,
+    characterLibrary.saveCharacter, characterLibrary.deleteCharacter, handleDeleteEdgeById,
   ]);
 
   // —— Agent RPC（WS message 监听，ref 持有最新值只订阅一次）——

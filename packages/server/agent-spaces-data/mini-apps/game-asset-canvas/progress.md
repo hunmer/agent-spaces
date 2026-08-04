@@ -14,3 +14,12 @@
 - 2026-08-04：全量测试首次因 Node 不接受目录参数而未执行，已改用文件枚举方案。
 - 2026-08-04：全量测试实际执行 243 项，239 通过；确认 1 项本任务断言过时，另 3 项为既有 reskin/FFmpeg 失败。
 - 2026-08-04：更新变量连接 UI 源码断言后，本任务相关 41 项全通过；全量最终 240/243，剩余 3 项均为既有失败；7 个改动源码 Babel 检查及 diff check 通过。
+- 2026-08-04：开始“Tiptap 变量引用与边联动”任务，已追加目标、阶段和兼容约束。
+- 2026-08-04：扩展宿主 PromptTextEditor，加入变量 Decoration、点击 Popover、多边删除、fallback 输入及 text/html 双模式。
+- 2026-08-04：新增每边颜色、文本变量 bindings 和 fallback 派生逻辑，并接入文生图/图生图/语音/视频节点文本字段。
+- 2026-08-04：相关测试首次 40/41；唯一失败为图生图旧源码结构断言，功能纯函数测试均通过。
+- 2026-08-04：按最新要求将点击 Popover 改为委托式 HoverCard；目标文件 TypeScript 无错误，相关测试 23/23 通过。
+- 2026-08-04：全量测试 246/249；3 项失败均为工作区既有 reskin/FFmpeg 断言。
+- 2026-08-04：完成 HoverCard 版变量引用；Mini-app Babel、diff check、PromptTextEditor 定向 TypeScript 均通过，计划与文档已同步。当前环境无 procm-mcp，未执行 Web 重启。
+- 2026-08-04：修复 HoverCard 固定显示在左上角：触发时缓存变量 span 的定位矩形，并在 Decoration 替换旧 DOM 后回退到缓存位置。
+- 2026-08-04：定位修复验证完成；PromptTextEditor 定向 TypeScript 无错误，相关测试 20/20 通过，git diff check 通过。

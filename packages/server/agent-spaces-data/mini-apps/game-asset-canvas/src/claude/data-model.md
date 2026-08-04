@@ -39,6 +39,9 @@ interface NodeData {
   onEditImages?: (images) => void;
   onAutoSize?: () => void;
   onAutoSizeToContent?: () => void;
+  onDeleteEdge?: (edgeId: string) => void; // 运行时注入：变量 HoverCard 删除对应文本边
+  textVariableValues?: Record<string, Record<string, string>>; // 持久化：字段 -> 变量 -> 手动 fallback
+  textVariableBindings?: Record<string, Record<string, Array<object>>>; // 运行时派生，不持久化
   selectionCount?: number;       // 当前选中节点总数（多选时隐藏 NodeToolbar）
   agentConfig?: object;          // BBox/反推提示词 AI 配置（从 settings 注入）
   groupAssetInputUrls?: string[]; // 分组「按上传素材执行」注入的只读输入 URL
@@ -193,7 +196,8 @@ interface Edge {
 - Handle 位置由全局设置决定：上下时 source=Bottom、target=Top；左右时 source=Right、target=Left。
 - 连线语义：「source 产出图 → target 输入区」。旧边或 `inputTarget='images'` 由 `computeInputImages` 派生到 target 的 `data.images`；其它目标派生到 `data.fileUploadInputs[inputTarget]`。
 - 多上传区声明集中在 `utils/connection-targets.js`。当前编辑图片节点声明 `images`（输入图片）和 `mask`（蒙版图片），手动连线时由用户选择。
-- 文本边缺少 `inputVariable` 时保持整字段覆盖；存在时以目标节点持久化的 `data.params[inputTarget]` 为纯文本模板，只替换对应 `{变量}`。同一字段若同时存在整字段边和变量边，整字段边优先。
+- 文本边缺少 `inputVariable` 时保持整字段覆盖；存在时以目标节点持久化的 `data.params[inputTarget]` 为模板，只替换对应 `{变量}`。变量值优先级：整字段边 > 变量边 > `textVariableValues` 手动 fallback > 原占位符。
+- 生成类文本字段由 Tiptap Decoration 高亮 `{变量}`，不改写模板 schema。HoverCard 有连线时列出各 edge 并隐藏输入框；全部删线后显示 fallback 输入。
 - storyboard 每个 scene 使用 `storyboard-scene:<encodeURIComponent(sceneId)>` 作为 source handle。多素材连接把选中项写入 `sourceAsset`，`computeInputImages/Videos/Audios` 优先消费该素材；无该字段的历史边保持原行为。
 
 ## 分组（WorkflowGroup）

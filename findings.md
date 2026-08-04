@@ -20,6 +20,12 @@
 - Shared `CutoutSettings` preserves the splitter's normal-mode always-visible color/pipette controls via explicit props.
 - Mini-app source refresh is sufficient; no host-layer file was changed for this task.
 
+## Grid stitch follow-up fixes
+
+- The missing pipette was caused by `GridStitchDialog` not passing `onPickColor` to the shared `CutoutSettings`.
+- The left scrollbar came from `overflow-auto` plus width-driven square cells; replacing them with full-height row tracks fixes layout without stretching images.
+- Pipette sampling must map pointer coordinates through the `object-contain` letterbox before reading the original `ImageData` pixel.
+
 ## Current Research: Storyboard creation node migration
 
 - The requested source is the standalone `packages/server/agent-spaces-data/mini-apps/文案转分镜` mini-app.

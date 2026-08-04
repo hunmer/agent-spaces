@@ -108,7 +108,9 @@ export { htmlToMarkdown, markdownToHtml } from '@/lib/converter';
 
 // 面向「编辑图片指令」的 tiptap 编辑器：内置 @ 参考图 suggestion（高亮 mention，提交时转换）
 export { default as PromptTextEditor } from '@/components/common/editors/prompt-text-editor';
-export type { PromptTextEditorProps, PromptReference } from '@/components/common/editors/prompt-text-editor';
+export type {
+  PromptTextEditorProps, PromptReference, PromptVariableBinding, PromptVariableConnection,
+} from '@/components/common/editors/prompt-text-editor';
 
 // tiptap 基础套件（供 mini-app 自定义编辑器场景直接拼装）
 export { useEditor, EditorContent, ReactRenderer } from '@tiptap/react';

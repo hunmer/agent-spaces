@@ -90,7 +90,7 @@ export function extractTemplateVariables(value) {
   if (typeof value !== 'string' || !value) return [];
   const variables = [];
   const seen = new Set();
-  for (const match of value.matchAll(/\{([^{}\s]+)\}/g)) {
+  for (const match of value.matchAll(/\{([A-Za-z0-9_.\-\u3400-\u9fff]+)\}/g)) {
     const name = match[1];
     if (seen.has(name)) continue;
     seen.add(name);

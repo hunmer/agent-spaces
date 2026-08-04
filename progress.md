@@ -20,6 +20,9 @@
 - Added four focused grid-stitch regressions; combined with API tests, final targeted verification passes 6/6.
 - Babel compilation passes for 10 related modules; forbidden-pattern scan and `git diff --check` pass.
 - No browser test was run per project default. No service restart was needed for mini-app source refresh, and `procm-mcp` is unavailable in this session.
+- Follow-up: reproduced the missing pipette and scrolling grid with source-level regression assertions.
+- Added original-pixel pipette sampling with object-contain coordinate mapping; changed the left preview to full-height fixed grid rows with hidden overflow.
+- Grid-stitch regression suite now passes 5/5 after failing before the fix.
 
 ## 2026-08-04 - Storyboard output handles and asset-aware connections
 - Received follow-up to add one output handle per storyboard scene and make connection target selection asset-aware.

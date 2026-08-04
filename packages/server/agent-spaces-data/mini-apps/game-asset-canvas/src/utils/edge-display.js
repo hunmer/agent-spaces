@@ -4,6 +4,19 @@ export const INPUT_EDGE_COLOR = '#2563eb';
 export const OUTPUT_EDGE_COLOR = '#16a34a';
 export const SELECTED_EDGE_COLOR = '#6366f1';
 
+export const EDGE_COLOR_PALETTE = [
+  '#2563eb', '#16a34a', '#dc2626', '#9333ea', '#0891b2', '#ea580c',
+  '#a16207', '#db2777', '#4f46e5', '#0d9488', '#65a30d', '#c026d3',
+];
+
+/** 同一 edges 顺序下稳定分配颜色；edge.data.edgeColor 可覆盖自动颜色。 */
+export function getEdgeColor(edge, index = 0) {
+  if (edge?.data?.edgeColor) return edge.data.edgeColor;
+  if (index < EDGE_COLOR_PALETTE.length) return EDGE_COLOR_PALETTE[index];
+  const hue = Math.round((index * 137.508) % 360);
+  return `hsl(${hue} 68% 42%)`;
+}
+
 export function decorateEdgesForSelection(
   edges, nodes, pathStyle, lineStyle, nodeParamsSchema = {},
 ) {
@@ -12,7 +25,7 @@ export function decorateEdgesForSelection(
   const inputCounts = new Map();
   const outputCounts = new Map();
 
-  return edges.map((edge) => {
+  return edges.map((edge, edgeIndex) => {
     const inputIndex = (inputCounts.get(edge.target) || 0) + 1;
     const outputIndex = (outputCounts.get(edge.source) || 0) + 1;
     inputCounts.set(edge.target, inputIndex);
@@ -20,9 +33,7 @@ export function decorateEdgesForSelection(
 
     const isInput = selectedIds.has(edge.target);
     const isOutput = !isInput && selectedIds.has(edge.source);
-    const highlightColor = edge.selected
-      ? SELECTED_EDGE_COLOR
-      : (isInput ? INPUT_EDGE_COLOR : (isOutput ? OUTPUT_EDGE_COLOR : null));
+    const highlightColor = getEdgeColor(edge, edgeIndex);
     const targetLabel = isInput || isOutput
       ? getEdgeTargetLabel(edge, nodeMap, nodeParamsSchema)
       : null;
@@ -35,12 +46,11 @@ export function decorateEdgesForSelection(
         ? (targetLabel || `输入${inputIndex}`)
         : (isOutput ? (targetLabel || `输出${outputIndex}`) : null),
       data: { ...(edge.data || {}), pathStyle, lineStyle, highlightColor },
-      markerEnd: highlightColor
-        ? { ...(edge.markerEnd || { type: 'arrowclosed' }), color: highlightColor }
-        : edge.markerEnd,
+      markerEnd: { ...(edge.markerEnd || { type: 'arrowclosed' }), color: highlightColor },
       style: {
         ...(withoutDash(edge.style) || {}),
-        ...(highlightColor ? { stroke: highlightColor, strokeWidth: 2.5 } : {}),
+        stroke: highlightColor,
+        strokeWidth: edge.selected ? 3 : (isInput || isOutput ? 2.5 : 1.75),
       },
     };
   });

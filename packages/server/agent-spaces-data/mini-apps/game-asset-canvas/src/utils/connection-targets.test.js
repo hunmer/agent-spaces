@@ -43,6 +43,7 @@ test('text targets expose unique template variables from plain text or html valu
     ['角色', '武器'],
   );
   assert.deepEqual(extractTemplateVariables('忽略 {two words} 和 {}'), []);
+  assert.deepEqual(extractTemplateVariables('{"prompt":"value"}'), []);
   assert.deepEqual(withTextTargetVariables(
     [{ id: 'prompt', label: '提示词' }, { id: 'fileName', label: '文件名' }],
     { prompt: '生成 {subject}', fileName: 'hero.png' },

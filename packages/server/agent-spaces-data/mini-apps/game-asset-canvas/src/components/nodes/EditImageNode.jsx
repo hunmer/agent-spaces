@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
-import { PromptTextEditor, SearchSelect, Wand2 } from '@agent-spaces/ui';
+import { SearchSelect, Wand2 } from '@agent-spaces/ui';
 import NodeShell from './NodeShell';
 import { useNodeDialog } from './NodeDialogContext';
 import PickedPromptBadge from './PickedPromptBadge';
@@ -10,6 +10,7 @@ import CountAndConcurrency from './CountAndConcurrency';
 import { ASPECT_OPTIONS, DEFAULT_MODEL, MODEL_OPTIONS, NODE_TYPES, SIZE_OPTIONS, WORKFLOWS } from '../../utils/constants';
 import { normalizeImageUrls, resolveReferenceImages, promptToText, dedupeUrls } from '../../utils/workflow';
 import UploadSection from './UploadSection';
+import TextVariableEditor from './TextVariableEditor';
 
 /**
  * 编辑图片节点。
@@ -117,7 +118,7 @@ export default function EditImageNode({ id, data, selected }) {
   ];
 
   // prompt 是编辑指令的唯一字段；可保存 PromptTextEditor 生成的 HTML，提交时再转纯文本。
-  const prompt = params.prompt || '';
+  const prompt = storedParams.prompt || '';
 
   // 统一的输入图清单：参考图 + 上传图 + 连线图，按用户拖拽顺序持久化。
   // @ 列表、key(R0/R1…)映射、提交 images 三处都用它，保证「上传后 @ 能选到新图」且 key 与提交顺序一致。
@@ -141,7 +142,7 @@ export default function EditImageNode({ id, data, selected }) {
     // 至少有一张输入图才执行（allInputImages 已含全部来源 + 去重）
     if (!allInputImages.length) return;
     // 编辑指令 HTML → 纯文本（@参考图 mention → R0/R1 关键字）
-    const userPrompt = promptToText(prompt);
+    const userPrompt = promptToText(params.prompt || '');
     // 提示词库选中 + 用户输入 合并（去空去重）
     const merged = [params.pickedPrompt, userPrompt].map((s) => (s || '').trim()).filter(Boolean).join('\n');
     onGenerate?.(id, NODE_TYPES.editImage, {
@@ -206,10 +207,14 @@ export default function EditImageNode({ id, data, selected }) {
           </button>
         </div>
         <div className="nodrag nopan nowheel relative min-h-[56px] resize-y rounded-md border border-border bg-background px-2 py-1.5 pr-8 text-sm focus-within:border-primary">
-          <PromptTextEditor
+          <TextVariableEditor
+            data={data}
+            field="prompt"
             value={prompt}
+            resolvedValue={params.prompt || ''}
             onChange={(html) => set({ prompt: html })}
             references={editorReferences}
+            valueFormat="html"
             placeholder="如：将背景改为星空，保持宝箱主体不变（输入 @ 插入参考图）"
           />
           <button
@@ -249,13 +254,17 @@ export default function EditImageNode({ id, data, selected }) {
 
       <label className="flex flex-col gap-1">
         <span className="text-xs font-medium text-muted-foreground">文件名（可选）</span>
-        <input
-          type="text"
-          className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm outline-none focus:border-primary"
-          placeholder="如 hero_edited.png，留空用默认名"
-          value={params.fileName || ''}
-          onChange={(e) => set({ fileName: e.target.value || undefined })}
-        />
+        <div className="nodrag nopan nowheel rounded-md border border-border bg-background px-2 py-1 text-sm focus-within:border-primary">
+          <TextVariableEditor
+            data={data}
+            field="fileName"
+            value={storedParams.fileName || ''}
+            resolvedValue={params.fileName || ''}
+            placeholder="如 hero_edited.png，留空用默认名"
+            singleLine
+            onChange={(value) => set({ fileName: value || undefined })}
+          />
+        </div>
       </label>
 
       {/* 蒙版图片（单张）：白色=需编辑区域。提交时作为 mask 字段传入 edit_image 工作流。 */}

@@ -12,7 +12,7 @@ import {
 } from '../../utils/constants';
 import { dedupeUrls, normalizeImageUrls } from '../../utils/workflow';
 import { hasPrompt } from '../../utils/prompts';
-import AutoResizeTextarea from '../AutoResizeTextarea';
+import TextVariableEditor from './TextVariableEditor';
 
 /**
  * 生成视频节点（video_generator 工作流）。
@@ -182,13 +182,16 @@ export default function VideoGeneratorNode({ id, data, selected }) {
             📋 提示词库
           </button>
         </div>
-        <AutoResizeTextarea
-          minHeight={64}
-          className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm outline-none focus:border-primary"
-          placeholder="描述要生成的视频，如：森林精灵转动魔杖，金色粒子飞溅"
-          value={params.prompt || ''}
-          onChange={(e) => set({ prompt: e.target.value })}
-        />
+        <div className="nodrag nopan nowheel min-h-[64px] rounded-md border border-border bg-background px-2 py-1.5 text-sm focus-within:border-primary">
+          <TextVariableEditor
+            data={data}
+            field="prompt"
+            value={storedParams.prompt || ''}
+            resolvedValue={params.prompt || ''}
+            placeholder="描述要生成的视频，如：森林精灵转动魔杖，金色粒子飞溅"
+            onChange={(value) => set({ prompt: value })}
+          />
+        </div>
       </label>
 
       {/* 参考图片：FileUpload 上传 + 上游连线 */}

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Button, ColorPicker, Dialog, DialogContent, DialogDescription,
   DialogFooter, DialogHeader, DialogTitle, Label, Loader, NumberInput,
@@ -7,9 +7,10 @@ import { GripVertical, LayoutGrid } from '@agent-spaces/ui';
 import CutoutSettings, { SettingField } from './ui-splitter/CutoutSettings';
 import { applySpriteSheetCutout } from '../utils/image-ops/spriteSheet';
 import { imageDataToDataUrl, urlToImageData } from '../utils/image-ops/io';
+import { sampleColor, toHex } from '../utils/image-ops/sprite-splitter';
 import { BG_PRESETS } from '../utils/ui-splitter-helpers';
 import {
-  moveGridStitchItem, normalizeGridStitchData,
+  mapObjectContainPoint, moveGridStitchItem, normalizeGridStitchData,
 } from '../utils/grid-stitch';
 
 export default function GridStitchDialog({
@@ -24,6 +25,8 @@ export default function GridStitchDialog({
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState('');
   const [dragIndex, setDragIndex] = useState(-1);
+  const [picking, setPicking] = useState(false);
+  const sourceImagesRef = useRef({});
 
   useEffect(() => {
     if (open) setDraft(normalized);
@@ -46,9 +49,12 @@ export default function GridStitchDialog({
     Promise.all(draft.order.map(async (url) => {
       const imageData = await urlToImageData(url);
       const output = applySpriteSheetCutout(imageData, draft);
-      return [url, imageDataToDataUrl(output)];
+      return { url, imageData, previewUrl: imageDataToDataUrl(output) };
     })).then((items) => {
-      if (!cancelled) setPreviewUrls(Object.fromEntries(items));
+      if (!cancelled) {
+        sourceImagesRef.current = Object.fromEntries(items.map((item) => [item.url, item.imageData]));
+        setPreviewUrls(Object.fromEntries(items.map((item) => [item.url, item.previewUrl])));
+      }
     }).catch((error) => {
       if (!cancelled) setPreviewError(error?.message || String(error));
     }).finally(() => {
@@ -63,6 +69,26 @@ export default function GridStitchDialog({
     updateDraft({ order: moveGridStitchItem(draft.order, dragIndex, targetIndex) });
     setDragIndex(-1);
   }, [draft.order, dragIndex, updateDraft]);
+
+  const handleTogglePicking = useCallback(() => {
+    setPicking((current) => !current);
+  }, []);
+
+  const handleSampleColor = useCallback((event, url) => {
+    if (!picking) return;
+    const imageData = sourceImagesRef.current[url];
+    const element = event.currentTarget;
+    if (!imageData || !element) return;
+    const rect = element.getBoundingClientRect();
+    const point = mapObjectContainPoint(
+      { x: event.clientX - rect.left, y: event.clientY - rect.top },
+      { width: rect.width, height: rect.height },
+      { width: imageData.width, height: imageData.height },
+    );
+    if (!point) return;
+    updateDraft({ cutoutMethod: 'picked', cutoutColor: toHex(sampleColor(imageData, point.x, point.y)) });
+    setPicking(false);
+  }, [picking, updateDraft]);
 
   const handleConfirm = useCallback(() => {
     onConfirm?.(draft);
@@ -92,14 +118,15 @@ export default function GridStitchDialog({
         <div className="flex min-h-0 flex-1">
           <section className="flex min-w-0 flex-1 flex-col bg-muted/20 p-4">
             <div className="mb-2 flex h-5 items-center justify-between text-[11px] text-muted-foreground">
-              <span>拖拽图片调整拼接顺序</span>
+              <span>{picking ? '点击图片吸取背景色' : '拖拽图片调整拼接顺序'}</span>
               {previewLoading && <span className="flex items-center gap-1"><Loader className="h-3 w-3" />更新预览</span>}
             </div>
-            <div className="min-h-0 flex-1 overflow-auto rounded-md border border-border bg-background p-4">
+            <div className="min-h-0 flex-1 overflow-hidden rounded-md border border-border bg-background p-4">
               <div
-                className="mx-auto grid w-full content-start"
+                className="grid h-full w-full"
                 style={{
-                  gridTemplateColumns: `repeat(${Math.min(draft.columns, Math.max(1, draft.order.length))}, minmax(0, 1fr))`,
+                  gridTemplateColumns: `repeat(${draft.columns}, minmax(0, 1fr))`,
+                  gridTemplateRows: `repeat(${rows}, minmax(0, 1fr))`,
                   gap: `${draft.spacing}px`,
                   backgroundColor: draft.backgroundColor,
                 }}
@@ -107,16 +134,17 @@ export default function GridStitchDialog({
                 {draft.order.map((url, index) => (
                   <div
                     key={url}
-                    draggable
+                    draggable={!picking}
                     onDragStart={() => setDragIndex(index)}
                     onDragEnd={() => setDragIndex(-1)}
                     onDragOver={(event) => event.preventDefault()}
                     onDrop={() => handleDrop(index)}
-                    className="group relative flex min-w-0 cursor-grab items-center justify-center overflow-hidden border border-border bg-transparent active:cursor-grabbing"
-                    style={{ aspectRatio: '1 / 1', opacity: dragIndex === index ? 0.5 : 1 }}
+                    className="relative flex min-h-0 min-w-0 items-center justify-center overflow-hidden border border-border bg-transparent"
+                    style={{ cursor: picking ? 'crosshair' : 'grab', opacity: dragIndex === index ? 0.5 : 1 }}
                     title={`第 ${index + 1} 格`}
                   >
-                    <img src={previewUrls[url] || url} alt="" className="h-full w-full object-contain" draggable={false} />
+                    <img src={previewUrls[url] || url} alt="" className="h-full w-full object-contain" draggable={false}
+                      onClick={(event) => handleSampleColor(event, url)} />
                     <span className="absolute left-1 top-1 flex h-5 min-w-5 items-center justify-center rounded bg-background/90 px-1 text-[10px] font-medium text-foreground shadow">
                       {index + 1}
                     </span>
@@ -156,6 +184,8 @@ export default function GridStitchDialog({
                     onMethodChange={(value) => updateDraft({ cutoutMethod: value })}
                     onToleranceChange={(value) => updateDraft({ tolerance: value })}
                     onColorChange={(value) => updateDraft({ cutoutColor: value })}
+                    onPickColor={handleTogglePicking}
+                    picking={picking}
                   />
                 </div>
               </div>

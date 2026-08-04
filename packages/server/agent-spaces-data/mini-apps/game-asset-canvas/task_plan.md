@@ -57,3 +57,52 @@
 | 全目录 `rg` 命中 vendor 压缩文件导致输出污染 | 1 | 后续搜索排除 `vendor/**` 并限定目标文件 |
 | `node --test <src目录>` 被 Node 22 当成模块文件，报 `MODULE_NOT_FOUND` | 1 | 改由 PowerShell 枚举全部 `*.test.js` 后传参 |
 | 全量 243 项中 4 项失败 | 1 | 1 项本任务断言已更新通过；3 项为工作区既有 reskin/FFmpeg 改动失败，不在本任务范围 |
+
+---
+
+# Tiptap 变量引用与边联动
+
+## 目标
+
+- Tiptap 文本字段把 `{变量}` 渲染成与对应 edge 同色的高亮引用。
+- 每条 edge 使用稳定且彼此可区分的颜色。
+- 悬停变量引用打开 HoverCard：已连线时可删除对应边；未连线时可编辑变量文本。
+- 删除连线后保留变量位置并恢复手动输入能力。
+
+## 阶段
+
+1. [complete] 调查宿主 PromptTextEditor/Tiptap 扩展点、节点字段接入和边删除链路。
+2. [complete] 确定纯文本存储、变量交互状态与稳定颜色映射。
+3. [complete] 实现编辑器引用、HoverCard、边颜色及删除回调。
+4. [complete] 添加回归测试、更新文档并完成语法/全量验证。
+
+## 约束
+
+- 保留 `{变量}` 纯文本模板语义和旧边兼容。
+- 不复制完整 Tiptap 编辑器；优先扩展宿主现有 PromptTextEditor。
+- 不使用真实浏览器测试，除非实现无法通过源码与单元测试验证。
+- 保留工作区现有未提交修改。
+
+## Errors Encountered
+
+| Error | Attempt | Resolution |
+|---|---:|---|
+| 文本字段 `rg` 复合表达式转义后未闭合 | 1 | 改为多个简单 `-e` 条件，不再使用跨行 HTML 正则 |
+| Windows 下 `rg packages/*/package.json` 路径通配符无效 | 1 | 改查实际 workspace package.json |
+| 根 package.json/锁文件未直接命中 Tiptap 依赖字符串 | 1 | 用 `rg -l` 定位到 packages/web/package.json |
+| JSX `type="text"` 搜索再次发生引号转义失败 | 2 | 停止使用该正则，改按已知行号直接读取 |
+| Web 全量 TSC 失败 | 1 | PromptTextEditor 错误已清零；其余为工作区既有 API 类型错误 |
+| 图生图测试仍断言旧 resolved prompt 结构 | 1 | 更新为 stored template + resolved execution 断言 |
+| Tippy delegation 并行查询无有效输出 | 1 | 从 packages/web 运行时确认 delegate 导出 |
+
+## HoverCard 定位修复
+
+1. [complete] 核对 Tippy delegate reference 行为并排除根节点锚定假设。
+2. [complete] 固定变量 span 的 reference rect，避免 Decoration DOM 替换后退化到左上角。
+3. [complete] 更新回归测试并完成 TypeScript/相关测试验证。
+
+### 根因与处理
+
+- Tiptap 在编辑器 focus/transaction 后可能替换 Decoration 生成的变量 span。
+- Tippy 持有脱离 DOM 的旧 reference 时，定位矩形退化并导致 HoverCard 出现在页面左上角。
+- 在触发 HoverCard 时缓存变量 span 的矩形；reference 仍连接时使用实时矩形，脱离 DOM 后使用缓存矩形，并在 Popper 挂载后主动更新定位。

@@ -5,7 +5,7 @@ import PickedPromptBadge from './PickedPromptBadge';
 import CountAndConcurrency from './CountAndConcurrency';
 import { NODE_TYPES, VOICE_PROVIDER_OPTIONS, WORKFLOWS } from '../../utils/constants';
 import { hasPrompt } from '../../utils/prompts';
-import AutoResizeTextarea from '../AutoResizeTextarea';
+import TextVariableEditor from './TextVariableEditor';
 
 /**
  * 文字生成语音节点（text_to_voice 工作流）。
@@ -94,13 +94,16 @@ export default function TextToVoiceNode({ id, data, selected }) {
             📋 提示词库
           </button>
         </div>
-        <AutoResizeTextarea
-          minHeight={72}
-          className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm outline-none focus:border-primary"
-          placeholder="输入要合成语音的文本，如：欢迎来到这片神秘大陆……"
-          value={params.prompt || ''}
-          onChange={(e) => set({ prompt: e.target.value })}
-        />
+        <div className="nodrag nopan nowheel min-h-[72px] rounded-md border border-border bg-background px-2 py-1.5 text-sm focus-within:border-primary">
+          <TextVariableEditor
+            data={data}
+            field="prompt"
+            value={storedParams.prompt || ''}
+            resolvedValue={params.prompt || ''}
+            placeholder="输入要合成语音的文本，如：欢迎来到这片神秘大陆……"
+            onChange={(value) => set({ prompt: value })}
+          />
+        </div>
       </label>
 
       <div className="grid grid-cols-1 gap-2">
@@ -114,13 +117,17 @@ export default function TextToVoiceNode({ id, data, selected }) {
           <span className="text-xs font-medium text-muted-foreground">
             发音人 ID（可选）
           </span>
-          <input
-            type="text"
-            className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm outline-none focus:border-primary"
-            placeholder="fish→referenceId / minimax→voiceId / qianyin→speakerId"
-            value={params.voiceId || ''}
-            onChange={(e) => set({ voiceId: e.target.value })}
-          />
+          <div className="nodrag nopan nowheel rounded-md border border-border bg-background px-2 py-1 text-sm focus-within:border-primary">
+            <TextVariableEditor
+              data={data}
+              field="voiceId"
+              value={storedParams.voiceId || ''}
+              resolvedValue={params.voiceId || ''}
+              placeholder="fish→referenceId / minimax→voiceId / qianyin→speakerId"
+              singleLine
+              onChange={(value) => set({ voiceId: value })}
+            />
+          </div>
         </label>
       </div>
 

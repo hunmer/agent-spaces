@@ -173,6 +173,18 @@ export function computeInputTexts(nodes, edges) {
   const byId = new Map(nodes.map((node) => [node.id, node]));
   const valuesByTarget = new Map();
 
+  for (const node of nodes) {
+    const manualFields = node?.data?.textVariableValues;
+    if (!manualFields || typeof manualFields !== 'object') continue;
+    for (const [field, manualValues] of Object.entries(manualFields)) {
+      if (!manualValues || typeof manualValues !== 'object') continue;
+      if (!valuesByTarget.has(node.id)) valuesByTarget.set(node.id, {});
+      const targetValues = valuesByTarget.get(node.id);
+      if (!targetValues[field]) targetValues[field] = { whole: [], variables: {}, manual: {} };
+      targetValues[field].manual = { ...manualValues };
+    }
+  }
+
   for (const edge of edges) {
     if (edge.data?.inputType !== CONNECTION_INPUT_TYPES.text || !edge.data?.inputTarget) continue;
     const sourceText = byId.get(edge.source)?.data?.output?.text;
@@ -180,7 +192,7 @@ export function computeInputTexts(nodes, edges) {
     if (!valuesByTarget.has(edge.target)) valuesByTarget.set(edge.target, {});
     const targetValues = valuesByTarget.get(edge.target);
     const field = edge.data.inputTarget;
-    if (!targetValues[field]) targetValues[field] = { whole: [], variables: {} };
+    if (!targetValues[field]) targetValues[field] = { whole: [], variables: {}, manual: {} };
     const plainText = htmlToPlainText(sourceText);
     const variable = edge.data?.inputVariable;
     if (typeof variable === 'string' && variable) {
@@ -199,8 +211,14 @@ export function computeInputTexts(nodes, edges) {
 
       const targetNode = byId.get(nodeId);
       let result = htmlToPlainText(targetNode?.data?.params?.[field] || '');
-      for (const [variable, texts] of Object.entries(values.variables)) {
-        result = result.split(`{${variable}}`).join(joinUniqueText(texts));
+      const variableNames = new Set([
+        ...Object.keys(values.manual || {}),
+        ...Object.keys(values.variables || {}),
+      ]);
+      for (const variable of variableNames) {
+        const connectedValue = joinUniqueText(values.variables?.[variable]);
+        const replacement = connectedValue || values.manual?.[variable] || '';
+        if (replacement) result = result.split(`{${variable}}`).join(replacement);
       }
       return [field, result];
     })),

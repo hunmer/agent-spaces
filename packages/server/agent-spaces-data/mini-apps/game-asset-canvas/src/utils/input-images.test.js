@@ -165,6 +165,27 @@ test('computeInputTexts keeps legacy whole-field replacement ahead of variable e
   assert.deepEqual(computeInputTexts(nodes, edges).get('target'), { prompt: '完整提示词' });
 });
 
+test('computeInputTexts uses connected text before manual fallback and restores fallback after disconnect', () => {
+  const nodes = [
+    { id: 'source', type: NODE_TYPES.text, data: { output: { text: '连线角色' } } },
+    {
+      id: 'target',
+      type: NODE_TYPES.textToImage,
+      data: {
+        params: { prompt: '绘制 {subject}' },
+        textVariableValues: { prompt: { subject: '手动角色' } },
+      },
+    },
+  ];
+  const connectedEdges = [{
+    ...edge('source', 'target'),
+    data: { inputType: 'text', inputTarget: 'prompt', inputVariable: 'subject' },
+  }];
+
+  assert.deepEqual(computeInputTexts(nodes, connectedEdges).get('target'), { prompt: '绘制 连线角色' });
+  assert.deepEqual(computeInputTexts(nodes, []).get('target'), { prompt: '绘制 手动角色' });
+});
+
 test('computeInputAudios forwards generated audio through display nodes', () => {
   const nodes = [
     { id: 'source', type: NODE_TYPES.textToVoice, data: { output: { audios: ['voice.mp3'] } } },

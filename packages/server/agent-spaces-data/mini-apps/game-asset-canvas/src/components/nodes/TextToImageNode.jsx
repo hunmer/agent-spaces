@@ -6,7 +6,7 @@ import PickedPromptBadge from './PickedPromptBadge';
 import CountAndConcurrency from './CountAndConcurrency';
 import { ASPECT_OPTIONS, DEFAULT_MODEL, MODEL_OPTIONS, NODE_TYPES, SIZE_OPTIONS, WORKFLOWS } from '../../utils/constants';
 import { hasPrompt } from '../../utils/prompts';
-import AutoResizeTextarea from '../AutoResizeTextarea';
+import TextVariableEditor from './TextVariableEditor';
 
 /**
  * 文字生成图片节点。
@@ -108,13 +108,14 @@ export default function TextToImageNode({ id, data, selected }) {
             📋 提示词库
           </button>
         </div>
-        <div className="relative">
-          <AutoResizeTextarea
-            minHeight={64}
-            className="w-full rounded-md border border-border bg-background px-2 py-1.5 pr-8 text-sm outline-none focus:border-primary"
+        <div className="nodrag nopan nowheel relative min-h-[64px] rounded-md border border-border bg-background px-2 py-1.5 pr-8 text-sm focus-within:border-primary">
+          <TextVariableEditor
+            data={data}
+            field="prompt"
+            value={storedParams.prompt || ''}
+            resolvedValue={params.prompt || ''}
             placeholder="描述要生成的游戏资产，如：像素风宝箱，俯视角，无背景"
-            value={params.prompt || ''}
-            onChange={(e) => set({ prompt: e.target.value })}
+            onChange={(value) => set({ prompt: value })}
           />
           <button
             type="button"
@@ -151,13 +152,17 @@ export default function TextToImageNode({ id, data, selected }) {
 
       <label className="flex flex-col gap-1">
         <span className="text-xs font-medium text-muted-foreground">文件名（可选）</span>
-        <input
-          type="text"
-          className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm outline-none focus:border-primary"
-          placeholder="如 hero.png，留空用默认名"
-          value={params.fileName || ''}
-          onChange={(e) => set({ fileName: e.target.value || undefined })}
-        />
+        <div className="nodrag nopan nowheel rounded-md border border-border bg-background px-2 py-1 text-sm focus-within:border-primary">
+          <TextVariableEditor
+            data={data}
+            field="fileName"
+            value={storedParams.fileName || ''}
+            resolvedValue={params.fileName || ''}
+            placeholder="如 hero.png，留空用默认名"
+            singleLine
+            onChange={(value) => set({ fileName: value || undefined })}
+          />
+        </div>
       </label>
 
       <CountAndConcurrency

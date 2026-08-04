@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import test from 'node:test';
 import {
-  moveGridStitchItem, normalizeGridStitchData, orderGridStitchInputs,
+  mapObjectContainPoint, moveGridStitchItem, normalizeGridStitchData, orderGridStitchInputs,
 } from './grid-stitch.js';
 
 class TestImageData {
@@ -39,6 +39,14 @@ test('grid stitch drag reorder moves exactly one item', () => {
   assert.deepEqual(moveGridStitchItem(['a', 'b'], -1, 1), ['a', 'b']);
 });
 
+test('object-contain pointer mapping samples the original image without stretching', () => {
+  assert.deepEqual(mapObjectContainPoint({ x: 75, y: 25 }, { width: 200, height: 100 }, { width: 100, height: 100 }), {
+    x: 25,
+    y: 25,
+  });
+  assert.equal(mapObjectContainPoint({ x: 10, y: 25 }, { width: 200, height: 100 }, { width: 100, height: 100 }), null);
+});
+
 test('sprite cutout becomes transparent before a unified canvas background is applied', () => {
   const magenta = new ImageData(new Uint8ClampedArray([255, 0, 255, 255]), 1, 1);
   const red = new ImageData(new Uint8ClampedArray([255, 0, 0, 255]), 1, 1);
@@ -64,6 +72,9 @@ test('grid stitch editor keeps the forced dialog size and node-side edit entry',
   assert.match(dialog, /width:\s*80vw !important/);
   assert.match(dialog, /height:\s*80vh !important/);
   assert.match(dialog, /输出到节点/);
+  assert.match(dialog, /onPickColor=\{handleTogglePicking\}/);
+  assert.match(dialog, /gridTemplateRows/);
+  assert.match(dialog, /overflow-hidden rounded-md border/);
   assert.match(node, /<Pencil/);
   assert.match(node, /isGridStitch/);
 });
