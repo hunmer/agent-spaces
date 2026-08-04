@@ -117,6 +117,7 @@ test('connection dialog selects multi-assets before showing compatible targets',
 });
 
 test('canvas persists the selected storyboard asset on the edge', () => {
+  assert.match(canvasSource, /BackgroundVariant, MarkerType, addEdge/);
   assert.match(canvasSource, /resolveStoryboardHandleAssets\(sourceNode, conn\.sourceHandle\)/);
   assert.match(canvasSource, /getConnectionTargetsByInputType/);
   assert.match(canvasSource, /\.\.\.\(sourceAsset \? \{ sourceAsset \} : \{\}\)/);

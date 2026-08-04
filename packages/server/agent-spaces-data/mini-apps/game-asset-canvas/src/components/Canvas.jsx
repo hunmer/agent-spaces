@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  BackgroundVariant, addEdge, applyEdgeChanges, useReactFlow,
+  BackgroundVariant, MarkerType, addEdge, applyEdgeChanges, useReactFlow,
 } from '@xyflow/react';
 import {
   toast, CopyPlus, FolderPlus, openMediaGallery,

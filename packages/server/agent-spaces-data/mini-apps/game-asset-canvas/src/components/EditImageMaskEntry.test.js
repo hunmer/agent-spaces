@@ -29,7 +29,13 @@ test('Edit Image stores rich editor content only in params.prompt', () => {
   assert.doesNotMatch(editNodeSource, /promptHtml/);
   assert.match(editNodeSource, /const prompt = storedParams\.prompt \|\| ''/);
   assert.match(editNodeSource, /<TextVariableEditor[\s\S]*field="prompt"[\s\S]*resolvedValue=\{params\.prompt \|\| ''\}[\s\S]*valueFormat="html"/);
-  assert.match(editNodeSource, /promptToText\(params\.prompt \|\| ''\)/);
+  assert.match(editNodeSource, /editPromptToText\(params\.prompt \|\| ''\)/);
   assert.match(editNodeSource, /onChange=\{\(html\) => set\(\{ prompt: html \}\)\}/);
   assert.match(editNodeSource, /set\(\{ prompt: newPrompt \}\)/);
+});
+
+test('Edit Image serializes reference mentions as one-based hash keys', () => {
+  assert.match(editNodeSource, /key: `#\$\{i \+ 1\}`/);
+  assert.match(editNodeSource, /\^R\(\\d\+\)\$[\s\S]*`#\$\{Number\(match\[1\]\) \+ 1\}`/);
+  assert.doesNotMatch(editNodeSource, /key: `R\$\{i\}`/);
 });

@@ -64,6 +64,23 @@ export const PARAMS_SCHEMA = [
     description: '可选。蒙版图片 URL（单张）。白色区域表示需要编辑的部分，黑色区域保持不变。通过节点内的「蒙版图片」上传区设置，提交时作为 mask 字段传入 edit_image 工作流。',
   },
 ];
+
+function editPromptToText(html) {
+  if (!html || typeof DOMParser === 'undefined') return promptToText(html);
+  try {
+    const doc = new DOMParser().parseFromString(`<div>${html}</div>`, 'text/html');
+    const root = doc.body.firstChild;
+    root?.querySelectorAll('.prompt-mention, [data-mention]').forEach((mention) => {
+      const legacyKey = mention.getAttribute('data-key') || '';
+      const match = /^R(\d+)$/.exec(legacyKey);
+      if (match) mention.setAttribute('data-key', `#${Number(match[1]) + 1}`);
+    });
+    return promptToText(root?.innerHTML || html);
+  } catch {
+    return promptToText(html);
+  }
+}
+
 export default function EditImageNode({ id, data, selected }) {
   const storedParams = data?.params || {};
   const params = { ...storedParams, ...(data?.textInputValues || {}) };
@@ -121,7 +138,7 @@ export default function EditImageNode({ id, data, selected }) {
   const prompt = storedParams.prompt || '';
 
   // 统一的输入图清单：参考图 + 上传图 + 连线图，按用户拖拽顺序持久化。
-  // @ 列表、key(R0/R1…)映射、提交 images 三处都用它，保证「上传后 @ 能选到新图」且 key 与提交顺序一致。
+  // @ 列表、key(#1/#2…)映射、提交 images 三处都用它，保证「上传后 @ 能选到新图」且 key 与提交顺序一致。
   const rawInputImages = useMemo(
     () => dedupeUrls([...refImages, ...uploadedImages, ...inputImages]),
     [refImages, uploadedImages, inputImages],
@@ -132,17 +149,17 @@ export default function EditImageNode({ id, data, selected }) {
     [rawInputImages, inputImageOrder],
   );
 
-  // PromptTextEditor 的 references：全部输入图按顺序映射关键字 R0/R1/…（匹配 prompts.js 里「第一张图→R0」语义）
+  // PromptTextEditor 的 references：全部输入图按顺序映射为从 1 开始的 #1/#2/… 关键字。
   const editorReferences = useMemo(
-    () => allInputImages.map((url, i) => ({ url, label: `图${i + 1}`, key: `R${i}` })),
+    () => allInputImages.map((url, i) => ({ url, label: `图${i + 1}`, key: `#${i + 1}` })),
     [allInputImages],
   );
 
   const handleRun = useCallback(() => {
     // 至少有一张输入图才执行（allInputImages 已含全部来源 + 去重）
     if (!allInputImages.length) return;
-    // 编辑指令 HTML → 纯文本（@参考图 mention → R0/R1 关键字）
-    const userPrompt = promptToText(params.prompt || '');
+    // 编辑指令 HTML → 纯文本（@参考图 mention → #1/#2 关键字）
+    const userPrompt = editPromptToText(params.prompt || '');
     // 提示词库选中 + 用户输入 合并（去空去重）
     const merged = [params.pickedPrompt, userPrompt].map((s) => (s || '').trim()).filter(Boolean).join('\n');
     onGenerate?.(id, NODE_TYPES.editImage, {
@@ -220,7 +237,7 @@ export default function EditImageNode({ id, data, selected }) {
           <button
             type="button"
             onClick={() => openOptimize({
-              prompt: promptToText(prompt),
+              prompt: editPromptToText(prompt),
               agentConfig: data?.promptOptimizeAgent,
               onApply: (newPrompt) => {
                 set({ prompt: newPrompt });
@@ -299,7 +316,7 @@ export default function EditImageNode({ id, data, selected }) {
       ) : (
         <button
           type="button"
-          disabled={allInputImages.length === 0 || !((params.pickedPrompt || '').trim() || promptToText(prompt))}
+          disabled={allInputImages.length === 0 || !((params.pickedPrompt || '').trim() || editPromptToText(prompt))}
           onClick={handleRun}
           className="w-full rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
         >
