@@ -61,6 +61,9 @@ Embed the frame player directly inside the `game-asset-canvas` miniapp, replacin
 | Parallel storyboard verification wrapper returned no child output | 1 | Split tests, Babel transforms, and source scans into separate commands to expose the concrete failure. |
 | Source audit wrapper treated `rg` no-match exit code 1 as failure | 1 | Rerun the no-match audit with an explicit success fallback and keep diff inspection separate. |
 | Combined PowerShell source-audit regex still failed in wrapper quoting | 1 | Stop combining regex audits; use simple independent searches and direct file checks. |
+| Storyboard follow-up search used mini-app-relative `src/components` from the repo root | 1 | Rerun source searches from the mini-app root; host export lookup already confirmed AvatarGroup/Avatar/Checkbox/media helpers. |
+| Final line-reference `Select-String` used an invalid pattern array/regex | 1 | Use separate literal `rg -n` searches for final file references; no product or test impact. |
+| Masonry final line-reference regex lost quotes under PowerShell | 1 | Use separate `rg -n -F` literal searches; source and validation remain unaffected. |
 | Gallery fallback initially received normalized item objects instead of URL strings | 1 | Found during diff review before handoff; changed Gallery items to use `item.url` and retained global indexes. |
 | Output reorder initially passed normalized resource objects as `output.images` | 1 | Found during second review; split the callback into URL and resource arrays and synchronized delete by original index. |
 | Final audit regex used unsupported `rg` look-ahead | 1 | No source changes; replace it with simple independent searches and rerun the full verification set. |
@@ -173,3 +176,86 @@ Add a two-tab image generation dialog to the character library, label all three 
 - Reuse existing node form controls and workflow helpers instead of duplicating workflow execution logic.
 - Preserve unrelated dirty-worktree changes.
 - Select the storyboard image preset from actual inputs: selected character references use `editImage`, otherwise use `textToImage`.
+
+## Follow-up: Storyboard card-local media and role picker
+
+### Goal
+Consolidate all four generation presets behind one top settings icon, keep generated media inside its scene card instead of creating canvas display nodes, and replace the full character badge list with a scene-only avatar group plus checkbox role picker.
+
+### Phases
+- [complete] Trace current storyboard node rendering, media preview helpers, and decorated callback wiring.
+- [complete] Consolidate generation settings into one four-tab dialog opened from the node header.
+- [complete] Add scene-local image/video/audio previews and stop creating display nodes.
+- [complete] Add scene avatar group and multi-select character picker; remove the full-library badge list.
+- [complete] Update tests/docs and run focused verification.
+
+### Decisions
+- Keep generated URLs in `scene.images/videos/audios`; only remove automatic display-node materialization.
+- Character choices remain workspace-scoped source data, while `scene.characterIds` remains the per-scene selection truth.
+- Preserve existing nested generation preset data and legacy compatibility.
+- Keep standalone display-node types and generic canvas export helpers intact; only storyboard generation stops invoking them.
+
+## Follow-up: Storyboard masonry and scene navigation
+
+### Goal
+Render scene images with the local masonry mini-app pattern and add a left vertical scene navigator whose first-image thumbnails or numeric placeholders scroll to the matching scene card.
+
+### Phases
+- [complete] Inspect the masonry mini-app implementation and storyboard scroll ownership.
+- [complete] Replace the oversized scene image grid with a compact masonry renderer.
+- [complete] Add stable left-side scene thumbnail navigation and scroll targeting.
+- [complete] Add regression coverage and update storyboard documentation.
+- [complete] Run focused tests, JSX transforms, and diff checks.
+
+### Decisions
+- Reuse local source patterns; add no package dependency.
+- Navigation is derived from existing scenes and media, so no persisted fields are added.
+- Preserve existing scene media arrays, role selection, and generation behavior.
+- Use the host `Masonry` component with three columns and image natural dimensions; avoid a CSS-only imitation.
+
+## Follow-up: Storyboard output handles and asset-aware connections
+
+### Goal
+Render one right-side output handle per storyboard scene, bind each handle to that scene's generated assets, and extend the connection target dialog so multi-asset scenes require asset selection before compatible targets are shown.
+
+### Phases
+- [complete] Read the storyboard handoff and trace handle/connection dialog data flow with CodeGraph.
+- [complete] Define the backward-compatible per-scene handle and selected-asset connection contract.
+- [complete] Implement storyboard output handles and asset-aware target filtering.
+- [complete] Add focused regression coverage and update handoff documentation.
+- [complete] Run targeted tests/static checks and inspect the scoped diff.
+
+### Decisions
+- Preserve existing scene media arrays and all unrelated dirty-worktree changes.
+- Use one handle per scene; the handle owns the union of that scene's image, video, and audio assets.
+- Skip the asset picker for exactly one asset; show no connection action for an empty scene.
+- Persist the chosen asset on `edge.data.sourceAsset`; legacy edges without this field retain current source-node output behavior.
+- Keep one disabled handle row for scenes without generated assets so handle-list length always matches storyboard length.
+- Use the allowlisted React Flow `Handle` directly; the referenced `ButtonHandle` wrapper is not installed in this mini-app.
+- Expose React Flow's existing `useUpdateNodeInternals` export through the host mini-app renderer so dynamic scene handle counts are remeasured correctly.
+
+### Errors Encountered
+| Error | Attempt | Resolution |
+|---|---:|---|
+| Handoff-relative `docs/skills/write-mini-app-code/SKILL.md` did not exist under the mini-app root | 1 | Locate the guide from the repository root, then read the resolved path before editing source. |
+| Parallel compatibility audit stopped when one `rg` pattern had no matches | 1 | Rerun with independent/all-settled searches and treat no-match as audit data rather than a command failure. |
+| Combined documentation patch did not match the current module-responsibilities table text | 1 | No partial documentation changes applied; split by file and anchor on exact current lines. |
+| Full mini-app suite reported four failures | 1 | Three are pre-existing dirty-worktree expectations (reskin/video extraction); repair the edge-display harness because this feature now relies on its input-type label path. |
+| Web `tsc --noEmit` reported existing API/type errors outside the changed renderer | 1 | Targeted renderer ESLint passes; retain the full TypeScript output as residual repository debt rather than changing unrelated modules. |
+
+## Bugfix: Storyboard handles clipped inside the node
+
+### Goal
+Move the storyboard output rail outside `NodeShell` so every scene handle is visible and draggable beyond the node card's overflow boundaries.
+
+### Phases
+- [complete] Add a structural regression test that rejects handles nested inside `NodeShell`.
+- [complete] Move the output rail to an absolute external sibling while preserving scene thumbnails and dynamic measurement.
+- [complete] Run focused tests, transforms, and diff verification.
+
+### Root Cause
+- The output rail is currently rendered inside `NodeShell`'s `overflow-hidden` card and `overflow-auto` content area, so the handle cannot extend outside the node or expose a reliable drag target.
+
+### Resolution
+- Wrap `NodeShell` in a root `overflow-visible` container and render the output rail after `</NodeShell>` at `left: calc(100% + 10px)`.
+- Keep the source `Handle` inside each external thumbnail item; dynamic handle remeasurement remains driven by `useUpdateNodeInternals`.

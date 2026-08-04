@@ -25,6 +25,14 @@ import {
   CONNECTION_INPUT_TYPES, DEFAULT_FILE_UPLOAD_TARGET, resolveFileUploadTarget,
 } from './connection-targets.js';
 
+function selectedEdgeAsset(edge, inputType) {
+  const asset = edge?.data?.sourceAsset;
+  if (!asset) return null;
+  return asset.type === inputType && typeof asset.url === 'string' && asset.url
+    ? asset
+    : false;
+}
+
 export function computeInputImages(nodes, edges) {
   const isReceiverType = (type) => type === NODE_TYPES.editImage
     || type === NODE_TYPES.imageDisplay
@@ -96,9 +104,18 @@ export function computeInputImages(nodes, edges) {
         const targetId = resolveFileUploadTarget(node.type, e.data?.inputTarget);
         if (!upstreamByTarget[targetId]) upstreamByTarget[targetId] = [];
         if (!resourcesByTarget[targetId]) resourcesByTarget[targetId] = [];
-        const sourceUrls = sourceImages(src, derived);
+        const selectedAsset = selectedEdgeAsset(e, CONNECTION_INPUT_TYPES.image);
+        const sourceUrls = selectedAsset === null
+          ? sourceImages(src, derived)
+          : (selectedAsset ? [selectedAsset.url] : []);
         upstreamByTarget[targetId].push(...sourceUrls);
-        resourcesByTarget[targetId].push(...sourceResources(src, sourceUrls, derivedResources));
+        resourcesByTarget[targetId].push(...(selectedAsset
+          ? [{
+            url: selectedAsset.url,
+            thumb: selectedAsset.thumb || selectedAsset.url,
+            label: selectedAsset.label,
+          }]
+          : sourceResources(src, sourceUrls, derivedResources)));
       }
       const upstream = upstreamByTarget[DEFAULT_FILE_UPLOAD_TARGET] || [];
       const resources = resourcesByTarget[DEFAULT_FILE_UPLOAD_TARGET] || [];
@@ -225,7 +242,10 @@ export function computeInputVideos(nodes, edges) {
       for (const e of incoming) {
         const src = byId.get(e.source);
         if (!src) continue;
-        upstream.push(...sourceVideos(src, derived));
+        const selectedAsset = selectedEdgeAsset(e, CONNECTION_INPUT_TYPES.video);
+        upstream.push(...(selectedAsset === null
+          ? sourceVideos(src, derived)
+          : (selectedAsset ? [selectedAsset.url] : [])));
       }
       const prev = derived.get(node.id);
       if (!prev || prev.join('|') !== upstream.join('|')) {
@@ -262,7 +282,12 @@ export function computeInputAudios(nodes, edges) {
       if (node.type !== NODE_TYPES.audioDisplay) continue;
       const incoming = incomingByTarget.get(node.id);
       if (!incoming?.length) continue;
-      const audios = incoming.flatMap((edge) => sourceAudios(byId.get(edge.source))).filter(Boolean);
+      const audios = incoming.flatMap((edge) => {
+        const selectedAsset = selectedEdgeAsset(edge, CONNECTION_INPUT_TYPES.audio);
+        return selectedAsset === null
+          ? sourceAudios(byId.get(edge.source))
+          : (selectedAsset ? [selectedAsset.url] : []);
+      }).filter(Boolean);
       const previous = derived.get(node.id);
       if (!previous || previous.join('|') !== audios.join('|')) {
         derived.set(node.id, audios);

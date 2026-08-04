@@ -1,12 +1,12 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import { NODE_TYPES } from '../src/utils/constants.js';
+import {
+  decorateEdgesForSelection, INPUT_EDGE_COLOR, OUTPUT_EDGE_COLOR,
+} from '../src/utils/edge-display.js';
 
-const source = await readFile(new URL('../src/utils/edge-display.js', import.meta.url), 'utf8');
 const floatingEdgeSource = await readFile(new URL('../src/components/canvas/FloatingEdge.jsx', import.meta.url), 'utf8');
 const rendererSource = await readFile(new URL('../../../../../web/src/components/mini-apps/react-renderer.tsx', import.meta.url), 'utf8');
-const { decorateEdgesForSelection, INPUT_EDGE_COLOR, OUTPUT_EDGE_COLOR } = await import(
-  `data:text/javascript,${encodeURIComponent(source)}`
-);
 
 const xyflowImports = floatingEdgeSource.match(/import\s*{([^}]+)}\s*from\s*['"]@xyflow\/react['"]/)?.[1]
   .split(',').map((name) => name.trim()).filter(Boolean) || [];
@@ -37,3 +37,12 @@ assert.deepEqual(
   decorateEdgesForSelection(edges, [], 'bezier', 'solid').map((edge) => edge.label),
   [null, null, null, null, null],
 );
+
+const storyboardVideoEdge = {
+  id: 'story-video', source: 'story', target: 'editor',
+  data: { inputType: 'video', inputTarget: 'videos' },
+};
+assert.equal(decorateEdgesForSelection([storyboardVideoEdge], [
+  { id: 'story', type: NODE_TYPES.storyboard, selected: true },
+  { id: 'editor', type: NODE_TYPES.videoEditor },
+], 'bezier', 'solid')[0].label, '输入视频');

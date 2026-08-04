@@ -40,7 +40,10 @@ import PastePropertiesDialog from './PastePropertiesDialog';
 import BatchRunConfirmDialog from './BatchRunConfirmDialog';
 import SavePresetDialog from './SavePresetDialog';
 import useAssetLibrary from '../hooks/useAssetLibrary';
-import { getConnectionTargets, getNodeOutputType } from '../utils/connection-targets';
+import {
+  getConnectionTargets, getConnectionTargetsByInputType, getNodeOutputType,
+} from '../utils/connection-targets';
+import { resolveStoryboardHandleAssets } from '../utils/storyboard-assets.js';
 
 import useCanvasState from '../hooks/useCanvasState';
 import useWorkflow from '../hooks/useWorkflow';
@@ -49,7 +52,7 @@ import useSettings from '../hooks/useSettings';
 import useExecutionQueue from '../hooks/useExecutionQueue';
 import useWorkspaces from '../hooks/useWorkspaces';
 import usePanelLayout from '../hooks/usePanelLayout';
-import useImageOutputs, { useAudioOutputs, useVideoOutputs } from '../hooks/useImageOutputs';
+import useImageOutputs, { useVideoOutputs } from '../hooks/useImageOutputs';
 import useSelectionClipboard from '../hooks/useSelectionClipboard';
 import useGroupOperations from '../hooks/useGroupOperations';
 import useGroupExecution from '../hooks/useGroupExecution';
@@ -219,14 +222,12 @@ export default function Canvas({ hostConfig }) {
   const { addImageNodesFromUrls, addImageNodesGrouped, handleExportImages } = useImageOutputs({ setNodes, setGroups });
   // —— 视频节点批量产出（视频导出到画布）——
   const { addVideoNodesFromUrls, handleExportVideos } = useVideoOutputs({ setNodes });
-  const { addAudioNodesFromUrls } = useAudioOutputs({ setNodes });
   const storyboardOperations = useStoryboardOperations({
-    nodesRef, updateNodeData,
+    updateNodeData,
     characters: characterLibrary.characters,
     saveCharacters: characterLibrary.saveCharacters,
     settings,
     directory: activeWorkspace?.directory,
-    addImageNodesFromUrls, addVideoNodesFromUrls, addAudioNodesFromUrls,
   });
 
   // —— 执行队列（onComplete/onError 用 imageOutputs + updateNodeData + addHistory）——
@@ -445,21 +446,26 @@ export default function Canvas({ hostConfig }) {
 
   // 连线：多选增强（参考 xyflow MultiConnect）——若 source 选中，把所有选中节点都连到 target。
   // 用 nodesRef 读最新 nodes（多选判断），callback deps 不含 nodes → 稳定引用。
-  const addConnections = useCallback((conn, inputTarget, inputType) => {
+  const addConnections = useCallback((conn, inputTarget, inputType, sourceAsset) => {
     setEdges((prev) => {
       const curNodes = nodesRef.current;
       const originOutputType = inputType || getNodeOutputType(
         curNodes.find((node) => node.id === conn.source)?.type,
       );
-      const sources = curNodes.some((n) => n.id === conn.source && n.selected)
+      const sources = !sourceAsset && curNodes.some((n) => n.id === conn.source && n.selected)
         ? curNodes
           .filter((n) => n.selected && getNodeOutputType(n.type) === originOutputType)
           .map((n) => n.id)
         : [conn.source];
       let next = prev;
-      const existing = new Set(prev.map((e) => `${e.source}->${e.target}`));
+      const edgeKey = (source, sourceHandle, target, targetHandle, targetInput) => (
+        [source, sourceHandle, target, targetHandle, targetInput].map((value) => String(value || '')).join('\u0000')
+      );
+      const existing = new Set(prev.map((e) => edgeKey(
+        e.source, e.sourceHandle, e.target, e.targetHandle, e.data?.inputTarget,
+      )));
       for (const source of sources) {
-        const key = `${source}->${conn.target}`;
+        const key = edgeKey(source, conn.sourceHandle, conn.target, conn.targetHandle, inputTarget);
         if (existing.has(key)) continue;
         existing.add(key);
         next = addEdge(
@@ -472,6 +478,7 @@ export default function Canvas({ hostConfig }) {
               lineStyle: edgeLineStyle,
               inputTarget,
               inputType: originOutputType,
+              ...(sourceAsset ? { sourceAsset } : {}),
             },
           },
           next,
@@ -484,20 +491,41 @@ export default function Canvas({ hostConfig }) {
   const onConnect = useCallback((conn) => {
     const sourceNode = nodesRef.current.find((node) => node.id === conn.source);
     const targetNode = nodesRef.current.find((node) => node.id === conn.target);
+    const targetParamsSchema = NODE_PARAMS_SCHEMA[targetNode?.type] || [];
+    const storyboardAssets = resolveStoryboardHandleAssets(sourceNode, conn.sourceHandle);
+    if (storyboardAssets?.length === 0) {
+      toast.error('该分镜暂无可连接素材');
+      return;
+    }
+    if (storyboardAssets?.length > 1) {
+      setPendingConnection({
+        conn,
+        assets: storyboardAssets,
+        inputType: storyboardAssets[0]?.type,
+        targetsByInputType: getConnectionTargetsByInputType(
+          storyboardAssets.map((asset) => asset.type),
+          targetNode?.type,
+          targetParamsSchema,
+        ),
+      });
+      return;
+    }
+    const sourceAsset = storyboardAssets?.[0] || null;
     const { inputType, targets } = getConnectionTargets(
       sourceNode?.type,
       targetNode?.type,
-      NODE_PARAMS_SCHEMA[targetNode?.type] || [],
+      targetParamsSchema,
+      sourceAsset?.type,
     );
     if (!targets.length) {
       toast.error(inputType === 'text' ? '目标节点没有可接收文本的输入框' : '目标节点不支持该输入');
       return;
     }
     if (targets.length > 1) {
-      setPendingConnection({ conn, targets, inputType });
+      setPendingConnection({ conn, targets, inputType, assets: sourceAsset ? [sourceAsset] : [] });
       return;
     }
-    addConnections(conn, targets[0]?.id, inputType);
+    addConnections(conn, targets[0]?.id, inputType, sourceAsset);
   }, [addConnections]);
 
   // 连线拖到空白处放手：弹出「添加节点」菜单
@@ -1899,11 +1927,18 @@ export default function Canvas({ hostConfig }) {
       <ConnectionTargetDialog
         open={!!pendingConnection}
         targets={pendingConnection?.targets || []}
+        targetsByInputType={pendingConnection?.targetsByInputType}
+        assets={pendingConnection?.assets || []}
         inputType={pendingConnection?.inputType}
         onClose={() => setPendingConnection(null)}
-        onSelect={(inputTarget) => {
+        onSelect={(inputTarget, sourceAsset, inputType) => {
           if (pendingConnection?.conn) {
-            addConnections(pendingConnection.conn, inputTarget, pendingConnection.inputType);
+            addConnections(
+              pendingConnection.conn,
+              inputTarget,
+              inputType || pendingConnection.inputType,
+              sourceAsset,
+            );
           }
           setPendingConnection(null);
         }}

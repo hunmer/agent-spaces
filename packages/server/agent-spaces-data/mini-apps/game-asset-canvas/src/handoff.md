@@ -201,13 +201,17 @@ generateImages(workflowId, input, {directory, historyId})   ← utils/workflow.j
 - 分镜 Agent 在全局 `SettingsDialog` 里通过 `openAgentEditor` 配置，与 BBox/反推/提示词优化 Agent 同款；节点内不保存 Agent ID。
 - storyboard 节点顶部“角色库”按钮打开宿主 `Dialog`，对话框内复用角色管理面板；数据仍持久化到 `configs/workspaces/<id>/storyboard-characters.json`，写入统一走 `services/canvas.js`。
 - 角色库“生图”打开 `CharacterImageGenerationDialog`，使用文生图/图生图两个 Tabs；提交时立即把模式、两个图片预设和图生图参考图写入角色 `generationParams`。
-- 分镜卡片的旁白、画面提示词、动画提示词均有可见 label。节点生成参数通过四个按钮分别打开文生图、图生图、视频、配音表单，并保存为 `params.textToImage/editImage/video/voice`；`utils/storyboard-generation.js` 负责兼容旧扁平字段。
+- 分镜卡片的旁白、画面提示词、动画提示词均有可见 label。节点顶部设置图标打开统一四 Tab Dialog，并保存 `params.textToImage/editImage/video/voice`；`utils/storyboard-generation.js` 负责兼容旧扁平字段。
+- 每张分镜只通过 Avatar Group 展示当前 `characterIds` 对应角色；加号打开 checkbox 多选角色选择器，不再平铺整个角色库 badge。
+- scene 图片使用宿主 `Masonry` 三列瀑布流并在加载后记录自然宽高比；scene 列表左侧的 sticky 垂直导航使用首图或序号，点击对应 DOM ref 执行平滑滚动。
+- scene 列表右侧有一一对应的输出 handle 列表；该列表绝对定位在 `NodeShell` 外部，避开节点卡片的 overflow 裁剪。handle ID 为 `storyboard-scene:<sceneId>`，缩略项展示首图/媒体类型和素材数，无素材时保留禁用项。
 - 分镜卡片仅通过 `GripVertical` 手柄触发 HTML5 拖拽；落点排序后统一重写 `scenes[].index = 1..N` 并经节点 `data` 持久化。
-- 单镜/批量图片、视频、语音生成复用 `generateImages/generateVideo/generateAudio`，结果分别创建 `imageDisplay/videoDisplay/audioDisplay` 节点。展示节点带 source handle，可继续手动连线到下游。
+- 单镜/批量图片、视频、语音生成复用 `generateImages/generateVideo/generateAudio`，结果追加到对应 `scene.images/videos/audios` 并在分镜卡片底部原位预览，不自动创建画布展示节点。
 - 图片生成有角色主参考图时使用 `editImageWorkflowId + params.editImage`，否则使用 `textToImageWorkflowId + params.textToImage`；视频、配音分别透传 `params.video`、`params.voice`。
-- 不自动连接 storyboard → display：展示节点只要存在入边就会采用上游派生值，而 storyboard 是多分镜聚合数据，当前没有 per-edge 场景输出选择器，自动边会覆盖展示节点的独立媒体。
+- 分镜 handle 的素材由 `utils/storyboard-assets.js` 从 `scene.images/videos/audios` 派生。多素材连接先在 `ConnectionTargetDialog` 选素材，再按素材类型过滤目标输入；选中项写入 `edge.data.sourceAsset`，输入派生只转发该 URL。
+- 动态 handle 依赖 React Flow `useUpdateNodeInternals`；宿主 mini-app renderer 已暴露该既有导出，修改宿主后需重启 web。
 
-**关键文件**：`components/nodes/StoryboardNode.jsx`、`components/StoryboardGenerationDialog.jsx`、`components/nodes/AudioDisplayNode.jsx`、`components/right-panel/CharactersTab.jsx`（仅作为角色对话框内容复用）、`hooks/useStoryboardOperations.js`、`hooks/useCharacterLibrary.js`、`utils/storyboard.js`、`utils/storyboard-generation.js`。
+**关键文件**：`components/nodes/StoryboardNode.jsx`、`components/StoryboardGenerationDialog.jsx`、`components/ConnectionTargetDialog.jsx`、`components/nodes/AudioDisplayNode.jsx`、`components/right-panel/CharactersTab.jsx`（仅作为角色对话框内容复用）、`hooks/useStoryboardOperations.js`、`hooks/useCharacterLibrary.js`、`utils/storyboard.js`、`utils/storyboard-assets.js`、`utils/storyboard-generation.js`、`utils/connection-targets.js`。
 
 ## 新增节点 Checklist
 

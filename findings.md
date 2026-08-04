@@ -42,6 +42,57 @@
 - `generateImages`, `generateVideo`, and `generateAudio` accept the same workflow input fields as their standalone nodes; count and concurrency can be passed through with the preset.
 - The project UI exports the required host `Dialog`, `Tabs`, form, and icon components; no dependency or manifest change is needed.
 
+## Current Research: Storyboard card-local media and role picker
+
+- The current hook already persists generated URLs into the matching scene before creating display nodes; removing the latter calls preserves media data and narrows behavior cleanly.
+- `scene.characterIds` already contains AI-imported role mappings and manual selection state, so the new avatar group and picker can reuse it without a data migration.
+- The host `AvatarGroup` export accepts `avatarUrls: [{ imageUrl, name }]` and supplies initials when no image exists; selected character images can populate `imageUrl`.
+- `useStoryboardOperations` writes URLs into the matching scene before calling `add*NodesFromUrls`, so removing only those calls changes presentation without changing persistence.
+- Inline scene previews can use native image/video/audio controls; images may open the existing host `openMediaGallery` without adding dependencies.
+- The generic `useImageOutputs/useVideoOutputs` paths remain required by unrelated canvas workflows; only `useAudioOutputs` became unused in `Canvas` after storyboard stopped creating display nodes.
+- Consolidating settings at the dialog level does not require changing persisted preset keys, so existing saved nested and legacy flat parameters continue to resolve unchanged.
+
+## Current Research: Storyboard masonry and scene navigation
+
+- The local masonry mini-app uses the host `Masonry` export with `data`, `renderItem`, `getKey`, `getMeta`, `columns`, and `gap`; no package dependency is required.
+- `Masonry` needs synchronous aspect metadata, so the scene renderer starts at 1:1 and records each image's `naturalWidth:naturalHeight` after load for accurate relayout.
+- `NodeShell` owns the vertical scroll container. A sticky nav inside the scene-list wrapper remains visible while scene refs use `scrollIntoView` against the nearest scrollable ancestor.
+- Navigation is fully derived: first scene image when present, otherwise the 1-based scene position. No saved state or migration is needed.
+
+## Current Research: Storyboard output handles and asset-aware connections
+
+- CodeGraph is indexed for the repository but did not surface the mini-app JSX symbols for this feature, so targeted `rg`/file reads are required as the instructed fallback.
+- The requested UX is one source handle per storyboard scene, with the scene's image/video/audio arrays forming that handle's asset choices.
+- Compatibility rule from the request: only show an asset-selection step when a handle has more than one generated asset; the chosen asset type must constrain the target list.
+- The handoff confirms each scene persists assets in `scene.images`, `scene.videos`, and `scene.audios`; outputs stay inside the storyboard card and currently do not create display nodes.
+- `Canvas.jsx` owns `onConnectEnd` and opens `ConnectionTargetDialog` with `{ source, sourceHandle }`; this is the narrow integration point for decoding a storyboard scene handle.
+- The mini-app is already heavily modified by prior storyboard work. All new edits must compose with those changes and avoid resetting unrelated files.
+- Project rules require React Flow content controls to use `nodrag nopan nowheel`, host UI/icon exports instead of direct `lucide-react`, and no browser test unless explicitly requested.
+- `StoryboardNode` currently renders no source handle at all; `NodeShell` only supports a single boolean `sourceHandle`, positioned by the global floating-handle setting.
+- The scene card already has stable `scene.id` values and left navigation thumbnails, so a matching right rail can use those IDs for handle identity without persisting new data.
+- `Canvas.onConnect` currently derives output type only from the source node type, asks `getConnectionTargets(...)` for target slots, and stores `inputTarget/inputType` on the edge. It does not carry a selected source asset.
+- `ConnectionTargetDialog` currently handles only target-slot selection. It receives `targets`, `inputType`, and returns a target ID.
+- `onConnectEnd` preserves `sourceHandle` when opening the blank-canvas add-node menu, so scene-handle metadata must remain decodable there as well or degrade cleanly.
+- A minimal compatible edge extension is to persist selected source asset metadata in `edge.data` while retaining existing `sourceHandle`, `inputTarget`, and `inputType` fields.
+- `StoryboardNode` scene cards use stable `data-storyboard-scene-id` attributes and the left rail renders a 48px thumbnail/number per scene. The requested right rail can mirror this visual language while placing an actual `Handle` on each item.
+- The right rail should be derived from scenes with at least one asset; empty scenes need a disabled visual item or no active handle. Keeping all scenes visible preserves the requested “以分镜数量为输出 handle” count, so the implementation should render a disabled placeholder for empty scenes rather than omit the row.
+- The mini-app renderer allowlists `@xyflow/react`; no package installation is appropriate. Host Tailwind may not include novel arbitrary classes, so behavior-critical handle positioning should use inline styles.
+- Current connection creation stores only target-side routing metadata. Selected source material must also influence derived downstream inputs, not just dialog filtering, otherwise the edge would still transmit every source-node output.
+- `getConnectionTargets` maps the source node type to one of `image/text/video/audio`, but has no source-asset override and currently emits media targets without checking whether the target node consumes that media type.
+- `computeInputImages`, `computeInputVideos`, and `computeInputAudios` derive downstream values from source node output fields. A storyboard edge therefore needs an edge-level selected asset fallback because storyboard media lives inside `data.scenes[]`, not `data.output`.
+- `computeInputImages` already reads edge routing metadata and builds parallel resource objects, making it the correct place to consume an edge-level selected image. Video/audio derivation can follow the same rule.
+- `useDecoratedNodes` is the sole consumer of all four media derivation maps, so no node component contracts need to change once the pure derivation utilities understand `edge.data.sourceAsset`.
+- The project guide forbids dependency installation and requires static local imports, host exports, theme tokens, and focused Babel/test verification. This change stays entirely inside the mini-app root.
+- The official React Flow Button Handle page returned HTTP 200 and still documents `Position`, `useConnection`, and `ButtonHandle`; the repository already exposes React Flow's native `Handle` but contains no installed `ButtonHandle` wrapper.
+- Existing `canvas-edges.js` already treats `sourceHandle` and `inputTarget` as part of stable edge identity. Canvas duplicate checks should align with that contract so two storyboard scene handles can connect to the same target.
+- Blank-canvas node creation repeats direct-connect target selection in `useNodeCrud`, so it must receive the same storyboard asset selection behavior to avoid inconsistent handle semantics.
+- The pure data contract is now verified: `edge.data.sourceAsset = { sceneId, type, url, thumb?, label? }`; media derivation uses it when present and retains legacy source-node output behavior when absent.
+- Image target compatibility must include both the generic `imageProcess` type and `isImageProcessNodeType(...)` split processor types.
+- Host `react-renderer.tsx` exposed `Handle` and `Position` but omitted `useUpdateNodeInternals`; React Flow's documented dynamic-handle contract requires adding that existing library export to the bare-import allowlist.
+- Edge display must pass persisted `edge.data.inputType` back into target resolution; otherwise storyboard video/audio edges receive image-oriented labels because the storyboard node's default output type is image.
+- Final verification: focused 33/33; full mini-app 233/236 with three unrelated existing failures; renderer ESLint and all affected Babel transforms pass.
+- User feedback confirmed the first handle layout was unusable because the rail lived under NodeShell's clipped content hierarchy. Moving the entire rail, not just the dot, to an absolute sibling restores an external drag target.
+
 ## Current Diagnosis: Animation groups reset after refresh
 
 - The canvas service and `useCanvasState` save/load full node data; neither strips `animGroups`.

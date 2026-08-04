@@ -55,6 +55,7 @@ function getEdgeTargetLabel(edge, nodeMap, nodeParamsSchema) {
     sourceNode.type,
     targetNode.type,
     nodeParamsSchema[targetNode.type] || [],
+    edge.data?.inputType,
   );
   const targetId = edge.data?.inputTarget;
   return (targets.find((target) => target.id === targetId) || targets[0])?.label || targetId || null;

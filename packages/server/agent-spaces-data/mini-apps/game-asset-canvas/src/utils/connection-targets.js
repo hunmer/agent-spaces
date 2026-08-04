@@ -1,4 +1,4 @@
-import { NODE_TYPES } from './constants.js';
+import { NODE_TYPES, isImageProcessNodeType } from './constants.js';
 
 export const CONNECTION_INPUT_TYPES = {
   image: 'image',
@@ -47,6 +47,34 @@ const AUDIO_OUTPUT_NODE_TYPES = new Set([
   NODE_TYPES.audioDisplay,
 ]);
 
+const IMAGE_INPUT_NODE_TYPES = new Set([
+  NODE_TYPES.editImage,
+  NODE_TYPES.imageDisplay,
+  NODE_TYPES.imageProcess,
+  NODE_TYPES.imageEditor,
+  NODE_TYPES.pixelEditor,
+  NODE_TYPES.uiSplitter,
+  NODE_TYPES.bboxViewer,
+  NODE_TYPES.promptReverse,
+  NODE_TYPES.videoGenerator,
+  NODE_TYPES.imageCompare,
+  NODE_TYPES.cutout,
+  NODE_TYPES.depthExtract,
+  NODE_TYPES.directorDesk,
+  NODE_TYPES.photopea,
+  NODE_TYPES.maskPaint,
+]);
+
+const VIDEO_INPUT_NODE_TYPES = new Set([
+  NODE_TYPES.videoDisplay,
+  NODE_TYPES.videoGenerator,
+  NODE_TYPES.videoEditor,
+]);
+
+const AUDIO_INPUT_NODE_TYPES = new Set([
+  NODE_TYPES.audioDisplay,
+]);
+
 export function getTextInputTargets(paramsSchema = []) {
   return paramsSchema
     .filter((field) => field?.key && (field.type === 'text' || field.type === 'textarea'))
@@ -64,16 +92,36 @@ export function getNodeOutputType(nodeType) {
   return CONNECTION_INPUT_TYPES.image;
 }
 
-export function getConnectionTargets(sourceNodeType, targetNodeType, targetParamsSchema = []) {
-  const inputType = getNodeOutputType(sourceNodeType);
+export function getConnectionTargetsForInputType(inputType, targetNodeType, targetParamsSchema = []) {
   return {
     inputType,
     targets: inputType === CONNECTION_INPUT_TYPES.text
       ? getTextInputTargets(targetParamsSchema)
       : inputType === CONNECTION_INPUT_TYPES.video
-        ? [{ id: 'videos', label: '输入视频', description: '作为节点的视频输入' }]
+        ? (VIDEO_INPUT_NODE_TYPES.has(targetNodeType)
+          ? [{ id: 'videos', label: '输入视频', description: '作为节点的视频输入' }]
+          : [])
         : inputType === CONNECTION_INPUT_TYPES.audio
-          ? [{ id: 'audios', label: '输入音频', description: '作为节点的音频输入' }]
-          : getFileUploadTargets(targetNodeType),
+          ? (AUDIO_INPUT_NODE_TYPES.has(targetNodeType)
+            ? [{ id: 'audios', label: '输入音频', description: '作为节点的音频输入' }]
+            : [])
+          : (IMAGE_INPUT_NODE_TYPES.has(targetNodeType) || isImageProcessNodeType(targetNodeType)
+            ? getFileUploadTargets(targetNodeType)
+            : []),
   };
+}
+
+export function getConnectionTargets(sourceNodeType, targetNodeType, targetParamsSchema = [], inputTypeOverride) {
+  return getConnectionTargetsForInputType(
+    inputTypeOverride || getNodeOutputType(sourceNodeType),
+    targetNodeType,
+    targetParamsSchema,
+  );
+}
+
+export function getConnectionTargetsByInputType(inputTypes, targetNodeType, targetParamsSchema = []) {
+  return Object.fromEntries(Array.from(new Set(inputTypes || [])).map((inputType) => [
+    inputType,
+    getConnectionTargetsForInputType(inputType, targetNodeType, targetParamsSchema).targets,
+  ]));
 }

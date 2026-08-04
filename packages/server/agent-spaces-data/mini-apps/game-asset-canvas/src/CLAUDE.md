@@ -77,10 +77,12 @@ graph TD
 - **2026-08-04 文件拖拽自动平移**：系统文件或节点图片拖到画布 72px 边缘热区时按距离连续平移，四角支持双轴移动，离开或结束拖拽立即停止。
 - **2026-08-04 输出分组与标签**：`output.images` 继续保存 URL 数组；并行 `output.resources[]` 可选携带 `groupName`/`label`，节点输出按组折叠并在缩略图右上角展示标签。视频编辑器导出的精灵图以动画组名称写入 `groupName`。
 - **2026-08-04 动画组刷新持久化**：视频编辑器的 currentVideo 清理 effect 用 ref 跳过首次挂载，仅在用户实际切换视频时清空帧和动画组，避免刷新后覆盖已保存数据。
-- **2026-08-04 分镜创作**：从“文案转分镜”移植角色与分镜能力；新增内联 storyboard 节点、工作区共享角色库、audioDisplay，以及图片/视频/语音展示节点落点。
+- **2026-08-04 分镜创作**：从“文案转分镜”移植角色与分镜能力；新增内联 storyboard 节点、工作区共享角色库和场景级图片/视频/语音输出。
 - **2026-08-04 分镜交互调整**：角色管理从 RightPanel 移入 storyboard 节点；AI 拆镜按按钮展开并使用 Settings 全局 Agent；分镜支持手柄拖拽排序。
 - **2026-08-04 角色库对话框**：storyboard 节点以按钮打开角色库 Dialog，节点正文不再内嵌角色编辑区域。
-- **2026-08-04 分镜生成参数对话框**：角色生图使用文生图/图生图双 Tab Dialog；storyboard 节点用四个独立按钮配置 `textToImage/editImage/video/voice` 预设，提交后随节点持久化，旧扁平参数继续兼容。
+- **2026-08-04 分镜生成交互**：角色生图使用文生图/图生图双 Tab Dialog；storyboard 顶部设置图标打开统一四 Tab 参数 Dialog。生成素材保存在对应 scene 并在卡片内预览；场景角色通过 Avatar Group + checkbox 选择器维护。
+- **2026-08-04 分镜导航与瀑布流**：scene 图片用宿主 `Masonry` 三列布局并读取自然宽高比；列表左侧 sticky 缩略导航以首图或序号展示，点击平滑滚动到 scene ref。
+- **2026-08-04 分镜输出 Handle**：列表右侧按 scene 数量在 `NodeShell` 外部渲染 source handle，避免 overflow 裁剪；多素材连接先选素材再过滤兼容输入，边以 `data.sourceAsset` 保存选中图片/视频/音频并只向下游派生该素材。
 - **建议下一步深挖**：
   - 如需精确节点组件实现细节，定点读 `components/nodes/<具体>.jsx`
   - 如需精确 image-ops 算法实现，定点读 `utils/image-ops/<具体>.js`（gif.js / matte.js / pixelate.js 等）

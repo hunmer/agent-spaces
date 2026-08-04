@@ -5,8 +5,7 @@ import { genId } from '../utils/canvas-id';
 import { resolveStoryboardGenerationParams } from '../utils/storyboard-generation';
 
 export default function useStoryboardOperations({
-  nodesRef, updateNodeData, characters, saveCharacters, settings, directory,
-  addImageNodesFromUrls, addVideoNodesFromUrls, addAudioNodesFromUrls,
+  updateNodeData, characters, saveCharacters, settings, directory,
 }) {
   const importStoryboard = useCallback(async (nodeId, text, agentConfigId) => {
     const parsed = await runStoryboardAgent(text, agentConfigId);
@@ -17,12 +16,10 @@ export default function useStoryboardOperations({
   }, [characters, saveCharacters, updateNodeData]);
 
   const generateSceneMedia = useCallback(async (nodeId, scene, kind, params) => {
-    const sourceNode = nodesRef.current.find((node) => node.id === nodeId);
     const selectedCharacters = (scene.characterIds || []).map((id) => characters.find((item) => item.id === id)).filter(Boolean);
     const referenceImages = selectedCharacters.flatMap((character) => (character.images || []).filter((item) => item.selected && item.url).map((item) => item.url));
     const presets = resolveStoryboardGenerationParams(params, settings);
     let urls = [];
-    let resources = [];
     if (kind === 'image') {
       const characterPrompt = selectedCharacters.map((item) => item.prompt).filter(Boolean).join('; ');
       const prompt = [characterPrompt, scene.visualPrompt].filter(Boolean).join('\n');
@@ -38,7 +35,6 @@ export default function useStoryboardOperations({
         concurrency: Math.max(1, Number(preset.concurrency) || 1),
       }, { directory, historyId: genId('story-hist') });
       urls = result.urls;
-      resources = result.resources;
     } else if (kind === 'video') {
       const sourceImages = scene.images?.length ? scene.images.slice(-1) : referenceImages.slice(0, 1);
       const preset = presets.video;
@@ -71,16 +67,9 @@ export default function useStoryboardOperations({
       status: 'done',
       error: undefined,
     }));
-    // 展示节点持有本次生成的独立媒体值，并暴露 source handle 供用户继续连线。
-    // 不自动从 storyboard 连入：展示节点的入边会触发派生覆盖，而 storyboard 的多分镜输出无法按边选择单个场景。
-    const common = { sourceNode, source: 'storyboard', tags: [`分镜 ${scene.index}`] };
-    if (kind === 'image') addImageNodesFromUrls(urls, { ...common, resources });
-    else if (kind === 'video') addVideoNodesFromUrls(urls, common);
-    else addAudioNodesFromUrls(urls, common);
     return urls;
   }, [
-    nodesRef, characters, settings, directory, updateNodeData,
-    addImageNodesFromUrls, addVideoNodesFromUrls, addAudioNodesFromUrls,
+    characters, settings, directory, updateNodeData,
   ]);
 
   return { importStoryboard, generateSceneMedia };

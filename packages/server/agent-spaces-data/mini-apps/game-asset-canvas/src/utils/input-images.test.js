@@ -141,3 +141,24 @@ test('computeInputAudios forwards generated audio through display nodes', () => 
   assert.deepEqual(result.get('display-a')?.audios, ['voice.mp3']);
   assert.deepEqual(result.get('display-b')?.audios, ['voice.mp3']);
 });
+
+test('storyboard edges forward only their selected source asset', () => {
+  const nodes = [
+    { id: 'story', type: NODE_TYPES.storyboard, data: { scenes: [] } },
+    { id: 'image-target', type: NODE_TYPES.imageDisplay, data: {} },
+    { id: 'video-target', type: NODE_TYPES.videoDisplay, data: {} },
+    { id: 'audio-target', type: NODE_TYPES.audioDisplay, data: {} },
+  ];
+  const edges = [
+    { ...edge('story', 'image-target'), data: { inputType: 'image', inputTarget: 'images', sourceAsset: { type: 'image', url: 'shot.png', thumb: 'shot-thumb.jpg', label: '图片 1' } } },
+    { ...edge('story', 'video-target'), id: 'story-video', data: { inputType: 'video', inputTarget: 'videos', sourceAsset: { type: 'video', url: 'shot.mp4' } } },
+    { ...edge('story', 'audio-target'), id: 'story-audio', data: { inputType: 'audio', inputTarget: 'audios', sourceAsset: { type: 'audio', url: 'line.mp3' } } },
+  ];
+
+  assert.deepEqual(computeInputImages(nodes, edges).get('image-target')?.images, ['shot.png']);
+  assert.deepEqual(computeInputImages(nodes, edges).get('image-target')?.resources, [
+    { url: 'shot.png', thumb: 'shot-thumb.jpg', label: '图片 1' },
+  ]);
+  assert.deepEqual(computeInputVideos(nodes, edges).get('video-target')?.videos, ['shot.mp4']);
+  assert.deepEqual(computeInputAudios(nodes, edges).get('audio-target')?.audios, ['line.mp3']);
+});

@@ -47,7 +47,7 @@
 | useDecoratedNodes | 节点 data 注入回调（与 settings/selectionCount 联动） |
 | useAssetLibrary | 素材库（asset-library.json，按工作区隔离） |
 | useCharacterLibrary | 分镜角色库（storyboard-characters.json，按工作区隔离） |
-| useStoryboardOperations | AI 拆镜、分镜媒体生成、展示节点落点 |
+| useStoryboardOperations | AI 拆镜、分镜媒体生成、场景输出写回 |
 | useViewportActivation | 节点首次进入视窗后永久激活正文，离屏不卸载已加载图片 |
 
 ## utils 纯函数/单例（src/utils/，16 个文件 + image-ops/）
@@ -60,8 +60,10 @@
 | canvas-id.js | genId + seq / autoPosition + positionIndex（模块级单例，连续建节点不撞位置） |
 | processing-controllers.js | AbortController 注册表单例（register/abort/clear/get），跨 hook 共享取消 |
 | input-images.js | computeInputImages（fixed-point 多跳转发派生输入图） |
+| connection-targets.js | 按素材类型解析兼容目标输入；支持分镜素材选择后的目标过滤 |
 | workflow.js | runWorkflow/generateImages/generateAudio/generateVideo/runAgentVisionText + URL 工具 |
 | storyboard.js | 分镜 Agent 提示词、JSON 容错解析、角色合并与场景标准化 |
+| storyboard-assets.js | 分镜 scene handle ID 与图片/视频/音频素材规范化 |
 | cutout.js | runCutout 统一执行入口（4 mode 分流：本地算法/工作流/rembg 插件） |
 | storage.js | loadCanvas/saveCanvas/onAnyConfigChanged + debounce + 面板布局读写 |
 | settings.js | DEFAULT_SETTINGS/WORKFLOW_SLOTS/mergeSettings |

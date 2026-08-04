@@ -3,7 +3,8 @@ import { addEdge, MarkerType } from '@xyflow/react';
 import { debugCanvasImageDrag } from '@agent-spaces/ui';
 import { NODE_TYPES, NODE_META, IMAGE_TAGS, WORKFLOWS } from '../utils/constants';
 import { DEFAULT_SIZE, initialData, NODE_PARAMS_SCHEMA, CANVAS_DROP_MIME, IMAGE_REORDER_MIME, NODE_PRESET_MIME } from '../utils/canvas-constants';
-import { getConnectionTargets } from '../utils/connection-targets';
+import { getConnectionTargets, getConnectionTargetsByInputType } from '../utils/connection-targets';
+import { resolveStoryboardHandleAssets } from '../utils/storyboard-assets.js';
 import { genId, autoPosition } from '../utils/canvas-id';
 import { autoLayoutSubset, autoLayoutTopLevel } from '../utils/layout';
 import { downloadJson, serializeCanvas, pickAndParseCanvasFile } from '../utils/export';
@@ -122,16 +123,34 @@ export default function useNodeCrud({
       const position = { x: flow.x - size.w / 2, y: flow.y - size.h / 2 };
       const newId = createNodeAt(type, position, dataPatch);
       const sourceNode = nodesRef.current.find((node) => node.id === cur.source);
+      const targetParamsSchema = NODE_PARAMS_SCHEMA[type] || [];
+      const storyboardAssets = resolveStoryboardHandleAssets(sourceNode, cur.sourceHandle);
+      if (storyboardAssets?.length > 1) {
+        setPendingConnection?.({
+          conn: { source: cur.source, target: newId, sourceHandle: cur.sourceHandle },
+          assets: storyboardAssets,
+          inputType: storyboardAssets[0]?.type,
+          targetsByInputType: getConnectionTargetsByInputType(
+            storyboardAssets.map((asset) => asset.type),
+            type,
+            targetParamsSchema,
+          ),
+        });
+        return null;
+      }
+      const sourceAsset = storyboardAssets?.[0] || null;
       const connection = getConnectionTargets(
         sourceNode?.type,
         type,
-        NODE_PARAMS_SCHEMA[type] || [],
+        targetParamsSchema,
+        sourceAsset?.type,
       );
       if (connection.targets.length > 1) {
         setPendingConnection?.({
           conn: { source: cur.source, target: newId, sourceHandle: cur.sourceHandle },
           targets: connection.targets,
           inputType: connection.inputType,
+          assets: sourceAsset ? [sourceAsset] : [],
         });
         return null;
       }
@@ -149,6 +168,7 @@ export default function useNodeCrud({
             data: {
               inputType: connection.inputType,
               inputTarget: connection.targets[0].id,
+              ...(sourceAsset ? { sourceAsset } : {}),
             },
           },
           prev,

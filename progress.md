@@ -1,5 +1,33 @@
 # Progress: Canvas drag edge auto-pan
 
+## 2026-08-04 - Storyboard output handles and asset-aware connections
+- Received follow-up to add one output handle per storyboard scene and make connection target selection asset-aware.
+- Restored the existing planning context and started tracing the current storyboard/connection implementation.
+- CodeGraph did not index the relevant mini-app JSX symbols; switched to the instructed `rg` fallback.
+- The handoff's skill-guide path was not mini-app-relative; locating the actual repository path before continuing.
+- Added `storyboard-assets.js` for stable handle IDs and normalized scene image/video/audio options.
+- Added explicit input-type target filtering and edge-level selected asset consumption in all three media derivation paths.
+- Initial pure-function verification passes 20/20 tests.
+- Added the mirrored right-side scene output rail with one native React Flow source handle per scene; empty scenes remain visible but disabled.
+- Extended the connection dialog to require multi-asset selection before rendering type-compatible target inputs.
+- Updated direct and blank-canvas connection paths to persist `sourceAsset`; Canvas duplicate checks now include handle and target slot identity.
+- First UI verification passes 29/29 tests, four Babel transforms, and `git diff --check`.
+- Added source-level UI regression coverage; the focused set now passes 32/32 tests.
+- Exposed `useUpdateNodeInternals` through the host mini-app React Flow allowlist so dynamic scene handle changes are remeasured.
+- Updated storyboard handoff, edge data model, module responsibilities, and the mini-app index.
+- Fixed edge labels to resolve targets with persisted `inputType`; repaired the related test harness to use real module imports.
+- Final focused verification passes 33/33 tests, eight Babel transforms, renderer ESLint, and `git diff --check`.
+- Full mini-app verification is 233/236; the three remaining failures are pre-existing dirty-worktree assertions in reskin/video extraction.
+- Web `tsc --noEmit` remains blocked by existing unrelated API typing errors; none reference `react-renderer.tsx` or the new mini-app files.
+- `procm-mcp` is unavailable in this session, so the running web process was left untouched rather than restarted through an unsupported mechanism.
+
+## 2026-08-04 - Storyboard handle clipping bugfix
+- User confirmed the right-side handles render inside the node and cannot be dragged.
+- Root cause is structural: the output rail is nested under NodeShell's clipped/scrolling content hierarchy.
+- Added a regression requirement that the rail render after `</NodeShell>` as an absolute external sibling.
+- Confirmed the regression failed before the fix and passed after moving the rail outside NodeShell.
+- Final bugfix verification passes 34/34 focused tests, affected Babel transforms, and `git diff --check`.
+
 ## 2026-08-04 - Storyboard generation dialogs and presets
 - Read the storyboard handoff and current planning state.
 - Confirmed the requested work is a follow-up to the existing uncommitted storyboard implementation.
@@ -13,6 +41,24 @@
 - Character generation now persists prompt and dialog settings immediately on submit, then appends generated images on success.
 - Updated `handoff-storyboard.md`, `src/handoff.md`, and `src/CLAUDE.md` with the new contracts.
 - Final verification passed: 32 focused tests, Babel transforms for six affected modules, forbidden-pattern scan, and `git diff --check`.
+
+## 2026-08-04 - Storyboard card-local media and role picker
+- Received follow-up to consolidate generation settings, keep outputs in scene cards, and replace character badges with a scene avatar picker.
+- Preserving the nested preset data model while changing its UI ownership and output presentation.
+- Replaced the four parameter cards/dialog triggers with one top icon and a single four-tab settings dialog that saves all presets together.
+- Added per-scene Avatar Group rendering and a checkbox role picker with character image/name; removed the full-library badge row.
+- Added inline image, video, and audio previews under each scene and removed storyboard display-node creation dependencies from the hook and Canvas wiring.
+- Updated handoff, CLAUDE, data-model, and module-responsibility documentation.
+- Final verification passed: 34 focused tests, Babel transforms for six affected modules, forbidden-pattern scan, stale-doc scan, and `git diff --check`.
+
+## 2026-08-04 - Storyboard masonry and scene navigation
+- Received follow-up to compact scene images with the local masonry pattern and add a left thumbnail navigator.
+- Started tracing the masonry implementation and storyboard scroll container before editing.
+- Replaced the four-column square image grid with the host `Masonry` component using three compact columns and natural image aspect ratios.
+- Added a sticky 48px left scene navigator using first-image thumbnails or numeric placeholders.
+- Added scene DOM refs and smooth nearest-axis scrolling with scroll margin.
+- Updated storyboard tests and handoff/CLAUDE documentation.
+- Verification passed: 36 focused tests, related Babel transforms, forbidden-pattern scan, and `git diff --check`; the final scroll adjustment also passed 16 focused tests.
 
 ## 2026-08-04 - Output grouping and labels
 - Diagnosed the refresh reset: the video-switch effect runs on initial dialog mount and persists an empty `animGroups` array.

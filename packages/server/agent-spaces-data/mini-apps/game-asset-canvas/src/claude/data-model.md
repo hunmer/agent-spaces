@@ -116,7 +116,12 @@ data.params = {
 #### 分镜创作（storyboard）
 ```typescript
 data.sourceText: string;
-data.params: { imageModel, videoModel, voiceModel, voiceId?, aspect, size, quality, duration };
+data.params: {
+  textToImage: { model, aspect, size, count, concurrency };
+  editImage: { model, aspect, size, count, concurrency };
+  video: { model, aspect, quality, duration, count, concurrency };
+  voice: { model, voiceId?, count, concurrency };
+};
 data.scenes: Array<{
   id: string; index: number;
   narration: string; visualPrompt: string; animationPrompt: string;
@@ -125,7 +130,7 @@ data.scenes: Array<{
 }>;
 ```
 
-分镜 Agent 是全局设置：`settings.storyboardAgentConfigId/storyboardAgentName`，不写入节点 `data.params`。`scenes[]` 数组顺序是真值，拖拽后同步把 `index` 归一化为 `1..N`。
+分镜 Agent 是全局设置：`settings.storyboardAgentConfigId/storyboardAgentName`，不写入节点 `data.params`。旧扁平生成参数由 `resolveStoryboardGenerationParams` 兼容读取。`scenes[]` 数组顺序是真值，拖拽后同步把 `index` 归一化为 `1..N`；媒体 URL 直接显示在所属分镜卡片，不自动物化为画布展示节点。
 
 `audioDisplay` 使用 `data.audios: string[]`；`videoDisplay` 使用 `data.videos: string[]`。两者是独立展示/透传节点，不承载生成参数。
 
@@ -170,6 +175,14 @@ interface Edge {
   animated?: boolean;            // 默认 true
   data?: {
     inputTarget?: string;         // 目标 FileUpload id；缺省/无效值回退到 images
+    inputType?: 'image' | 'text' | 'video' | 'audio';
+    sourceAsset?: {               // 分镜多素材 handle 选中的单个素材；旧边可缺省
+      sceneId: string;
+      type: 'image' | 'video' | 'audio';
+      url: string;
+      thumb?: string;
+      label?: string;
+    };
     pathStyle?: string;
     lineStyle?: string;
   };
@@ -179,6 +192,7 @@ interface Edge {
 - Handle 位置由全局设置决定：上下时 source=Bottom、target=Top；左右时 source=Right、target=Left。
 - 连线语义：「source 产出图 → target 输入区」。旧边或 `inputTarget='images'` 由 `computeInputImages` 派生到 target 的 `data.images`；其它目标派生到 `data.fileUploadInputs[inputTarget]`。
 - 多上传区声明集中在 `utils/connection-targets.js`。当前编辑图片节点声明 `images`（输入图片）和 `mask`（蒙版图片），手动连线时由用户选择。
+- storyboard 每个 scene 使用 `storyboard-scene:<encodeURIComponent(sceneId)>` 作为 source handle。多素材连接把选中项写入 `sourceAsset`，`computeInputImages/Videos/Audios` 优先消费该素材；无该字段的历史边保持原行为。
 
 ## 分组（WorkflowGroup）
 

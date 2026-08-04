@@ -15,22 +15,26 @@ const VIDEO_OPTIONS = VIDEO_MODEL_OPTIONS.flatMap((group) => group.options.map((
   ...item, label: `${group.group} · ${item.label}`,
 })));
 
-export function StoryboardGenerationDialog({ open, mode, value, settings, onCancel, onSubmit }) {
+export function StoryboardGenerationDialog({ open, value, settings, onCancel, onSubmit }) {
   const [draft, setDraft] = useState(value || {});
   useEffect(() => { if (open) setDraft(value || {}); }, [open, value]);
-  if (!mode) return null;
-
-  const title = { textToImage: '文生图参数', editImage: '图生图参数', video: '生成视频参数', voice: '生成配音参数' }[mode];
   return (
     <Dialog open={open} onOpenChange={(next) => { if (!next) onCancel?.(); }}>
-      <DialogContent className="flex flex-col gap-0 overflow-hidden p-0" style={{ width: '480px', maxWidth: 'calc(100vw - 32px)', maxHeight: 'calc(100vh - 32px)' }}>
-        <DialogHeader className="border-b border-border px-5 py-4"><DialogTitle>{title}</DialogTitle></DialogHeader>
-        <div className="nodrag nopan nowheel flex min-h-0 flex-col gap-4 overflow-y-auto px-5 py-4">
-          <PresetFields mode={mode} value={draft} settings={settings} onChange={setDraft} />
-        </div>
+      <DialogContent className="flex flex-col gap-0 overflow-hidden p-0" style={{ width: '560px', maxWidth: 'calc(100vw - 32px)', maxHeight: 'calc(100vh - 32px)' }}>
+        <DialogHeader className="border-b border-border px-5 py-4"><DialogTitle>生成参数设置</DialogTitle></DialogHeader>
+        <Tabs defaultValue="textToImage" className="nodrag nopan nowheel flex min-h-0 flex-1 flex-col">
+          <div className="px-5 pt-4"><TabsList className="grid w-full grid-cols-4"><TabsTrigger value="textToImage">文生图</TabsTrigger><TabsTrigger value="editImage">图生图</TabsTrigger><TabsTrigger value="video">视频</TabsTrigger><TabsTrigger value="voice">配音</TabsTrigger></TabsList></div>
+          <div className="min-h-0 overflow-y-auto px-5 py-4">
+            {['textToImage', 'editImage', 'video', 'voice'].map((mode) => (
+              <TabsContent key={mode} value={mode}>
+                <PresetFields mode={mode} value={draft?.[mode]} settings={settings} onChange={(next) => setDraft((prev) => ({ ...prev, [mode]: next }))} />
+              </TabsContent>
+            ))}
+          </div>
+        </Tabs>
         <DialogFooter className="border-t border-border px-5 py-4">
           <Button variant="outline" onClick={onCancel}>取消</Button>
-          <Button onClick={() => onSubmit?.(draft)}>保存参数</Button>
+          <Button onClick={() => onSubmit?.(draft)}>保存全部设置</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
