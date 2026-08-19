@@ -6,6 +6,12 @@ loadDotenv();
 import 'reflect-metadata';
 
 import { createWriteStream, WriteStream } from 'node:fs';
+import { setupProcmLogger } from './procm-logger.js';
+
+// ---- procm 结构化日志 ----
+// 由 procm 管理时（自动注入 PROCM_ROOM_ID/PROCM_WS_URL）连接 room 并发布日志；否则仅向控制台输出结构化帧。
+// 必须在下方自制文件日志劫持之前安装，使 __origLog 指向 procm 的 console，文件日志可同步记录结构化帧。
+setupProcmLogger('server');
 
 // ---- 日志输出到文件 ----
 const __logDir = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'logs');
@@ -514,6 +520,11 @@ server.on('upgrade', (req, socket, head) => {
 const HOST = process.env.HOST || '0.0.0.0';
 
 recoverTeamRuntimesOnStartup();
+// 端口被占等监听失败必须立即退出：uncaughtException 处理器只记日志不退出，会让 watch 进程静默挂着
+server.on('error', (err: NodeJS.ErrnoException) => {
+  console.error(`[server] failed to listen on ${HOST}:${PORT}: ${err.code ?? ''} ${err.message}`);
+  process.exit(1);
+});
 server.listen(PORT, HOST, () => {
   console.log(`[server] listening on http://${HOST}:${PORT}`);
   console.log(`[server] websocket on ws://${HOST}:${PORT}/ws?workspaceId=...`);

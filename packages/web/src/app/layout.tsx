@@ -5,6 +5,7 @@ import { AuthGuard } from "@/components/layout/auth-guard";
 import { AppShell } from "@/components/layout/app-shell";
 import { ConsolePanel } from "@/components/common/console-panel";
 import { DevInspector } from "@/components/layout/dev-inspector";
+import { ProcmLoggerInit } from "@/components/layout/procm-logger-init";
 import { ViewportInsets } from "@/components/layout/viewport-insets";
 import { CommandPalette } from "@/components/layout/command-palette";
 import { ThemeStyleInit } from "@/components/layout/theme-style-init";
@@ -45,6 +46,7 @@ export default function RootLayout({
       <body className="h-[var(--app-content-height)] overflow-hidden font-sans">
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           <ThemeStyleInit />
+          <ProcmLoggerInit />
           <LocaleProvider>
             <ViewportInsets />
             <AuthGuard>
