@@ -119,11 +119,11 @@ export function WorkflowAutoLayoutMenu({
             </label>
             <label className="space-y-1 text-[11px] text-muted-foreground">
               {t('canvasToolbar.horizontalGap')}
-              <Input type="number" min={0} max={300} value={horizontalGap} onChange={(event) => setHorizontalGap(Math.max(0, Number(event.target.value) || 0))} className="h-7 text-xs" />
+              <Input type="number" min={0} value={horizontalGap} onChange={(event) => setHorizontalGap(Math.max(0, Number(event.target.value) || 0))} className="h-7 text-xs" />
             </label>
             <label className="space-y-1 text-[11px] text-muted-foreground">
               {t('canvasToolbar.verticalGap')}
-              <Input type="number" min={0} max={300} value={verticalGap} onChange={(event) => setVerticalGap(Math.max(0, Number(event.target.value) || 0))} className="h-7 text-xs" />
+              <Input type="number" min={0} value={verticalGap} onChange={(event) => setVerticalGap(Math.max(0, Number(event.target.value) || 0))} className="h-7 text-xs" />
             </label>
           </div>
           <div className="flex flex-wrap gap-1">

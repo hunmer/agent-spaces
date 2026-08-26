@@ -39,3 +39,22 @@ test('update_nodes rejects malformed $text before sending an RPC', async () => {
   assert.equal(requested, false);
   assert.match(result.message, /不是合法 JSON/);
 });
+
+test('add_nodes forwards autoLayout options to the canvas RPC', async () => {
+  const requests = [];
+  const result = await api.add_nodes({
+    nodes: [{ type: 'note' }, { type: 'note' }],
+    autoLayout: { direction: 'TB', grid: { rows: 2, columns: 1, horizontalGap: 20, verticalGap: 30 } },
+  }, {
+    requestClient: async (type, payload) => {
+      requests.push({ type, payload });
+      return { ok: true, nodeIds: ['a', 'b'], edges: { created: 0 } };
+    },
+  });
+
+  assert.equal(result.ok, true);
+  assert.deepEqual(requests[0].payload.autoLayout, {
+    direction: 'TB',
+    grid: { rows: 2, columns: 1, horizontalGap: 20, verticalGap: 30 },
+  });
+});

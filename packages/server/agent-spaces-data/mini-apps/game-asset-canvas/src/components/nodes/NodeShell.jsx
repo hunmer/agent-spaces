@@ -1,10 +1,11 @@
 import { Children, isValidElement, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { NodeResizer, NodeToolbar, Position } from '@xyflow/react';
 import {
-  Badge, BorderGlide, ClipboardCopy, Download, FolderPlus, Images, Loader, MoreVertical, RotateCcw, toast,
+  Badge, ClipboardCopy, Download, FolderPlus, Images, Loader, MoreVertical, RotateCcw, toast,
   ContextMenu, ContextMenuContent, ContextMenuGroup, ContextMenuItem, ContextMenuLabel, ContextMenuSeparator, ContextMenuTrigger,
   Popover, PopoverContent, PopoverTrigger,
 } from '@agent-spaces/ui';
+import BorderBeam from '../BorderBeam';
 import { NODE_META, NODE_TYPES } from '../../utils/constants';
 import { downloadImages } from '../../utils/export';
 import useViewportActivation from '../../hooks/useViewportActivation';
@@ -454,15 +455,13 @@ export default function NodeShell({
         onMouseLeave={hideToolbar}
       >
         {isRunning && (
-          <BorderGlide
-            className="pointer-events-none absolute inset-0 z-30 rounded-lg"
-            color="#3b82f6"
-            duration={1800}
-            rx="0.5rem"
-            ry="0.5rem"
-          >
-            <div className="h-full w-full" />
-          </BorderGlide>
+          <BorderBeam
+            className="z-30 rounded-lg"
+            colorFrom="#3b82f6"
+            colorTo="#8b5cf6"
+            duration={3}
+            borderWidth={2}
+          />
         )}
         <NodeToolbar isVisible={toolbarVisible} position={Position.Top} align="center" offset={8}>
           <div
@@ -541,15 +540,13 @@ export default function NodeShell({
       onMouseLeave={hideToolbar}
     >
       {isRunning && (
-        <BorderGlide
-          className="pointer-events-none absolute inset-0 z-30 rounded-lg"
-          color="#3b82f6"
-          duration={1800}
-          rx="0.5rem"
-          ry="0.5rem"
-        >
-          <div className="h-full w-full" />
-        </BorderGlide>
+        <BorderBeam
+          className="z-30 rounded-lg"
+          colorFrom="#3b82f6"
+          colorTo="#8b5cf6"
+          duration={3}
+          borderWidth={2}
+        />
       )}
       {shouldShowToolbar ? (
         <NodeToolbar isVisible={toolbarVisible} position={Position.Top} align="center" offset={8}>

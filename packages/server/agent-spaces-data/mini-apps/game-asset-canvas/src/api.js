@@ -8,7 +8,14 @@
  * 对应前端监听见 src/components/Canvas.jsx 的 clientRequest useEffect。
  */
 
-// 合法节点类型（与 utils/constants.js NODE_TYPES 同步；handler 不能 import）
+import { VALID_NODE_TYPES, NODE_LABELS } from './api/constants.js';
+import { asString, parseNodeData, parseGroupLayout, rpc } from './api/helpers.js';
+import {
+  ASSET_MAX_PER_CATEGORY, resolveWorkspaceId, readAssetLibrary, writeAssetLibrary,
+  findCategory, genAssetId, genCategoryId,
+} from './api/assets.js';
+
+if (globalThis.__GAME_ASSET_CANVAS_LEGACY_DECLARATIONS__) {
 const VALID_NODE_TYPES = [
   'text',          // Markdown 文字
   'storyboard',    // 分镜创作
@@ -211,6 +218,7 @@ function genCategoryId(lib) {
 function rpc(ctx, type, payload) {
   return ctx.requestClient(type, payload || {}, 8000);
 }
+}
 
 export default {
   /**
@@ -409,6 +417,7 @@ export default {
    * @param {Array} input.nodes  节点规格数组，每项 {type, title?, position?, data?, focus?}
    * @param {boolean} [input.focusFirst] 是否聚焦到首个新增节点（默认 true）
    * @param {object} [input.groupLayout] 携带 groupName 时自动编排整个分组
+   * @param {object} [input.autoLayout] 新增后自动编排本批节点（{direction?, grid?}）
    */
   add_nodes: async (input, ctx) => {
     const list = Array.isArray(input?.nodes) ? input.nodes : null;
@@ -477,12 +486,15 @@ export default {
     if (parsedGroupLayout.value && !groupName) {
       return { ok: false, message: 'groupLayout 仅可与 groupName 一起使用' };
     }
+    const parsedAutoLayout = parseGroupLayout(input?.autoLayout, 'autoLayout');
+    if (!parsedAutoLayout.ok) return parsedAutoLayout;
     const result = await rpc(ctx, 'canvas.addNodes', {
       nodes: cleaned,
       focusFirst: input?.focusFirst !== false,
       // 可选 groupName：本次批量建的节点一起归入同名分组（不存在则创建）
       groupName: groupName || undefined,
       groupLayout: parsedGroupLayout.value,
+      autoLayout: parsedAutoLayout.value,
       edges: cleanedEdges,
     });
     if (result?.ok === false) return result;
@@ -493,6 +505,7 @@ export default {
       nodeIds: ids,
       groupName: groupName || undefined,
       groupLayout: parsedGroupLayout.value,
+      autoLayout: parsedAutoLayout.value,
       edges: result?.edges,
       message: `已新增 ${ids.length} 个节点：${ids.map((id) => id).join(', ')}${groupName ? `，并归入分组「${groupName}」` : ''}${cleanedEdges.length ? `；连线新增 ${result?.edges?.created || 0} 条` : ''}`,
     };
