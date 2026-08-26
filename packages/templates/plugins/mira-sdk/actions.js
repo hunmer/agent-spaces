@@ -1,4 +1,4 @@
-const { request } = require('./shared')
+const { request, requestRaw } = require('./shared')
 
 const CONFIG_PREFIX = '{{ __config__["workflow.mira-sdk"]'
 
@@ -643,6 +643,46 @@ module.exports = (t) => {
         ctx.logger.info(`Creating folder: ${args.name} in library ${args.libraryId}`)
         await request(args, client => client.folders().createFolder(args.libraryId, args.name, args.parentId || undefined))
         return { success: true, message: t('message.folderCreated', 'Folder created: {name}').replace('{name}', args.name) }
+      },
+    },
+
+    // ─── 通用 API（覆盖 SDK 尚未封装及插件动态路由） ───────────
+    {
+      name: 'mira_api_request',
+      label: t('action.apiRequest.label', 'Mira API Request'),
+      category: t('category', 'Mira SDK'),
+      icon: 'Globe',
+      description: t('action.apiRequest.description', 'Call any Mira API endpoint, including endpoints not yet wrapped by the SDK.'),
+      properties: [
+        { key: 'method', label: 'Method', type: 'select', dataType: 'string', required: true, default: 'GET', options: [
+          { label: 'GET', value: 'GET' }, { label: 'POST', value: 'POST' }, { label: 'PUT', value: 'PUT' },
+          { label: 'PATCH', value: 'PATCH' }, { label: 'DELETE', value: 'DELETE' },
+        ] },
+        { key: 'path', label: 'Path', type: 'text', dataType: 'string', required: true, tooltip: t('field.apiPath.tooltip', 'Absolute API path, for example /api/devices/:id/messages.') },
+        { key: 'body', label: 'JSON Body', type: 'textarea', dataType: 'object', tooltip: t('field.apiBody.tooltip', 'Optional JSON request body.') },
+        { key: 'query', label: 'Query', type: 'textarea', dataType: 'object', tooltip: t('field.apiQuery.tooltip', 'Optional JSON query parameters.') },
+      ],
+      configProperties,
+      outputs: [
+        ...commonOutputs,
+        { key: 'data', type: 'object', dataType: 'any', children: [] },
+      ],
+      run: async (ctx, args) => {
+        if (!args.path || !String(args.path).startsWith('/')) {
+          return { success: false, message: t('message.needApiPath', 'API path must start with /.') }
+        }
+        const parseObject = value => {
+          if (value == null || value === '') return undefined
+          if (typeof value === 'object') return value
+          try { return JSON.parse(value) } catch { throw new Error('Invalid JSON input') }
+        }
+        try {
+          const data = await requestRaw(args, args.method || 'GET', args.path, parseObject(args.body), parseObject(args.query))
+          return { success: true, message: t('message.apiRequestOk', 'Mira API request succeeded.'), data }
+        } catch (error) {
+          ctx.logger.error(`Mira API request failed: ${error?.message || error}`)
+          return { success: false, message: error?.message || String(error) }
+        }
       },
     },
   ]

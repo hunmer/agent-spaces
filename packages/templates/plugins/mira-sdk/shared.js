@@ -85,4 +85,24 @@ async function request(config, fn) {
   }
 }
 
-module.exports = { getClient, resetClient, request, isAuthError, hasCredentials }
+/**
+ * 调用 SDK 尚未封装的 API，复用 MiraClient 的 axios 实例以保持鉴权、baseURL 和超时配置。
+ */
+async function requestRaw(config, method, path, body, query) {
+  return request(config, async client => {
+    const http = client.getHttpClient()
+    const axios = http.getAxiosInstance()
+    const response = await axios.request({
+      method: String(method || 'GET').toLowerCase(),
+      url: path,
+      params: query && typeof query === 'object' ? query : undefined,
+      data: body,
+    })
+    const data = response.data
+    return data && typeof data === 'object' && Object.prototype.hasOwnProperty.call(data, 'data')
+      ? data.data
+      : data
+  })
+}
+
+module.exports = { getClient, resetClient, request, requestRaw, isAuthError, hasCredentials }

@@ -4,7 +4,7 @@
   "icon": "icon.png",
   "name_zh": "Mira SDK",
   "name_en": "Mira SDK",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Mira App Server SDK，支持素材库管理、文件上传下载、插件管理、设备通信、系统监控等操作。",
   "description_zh": "Mira App Server SDK，支持素材库管理、文件上传下载、插件管理、设备通信、系统监控等操作。",
   "description_en": "Mira App Server SDK for library management, file operations, plugin management, device communication, and system monitoring.",

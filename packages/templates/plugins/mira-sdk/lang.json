@@ -73,6 +73,11 @@
     "action.foldersList.description": "获取素材库中所有文件夹。",
     "action.folderCreate.label": "创建文件夹",
     "action.folderCreate.description": "在素材库中创建文件夹。",
+    "action.apiRequest.label": "Mira API 请求",
+    "action.apiRequest.description": "调用任意 Mira API，包括 SDK 尚未封装的端点。",
+    "field.apiPath.tooltip": "以 / 开头的 API 路径，例如 /api/devices/:id/messages。",
+    "field.apiBody.tooltip": "可选 JSON 请求体。",
+    "field.apiQuery.tooltip": "可选 JSON 查询参数。",
     "field.timeout.tooltip": "最大等待时间（毫秒）。",
     "field.interval.tooltip": "检查间隔（毫秒）。",
     "field.filePath.tooltip": "本地文件路径。",
@@ -123,6 +128,8 @@
     "message.foldersFetched": "文件夹已获取",
     "message.needLibAndName": "需要素材库 ID 和文件夹名称。",
     "message.folderCreated": "文件夹已创建: {name}"
+    ,"message.needApiPath": "API 路径必须以 / 开头。"
+    ,"message.apiRequestOk": "Mira API 请求成功。"
   },
   "en": {
     "category": "Mira SDK",
@@ -174,6 +181,11 @@
     "action.foldersList.description": "Get all folders in a library.",
     "action.folderCreate.label": "Create Folder",
     "action.folderCreate.description": "Create a folder in a library.",
+    "action.apiRequest.label": "Mira API Request",
+    "action.apiRequest.description": "Call any Mira API, including endpoints not wrapped by the SDK.",
+    "field.apiPath.tooltip": "API path starting with /, for example /api/devices/:id/messages.",
+    "field.apiBody.tooltip": "Optional JSON request body.",
+    "field.apiQuery.tooltip": "Optional JSON query parameters.",
     "message.healthOk": "Server is healthy",
     "message.serverReady": "Server is ready",
     "message.serverNotReady": "Server not ready within timeout",
@@ -182,5 +194,7 @@
     "message.fileDownloaded": "File downloaded",
     "message.fileDeleted": "File deleted",
     "message.folderCreated": "Folder created: {name}"
+    ,"message.needApiPath": "API path must start with /.",
+    "message.apiRequestOk": "Mira API request succeeded."
   }
 }

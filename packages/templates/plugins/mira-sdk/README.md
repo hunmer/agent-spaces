@@ -93,6 +93,14 @@ Mira 是一套围绕「素材库 / 设备 / 插件」的本地应用服务器，
 | `mira_folders_list` | 获取素材库下的文件夹 |
 | `mira_folder_create` | 在素材库下创建文件夹 |
 
+### 通用 API
+
+| 节点 | 用途 |
+| --- | --- |
+| `mira_api_request` | 调用任意 Mira API，覆盖 SDK 尚未封装的端点和插件动态路由 |
+
+覆盖报告中的设备消息/测试/消息记录、素材库查询/执行/Schema/记录、插件商店/启停、用户头像资源及 `/api/plugin-routes` 等端点，可通过该节点直接调用。`path` 必须以 `/` 开头，`body` 和 `query` 使用 JSON。
+
 ## 节点字段速查
 
 ### mira_system_wait_ready
