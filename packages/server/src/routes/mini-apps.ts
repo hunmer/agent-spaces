@@ -615,8 +615,17 @@ router.get('/:id/agents', (req: Request<{ id: string }>, res: Response) => {
     const project = getProject(req.params.id);
     if (!project) { res.status(404).json({ error: 'Project not found' }); return; }
     const configs = readAgentsConfig(req.params.id) ?? [];
+    // 预览聊天只展示 manifest.agents 声明的 agent；agents.json 可能包含
+    // 运行期间或历史上额外注册的 agent，不能把它们暴露到 mini-app UI。
+    const manifestAgentIds = new Set(
+      (Array.isArray(project.agents) ? project.agents : [])
+        .filter((agent): agent is Record<string, unknown> => !!agent && typeof agent === 'object' && !Array.isArray(agent))
+        .map((agent) => typeof agent.id === 'string' ? agent.id : '')
+        .filter(Boolean),
+    );
     const agents = configs
       .filter((c): c is Record<string, unknown> => !!c && typeof c === 'object')
+      .filter((c) => manifestAgentIds.has(String(c.id)))
       .map((c) => ({
         id: String(c.id),
         name: String(c.name ?? c.id),
