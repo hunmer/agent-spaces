@@ -22,6 +22,7 @@
     "hooks": "@/hooks"
   },
   "registries": {
+    "@coss": "https://coss.com/ui/r/{name}.json",
     "@shadcn-studio": "https://shadcnstudio.com/r/{name}.json",
     "@ss-components": "https://shadcnstudio.com/r/components/{name}.json",
     "@ss-blocks": "https://shadcnstudio.com/r/blocks/{name}.json",

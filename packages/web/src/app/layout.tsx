@@ -13,6 +13,23 @@ import { Toaster } from "sonner";
 import "flexlayout-react/style/light.css";
 import "tippy.js/dist/tippy.css";
 import "./globals.css";
+import { Inter, Geist_Mono } from "next/font/google";
+import { cn } from "@/lib/utils";
+
+const geistMono = Geist_Mono({
+  subsets: ["latin"],
+  variable: "--font-mono",
+});
+
+const interHeading = Inter({
+  subsets: ["latin"],
+  variable: "--font-heading",
+});
+
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-sans",
+});
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -39,7 +56,12 @@ export default function RootLayout({
   return (
     <html
       lang=""
-      className="h-[var(--app-content-height)] overflow-hidden antialiased"
+      className={cn(
+        "h-[var(--app-content-height)] overflow-hidden antialiased font-sans",
+        inter.variable,
+        interHeading.variable,
+        geistMono.variable,
+      )}
       suppressHydrationWarning
     >
       <head />

@@ -80,6 +80,10 @@
   --color-success-foreground: var(--success-foreground);
   --color-success: var(--success);
   --color-destructive-foreground: var(--destructive-foreground);
+  /* Coss code surface tokens */
+  --color-code: var(--code);
+  --color-code-foreground: var(--code-foreground);
+  --color-code-highlight: var(--code-highlight);
   @keyframes shine {
   0% {
     background-position: 100%;
@@ -144,6 +148,9 @@
   --warning-foreground: var(--color-yellow-900);
   --invert: var(--color-zinc-900);
   --invert-foreground: var(--color-zinc-50);
+  --code: var(--card);
+  --code-foreground: var(--foreground);
+  --code-highlight: color-mix(in srgb, var(--foreground) 4%, transparent);
 }
 
 :root.dark {
@@ -187,6 +194,9 @@
   --warning-foreground: var(--color-yellow-600);
   --invert: var(--color-zinc-700);
   --invert-foreground: var(--color-zinc-50);
+  --code: var(--card);
+  --code-foreground: var(--foreground);
+  --code-highlight: color-mix(in srgb, var(--foreground) 4%, transparent);
 }
 
 @layer base {
@@ -1077,4 +1087,8 @@
 /* 测量阶段强制显示文字，确保测得真实所需宽度 */
 [data-measuring="true"] .bar-label {
   display: inline !important;
+}
+
+.dark {
+  --destructive-foreground: var(--color-red-400);
 }
