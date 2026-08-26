@@ -163,10 +163,20 @@ router.put('/:id/configs/content', (req: Request<{ id: string }>, res: Response)
 // Body: { name, payload } -> { ok, result }. Handler runs server-side as the
 // single writer of configs (ctx.writeConfig/updateConfig broadcast configChanged).
 router.post('/:id/services/invoke', async (req: Request<{ id: string }>, res: Response) => {
+  const startedAt = performance.now();
   try {
     const { name, payload } = req.body ?? {};
     if (!name) { res.status(400).json({ error: 'name is required' }); return; }
     const result = await invokeService(req.params.id, name, payload);
+    const durationMs = performance.now() - startedAt;
+    if (durationMs >= 200) {
+      console.warn('[mini-app-services] slow invoke', {
+        projectId: req.params.id,
+        name,
+        durationMs: Math.round(durationMs),
+        payloadBytes: Buffer.byteLength(JSON.stringify(payload ?? null)),
+      });
+    }
     res.json({ ok: true, result });
   } catch (error: any) {
     res.status(error.message.includes('not found') ? 404 : 500).json({ error: error.message });

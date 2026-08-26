@@ -2,6 +2,10 @@ import { CANVAS_CONFIG, HISTORY_CONFIG, ASSET_LIBRARY_CONFIG, LAST_PARAMS_CONFIG
 
 const AS = () => window.AgentSpaces;
 
+// save_canvas 是整张画布覆盖写入。请求耗时超过防抖窗口时，只保留每个工作区
+// 最新快照，避免多个 invoke 并发落盘后产生旧状态回退。
+const canvasSaveQueues = new Map();
+
 /**
  * 读取画布状态（从服务端 config 缓存）。
  * @param {string} workspaceId 当前工作区 id（决定读取哪个隔离的 canvas.json）
@@ -20,7 +24,42 @@ export function loadCanvas(workspaceId) {
 export async function saveCanvas(workspaceId, state) {
   const as = AS();
   if (!as?.invokeService) return;
-  await as.invokeService('save_canvas', { workspaceId, state });
+  const key = workspaceId || 'default';
+  let queue = canvasSaveQueues.get(key);
+  if (!queue) {
+    queue = { inFlight: false, hasPending: false, pendingState: null, pendingWaiters: [] };
+    canvasSaveQueues.set(key, queue);
+  }
+  queue.pendingState = state;
+  queue.hasPending = true;
+  const result = new Promise((resolve, reject) => queue.pendingWaiters.push({ resolve, reject }));
+
+  if (!queue.inFlight) {
+    queue.inFlight = true;
+    const flush = async () => {
+      const stateToSave = queue.pendingState;
+      const waiters = queue.pendingWaiters;
+      queue.pendingState = null;
+      queue.hasPending = false;
+      queue.pendingWaiters = [];
+      try {
+        await as.invokeService('save_canvas', { workspaceId, state: stateToSave });
+        waiters.forEach(({ resolve }) => resolve());
+      } catch (error) {
+        waiters.forEach(({ reject }) => reject(error));
+      } finally {
+        queue.inFlight = false;
+        if (queue.hasPending) {
+          queue.inFlight = true;
+          flush();
+        } else if (!queue.pendingWaiters.length) {
+          canvasSaveQueues.delete(key);
+        }
+      }
+    };
+    flush();
+  }
+  await result;
 }
 
 /** 工作区隔离的 canvas.json 路径（兼容旧版：无 workspaceId 时回落顶层 canvas.json） */
@@ -111,4 +150,3 @@ export function savePanelLayout(layout, extra = {}) {
   if (!as?.writeConfigJson) return;
   as.writeConfigJson(PANEL_LAYOUT_CONFIG, { layout, ...extra, savedAt: Date.now() }).catch(() => {});
 }
-
