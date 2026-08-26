@@ -268,6 +268,37 @@ export default [
     },
   },
   {
+    name: 'create_canvas_version',
+    description: '备份当前画布的完整节点、连线和分组状态，返回版本 id。',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        name: { type: 'string', description: '版本名称（可选）' },
+        workspaceId: { type: 'string', description: '工作区 id（可选）' },
+      },
+    },
+  },
+  {
+    name: 'list_canvas_versions',
+    description: '列出当前工作区保存的画布历史版本及节点/连线数量。',
+    inputSchema: {
+      type: 'object',
+      properties: { workspaceId: { type: 'string', description: '工作区 id（可选）' } },
+    },
+  },
+  {
+    name: 'restore_canvas_version',
+    description: '将画布恢复到指定历史版本；会替换当前全部节点、连线和分组。',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        versionId: { type: 'string', description: '版本 id（来自 list_canvas_versions）' },
+        workspaceId: { type: 'string', description: '工作区 id（可选）' },
+      },
+      required: ['versionId'],
+    },
+  },
+  {
     name: 'connect_nodes',
     description: '把两个节点连起来（source 的图片或文本产物作为 target 输入）。文本目标有多个字段时必须传 inputTarget，可先用 get_node_params(targetType) 查询字段 key。',
     inputSchema: {

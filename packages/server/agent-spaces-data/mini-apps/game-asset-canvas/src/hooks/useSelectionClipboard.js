@@ -9,6 +9,8 @@ import { IMAGE_TAGS } from '../utils/constants';
 import { imageFilesFromClipboardData, readClipboardImageFiles } from '../utils/clipboard-images';
 import { collectGroupNodeIds, findSmallestGroupContainingNodeIds } from '../utils/group-helpers';
 
+let propertiesClipboard = null;
+
 /**
  * 节点选中状态 + 多选对齐分布 + 批量删除 + 复制粘贴。
  * 从 Canvas.jsx 抽出（原 B3 选中部分 + B9 对齐 + B10 删除/复制粘贴）。
@@ -93,7 +95,7 @@ export default function useSelectionClipboard({
     addImageNodesFromUrls([url], { tags: [IMAGE_TAGS.history] });
   }, [addImageNodesFromUrls]);
 
-  // —— 复制粘贴节点（Ctrl+C / Ctrl+V）——
+  // —— 复制粘贴节点（Ctrl+C / Ctrl+V）与属性（Ctrl+Shift+C / Ctrl+Shift+V）——
   // 剪贴板为模块级内存（utils/clipboard.js），切换工作区后仍可粘贴 → 跨工作区复制。
   // 焦点在 input/textarea/contenteditable 时不拦截，让浏览器走原生复制/粘贴。
   const handleCopy = useCallback(() => {
@@ -107,6 +109,23 @@ export default function useSelectionClipboard({
     }
   }, []);
 
+  const handleCopyProperties = useCallback((nodeId) => {
+    const source = nodesRef.current.find((node) => node.id === nodeId)
+      || nodesRef.current.find((node) => node.selected);
+    if (!source) return;
+    propertiesClipboard = { ...source, data: { ...(source.data || {}), params: { ...(source.data?.params || {}) } } };
+  }, []);
+
+  const requestPropertyPaste = useCallback((nodeId) => {
+    const sourceNode = propertiesClipboard;
+    if (!sourceNode) return;
+    const targets = nodeId
+      ? nodesRef.current.filter((node) => node.id === nodeId)
+      : nodesRef.current.filter((node) => node.selected);
+    if (!canApplyClipboardProperties(sourceNode, targets)) return;
+    setPropertyPaste({ sourceNode, targetIds: targets.map((node) => node.id) });
+  }, []);
+
   const commitPaste = useCallback((result) => {
     setNodes((prev) => [...prev, ...result.nodes]);
     setEdges((prev) => [...prev, ...result.edges]);
@@ -116,12 +135,6 @@ export default function useSelectionClipboard({
     if (!hasClipboard()) return;
     const result = pasteNodes({ genId, targetCenter: getPasteCenter?.() });
     if (!result) return;
-    const sourceNode = result.nodes.length === 1 ? result.nodes[0] : null;
-    const targets = nodesRef.current.filter((node) => node.selected);
-    if (canApplyClipboardProperties(sourceNode, targets)) {
-      setPropertyPaste({ result, sourceNode, targetIds: targets.map((node) => node.id) });
-      return;
-    }
     commitPaste(result);
   }, [commitPaste, getPasteCenter]);
 
@@ -137,7 +150,7 @@ export default function useSelectionClipboard({
 
   const continuePaste = useCallback(() => {
     if (!propertyPaste) return;
-    commitPaste(propertyPaste.result);
+    if (propertyPaste.result) commitPaste(propertyPaste.result);
     setPropertyPaste(null);
   }, [commitPaste, propertyPaste]);
 
@@ -191,7 +204,7 @@ export default function useSelectionClipboard({
     setNodes((prev) => prev.map((n) => ({ ...n, selected: false })));
   }, [setNodes]);
 
-  // keydown：Ctrl/Cmd+A/C/V，跳过 input/textarea/contenteditable。
+  // keydown：Ctrl/Cmd+A/C/V 与 Ctrl/Cmd+Shift+C/V，跳过 input/textarea/contenteditable。
   // 用 nodesRef 读最新值，deps 不含 nodes → effect 只订阅一次（避免每次 nodes 变重新绑监听）。
   useEffect(() => {
     const isEditableTarget = (target) => {
@@ -205,9 +218,16 @@ export default function useSelectionClipboard({
       if (e.key === 'a' || e.key === 'A') {
         e.preventDefault();
         handleKeyboardSelectAll();
+      } else if ((e.key === 'v' || e.key === 'V') && e.shiftKey) {
+        const target = nodesRef.current.find((node) => node.selected);
+        if (target) { e.preventDefault(); requestPropertyPaste(target.id); }
       } else if (e.key === 'c' || e.key === 'C') {
         const selected = nodesRef.current.filter((n) => n.selected);
-        if (selected.length) { e.preventDefault(); handleCopy(); }
+        if (selected.length) {
+          e.preventDefault();
+          if (e.shiftKey) handleCopyProperties(selected[0].id);
+          else handleCopy();
+        }
       }
     };
     const onPaste = (event) => {
@@ -222,7 +242,7 @@ export default function useSelectionClipboard({
         void onPasteImageFiles(imageFiles);
         return;
       }
-      if (hasClipboard()) {
+      if (hasClipboard() && !event.shiftKey) {
         event.preventDefault();
         requestNodePaste();
       }
@@ -233,13 +253,14 @@ export default function useSelectionClipboard({
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('paste', onPaste);
     };
-  }, [handleCopy, handleKeyboardSelectAll, onPasteImageFiles, requestNodePaste]);
+  }, [handleCopy, handleCopyProperties, handleKeyboardSelectAll, onPasteImageFiles, requestNodePaste, requestPropertyPaste]);
 
   return {
     selectionCount, setSelectionCount,
     onSelectionChange,
     alignDistribute, applyGridLayout, deleteSelectedNodes, handleUseImage,
     handleCopy, handlePaste,
+    handleCopyProperties, requestPropertyPaste,
     propertyPaste, applyProperties, continuePaste, cancelPropertyPaste,
     handleSelectAll, handleInvertSelect, handleClearSelection,
   };

@@ -498,6 +498,29 @@ export default function useCanvasAgentRpc({ nodes, edges, groups = [], createNod
             };
             break;
           }
+          case 'canvas.getCanvasSnapshot': {
+            result = {
+              ok: true,
+              nodes: curNodes.map((node) => ({ ...node, position: { ...node.position }, data: { ...(node.data || {}) } })),
+              edges: curEdges.map((edge) => ({ ...edge, data: edge.data ? { ...edge.data } : edge.data })),
+              groups: curGroups.map((group) => ({ ...group })),
+            };
+            break;
+          }
+          case 'canvas.restoreCanvas': {
+            const restoredNodes = Array.isArray(payload.nodes) ? payload.nodes : [];
+            const restoredEdges = Array.isArray(payload.edges) ? payload.edges : [];
+            const restoredGroups = Array.isArray(payload.groups) ? payload.groups : [];
+            ctxRef.current.nodes = restoredNodes;
+            ctxRef.current.edges = restoredEdges;
+            ctxRef.current.groups = restoredGroups;
+            setNodesFn(restoredNodes);
+            setEdgesFn(restoredEdges);
+            setGroupsFn(restoredGroups);
+            focusNodesFn?.(restoredNodes.map((node) => node.id).filter(Boolean));
+            result = { ok: true, nodeCount: restoredNodes.length, edgeCount: restoredEdges.length, groupCount: restoredGroups.length };
+            break;
+          }
           case 'canvas.arrangeGroup': {
             const groupId = typeof payload.groupId === 'string' ? payload.groupId.trim() : '';
             const groupName = typeof payload.groupName === 'string' ? payload.groupName.trim() : '';

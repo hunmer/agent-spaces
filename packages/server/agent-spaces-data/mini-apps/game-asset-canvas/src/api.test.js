@@ -58,3 +58,45 @@ test('add_nodes forwards autoLayout options to the canvas RPC', async () => {
     grid: { rows: 2, columns: 1, horizontalGap: 20, verticalGap: 30 },
   });
 });
+
+test('arrange_group accepts grid gaps greater than 300', async () => {
+  const requests = [];
+  const result = await api.arrange_group({
+    groupName: 'large-gap',
+    grid: { rows: 1, columns: 2, horizontalGap: 1200, verticalGap: 800 },
+  }, {
+    requestClient: async (type, payload) => {
+      requests.push({ type, payload });
+      return { ok: true, groupName: 'large-gap', arrangedCount: 2 };
+    },
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(requests[0].payload.grid.horizontalGap, 1200);
+  assert.equal(requests[0].payload.grid.verticalGap, 800);
+});
+
+test('canvas versions can be created, listed, and restored', async () => {
+  const config = new Map();
+  const requests = [];
+  const ctx = {
+    readConfig: (path) => config.get(path),
+    writeConfig: (path, value) => config.set(path, value),
+    broadcast: () => {},
+    requestClient: async (type, payload) => {
+      requests.push({ type, payload });
+      if (type === 'canvas.getCanvasSnapshot') {
+        return { ok: true, nodes: [{ id: 'n1', type: 'note', data: { text: 'v1' }, position: { x: 1, y: 2 } }], edges: [], groups: [] };
+      }
+      return { ok: true };
+    },
+  };
+  const created = await api.create_canvas_version({ name: '版本一' }, ctx);
+  const listed = await api.list_canvas_versions({}, ctx);
+  const restored = await api.restore_canvas_version({ versionId: created.id }, ctx);
+  assert.equal(created.ok, true);
+  assert.equal(listed.total, 1);
+  assert.equal(restored.ok, true);
+  assert.equal(requests.at(-1).type, 'canvas.restoreCanvas');
+  assert.equal(requests.at(-1).payload.nodes[0].data.text, 'v1');
+});

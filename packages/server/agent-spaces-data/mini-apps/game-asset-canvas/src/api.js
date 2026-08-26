@@ -145,9 +145,9 @@ function parseGroupLayout(value, fieldName = 'groupLayout') {
     if (!Number.isInteger(rows) || rows < 1 || !Number.isInteger(columns) || columns < 1) {
       return { ok: false, message: `${fieldName}.grid.rows 和 columns 必须是大于等于 1 的整数` };
     }
-    if (!Number.isFinite(horizontalGap) || horizontalGap < 0 || horizontalGap > 300
-      || !Number.isFinite(verticalGap) || verticalGap < 0 || verticalGap > 300) {
-      return { ok: false, message: `${fieldName}.grid.horizontalGap 和 verticalGap 必须是 0 到 300 的数字` };
+    if (!Number.isFinite(horizontalGap) || horizontalGap < 0
+      || !Number.isFinite(verticalGap) || verticalGap < 0) {
+      return { ok: false, message: `${fieldName}.grid.horizontalGap 和 verticalGap 必须是非负有限数字` };
     }
     grid = { rows, columns, horizontalGap, verticalGap };
   }
@@ -576,6 +576,60 @@ export default {
       })),
       message: `画布当前 ${nodes.length} 个节点 / ${edges.length} 条连线 / ${groups.length} 个分组`,
     };
+  },
+
+  /** 创建画布版本备份。 */
+  create_canvas_version: async (input, ctx) => {
+    const name = asString(input?.name) || `画布版本 ${new Date().toLocaleString('zh-CN')}`;
+    const workspaceId = resolveWorkspaceId(ctx, input);
+    const snapshot = await rpc(ctx, 'canvas.getCanvasSnapshot', {});
+    if (snapshot?.ok === false) return snapshot;
+    const version = {
+      id: `cv-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
+      name,
+      createdAt: Date.now(),
+      snapshot: {
+        nodes: Array.isArray(snapshot?.nodes) ? snapshot.nodes : [],
+        edges: Array.isArray(snapshot?.edges) ? snapshot.edges : [],
+        groups: Array.isArray(snapshot?.groups) ? snapshot.groups : [],
+      },
+    };
+    const path = `workspaces/${workspaceId}/canvas-versions.json`;
+    const current = ctx.readConfig(path);
+    const versions = Array.isArray(current?.versions) ? current.versions : [];
+    const next = { versions: [version, ...versions].slice(0, 100) };
+    ctx.writeConfig(path, next);
+    ctx.broadcast?.('miniApp.configChanged', { path, value: next });
+    return { ok: true, workspaceId, id: version.id, name, createdAt: version.createdAt, nodeCount: version.snapshot.nodes.length, edgeCount: version.snapshot.edges.length, message: `已备份画布版本「${name}」` };
+  },
+
+  /** 列出画布历史版本。 */
+  list_canvas_versions: async (input, ctx) => {
+    const workspaceId = resolveWorkspaceId(ctx, input);
+    const path = `workspaces/${workspaceId}/canvas-versions.json`;
+    const current = ctx.readConfig(path);
+    const versions = (Array.isArray(current?.versions) ? current.versions : []).map((version) => ({
+      id: version.id,
+      name: version.name,
+      createdAt: version.createdAt,
+      nodeCount: version.snapshot?.nodes?.length || 0,
+      edgeCount: version.snapshot?.edges?.length || 0,
+    }));
+    return { ok: true, workspaceId, total: versions.length, versions, message: `共有 ${versions.length} 个画布版本` };
+  },
+
+  /** 恢复指定画布版本。 */
+  restore_canvas_version: async (input, ctx) => {
+    const versionId = asString(input?.versionId) || asString(input?.id);
+    if (!versionId) return { ok: false, message: 'versionId 必填（先调用 list_canvas_versions）' };
+    const workspaceId = resolveWorkspaceId(ctx, input);
+    const path = `workspaces/${workspaceId}/canvas-versions.json`;
+    const current = ctx.readConfig(path);
+    const version = (Array.isArray(current?.versions) ? current.versions : []).find((item) => item.id === versionId);
+    if (!version) return { ok: false, message: `未找到画布版本：${versionId}` };
+    const result = await rpc(ctx, 'canvas.restoreCanvas', version.snapshot);
+    if (result?.ok === false) return result;
+    return { ok: true, workspaceId, versionId, name: version.name, nodeCount: version.snapshot.nodes.length, edgeCount: version.snapshot.edges.length, message: `已恢复画布版本「${version.name}」` };
   },
 
   /**

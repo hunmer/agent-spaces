@@ -1072,8 +1072,14 @@ export default function Canvas({ hostConfig }) {
     if (!result) return;
     setNodes((prev) => [...prev, ...result.nodes]);
     setEdges((prev) => [...prev, ...result.edges]);
+    const clonedIds = new Set(result.nodes.map((item) => item.id));
+    setGroups((prev) => prev.map((group) => (
+      group.childNodeIds?.includes(nodeId)
+        ? { ...group, childNodeIds: [...group.childNodeIds, ...clonedIds] }
+        : group
+    )));
     toast.success('已克隆节点');
-  }, [setNodes, setEdges]);
+  }, [setNodes, setEdges, setGroups]);
   // 定位到历史记录：切到 history tab + 设 focusNodeId 让 HistoryTab 滚动高亮。
   // focusNodeId 用一个新值触发（即使同节点再次定位也能重新滚动）。
   const handleLocateHistory = useCallback((nodeId) => {
@@ -1109,9 +1115,11 @@ export default function Canvas({ hostConfig }) {
   const runNodeContextAction = useCallback((action, nodeId) => {
     setNodeContextMenu(null);
     if (action === 'clone') handleCloneNode(nodeId);
+    else if (action === 'copyProperties') selection.handleCopyProperties(nodeId);
+    else if (action === 'pasteProperties') selection.requestPropertyPaste(nodeId);
     else if (action === 'locateHistory') handleLocateHistory(nodeId);
     else if (action === 'delete') handleDeleteNodeWithHistoryCheck(nodeId);
-  }, [handleCloneNode, handleLocateHistory, handleDeleteNodeWithHistoryCheck]);
+  }, [handleCloneNode, handleLocateHistory, handleDeleteNodeWithHistoryCheck, selection.handleCopyProperties, selection.requestPropertyPaste]);
   // 临时：从画布节点产出反向重建生成记录（用于误清空历史后恢复）。
   // 字段约定参考 useNodeExecutions 各 addHistory 调用（images/mediaType/text/prompt/model）。
   // 一个 output 快照派生一条 history item（audio/video/text/images 任一命中）。
