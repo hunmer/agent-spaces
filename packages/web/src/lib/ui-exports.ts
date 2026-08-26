@@ -148,4 +148,9 @@ export { default as dagre, graphlib } from '@dagrejs/dagre';
 export { toast, Toaster } from 'sonner';
 
 // tiny-pinyin（拼音转换）—— 供 mini-app 做中文拼音搜索/匹配（parse 返回 {source,type,target}[]）
-export { isSupported as pinyinIsSupported, parse as pinyinParse, patchDict as pinyinPatchDict, genToken as pinyinGenToken, convertToPinyin as pinyinConvertToPinyin } from 'tiny-pinyin';
+export { isSupported as pinyinIsSupported, parse as pinyinParse, patchDict as pinyinPatchDict, convertToPinyin as pinyinConvertToPinyin } from 'tiny-pinyin';
+import * as TinyPinyin from 'tiny-pinyin';
+// tiny-pinyin 1.3.2 的 d.ts 未声明 genToken（运行时存在，源码注释为 inner usage）
+export const pinyinGenToken = (TinyPinyin as typeof TinyPinyin & {
+  genToken: (ch: string) => { source: string; type?: number; target?: string };
+}).genToken;

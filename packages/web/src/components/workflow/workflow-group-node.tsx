@@ -277,7 +277,7 @@ export function WorkflowGroupOverlay({
       }
       const targetId = getNodeAtScreenPoint(upEvent.clientX, upEvent.clientY);
       if (targetId && targetId !== group.id && !group.childNodeIds.includes(targetId)) {
-        onConnect(group.id, targetId);
+        onConnect?.(group.id, targetId);
       }
     };
     const handlePointerCancel = () => {
