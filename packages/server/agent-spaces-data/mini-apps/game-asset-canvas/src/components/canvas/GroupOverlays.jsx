@@ -103,6 +103,7 @@ export default function GroupOverlays({
               onConnectGroup={(sourceGroupId, targetGroupId) => {
                 setBindingDialog({ sourceGroupId, targetGroupId });
               }}
+              onDisconnectGroup={onDisconnectOutputBinding}
               sourceGroupName={groups.find((item) => (
                 item.id === group.batchExecution?.assets?.binding?.sourceGroupId
               ))?.name}

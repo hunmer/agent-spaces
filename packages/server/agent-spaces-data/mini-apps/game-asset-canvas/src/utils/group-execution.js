@@ -124,7 +124,12 @@ export function collectGroupOutputAssets(nodes, sourceNodeIds, binding) {
     if (!sourceIds.has(node.id)) continue;
     if (normalized.filter.mode === GROUP_OUTPUT_FILTER_MODES.nodes && !selectedNodeIds.has(node.id)) continue;
     if (normalized.filter.mode === GROUP_OUTPUT_FILTER_MODES.types && !selectedTypes.has(node.type)) continue;
-    const images = Array.isArray(node.data?.output?.images) ? node.data.output.images : [];
+    const outputImages = Array.isArray(node.data?.output?.images) ? node.data.output.images : [];
+    const images = outputImages.length > 0
+      ? outputImages
+      : node.type === NODE_TYPES.imageDisplay && Array.isArray(node.data?.images)
+        ? node.data.images
+        : [];
     images.forEach((url, index) => {
       if (typeof url !== 'string' || !url) return;
       assets.push({

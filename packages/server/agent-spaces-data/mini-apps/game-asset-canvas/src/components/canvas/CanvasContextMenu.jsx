@@ -7,6 +7,7 @@ import {
 } from '@agent-spaces/ui';
 import { createNodePickerOptions } from './AddNodeMenuItems';
 import ImageSelectionMenuItems from './ImageSelectionMenuItems';
+import { selectContextMenuNode } from '../../utils/canvas-context-menu';
 
 /**
  * 画布右键菜单。
@@ -33,10 +34,12 @@ import ImageSelectionMenuItems from './ImageSelectionMenuItems';
 export default function CanvasContextMenu({
   triggerElement, children, onPick, imageSelectionMenuProps, onSelectContextImage,
 }) {
+  const [open, setOpen] = useState(false);
   const [showImageMenu, setShowImageMenu] = useState(false);
 
-  const handleOpenChange = (open, eventDetails) => {
-    if (!open) {
+  const handleOpenChange = (nextOpen, eventDetails) => {
+    if (!nextOpen) {
+      setOpen(false);
       setShowImageMenu(false);
       return;
     }
@@ -59,10 +62,13 @@ export default function CanvasContextMenu({
     } else {
       setShowImageMenu(false);
     }
+    setOpen(true);
   };
 
+  const nodeOptions = createNodePickerOptions(onPick);
+
   return (
-    <ContextMenu onOpenChange={handleOpenChange}>
+    <ContextMenu open={open} onOpenChange={handleOpenChange}>
       <ContextMenuTrigger render={triggerElement}>
         {children}
       </ContextMenuTrigger>
@@ -86,8 +92,8 @@ export default function CanvasContextMenu({
           <ContextMenuGroup>
             <SearchSelect
               value=""
-              onChange={(value) => createNodePickerOptions(onPick).find((option) => option.value === value)?.onSelect?.()}
-              options={createNodePickerOptions(onPick)}
+              onChange={(value) => selectContextMenuNode(nodeOptions, value, () => setOpen(false))}
+              options={nodeOptions}
               placeholder="选择节点"
               searchPlaceholder="搜索节点（支持拼音）"
               allowCustom={false}

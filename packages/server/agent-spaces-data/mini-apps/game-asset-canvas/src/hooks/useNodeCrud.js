@@ -11,6 +11,7 @@ import { resolveStoryboardHandleAssets } from '../utils/storyboard-assets.js';
 import { genId, autoPosition } from '../utils/canvas-id';
 import { autoLayoutSubset, autoLayoutTopLevel } from '../utils/layout';
 import { downloadJson, serializeCanvas, pickAndParseCanvasFile } from '../utils/export';
+import { addNodeToContextGroup, getContextMenuGroupId } from '../utils/canvas-context-menu';
 import {
   getImageDisplayNodeSize,
   loadImageDimensions,
@@ -466,17 +467,24 @@ export default function useNodeCrud({
   // 画布右键：记录右键处的画布坐标供建节点
   const handleContextMenu = useCallback((event) => {
     const flow = reactFlow.screenToFlowPosition({ x: event.clientX, y: event.clientY });
-    setContextMenu({ flowX: flow.x, flowY: flow.y });
+    setContextMenu({
+      flowX: flow.x,
+      flowY: flow.y,
+      groupId: getContextMenuGroupId(event.target),
+    });
   }, [reactFlow, setContextMenu]);
 
   // 右键菜单点击某节点类型：在右键位置创建节点
   const handleAddAtMenu = useCallback((type, dataPatch) => {
     setContextMenu((cur) => {
       const p = cur ? { x: cur.flowX, y: cur.flowY } : null;
-      createNodeAt(type, p, dataPatch);
+      const newId = createNodeAt(type, p, dataPatch);
+      if (cur?.groupId) {
+        setGroups((prev) => addNodeToContextGroup(prev, cur.groupId, newId));
+      }
       return null;
     });
-  }, [createNodeAt, setContextMenu]);
+  }, [createNodeAt, setContextMenu, setGroups]);
 
   const handleClear = useCallback(() => {
     setNodes([]);

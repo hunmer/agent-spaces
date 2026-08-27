@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { FileUpload, Loader2, Play, Slider, Spline, Square, X } from '@agent-spaces/ui';
+import { FileUpload, Loader2, Play, Slider, Spline, Square, Unlink, X } from '@agent-spaces/ui';
 import {
   GROUP_EXECUTION_MODES,
   MAX_GROUP_EXECUTION_COUNT,
@@ -23,6 +23,7 @@ export default function GroupExecutionToolbar({
   onStopAll,
   runAllState,
   onConnectGroup,
+  onDisconnectGroup,
   sourceGroupName,
 }) {
   const execution = group.batchExecution;
@@ -44,7 +45,6 @@ export default function GroupExecutionToolbar({
   const [countDraft, setCountDraft] = useState(String(target));
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
-  const [hoveredAssetId, setHoveredAssetId] = useState(null);
   const [runSelectionOpen, setRunSelectionOpen] = useState(false);
 
   useEffect(() => setCountDraft(String(target)), [target]);
@@ -179,6 +179,17 @@ export default function GroupExecutionToolbar({
             onConnect={onConnectGroup}
           />
         </div>
+        {outputBinding && (
+          <button
+            type="button"
+            title="解除与来源分组的连接"
+            disabled={toolbarBusy || group.locked}
+            onClick={() => onDisconnectGroup?.(group.id)}
+            className="flex h-6 w-6 shrink-0 items-center justify-center rounded text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive disabled:pointer-events-none disabled:opacity-40"
+          >
+            <Unlink className="h-3.5 w-3.5" />
+          </button>
+        )}
       </div>
 
       {mode === GROUP_EXECUTION_MODES.count ? (
@@ -226,11 +237,6 @@ export default function GroupExecutionToolbar({
                 key={run.id}
                 className="h-20 w-16 shrink-0"
                 style={{ position: 'relative' }}
-                onMouseEnter={() => {
-                  setHoveredAssetId(run.id);
-                  console.debug('[GroupExecutionDebug] asset thumbnail hover', { groupId: group.id, runId: run.id });
-                }}
-                onMouseLeave={() => setHoveredAssetId((current) => (current === run.id ? null : current))}
               >
                 <button
                   type="button"
@@ -242,7 +248,7 @@ export default function GroupExecutionToolbar({
                 >
                   <img src={run.url} alt={run.name || `素材 ${index + 1}`} draggable={false} className="h-full w-full object-cover" />
                 </button>
-                {hoveredAssetId === run.id && !outputBinding && (
+                {!outputBinding && (
                   <button
                     type="button"
                     disabled={toolbarBusy}

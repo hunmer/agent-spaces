@@ -160,7 +160,14 @@ export function htmlToPlainText(html) {
   // 块级元素前补换行，保证段落/标题边界
   const BLOCK = 'P,DIV,H1,H2,H3,H4,H5,H6,LI,BR,BLOCKQUOTE,PRE,TR';
   doc.querySelectorAll(BLOCK.split(',').join(',')).forEach((el) => el.prepend('\n'));
-  const text = doc.body.textContent || '';
+  let text = doc.body.textContent || '';
+  // 兼容历史数据中嵌套/转义的 HTML（例如 <p>&lt;p&gt;文本&lt;/p&gt;</p>）。
+  for (let depth = 0; depth < 3 && /<[^>]+>/.test(text); depth += 1) {
+    const nested = new DOMParser().parseFromString(text, 'text/html');
+    const next = nested.body.textContent || '';
+    if (next === text) break;
+    text = next;
+  }
   return text.replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
 }
 
@@ -202,7 +209,7 @@ export function computeInputTexts(nodes, edges) {
   }
 
   for (const edge of edges) {
-    if (edge.data?.inputType !== CONNECTION_INPUT_TYPES.text) continue;
+    if (edge.data?.inputType !== CONNECTION_INPUT_TYPES.text || !edge.data?.inputTarget) continue;
     const sourceText = byId.get(edge.source)?.data?.output?.text;
     if (typeof sourceText !== 'string' || !sourceText.trim()) continue;
     if (!valuesByTarget.has(edge.target)) valuesByTarget.set(edge.target, {});

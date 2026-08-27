@@ -19,12 +19,21 @@ const nodes = [
   { id: 'd', type: 'imageDisplay', data: { images: ['upload-only'] } },
 ];
 
-test('全部模式只收集来源组节点的当前 output.images', () => {
+test('全部模式收集来源组节点的输出图片和图片展示内容', () => {
   const result = collectGroupOutputAssets(nodes, ['a', 'b', 'd'], {
     sourceGroupId: 'source',
     filter: { mode: GROUP_OUTPUT_FILTER_MODES.all },
   });
-  assert.deepEqual(result.map((item) => item.url), ['a1', 'a2', 'b1']);
+  assert.deepEqual(result.map((item) => item.url), ['a1', 'a2', 'b1', 'upload-only']);
+});
+
+test('图片展示节点的 data.images 可作为组输出传递', () => {
+  const result = collectGroupOutputAssets(
+    [{ id: 'display', type: 'imageDisplay', data: { images: ['display-image'] } }],
+    ['display'],
+    { sourceGroupId: 'source', filter: { mode: GROUP_OUTPUT_FILTER_MODES.nodes, nodeIds: ['display'] } },
+  );
+  assert.deepEqual(result.map((item) => item.url), ['display-image']);
 });
 
 test('指定节点模式支持多选', () => {
@@ -165,6 +174,31 @@ test('组拖线预览不依赖 renderer 未暴露的 react-dom createPortal', ()
   assert.doesNotMatch(source, /\bcreatePortal\s*\(/);
   assert.match(source, /data-group-connect-id=\{groupId\}/);
   assert.match(source, /querySelectorAll\('\[data-group-connect-id\]'\)/);
+});
+
+test('已连接的分组工具栏支持直接解除组间连接', () => {
+  const toolbarSource = readFileSync(
+    new URL('../components/canvas/GroupExecutionToolbar.jsx', import.meta.url),
+    'utf8',
+  );
+  const overlaysSource = readFileSync(
+    new URL('../components/canvas/GroupOverlays.jsx', import.meta.url),
+    'utf8',
+  );
+  assert.match(toolbarSource, /outputBinding && \(/);
+  assert.match(toolbarSource, /title="解除与来源分组的连接"/);
+  assert.match(toolbarSource, /onDisconnectGroup\?\.\(group\.id\)/);
+  assert.match(overlaysSource, /onDisconnectGroup=\{onDisconnectOutputBinding\}/);
+});
+
+test('分组素材移除按钮不依赖缩略图 hover 状态', () => {
+  const source = readFileSync(
+    new URL('../components/canvas/GroupExecutionToolbar.jsx', import.meta.url),
+    'utf8',
+  );
+  assert.match(source, /\{!outputBinding && \(/);
+  assert.doesNotMatch(source, /hoveredAssetId/);
+  assert.doesNotMatch(source, /setHoveredAssetId/);
 });
 
 test('共享组输出手柄支持连接到组输入手柄', () => {

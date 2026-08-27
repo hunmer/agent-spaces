@@ -15,7 +15,8 @@ export default function TextVariableEditor({
   className,
 }) {
   const templateVariables = useMemo(() => extractTemplateVariables(value), [value]);
-  const editorValue = templateVariables.length ? value : (resolvedValue ?? value);
+  const hasOutputTemplate = /\$\$[^$]+\$\$/.test(String(value || ''));
+  const editorValue = templateVariables.length || hasOutputTemplate ? value : (resolvedValue ?? value);
   const manualValues = data?.textVariableValues?.[field] || {};
   const fieldBindings = data?.textVariableBindings?.[field] || {};
   const variables = useMemo(() => [...templateVariables.map((key) => {

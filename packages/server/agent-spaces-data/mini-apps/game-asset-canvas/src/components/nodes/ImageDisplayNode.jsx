@@ -132,6 +132,7 @@ export default function ImageDisplayNode({ id, data, selected }) {
 
   return (
     <div ref={rootRef} className="group relative h-full w-full overflow-visible">
+      <UploadFillStyles />
       {/* NodeToolbar：导出/抠图/放大/编辑（选中且单选时） */}
       {showToolbar && (
         <NodeToolbar isVisible={showFullNode && !!selected && selectionCount <= 1} position={Position.Top} align="center" offset={8}>
@@ -274,8 +275,8 @@ export default function ImageDisplayNode({ id, data, selected }) {
             <button type="button" onDoubleClick={(event) => { event.stopPropagation(); open(); }} aria-label="双击查看图片" title="双击查看大图" className="absolute inset-0 cursor-zoom-in" />
           </div>
         ) : (
-          // 空态：点开上传。带 image-drag-handle class 让空节点也能从该区域拖动。
-          <div className="image-drag-handle flex h-full w-full cursor-move flex-col items-center justify-center gap-2 text-xs text-muted-foreground transition hover:text-primary">
+          // 空态：上传区铺满整个内容区。带 image-drag-handle class 让空节点也能从该区域拖动。
+          <div className="image-drag-handle image-upload-fill h-full w-full cursor-move text-xs text-muted-foreground transition hover:text-primary">
             <FileUpload value={[]} maxFiles={6} onChange={handleUploadChange} placeholder="点击或拖拽图片到此处上传" />
           </div>
         )}
@@ -327,4 +328,13 @@ export default function ImageDisplayNode({ id, data, selected }) {
       )}
     </div>
   );
+}
+
+// 空态上传区铺满样式。mini-app 源码不在宿主 Tailwind 编译范围内（[&>div]:h-full 等任意变体类不会生成 CSS），
+// 故用作用域 CSS 把 FileUpload 根元素与内部 dropzone（空态时根下唯一 div）高度拉满，宽度由 block 布局天然占满。
+function UploadFillStyles() {
+  return <style>{`
+    .image-upload-fill > div { height: 100%; }
+    .image-upload-fill > div > div { height: 100%; }
+  `}</style>;
 }
