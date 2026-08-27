@@ -20,6 +20,33 @@ import {
 
 const debuggedCanvasImageDrags = new WeakSet();
 
+// 外部应用拖拽图片时，浏览器不一定会填充 dataTransfer.files：
+// 部分应用只提供 DataTransfer.items，另一些则仅提供图片 URL 文本。
+async function getDroppedImageFiles(dataTransfer) {
+  const files = Array.from(dataTransfer?.files || []).filter((file) => file.type?.startsWith('image/'));
+  if (files.length) return files;
+
+  const itemFiles = Array.from(dataTransfer?.items || [])
+    .filter((item) => item.kind === 'file')
+    .map((item) => item.getAsFile?.())
+    .filter((file) => file?.type?.startsWith('image/'));
+  if (itemFiles.length) return itemFiles;
+
+  const uriText = dataTransfer?.getData?.('text/uri-list') || dataTransfer?.getData?.('text/plain');
+  const uri = uriText?.split(/\r?\n/).find((value) => value && !value.startsWith('#'))?.trim();
+  if (!uri || !/^https?:\/\//i.test(uri)) return [];
+  try {
+    const response = await fetch(uri);
+    if (!response.ok) return [];
+    const blob = await response.blob();
+    if (!blob.type?.startsWith('image/')) return [];
+    const name = decodeURIComponent(new URL(uri).pathname.split('/').pop() || 'dropped-image');
+    return [new File([blob], name, { type: blob.type })];
+  } catch {
+    return [];
+  }
+}
+
 // 历史记录项 → 新节点 dataPatch：
 // - 生成类节点（params 含 prompt/model 字段）预填 prompt/model
 // - 接收上游图的节点（initialData 含 uploadedImages）把历史产出图作为输入
@@ -383,12 +410,22 @@ export default function useNodeCrud({
     // drop 落在节点内（含节点内 FileUpload/dropzone）：交给节点自行处理，画布不建节点。
     // 否则事件冒泡到这里会因 dataTransfer.files 非空误建 imageDisplay，且 FileUpload 的 onChange 也被触发导致重复消费。
     if (event.target instanceof Element && event.target.closest('.react-flow__node')) return;
-    if (event.dataTransfer.files?.length) {
+    // 先消费图片文件；外部应用可能通过 items 或 URI 异步提供图片数据。
+    const hasImageItem = Array.from(event.dataTransfer.items || [])
+      .some((item) => item.kind === 'file' && (item.type?.startsWith('image/') || !item.type));
+    const hasImageFile = event.dataTransfer.files?.length > 0;
+    if (hasImageFile || hasImageItem) {
       const position = reactFlow.screenToFlowPosition({ x: event.clientX, y: event.clientY });
-      handleDropFiles(event.dataTransfer.files, position);
+      getDroppedImageFiles(event.dataTransfer).then((files) => handleDropFiles(files, position));
       return;
     }
     const position = reactFlow.screenToFlowPosition({ x: event.clientX, y: event.clientY });
+    const uriText = event.dataTransfer.getData('text/uri-list') || event.dataTransfer.getData('text/plain');
+    const uri = uriText?.split(/\r?\n/).find((value) => value && !value.startsWith('#'))?.trim();
+    if (/^https?:\/\//i.test(uri || '')) {
+      getDroppedImageFiles(event.dataTransfer).then((files) => handleDropFiles(files, position));
+      return;
+    }
     // 历史项拖拽：携带预填 patch
     const histRaw = event.dataTransfer.getData('application/x-history-patch');
     if (histRaw) {
