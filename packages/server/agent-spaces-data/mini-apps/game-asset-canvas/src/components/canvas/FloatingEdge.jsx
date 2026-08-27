@@ -1,8 +1,12 @@
+import { EdgeLabelRenderer } from '@xyflow/react';
+import { Plus, Trash2 } from '@agent-spaces/ui';
+
 export default function FloatingEdge({
   id,
   sourceX, sourceY, sourcePosition,
   targetX, targetY, targetPosition,
   markerStart, markerEnd, style, className, interactionWidth, data, label,
+  selected: edgeSelected,
 }) {
   const path = getEdgePath({
     sourceX, sourceY, sourcePosition,
@@ -11,6 +15,13 @@ export default function FloatingEdge({
   });
   const labelX = (sourceX + targetX) / 2;
   const labelY = (sourceY + targetY) / 2;
+  const selected = edgeSelected === true || data?.selected === true;
+  const canEdit = data?.canEditEdge !== false;
+  const dispatchEdgeAction = (type) => {
+    window.dispatchEvent(new CustomEvent(type, {
+      detail: { edgeId: id, source: data?.source, target: data?.target, sourceHandle: data?.sourceHandle, x: labelX, y: labelY },
+    }));
+  };
   const labelWidth = Math.max(42, String(label || '').length * 12 + 10);
   return (
     <>
@@ -29,7 +40,25 @@ export default function FloatingEdge({
         strokeOpacity={0}
         strokeWidth={interactionWidth ?? 20}
         className="react-flow__edge-interaction"
+        onClick={(event) => {
+          window.dispatchEvent(new CustomEvent('workflow:select-edge', { detail: { edgeId: id } }));
+        }}
       />
+      {selected && canEdit && (
+        <EdgeLabelRenderer>
+          <div
+            className="nodrag nopan flex items-center gap-1 rounded-md border border-border bg-background p-1 shadow-md"
+            style={{ position: 'absolute', transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`, pointerEvents: 'all' }}
+          >
+            <button type="button" title="添加中间节点" aria-label="添加中间节点" className="flex h-6 items-center gap-1 rounded px-1.5 text-xs hover:bg-accent" onClick={(e) => { e.stopPropagation(); dispatchEdgeAction('workflow:edge-insert-node'); }}>
+              <Plus className="h-3.5 w-3.5" />添加中间节点
+            </button>
+            <button type="button" title="删除连接" aria-label="删除连接" className="flex h-6 items-center gap-1 rounded px-1.5 text-xs text-destructive hover:bg-destructive/10" onClick={(e) => { e.stopPropagation(); dispatchEdgeAction('workflow:delete-edge'); }}>
+              <Trash2 className="h-3.5 w-3.5" />删除连接
+            </button>
+          </div>
+        </EdgeLabelRenderer>
+      )}
       {label && (
         <g pointerEvents="none">
           <rect

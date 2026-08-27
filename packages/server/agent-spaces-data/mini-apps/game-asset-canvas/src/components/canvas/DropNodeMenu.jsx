@@ -1,8 +1,6 @@
-import {
-  DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
-  DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent,
-} from '@agent-spaces/ui';
-import AddNodeMenuItems from './AddNodeMenuItems';
+import { SearchSelect } from '@agent-spaces/ui';
+import { useEffect, useMemo, useRef } from 'react';
+import { createNodePickerOptions } from './AddNodeMenuItems';
 
 /**
  * 拖拽连线到空白处放手的「添加节点」菜单。
@@ -18,41 +16,26 @@ import AddNodeMenuItems from './AddNodeMenuItems';
  * @param {Function} props.onPick   (type, dataPatch?) => void  选中节点类型
  */
 export default function DropNodeMenu({ dropNodeMenu, onClose, onPick }) {
+  const rootRef = useRef(null);
+  const options = useMemo(() => createNodePickerOptions(onPick), [onPick]);
+  useEffect(() => {
+    const onPointerDown = (event) => { if (!rootRef.current?.contains(event.target)) onClose?.(); };
+    const onKeyDown = (event) => { if (event.key === 'Escape') onClose?.(); };
+    window.addEventListener('pointerdown', onPointerDown, true);
+    window.addEventListener('keydown', onKeyDown, true);
+    return () => { window.removeEventListener('pointerdown', onPointerDown, true); window.removeEventListener('keydown', onKeyDown, true); };
+  }, [onClose]);
   if (!dropNodeMenu) return null;
   return (
-    <DropdownMenu open onOpenChange={(open) => { if (!open) onClose(); }}>
-      <DropdownMenuTrigger
-        nativeButton={false}
-        render={<span style={{ position: 'fixed', left: dropNodeMenu.clientX, top: dropNodeMenu.clientY, width: 1, height: 1, pointerEvents: 'none' }} />}
-      />
-      <DropdownMenuContent align="start" sideOffset={0} className="w-52">
-        <AddNodeMenuItems
-          onPick={onPick}
-          renderItem={(children, onClick, key) => (
-            <DropdownMenuItem key={key} onClick={onClick}>
-              {children}
-            </DropdownMenuItem>
-          )}
-          renderSub={(triggerLabel, subItems, key) => (
-            <DropdownMenuSub key={key}>
-              <DropdownMenuSubTrigger>{triggerLabel}</DropdownMenuSubTrigger>
-              <DropdownMenuSubContent className="w-52">
-                {subItems.map((s) => (
-                  s.type === 'label' ? (
-                    <p key={s.id} className="px-2 py-0.5 text-[10px] text-muted-foreground">
-                      {s.label}
-                    </p>
-                  ) : (
-                    <DropdownMenuItem key={s.id} title={s.desc} onClick={s.onClick}>
-                      {s.label}
-                    </DropdownMenuItem>
-                  )
-                ))}
-              </DropdownMenuSubContent>
-            </DropdownMenuSub>
-          )}
+    <div ref={rootRef} className="fixed z-50 w-56 rounded-lg bg-popover p-1 shadow-lg" style={{ left: dropNodeMenu.clientX, top: dropNodeMenu.clientY }}>
+        <SearchSelect
+          value=""
+          onChange={(value) => options.find((option) => option.value === value)?.onSelect?.()}
+          options={options}
+          placeholder="选择节点"
+          searchPlaceholder="搜索节点（支持拼音）"
+          allowCustom={false}
         />
-      </DropdownMenuContent>
-    </DropdownMenu>
+    </div>
   );
 }

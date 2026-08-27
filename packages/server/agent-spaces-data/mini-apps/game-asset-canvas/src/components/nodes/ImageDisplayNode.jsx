@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState, useEffect } from 'react';
 import { NodeResizer, NodeToolbar, Position } from '@xyflow/react';
-import { ChevronLeft, ChevronRight, Download, Loader, RotateCw, Upload, toast } from '@agent-spaces/ui';
+import { ChevronLeft, ChevronRight, Download, FileUpload, Loader, Popover, PopoverContent, PopoverTrigger, RotateCw, Upload, X, toast } from '@agent-spaces/ui';
 import useViewportActivation from '../../hooks/useViewportActivation';
 import { getFloatingHandleProps } from '../canvas/floating-edge-utils';
 import FloatingHandle from './FloatingHandle';
@@ -30,10 +30,10 @@ export default function ImageDisplayNode({ id, data, selected }) {
   const onUpdate = data?.onUpdate;
   const onAutoSize = data?.onAutoSize;
   const autoSizeEnabled = data?.autoSize !== false;
-  const fileRef = useRef(null);
   const rootRef = useRef(null);
   const viewportActivated = useViewportActivation(rootRef);
   const [uploading, setUploading] = useState(false);
+  const [uploadOpen, setUploadOpen] = useState(false);
   const loading = data?.loading;
   const source = data?.source;
   const tags = Array.isArray(data?.tags) ? data.tags.filter(Boolean) : [];
@@ -79,24 +79,18 @@ export default function ImageDisplayNode({ id, data, selected }) {
     onUpdate?.({ rotation: nextRotation });
   }, [data?.imageSize?.height, data?.imageSize?.width, id, onAutoSize, onUpdate, rotation]);
 
-  const handleFile = useCallback(async (e) => {
-    const file = e.target.files?.[0];
-    e.target.value = '';
-    if (!file) return;
-    const AS = window.AgentSpaces;
-    if (!AS?.uploadFile) {
-      console.warn('AgentSpaces.uploadFile 不可用');
-      return;
-    }
+  const handleUploadChange = useCallback(async (files) => {
+    const item = Array.isArray(files) ? files[files.length - 1] : null;
+    if (!item?.file) return;
+    const existing = item.file.uploadedUrl || item.file.uploadedHttpPath || item.file.httpPath || item.file.url;
     setUploading(true);
     try {
-      const uploaded = await AS.uploadFile(file);
-      const httpUrl = uploaded?.url || uploaded?.httpPath;
-      if (!httpUrl) throw new Error('上传未返回 URL');
-      onUpdate?.({ images: [httpUrl], source: 'upload' });
-    } catch (err) {
-      console.error('uploadFile failed:', err);
-      onUpdate?.({ error: `上传失败：${err?.message || String(err)}` });
+      const uploaded = existing ? null : await window.AgentSpaces?.uploadFile?.(item.file);
+      const url = existing || uploaded?.url || uploaded?.httpPath;
+      if (!url) throw new Error('上传未返回 URL');
+      onUpdate?.({ images: [url], source: 'upload', error: null });
+    } catch (error) {
+      onUpdate?.({ error: `上传失败：${error?.message || String(error)}` });
     } finally {
       setUploading(false);
     }
@@ -209,6 +203,23 @@ export default function ImageDisplayNode({ id, data, selected }) {
       />
 
       <div className={`absolute inset-0 overflow-hidden rounded-lg bg-card shadow-sm ${showFullNode ? '' : 'invisible pointer-events-none'}`}>
+      <div className="absolute right-1.5 top-1.5 z-30 nodrag nopan">
+        <Popover open={uploadOpen} onOpenChange={setUploadOpen}>
+          <PopoverTrigger
+            render={<button type="button" title="上传图片" aria-label="上传图片" className="flex h-7 w-7 items-center justify-center rounded-md bg-background/85 text-muted-foreground shadow ring-1 ring-border backdrop-blur-sm hover:text-primary" />}
+          >
+            <Upload className="h-3.5 w-3.5" />
+          </PopoverTrigger>
+          <PopoverContent align="end" className="w-56 p-2">
+            <FileUpload
+              value={[]}
+              maxFiles={1}
+              onChange={(files) => { handleUploadChange(files); setUploadOpen(false); }}
+              placeholder="点击或拖拽图片到此处上传"
+            />
+          </PopoverContent>
+        </Popover>
+      </div>
       {/* 顶部自定义拖拽 handle：ReactFlow node.dragHandle 指向 .image-drag-handle，
           整节点只能从这里拖动。透明窄条覆盖图片顶部，hover 时浮现便于发现。 */}
       <div
@@ -235,7 +246,7 @@ export default function ImageDisplayNode({ id, data, selected }) {
             上传中…
           </div>
         ) : images.length > 0 ? (
-          <button type="button" onDoubleClick={open} title="双击查看大图" className="flex max-h-full max-w-full items-center justify-center">
+          <div className="group/image relative flex max-h-full max-w-full items-center justify-center">
             {current && viewportActivated && (
               <img
                 key={currentThumb}
@@ -247,23 +258,28 @@ export default function ImageDisplayNode({ id, data, selected }) {
                 onLoad={handleImgLoad}
               />
             )}
-          </button>
+            <button
+              type="button"
+              title="删除当前图片"
+              aria-label="删除当前图片"
+              onClick={(event) => { event.stopPropagation(); onUpdate?.({ images: images.filter((_, index) => index !== imgIndex), source: 'upload' }); }}
+              className="nodrag nopan absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white opacity-0 transition group-hover/image:opacity-100 hover:bg-destructive"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+            <button type="button" onDoubleClick={open} aria-label="双击查看大图" className="absolute inset-0 cursor-zoom-in" />
+          </div>
         ) : (
           // 空态：点开上传。带 image-drag-handle class 让空节点也能从该区域拖动。
-          <button
-            type="button"
-            onClick={() => fileRef.current?.click()}
-            className="image-drag-handle flex h-full w-full cursor-move flex-col items-center justify-center gap-2 border-2 border-dashed border-border text-xs text-muted-foreground transition hover:border-primary hover:text-primary"
-          >
-            <Upload className="h-6 w-6" />
-            <span className="pointer-events-none select-none">点击上传图片</span>
-          </button>
+          <div className="image-drag-handle flex h-full w-full cursor-move flex-col items-center justify-center gap-2 text-xs text-muted-foreground transition hover:text-primary">
+            <FileUpload value={[]} max={1} onChange={handleUploadChange} placeholder="点击或拖拽图片到此处上传" />
+          </div>
         )}
       </div>
 
-      {/* 选中时底部 overlay：tags + 多图切换 + 上传 */}
-      {selected && (images.length > 0 || tags.length > 0) && !loading && !uploading && (
-        <div className="nodrag nopan absolute bottom-1.5 left-1.5 right-1.5 z-10 flex items-center gap-1.5 rounded-md bg-background/85 px-2 py-1 text-xs shadow ring-1 ring-border backdrop-blur-sm">
+      {/* 多图切换：不再显示底部上传/状态条。 */}
+      {isMulti && !loading && !uploading && (
+        <div className="nodrag nopan absolute bottom-1.5 left-1/2 z-10 flex -translate-x-1/2 items-center gap-1 rounded-md bg-background/75 px-1.5 py-0.5 text-xs shadow ring-1 ring-border backdrop-blur-sm">
           {/* 多图切换 */}
           {isMulti && (
             <>
@@ -284,21 +300,6 @@ export default function ImageDisplayNode({ id, data, selected }) {
               ><ChevronRight className="h-3.5 w-3.5" /></button>
             </>
           )}
-          {/* 来源 + tags */}
-          <span className="truncate text-muted-foreground">{sourceLabel}</span>
-          {tags.map((t) => (
-            <span
-              key={t}
-              className="shrink-0 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary"
-            >{t}</span>
-          ))}
-          {/* 更换/上传 */}
-          <button
-            type="button"
-            onClick={(e) => { e.stopPropagation(); fileRef.current?.click(); }}
-            className="ml-auto flex items-center gap-1 rounded border border-border px-1.5 py-0.5 text-muted-foreground transition hover:border-primary hover:text-primary"
-            title="更换图片"
-          ><Upload className="h-3 w-3" />更换</button>
         </div>
       )}
 
@@ -306,13 +307,6 @@ export default function ImageDisplayNode({ id, data, selected }) {
         <p className="absolute bottom-1.5 left-1.5 right-1.5 z-10 rounded bg-red-500/90 px-2 py-1 text-xs text-white">{data.error}</p>
       )}
 
-      <input
-        ref={fileRef}
-        type="file"
-        accept="image/*"
-        className="hidden"
-        onChange={handleFile}
-      />
       </div>
       {!showFullNode && (
         <div className={`image-drag-handle absolute inset-0 z-20 flex cursor-move items-center justify-center overflow-hidden rounded-lg border bg-card shadow-sm ${

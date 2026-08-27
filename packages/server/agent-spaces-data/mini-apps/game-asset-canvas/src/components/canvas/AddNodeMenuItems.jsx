@@ -6,6 +6,41 @@ import {
 } from '../../utils/constants';
 import { ADD_NODE_ITEMS } from '../../utils/canvas-constants';
 import { NODE_META } from '../../utils/constants';
+import { ADD_ITEMS as PANEL_ADD_ITEMS, NODE_CATEGORIES } from '../right-panel/constants';
+
+// 菜单与右侧节点列表共用的 Combobox 选项。图像处理器展开为独立选项，
+// 选择后仍回传原 imageProcess 节点及处理器参数。
+export function createNodePickerOptions(onPick) {
+  const options = [];
+  ADD_NODE_ITEMS.forEach((item) => {
+    const meta = NODE_META[item.type];
+    if (item.type === NODE_TYPES.imageProcess) {
+      IMAGE_PROCESSOR_CATEGORIES.forEach((category) => {
+        IMAGE_PROCESSORS.filter((processor) => processor.category === category.id).forEach((processor) => {
+          options.push({
+            value: `${item.type}:${processor.id}`,
+            label: processor.label,
+            description: processor.desc,
+            group: `${meta?.icon || ''} ${meta?.label || '图像处理'} · ${category.label}`,
+            keywords: [processor.id, processor.label, category.label],
+            onSelect: () => onPick?.(item.type, {
+              params: { processor: processor.id, processorParams: defaultProcessorParams(processor.id) },
+            }),
+          });
+        });
+      });
+      return;
+    }
+    options.push({
+      value: item.type,
+      label: meta?.label || item.type,
+      group: NODE_CATEGORIES.find((category) => category.id === PANEL_ADD_ITEMS.find((panelItem) => panelItem.type === item.type)?.category)?.label || '其他',
+      keywords: [item.type, item.label, meta?.label].filter(Boolean),
+      onSelect: () => onPick?.(item.type),
+    });
+  });
+  return options;
+}
 
 /**
  * 添加节点的菜单项列表（右键菜单 / 拖拽落空菜单共用同一份内容）。

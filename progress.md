@@ -19,3 +19,16 @@
 - Upgraded `@base-ui/react` to `^1.7.0` and removed the temporary OTP type suppression; Coss OTP now type-checks.
 - UI component ESLint completes with warnings only; remaining TypeScript errors are unrelated app/API baseline issues.
 - Removed `packages/web/src/components/ui/backup` (40 legacy shadcn files) per request.
+
+## 2026-08-27
+- Started the game-asset-canvas interaction task from `src/handoff.md`.
+- Confirmed clean worktree and added phases 10-12 to the existing planning files.
+- Read the complete planning workflow and local mini-app development guidance; confirmed project root, entry point, and likely target files.
+- Located the Ctrl+A defect: group selection state is not passed into `useSelectionClipboard`.
+- Located the node context-menu integration and an existing downstream image-display creation flow for reuse.
+- Confirmed the menu action dispatch path and canonical node factory (`crud.createNodeAt`).
+- Implemented all three requested interactions; the first parallel validation wrapper failed before returning child outputs, so validation is being rerun sequentially.
+- Added active-group-aware Ctrl/Cmd+A with a tested pure resolver and stale-group fallback.
+- Added node context-menu actions to copy structured node JSON and create/connect a downstream image-display node while preserving direct group membership.
+- Updated `src/CLAUDE.md` and `src/handoff.md` with the new interaction contract.
+- Final validation passed: four Babel compilation checks, 3/3 group-helper tests, and `git diff --check`.

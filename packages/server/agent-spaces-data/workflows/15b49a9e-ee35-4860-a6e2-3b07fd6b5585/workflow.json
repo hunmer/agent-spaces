@@ -186,7 +186,7 @@
   "createdAt": 1785570436981,
   "updatedAt": 1785750875644,
   "published": false,
-  "lastOpenedAt": 1785750843418,
+  "lastOpenedAt": 1787793407073,
   "enabledPlugins": [
     "workflow.openai",
     "workflow.ai-image"

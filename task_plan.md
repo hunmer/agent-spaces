@@ -13,8 +13,14 @@ Migrate `packages/web` from the current shadcn setup toward Coss UI conventions 
 - [completed] 7. Adapt downstream consumers to Coss component contracts
 - [completed] 8. Upgrade Base UI and verify OTPField
 - [completed] 9. Remove obsolete shadcn backup directory
+- [completed] 10. Inspect game-asset-canvas selection, context-menu, and node-creation flows
+- [completed] 11. Implement group-scoped Ctrl+A, node info copy, and downstream image-display shortcut
+- [completed] 12. Run focused syntax/type/tests and document results
 
 ## Validation
+- Game asset canvas: Babel compilation passes for `Canvas.jsx`, `CanvasOverlayDialogs.jsx`, `useSelectionClipboard.js`, and `group-helpers.js`.
+- Game asset canvas: `node --test src/utils/group-helpers.test.js` passes 3/3 tests.
+- Game asset canvas: `git diff --check` passes.
 - `pnpm --filter @agent-spaces/web exec eslint "src/app/layout.tsx"` passes.
 - `pnpm --filter @agent-spaces/web exec tsc --noEmit` reaches existing unrelated project errors in mini-app/file API typings and `tiny-pinyin`; no errors point to the migration files.
 - `https://coss.com/ui/r/button.json` and `https://coss.com/ui/r/style.json` are reachable and confirm the configured registry URL.
@@ -27,3 +33,8 @@ Migrate `packages/web` from the current shadcn setup toward Coss UI conventions 
 | Existing non-Coss `ui/otp-field.tsx` still targets unavailable `OTPField` export | 5 | Pre-existing issue; Coss copy is type-suppressed pending Base UI upgrade |
 | `@base-ui/react@1.4.1` lacked `OTPField` | 6 | Upgraded to `^1.7.0`; Coss OTP source now type-checks |
 | User requested removal of the 40-file backup directory | 7 | Deleted `packages/web/src/components/ui/backup` |
+| Parallel diff/icon/syntax validation returned only an orchestration error | 8 | Re-run checks sequentially to isolate the failing command and obtain concrete output |
+
+## Current Task
+- Target: `packages/server/agent-spaces-data/mini-apps/game-asset-canvas/src`
+- Goal: group-scoped Ctrl+A, node context-menu info copy, and one-click downstream image-display creation.

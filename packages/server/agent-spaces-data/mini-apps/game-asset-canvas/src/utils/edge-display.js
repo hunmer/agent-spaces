@@ -48,7 +48,11 @@ export function decorateEdgesForSelection(
       label: isHoveredInput
         ? (targetLabel || `输入${inputIndex}`)
         : (isHoveredOutput ? (targetLabel || `输出${outputIndex}`) : null),
-      data: { ...(edge.data || {}), pathStyle, lineStyle, highlightColor },
+      data: {
+        ...(edge.data || {}), pathStyle, lineStyle, highlightColor,
+        selected: edge.selected === true,
+        source: edge.source, target: edge.target, sourceHandle: edge.sourceHandle,
+      },
       markerEnd: { ...(edge.markerEnd || { type: 'arrowclosed' }), color: highlightColor },
       style: {
         ...(withoutDash(edge.style) || {}),

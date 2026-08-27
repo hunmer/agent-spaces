@@ -166,10 +166,12 @@ export default function useNodeCrud({
       }
       setEdges((prev) => {
         if (!targets.length) return prev;
+        const original = cur.edgeId ? prev.find((e) => e.id === cur.edgeId) : null;
+        const withoutOriginal = original ? prev.filter((e) => e.id !== cur.edgeId) : prev;
         const key = `${cur.source}->${newId}`;
-        if (prev.some((e) => `${e.source}->${e.target}` === key)) return prev;
-        return addEdge(
-          {
+        let next = withoutOriginal;
+        if (!next.some((e) => `${e.source}->${e.target}` === key)) {
+          next = addEdge({
             source: cur.source,
             target: newId,
             sourceHandle: cur.sourceHandle,
@@ -180,9 +182,21 @@ export default function useNodeCrud({
               inputTarget: targets[0].id,
               ...(sourceAsset ? { sourceAsset } : {}),
             },
-          },
-          prev,
-        );
+          }, next);
+        }
+        // 连线 toolbar 的“添加中间节点”会携带 target：创建节点后把原边
+        // 拆成 source -> new -> target，保留目标端口及输入字段映射。
+        if (cur.target && original && !next.some((e) => e.source === newId && e.target === cur.target)) {
+          next = addEdge({
+            source: newId,
+            target: cur.target,
+            targetHandle: original.targetHandle,
+            markerEnd: { type: MarkerType.ArrowClosed },
+            animated: true,
+            data: { ...(original.data || {}) },
+          }, next);
+        }
+        return next;
       });
       return null; // 关闭菜单
     });

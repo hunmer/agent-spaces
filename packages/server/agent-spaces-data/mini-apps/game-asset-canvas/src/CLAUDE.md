@@ -83,6 +83,7 @@ graph TD
 - **2026-08-04 分镜生成交互**：角色生图使用文生图/图生图双 Tab Dialog；storyboard 顶部设置图标打开统一四 Tab 参数 Dialog。生成素材保存在对应 scene 并在卡片内预览；场景角色通过 Avatar Group + checkbox 选择器维护。
 - **2026-08-04 分镜导航与瀑布流**：scene 图片用宿主 `Masonry` 三列布局并读取自然宽高比；列表左侧 sticky 缩略导航以首图或序号展示，点击平滑滚动到 scene ref。
 - **2026-08-04 分镜输出 Handle**：列表右侧按 scene 数量在 `NodeShell` 外部渲染 source handle，避免 overflow 裁剪；多素材连接先选素材再过滤兼容输入，边以 `data.sourceAsset` 保存选中图片/视频/音频并只向下游派生该素材。
+- **2026-08-27 分组全选与节点快捷动作**：激活分组时 `Ctrl/Cmd+A` 仅选中组内节点；节点右键菜单支持复制节点 JSON 信息，以及创建并连线下游图片展示节点。
 - **建议下一步深挖**：
   - 如需精确节点组件实现细节，定点读 `components/nodes/<具体>.jsx`
   - 如需精确 image-ops 算法实现，定点读 `utils/image-ops/<具体>.js`（gif.js / matte.js / pixelate.js 等）

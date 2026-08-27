@@ -46,6 +46,14 @@ export function findSmallestGroupContainingNodeIds(groups, nodeIds) {
     .sort((a, b) => a.nodeIds.length - b.nodeIds.length)[0]?.id ?? null;
 }
 
+/** 键盘全选优先使用当前激活分组，否则沿用已选节点推断逻辑。 */
+export function resolveSelectAllGroupId(groups, nodeIds, activeGroupId) {
+  if (activeGroupId && groups.some((group) => group.id === activeGroupId)) {
+    return activeGroupId;
+  }
+  return findSmallestGroupContainingNodeIds(groups, nodeIds);
+}
+
 /**
  * 找出分组树内的「末端叶子节点」：在组范围内没有下游（出边 target 不在组内）的节点。
  * 用于分组输出连线：从组拖到 target 时，把组内叶子节点连到 target。

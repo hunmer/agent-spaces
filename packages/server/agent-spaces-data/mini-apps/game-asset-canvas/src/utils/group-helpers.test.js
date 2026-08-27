@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  findSmallestContainingRectId, findSmallestGroupContainingNodeIds,
+  findSmallestContainingRectId, findSmallestGroupContainingNodeIds, resolveSelectAllGroupId,
 } from './group-helpers.js';
 
 test('findSmallestContainingRectId returns the smallest containing group', () => {
@@ -27,4 +27,15 @@ test('findSmallestGroupContainingNodeIds prefers the innermost matching group', 
   assert.equal(findSmallestGroupContainingNodeIds(groups, ['outer-node', 'inner-a']), 'outer');
   assert.equal(findSmallestGroupContainingNodeIds(groups, ['inner-a', 'other-node']), null);
   assert.equal(findSmallestGroupContainingNodeIds(groups, []), null);
+});
+
+test('resolveSelectAllGroupId prioritizes the active group', () => {
+  const groups = [
+    { id: 'active', childNodeIds: ['active-node'], childGroupIds: [] },
+    { id: 'selected', childNodeIds: ['selected-node'], childGroupIds: [] },
+  ];
+
+  assert.equal(resolveSelectAllGroupId(groups, ['selected-node'], 'active'), 'active');
+  assert.equal(resolveSelectAllGroupId(groups, ['selected-node'], null), 'selected');
+  assert.equal(resolveSelectAllGroupId(groups, [], 'missing'), null);
 });

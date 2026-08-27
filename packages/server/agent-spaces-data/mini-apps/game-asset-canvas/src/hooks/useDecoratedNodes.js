@@ -82,6 +82,19 @@ export default function useDecoratedNodes({
           data.tags = dedupeTags([...(nd.data?.tags || []), IMAGE_TAGS.upstream]);
         }
       }
+      // 图片展示节点是透传节点：当前展示/输入图片同时作为输出，供输出预览、
+      // 历史记录和下游节点统一读取 data.output.images。
+      if (nd.type === NODE_TYPES.imageDisplay) {
+        const passthroughImages = Array.isArray(data.images) ? data.images.filter(Boolean) : [];
+        const passthroughResources = Array.isArray(data.imageResources)
+          ? data.imageResources
+          : (Array.isArray(data.resources) ? data.resources : []);
+        data.output = {
+          ...(data.output || {}),
+          images: passthroughImages,
+          resources: passthroughResources,
+        };
+      }
       if (upTexts) data.textInputValues = upTexts;
       // 视频派生注入（对称图片逻辑）：
       // - videoDisplay：有连入边时用上游视频覆盖 data.videos（纯展示节点）

@@ -7,7 +7,7 @@ import { genId } from '../utils/canvas-id';
 import { computeAlignment, computeGridLayout } from '../utils/align-distribute';
 import { IMAGE_TAGS } from '../utils/constants';
 import { imageFilesFromClipboardData, readClipboardImageFiles } from '../utils/clipboard-images';
-import { collectGroupNodeIds, findSmallestGroupContainingNodeIds } from '../utils/group-helpers';
+import { collectGroupNodeIds, resolveSelectAllGroupId } from '../utils/group-helpers';
 
 let propertiesClipboard = null;
 
@@ -31,10 +31,11 @@ let propertiesClipboard = null;
  * @param {Function} deps.addImageNodesFromUrls  生成记录「用作输入」复用
  * @param {Function} deps.onPasteImageFiles 系统剪贴板图片上传到视口中心
  * @param {Function} deps.getPasteCenter 获取当前视口中心的 Flow 坐标
+ * @param {string|null} deps.activeGroupId 当前激活分组；键盘全选优先限定在该分组内
  */
 export default function useSelectionClipboard({
   nodes, edges, groups, setNodes, setEdges, setGroups, setSelectedId,
-  addImageNodesFromUrls, onPasteImageFiles, getPasteCenter,
+  addImageNodesFromUrls, onPasteImageFiles, getPasteCenter, activeGroupId,
 }) {
   const [selectionCount, setSelectionCount] = useState(0);
   const [propertyPaste, setPropertyPaste] = useState(null);
@@ -182,7 +183,7 @@ export default function useSelectionClipboard({
   // 键盘全选：当前选中节点位于分组内时，仅选中能包含它们的最小分组。
   const handleKeyboardSelectAll = useCallback(() => {
     const selectedIds = nodesRef.current.filter((node) => node.selected).map((node) => node.id);
-    const groupId = findSmallestGroupContainingNodeIds(groupsRef.current, selectedIds);
+    const groupId = resolveSelectAllGroupId(groupsRef.current, selectedIds, activeGroupId);
     if (!groupId) {
       handleSelectAll();
       return;
@@ -192,7 +193,7 @@ export default function useSelectionClipboard({
       ...node,
       selected: groupNodeIds.has(node.id),
     })));
-  }, [handleSelectAll, setNodes]);
+  }, [activeGroupId, handleSelectAll, setNodes]);
 
   // 反选：selected 取反
   const handleInvertSelect = useCallback(() => {

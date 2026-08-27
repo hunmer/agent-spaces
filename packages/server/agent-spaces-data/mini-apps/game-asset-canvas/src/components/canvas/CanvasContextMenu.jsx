@@ -3,8 +3,9 @@ import {
   ContextMenu, ContextMenuTrigger, ContextMenuContent,
   ContextMenuGroup, ContextMenuItem, ContextMenuLabel, ContextMenuSeparator,
   ContextMenuSub, ContextMenuSubTrigger, ContextMenuSubContent,
+  SearchSelect,
 } from '@agent-spaces/ui';
-import AddNodeMenuItems from './AddNodeMenuItems';
+import { createNodePickerOptions } from './AddNodeMenuItems';
 import ImageSelectionMenuItems from './ImageSelectionMenuItems';
 
 /**
@@ -83,31 +84,13 @@ export default function CanvasContextMenu({
           </ContextMenuGroup>
         ) : (
           <ContextMenuGroup>
-            <AddNodeMenuItems
-              onPick={onPick}
-              renderItem={(inner, onClick, key) => (
-                <ContextMenuItem key={key} onClick={onClick}>
-                  {inner}
-                </ContextMenuItem>
-              )}
-              renderSub={(triggerLabel, subItems, key) => (
-                <ContextMenuSub key={key}>
-                  <ContextMenuSubTrigger>{triggerLabel}</ContextMenuSubTrigger>
-                  <ContextMenuSubContent className="w-52">
-                    {subItems.map((s) => (
-                      s.type === 'label' ? (
-                        <p key={s.id} className="px-2 py-0.5 text-[10px] text-muted-foreground">
-                          {s.label}
-                        </p>
-                      ) : (
-                        <ContextMenuItem key={s.id} title={s.desc} onClick={s.onClick}>
-                          {s.label}
-                        </ContextMenuItem>
-                      )
-                    ))}
-                  </ContextMenuSubContent>
-                </ContextMenuSub>
-              )}
+            <SearchSelect
+              value=""
+              onChange={(value) => createNodePickerOptions(onPick).find((option) => option.value === value)?.onSelect?.()}
+              options={createNodePickerOptions(onPick)}
+              placeholder="选择节点"
+              searchPlaceholder="搜索节点（支持拼音）"
+              allowCustom={false}
             />
           </ContextMenuGroup>
         )}

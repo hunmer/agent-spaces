@@ -138,6 +138,7 @@ export {
   getConnectedEdges,
   NodeResizer,
   NodeToolbar,
+  EdgeLabelRenderer,
   useReactFlow,
 } from '@xyflow/react';
 

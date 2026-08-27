@@ -44,7 +44,9 @@ import useCharacterLibrary from '../hooks/useCharacterLibrary';
 import useStoryboardOperations from '../hooks/useStoryboardOperations';
 
 import { IMAGE_TAGS, NODE_TYPES, NODE_META } from '../utils/constants';
-import { NODE_COMPONENTS, NODE_PARAMS_SCHEMA, dedupeTags, NODE_PRESET_MIME } from '../utils/canvas-constants';
+import {
+  DEFAULT_SIZE, NODE_COMPONENTS, NODE_PARAMS_SCHEMA, dedupeTags, NODE_PRESET_MIME,
+} from '../utils/canvas-constants';
 import { genId } from '../utils/canvas-id';
 import { copyNodes, pasteNodes } from '../utils/clipboard';
 import { serializePreset, instantiatePreset, presetBoundingBox } from '../utils/node-preset';
@@ -67,6 +69,14 @@ function waitForCanvasState() {
       : (callback) => setTimeout(callback, 0);
     schedule(() => schedule(resolve));
   });
+}
+
+async function writeClipboardText(text) {
+  if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+  throw new Error('当前环境不支持写入剪贴板');
 }
 
 /**
@@ -356,6 +366,11 @@ export default function Canvas({ hostConfig }) {
     runWorkflow, updateNodeData, addHistory, settings, createNodeAt: crud.createNodeAt, saveLastParams,
   });
 
+  // —— 分组操作 + overlay 移动/连线 ——
+  const groupOps = useGroupOperations({
+    groups, nodes, edges, setGroups, setNodes, setEdges, reactFlow, canvasRef: wrappingRef,
+  });
+
   // —— 选中 + 复制粘贴 + 对齐分布 + 批量删除 ——
   const handlePasteImageFiles = useCallback((files) => {
     const screenCenter = getViewportCenter();
@@ -370,12 +385,9 @@ export default function Canvas({ hostConfig }) {
     nodes, edges, groups, setNodes, setEdges, setGroups, setSelectedId, addImageNodesFromUrls,
     onPasteImageFiles: handlePasteImageFiles,
     getPasteCenter,
+    activeGroupId: groupOps.selectedGroupId,
   });
 
-  // —— 分组操作 + overlay 移动/连线 ——
-  const groupOps = useGroupOperations({
-    groups, nodes, edges, setGroups, setNodes, setEdges, reactFlow, canvasRef: wrappingRef,
-  });
   useEffect(() => {
     if (!groupOps.selectedGroupId || groupOps.deleteGroupId) return undefined;
     const handleGroupDeleteKey = (event) => {
@@ -414,13 +426,15 @@ export default function Canvas({ hostConfig }) {
 
   // 连线：多选增强（参考 xyflow MultiConnect）——若 source 选中，把所有选中节点都连到 target。
   // 用 nodesRef 读最新 nodes（多选判断），callback deps 不含 nodes → 稳定引用。
-  const addConnections = useCallback((conn, inputTarget, inputType, sourceAsset, inputVariable) => {
+  const addConnections = useCallback((
+    conn, inputTarget, inputType, sourceAsset, inputVariable, multiSource = true,
+  ) => {
     setEdges((prev) => {
       const curNodes = nodesRef.current;
       const originOutputType = inputType || getNodeOutputType(
         curNodes.find((node) => node.id === conn.source)?.type,
       );
-      const sources = !sourceAsset && curNodes.some((n) => n.id === conn.source && n.selected)
+      const sources = multiSource && !sourceAsset && curNodes.some((n) => n.id === conn.source && n.selected)
         ? curNodes
           .filter((n) => n.selected && getNodeOutputType(n.type) === originOutputType)
           .map((n) => n.id)
@@ -1097,6 +1111,50 @@ export default function Canvas({ hostConfig }) {
     setRightTab('history');
     setHistoryFocusNodeId(`${nodeId}:${Date.now()}`);
   }, []);
+  const handleCopyNodeInfo = useCallback(async (nodeId) => {
+    const node = nodesRef.current.find((item) => item.id === nodeId);
+    if (!node) return;
+    const typeLabel = NODE_META[node.type]?.label || node.type;
+    const info = {
+      id: node.id,
+      type: node.type,
+      typeLabel,
+      title: node.data?.title || node.data?.label || typeLabel,
+      position: node.position,
+      data: node.data || {},
+    };
+    try {
+      await writeClipboardText(JSON.stringify(info, null, 2));
+      toast.success('已复制节点信息');
+    } catch (error) {
+      toast.error(error?.message || '复制节点信息失败');
+    }
+  }, []);
+  const handleCreateDownstreamImageDisplay = useCallback((nodeId) => {
+    const sourceNode = nodesRef.current.find((node) => node.id === nodeId);
+    if (!sourceNode) return;
+    const targetSize = DEFAULT_SIZE[NODE_TYPES.imageDisplay];
+    const sourceWidth = Number(sourceNode.measured?.width || sourceNode.width || sourceNode.style?.width) || 260;
+    const sourceHeight = Number(sourceNode.measured?.height || sourceNode.height || sourceNode.style?.height) || targetSize.h;
+    const targetId = crud.createNodeAt(NODE_TYPES.imageDisplay, {
+      x: sourceNode.position.x + sourceWidth + 80,
+      y: sourceNode.position.y + (sourceHeight - targetSize.h) / 2,
+    });
+    addConnections(
+      { source: nodeId, target: targetId },
+      'images',
+      CONNECTION_INPUT_TYPES.image,
+      undefined,
+      undefined,
+      false,
+    );
+    setGroups((prev) => prev.map((group) => (
+      group.childNodeIds?.includes(nodeId)
+        ? { ...group, childNodeIds: [...group.childNodeIds, targetId] }
+        : group
+    )));
+    toast.success('已创建并连接图片展示节点');
+  }, [addConnections, crud.createNodeAt, setGroups]);
   // 保存为预设：收集当前选中节点（用 ref 读最新值），暂存快照后弹对话框。
   // 统计涉及的分组数（任一子节点在选中集合内）。
   const handleSavePreset = useCallback(() => {
@@ -1127,10 +1185,16 @@ export default function Canvas({ hostConfig }) {
     setNodeContextMenu(null);
     if (action === 'clone') handleCloneNode(nodeId);
     else if (action === 'copyProperties') selection.handleCopyProperties(nodeId);
+    else if (action === 'copyInfo') void handleCopyNodeInfo(nodeId);
     else if (action === 'pasteProperties') selection.requestPropertyPaste(nodeId);
     else if (action === 'locateHistory') handleLocateHistory(nodeId);
+    else if (action === 'createImageDisplay') handleCreateDownstreamImageDisplay(nodeId);
     else if (action === 'delete') handleDeleteNodeWithHistoryCheck(nodeId);
-  }, [handleCloneNode, handleLocateHistory, handleDeleteNodeWithHistoryCheck, selection.handleCopyProperties, selection.requestPropertyPaste]);
+  }, [
+    handleCloneNode, handleCopyNodeInfo, handleCreateDownstreamImageDisplay,
+    handleLocateHistory, handleDeleteNodeWithHistoryCheck,
+    selection.handleCopyProperties, selection.requestPropertyPaste,
+  ]);
   // 临时：从画布节点产出反向重建生成记录（用于误清空历史后恢复）。
   // 字段约定参考 useNodeExecutions 各 addHistory 调用（images/mediaType/text/prompt/model）。
   // 一个 output 快照派生一条 history item（audio/video/text/images 任一命中）。
@@ -1226,6 +1290,42 @@ export default function Canvas({ hostConfig }) {
     if (!edgeId) return;
     setEdges((prev) => prev.filter((edge) => edge.id !== edgeId));
   }, [setEdges]);
+
+  // 连线 toolbar 操作：删除直接移除；插入节点打开现有添加节点菜单，选中后由
+  // useNodeCrud.handleAddAtDrop 负责创建节点并重连原连线两端。
+  useEffect(() => {
+    const onDelete = (event) => handleDeleteEdgeById(event.detail?.edgeId);
+    const onInsert = (event) => {
+      const detail = event.detail || {};
+      if (!detail.edgeId || !detail.source || !detail.target) return;
+      const sourceNode = nodesRef.current.find((node) => node.id === detail.source);
+      const targetNode = nodesRef.current.find((node) => node.id === detail.target);
+      if (!sourceNode || !targetNode) return;
+      const sourceW = sourceNode.width || sourceNode.style?.width || 280;
+      const sourceH = sourceNode.height || sourceNode.style?.height || 220;
+      const targetW = targetNode.width || targetNode.style?.width || 280;
+      const targetH = targetNode.height || targetNode.style?.height || 220;
+      const flowPoint = {
+        x: (sourceNode.position.x + sourceW / 2 + targetNode.position.x + targetW / 2) / 2,
+        y: (sourceNode.position.y + sourceH / 2 + targetNode.position.y + targetH / 2) / 2,
+      };
+      const screenPoint = reactFlow.flowToScreenPosition(flowPoint);
+      setDropNodeMenu({
+        clientX: screenPoint.x,
+        clientY: screenPoint.y,
+        source: detail.source,
+        target: detail.target,
+        edgeId: detail.edgeId,
+        sourceHandle: detail.sourceHandle || null,
+      });
+    };
+    window.addEventListener('workflow:delete-edge', onDelete);
+    window.addEventListener('workflow:edge-insert-node', onInsert);
+    return () => {
+      window.removeEventListener('workflow:delete-edge', onDelete);
+      window.removeEventListener('workflow:edge-insert-node', onInsert);
+    };
+  }, [handleDeleteEdgeById, reactFlow]);
 
   // 版本切换：把节点 params/output/status 还原到指定历史版本。加 __switchVersion 标记，
   // updateNodeData 不会把这次写入当作新版本存档，仅更新 activeVersion。
