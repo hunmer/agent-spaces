@@ -106,6 +106,13 @@ export default function ConnectionTargetDialog({
                 {expanded ? <div className="ml-7 flex min-w-0 flex-wrap gap-1.5 rounded border border-border bg-muted/30 p-2">
                   <button
                     type="button"
+                    className="rounded border border-primary bg-primary/10 px-2 py-1 text-[11px] text-primary hover:bg-primary/15"
+                    onClick={() => onSelect?.(target.id, selectedAsset || null, activeInputType, undefined)}
+                  >
+                    直接连接
+                  </button>
+                  <button
+                    type="button"
                     className="rounded border border-border bg-background px-2 py-1 text-[11px] text-foreground hover:border-primary hover:text-primary"
                     onClick={() => onSelect?.(target.id, selectedAsset || null, activeInputType, undefined)}
                   >
