@@ -286,8 +286,13 @@ export default function useNodeCrud({
   // 拖拽经过画布：必须 preventDefault 才能触发 drop
   const handleDragOver = useCallback((event) => {
     event.preventDefault();
-    const isImageDrag = Array.from(event.dataTransfer.types || []).includes(CANVAS_DROP_MIME);
-    event.dataTransfer.dropEffect = isImageDrag ? 'copy' : 'move';
+    const types = Array.from(event.dataTransfer.types || []);
+    const hasImageItem = Array.from(event.dataTransfer.items || [])
+      .some((item) => item.kind === 'file' && (item.type?.startsWith('image/') || !item.type));
+    // 外部应用通常声明 copy（Files、URI 或 image/*），若强制 move 会显示禁用光标。
+    const isExternalImageDrag = types.includes('Files') || types.includes('text/uri-list') || hasImageItem;
+    const isImageDrag = types.includes(CANVAS_DROP_MIME);
+    event.dataTransfer.dropEffect = isImageDrag || isExternalImageDrag ? 'copy' : 'move';
     if (isImageDrag && !debuggedCanvasImageDrags.has(event.dataTransfer)) {
       debuggedCanvasImageDrags.add(event.dataTransfer);
       debugCanvasImageDrag('canvas:dragover', event.dataTransfer, { isImageDrag });
