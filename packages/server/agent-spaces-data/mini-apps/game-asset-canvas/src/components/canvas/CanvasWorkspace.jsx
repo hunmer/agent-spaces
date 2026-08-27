@@ -71,6 +71,7 @@ export default function CanvasWorkspace({
             <ReactFlow
               key={activeId}
               {...reactFlowProps}
+              colorMode="system"
               connectionLineComponent={ConnectionLine}
               connectionRadius={160}
               nodeTypes={reactFlowProps.nodeTypes}
@@ -106,7 +107,6 @@ export default function CanvasWorkspace({
                   pannable
                   zoomable
                   nodeColor={(node) => NODE_META[node.type]?.color || '#94a3b8'}
-                  maskColor="rgb(0 0 0 / 0.05)"
                 />
               )}
               <GroupOverlays {...groupOverlayProps} />

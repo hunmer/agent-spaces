@@ -67,7 +67,7 @@ export type PromptTextEditorProps = {
   className?: string;
   /** 文本变量及其连线状态；文档中的字面量 {key} 会按对应 edge 颜色高亮。 */
   variables?: PromptVariableBinding[];
-  /** {{ 唤起的上游节点输出属性。 */
+  /** $ 唤起的上游节点输出属性。 */
   outputSuggestions?: PromptOutputSuggestion[];
   /** 未连线变量的手动 fallback 变化。 */
   onVariableValueChange?: (key: string, value: string) => void;
@@ -80,6 +80,7 @@ export type PromptTextEditorProps = {
 };
 
 const PROMPT_VARIABLE_PATTERN = /\{([A-Za-z0-9_.\-\u3400-\u9fff]+)\}/g;
+const PROMPT_OUTPUT_PATTERN = /\$\$([^$]+)\$\$/g;
 const promptVariablePluginKey = new PluginKey('promptVariableHighlight');
 
 function createTextContent(value: string): JSONContent {
@@ -197,6 +198,18 @@ function createPromptVariableExtension(runtimeRef: React.RefObject<PromptVariabl
                     class: 'prompt-variable-token',
                     ...(binding?.displayValue ? { 'data-variable-display': binding.displayValue } : {}),
                     style: variableDecorationStyle(binding),
+                  },
+                ));
+              }
+              for (const match of node.text.matchAll(PROMPT_OUTPUT_PATTERN)) {
+                if (match.index === undefined) continue;
+                decorations.push(Decoration.inline(
+                  pos + match.index,
+                  pos + match.index + match[0].length,
+                  {
+                    'data-prompt-output': match[1],
+                    class: 'prompt-variable-token',
+                    style: variableDecorationStyle(),
                   },
                 ));
               }
@@ -378,7 +391,9 @@ const OutputSuggestionList = forwardRef<
   const [selected, setSelected] = React.useState(0);
   const listRef = useRef<HTMLDivElement>(null);
   useEffect(() => setSelected(0), [items]);
-  useEffect(() => listRef.current?.querySelector('[data-selected="true"]')?.scrollIntoView({ block: 'nearest' }), [selected]);
+  useEffect(() => {
+    listRef.current?.querySelector('[data-selected="true"]')?.scrollIntoView({ block: 'nearest' });
+  }, [selected]);
   useImperativeHandle(ref, () => ({
     onKeyDown: ({ event }) => {
       if (!items.length) return false;
@@ -397,7 +412,7 @@ const OutputSuggestionList = forwardRef<
         return <button key={`${item.nodeId}.${item.key}`} type="button" data-selected={index === selected}
           onMouseEnter={() => setSelected(index)} onClick={() => command(item)}
           className={cn('flex w-full items-center justify-between rounded px-2 py-1 text-left text-xs', index === selected ? 'bg-accent text-accent-foreground' : 'hover:bg-accent/60')}>
-          <span className="font-mono">{`{{${item.nodeLabel}.${item.key}}}`}</span>
+          <span className="font-mono">{`$$${item.nodeLabel}.${item.key}$$`}</span>
           {item.value && <span className="ml-2 max-w-24 truncate text-[10px] text-muted-foreground">{item.value}</span>}
         </button>;
       })}
@@ -408,13 +423,17 @@ const OutputSuggestionList = forwardRef<
 function outputSuggestionRenderer() {
   let component: ReactRenderer | null = null;
   let popup: Instance[] | null = null;
+  const mount = (props: SuggestionProps<PromptOutputSuggestion>) => {
+    if (!props.items?.length || component) return;
+    component = new ReactRenderer(OutputSuggestionList, { props, editor: props.editor });
+    if (!props.clientRect) return;
+    popup = tippy('body', { getReferenceClientRect: () => props.clientRect?.() ?? new DOMRect(), appendTo: () => document.body, content: component.element, showOnCreate: true, interactive: true, trigger: 'manual', placement: 'bottom-start' });
+  };
   return {
     onStart(props: SuggestionProps<PromptOutputSuggestion>) {
-      component = new ReactRenderer(OutputSuggestionList, { props, editor: props.editor });
-      if (!props.clientRect) return;
-      popup = tippy('body', { getReferenceClientRect: () => props.clientRect?.() ?? new DOMRect(), appendTo: () => document.body, content: component.element, showOnCreate: true, interactive: true, trigger: 'manual', placement: 'bottom-start' });
+      mount(props);
     },
-    onUpdate(props: SuggestionProps<PromptOutputSuggestion>) { component?.updateProps(props); if (popup?.[0] && props.clientRect) popup[0].setProps({ getReferenceClientRect: () => props.clientRect?.() ?? new DOMRect() }); },
+    onUpdate(props: SuggestionProps<PromptOutputSuggestion>) { mount(props); component?.updateProps(props); if (popup?.[0] && props.clientRect) popup[0].setProps({ getReferenceClientRect: () => props.clientRect?.() ?? new DOMRect() }); },
     onKeyDown(props: { event: KeyboardEvent }) { return component?.ref && typeof component.ref === 'object' && 'onKeyDown' in component.ref ? (component.ref as any).onKeyDown(props) : false; },
     onExit() { popup?.[0]?.destroy(); component?.destroy(); popup = null; component = null; },
   };
@@ -550,16 +569,16 @@ export function PromptTextEditor({
   const variableExt = useMemo(() => createPromptVariableExtension(variableRuntimeRef), []);
   const outputExt = useMemo(() => Mention.extend({ name: 'promptOutput', addAttributes: () => ({ nodeId: { default: '' }, key: { default: '' } }) }).configure({
     suggestion: {
-      char: '{',
-      allow: ({ query }: { query: string }) => query.startsWith('{'),
+      char: '$',
+      allow: () => true,
       items: ({ query }: { query: string }) => {
-        if (!query.startsWith('{')) return [];
-        const kw = query.slice(1).toLowerCase();
+        const normalizedQuery = String(query || '');
+        const kw = normalizedQuery.toLowerCase();
         return outputSuggestionsRef.current.filter((item) => `${item.nodeLabel}.${item.key}`.toLowerCase().includes(kw)).slice(0, 50);
       },
       command: ({ editor, range, props }) => {
         const item = props as unknown as PromptOutputSuggestion;
-        editor.chain().focus().insertContentAt(range, `{{${item.nodeLabel}.${item.key}}}`).run();
+        editor.chain().focus().insertContentAt(range, `$$${item.nodeLabel}.${item.key}$$`).run();
       },
       render: () => outputSuggestionRenderer(),
     },

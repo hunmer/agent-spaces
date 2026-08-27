@@ -174,7 +174,7 @@ export function computeInputTexts(nodes, edges) {
   const valuesByTarget = new Map();
   const outputTokensByTarget = new Map();
 
-  // 双花括号引用只对存在文本连线的上游节点开放，避免把画布上无关节点暴露为变量。
+  // 双美元引用只对存在文本连线的上游节点开放，避免把画布上无关节点暴露为变量。
   for (const edge of edges) {
     if (edge.data?.inputType !== CONNECTION_INPUT_TYPES.text || !edge.target) continue;
     const source = byId.get(edge.source);
@@ -225,7 +225,7 @@ export function computeInputTexts(nodes, edges) {
       const wholeValue = joinUniqueText(values.whole);
       const tokenMap = outputTokensByTarget.get(nodeId);
       const replaceOutputTokens = (text) => tokenMap
-        ? text.replace(/\{\{([^{}]+)\}\}/g, (token, key) => tokenMap.get(key) ?? token)
+        ? text.replace(/\$\$([^$]+)\$\$/g, (token, key) => tokenMap.get(key) ?? token)
         : text;
       if (wholeValue) return [field, replaceOutputTokens(wholeValue)];
 

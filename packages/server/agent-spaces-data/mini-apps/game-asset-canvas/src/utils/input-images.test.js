@@ -186,10 +186,10 @@ test('computeInputTexts uses connected text before manual fallback and restores 
   assert.deepEqual(computeInputTexts(nodes, []).get('target'), { prompt: '绘制 手动角色' });
 });
 
-test('computeInputTexts resolves {{node.key}} output references at execution time', () => {
+test('computeInputTexts resolves $$node.key$$ output references at execution time', () => {
   const nodes = [
     { id: 'source', type: NODE_TYPES.text, data: { title: '文案', output: { text: '机械骑士', mood: '史诗' } } },
-    { id: 'target', type: NODE_TYPES.textToImage, data: { params: { prompt: '主题 {{文案.text}}，风格 {{文案.mood}}' } } },
+    { id: 'target', type: NODE_TYPES.textToImage, data: { params: { prompt: '主题 $$文案.text$$，风格 $$文案.mood$$' } } },
   ];
   const edges = [{ ...edge('source', 'target'), data: { inputType: 'text', inputTarget: 'prompt', inputVariable: 'subject' } }];
   assert.deepEqual(computeInputTexts(nodes, edges).get('target'), { prompt: '主题 机械骑士，风格 史诗' });
