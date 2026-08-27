@@ -19,7 +19,13 @@ export default function DropNodeMenu({ dropNodeMenu, onClose, onPick }) {
   const rootRef = useRef(null);
   const options = useMemo(() => createNodePickerOptions(onPick), [onPick]);
   useEffect(() => {
-    const onPointerDown = (event) => { if (!rootRef.current?.contains(event.target)) onClose?.(); };
+    const onPointerDown = (event) => {
+      if (rootRef.current?.contains(event.target)) return;
+      // SearchSelect 的 Popover 内容通过 portal 渲染到 body，不在 rootRef 内；
+      // 点击选项时必须保留菜单状态，交给 onChange 完成创建。
+      if (event.target?.closest?.('[data-slot="popover-content"], [data-slot="popover-popup"], [data-slot="popover-trigger"]')) return;
+      onClose?.();
+    };
     const onKeyDown = (event) => { if (event.key === 'Escape') onClose?.(); };
     window.addEventListener('pointerdown', onPointerDown, true);
     window.addEventListener('keydown', onKeyDown, true);

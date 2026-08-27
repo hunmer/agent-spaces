@@ -125,6 +125,20 @@ export default function useNodeCrud({
       // 节点中心落在落点
       const position = { x: flow.x - size.w / 2, y: flow.y - size.h / 2 };
       const newId = createNodeAt(type, position, dataPatch);
+      // 连线 toolbar 的插入场景：无论新节点类型是否能推导出唯一输入目标，
+      // 都必须把原边拆成上下游两条边，避免普通新增逻辑因 targets 为空提前返回。
+      if (cur.target && cur.edgeId) {
+        const original = edgesRef.current.find((edge) => edge.id === cur.edgeId);
+        if (original) {
+          setEdges((prev) => {
+            const next = prev.filter((edge) => edge.id !== cur.edgeId);
+            const { id: _originalId, ...edgeBase } = original;
+            const upstream = addEdge({ ...edgeBase, source: original.source, target: newId, targetHandle: undefined }, next);
+            return addEdge({ ...edgeBase, source: newId, target: original.target, sourceHandle: undefined }, upstream);
+          });
+          return null;
+        }
+      }
       const sourceNode = nodesRef.current.find((node) => node.id === cur.source);
       const targetParamsSchema = NODE_PARAMS_SCHEMA[type] || [];
       const baseParams = initialData(type)?.params || {};
@@ -165,7 +179,6 @@ export default function useNodeCrud({
         return null;
       }
       setEdges((prev) => {
-        if (!targets.length) return prev;
         const original = cur.edgeId ? prev.find((e) => e.id === cur.edgeId) : null;
         const withoutOriginal = original ? prev.filter((e) => e.id !== cur.edgeId) : prev;
         const key = `${cur.source}->${newId}`;
@@ -178,8 +191,9 @@ export default function useNodeCrud({
             markerEnd: { type: MarkerType.ArrowClosed },
             animated: true,
             data: {
-              inputType: connection.inputType,
-              inputTarget: targets[0].id,
+              inputType: connection.inputType || CONNECTION_INPUT_TYPES.image,
+              // 没有可枚举输入目标时使用默认 images 入口，保证出点拖拽新增仍建立连线。
+              inputTarget: targets[0]?.id || 'images',
               ...(sourceAsset ? { sourceAsset } : {}),
             },
           }, next);

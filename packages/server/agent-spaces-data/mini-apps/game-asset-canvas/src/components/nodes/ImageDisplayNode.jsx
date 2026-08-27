@@ -80,21 +80,25 @@ export default function ImageDisplayNode({ id, data, selected }) {
   }, [data?.imageSize?.height, data?.imageSize?.width, id, onAutoSize, onUpdate, rotation]);
 
   const handleUploadChange = useCallback(async (files) => {
-    const item = Array.isArray(files) ? files[files.length - 1] : null;
-    if (!item?.file) return;
-    const existing = item.file.uploadedUrl || item.file.uploadedHttpPath || item.file.httpPath || item.file.url;
+    const items = Array.isArray(files) ? files.filter((item) => item?.file) : [];
+    if (!items.length) return;
     setUploading(true);
     try {
-      const uploaded = existing ? null : await window.AgentSpaces?.uploadFile?.(item.file);
-      const url = existing || uploaded?.url || uploaded?.httpPath;
-      if (!url) throw new Error('上传未返回 URL');
-      onUpdate?.({ images: [url], source: 'upload', error: null });
+      const urls = [];
+      for (const item of items) {
+        const existing = item.file.uploadedUrl || item.file.uploadedHttpPath || item.file.httpPath || item.file.url;
+        const uploaded = existing ? null : await window.AgentSpaces?.uploadFile?.(item.file);
+        const url = existing || uploaded?.url || uploaded?.httpPath;
+        if (url) urls.push(url);
+      }
+      if (!urls.length) throw new Error('上传未返回 URL');
+      onUpdate?.({ images: Array.from(new Set([...images, ...urls])), source: 'upload', error: null });
     } catch (error) {
       onUpdate?.({ error: `上传失败：${error?.message || String(error)}` });
     } finally {
       setUploading(false);
     }
-  }, [onUpdate]);
+  }, [images, onUpdate]);
 
   const open = useCallback(() => {
     if (!images.length) return;
@@ -203,7 +207,7 @@ export default function ImageDisplayNode({ id, data, selected }) {
       />
 
       <div className={`absolute inset-0 overflow-hidden rounded-lg bg-card shadow-sm ${showFullNode ? '' : 'invisible pointer-events-none'}`}>
-      <div className="absolute right-1.5 top-1.5 z-30 nodrag nopan">
+      <div className="absolute -right-10 top-1.5 z-30 nodrag nopan">
         <Popover open={uploadOpen} onOpenChange={setUploadOpen}>
           <PopoverTrigger
             render={<button type="button" title="上传图片" aria-label="上传图片" className="flex h-7 w-7 items-center justify-center rounded-md bg-background/85 text-muted-foreground shadow ring-1 ring-border backdrop-blur-sm hover:text-primary" />}
@@ -213,7 +217,7 @@ export default function ImageDisplayNode({ id, data, selected }) {
           <PopoverContent align="end" className="w-56 p-2">
             <FileUpload
               value={[]}
-              maxFiles={1}
+              maxFiles={6}
               onChange={(files) => { handleUploadChange(files); setUploadOpen(false); }}
               placeholder="点击或拖拽图片到此处上传"
             />
@@ -267,12 +271,12 @@ export default function ImageDisplayNode({ id, data, selected }) {
             >
               <X className="h-3.5 w-3.5" />
             </button>
-            <button type="button" onDoubleClick={open} aria-label="双击查看大图" className="absolute inset-0 cursor-zoom-in" />
+            <button type="button" onDoubleClick={(event) => { event.stopPropagation(); open(); }} aria-label="双击查看图片" title="双击查看大图" className="absolute inset-0 cursor-zoom-in" />
           </div>
         ) : (
           // 空态：点开上传。带 image-drag-handle class 让空节点也能从该区域拖动。
           <div className="image-drag-handle flex h-full w-full cursor-move flex-col items-center justify-center gap-2 text-xs text-muted-foreground transition hover:text-primary">
-            <FileUpload value={[]} max={1} onChange={handleUploadChange} placeholder="点击或拖拽图片到此处上传" />
+            <FileUpload value={[]} maxFiles={6} onChange={handleUploadChange} placeholder="点击或拖拽图片到此处上传" />
           </div>
         )}
       </div>
