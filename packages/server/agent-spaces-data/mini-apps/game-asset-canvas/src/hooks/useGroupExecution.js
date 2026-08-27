@@ -345,7 +345,7 @@ export default function useGroupExecution({ groups, nodes, edges, setGroups, set
       .map((group) => ({ group, nodeIds: collectGroupNodeIds(currentGroups, group.id) }))
       .filter(({ group, nodeIds }) => (
         nodeIds.includes(nodeId)
-        && group.batchExecution?.mode === GROUP_EXECUTION_MODES.assets
+        && group.batchExecution?.mode
       ))
       .sort((left, right) => left.nodeIds.length - right.nodeIds.length)[0];
     if (!target) return null;

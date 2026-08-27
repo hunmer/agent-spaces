@@ -147,6 +147,10 @@ export function WorkflowGroupOverlay({
   }, [group.id, group.locked, onUpdate]);
 
   const handleDoubleClick = useCallback((e: React.MouseEvent) => {
+    const target = e.target as Element;
+    // Header captures the pointer while dragging. After capture, the browser
+    // may dispatch dblclick on the header instead of the name span.
+    if (target.closest('button,input')) return;
     e.stopPropagation();
     setEditName(group.name);
     setIsEditing(true);
@@ -314,6 +318,7 @@ export function WorkflowGroupOverlay({
         className={`pointer-events-auto flex h-10 select-none items-center gap-1 px-2 pb-2 backdrop-blur-sm ${group.locked ? 'cursor-default' : 'cursor-move'}`}
         style={{ backgroundColor: colors.header }}
         onPointerDown={handleHeaderPointerDown}
+        onDoubleClick={handleDoubleClick}
       >
         <button className="p-0 hover:bg-black/5 rounded" onPointerDown={stopButtonPointerDown} onClick={handleToggleCollapse}>
           {collapsed
@@ -335,7 +340,6 @@ export function WorkflowGroupOverlay({
         ) : (
           <span
             className="text-[10px] font-medium truncate flex-1"
-            onDoubleClick={handleDoubleClick}
           >
             {group.name || '未命名分组'}
           </span>

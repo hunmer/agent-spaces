@@ -53,3 +53,25 @@ export function groupOutputAssetItems(items) {
   }
   return sections;
 }
+
+export function removeOutputAssetItems(images, resources, indexes) {
+  const removedIndexes = new Set(
+    (Array.isArray(indexes) ? indexes : [indexes])
+      .filter((index) => Number.isInteger(index) && index >= 0),
+  );
+  const items = createOutputAssetItems(images, resources)
+    .filter((item) => !removedIndexes.has(item.index));
+  return {
+    images: items.map((item) => item.url),
+    resources: items.map((item) => item.resource),
+  };
+}
+
+export function updateOutputVersion(versions, activeVersion, output) {
+  if (!Array.isArray(versions) || !Number.isInteger(activeVersion) || !versions[activeVersion]) {
+    return versions;
+  }
+  return versions.map((version, index) => index === activeVersion
+    ? { ...version, output: { ...(version.output || {}), ...output } }
+    : version);
+}

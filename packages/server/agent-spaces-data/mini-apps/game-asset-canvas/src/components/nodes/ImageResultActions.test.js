@@ -10,3 +10,8 @@ test('output thumbnail actions share a bottom-centered hover action group', () =
   assert.match(source, /<div className="game-asset-output-actions nodrag nopan nowheel">[\s\S]*<FolderPlus[\s\S]*<Trash2/);
   assert.doesNotMatch(source, /-right-1 -top-1|-bottom-1 -right-1/);
 });
+
+test('group header clears only its own output indexes', () => {
+  assert.match(source, /onRemoveImage\(section\.items\.map\(\(item\) => item\.index\)\)/);
+  assert.match(source, /title=\{`清空当前组产出（\$\{section\.groupName\}）`\}/);
+});

@@ -56,7 +56,7 @@ import { decorateEdgesForSelection } from '../utils/edge-display';
 import { countNodesWithOutput } from '../utils/batch-run';
 import { collectGroupNodeIds } from '../utils/group-helpers';
 import { CanvasGalleryContextProvider } from '../utils/canvas-gallery';
-import { createOutputAssetItems } from '../utils/output-resources';
+import { createOutputAssetItems, removeOutputAssetItems, updateOutputVersion } from '../utils/output-resources';
 import { COMPACT_NODE_ZOOM_THRESHOLD } from './nodes/compact-node';
 
 const EDGE_PATH_STYLES = ['bezier', 'straight', 'step', 'smoothstep'];
@@ -1062,21 +1062,29 @@ export default function Canvas({ hostConfig }) {
     if (!Array.isArray(urls) || !urls.length) return;
     handleOutputImagesChange(nodeId, (prev) => [...prev, ...urls.filter(Boolean)]);
   }, [handleOutputImagesChange]);
-  const handleRemoveOutputImage = useCallback((nodeId, index) => {
-    updateNodeData(nodeId, (data) => {
+  const handleRemoveOutputImage = useCallback((nodeId, indexes) => {
+    const patchOutput = (data) => {
       const images = Array.isArray(data?.output?.images) ? data.output.images : [];
       const resources = Array.isArray(data?.output?.resources) ? data.output.resources : [];
-      const nextItems = createOutputAssetItems(images, resources).filter((item) => item.index !== index);
+      const next = removeOutputAssetItems(images, resources, indexes);
+      const activeVersion = Number.isInteger(data?.activeVersion)
+        ? data.activeVersion
+        : (Array.isArray(data?.versions) && data.versions.length ? data.versions.length - 1 : undefined);
+      const versions = updateOutputVersion(data?.versions, activeVersion, next);
       return {
         __versionSkip: true,
         output: {
           ...(data?.output || {}),
-          images: nextItems.map((item) => item.url),
-          resources: nextItems.map((item) => item.resource),
+          images: next.images,
+          resources: next.resources,
         },
+        ...(versions !== data?.versions ? { versions } : {}),
       };
-    });
-  }, [updateNodeData]);
+    };
+    const target = groupExecution.getExecutionTargetForNode(nodeId);
+    if (target) groupExecution.updateExecutionNodeData(target, patchOutput);
+    else updateNodeData(nodeId, patchOutput);
+  }, [groupExecution.getExecutionTargetForNode, groupExecution.updateExecutionNodeData, updateNodeData]);
   // 产出图重排序：拖拽调整顺序，写回 data.output.images
   const handleReorderOutputImages = useCallback((nodeId, next, nextResources) => {
     if (!Array.isArray(next)) return;
@@ -1393,7 +1401,7 @@ export default function Canvas({ hostConfig }) {
   // 版本切换：把节点 params/output/status 还原到指定历史版本。加 __switchVersion 标记，
   // updateNodeData 不会把这次写入当作新版本存档，仅更新 activeVersion。
   const handleSwitchVersion = useCallback((nodeId, versionIndex) => {
-    updateNodeData(nodeId, (data) => {
+    const patchVersion = (data) => {
       const versions = Array.isArray(data?.versions) ? data.versions : [];
       const v = versions[versionIndex];
       if (!v) return { __switchVersion: true };
@@ -1404,8 +1412,11 @@ export default function Canvas({ hostConfig }) {
         status: 'done',
         activeVersion: versionIndex,
       };
-    });
-  }, [updateNodeData]);
+    };
+    const target = groupExecution.getExecutionTargetForNode(nodeId);
+    if (target) groupExecution.updateExecutionNodeData(target, patchVersion);
+    else updateNodeData(nodeId, patchVersion);
+  }, [groupExecution.getExecutionTargetForNode, groupExecution.updateExecutionNodeData, updateNodeData]);
 
   const nodeCallbacks = useMemo(() => ({
     makeOnUpdate,

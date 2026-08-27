@@ -302,3 +302,25 @@ test('普通节点执行冻结实例身份并由队列按执行节点 ID 隔离'
   assert.match(queueSource, /executionNodeId: task\.executionNodeId \|\| task\.placeholderNodeId/);
   assert.match(queueSource, /executionTarget: task\.executionTarget \|\| null/);
 });
+
+test('历史版本切换和图片删除都写回当前执行实例', () => {
+  const canvasSource = readFileSync(
+    new URL('../components/Canvas.jsx', import.meta.url),
+    'utf8',
+  );
+  const executionSource = readFileSync(
+    new URL('../hooks/useGroupExecution.js', import.meta.url),
+    'utf8',
+  );
+  const switchVersionSource = canvasSource.slice(
+    canvasSource.indexOf('const handleSwitchVersion = useCallback'),
+    canvasSource.indexOf('const nodeCallbacks = useMemo'),
+  );
+  assert.match(switchVersionSource, /groupExecution\.updateExecutionNodeData\(target, patchVersion\)/);
+  assert.match(canvasSource, /groupExecution\.updateExecutionNodeData\(target, patchOutput\)/);
+  const targetSource = executionSource.slice(
+    executionSource.indexOf('const getExecutionTargetForNode = useCallback'),
+    executionSource.indexOf('const updateExecutionNodeData = useCallback'),
+  );
+  assert.doesNotMatch(targetSource, /mode === GROUP_EXECUTION_MODES\.assets/);
+});

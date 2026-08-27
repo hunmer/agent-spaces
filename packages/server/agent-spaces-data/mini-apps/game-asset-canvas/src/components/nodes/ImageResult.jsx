@@ -18,14 +18,14 @@ function BrokenImagePlaceholder({ url }) {
 
 /**
  * 节点内的图片网格结果展示，点击用 MediaGallery 打开大图（可翻页）。
- * @param {{ images: string[], resources?: Array<{url:string,thumb?:string,groupName?:string,label?:string}>, max?: number, preview?: boolean, onImageLoad?: Function, onAddToAssets?: (payload:string|{url,fileName?}|Array<string|{url,fileName?}>)=>void, fileName?: string, onAddImages?:(urls:string[])=>void, onRemoveImage?:(index:number)=>void, onClearImages?:()=>void, versions?:Array, activeVersion?:number, onSwitchVersion?:(index:number)=>void }} props
+ * @param {{ images: string[], resources?: Array<{url:string,thumb?:string,groupName?:string,label?:string}>, max?: number, preview?: boolean, onImageLoad?: Function, onAddToAssets?: (payload:string|{url,fileName?}|Array<string|{url,fileName?}>)=>void, fileName?: string, onAddImages?:(urls:string[])=>void, onRemoveImage?:(indexes:number|number[])=>void, onClearImages?:()=>void, versions?:Array, activeVersion?:number, onSwitchVersion?:(index:number)=>void }} props
  * @param {number} [props.max] 单网格最多展示张数，0 或缺省表示全部（GIF 拆帧等可能产出数十帧）
  * @param {boolean} [props.preview] 输出预览模式：无标签/边框，图片全宽纵向排列
  * @param {Function} [props.onImageLoad] 图片加载完成回调
  * @param {Function} [props.onAddToAssets] 传入则：①缩略图底部操作栏显示「添加到素材库」按钮（单张，回传 {url, fileName}）；②标题栏显示「添加当前产出」按钮（当前版本全部图，回传数组）；③版本数>1 时标题栏额外显示「添加所有产出」按钮（所有历史版本图，回传数组）
  * @param {string} [props.fileName] 该批产出的下载/入库文件名（多张时自动加序号后缀），传给 MediaGallery 的 download 字段
  * @param {Function} [props.onAddImages] 传入则标题右侧显示「添加」按钮（Popover 内上传），上传成功后回传新增 url 数组
- * @param {Function} [props.onRemoveImage] 传入则缩略图底部操作栏显示删除按钮，点击回传被删图索引
+ * @param {Function} [props.onRemoveImage] 传入则显示单图删除和清空当前组按钮，回传被删图索引或索引数组
  * @param {Function} [props.onClearImages] 传入则标题右侧显示「清空」按钮，点击清空所有产出
  * @param {Function} [props.onReorderImages] 传入则产出网格支持拖拽排序，回传重排后的 url 与 resource 数组
  * @param {Array} [props.versions] 历史版本数组 [{params, output, createdAt}]
@@ -45,7 +45,6 @@ export default function ImageResult({ nodeId, images, resources = [], max = 0, p
     : (resourceByUrl.get(url) || { url, thumb: url });
   // 跨节点图片选中状态：checkbox 点击增删切换，ctrl+点击图片本体增删切换（跨节点累加）
   const { isSelected, toggle, selectedUrls } = useContext(ImageSelectionContext);
-  if (!list.length && !onAddImages && !hasVersions) return null;
 
   // 拖拽排序（原生 HTML5 DnD，参考 UpstreamImageList）：仅在非预览态 + 注入 onReorderImages + 多图时启用。
   // draggingRef 用 ref 保证 dragstart→dragover 间同步读取（state 异步会读到 null）。
@@ -54,6 +53,7 @@ export default function ImageResult({ nodeId, images, resources = [], max = 0, p
   const [draggingIdx, setDraggingIdx] = useState(null);
   const [overIdx, setOverIdx] = useState(null);
   const [confirmClear, setConfirmClear] = useState(false);
+  if (!list.length && !onAddImages && !hasVersions) return null;
   const reorderMove = (from, to) => {
     if (from === to || from < 0 || to < 0 || from >= list.length || to >= list.length) return;
     const next = [...list];
@@ -228,7 +228,13 @@ export default function ImageResult({ nodeId, images, resources = [], max = 0, p
         </div>
       )}
       {list.length > 0 && sections.map((section) => (
-        <OutputAssetSection key={section.key} section={section}>
+        <OutputAssetSection
+          key={section.key}
+          section={section}
+          onClear={onRemoveImage
+            ? () => onRemoveImage(section.items.map((item) => item.index))
+            : undefined}
+        >
           <div className="grid grid-cols-3 gap-1">
           {section.items.map((item) => {
             const { index: i, url } = item;
@@ -377,21 +383,33 @@ function PreviewImage({ url, thumb, label, onOpen, onImageLoad, onDragStart }) {
   );
 }
 
-function OutputAssetSection({ section, preview = false, children }) {
+function OutputAssetSection({ section, preview = false, onClear, children }) {
   const [expanded, setExpanded] = useState(true);
   if (!section.groupName) return children;
   return (
     <div className="overflow-hidden rounded-md border border-border bg-card">
-      <button
-        type="button"
-        aria-expanded={expanded}
-        onClick={(event) => { event.stopPropagation(); setExpanded((value) => !value); }}
-        className="flex w-full items-center gap-1.5 bg-muted/60 px-2 py-1.5 text-left text-[11px] font-medium text-foreground hover:bg-muted"
-      >
-        <ChevronDown className={`h-3.5 w-3.5 shrink-0 transition-transform ${expanded ? '' : '-rotate-90'}`} />
-        <span className="min-w-0 flex-1 truncate" title={section.groupName}>{section.groupName}</span>
-        <Badge variant="secondary" className="h-4 shrink-0 px-1 text-[9px]">{section.items.length}</Badge>
-      </button>
+      <div className="flex items-center bg-muted/60 hover:bg-muted">
+        <button
+          type="button"
+          aria-expanded={expanded}
+          onClick={(event) => { event.stopPropagation(); setExpanded((value) => !value); }}
+          className="flex min-w-0 flex-1 items-center gap-1.5 px-2 py-1.5 text-left text-[11px] font-medium text-foreground"
+        >
+          <ChevronDown className={`h-3.5 w-3.5 shrink-0 transition-transform ${expanded ? '' : '-rotate-90'}`} />
+          <span className="min-w-0 flex-1 truncate" title={section.groupName}>{section.groupName}</span>
+          <Badge variant="secondary" className="h-4 shrink-0 px-1 text-[9px]">{section.items.length}</Badge>
+        </button>
+        {onClear && (
+          <button
+            type="button"
+            title={`清空当前组产出（${section.groupName}）`}
+            onClick={(event) => { event.stopPropagation(); onClear(); }}
+            className="mr-1 flex size-6 shrink-0 items-center justify-center rounded text-muted-foreground transition hover:bg-background hover:text-destructive"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </button>
+        )}
+      </div>
       {expanded && <div className={preview ? 'p-2' : 'p-1.5'}>{children}</div>}
     </div>
   );
