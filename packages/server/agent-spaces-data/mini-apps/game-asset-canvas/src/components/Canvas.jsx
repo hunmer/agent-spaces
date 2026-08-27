@@ -1493,9 +1493,18 @@ export default function Canvas({ hostConfig }) {
         nodeType: node.type,
         label: NODE_META[node.type]?.label || node.data?.label || node.type,
         placeholderNodeId: node.id,
-        execute: () => (spec.kind === 'image'
-          ? handleGenerate(node.id, node.type, { workflowId: spec.workflowId, input: spec.input })
-          : handleGenerateMedia(node.id, node.type, spec.kind, { workflowId: spec.workflowId, input: spec.input })),
+        execute: async () => {
+          if (spec.kind === 'image') {
+            await handleGenerate(node.id, node.type, { workflowId: spec.workflowId, input: spec.input });
+          } else {
+            await handleGenerateMedia(node.id, node.type, spec.kind, {
+              workflowId: spec.workflowId,
+              input: spec.input,
+            });
+          }
+          await waitForCanvasState();
+          groupExecution.syncActiveRunForNode(node.id);
+        },
         cancel: () => handleCancelProcess(node.id),
       });
     }
@@ -1504,7 +1513,7 @@ export default function Canvas({ hostConfig }) {
     } else {
       toast.warning('分组内没有可执行的生成节点');
     }
-  }, [collectBatchRunNodes, handleCancelProcess, handleGenerate, handleGenerateMedia, submit]);
+  }, [collectBatchRunNodes, handleCancelProcess, handleGenerate, handleGenerateMedia, groupExecution.syncActiveRunForNode, submit]);
 
   const requestBatchRun = useCallback((nodeIds) => {
     const { candidates } = collectBatchRunNodes(nodeIds);

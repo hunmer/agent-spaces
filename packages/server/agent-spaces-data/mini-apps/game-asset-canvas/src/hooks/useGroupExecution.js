@@ -336,6 +336,18 @@ export default function useGroupExecution({ groups, nodes, edges, setGroups, set
     commit(groupId, execution, targetStates);
   }, [commit, getContext]);
 
+  const syncActiveRunForNode = useCallback((nodeId) => {
+    const currentGroups = groupsRef.current;
+    const target = currentGroups
+      .map((group) => ({ group, nodeIds: collectGroupNodeIds(currentGroups, group.id) }))
+      .filter(({ nodeIds }) => nodeIds.includes(nodeId))
+      .sort((left, right) => left.nodeIds.length - right.nodeIds.length)[0];
+    if (!target) return;
+    const context = getContext(target.group.id);
+    if (!context?.execution?.[context.execution.mode]?.activeId) return;
+    commit(target.group.id, saveActiveRun(context.execution, context.currentStates));
+  }, [commit, getContext]);
+
   const uploadAssets = useCallback(async (groupId, fileList) => {
     const files = Array.from(fileList || []).filter((file) => file.type?.startsWith('image/'));
     if (!files.length) return { added: 0, failed: [] };
@@ -529,6 +541,7 @@ export default function useGroupExecution({ groups, nodes, edges, setGroups, set
     setMode,
     setCount,
     switchRun,
+    syncActiveRunForNode,
     uploadAssets,
     removeAsset,
     setOutputBinding,
