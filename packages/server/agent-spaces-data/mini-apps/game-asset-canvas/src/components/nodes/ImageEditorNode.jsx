@@ -67,7 +67,13 @@ export default function ImageEditorNode({ id, data, selected }) {
 
   // 编辑器保存回调：写入产出
   const handleSave = useCallback((urls) => {
-    onUpdate?.({ status: 'done', output: { images: urls }, error: undefined });
+    // 产出协议始终是扁平的 string[]；兼容单 URL、批量 URL 及异步回调产生的嵌套数组。
+    const images = Array.from(new Set(
+      (Array.isArray(urls) ? urls.flat(Infinity) : [urls])
+        .filter((url) => typeof url === 'string' && url),
+    ));
+    if (!images.length) return;
+    onUpdate?.({ status: 'done', output: { images }, error: undefined });
   }, [onUpdate]);
 
   // FileUpload value：把持久化的 uploadedImages URL 转回 FileUploadFile 格式

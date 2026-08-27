@@ -46,8 +46,16 @@ export default function GroupExecutionToolbar({
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
   const [runSelectionOpen, setRunSelectionOpen] = useState(false);
+  const [runningAssetId, setRunningAssetId] = useState(null);
 
   useEffect(() => setCountDraft(String(target)), [target]);
+  useEffect(() => {
+    if (!busy) {
+      setRunningAssetId(null);
+      return;
+    }
+    if (!runAllRunning) setRunningAssetId((current) => current || activeAssetId);
+  }, [activeAssetId, busy, runAllRunning]);
 
   const commitCount = () => {
     const next = clampExecutionCount(countDraft);
@@ -267,7 +275,7 @@ export default function GroupExecutionToolbar({
                 )}
                 <RunStatusLabel
                   status={runAllState?.statusByRun?.[run.id]
-                    || (busy && activeAssetId === run.id ? 'running' : null)}
+                    || (busy && runningAssetId === run.id ? 'running' : null)}
                 />
               </div>
             ))}
