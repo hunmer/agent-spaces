@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { NODE_TYPES, IMAGE_TAGS, modelValuesToOptions } from '../utils/constants';
 import { computeInputAudios, computeInputImages, computeInputTexts, computeInputVideos, computeInputSpineAssets } from '../utils/input-images';
-import { computeTextVariableBindings } from '../utils/text-variable-bindings.js';
+import { computeTextVariableBindings, computeTextOutputSuggestions } from '../utils/text-variable-bindings.js';
 import { dedupeTags } from '../utils/canvas-constants';
 
 /**
@@ -35,6 +35,7 @@ export default function useDecoratedNodes({
   const upstreamMap = useMemo(() => computeInputImages(nodes, edges), [nodes, edges]);
   const upstreamTextsMap = useMemo(() => computeInputTexts(nodes, edges), [nodes, edges]);
   const textVariableBindingsMap = useMemo(() => computeTextVariableBindings(nodes, edges), [nodes, edges]);
+  const textOutputSuggestionsMap = useMemo(() => computeTextOutputSuggestions(nodes, edges), [nodes, edges]);
   const upstreamVideosMap = useMemo(() => computeInputVideos(nodes, edges), [nodes, edges]);
   const upstreamAudiosMap = useMemo(() => computeInputAudios(nodes, edges), [nodes, edges]);
   const upstreamSpineMap = useMemo(() => computeInputSpineAssets(nodes, edges), [nodes, edges]);
@@ -71,6 +72,8 @@ export default function useDecoratedNodes({
       const data = { ...nd.data };
       const textVariableBindings = textVariableBindingsMap.get(nd.id);
       if (textVariableBindings) data.textVariableBindings = textVariableBindings;
+      const textOutputSuggestions = textOutputSuggestionsMap.get(nd.id);
+      if (textOutputSuggestions) data.textOutputSuggestions = textOutputSuggestions;
       if (up) {
         data.images = up.images;
         data.imageResources = up.resources;
@@ -219,7 +222,7 @@ export default function useDecoratedNodes({
       };
     });
   }, [
-    nodes, upstreamMap, upstreamTextsMap, textVariableBindingsMap, upstreamVideosMap, upstreamAudiosMap, propertyApplyNodeIds,
+    nodes, upstreamMap, upstreamTextsMap, textVariableBindingsMap, textOutputSuggestionsMap, upstreamVideosMap, upstreamAudiosMap, propertyApplyNodeIds,
     protectedImageUrls, selectionCount, outputPreviewState,
     onOutputPreviewHeight, onOutputPreviewModeChange, settings, callbacks, storyboardCharacters,
   ]);

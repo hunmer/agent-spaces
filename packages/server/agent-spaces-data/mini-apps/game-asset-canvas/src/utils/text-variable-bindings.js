@@ -29,3 +29,26 @@ export function computeTextVariableBindings(nodes, edges) {
 
   return bindings;
 }
+
+/** 为目标节点收集直接文本上游的 output 属性，供 {{node.key}} 候选使用。 */
+export function computeTextOutputSuggestions(nodes, edges) {
+  const byId = new Map((nodes || []).map((node) => [node.id, node]));
+  const result = new Map();
+  (edges || []).forEach((edge) => {
+    if (edge?.data?.inputType !== 'text' || !edge.target) return;
+    const source = byId.get(edge.source);
+    const output = source?.data?.output;
+    if (!source || !output || typeof output !== 'object') return;
+    const nodeLabel = source.data?.title || source.data?.label || source.type || source.id;
+    const list = result.get(edge.target) || [];
+    Object.entries(output).forEach(([key, raw]) => {
+      if (raw === null || raw === undefined || typeof raw === 'object') return;
+      const value = typeof raw === 'string' ? htmlToPlainText(raw) : String(raw);
+      if (!list.some((item) => item.nodeId === source.id && item.key === key)) {
+        list.push({ nodeId: source.id, nodeLabel, key, value });
+      }
+    });
+    result.set(edge.target, list);
+  });
+  return result;
+}

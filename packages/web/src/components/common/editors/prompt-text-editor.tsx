@@ -48,6 +48,13 @@ export type PromptVariableBinding = {
   connections?: PromptVariableConnection[];
 };
 
+export type PromptOutputSuggestion = {
+  nodeId: string;
+  nodeLabel: string;
+  key: string;
+  value?: string;
+};
+
 export type PromptTextEditorProps = {
   /** 受控 HTML 内容 */
   value?: string;
@@ -60,6 +67,8 @@ export type PromptTextEditorProps = {
   className?: string;
   /** 文本变量及其连线状态；文档中的字面量 {key} 会按对应 edge 颜色高亮。 */
   variables?: PromptVariableBinding[];
+  /** {{ 唤起的上游节点输出属性。 */
+  outputSuggestions?: PromptOutputSuggestion[];
   /** 未连线变量的手动 fallback 变化。 */
   onVariableValueChange?: (key: string, value: string) => void;
   /** 删除变量对应的输入 edge。 */
@@ -362,6 +371,55 @@ const RefSuggestionList = forwardRef<
   );
 });
 
+const OutputSuggestionList = forwardRef<
+  { onKeyDown: (p: { event: KeyboardEvent }) => boolean },
+  { items: PromptOutputSuggestion[]; command: (item: PromptOutputSuggestion) => void }
+>(function OutputSuggestionList({ items, command }, ref) {
+  const [selected, setSelected] = React.useState(0);
+  const listRef = useRef<HTMLDivElement>(null);
+  useEffect(() => setSelected(0), [items]);
+  useEffect(() => listRef.current?.querySelector('[data-selected="true"]')?.scrollIntoView({ block: 'nearest' }), [selected]);
+  useImperativeHandle(ref, () => ({
+    onKeyDown: ({ event }) => {
+      if (!items.length) return false;
+      if (event.key === 'ArrowUp') { event.preventDefault(); setSelected((p) => (p + items.length - 1) % items.length); return true; }
+      if (event.key === 'ArrowDown' || event.key === 'Tab') { event.preventDefault(); setSelected((p) => (p + 1) % items.length); return true; }
+      if (event.key === 'Enter') { event.preventDefault(); command(items[selected]); return true; }
+      return false;
+    },
+  }));
+  const groups = Array.from(new Map(items.map((item) => [item.nodeId, item.nodeLabel])).entries());
+  return <div ref={listRef} className="flex max-h-60 w-64 flex-col gap-1 overflow-y-auto rounded-md border border-border bg-popover p-1 shadow-lg">
+    {groups.map(([nodeId, nodeLabel]) => <div key={nodeId}>
+      <div className="px-2 py-1 text-[10px] font-semibold text-muted-foreground">{nodeLabel}</div>
+      {items.filter((item) => item.nodeId === nodeId).map((item) => {
+        const index = items.indexOf(item);
+        return <button key={`${item.nodeId}.${item.key}`} type="button" data-selected={index === selected}
+          onMouseEnter={() => setSelected(index)} onClick={() => command(item)}
+          className={cn('flex w-full items-center justify-between rounded px-2 py-1 text-left text-xs', index === selected ? 'bg-accent text-accent-foreground' : 'hover:bg-accent/60')}>
+          <span className="font-mono">{`{{${item.nodeLabel}.${item.key}}}`}</span>
+          {item.value && <span className="ml-2 max-w-24 truncate text-[10px] text-muted-foreground">{item.value}</span>}
+        </button>;
+      })}
+    </div>)}
+  </div>;
+});
+
+function outputSuggestionRenderer() {
+  let component: ReactRenderer | null = null;
+  let popup: Instance[] | null = null;
+  return {
+    onStart(props: SuggestionProps<PromptOutputSuggestion>) {
+      component = new ReactRenderer(OutputSuggestionList, { props, editor: props.editor });
+      if (!props.clientRect) return;
+      popup = tippy('body', { getReferenceClientRect: () => props.clientRect?.() ?? new DOMRect(), appendTo: () => document.body, content: component.element, showOnCreate: true, interactive: true, trigger: 'manual', placement: 'bottom-start' });
+    },
+    onUpdate(props: SuggestionProps<PromptOutputSuggestion>) { component?.updateProps(props); if (popup?.[0] && props.clientRect) popup[0].setProps({ getReferenceClientRect: () => props.clientRect?.() ?? new DOMRect() }); },
+    onKeyDown(props: { event: KeyboardEvent }) { return component?.ref && typeof component.ref === 'object' && 'onKeyDown' in component.ref ? (component.ref as any).onKeyDown(props) : false; },
+    onExit() { popup?.[0]?.destroy(); component?.destroy(); popup = null; component = null; },
+  };
+}
+
 /** 创建 tippy 浮层 suggestion renderer（参考 composer/create-suggestion-renderer） */
 function refSuggestionRenderer() {
   let component: ReactRenderer | null = null;
@@ -408,6 +466,7 @@ export function PromptTextEditor({
   placeholder = '描述如何编辑图片…（输入 @ 插入参考图）',
   className,
   variables = [],
+  outputSuggestions = [],
   onVariableValueChange,
   onVariableDisconnect,
   valueFormat = 'html',
@@ -426,6 +485,8 @@ export function PromptTextEditor({
   };
   const singleLineRef = useRef(singleLine);
   singleLineRef.current = singleLine;
+  const outputSuggestionsRef = useRef(outputSuggestions);
+  outputSuggestionsRef.current = outputSuggestions;
 
   // mention 扩展：扩展默认 Mention schema（加 url/key attrs + 改写 renderHTML 输出 data-*），
   // suggestion.items 从 referencesRef 动态读取。扩展本身只构建一次（deps=[]），靠 ref 拿最新数据。
@@ -487,6 +548,22 @@ export function PromptTextEditor({
     [],
   );
   const variableExt = useMemo(() => createPromptVariableExtension(variableRuntimeRef), []);
+  const outputExt = useMemo(() => Mention.extend({ name: 'promptOutput', addAttributes: () => ({ nodeId: { default: '' }, key: { default: '' } }) }).configure({
+    suggestion: {
+      char: '{',
+      allow: ({ query }: { query: string }) => query.startsWith('{'),
+      items: ({ query }: { query: string }) => {
+        if (!query.startsWith('{')) return [];
+        const kw = query.slice(1).toLowerCase();
+        return outputSuggestionsRef.current.filter((item) => `${item.nodeLabel}.${item.key}`.toLowerCase().includes(kw)).slice(0, 50);
+      },
+      command: ({ editor, range, props }) => {
+        const item = props as unknown as PromptOutputSuggestion;
+        editor.chain().focus().insertContentAt(range, `{{${item.nodeLabel}.${item.key}}}`).run();
+      },
+      render: () => outputSuggestionRenderer(),
+    },
+  }), []);
 
   const editor = useEditor({
     immediatelyRender: false,
@@ -495,6 +572,7 @@ export function PromptTextEditor({
       Placeholder.configure({ placeholder }),
       mentionExt,
       variableExt,
+      outputExt,
     ],
     editorProps: {
       attributes: {

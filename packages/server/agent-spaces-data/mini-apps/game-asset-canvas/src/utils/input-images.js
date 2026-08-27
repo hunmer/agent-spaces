@@ -172,6 +172,22 @@ export function htmlToPlainText(html) {
 export function computeInputTexts(nodes, edges) {
   const byId = new Map(nodes.map((node) => [node.id, node]));
   const valuesByTarget = new Map();
+  const outputTokensByTarget = new Map();
+
+  // 双花括号引用只对存在文本连线的上游节点开放，避免把画布上无关节点暴露为变量。
+  for (const edge of edges) {
+    if (edge.data?.inputType !== CONNECTION_INPUT_TYPES.text || !edge.target) continue;
+    const source = byId.get(edge.source);
+    const output = source?.data?.output;
+    if (!output || typeof output !== 'object') continue;
+    const label = source.data?.title || source.data?.label || source.type || source.id;
+    if (!outputTokensByTarget.has(edge.target)) outputTokensByTarget.set(edge.target, new Map());
+    const tokenMap = outputTokensByTarget.get(edge.target);
+    for (const [key, raw] of Object.entries(output)) {
+      if (raw === null || raw === undefined || typeof raw === 'object') continue;
+      tokenMap.set(`${label}.${key}`, typeof raw === 'string' ? htmlToPlainText(raw) : String(raw));
+    }
+  }
 
   for (const node of nodes) {
     const manualFields = node?.data?.textVariableValues;
@@ -207,7 +223,11 @@ export function computeInputTexts(nodes, edges) {
     nodeId,
     Object.fromEntries(Object.entries(fields).map(([field, values]) => {
       const wholeValue = joinUniqueText(values.whole);
-      if (wholeValue) return [field, wholeValue];
+      const tokenMap = outputTokensByTarget.get(nodeId);
+      const replaceOutputTokens = (text) => tokenMap
+        ? text.replace(/\{\{([^{}]+)\}\}/g, (token, key) => tokenMap.get(key) ?? token)
+        : text;
+      if (wholeValue) return [field, replaceOutputTokens(wholeValue)];
 
       const targetNode = byId.get(nodeId);
       let result = htmlToPlainText(targetNode?.data?.params?.[field] || '');
@@ -220,7 +240,7 @@ export function computeInputTexts(nodes, edges) {
         const replacement = connectedValue || values.manual?.[variable] || '';
         if (replacement) result = result.split(`{${variable}}`).join(replacement);
       }
-      return [field, result];
+      return [field, replaceOutputTokens(result)];
     })),
   ]));
 }

@@ -17,6 +17,7 @@ test('TextVariableEditor bridges canvas bindings, fallback values, and edge dele
   assert.match(localSource, /textVariableBindings/);
   assert.match(localSource, /textVariableValues/);
   assert.match(localSource, /displayValue/);
+  assert.match(localSource, /outputSuggestions=\{data\?\.textOutputSuggestions \|\| \[\]\}/);
   assert.match(localSource, /onVariableValueChange=\{handleVariableValueChange\}/);
   assert.match(localSource, /onVariableDisconnect=\{data\?\.onDeleteEdge\}/);
   assert.match(decoratedSource, /computeTextVariableBindings/);

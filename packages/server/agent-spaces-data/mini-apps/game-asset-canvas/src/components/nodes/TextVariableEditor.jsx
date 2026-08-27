@@ -49,6 +49,7 @@ export default function TextVariableEditor({
     placeholder={placeholder}
     className={className}
     variables={variables}
+    outputSuggestions={data?.textOutputSuggestions || []}
     valueFormat={valueFormat}
     singleLine={singleLine}
     onVariableValueChange={handleVariableValueChange}
