@@ -56,7 +56,7 @@ import { decorateEdgesForSelection } from '../utils/edge-display';
 import { countNodesWithOutput } from '../utils/batch-run';
 import { collectGroupNodeIds } from '../utils/group-helpers';
 import { CanvasGalleryContextProvider } from '../utils/canvas-gallery';
-import { createOutputAssetItems, removeOutputAssetItems, updateOutputVersion } from '../utils/output-resources';
+import { createOutputAssetItems, createOutputResourceId, removeOutputAssetItems, updateOutputVersion } from '../utils/output-resources';
 import { COMPACT_NODE_ZOOM_THRESHOLD } from './nodes/compact-node';
 
 const EDGE_PATH_STYLES = ['bezier', 'straight', 'step', 'smoothstep'];
@@ -1054,7 +1054,7 @@ export default function Canvas({ hostConfig }) {
       const next = mutator(prev);
       const previousResources = Array.isArray(data?.output?.resources) ? data.output.resources : [];
       const byUrl = new Map(previousResources.map((item) => [item?.url, item]));
-      const resources = next.map((url) => byUrl.get(url) || { url, thumb: url });
+      const resources = next.map((url) => byUrl.get(url) || { id: createOutputResourceId(), url, thumb: url });
       return { __versionSkip: true, output: { ...(data?.output || {}), images: next, resources } };
     });
   }, [updateNodeData]);
@@ -1062,11 +1062,11 @@ export default function Canvas({ hostConfig }) {
     if (!Array.isArray(urls) || !urls.length) return;
     handleOutputImagesChange(nodeId, (prev) => [...prev, ...urls.filter(Boolean)]);
   }, [handleOutputImagesChange]);
-  const handleRemoveOutputImage = useCallback((nodeId, indexes) => {
+  const handleRemoveOutputImage = useCallback((nodeId, ids) => {
     const patchOutput = (data) => {
       const images = Array.isArray(data?.output?.images) ? data.output.images : [];
       const resources = Array.isArray(data?.output?.resources) ? data.output.resources : [];
-      const next = removeOutputAssetItems(images, resources, indexes);
+      const next = removeOutputAssetItems(images, resources, ids);
       const activeVersion = Number.isInteger(data?.activeVersion)
         ? data.activeVersion
         : (Array.isArray(data?.versions) && data.versions.length ? data.versions.length - 1 : undefined);

@@ -12,6 +12,6 @@ test('output thumbnail actions share a bottom-centered hover action group', () =
 });
 
 test('group header clears only its own output indexes', () => {
-  assert.match(source, /onRemoveImage\(section\.items\.map\(\(item\) => item\.index\)\)/);
+  assert.match(source, /onRemoveImage\(section\.items\.map\(\(item\) => item\.id\)\)/);
   assert.match(source, /title=\{`清空当前组产出（\$\{section\.groupName\}）`\}/);
 });

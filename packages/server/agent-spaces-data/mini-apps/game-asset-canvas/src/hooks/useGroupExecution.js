@@ -326,17 +326,17 @@ export default function useGroupExecution({ groups, nodes, edges, setGroups, set
   const switchRun = useCallback((groupId, mode, runId) => {
     const context = getContext(groupId);
     if (!context) return;
-    let execution = saveActiveRun(context.execution, context.currentStates);
+    const execution = context.execution;
     const section = execution[mode];
     const run = section?.runs.find((item) => item.id === runId);
     if (!run) return;
-    execution = {
+    const nextExecution = {
       ...execution,
       mode,
       [mode]: { ...section, activeId: runId },
     };
     const targetStates = mergeRunNodeStates(run.nodeStates, context.currentNodes, context.nodeIds);
-    commit(groupId, execution, targetStates);
+    commit(groupId, nextExecution, targetStates);
   }, [commit, getContext]);
 
   const getExecutionTargetForNode = useCallback((nodeId, runId = null) => {

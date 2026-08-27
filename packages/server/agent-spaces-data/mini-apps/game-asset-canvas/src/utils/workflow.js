@@ -107,7 +107,8 @@ export async function generateImageResources(urls, opts = {}) {
   const generateThumbnail = window.AgentSpaces?.generateThumbnail;
   const list = Array.isArray(urls) ? urls.filter(Boolean) : [];
   return Promise.all(list.map(async (url, index) => {
-    if (typeof generateThumbnail !== 'function') return { url, thumb: url };
+    const id = globalThis.crypto?.randomUUID?.() || `output-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+    if (typeof generateThumbnail !== 'function') return { id, url, thumb: url };
     try {
       const result = await generateThumbnail({
         url: normalizeImageUrl(url),
@@ -116,10 +117,10 @@ export async function generateImageResources(urls, opts = {}) {
         quality: 80,
         fit: 'inside',
       });
-      return { url, thumb: result?.httpUrl || url };
+      return { id, url, thumb: result?.httpUrl || url };
     } catch (error) {
       console.warn('generateImageResources failed:', url, error);
-      return { url, thumb: url };
+      return { id, url, thumb: url };
     }
   }));
 }

@@ -4,6 +4,20 @@ function optionalText(value) {
   return text || undefined;
 }
 
+function legacyOutputResourceId(url, index) {
+  let hash = 2166136261;
+  for (const char of String(url || '')) {
+    hash ^= char.charCodeAt(0);
+    hash = Math.imul(hash, 16777619);
+  }
+  return `output-${(hash >>> 0).toString(36)}-${index}`;
+}
+
+export function createOutputResourceId() {
+  if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID();
+  return `output-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+}
+
 export function createOutputAssetItems(images, resources = []) {
   const urls = Array.isArray(images) ? images : [];
   const sourceResources = Array.isArray(resources) ? resources : [];
@@ -25,9 +39,12 @@ export function createOutputAssetItems(images, resources = []) {
       resource = match?.resource;
       if (match) used.add(match.index);
     }
-    const normalized = resource?.url === url ? resource : { url, thumb: url };
+    const normalized = resource?.url === url
+      ? { ...resource, id: resource.id || legacyOutputResourceId(url, index) }
+      : { id: legacyOutputResourceId(url, index), url, thumb: url };
     return {
       index,
+      id: normalized.id,
       key: `${index}:${url}`,
       url,
       resource: normalized,
@@ -54,13 +71,12 @@ export function groupOutputAssetItems(items) {
   return sections;
 }
 
-export function removeOutputAssetItems(images, resources, indexes) {
-  const removedIndexes = new Set(
-    (Array.isArray(indexes) ? indexes : [indexes])
-      .filter((index) => Number.isInteger(index) && index >= 0),
+export function removeOutputAssetItems(images, resources, ids) {
+  const removedIds = new Set(
+    (Array.isArray(ids) ? ids : [ids]).filter((id) => typeof id === 'string' && id),
   );
   const items = createOutputAssetItems(images, resources)
-    .filter((item) => !removedIndexes.has(item.index));
+    .filter((item) => !removedIds.has(item.id));
   return {
     images: items.map((item) => item.url),
     resources: items.map((item) => item.resource),

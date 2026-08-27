@@ -284,6 +284,7 @@ test('分组工具栏支持运行所有并展示素材实例状态', () => {
   );
   assert.match(switchRunSource, /if \(!context\) return;/);
   assert.doesNotMatch(switchRunSource, /context\.busy/);
+  assert.doesNotMatch(switchRunSource, /saveActiveRun\(context\.execution, context\.currentStates\)/);
 });
 
 test('普通节点执行冻结实例身份并由队列按执行节点 ID 隔离', () => {

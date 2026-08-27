@@ -18,14 +18,14 @@ function BrokenImagePlaceholder({ url }) {
 
 /**
  * 节点内的图片网格结果展示，点击用 MediaGallery 打开大图（可翻页）。
- * @param {{ images: string[], resources?: Array<{url:string,thumb?:string,groupName?:string,label?:string}>, max?: number, preview?: boolean, onImageLoad?: Function, onAddToAssets?: (payload:string|{url,fileName?}|Array<string|{url,fileName?}>)=>void, fileName?: string, onAddImages?:(urls:string[])=>void, onRemoveImage?:(indexes:number|number[])=>void, onClearImages?:()=>void, versions?:Array, activeVersion?:number, onSwitchVersion?:(index:number)=>void }} props
+ * @param {{ images: string[], resources?: Array<{id?:string,url:string,thumb?:string,groupName?:string,label?:string}>, max?: number, preview?: boolean, onImageLoad?: Function, onAddToAssets?: (payload:string|{url,fileName?}|Array<string|{url,fileName?}>)=>void, fileName?: string, onAddImages?:(urls:string[])=>void, onRemoveImage?:(ids:string|string[])=>void, onClearImages?:()=>void, versions?:Array, activeVersion?:number, onSwitchVersion?:(index:number)=>void }} props
  * @param {number} [props.max] 单网格最多展示张数，0 或缺省表示全部（GIF 拆帧等可能产出数十帧）
  * @param {boolean} [props.preview] 输出预览模式：无标签/边框，图片全宽纵向排列
  * @param {Function} [props.onImageLoad] 图片加载完成回调
  * @param {Function} [props.onAddToAssets] 传入则：①缩略图底部操作栏显示「添加到素材库」按钮（单张，回传 {url, fileName}）；②标题栏显示「添加当前产出」按钮（当前版本全部图，回传数组）；③版本数>1 时标题栏额外显示「添加所有产出」按钮（所有历史版本图，回传数组）
  * @param {string} [props.fileName] 该批产出的下载/入库文件名（多张时自动加序号后缀），传给 MediaGallery 的 download 字段
  * @param {Function} [props.onAddImages] 传入则标题右侧显示「添加」按钮（Popover 内上传），上传成功后回传新增 url 数组
- * @param {Function} [props.onRemoveImage] 传入则显示单图删除和清空当前组按钮，回传被删图索引或索引数组
+ * @param {Function} [props.onRemoveImage] 传入则显示单图删除和清空当前组按钮，回传被删图 ID 或 ID 数组
  * @param {Function} [props.onClearImages] 传入则标题右侧显示「清空」按钮，点击清空所有产出
  * @param {Function} [props.onReorderImages] 传入则产出网格支持拖拽排序，回传重排后的 url 与 resource 数组
  * @param {Array} [props.versions] 历史版本数组 [{params, output, createdAt}]
@@ -232,7 +232,7 @@ export default function ImageResult({ nodeId, images, resources = [], max = 0, p
           key={section.key}
           section={section}
           onClear={onRemoveImage
-            ? () => onRemoveImage(section.items.map((item) => item.index))
+            ? () => onRemoveImage(section.items.map((item) => item.id))
             : undefined}
         >
           <div className="grid grid-cols-3 gap-1">
@@ -293,7 +293,7 @@ export default function ImageResult({ nodeId, images, resources = [], max = 0, p
                   {onRemoveImage && (
                     <button
                       type="button"
-                      onClick={(e) => { e.stopPropagation(); onRemoveImage(i); }}
+                      onClick={(e) => { e.stopPropagation(); onRemoveImage(item.id); }}
                       title="从产出删除"
                       className="game-asset-output-action rounded border border-border bg-background/90 text-muted-foreground shadow-sm hover:bg-destructive hover:text-destructive-foreground"
                     >

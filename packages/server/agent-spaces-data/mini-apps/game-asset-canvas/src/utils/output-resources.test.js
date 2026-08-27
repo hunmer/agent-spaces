@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createOutputAssetItems, groupOutputAssetItems, removeOutputAssetItems, updateOutputVersion } from './output-resources.js';
+import { createOutputAssetItems, createOutputResourceId, groupOutputAssetItems, removeOutputAssetItems, updateOutputVersion } from './output-resources.js';
 
 test('output resources remain optional and legacy images stay ungrouped', () => {
   const items = createOutputAssetItems(['a.png', 'b.png']);
@@ -54,9 +54,11 @@ test('removing the last image in one group preserves all other groups', () => {
     { url: 'smoke.png', groupName: '特效' },
   ];
 
-  assert.deepEqual(removeOutputAssetItems(images, resources, 0), {
+  const [removedId] = createOutputAssetItems(images, resources).map((item) => item.id);
+  const expectedResources = createOutputAssetItems(images, resources).slice(1).map((item) => item.resource);
+  assert.deepEqual(removeOutputAssetItems(images, resources, removedId), {
     images: ['spark.png', 'smoke.png'],
-    resources: resources.slice(1),
+    resources: expectedResources,
   });
 });
 
@@ -68,9 +70,11 @@ test('removing a group uses one atomic index list and preserves other groups', (
     { url: 'run.png', groupName: '角色动画' },
   ];
 
-  assert.deepEqual(removeOutputAssetItems(images, resources, [0, 2]), {
+  const ids = createOutputAssetItems(images, resources).filter((item) => item.groupName === '角色动画').map((item) => item.id);
+  const expectedResources = [createOutputAssetItems(images, resources)[1].resource];
+  assert.deepEqual(removeOutputAssetItems(images, resources, ids), {
     images: ['spark.png'],
-    resources: [resources[1]],
+    resources: expectedResources,
   });
 });
 
@@ -86,14 +90,21 @@ test('updating the active output version persists manual deletions across versio
   assert.deepEqual(versions[1].output.images, ['current.png']);
 });
 
-test('deleting an index from history 1 does not change the same index in history 2', () => {
+test('deleting an ID from history 1 does not change the same index in history 2', () => {
   const versions = [
     { output: { images: ['history-1-a.png', 'history-1-b.png'] } },
     { output: { images: ['history-2-a.png', 'history-2-b.png'] } },
   ];
-  const current = removeOutputAssetItems(versions[0].output.images, [], 0);
+  const id = createOutputAssetItems(versions[0].output.images, [])[0].id;
+  const current = removeOutputAssetItems(versions[0].output.images, [], id);
   const next = updateOutputVersion(versions, 0, current);
 
   assert.deepEqual(next[0].output.images, ['history-1-b.png']);
   assert.deepEqual(next[1].output.images, ['history-2-a.png', 'history-2-b.png']);
+});
+
+test('new output resource IDs are unique', () => {
+  const first = createOutputResourceId();
+  const second = createOutputResourceId();
+  assert.notEqual(first, second);
 });
