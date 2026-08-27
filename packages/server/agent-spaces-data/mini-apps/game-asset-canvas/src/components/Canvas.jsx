@@ -8,6 +8,7 @@ import {
 
 import CanvasWorkspace from './canvas/CanvasWorkspace';
 import CanvasOverlayDialogs from './canvas/CanvasOverlayDialogs';
+import CanvasVersionPanel from './CanvasVersionPanel';
 import { ImageSelectionContext } from '../context/ImageSelectionContext';
 import useImageSelection from '../hooks/useImageSelection';
 import useAssetLibrary from '../hooks/useAssetLibrary';
@@ -103,6 +104,7 @@ export default function Canvas({ hostConfig }) {
   // 跨节点图片选中状态（单击选中 / ctrl 多选 / 双击预览，选中后顶部浮出 ImageSelectionToolbar）
   const imageSelection = useImageSelection();
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [versionsOpen, setVersionsOpen] = useState(false);
   // 顶部菜单「提示词管理」入口：pickerMode=false 纯管理（不填充、不关闭）
   const [promptManagerOpen, setPromptManagerOpen] = useState(false);
   // 预览高度仅影响当前展示；预览模式由各节点 data.outputPreviewMode 独立持久化。
@@ -1062,6 +1064,15 @@ export default function Canvas({ hostConfig }) {
     event.stopPropagation();
     setNodeContextMenu({ nodeId: node.id, clientX: event.clientX, clientY: event.clientY });
   }, []);
+  // 节点内部部分组件（如图片 ContextMenuTrigger）会截获右键事件，
+  // 在画布容器捕获阶段统一处理，确保任意节点内容区域都能打开节点菜单。
+  const handleNodeContextMenuCapture = useCallback((event) => {
+    const nodeElement = event.target?.closest?.('.react-flow__node');
+    const nodeId = nodeElement?.dataset?.id;
+    if (!nodeId) return;
+    const node = nodesRef.current.find((item) => item.id === nodeId);
+    if (node) handleNodeContextMenu(event, node);
+  }, [handleNodeContextMenu]);
   // 克隆节点：复用 copyNodes + pasteNodes（内存剪贴板，不污染系统剪贴板）。
   // 偏移 {40,40} 避免与原节点重叠；克隆后不自动选中（保持原选中态）。
   const handleCloneNode = useCallback((nodeId) => {
@@ -1072,8 +1083,14 @@ export default function Canvas({ hostConfig }) {
     if (!result) return;
     setNodes((prev) => [...prev, ...result.nodes]);
     setEdges((prev) => [...prev, ...result.edges]);
+    const clonedIds = new Set(result.nodes.map((item) => item.id));
+    setGroups((prev) => prev.map((group) => (
+      group.childNodeIds?.includes(nodeId)
+        ? { ...group, childNodeIds: [...group.childNodeIds, ...clonedIds] }
+        : group
+    )));
     toast.success('已克隆节点');
-  }, [setNodes, setEdges]);
+  }, [setNodes, setEdges, setGroups]);
   // 定位到历史记录：切到 history tab + 设 focusNodeId 让 HistoryTab 滚动高亮。
   // focusNodeId 用一个新值触发（即使同节点再次定位也能重新滚动）。
   const handleLocateHistory = useCallback((nodeId) => {
@@ -1109,9 +1126,11 @@ export default function Canvas({ hostConfig }) {
   const runNodeContextAction = useCallback((action, nodeId) => {
     setNodeContextMenu(null);
     if (action === 'clone') handleCloneNode(nodeId);
+    else if (action === 'copyProperties') selection.handleCopyProperties(nodeId);
+    else if (action === 'pasteProperties') selection.requestPropertyPaste(nodeId);
     else if (action === 'locateHistory') handleLocateHistory(nodeId);
     else if (action === 'delete') handleDeleteNodeWithHistoryCheck(nodeId);
-  }, [handleCloneNode, handleLocateHistory, handleDeleteNodeWithHistoryCheck]);
+  }, [handleCloneNode, handleLocateHistory, handleDeleteNodeWithHistoryCheck, selection.handleCopyProperties, selection.requestPropertyPaste]);
   // 临时：从画布节点产出反向重建生成记录（用于误清空历史后恢复）。
   // 字段约定参考 useNodeExecutions 各 addHistory 调用（images/mediaType/text/prompt/model）。
   // 一个 output 快照派生一条 history item（audio/video/text/images 任一命中）。
@@ -1513,6 +1532,7 @@ export default function Canvas({ hostConfig }) {
             onImportWorkspace: handleImportWorkspace,
             onImportImages: handleImportImages,
             onOpenSettings: () => setSettingsOpen(true),
+            onOpenVersions: () => setVersionsOpen(true),
             onOpenPromptManager: () => setPromptManagerOpen(true),
             onBackfillThumbnails: handleBackfillThumbnails,
             edgePathStyle,
@@ -1558,6 +1578,7 @@ export default function Canvas({ hostConfig }) {
             onDrop: handleCanvasDrop,
             onDragOver: handleCanvasDragOver,
             onDragLeave: dragAutoPan.handleDragLeave,
+            onContextMenuCapture: handleNodeContextMenuCapture,
             onContextMenu: crud.handleContextMenu,
           }}
           canvasContextMenuProps={{
@@ -1778,6 +1799,17 @@ export default function Canvas({ hostConfig }) {
           />
         </CanvasWorkspace>
       </ImageSelectionContext.Provider>
+      <CanvasVersionPanel
+        open={versionsOpen}
+        workspaceId={activeId}
+        nodes={nodes}
+        edges={edges}
+        groups={groups}
+        setNodes={setNodes}
+        setEdges={setEdges}
+        setGroups={setGroups}
+        onClose={() => setVersionsOpen(false)}
+      />
     </CanvasGalleryContextProvider>
   );
 }

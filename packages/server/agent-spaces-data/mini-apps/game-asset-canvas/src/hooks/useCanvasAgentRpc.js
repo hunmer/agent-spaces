@@ -23,8 +23,8 @@ function arrangeGroupAfterAdd(setNodes, edges, groups, groupName, addedNodeIds, 
     options.grid = {
       rows: Math.max(1, Math.min(nodeIds.length, Number(layout.grid.rows) || 1)),
       columns: Math.max(1, Math.min(nodeIds.length, Number(layout.grid.columns) || 1)),
-      horizontalGap: Math.max(0, Math.min(300, Number(layout.grid.horizontalGap) || 0)),
-      verticalGap: Math.max(0, Math.min(300, Number(layout.grid.verticalGap) || 0)),
+      horizontalGap: Math.max(0, Number(layout.grid.horizontalGap) || 0),
+      verticalGap: Math.max(0, Number(layout.grid.verticalGap) || 0),
     };
   }
   setNodes((prev) => autoLayoutSubset(prev, edges, options));
@@ -330,6 +330,26 @@ export default function useCanvasAgentRpc({ nodes, edges, groups = [], createNod
             }));
             const preparedEdges = prepareBatchEdges(futureNodes, curEdges, edgeSpecs);
             if (preparedEdges.toAdd.length) setEdgesFn((prev) => [...prev, ...preparedEdges.toAdd]);
+            if (payload.autoLayout && typeof payload.autoLayout === 'object') {
+              const layout = payload.autoLayout;
+              const options = {
+                nodeIds: ids,
+                direction: layout.direction === 'TB' ? 'TB' : 'LR',
+              };
+              if (layout.grid) {
+                options.grid = {
+                  rows: Math.max(1, Math.min(ids.length, Number(layout.grid.rows) || 1)),
+                  columns: Math.max(1, Math.min(ids.length, Number(layout.grid.columns) || 1)),
+                  horizontalGap: Math.max(0, Number(layout.grid.horizontalGap) || 0),
+                  verticalGap: Math.max(0, Number(layout.grid.verticalGap) || 0),
+                };
+              }
+              const arranged = autoLayoutSubset(futureNodes, [...curEdges, ...preparedEdges.toAdd], options);
+              const positionById = new Map(arranged.map((node) => [node.id, node.position]));
+              setNodesFn((prev) => prev.map((node) => positionById.has(node.id)
+                ? { ...node, position: positionById.get(node.id) }
+                : node));
+            }
             result = {
               ok: true,
               nodeIds: ids,
@@ -478,6 +498,29 @@ export default function useCanvasAgentRpc({ nodes, edges, groups = [], createNod
             };
             break;
           }
+          case 'canvas.getCanvasSnapshot': {
+            result = {
+              ok: true,
+              nodes: curNodes.map((node) => ({ ...node, position: { ...node.position }, data: { ...(node.data || {}) } })),
+              edges: curEdges.map((edge) => ({ ...edge, data: edge.data ? { ...edge.data } : edge.data })),
+              groups: curGroups.map((group) => ({ ...group })),
+            };
+            break;
+          }
+          case 'canvas.restoreCanvas': {
+            const restoredNodes = Array.isArray(payload.nodes) ? payload.nodes : [];
+            const restoredEdges = Array.isArray(payload.edges) ? payload.edges : [];
+            const restoredGroups = Array.isArray(payload.groups) ? payload.groups : [];
+            ctxRef.current.nodes = restoredNodes;
+            ctxRef.current.edges = restoredEdges;
+            ctxRef.current.groups = restoredGroups;
+            setNodesFn(restoredNodes);
+            setEdgesFn(restoredEdges);
+            setGroupsFn(restoredGroups);
+            focusNodesFn?.(restoredNodes.map((node) => node.id).filter(Boolean));
+            result = { ok: true, nodeCount: restoredNodes.length, edgeCount: restoredEdges.length, groupCount: restoredGroups.length };
+            break;
+          }
           case 'canvas.arrangeGroup': {
             const groupId = typeof payload.groupId === 'string' ? payload.groupId.trim() : '';
             const groupName = typeof payload.groupName === 'string' ? payload.groupName.trim() : '';
@@ -494,8 +537,8 @@ export default function useCanvasAgentRpc({ nodes, edges, groups = [], createNod
               options.grid = {
                 rows: Math.max(1, Math.min(nodeIds.length || 1, Number(payload.grid.rows) || 1)),
                 columns: Math.max(1, Math.min(nodeIds.length || 1, Number(payload.grid.columns) || 1)),
-                horizontalGap: Math.max(0, Math.min(300, Number(payload.grid.horizontalGap) || 0)),
-                verticalGap: Math.max(0, Math.min(300, Number(payload.grid.verticalGap) || 0)),
+                horizontalGap: Math.max(0, Number(payload.grid.horizontalGap) || 0),
+                verticalGap: Math.max(0, Number(payload.grid.verticalGap) || 0),
               };
             }
             const arranged = autoLayoutSubset(curNodes, curEdges, options);

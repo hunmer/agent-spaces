@@ -105,8 +105,8 @@ const GROUP_LAYOUT_SCHEMA = {
       properties: {
         rows: { type: 'integer', minimum: 1, description: '行数，至少 1。' },
         columns: { type: 'integer', minimum: 1, description: '列数，至少 1。' },
-        horizontalGap: { type: 'number', minimum: 0, maximum: 300, description: '水平间距，0-300。' },
-        verticalGap: { type: 'number', minimum: 0, maximum: 300, description: '垂直间距，0-300。' },
+        horizontalGap: { type: 'number', minimum: 0, description: '水平间距，必须为非负数字。' },
+        verticalGap: { type: 'number', minimum: 0, description: '垂直间距，必须为非负数字。' },
       },
       required: ['rows', 'columns', 'horizontalGap', 'verticalGap'],
     },
@@ -160,6 +160,10 @@ export default [
         data: NODE_DATA_SCHEMA,
         groupName: { type: 'string', description: '可选。把新建的节点归入此名称的分组（画布上的可视化 group）：同名分组不存在则自动创建，已存在则直接加入。用于把同一项目/同一角色的多个节点归类管理。' },
         groupLayout: GROUP_LAYOUT_SCHEMA,
+        autoLayout: {
+          ...GROUP_LAYOUT_SCHEMA,
+          description: '可选。新增后自动编排本批节点；支持 direction（LR/TB）或 grid 网格参数，不要求 groupName。',
+        },
         focus: { type: 'boolean', description: '创建后是否聚焦/居中到该节点（默认 true）' },
       },
       required: ['type'],
@@ -192,6 +196,10 @@ export default [
         focusFirst: { type: 'boolean', description: '是否聚焦到首个新增节点（默认 true）' },
         groupName: { type: 'string', description: '可选。把这批节点一起归入此名称的分组（同名分组不存在则自动创建）。用于一次性建一组相关节点并归类。' },
         groupLayout: GROUP_LAYOUT_SCHEMA,
+        autoLayout: {
+          ...GROUP_LAYOUT_SCHEMA,
+          description: '可选。新增后自动编排本批节点；支持 direction（LR/TB）或 grid 网格参数，不要求 groupName。',
+        },
         edges: {
           type: 'array',
           description: '可选。创建节点时同时连线。用 sourceIndex/targetIndex 引用本次 nodes 数组下标，用 sourceId/targetId 引用画布已有节点；端点可混用。',
@@ -251,12 +259,43 @@ export default [
           properties: {
             rows: { type: 'integer', minimum: 1, description: '行数，至少 1。' },
             columns: { type: 'integer', minimum: 1, description: '列数，至少 1。' },
-            horizontalGap: { type: 'number', minimum: 0, maximum: 300, description: '水平间距，0-300。' },
-            verticalGap: { type: 'number', minimum: 0, maximum: 300, description: '垂直间距，0-300。' },
+            horizontalGap: { type: 'number', minimum: 0, description: '水平间距，必须为非负数字。' },
+            verticalGap: { type: 'number', minimum: 0, description: '垂直间距，必须为非负数字。' },
           },
           required: ['rows', 'columns', 'horizontalGap', 'verticalGap'],
         },
       },
+    },
+  },
+  {
+    name: 'create_canvas_version',
+    description: '备份当前画布的完整节点、连线和分组状态，返回版本 id。',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        name: { type: 'string', description: '版本名称（可选）' },
+        workspaceId: { type: 'string', description: '工作区 id（可选）' },
+      },
+    },
+  },
+  {
+    name: 'list_canvas_versions',
+    description: '列出当前工作区保存的画布历史版本及节点/连线数量。',
+    inputSchema: {
+      type: 'object',
+      properties: { workspaceId: { type: 'string', description: '工作区 id（可选）' } },
+    },
+  },
+  {
+    name: 'restore_canvas_version',
+    description: '将画布恢复到指定历史版本；会替换当前全部节点、连线和分组。',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        versionId: { type: 'string', description: '版本 id（来自 list_canvas_versions）' },
+        workspaceId: { type: 'string', description: '工作区 id（可选）' },
+      },
+      required: ['versionId'],
     },
   },
   {

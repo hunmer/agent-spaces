@@ -111,7 +111,7 @@ Spine 换肤记录通过 `save_spine_reskin_history` / `delete_spine_reskin_hist
 
 | 常量 | 值/说明 |
 |------|--------|
-| `SAVE_DEBOUNCE` | 600ms（useCanvasState 防抖保存） |
+| `SAVE_DEBOUNCE` | 1000ms（useCanvasState 防抖保存，saveCanvas 串行合并） |
 | `HISTORY_MAX` | 200（service 端截断） |
 | `ASSET_MAX_PER_CATEGORY` | 500 |
 | `DEFAULT_WORKSPACE_ID` | `'default'` |

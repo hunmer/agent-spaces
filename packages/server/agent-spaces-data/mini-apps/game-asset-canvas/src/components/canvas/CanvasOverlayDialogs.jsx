@@ -1,5 +1,5 @@
 import {
-  Checkbox, CopyPlus, Crosshair, Trash2,
+  Checkbox, Copy, ClipboardPaste, CopyPlus, Crosshair, Trash2,
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@agent-spaces/ui';
@@ -39,6 +39,22 @@ function NodeContextMenu({ state, onClose, onAction }) {
         >
           <CopyPlus className="h-3.5 w-3.5" />
           克隆节点
+        </button>
+        <button
+          type="button"
+          onClick={() => onAction('copyProperties', state.nodeId)}
+          className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs transition hover:bg-accent"
+        >
+          <Copy className="h-3.5 w-3.5" />
+          复制属性
+        </button>
+        <button
+          type="button"
+          onClick={() => onAction('pasteProperties', state.nodeId)}
+          className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs transition hover:bg-accent"
+        >
+          <ClipboardPaste className="h-3.5 w-3.5" />
+          粘贴属性
         </button>
         <button
           type="button"

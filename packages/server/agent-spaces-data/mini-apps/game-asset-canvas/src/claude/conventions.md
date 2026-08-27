@@ -29,7 +29,7 @@
 - **callback 稳定性**（ref 模式）：只读最新 nodes/edges 的 callback 用 `nodesRef.current`/`edgesRef.current` 读，deps 去掉 nodes/edges → 稳定 callback，避免触发 `decoratedNodes` 全量重算。
   - ref 同步：`nodesRef.current = nodes`（渲染期直接赋值，React 推荐模式，非 useEffect）。
   - `nodeCallbacks` 的 deps **逐个解构具体 callback**（而非整个 executions/crud 对象），任一稳定则 nodeCallbacks 稳定。
-- **持久化防抖**：`useCanvasState` 用 `SAVE_DEBOUNCE=600ms` 防抖保存；多端同步用 `onCanvasChanged` 订阅，本地 dirty 时不套用远端更新。
+- **持久化防抖**：`useCanvasState` 用 `SAVE_DEBOUNCE=1000ms` 防抖保存，`saveCanvas` 按工作区串行合并在途请求；多端同步用 `onCanvasChanged` 订阅，本地 dirty 时不套用远端更新。
 
 ## 工作流调用约定
 

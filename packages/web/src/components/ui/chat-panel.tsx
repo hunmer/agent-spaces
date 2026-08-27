@@ -250,8 +250,14 @@ export function ChatPanel({
   }, []);
 
   useEffect(() => {
-    if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight;
-  }, []);
+    // Wait until the message list has committed its latest layout (including animated nodes).
+    const frame = requestAnimationFrame(() => {
+      const el = listRef.current;
+      if (el) el.scrollTop = el.scrollHeight;
+    });
+
+    return () => cancelAnimationFrame(frame);
+  }, [messages, sending]);
 
   const applySuggestion = (suggestion: string) => {
     inputRef.current = suggestion;

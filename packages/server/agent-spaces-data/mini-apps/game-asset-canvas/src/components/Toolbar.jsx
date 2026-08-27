@@ -37,14 +37,14 @@ import {
  *           edgePathStyle, edgeLineStyle, edgePathStyles, edgeLineStyles, onEdgePathStyleChange, onEdgeLineStyleChange,
  *           bgVariant, handlePosition, snapEnabled, onCanvasStyleChange,
  *           onSelectAll, onInvertSelect, onClearSelection,
- *           operationHistory, onUndo, onRedo, canUndo, canRedo, queueSlot, workspaceSlot }} props
+ *           operationHistory, onUndo, onRedo, canUndo, canRedo, onOpenVersions, queueSlot, workspaceSlot }} props
  */
 export default function Toolbar({
   onClear, onAutoLayout, onExport, onExportAssetLibrary, onExportWorkspace, onImport, onImportAssetLibrary, onImportWorkspace, onImportImages, onOpenSettings, onOpenPromptManager, onBackfillThumbnails,
   edgePathStyle, edgeLineStyle, edgePathStyles, edgeLineStyles, onEdgePathStyleChange, onEdgeLineStyleChange,
   bgVariant, handlePosition, snapEnabled, onCanvasStyleChange,
   onSelectAll, onInvertSelect, onClearSelection,
-  operationHistory, onUndo, onRedo, canUndo, canRedo,
+  operationHistory, onUndo, onRedo, canUndo, canRedo, onOpenVersions,
   queueSlot, workspaceSlot,
 }) {
   // 素材库/工作区 导出/导入中状态：控制对应菜单项禁用 + 文案切换。
@@ -299,6 +299,8 @@ export default function Toolbar({
             </MenubarSub>
             <MenubarSeparator />
             <MenubarItem onClick={() => setConfirmClear(true)} variant="destructive">清空</MenubarItem>
+            <MenubarSeparator />
+            <MenubarItem onClick={onOpenVersions}>历史版本</MenubarItem>
           </MenubarContent>
         </MenubarMenu>
 

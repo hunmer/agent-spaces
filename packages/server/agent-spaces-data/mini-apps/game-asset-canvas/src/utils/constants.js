@@ -303,7 +303,8 @@ export const HISTORY_CONFIG = 'generation-history.json';
 // 每工作区、每节点类型的上次提交参数（KV: { [nodeType]: paramsSubset }）
 export const LAST_PARAMS_CONFIG = 'last-params.json';
 // 自动保存防抖(ms)
-export const SAVE_DEBOUNCE = 600;
+// 全量画布保存可能包含大量节点数据；降低触发频率，配合 saveCanvas 单飞合并。
+export const SAVE_DEBOUNCE = 1000;
 
 // ============ 多工作区隔离 ============
 // 工作区清单（全局共享）：{ workspaces: [{id,name,createdAt}], activeId }

@@ -8,7 +8,14 @@
  * 对应前端监听见 src/components/Canvas.jsx 的 clientRequest useEffect。
  */
 
-// 合法节点类型（与 utils/constants.js NODE_TYPES 同步；handler 不能 import）
+import { VALID_NODE_TYPES, NODE_LABELS } from './api/constants.js';
+import { asString, parseNodeData, parseGroupLayout, rpc } from './api/helpers.js';
+import {
+  ASSET_MAX_PER_CATEGORY, resolveWorkspaceId, readAssetLibrary, writeAssetLibrary,
+  findCategory, genAssetId, genCategoryId,
+} from './api/assets.js';
+
+if (globalThis.__GAME_ASSET_CANVAS_LEGACY_DECLARATIONS__) {
 const VALID_NODE_TYPES = [
   'text',          // Markdown 文字
   'storyboard',    // 分镜创作
@@ -138,9 +145,9 @@ function parseGroupLayout(value, fieldName = 'groupLayout') {
     if (!Number.isInteger(rows) || rows < 1 || !Number.isInteger(columns) || columns < 1) {
       return { ok: false, message: `${fieldName}.grid.rows 和 columns 必须是大于等于 1 的整数` };
     }
-    if (!Number.isFinite(horizontalGap) || horizontalGap < 0 || horizontalGap > 300
-      || !Number.isFinite(verticalGap) || verticalGap < 0 || verticalGap > 300) {
-      return { ok: false, message: `${fieldName}.grid.horizontalGap 和 verticalGap 必须是 0 到 300 的数字` };
+    if (!Number.isFinite(horizontalGap) || horizontalGap < 0
+      || !Number.isFinite(verticalGap) || verticalGap < 0) {
+      return { ok: false, message: `${fieldName}.grid.horizontalGap 和 verticalGap 必须是非负有限数字` };
     }
     grid = { rows, columns, horizontalGap, verticalGap };
   }
@@ -210,6 +217,7 @@ function genCategoryId(lib) {
 // 把 RPC 调用包成 Promise；超时由 requestClient 内部（默认 5s）控制。
 function rpc(ctx, type, payload) {
   return ctx.requestClient(type, payload || {}, 8000);
+}
 }
 
 export default {
@@ -409,6 +417,7 @@ export default {
    * @param {Array} input.nodes  节点规格数组，每项 {type, title?, position?, data?, focus?}
    * @param {boolean} [input.focusFirst] 是否聚焦到首个新增节点（默认 true）
    * @param {object} [input.groupLayout] 携带 groupName 时自动编排整个分组
+   * @param {object} [input.autoLayout] 新增后自动编排本批节点（{direction?, grid?}）
    */
   add_nodes: async (input, ctx) => {
     const list = Array.isArray(input?.nodes) ? input.nodes : null;
@@ -477,12 +486,15 @@ export default {
     if (parsedGroupLayout.value && !groupName) {
       return { ok: false, message: 'groupLayout 仅可与 groupName 一起使用' };
     }
+    const parsedAutoLayout = parseGroupLayout(input?.autoLayout, 'autoLayout');
+    if (!parsedAutoLayout.ok) return parsedAutoLayout;
     const result = await rpc(ctx, 'canvas.addNodes', {
       nodes: cleaned,
       focusFirst: input?.focusFirst !== false,
       // 可选 groupName：本次批量建的节点一起归入同名分组（不存在则创建）
       groupName: groupName || undefined,
       groupLayout: parsedGroupLayout.value,
+      autoLayout: parsedAutoLayout.value,
       edges: cleanedEdges,
     });
     if (result?.ok === false) return result;
@@ -493,6 +505,7 @@ export default {
       nodeIds: ids,
       groupName: groupName || undefined,
       groupLayout: parsedGroupLayout.value,
+      autoLayout: parsedAutoLayout.value,
       edges: result?.edges,
       message: `已新增 ${ids.length} 个节点：${ids.map((id) => id).join(', ')}${groupName ? `，并归入分组「${groupName}」` : ''}${cleanedEdges.length ? `；连线新增 ${result?.edges?.created || 0} 条` : ''}`,
     };
@@ -563,6 +576,60 @@ export default {
       })),
       message: `画布当前 ${nodes.length} 个节点 / ${edges.length} 条连线 / ${groups.length} 个分组`,
     };
+  },
+
+  /** 创建画布版本备份。 */
+  create_canvas_version: async (input, ctx) => {
+    const name = asString(input?.name) || `画布版本 ${new Date().toLocaleString('zh-CN')}`;
+    const workspaceId = resolveWorkspaceId(ctx, input);
+    const snapshot = await rpc(ctx, 'canvas.getCanvasSnapshot', {});
+    if (snapshot?.ok === false) return snapshot;
+    const version = {
+      id: `cv-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
+      name,
+      createdAt: Date.now(),
+      snapshot: {
+        nodes: Array.isArray(snapshot?.nodes) ? snapshot.nodes : [],
+        edges: Array.isArray(snapshot?.edges) ? snapshot.edges : [],
+        groups: Array.isArray(snapshot?.groups) ? snapshot.groups : [],
+      },
+    };
+    const path = `workspaces/${workspaceId}/canvas-versions.json`;
+    const current = ctx.readConfig(path);
+    const versions = Array.isArray(current?.versions) ? current.versions : [];
+    const next = { versions: [version, ...versions].slice(0, 100) };
+    ctx.writeConfig(path, next);
+    ctx.broadcast?.('miniApp.configChanged', { path, value: next });
+    return { ok: true, workspaceId, id: version.id, name, createdAt: version.createdAt, nodeCount: version.snapshot.nodes.length, edgeCount: version.snapshot.edges.length, message: `已备份画布版本「${name}」` };
+  },
+
+  /** 列出画布历史版本。 */
+  list_canvas_versions: async (input, ctx) => {
+    const workspaceId = resolveWorkspaceId(ctx, input);
+    const path = `workspaces/${workspaceId}/canvas-versions.json`;
+    const current = ctx.readConfig(path);
+    const versions = (Array.isArray(current?.versions) ? current.versions : []).map((version) => ({
+      id: version.id,
+      name: version.name,
+      createdAt: version.createdAt,
+      nodeCount: version.snapshot?.nodes?.length || 0,
+      edgeCount: version.snapshot?.edges?.length || 0,
+    }));
+    return { ok: true, workspaceId, total: versions.length, versions, message: `共有 ${versions.length} 个画布版本` };
+  },
+
+  /** 恢复指定画布版本。 */
+  restore_canvas_version: async (input, ctx) => {
+    const versionId = asString(input?.versionId) || asString(input?.id);
+    if (!versionId) return { ok: false, message: 'versionId 必填（先调用 list_canvas_versions）' };
+    const workspaceId = resolveWorkspaceId(ctx, input);
+    const path = `workspaces/${workspaceId}/canvas-versions.json`;
+    const current = ctx.readConfig(path);
+    const version = (Array.isArray(current?.versions) ? current.versions : []).find((item) => item.id === versionId);
+    if (!version) return { ok: false, message: `未找到画布版本：${versionId}` };
+    const result = await rpc(ctx, 'canvas.restoreCanvas', version.snapshot);
+    if (result?.ok === false) return result;
+    return { ok: true, workspaceId, versionId, name: version.name, nodeCount: version.snapshot.nodes.length, edgeCount: version.snapshot.edges.length, message: `已恢复画布版本「${version.name}」` };
   },
 
   /**
