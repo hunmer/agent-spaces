@@ -202,12 +202,14 @@ export function computeInputTexts(nodes, edges) {
   }
 
   for (const edge of edges) {
-    if (edge.data?.inputType !== CONNECTION_INPUT_TYPES.text || !edge.data?.inputTarget) continue;
+    if (edge.data?.inputType !== CONNECTION_INPUT_TYPES.text) continue;
     const sourceText = byId.get(edge.source)?.data?.output?.text;
     if (typeof sourceText !== 'string' || !sourceText.trim()) continue;
     if (!valuesByTarget.has(edge.target)) valuesByTarget.set(edge.target, {});
     const targetValues = valuesByTarget.get(edge.target);
-    const field = edge.data.inputTarget;
+    const targetNode = byId.get(edge.target);
+    const field = edge.data.inputTarget || Object.entries(targetNode?.data?.params || {})
+      .find(([, value]) => typeof value === 'string')?.[0] || 'prompt';
     if (!targetValues[field]) targetValues[field] = { whole: [], variables: {}, manual: {} };
     const plainText = htmlToPlainText(sourceText);
     const variable = edge.data?.inputVariable;

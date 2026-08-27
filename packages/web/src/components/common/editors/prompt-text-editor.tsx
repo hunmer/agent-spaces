@@ -43,6 +43,7 @@ export type PromptVariableConnection = {
 
 export type PromptVariableBinding = {
   key: string;
+  isOutput?: boolean;
   value?: string;
   displayValue?: string;
   connections?: PromptVariableConnection[];
@@ -133,7 +134,7 @@ function PromptVariablePopover({
   return (
     <div className="flex w-64 flex-col gap-2 rounded-md border border-border bg-popover p-2.5 text-popover-foreground shadow-lg">
       <div className="flex items-center justify-between gap-2">
-        <span className="font-mono text-xs font-semibold">{`{${binding.key}}`}</span>
+        <span className="font-mono text-xs font-semibold">{binding.isOutput ? `$$${binding.key}$$` : `{${binding.key}}`}</span>
         <span className="text-[10px] text-muted-foreground">{connected ? `${connections.length} 条连线` : '手动值'}</span>
       </div>
       {connected ? <div className="flex flex-col gap-1.5">
@@ -203,13 +204,17 @@ function createPromptVariableExtension(runtimeRef: React.RefObject<PromptVariabl
               }
               for (const match of node.text.matchAll(PROMPT_OUTPUT_PATTERN)) {
                 if (match.index === undefined) continue;
+                const binding = bindings.find((item) => item.key === match[1]);
                 decorations.push(Decoration.inline(
                   pos + match.index,
                   pos + match.index + match[0].length,
                   {
                     'data-prompt-output': match[1],
+                    'data-prompt-variable': match[1],
+                    'data-connected': binding?.connections?.length ? 'true' : 'false',
+                    ...(binding?.displayValue ? { 'data-variable-display': binding.displayValue } : {}),
                     class: 'prompt-variable-token',
-                    style: variableDecorationStyle(),
+                    style: variableDecorationStyle(binding),
                   },
                 ));
               }

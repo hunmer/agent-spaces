@@ -18,7 +18,7 @@ export default function TextVariableEditor({
   const editorValue = templateVariables.length ? value : (resolvedValue ?? value);
   const manualValues = data?.textVariableValues?.[field] || {};
   const fieldBindings = data?.textVariableBindings?.[field] || {};
-  const variables = useMemo(() => templateVariables.map((key) => {
+  const variables = useMemo(() => [...templateVariables.map((key) => {
     const connections = Array.isArray(fieldBindings[key]) ? fieldBindings[key] : [];
     const connectedValue = Array.from(new Set(connections.map((item) => item.value).filter(Boolean))).join('\n\n');
     const manualValue = manualValues[key] || '';
@@ -28,7 +28,13 @@ export default function TextVariableEditor({
       displayValue: connectedValue || manualValue,
       connections,
     };
-  }), [fieldBindings, manualValues, templateVariables]);
+  }), ...(data?.textOutputSuggestions || []).map((item) => ({
+    key: `${item.nodeLabel}.${item.key}`,
+    isOutput: true,
+    value: item.value || '',
+    displayValue: item.value || '',
+    connections: [],
+  }))], [data?.textOutputSuggestions, fieldBindings, manualValues, templateVariables]);
 
   const handleVariableValueChange = useCallback((key, nextValue) => {
     const nextField = { ...manualValues };

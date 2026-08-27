@@ -73,6 +73,18 @@ export default function ConnectionTargetDialog({
             导致内部 truncate 链全部失效（实测 span 宽 641px > dialog 420px）。 */}
         <div className="flex min-w-0 flex-col gap-2 overflow-hidden py-1">
           {(!needsAssetSelection || selectedAsset) ? <span className="text-[11px] font-medium text-muted-foreground">可连接对象</span> : null}
+          {(!needsAssetSelection || selectedAsset) && activeInputType === 'text' ? <Button
+            type="button"
+            variant="outline"
+            className="h-auto w-full justify-start gap-3 border-primary/60 bg-primary/5 px-3 py-3 text-left"
+            onClick={() => onSelect?.(undefined, selectedAsset || null, activeInputType, undefined)}
+          >
+            <FileText className="h-4 w-4 shrink-0" />
+            <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+              <span className="text-sm font-medium">直接连接</span>
+              <span className="text-[11px] font-normal text-muted-foreground">不指定目标对象，运行时自动写入第一个文本字段</span>
+            </div>
+          </Button> : null}
           {activeTargets.map((target) => {
             const Icon = TARGET_ICONS[target.id] || (activeInputType === 'text' ? FileText : (ASSET_ICONS[activeInputType] || Images));
             const variables = activeInputType === 'text' && Array.isArray(target.variables)

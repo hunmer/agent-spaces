@@ -195,6 +195,14 @@ test('computeInputTexts resolves $$node.key$$ output references at execution tim
   assert.deepEqual(computeInputTexts(nodes, edges).get('target'), { prompt: '主题 机械骑士，风格 史诗' });
 });
 
+test('computeInputTexts routes a direct text edge to the first text field', () => {
+  const nodes = [
+    { id: 'source', type: NODE_TYPES.text, data: { output: { text: '直接文本' } } },
+    { id: 'target', type: NODE_TYPES.textToImage, data: { params: { prompt: '模板' } } },
+  ];
+  assert.deepEqual(computeInputTexts(nodes, [{ ...edge('source', 'target'), data: { inputType: 'text' } }]).get('target'), { prompt: '直接文本' });
+});
+
 test('computeInputAudios forwards generated audio through display nodes', () => {
   const nodes = [
     { id: 'source', type: NODE_TYPES.textToVoice, data: { output: { audios: ['voice.mp3'] } } },
