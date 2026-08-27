@@ -275,7 +275,8 @@ export default function GroupExecutionToolbar({
                 )}
                 <RunStatusLabel
                   status={runAllState?.statusByRun?.[run.id]
-                    || (busy && runningAssetId === run.id ? 'running' : null)}
+                    || (busy && runningAssetId === run.id ? 'running' : null)
+                    || (hasRunningNodeState(run) ? 'running' : null)}
                 />
               </div>
             ))}
@@ -309,6 +310,12 @@ function RunStatusLabel({ status }) {
       <span>{labels[status] || status}</span>
     </div>
   );
+}
+
+function hasRunningNodeState(run) {
+  return Object.values(run?.nodeStates || {}).some((nodeState) => (
+    nodeState?.status === 'running' || nodeState?.loading
+  ));
 }
 
 function GroupConnectButton({ groupId, disabled, onConnect }) {

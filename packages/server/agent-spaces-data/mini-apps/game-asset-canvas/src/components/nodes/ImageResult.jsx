@@ -124,34 +124,16 @@ export default function ImageResult({ nodeId, images, resources = [], max = 0, p
   };
   const versionsCount = Array.isArray(versions) ? versions.length : 0;
 
-  // gallery 列表：包含所有历史版本的产出图（按版本顺序合并），点击当前版本第 i 张时
-  // 定位到 gallery 里的全局索引（当前版本之前所有版本的图数之和 + i）。
-  // 无 versions 或仅一个版本时退化为当前 list，行为与旧版一致。
-  const galleryItems = (() => {
-    if (!Array.isArray(versions) || versions.length === 0) {
-      return list.map((item) => ({ src: item.url, type: 'image', fileName: nameFor(item.index) }));
-    }
-    return versions
-      .filter((v) => Array.isArray(v?.output?.images))
-      .flatMap((v) => v.output.images.map((src) => ({ src, type: 'image' })));
-  })();
-  // 当前版本首图在 gallery 里的偏移（之前的版本图数之和）
-  const galleryOffset = (() => {
-    if (!Array.isArray(versions) || versions.length === 0) return 0;
-    const active = typeof activeVersion === 'number' ? activeVersion : versions.length - 1;
-    let offset = 0;
-    for (let i = 0; i < active && i < versions.length; i++) {
-      const imgs = versions[i]?.output?.images;
-      if (Array.isArray(imgs)) offset += imgs.length;
-    }
-    return offset;
-  })();
+  // Gallery 必须和当前可见缩略图使用同一数据源。历史版本先通过版本按钮切换，
+  // 再打开该版本，避免实例切换时 activeVersion 偏移指向其他实例的图片。
+  const galleryItems = list.map((item) => ({
+    src: item.url,
+    type: 'image',
+    fileName: nameFor(item.index),
+  }));
 
   const open = (index) => {
-    openCanvasGallery(
-      galleryItems.length ? galleryItems : list.map((item) => ({ src: item.url, type: 'image', fileName: nameFor(item.index) })),
-      galleryOffset + index,
-    );
+    openCanvasGallery(galleryItems, index);
   };
 
   if (preview) return (

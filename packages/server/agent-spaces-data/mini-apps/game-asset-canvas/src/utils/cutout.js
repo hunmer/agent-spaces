@@ -48,7 +48,7 @@ export async function runCutout(mode, inputUrls, modeParams = {}, ctx = {}) {
     case 'workflow':
       return runWorkflowCutout(urls, ctx);
     case 'rembg':
-      return runRembgCutout(urls, modeParams);
+      return runRembgCutout(urls, modeParams, ctx);
     default:
       throw new Error(`未知抠图模式：${mode}`);
   }
@@ -120,7 +120,7 @@ function summarizeWorkflowOutput(output) {
  * 返回结构（单图动作）：{ success, message, data:{ imageUrl, size, model } }
  * 取 data.imageUrl 即可。多图并发合并；单张失败记录但不阻塞。
  */
-async function runRembgCutout(urls, modeParams = {}) {
+async function runRembgCutout(urls, modeParams = {}, ctx = {}) {
   const AS = window.AgentSpaces;
   if (!AS?.callPluginTool) throw new Error('宿主 callPluginTool 不可用');
   const rembgMode = REMBG_ACTION_MAP[modeParams.rembgMode]
@@ -154,7 +154,12 @@ async function runRembgCutout(urls, modeParams = {}) {
 
   const results = await Promise.allSettled(
     urls.map((url) =>
-      AS.callPluginTool(REMBG_PLUGIN_ID, action, { ...baseArgs, image: url })
+      AS.callPluginTool(
+        REMBG_PLUGIN_ID,
+        action,
+        { ...baseArgs, image: url },
+        { meta: { executionTarget: ctx.executionTarget || undefined } },
+      )
         .then(extractRembgImageUrl),
     ),
   );

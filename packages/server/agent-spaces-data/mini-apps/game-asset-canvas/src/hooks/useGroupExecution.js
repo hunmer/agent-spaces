@@ -3,6 +3,7 @@ import { genId } from '../utils/canvas-id';
 import { collectGroupNodeIds } from '../utils/group-helpers';
 import {
   GROUP_EXECUTION_MODES,
+  applyExecutionNodePatch,
   applyNodePropertiesToAssetRuns,
   applyAssetToNodeStates,
   clampExecutionCount,
@@ -11,11 +12,13 @@ import {
   countManualImageSlots,
   createFreshNodeStates,
   ensureGroupExecution,
+  getRunExecutionTarget,
   groupOutputAssetsSignature,
   mergeRunNodeStates,
   normalizeGroupOutputBinding,
   saveActiveRun,
   snapshotNodeStates,
+  updateRunNodeState,
   wouldCreateGroupOutputBindingCycle,
 } from '../utils/group-execution';
 
@@ -90,7 +93,7 @@ export default function useGroupExecution({ groups, nodes, edges, setGroups, set
     if (!group) return null;
     const nodeIds = collectGroupNodeIds(currentGroups, groupId);
     const currentStates = snapshotNodeStates(currentNodes, nodeIds);
-    const execution = ensureGroupExecution(group.batchExecution, currentNodes, nodeIds);
+    const execution = ensureGroupExecution(group.batchExecution, currentNodes, nodeIds, groupId);
     const busy = currentNodes.some((node) => nodeIds.includes(node.id)
       && (node.data?.status === 'running' || node.data?.loading));
     return { group, nodeIds, currentNodes, currentStates, execution, busy };
@@ -336,17 +339,53 @@ export default function useGroupExecution({ groups, nodes, edges, setGroups, set
     commit(groupId, execution, targetStates);
   }, [commit, getContext]);
 
-  const syncActiveRunForNode = useCallback((nodeId) => {
+  const getExecutionTargetForNode = useCallback((nodeId, runId = null) => {
     const currentGroups = groupsRef.current;
     const target = currentGroups
       .map((group) => ({ group, nodeIds: collectGroupNodeIds(currentGroups, group.id) }))
-      .filter(({ nodeIds }) => nodeIds.includes(nodeId))
+      .filter(({ group, nodeIds }) => (
+        nodeIds.includes(nodeId)
+        && group.batchExecution?.mode === GROUP_EXECUTION_MODES.assets
+      ))
       .sort((left, right) => left.nodeIds.length - right.nodeIds.length)[0];
-    if (!target) return;
+    if (!target) return null;
     const context = getContext(target.group.id);
-    if (!context?.execution?.[context.execution.mode]?.activeId) return;
-    commit(target.group.id, saveActiveRun(context.execution, context.currentStates));
-  }, [commit, getContext]);
+    if (!context) return null;
+    return getRunExecutionTarget(
+      context.execution,
+      target.group.id,
+      nodeId,
+      context.execution.mode,
+      runId || context.execution[context.execution.mode]?.activeId,
+    );
+  }, [getContext]);
+
+  const updateExecutionNodeData = useCallback((target, patch) => {
+    if (!target) return;
+    const context = getContext(target.groupId);
+    if (!context) return;
+    const run = context.execution[target.mode]?.runs?.find((item) => item.id === target.runId);
+    if (!run || run.nodeIds?.[target.templateNodeId] !== target.nodeId) return;
+    const oldData = run.nodeStates?.[target.templateNodeId]
+      || context.currentNodes.find((node) => node.id === target.templateNodeId)?.data
+      || {};
+    const nodeData = applyExecutionNodePatch(oldData, patch);
+    const execution = updateRunNodeState(context.execution, target, nodeData);
+    const isActive = execution[target.mode]?.activeId === target.runId;
+    commitRunState(
+      target.groupId,
+      execution,
+      isActive ? { [target.templateNodeId]: nodeData } : null,
+    );
+  }, [commitRunState, getContext]);
+
+  const getExecutionNodeData = useCallback((target) => {
+    if (!target) return null;
+    const context = getContext(target.groupId);
+    const run = context?.execution?.[target.mode]?.runs?.find((item) => item.id === target.runId);
+    if (run?.nodeIds?.[target.templateNodeId] !== target.nodeId) return null;
+    return run.nodeStates?.[target.templateNodeId] || null;
+  }, [getContext]);
 
   const uploadAssets = useCallback(async (groupId, fileList) => {
     const files = Array.from(fileList || []).filter((file) => file.type?.startsWith('image/'));
@@ -541,7 +580,9 @@ export default function useGroupExecution({ groups, nodes, edges, setGroups, set
     setMode,
     setCount,
     switchRun,
-    syncActiveRunForNode,
+    getExecutionTargetForNode,
+    getExecutionNodeData,
+    updateExecutionNodeData,
     uploadAssets,
     removeAsset,
     setOutputBinding,

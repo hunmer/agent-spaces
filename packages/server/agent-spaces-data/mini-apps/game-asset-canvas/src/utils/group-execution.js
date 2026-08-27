@@ -16,6 +16,23 @@ export const GROUP_OUTPUT_FILTER_MODES = {
 export const DEFAULT_GROUP_EXECUTION_COUNT = 1;
 export const MAX_GROUP_EXECUTION_COUNT = 50;
 
+export function createExecutionNodeId(groupId, runId, templateNodeId) {
+  return ['group-run-node', groupId, runId, templateNodeId]
+    .map((value) => encodeURIComponent(String(value || '')))
+    .join(':');
+}
+
+function ensureRunNodeIds(run, groupId, nodeIds) {
+  if (!run) return run;
+  return {
+    ...run,
+    nodeIds: Object.fromEntries((nodeIds || []).map((templateNodeId) => [
+      templateNodeId,
+      createExecutionNodeId(groupId, run.id, templateNodeId),
+    ])),
+  };
+}
+
 const MANUAL_UPLOAD_NODE_TYPES = new Set([
   NODE_TYPES.editImage,
   NODE_TYPES.imageProcess,
@@ -44,14 +61,14 @@ export function snapshotNodeStates(nodes, nodeIds) {
   return states;
 }
 
-export function createGroupExecution(nodes, nodeIds) {
+export function createGroupExecution(nodes, nodeIds, groupId = '') {
   const states = snapshotNodeStates(nodes, nodeIds);
   return {
     mode: GROUP_EXECUTION_MODES.count,
     count: {
       target: DEFAULT_GROUP_EXECUTION_COUNT,
       activeId: 'count-1',
-      runs: [{ id: 'count-1', index: 1, nodeStates: states }],
+      runs: [ensureRunNodeIds({ id: 'count-1', index: 1, nodeStates: states }, groupId, nodeIds)],
     },
     assets: {
       activeId: null,
@@ -63,9 +80,9 @@ export function createGroupExecution(nodes, nodeIds) {
   };
 }
 
-export function ensureGroupExecution(value, nodes, nodeIds) {
-  if (!value || typeof value !== 'object') return createGroupExecution(nodes, nodeIds);
-  const fallback = createGroupExecution(nodes, nodeIds);
+export function ensureGroupExecution(value, nodes, nodeIds, groupId = '') {
+  if (!value || typeof value !== 'object') return createGroupExecution(nodes, nodeIds, groupId);
+  const fallback = createGroupExecution(nodes, nodeIds, groupId);
   const countRuns = Array.isArray(value.count?.runs) && value.count.runs.length
     ? value.count.runs
     : fallback.count.runs;
@@ -81,15 +98,80 @@ export function ensureGroupExecution(value, nodes, nodeIds) {
     mode: value.mode === GROUP_EXECUTION_MODES.assets
       ? GROUP_EXECUTION_MODES.assets
       : GROUP_EXECUTION_MODES.count,
-    count: { target, activeId: countActiveId, runs: countRuns },
+    count: {
+      target,
+      activeId: countActiveId,
+      runs: countRuns.map((run) => ensureRunNodeIds(run, groupId, nodeIds)),
+    },
     assets: {
       activeId: assetActiveId,
       templateNodeStates: value.assets?.templateNodeStates || null,
-      runs: assetRuns,
+      runs: assetRuns.map((run) => ensureRunNodeIds(run, groupId, nodeIds)),
       binding: normalizeGroupOutputBinding(value.assets?.binding),
       sourceSignature: value.assets?.sourceSignature || null,
     },
   };
+}
+
+export function getRunExecutionTarget(
+  execution, groupId, templateNodeId, mode = execution?.mode, runId = execution?.[mode]?.activeId,
+) {
+  const run = execution?.[mode]?.runs?.find((item) => item.id === runId);
+  if (!run || !templateNodeId) return null;
+  return {
+    groupId,
+    mode,
+    runId,
+    templateNodeId,
+    nodeId: run.nodeIds?.[templateNodeId]
+      || createExecutionNodeId(groupId, runId, templateNodeId),
+  };
+}
+
+export function updateRunNodeState(execution, target, nodeData) {
+  if (!execution || !target) return execution;
+  const section = execution[target.mode];
+  const expectedNodeId = createExecutionNodeId(
+    target.groupId, target.runId, target.templateNodeId,
+  );
+  if (!section || target.nodeId !== expectedNodeId) return execution;
+  let found = false;
+  const runs = section.runs.map((run) => {
+    if (run.id !== target.runId) return run;
+    found = true;
+    return {
+      ...ensureRunNodeIds(run, target.groupId, [
+        ...new Set([...Object.keys(run.nodeIds || {}), target.templateNodeId]),
+      ]),
+      nodeStates: {
+        ...(run.nodeStates || {}),
+        [target.templateNodeId]: cloneSerializable(nodeData || {}),
+      },
+    };
+  });
+  if (!found) return execution;
+  return { ...execution, [target.mode]: { ...section, runs } };
+}
+
+export function applyExecutionNodePatch(oldData, patch) {
+  const previous = oldData || {};
+  const next = typeof patch === 'function' ? patch(previous) : { ...previous, ...(patch || {}) };
+  const isDone = next?.status === 'done';
+  const wasNotDone = previous?.status !== 'done';
+  const hasOutputImages = Array.isArray(next?.output?.images) && next.output.images.length > 0;
+  if (isDone && wasNotDone && hasOutputImages && next.__switchVersion !== true && !next.__versionSkip) {
+    const versions = Array.isArray(previous.versions) ? [...previous.versions] : [];
+    versions.push({
+      params: next.params ? { ...next.params } : undefined,
+      output: { ...next.output },
+      createdAt: Date.now(),
+    });
+    next.versions = versions;
+    next.activeVersion = versions.length - 1;
+  }
+  delete next.__switchVersion;
+  delete next.__versionSkip;
+  return next;
 }
 
 export function normalizeGroupOutputBinding(value) {

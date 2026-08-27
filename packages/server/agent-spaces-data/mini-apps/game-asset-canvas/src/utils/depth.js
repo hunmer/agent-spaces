@@ -23,7 +23,7 @@ const DEPTH_BATCH_ACTION = 'depth_batch_predict';
  * 提取深度图。返回产出图 URL 数组。
  * 多图走插件批量接口（GPU 并行），部分失败不阻塞成功的。
  */
-export async function runDepth(inputUrls, params = {}) {
+export async function runDepth(inputUrls, params = {}, opts = {}) {
   const urls = normalizeImageUrls((inputUrls || []).filter(Boolean));
   if (!urls.length) throw new Error('提取深度图需要输入图');
 
@@ -37,7 +37,12 @@ export async function runDepth(inputUrls, params = {}) {
     pred_only: params.predOnly === 'false' ? 'false' : 'true',
   };
 
-  const ret = await AS.callPluginTool(DEPTH_PLUGIN_ID, DEPTH_BATCH_ACTION, args);
+  const ret = await AS.callPluginTool(
+    DEPTH_PLUGIN_ID,
+    DEPTH_BATCH_ACTION,
+    args,
+    { meta: { executionTarget: opts.executionTarget || undefined } },
+  );
   const results = extractDepthResults(ret);
   const outUrls = [];
   for (const r of results) {

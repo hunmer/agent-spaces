@@ -106,3 +106,39 @@ test('generateImages normalizes relative input images before workflow execution'
     globalThis.window = previousWindow;
   }
 });
+
+test('generateImages forwards the frozen execution target in request metadata', async () => {
+  const { generateImages } = loadWorkflowModule();
+  const previousWindow = globalThis.window;
+  let receivedOptions;
+  globalThis.window = {
+    location: { origin: 'http://localhost:3000' },
+    AgentSpaces: {
+      downloadImage: async (url) => ({ httpUrl: url }),
+      generateThumbnail: async ({ url }) => ({ httpUrl: url }),
+      callPluginTool: async (_plugin, _tool, _args, options) => {
+        receivedOptions = options;
+        return {
+          success: true,
+          result: {
+            status: 'completed',
+            steps: [{ nodeType: 'end', status: 'completed', output: { images: ['result.png'] } }],
+          },
+        };
+      },
+    },
+  };
+  const executionTarget = {
+    groupId: 'group-1',
+    mode: 'assets',
+    runId: 'asset-1',
+    templateNodeId: 'node-1',
+    nodeId: 'group-run-node:group-1:asset-1:node-1',
+  };
+  try {
+    await generateImages('image-workflow', {}, { executionTarget });
+    assert.deepEqual(receivedOptions.meta.executionTarget, executionTarget);
+  } finally {
+    globalThis.window = previousWindow;
+  }
+});

@@ -229,7 +229,12 @@ interface GroupBatchExecution {
   count: {
     target: number;              // 1-50
     activeId: string | null;
-    runs: Array<{ id: string; index: number; nodeStates: Record<string, NodeData> }>;
+    runs: Array<{
+      id: string;
+      index: number;
+      nodeIds: Record<string, string>; // templateNodeId -> 全局唯一执行节点 ID
+      nodeStates: Record<string, NodeData>;
+    }>;
   };
   assets: {
     activeId: string | null;
@@ -238,6 +243,7 @@ interface GroupBatchExecution {
       id: string;
       name: string;
       url: string;               // uploadFile 返回的持久化 URL
+      nodeIds: Record<string, string>; // templateNodeId -> 全局唯一执行节点 ID
       nodeStates: Record<string, NodeData>;
     }>;
   };
@@ -245,6 +251,8 @@ interface GroupBatchExecution {
 ```
 
 - 当前实例仍以画布 `nodes[].data` 为实时状态；切换前写回当前 run，再恢复目标 run 的整组节点 data。
+- `nodeIds[templateNodeId]` 按 `groupId + runId + templateNodeId` 稳定生成；旧数据由 `ensureGroupExecution` 自动补齐。
+- 工作流请求冻结 `{groupId, mode, runId, templateNodeId, nodeId}`，状态和结果按该身份定向写入 run；完成时不得用当前 `activeId` 决定归属。
 - 素材实例只替换没有上游输入的玩家上传槽位；图片展示节点写 `data.images`，普通接收节点写 `data.uploadedImages`，图片对比节点写未被上游占用的 first/second 槽位。
 - 新素材实例会清空运行状态和旧产出。组内节点运行时禁止切换实例，避免异步完成回调写入其他实例。
 

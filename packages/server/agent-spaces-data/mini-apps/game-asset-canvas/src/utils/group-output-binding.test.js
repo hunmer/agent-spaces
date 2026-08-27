@@ -6,9 +6,12 @@ import {
   applyAssetToNodeStates,
   applyNodePropertiesToAssetRuns,
   collectGroupOutputAssets,
+  createExecutionNodeId,
   ensureGroupExecution,
+  getRunExecutionTarget,
   normalizeGroupOutputBinding,
   resolveGroupOutputFilter,
+  updateRunNodeState,
   wouldCreateGroupOutputBindingCycle,
 } from './group-execution.js';
 
@@ -18,6 +21,34 @@ const nodes = [
   { id: 'c', type: 'textToImage', data: { label: 'C', output: { images: ['c1'] } } },
   { id: 'd', type: 'imageDisplay', data: { images: ['upload-only'] } },
 ];
+
+test('不同实例的同一模板节点拥有稳定且不重复的执行节点 ID', () => {
+  const first = createExecutionNodeId('group-1', 'asset-1', 'node-1');
+  const second = createExecutionNodeId('group-1', 'asset-2', 'node-1');
+  assert.equal(first, createExecutionNodeId('group-1', 'asset-1', 'node-1'));
+  assert.notEqual(first, second);
+});
+
+test('固定执行身份只更新请求所属实例，不受当前激活实例影响', () => {
+  const execution = ensureGroupExecution({
+    mode: 'assets',
+    count: { target: 1, activeId: 'count-1', runs: [] },
+    assets: {
+      activeId: 'asset-2',
+      runs: [
+        { id: 'asset-1', nodeStates: { 'node-1': { output: { images: [] } } } },
+        { id: 'asset-2', nodeStates: { 'node-1': { output: { images: ['b.png'] } } } },
+      ],
+    },
+  }, [{ id: 'node-1', data: {} }], ['node-1'], 'group-1');
+  const target = getRunExecutionTarget(execution, 'group-1', 'node-1', 'assets', 'asset-1');
+  const next = updateRunNodeState(execution, target, {
+    status: 'done', output: { images: ['a.png'] },
+  });
+  assert.deepEqual(next.assets.runs[0].nodeStates['node-1'].output.images, ['a.png']);
+  assert.deepEqual(next.assets.runs[1].nodeStates['node-1'].output.images, ['b.png']);
+  assert.equal(next.assets.activeId, 'asset-2');
+});
 
 test('全部模式收集来源组节点的输出图片和图片展示内容', () => {
   const result = collectGroupOutputAssets(nodes, ['a', 'b', 'd'], {
@@ -253,4 +284,21 @@ test('分组工具栏支持运行所有并展示素材实例状态', () => {
   );
   assert.match(switchRunSource, /if \(!context\) return;/);
   assert.doesNotMatch(switchRunSource, /context\.busy/);
+});
+
+test('普通节点执行冻结实例身份并由队列按执行节点 ID 隔离', () => {
+  const canvasSource = readFileSync(
+    new URL('../components/Canvas.jsx', import.meta.url),
+    'utf8',
+  );
+  const queueSource = readFileSync(
+    new URL('../hooks/useExecutionQueue.js', import.meta.url),
+    'utf8',
+  );
+  assert.match(canvasSource, /executionTarget: groupExecution\.getExecutionTargetForNode\(nodeId\)/);
+  assert.match(canvasSource, /executionNodeId: executionTarget\?\.nodeId \|\| node\.id/);
+  assert.match(canvasSource, /onGenerate: handleScopedGenerate, onGenerateMedia: handleScopedGenerateMedia/);
+  assert.doesNotMatch(canvasSource, /syncActiveRunForNode/);
+  assert.match(queueSource, /executionNodeId: task\.executionNodeId \|\| task\.placeholderNodeId/);
+  assert.match(queueSource, /executionTarget: task\.executionTarget \|\| null/);
 });

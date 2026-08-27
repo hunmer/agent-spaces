@@ -207,6 +207,7 @@ export default function Canvas({ hostConfig }) {
     settings,
     directory: activeWorkspace?.directory,
   });
+  const groupExecution = useGroupExecution({ groups, nodes, edges, setGroups, setNodes });
 
   // —— 执行队列（onComplete/onError 用 imageOutputs + updateNodeData + addHistory）——
   const { jobs, submit, cancel, clearFinished, runningCount, queuedCount } = useExecutionQueue({
@@ -249,18 +250,20 @@ export default function Canvas({ hostConfig }) {
     },
     onCancel: (job) => {
       if (job.placeholderNodeId) {
-        updateNodeData(job.placeholderNodeId, {
+        const patch = {
           loading: false,
           status: 'cancelled',
           error: undefined,
-        });
+        };
+        if (job.executionTarget) groupExecution.updateExecutionNodeData(job.executionTarget, patch);
+        else updateNodeData(job.placeholderNodeId, patch);
       }
     },
   });
   const activeQueueNodeIds = useMemo(() => new Set(
     jobs
       .filter((job) => job.status === 'queued' || job.status === 'running')
-      .map((job) => job.placeholderNodeId)
+      .map((job) => job.executionNodeId || job.placeholderNodeId)
       .filter(Boolean),
   ), [jobs]);
   activeQueueNodeIdsRef.current = activeQueueNodeIds;
@@ -273,17 +276,23 @@ export default function Canvas({ hostConfig }) {
     const positions = new Map();
     jobs
       .filter((job) => job.status === 'queued' && job.placeholderNodeId)
+      .filter((job) => !job.executionTarget
+        || groupExecution.getExecutionTargetForNode(job.placeholderNodeId)?.nodeId === job.executionNodeId)
       .forEach((job, index) => positions.set(job.placeholderNodeId, index + 1));
     return positions;
-  }, [jobs]);
+  }, [groupExecution.getExecutionTargetForNode, jobs]);
   const queueStatuses = useMemo(() => new Map(
     jobs
       .filter((job) => (job.status === 'queued' || job.status === 'running') && job.placeholderNodeId)
+      .filter((job) => !job.executionTarget
+        || groupExecution.getExecutionTargetForNode(job.placeholderNodeId)?.nodeId === job.executionNodeId)
       .map((job) => [job.placeholderNodeId, job.status]),
-  ), [jobs]);
+  ), [groupExecution.getExecutionTargetForNode, jobs]);
   const standaloneRunningNodes = useMemo(
-    () => runningNodes.filter((node) => !activeQueueNodeIds.has(node.id)),
-    [activeQueueNodeIds, runningNodes],
+    () => runningNodes.filter((node) => !activeQueueNodeIds.has(
+      groupExecution.getExecutionTargetForNode(node.id)?.nodeId || node.id,
+    )),
+    [activeQueueNodeIds, groupExecution.getExecutionTargetForNode, runningNodes],
   );
 
   // —— 节点 CRUD + 定位/布局/导出 + 尺寸自适应 + 表单提交 ——
@@ -363,7 +372,13 @@ export default function Canvas({ hostConfig }) {
 
   // —— 节点执行回调（工作流/媒体/本地算法/抠图/反推提示词）——
   const executions = useNodeExecutions({
-    runWorkflow, updateNodeData, addHistory, settings, createNodeAt: crud.createNodeAt, saveLastParams,
+    runWorkflow,
+    updateNodeData,
+    updateExecutionNodeData: groupExecution.updateExecutionNodeData,
+    addHistory,
+    settings,
+    createNodeAt: crud.createNodeAt,
+    saveLastParams,
   });
 
   // —— 分组操作 + overlay 移动/连线 ——
@@ -405,8 +420,6 @@ export default function Canvas({ hostConfig }) {
     groupOps.setSelectedGroupId(null);
     imageSelection.clear();
   }, [groupOps.setSelectedGroupId, imageSelection]);
-  const groupExecution = useGroupExecution({ groups, nodes, edges, setGroups, setNodes });
-
   // —— ReactFlow 节点拖拽 + 辅助线对齐 ——
   const alignment = useAlignmentGuides({
     nodes,
@@ -607,6 +620,56 @@ export default function Canvas({ hostConfig }) {
     makeOnUpdate, handleGenerate, handleGenerateMedia, handleProcessImage,
     handleProcessLocal, handleCutout, handleCutoutCreate, handleDepth, handleCancelProcess, handlePromptReverse,
   } = executions;
+  const handleScopedGenerate = useCallback((nodeId, nodeType, options) => (
+    handleGenerate(nodeId, nodeType, {
+      ...options,
+      executionTarget: groupExecution.getExecutionTargetForNode(nodeId),
+    })
+  ), [groupExecution.getExecutionTargetForNode, handleGenerate]);
+  const handleScopedGenerateMedia = useCallback((nodeId, nodeType, kind, options) => (
+    handleGenerateMedia(nodeId, nodeType, kind, {
+      ...options,
+      executionTarget: groupExecution.getExecutionTargetForNode(nodeId),
+    })
+  ), [groupExecution.getExecutionTargetForNode, handleGenerateMedia]);
+  const handleScopedPromptReverse = useCallback((nodeId, inputImages) => (
+    handlePromptReverse(
+      nodeId,
+      inputImages,
+      groupExecution.getExecutionTargetForNode(nodeId),
+    )
+  ), [groupExecution.getExecutionTargetForNode, handlePromptReverse]);
+  const handleScopedProcessLocal = useCallback((
+    nodeId, processorId, processorParams, sourceImages, nodeType,
+  ) => handleProcessLocal(
+    nodeId,
+    processorId,
+    processorParams,
+    sourceImages,
+    nodeType,
+    groupExecution.getExecutionTargetForNode(nodeId),
+  ), [groupExecution.getExecutionTargetForNode, handleProcessLocal]);
+  const handleScopedCutout = useCallback((nodeId, mode, modeParams, sourceImages) => (
+    handleCutout(
+      nodeId,
+      mode,
+      modeParams,
+      sourceImages,
+      groupExecution.getExecutionTargetForNode(nodeId),
+    )
+  ), [groupExecution.getExecutionTargetForNode, handleCutout]);
+  const handleScopedDepth = useCallback((nodeId, params, sourceImages) => (
+    handleDepth(
+      nodeId,
+      params,
+      sourceImages,
+      groupExecution.getExecutionTargetForNode(nodeId),
+    )
+  ), [groupExecution.getExecutionTargetForNode, handleDepth]);
+  const handleScopedCancelProcess = useCallback((nodeId) => {
+    const target = groupExecution.getExecutionTargetForNode(nodeId);
+    handleCancelProcess(nodeId, target);
+  }, [groupExecution.getExecutionTargetForNode, handleCancelProcess]);
   const { handleAutoSize, handleAutoSizeToContent } = crud;
   const { handleResetParams } = crud;
 
@@ -1346,16 +1409,16 @@ export default function Canvas({ hostConfig }) {
 
   const nodeCallbacks = useMemo(() => ({
     makeOnUpdate,
-    onGenerate: handleGenerate,
-    onGenerateMedia: handleGenerateMedia,
+    onGenerate: handleScopedGenerate,
+    onGenerateMedia: handleScopedGenerateMedia,
     onExportImages: handleExportImagesWithPicker,
     onProcessImage: handleProcessImage,
-    onProcessLocal: handleProcessLocal,
-    onCutout: handleCutout,
+    onProcessLocal: handleScopedProcessLocal,
+    onCutout: handleScopedCutout,
     onCutoutCreate: handleCutoutCreate,
-    onDepth: handleDepth,
-    onCancelProcess: handleCancelProcess,
-    onPromptReverse: handlePromptReverse,
+    onDepth: handleScopedDepth,
+    onCancelProcess: handleScopedCancelProcess,
+    onPromptReverse: handleScopedPromptReverse,
     onEditImages: (imgs) => setFormState({ nodeType: NODE_TYPES.editImage, initialImages: imgs }),
     onAutoSize: handleAutoSize,
     onAutoSizeToContent: handleAutoSizeToContent,
@@ -1380,8 +1443,9 @@ export default function Canvas({ hostConfig }) {
     onDeleteStoryboardCharacter: characterLibrary.deleteCharacter,
     onDeleteEdge: handleDeleteEdgeById,
   }), [
-    makeOnUpdate, handleGenerate, handleGenerateMedia, handleProcessImage,
-    handleProcessLocal, handleCutout, handleCutoutCreate, handleDepth, handleCancelProcess, handlePromptReverse,
+    makeOnUpdate, handleScopedGenerate, handleScopedGenerateMedia, handleProcessImage,
+    handleScopedProcessLocal, handleScopedCutout, handleCutoutCreate, handleScopedDepth,
+    handleScopedCancelProcess, handleScopedPromptReverse,
     handleExportImagesWithPicker, handleAutoSize, handleAutoSizeToContent, handleBBoxCutout, handleResetParams,
     handleAddToAssets, handleAddOutputImages, handleRemoveOutputImage, handleClearOutputImages, handleReorderOutputImages,
     handleSwitchVersion, handleDeleteUpstreamImage, handleExportVideosWithPicker,
@@ -1409,7 +1473,7 @@ export default function Canvas({ hostConfig }) {
     updateNodeData, handleDeleteNode: crud.handleDeleteNode,
     focusNode: crud.focusNode, focusNodes: focusCanvasNodes,
     setNodes, setEdges, setGroups,
-    onGenerate: handleGenerate, onGenerateMedia: handleGenerateMedia,
+    onGenerate: handleScopedGenerate, onGenerateMedia: handleScopedGenerateMedia,
     settings,
   });
 
@@ -1429,11 +1493,12 @@ export default function Canvas({ hostConfig }) {
     let skipped = 0;
     for (const nodeId of nodeIds || []) {
       const node = nodeMap.get(nodeId);
+      const executionNodeId = groupExecution.getExecutionTargetForNode(nodeId)?.nodeId || nodeId;
       if (
         !node
         || node.data?.status === 'running'
-        || activeQueueNodeIdsRef.current.has(nodeId)
-        || reservedBatchNodeIdsRef.current.has(nodeId)
+        || activeQueueNodeIdsRef.current.has(executionNodeId)
+        || reservedBatchNodeIdsRef.current.has(executionNodeId)
       ) {
         skipped += 1;
         continue;
@@ -1446,22 +1511,32 @@ export default function Canvas({ hostConfig }) {
       candidates.push({ node, spec });
     }
     return { candidates, skipped };
-  }, []);
+  }, [groupExecution.getExecutionTargetForNode]);
 
-  const executeCurrentGroupRun = useCallback(async (nodeIds) => {
+  const executeCurrentGroupRun = useCallback(async (nodeIds, runId = null) => {
     const { candidates } = collectBatchRunNodes(nodeIds);
     if (!candidates.length) throw new Error('分组内没有可执行的生成节点');
-    await Promise.all(candidates.map(({ node, spec }) => (
+    const requests = candidates.map(({ node, spec }) => ({
+      node,
+      spec,
+      target: groupExecution.getExecutionTargetForNode(node.id, runId),
+    }));
+    await Promise.all(requests.map(({ node, spec, target }) => (
       spec.kind === 'image'
-        ? handleGenerate(node.id, node.type, { workflowId: spec.workflowId, input: spec.input })
-        : handleGenerateMedia(node.id, node.type, spec.kind, { workflowId: spec.workflowId, input: spec.input })
+        ? handleGenerate(node.id, node.type, {
+          workflowId: spec.workflowId, input: spec.input, executionTarget: target,
+        })
+        : handleGenerateMedia(node.id, node.type, spec.kind, {
+          workflowId: spec.workflowId, input: spec.input, executionTarget: target,
+        })
     )));
     await waitForCanvasState();
-    const failed = nodesRef.current.filter((node) => (
-      nodeIds.includes(node.id) && node.data?.status === 'error'
+    const failed = requests.filter(({ node, target }) => (
+      (target ? groupExecution.getExecutionNodeData(target) : nodesRef.current.find((item) => item.id === node.id)?.data)
+        ?.status === 'error'
     ));
     if (failed.length) throw new Error(`${failed.length} 个节点执行失败`);
-  }, [collectBatchRunNodes, handleGenerate, handleGenerateMedia]);
+  }, [collectBatchRunNodes, groupExecution.getExecutionNodeData, groupExecution.getExecutionTargetForNode, handleGenerate, handleGenerateMedia]);
 
   const handleRunAllGroup = useCallback((groupId, runIds) => {
     void groupExecution.runAllRuns(groupId, runIds, executeCurrentGroupRun);
@@ -1482,30 +1557,36 @@ export default function Canvas({ hostConfig }) {
         && !queuedNodeIds.has(node.id)
         && (node.data?.status === 'running' || node.data?.loading)
       ))
-      .forEach((node) => handleCancelProcess(node.id));
-  }, [cancel, groupExecution.runAllStates, groupExecution.stopAllRuns, handleCancelProcess, jobs]);
+      .forEach((node) => handleScopedCancelProcess(node.id));
+  }, [cancel, groupExecution.runAllStates, groupExecution.stopAllRuns, handleScopedCancelProcess, jobs]);
 
   const submitBatchRun = useCallback((nodeIds) => {
     const { candidates, skipped } = collectBatchRunNodes(nodeIds);
     for (const { node, spec } of candidates) {
-      reservedBatchNodeIdsRef.current.add(node.id);
+      const executionTarget = groupExecution.getExecutionTargetForNode(node.id);
+      reservedBatchNodeIdsRef.current.add(executionTarget?.nodeId || node.id);
       submit({
         nodeType: node.type,
         label: NODE_META[node.type]?.label || node.data?.label || node.type,
         placeholderNodeId: node.id,
+        executionNodeId: executionTarget?.nodeId || node.id,
+        executionTarget,
         execute: async () => {
           if (spec.kind === 'image') {
-            await handleGenerate(node.id, node.type, { workflowId: spec.workflowId, input: spec.input });
+            await handleGenerate(node.id, node.type, {
+              workflowId: spec.workflowId,
+              input: spec.input,
+              executionTarget,
+            });
           } else {
             await handleGenerateMedia(node.id, node.type, spec.kind, {
               workflowId: spec.workflowId,
               input: spec.input,
+              executionTarget,
             });
           }
-          await waitForCanvasState();
-          groupExecution.syncActiveRunForNode(node.id);
         },
-        cancel: () => handleCancelProcess(node.id),
+        cancel: () => handleCancelProcess(node.id, executionTarget),
       });
     }
     if (candidates.length > 0) {
@@ -1513,7 +1594,7 @@ export default function Canvas({ hostConfig }) {
     } else {
       toast.warning('分组内没有可执行的生成节点');
     }
-  }, [collectBatchRunNodes, handleCancelProcess, handleGenerate, handleGenerateMedia, groupExecution.syncActiveRunForNode, submit]);
+  }, [collectBatchRunNodes, groupExecution.getExecutionTargetForNode, handleCancelProcess, handleGenerate, handleGenerateMedia, submit]);
 
   const requestBatchRun = useCallback((nodeIds) => {
     const { candidates } = collectBatchRunNodes(nodeIds);

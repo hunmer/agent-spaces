@@ -170,6 +170,7 @@ Agent → api.js handler → ctx.requestClient(type, payload, timeoutMs)
 35. **图片排序时隐藏 HoverCard**：`FileUpload`、`UpstreamImageList`、`ImageResult` 在排序拖拽期间统一向 `ImageHoverCard` 传 `disabled`；拖拽开始立即关闭预览，结束后恢复普通悬浮预览。
 36. **编辑图片引用编号从 1 开始**：`EditImageNode` 的参考图 mention key 使用 `#1/#2/…`，`promptToText` 转纯文本时原样输出该 key；编号顺序必须与提交的 `input.images` 一致。
 37. **手动连线依赖 MarkerType 导入**：`Canvas.jsx` 的 `addConnections` 使用 `MarkerType.ArrowClosed`，必须从 `@xyflow/react` 显式导入 `MarkerType`；renderer 已暴露该符号。
+38. **分组素材实例执行必须冻结唯一节点身份**：每个 run 用 `nodeIds[templateNodeId]` 保存由 `groupId + runId + templateNodeId` 稳定生成的执行节点 ID。单节点、队列批量、运行所有和 Agent RPC 发请求时都携带固定 `executionTarget`；运行状态、取消、历史和最终产出只能按该 target 写回对应 run，禁止在请求完成时读取当前 `activeId` 认领结果。队列活动集合使用 `executionNodeId`，不能再用实例间重复的 `placeholderNodeId` 去重。
 38. **分组激活优先约束键盘全选**：按 `Ctrl/Cmd+A` 时若 `useGroupOperations.selectedGroupId` 有效，只选中该分组（含嵌套子分组）的节点；未激活分组时才沿用“从当前已选节点推断最小包含分组，否则全画布”的逻辑。节点右键菜单可复制 `{id,type,typeLabel,title,position,data}` JSON，并可在源节点右侧创建、连线一个图片展示节点；新节点继承源节点的直接分组归属。
 
 ## 工作区数据目录（产图落本地）

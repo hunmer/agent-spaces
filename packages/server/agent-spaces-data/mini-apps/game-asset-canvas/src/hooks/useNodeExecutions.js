@@ -23,7 +23,15 @@ import { registerController, clearController, abortController,
  * @param {Function} deps.createNodeAt
  * @param {Function} deps.saveLastParams  useLastParams().saveLastParams —— 提交时存参数子集（按工作区+nodeType）
  */
-export default function useNodeExecutions({ runWorkflow, updateNodeData, addHistory, settings, createNodeAt, saveLastParams }) {
+export default function useNodeExecutions({
+  runWorkflow,
+  updateNodeData,
+  updateExecutionNodeData,
+  addHistory,
+  settings,
+  createNodeAt,
+  saveLastParams,
+}) {
   // 节点内部更新 data 的回调（注入到 data.onUpdate）—— 留在 Canvas 也可，但与执行强相关放这里
   const makeOnUpdate = useCallback((nodeId) => (patch) => {
     updateNodeData(nodeId, patch);
@@ -43,7 +51,13 @@ export default function useNodeExecutions({ runWorkflow, updateNodeData, addHist
   // 节点点击"生成"：优先用设置页配置的工作流 ID，fallback 到节点传的 workflowId
   // input.count > 1 时按 count 重复调用工作流（runWithConcurrency 限并发），图片合并。
   // 支持取消：并行订阅 workflow:started 拿 executionId，取消时 stopWorkflow 真中断引擎。
-  const handleGenerate = useCallback(async (nodeId, nodeType, { workflowId, input }) => {
+  const handleGenerate = useCallback(async (
+    nodeId, nodeType, { workflowId, input, executionTarget = null },
+  ) => {
+    const requestNodeId = executionTarget?.nodeId || nodeId;
+    const update = (patch) => (executionTarget
+      ? updateExecutionNodeData?.(executionTarget, patch)
+      : updateNodeData(nodeId, patch));
     // 记忆上次提交参数（剥离图片，按工作区+nodeType 隔离）—— 失败不阻塞执行
     try {
       const { prompt, model, aspect, size } = input || {};
@@ -62,37 +76,39 @@ export default function useNodeExecutions({ runWorkflow, updateNodeData, addHist
     delete wfInput.count;
     delete wfInput.concurrency;
     // 注册工作流句柄 + 订阅 started 事件回填 executionId（供中断）
-    const wfHandle = registerWorkflowHandle(nodeId);
+    const wfHandle = registerWorkflowHandle(requestNodeId);
     const AS = window.AgentSpaces;
     const unsubStarted = AS?.subscribeWorkflowEvents?.((event, data) => {
       if (event === 'workflow:started' && data?.executionId) {
-        setWorkflowExecutionId(nodeId, data.executionId);
+        setWorkflowExecutionId(requestNodeId, data.executionId);
       }
     });
-    updateNodeData(nodeId, { status: 'running', error: undefined });
+    update({ status: 'running', error: undefined });
     // 提前生成 histId：作为落地子目录名，与 history 记录共用（count 多次调用工作流落到同一子目录）
     const histId = genId('hist');
     try {
       const batches = await runWithConcurrency(count, concurrency, () => {
         if (wfHandle.aborted) return [];
-        return runWorkflow(finalWorkflowId, wfInput, histId).then((r) => r || { urls: [], resources: [] }).catch((e) => {
+        return runWorkflow(finalWorkflowId, wfInput, histId, executionTarget).then((r) => r || { urls: [], resources: [] }).catch((e) => {
           // 部分失败不阻塞：返回空数组让成功的合并；全部失败由最终 length 校验抛错
           console.warn('generate one batch failed:', e);
           return { urls: [], resources: [] };
         });
       });
       if (wfHandle.aborted) {
-        updateNodeData(nodeId, { status: 'cancelled', error: undefined });
+        update({ status: 'cancelled', error: undefined });
         return;
       }
       const urls = batches.flatMap((batch) => batch.urls || []).filter(Boolean);
       const resources = batches.flatMap((batch) => batch.resources || []).filter((item) => item?.url);
       if (!urls.length) throw new Error('未返回图片');
-      updateNodeData(nodeId, { status: 'done', output: { images: urls, resources } });
+      update({ status: 'done', output: { images: urls, resources } });
       // 落地已在 generateImages 内完成（按 directory 决定走工作区目录或 data），这里只记录历史
       addHistory({
         id: histId,
-        nodeId,
+        nodeId: requestNodeId,
+        templateNodeId: nodeId,
+        executionTarget,
         nodeType,
         prompt: input?.prompt || '',
         model: input?.model || '',
@@ -103,21 +119,27 @@ export default function useNodeExecutions({ runWorkflow, updateNodeData, addHist
       notifyDone('生成完成', `${NODE_META[nodeType]?.label || '节点'}产出了 ${urls.length} 张图`);
     } catch (err) {
       if (wfHandle.aborted) {
-        updateNodeData(nodeId, { status: 'cancelled', error: undefined });
+        update({ status: 'cancelled', error: undefined });
         return;
       }
       console.error('generate failed:', err);
-      updateNodeData(nodeId, { status: 'error', error: err?.message || String(err) });
+      update({ status: 'error', error: err?.message || String(err) });
     } finally {
       try { unsubStarted?.(); } catch {}
-      clearWorkflowHandle(nodeId);
+      clearWorkflowHandle(requestNodeId);
     }
-  }, [runWorkflow, updateNodeData, addHistory, settings, saveLastParams]);
+  }, [runWorkflow, updateNodeData, updateExecutionNodeData, addHistory, settings, saveLastParams]);
 
   // 媒体节点（音频/视频）生成：与 handleGenerate 同款，但产出写 output.audio(s) / output.video(s)。
   // count > 1 时按 count 并发调用，产出合并为 audios/videos 数组（媒体单值 audio/video 保留兼容：取首项）。
   // 支持取消：并行订阅 workflow:started 拿 executionId，取消时 stopWorkflow 真中断引擎。
-  const handleGenerateMedia = useCallback(async (nodeId, nodeType, kind, { workflowId, input }) => {
+  const handleGenerateMedia = useCallback(async (
+    nodeId, nodeType, kind, { workflowId, input, executionTarget = null },
+  ) => {
+    const requestNodeId = executionTarget?.nodeId || nodeId;
+    const update = (patch) => (executionTarget
+      ? updateExecutionNodeData?.(executionTarget, patch)
+      : updateNodeData(nodeId, patch));
     // 记忆上次提交参数（按 nodeType 存对应字段，剥离图片）—— 失败不阻塞
     try {
       if (nodeType === NODE_TYPES.videoGenerator) {
@@ -142,24 +164,24 @@ export default function useNodeExecutions({ runWorkflow, updateNodeData, addHist
     const wfInput = { ...input };
     delete wfInput.count;
     delete wfInput.concurrency;
-    const wfHandle = registerWorkflowHandle(nodeId);
+    const wfHandle = registerWorkflowHandle(requestNodeId);
     const AS = window.AgentSpaces;
     const unsubStarted = AS?.subscribeWorkflowEvents?.((event, data) => {
       if (event === 'workflow:started' && data?.executionId) {
-        setWorkflowExecutionId(nodeId, data.executionId);
+        setWorkflowExecutionId(requestNodeId, data.executionId);
       }
     });
-    updateNodeData(nodeId, { status: 'running', error: undefined });
+    update({ status: 'running', error: undefined });
     try {
       const batches = await runWithConcurrency(count, concurrency, () => {
         if (wfHandle.aborted) return '';
-        return runMedia(finalWorkflowId, wfInput).then((r) => r.url || '').catch((e) => {
+        return runMedia(finalWorkflowId, wfInput, { executionTarget }).then((r) => r.url || '').catch((e) => {
           console.warn('generateMedia one batch failed:', e);
           return '';
         });
       });
       if (wfHandle.aborted) {
-        updateNodeData(nodeId, { status: 'cancelled', error: undefined });
+        update({ status: 'cancelled', error: undefined });
         return;
       }
       const urls = batches.filter(Boolean);
@@ -171,10 +193,12 @@ export default function useNodeExecutions({ runWorkflow, updateNodeData, addHist
       } else {
         patch.output = { video: urls[0], videos: urls };
       }
-      updateNodeData(nodeId, patch);
+      update(patch);
       addHistory({
         id: genId('hist'),
-        nodeId,
+        nodeId: requestNodeId,
+        templateNodeId: nodeId,
+        executionTarget,
         nodeType,
         prompt: input?.prompt || '',
         model: input?.model || '',
@@ -185,26 +209,30 @@ export default function useNodeExecutions({ runWorkflow, updateNodeData, addHist
       notifyDone('生成完成', `${NODE_META[nodeType]?.label || '节点'}生成了 ${urls.length} 个${isAudio ? '音频' : '视频'}`);
     } catch (err) {
       if (wfHandle.aborted) {
-        updateNodeData(nodeId, { status: 'cancelled', error: undefined });
+        update({ status: 'cancelled', error: undefined });
         return;
       }
       console.error('generateMedia failed:', err);
-      updateNodeData(nodeId, { status: 'error', error: err?.message || String(err) });
+      update({ status: 'error', error: err?.message || String(err) });
     } finally {
       try { unsubStarted?.(); } catch {}
-      clearWorkflowHandle(nodeId);
+      clearWorkflowHandle(requestNodeId);
     }
-  }, [generateAudio, generateVideo, updateNodeData, addHistory, settings, saveLastParams]);
+  }, [generateAudio, generateVideo, updateNodeData, updateExecutionNodeData, addHistory, settings, saveLastParams]);
 
   // 反推提示词节点「执行」：调视觉 AI（agent_run + 多图附件）→ 写文本产出 + 历史。
   // 取消机制与 handleProcessLocal 共用 processingControllers 注册表。
-  const handlePromptReverse = useCallback(async (nodeId, inputImages) => {
+  const handlePromptReverse = useCallback(async (nodeId, inputImages, executionTarget = null) => {
+    const requestNodeId = executionTarget?.nodeId || nodeId;
+    const update = (patch) => (executionTarget
+      ? updateExecutionNodeData?.(executionTarget, patch)
+      : updateNodeData(nodeId, patch));
     const agentConfig = {
       id: settings.promptReverseAgentConfigId || '',
       userPrompt: settings.promptReverseUserPrompt || '',
     };
     if (!agentConfig.id) {
-      updateNodeData(nodeId, {
+      update({
         status: 'error',
         error: '未配置 AI 模型，请先到「设置 → 反推提示词 AI」配置',
       });
@@ -212,9 +240,9 @@ export default function useNodeExecutions({ runWorkflow, updateNodeData, addHist
     }
     if (!inputImages?.length) return;
     const controller = new AbortController();
-    registerController(nodeId, controller);
+    registerController(requestNodeId, controller);
 
-    updateNodeData(nodeId, {
+    update({
       status: 'running',
       error: undefined,
       output: { text: '' },
@@ -224,20 +252,23 @@ export default function useNodeExecutions({ runWorkflow, updateNodeData, addHist
       const text = await runAgentVisionText(agentConfig, inputImages, {
         signal: controller.signal,
         stripThink: true,
+        executionTarget,
         onCompressProgress: (done, total) => {
-          updateNodeData(nodeId, { statusMsg: `压缩图片 ${done}/${total}…` });
+          update({ statusMsg: `压缩图片 ${done}/${total}…` });
         },
       });
       if (controller.signal.aborted) return;
       if (!text || !text.trim()) throw new Error('AI 未返回内容');
-      updateNodeData(nodeId, {
+      update({
         status: 'done',
         output: { text },
         statusMsg: '',
       });
       addHistory({
         id: genId('hist'),
-        nodeId,
+        nodeId: requestNodeId,
+        templateNodeId: nodeId,
+        executionTarget,
         nodeType: NODE_TYPES.promptReverse,
         prompt: '反推提示词',
         model: 'agent_run',
@@ -250,15 +281,15 @@ export default function useNodeExecutions({ runWorkflow, updateNodeData, addHist
     } catch (err) {
       if (controller.signal.aborted) return;
       console.error('promptReverse failed:', err);
-      updateNodeData(nodeId, {
+      update({
         status: 'error',
         error: err?.message || String(err),
         statusMsg: '',
       });
     } finally {
-      clearController(nodeId, controller);
+      clearController(requestNodeId, controller);
     }
-  }, [settings, updateNodeData, addHistory]);
+  }, [settings, updateNodeData, updateExecutionNodeData, addHistory]);
 
   // 节点工具栏「抠图」「放大」：调用抠图和放大工作流（image_enchanter），产出独立图片节点。
   // processType: 'segment'(抠图) | 'enhance'(放大)
@@ -305,33 +336,43 @@ export default function useNodeExecutions({ runWorkflow, updateNodeData, addHist
   }, [settings, runWorkflow, createNodeAt, updateNodeData, addHistory]);
 
   // 图像处理节点「执行」：调本地算法（utils/image-ops），不走工作流。
-  const handleProcessLocal = useCallback(async (nodeId, processorId, processorParams, sourceImages, nodeType) => {
+  const handleProcessLocal = useCallback(async (
+    nodeId, processorId, processorParams, sourceImages, nodeType, executionTarget = null,
+  ) => {
+    const requestNodeId = executionTarget?.nodeId || nodeId;
+    const update = (patch) => (executionTarget
+      ? updateExecutionNodeData?.(executionTarget, patch)
+      : updateNodeData(nodeId, patch));
     if (!sourceImages?.length) return;
     // 记忆上次提交参数（仅 processorParams，processor 由 nodeType 固定）—— 失败不阻塞
     try { saveLastParams?.(nodeType, { processorParams: processorParams || {} }); }
     catch (e) { console.error('saveLastParams failed:', e); }
     const controller = new AbortController();
-    registerController(nodeId, controller);
+    registerController(requestNodeId, controller);
 
     const normalizedImages = normalizeImageUrls(sourceImages.filter(Boolean));
     // enhance 处理器走 image_enchanter 工作流，需注入 workflowId + runWorkflowFn
     const extraCtx = processorId === 'enhance'
       ? {
           workflowId: settings.imageEnchanterWorkflowId || WORKFLOWS.image_enchanter,
-          runWorkflowFn: runWorkflow,
+          runWorkflowFn: (workflowId, input, histId) => (
+            runWorkflow(workflowId, input, histId, executionTarget)
+          ),
         }
       : {};
 
-    updateNodeData(nodeId, { status: 'running', error: undefined, output: { images: [] } });
+    update({ status: 'running', error: undefined, output: { images: [] } });
     try {
       const urls = await runProcessor(processorId, normalizedImages, processorParams || {}, extraCtx);
       if (controller.signal.aborted) return;
       if (!urls.length) throw new Error('处理未返回图片');
-      updateNodeData(nodeId, { status: 'done', output: { images: urls } });
+      update({ status: 'done', output: { images: urls } });
       const histNodeType = nodeType || NODE_TYPES.imageProcess;
       addHistory({
         id: genId('hist'),
-        nodeId,
+        nodeId: requestNodeId,
+        templateNodeId: nodeId,
+        executionTarget,
         nodeType: histNodeType,
         prompt: processorId,
         model: processorId === 'enhance' ? 'image_enchanter' : 'local',
@@ -342,37 +383,48 @@ export default function useNodeExecutions({ runWorkflow, updateNodeData, addHist
     } catch (err) {
       if (controller.signal.aborted) return;
       console.error('processLocal failed:', err);
-      updateNodeData(nodeId, { status: 'error', error: err?.message || String(err) });
+      update({ status: 'error', error: err?.message || String(err) });
     } finally {
-      clearController(nodeId, controller);
+      clearController(requestNodeId, controller);
     }
-  }, [updateNodeData, addHistory, settings, runWorkflow, saveLastParams]);
+  }, [updateNodeData, updateExecutionNodeData, addHistory, settings, runWorkflow, saveLastParams]);
 
   // 统一抠图节点「执行抠图」：调 runCutout 分流（白底/色度键本地算法 / 工作流抠图 / rembg 插件）。
-  const handleCutout = useCallback(async (nodeId, mode, modeParams, sourceImages) => {
+  const handleCutout = useCallback(async (
+    nodeId, mode, modeParams, sourceImages, executionTarget = null,
+  ) => {
+    const requestNodeId = executionTarget?.nodeId || nodeId;
+    const update = (patch) => (executionTarget
+      ? updateExecutionNodeData?.(executionTarget, patch)
+      : updateNodeData(nodeId, patch));
     if (!sourceImages?.length) return;
     // 记忆上次提交参数（mode + modeParams）—— 失败不阻塞
     try { saveLastParams?.(NODE_TYPES.cutout, { mode, modeParams: modeParams || {} }); }
     catch (e) { console.error('saveLastParams failed:', e); }
     const controller = new AbortController();
-    registerController(nodeId, controller);
+    registerController(requestNodeId, controller);
 
     const extraCtx = mode === 'workflow'
       ? {
           workflowId: settings.imageEnchanterWorkflowId || WORKFLOWS.image_enchanter,
-          runWorkflowFn: runWorkflow,
+          runWorkflowFn: (workflowId, input, histId) => (
+            runWorkflow(workflowId, input, histId, executionTarget)
+          ),
         }
-      : {};
+      : { executionTarget };
+    extraCtx.executionTarget = executionTarget;
 
-    updateNodeData(nodeId, { status: 'running', error: undefined, output: { images: [] } });
+    update({ status: 'running', error: undefined, output: { images: [] } });
     try {
       const urls = await runCutout(mode, sourceImages, modeParams || {}, extraCtx);
       if (controller.signal.aborted) return;
       if (!urls.length) throw new Error('抠图未返回图片');
-      updateNodeData(nodeId, { status: 'done', output: { images: urls } });
+      update({ status: 'done', output: { images: urls } });
       addHistory({
         id: genId('hist'),
-        nodeId,
+        nodeId: requestNodeId,
+        templateNodeId: nodeId,
+        executionTarget,
         nodeType: NODE_TYPES.cutout,
         prompt: `抠图·${mode}`,
         model: mode === 'workflow' ? 'image_enchanter' : (mode === 'rembg' ? 'rembg' : 'local'),
@@ -383,11 +435,11 @@ export default function useNodeExecutions({ runWorkflow, updateNodeData, addHist
     } catch (err) {
       if (controller.signal.aborted) return;
       console.error('cutout failed:', err);
-      updateNodeData(nodeId, { status: 'error', error: err?.message || String(err) });
+      update({ status: 'error', error: err?.message || String(err) });
     } finally {
-      clearController(nodeId, controller);
+      clearController(requestNodeId, controller);
     }
-  }, [updateNodeData, addHistory, settings, runWorkflow, saveLastParams]);
+  }, [updateNodeData, updateExecutionNodeData, addHistory, settings, runWorkflow, saveLastParams]);
 
   // 节点工具栏「抠图」按钮：创建统一抠图节点，预填当前节点产出图作为输入。mode 默认 workflow。
   const handleCutoutCreate = useCallback((sourceImages) => {
@@ -403,22 +455,28 @@ export default function useNodeExecutions({ runWorkflow, updateNodeData, addHist
 
   // 提取深度图节点「⚡ 提取深度图」：调 runDepth → callPluginTool('workflow.depth-anything', 'depth_batch_predict')。
   // params = { grayscale, predOnly }，透传到插件入参（字符串 'true'/'false'）。
-  const handleDepth = useCallback(async (nodeId, params, sourceImages) => {
+  const handleDepth = useCallback(async (nodeId, params, sourceImages, executionTarget = null) => {
+    const requestNodeId = executionTarget?.nodeId || nodeId;
+    const update = (patch) => (executionTarget
+      ? updateExecutionNodeData?.(executionTarget, patch)
+      : updateNodeData(nodeId, patch));
     if (!sourceImages?.length) return;
     try { saveLastParams?.(NODE_TYPES.depthExtract, params || {}); }
     catch (e) { console.error('saveLastParams failed:', e); }
     const controller = new AbortController();
-    registerController(nodeId, controller);
+    registerController(requestNodeId, controller);
 
-    updateNodeData(nodeId, { status: 'running', error: undefined, output: { images: [] } });
+    update({ status: 'running', error: undefined, output: { images: [] } });
     try {
-      const urls = await runDepth(sourceImages, params || {});
+      const urls = await runDepth(sourceImages, params || {}, { executionTarget });
       if (controller.signal.aborted) return;
       if (!urls.length) throw new Error('深度图提取未返回图片');
-      updateNodeData(nodeId, { status: 'done', output: { images: urls } });
+      update({ status: 'done', output: { images: urls } });
       addHistory({
         id: genId('hist'),
-        nodeId,
+        nodeId: requestNodeId,
+        templateNodeId: nodeId,
+        executionTarget,
         nodeType: NODE_TYPES.depthExtract,
         prompt: '提取深度图',
         model: 'depth-anything',
@@ -429,32 +487,36 @@ export default function useNodeExecutions({ runWorkflow, updateNodeData, addHist
     } catch (err) {
       if (controller.signal.aborted) return;
       console.error('depth failed:', err);
-      updateNodeData(nodeId, { status: 'error', error: err?.message || String(err) });
+      update({ status: 'error', error: err?.message || String(err) });
     } finally {
-      clearController(nodeId, controller);
+      clearController(requestNodeId, controller);
     }
-  }, [updateNodeData, addHistory, saveLastParams]);
+  }, [updateNodeData, updateExecutionNodeData, addHistory, saveLastParams]);
 
   // 统一取消入口（节点【取消生成】按钮调用）：
   // - 工作流类（文生图/编辑图/配音/视频）：标记 aborted + stopWorkflow(executionId) 真中断引擎
   // - 本地算法类（图像处理/抠图/反推）：abort AbortController 中断本地任务
   // 执行返回后各自检查 aborted/cancelled 置 status='cancelled'。
-  const handleCancelProcess = useCallback((nodeId) => {
-    const wfHandle = getWorkflowHandle(nodeId);
+  const handleCancelProcess = useCallback((nodeId, executionTarget = null) => {
+    const requestNodeId = executionTarget?.nodeId || nodeId;
+    const update = (patch) => (executionTarget
+      ? updateExecutionNodeData?.(executionTarget, patch)
+      : updateNodeData(nodeId, patch));
+    const wfHandle = getWorkflowHandle(requestNodeId);
     if (wfHandle) {
-      markWorkflowAborted(nodeId);
+      markWorkflowAborted(requestNodeId);
       const execId = wfHandle.executionId;
       if (execId && window.AgentSpaces?.stopWorkflow) {
         try { window.AgentSpaces.stopWorkflow(execId); } catch {}
       }
       // 工作流可能已发出但 executionId 尚未回填（started 事件未到）：
       // 标记 aborted 后，执行返回时自行判 cancelled；这里也立即置态，UI 即时反馈
-      updateNodeData(nodeId, { status: 'cancelled', error: undefined });
+      update({ status: 'cancelled', error: undefined });
       return;
     }
-    abortController(nodeId); // abort + 从 Map 删除
-    updateNodeData(nodeId, { status: 'cancelled', error: undefined });
-  }, [updateNodeData]);
+    abortController(requestNodeId); // abort + 从 Map 删除
+    update({ status: 'cancelled', error: undefined });
+  }, [updateNodeData, updateExecutionNodeData]);
 
   return {
     makeOnUpdate,

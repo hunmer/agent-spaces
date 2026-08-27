@@ -45,7 +45,7 @@ export default function useExecutionQueue(opts = {}) {
 
   /**
    * 提交一个生成任务到队列。
-   * @param {{ nodeType:string, label:string, workflowId:string, input:object, placeholderNodeId?:string, tags?:string[] }} task
+   * @param {{ nodeType:string, label:string, workflowId:string, input:object, placeholderNodeId?:string, executionNodeId?:string, executionTarget?:object, tags?:string[] }} task
    *   placeholderNodeId: 上层预先创建的 loading 占位节点 id，完成后填充该节点而非新增
    *   tags: 透传给 onComplete 的来源标签（存入占位节点 data.tags）
    */
@@ -61,6 +61,8 @@ export default function useExecutionQueue(opts = {}) {
       workflowId: task.workflowId,
       input: task.input,
       placeholderNodeId: task.placeholderNodeId || null,
+      executionNodeId: task.executionNodeId || task.placeholderNodeId || null,
+      executionTarget: task.executionTarget || null,
       tags: task.tags || [],
       status: 'queued',
       executionId: null,

@@ -20,3 +20,8 @@ test('reordering preserves URL and resource arrays separately', () => {
   assert.match(resultSource, /onReorderImages\(next\.map\(\(item\) => item\.url\), next\.map\(\(item\) => item\.resource\)\)/);
   assert.match(resultSource, /src: item\.url/);
 });
+
+test('gallery uses the same current output list as thumbnails', () => {
+  assert.match(resultSource, /const galleryItems = list\.map/);
+  assert.doesNotMatch(resultSource, /galleryOffset \+ index/);
+});

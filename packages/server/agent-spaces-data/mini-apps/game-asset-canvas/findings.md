@@ -79,3 +79,13 @@
 - 图生图编辑器继续保存 HTML 模板，执行时使用已解析的 `params.prompt` 再 `promptToText`；其他生成节点使用 PromptTextEditor `valueFormat='text'`。
 - TextVariableEditor 在模板含变量时固定显示原模板；无变量时仍显示现有整字段连线派生值，兼容旧行为。
 - Web 全量 TSC 当前有多项既有 API 类型错误；PromptTextEditor 另有 4 项 Mention v3 类型签名错误（renderLabel 参数、attrs 自定义字段），需在本次触及文件内修正。
+
+## 分组实例执行身份隔离
+
+- 当前素材实例仅保存 `{ run.id, nodeStates: { [templateNodeId]: data } }`，不同实例共用画布模板节点 ID。
+- 普通批量任务的异步回调始终调用 `updateNodeData(templateNodeId, patch)`；切换实例后，同一 ID 指向当前实例的可见数据，因此完成结果会污染当前实例。
+- 之前新增的 `syncActiveRunForNode` 在完成时读取 active run，只能事后保存已污染的数据，不能提供请求级归属保证，必须替换。
+- 正确边界是请求开始时生成/读取稳定执行身份，并在完成时按冻结身份更新目标 run；当前 active run 只决定是否把目标 run 的最新数据同步到画布。
+- `useExecutionQueue` 原先也只复制 `placeholderNodeId` 到 job，活动集合与取消回写仍会把不同实例视为同一节点；现已让 job 保存 `executionNodeId/executionTarget`。
+- 执行节点 ID 使用 `groupId + runId + templateNodeId` 的编码组合，旧 run 在 `ensureGroupExecution` 时自动补 `nodeIds` 映射。
+- 图片、音频、视频请求通过宿主 `callPluginTool` 的 meta 携带冻结 `executionTarget`，不污染工作流 start inputFields。

@@ -343,7 +343,9 @@ export async function generateImages(workflowId, input, opts = {}) {
   const workflowInput = Array.isArray(input?.images)
     ? { ...input, images: normalizeImageUrls(input.images) }
     : input;
-  const output = await runWorkflow(workflowId, workflowInput, { meta: { mode: workflowId } });
+  const output = await runWorkflow(workflowId, workflowInput, {
+    meta: { mode: workflowId, executionTarget: opts.executionTarget || undefined },
+  });
   const result = output?.result;
   let urls;
   if (Array.isArray(result)) urls = result.filter(Boolean);
@@ -407,8 +409,11 @@ function pickFirstUrlDeep(v) {
  * @param {{ prompt: string, model: string, voiceId?: string }} input
  * @returns {Promise<{ url: string }>}
  */
-export async function generateAudio(workflowId, input) {
-  const output = await runWorkflow(workflowId, input, { meta: { mode: workflowId }, returnRawEndOutput: true });
+export async function generateAudio(workflowId, input, opts = {}) {
+  const output = await runWorkflow(workflowId, input, {
+    meta: { mode: workflowId, executionTarget: opts.executionTarget || undefined },
+    returnRawEndOutput: true,
+  });
   // result 可能是对象（tts 产出）/字符串 URL；其余字段兜底
   const url = pickFirstUrlDeep(output?.result) || pickFirstUrlDeep(output) || null;
   if (!url) {
@@ -430,8 +435,11 @@ export async function generateAudio(workflowId, input) {
  * @param {{ images?: string[], prompt: string, model: string, aspect: string, quality: string, duration: string }} input
  * @returns {Promise<{ url: string }>}
  */
-export async function generateVideo(workflowId, input) {
-  const output = await runWorkflow(workflowId, input, { meta: { mode: workflowId }, returnRawEndOutput: true });
+export async function generateVideo(workflowId, input, opts = {}) {
+  const output = await runWorkflow(workflowId, input, {
+    meta: { mode: workflowId, executionTarget: opts.executionTarget || undefined },
+    returnRawEndOutput: true,
+  });
   const url = pickFirstUrlDeep(output?.result) || pickFirstUrlDeep(output) || null;
   if (!url) {
     const errMsg = (typeof output?.result === 'object' && output?.result?.message)
@@ -578,7 +586,10 @@ export async function runAgentVisionText(agentConfig, imageUrls, opts = {}) {
       permissionMode: 'bypassPermissions',
       images: dataUrls,
     },
-    signal ? { signal } : undefined,
+    signal || opts.executionTarget ? {
+      ...(signal ? { signal } : {}),
+      meta: { executionTarget: opts.executionTarget || undefined },
+    } : undefined,
   );
   // agent_run 返回结构：ret.result / ret.output（字符串）
   const raw = ret?.result ?? ret?.output ?? '';
