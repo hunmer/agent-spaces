@@ -36,6 +36,21 @@ test('图片展示节点的 data.images 可作为组输出传递', () => {
   assert.deepEqual(result.map((item) => item.url), ['display-image']);
 });
 
+test('图片展示节点可把入边派生图片作为组输出传递', () => {
+  const topologyNodes = [
+    { id: 'generator', type: 'textToImage', data: { output: { images: ['generated-image'] } } },
+    { id: 'display', type: 'imageDisplay', data: { images: [] } },
+  ];
+  const result = collectGroupOutputAssets(
+    topologyNodes,
+    ['generator', 'display'],
+    { sourceGroupId: 'source', filter: { mode: GROUP_OUTPUT_FILTER_MODES.nodes, nodeIds: ['display'] } },
+    [{ source: 'generator', target: 'display', data: { inputType: 'image', inputTarget: 'images' } }],
+  );
+  assert.deepEqual(result.map((item) => item.url), ['generated-image']);
+  assert.deepEqual(result.map((item) => item.sourceNodeId), ['display']);
+});
+
 test('指定节点模式支持多选', () => {
   const result = collectGroupOutputAssets(nodes, ['a', 'b', 'c'], {
     sourceGroupId: 'source',

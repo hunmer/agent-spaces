@@ -95,7 +95,6 @@ export function WorkflowGroupOverlay({
   onCollapsedChange, onSelect, onDelete, onUpdate, onMove, onAutoLayout, layoutEngine, onDragPreviewChange, screenDeltaToFlowDelta,
   onConnect, onConnectGroup, onSelectNodes, headerRight,
 }: GroupOverlayProps) {
-  const [isHovered, setIsHovered] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(group.name);
   const isDraggingRef = useRef(false);
@@ -315,8 +314,6 @@ export function WorkflowGroupOverlay({
         className={`pointer-events-auto flex h-10 select-none items-center gap-1 px-2 pb-2 backdrop-blur-sm ${group.locked ? 'cursor-default' : 'cursor-move'}`}
         style={{ backgroundColor: colors.header }}
         onPointerDown={handleHeaderPointerDown}
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => { if (!isDraggingRef.current) setIsHovered(false); }}
       >
         <button className="p-0 hover:bg-black/5 rounded" onPointerDown={stopButtonPointerDown} onClick={handleToggleCollapse}>
           {collapsed
@@ -354,8 +351,7 @@ export function WorkflowGroupOverlay({
           </div>
         )}
 
-        {isHovered && (
-          <div className="flex items-center gap-0.5">
+        <div className="flex items-center gap-0.5">
             {GROUP_COLORS.map(c => (
               <button
                 key={c.name}
@@ -418,11 +414,7 @@ export function WorkflowGroupOverlay({
                 <Spline className="size-3" />
               </button>
             )}
-          </div>
-        )}
-        {group.locked && !isHovered && (
-          <Lock className="size-3 shrink-0 text-orange-500" />
-        )}
+        </div>
       </div>
       {/* 拖拽连线指示线：portal 到 body，避免被 group overlay 的 overflow:hidden / 父级 transform 裁剪。
           fixed 坐标用 connectDrag 屏幕坐标，SVG 直线连接手柄起始点和当前指针位置。 */}

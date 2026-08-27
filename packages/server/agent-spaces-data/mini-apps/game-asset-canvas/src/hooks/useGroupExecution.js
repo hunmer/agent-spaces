@@ -477,7 +477,7 @@ export default function useGroupExecution({ groups, nodes, edges, setGroups, set
       const context = getContext(targetGroup.id);
       if (!context || context.busy) continue;
       const sourceNodeIds = collectGroupNodeIds(groups, sourceGroup.id);
-      const assets = collectGroupOutputAssets(nodes, sourceNodeIds, binding);
+      const assets = collectGroupOutputAssets(nodes, sourceNodeIds, binding, edgesRef.current);
       const sourceSignature = groupOutputAssetsSignature(binding, assets);
       if (context.execution.assets.sourceSignature === sourceSignature) continue;
 

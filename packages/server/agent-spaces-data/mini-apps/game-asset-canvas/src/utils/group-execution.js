@@ -1,5 +1,6 @@
 import { NODE_TYPES, isImageProcessNodeType } from './constants.js';
 import { applyGroupClipboardProperties } from './clipboard.js';
+import { computeInputImages } from './input-images.js';
 
 export const GROUP_EXECUTION_MODES = {
   count: 'count',
@@ -113,12 +114,13 @@ export function resolveGroupOutputFilter(value, sourceGroupId) {
   return { mode: GROUP_OUTPUT_FILTER_MODES.all, nodeIds: [], nodeTypes: [] };
 }
 
-export function collectGroupOutputAssets(nodes, sourceNodeIds, binding) {
+export function collectGroupOutputAssets(nodes, sourceNodeIds, binding, edges = []) {
   const normalized = normalizeGroupOutputBinding(binding);
   if (!normalized) return [];
   const sourceIds = new Set(sourceNodeIds || []);
   const selectedNodeIds = new Set(normalized.filter.nodeIds);
   const selectedTypes = new Set(normalized.filter.nodeTypes);
+  const derivedInputs = computeInputImages(nodes || [], edges || []);
   const assets = [];
   for (const node of nodes || []) {
     if (!sourceIds.has(node.id)) continue;
@@ -127,8 +129,8 @@ export function collectGroupOutputAssets(nodes, sourceNodeIds, binding) {
     const outputImages = Array.isArray(node.data?.output?.images) ? node.data.output.images : [];
     const images = outputImages.length > 0
       ? outputImages
-      : node.type === NODE_TYPES.imageDisplay && Array.isArray(node.data?.images)
-        ? node.data.images
+      : node.type === NODE_TYPES.imageDisplay
+        ? (derivedInputs.get(node.id)?.images || node.data?.images || [])
         : [];
     images.forEach((url, index) => {
       if (typeof url !== 'string' || !url) return;
