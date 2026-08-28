@@ -13,6 +13,7 @@ import {
   summarizeCanvasUpdateValue,
   UPDATE_METHODS,
 } from '../utils/canvas-state-updates';
+import { removeEmptyOutputVersions } from '../utils/output-resources';
 
 const DEFAULT_VIEWPORT = { x: 0, y: 0, zoom: 1 };
 const MAX_OPERATION_HISTORY = 50;
@@ -288,7 +289,24 @@ function normalizeViewport(viewport) {
 function normalizeCanvasEdgeIds(state) {
   if (!state || !Array.isArray(state.edges)) return state;
   const edges = ensureEdgeIds(state.edges);
-  return edges === state.edges ? state : { ...state, edges };
+  const nodes = Array.isArray(state.nodes) ? state.nodes.map((node) => {
+    const data = node?.data;
+    if (!Array.isArray(data?.versions)) return node;
+    const result = removeEmptyOutputVersions(data.versions, data.activeVersion);
+    if (result.versions === data.versions) return node;
+    const activeOutput = result.versions[result.activeVersion]?.output;
+    return {
+      ...node,
+      data: {
+        ...data,
+        versions: result.versions,
+        activeVersion: result.activeVersion,
+        output: activeOutput ? { ...activeOutput } : { images: [], resources: [] },
+      },
+    };
+  }) : state.nodes;
+  const nodesChanged = nodes.some((node, index) => node !== state.nodes[index]);
+  return edges === state.edges && !nodesChanged ? state : { ...state, edges, nodes };
 }
 
 function migrateLegacyPreviewMode(state) {

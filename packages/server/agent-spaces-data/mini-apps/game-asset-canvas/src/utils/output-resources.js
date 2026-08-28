@@ -101,3 +101,23 @@ export function removeOutputVersionImages(versions, versionIndex, ids) {
   const next = removeOutputAssetItems(output.images, output.resources, ids);
   return updateOutputVersion(versions, versionIndex, next);
 }
+
+export function removeEmptyOutputVersions(versions, activeVersion) {
+  if (!Array.isArray(versions)) return { versions, activeVersion };
+  const kept = [];
+  let nextActive = -1;
+  let removed = false;
+  versions.forEach((version, index) => {
+    const images = version?.output?.images;
+    if (Array.isArray(images) && images.length === 0) { removed = true; return; }
+    if (index === activeVersion) nextActive = kept.length;
+    kept.push(version);
+  });
+  if (!removed) return { versions, activeVersion };
+  if (!kept.length) return { versions: [], activeVersion: undefined };
+  if (nextActive < 0) {
+    const deletedIndex = Number.isInteger(activeVersion) ? activeVersion : 0;
+    nextActive = Math.min(Math.max(deletedIndex - 1, 0), kept.length - 1);
+  }
+  return { versions: kept, activeVersion: nextActive };
+}

@@ -1,47 +1,57 @@
-// 浏览器端 procm 结构化日志。
-// 构建来源：procm-mcp 仓库 `npm run build:sdk` 产出的 packages/procm-sdk/dist/browser.js，
-// 复制到 public/sdk/procm-browser.js（npm 包 @hunmer/procm-mcp-sdk 未发布 browser bundle）。
-// 设置 NEXT_PUBLIC_PROCM_ROOM_ID 与 NEXT_PUBLIC_PROCM_WS_URL（如 ws://127.0.0.1:7331/room）后启用，
-// 捕获 console 输出为结构化日志并发布到 procm room；未配置时保持原生 console 不变。
+import { fetchWithAuth } from '@/lib/auth';
+
+type ProcmClient = {
+  connectionState: string;
+  onState: (handler: (state: string) => void) => () => void;
+  publish: (topic: string, payload: unknown) => string;
+};
 
 type ProcmBrowserModule = {
-  createProcmClient: (options: {
-    roomId: string;
-    url: string;
-    clientName: string;
-  }) => unknown;
+  createProcmClient: (options: { roomId: string; url: string; clientName: string }) => ProcmClient;
   setupLogger: (options: {
-    client: unknown;
+    client: ProcmClient;
     clientName: string;
+    onLog?: (entry: unknown) => void;
   }) => { info: (message: string, data?: unknown) => void };
 };
 
 const BUNDLE_URL = '/sdk/procm-browser.js';
-
+const PROCM_LOG_TOPIC = '$procm/log';
 let initialized = false;
-let initPromise: Promise<void> | undefined;
 
-async function setup(): Promise<void> {
-  if (typeof window === 'undefined') return;
+type ProcmConfig = { roomId: string; url: string };
 
-  const roomId = process.env.NEXT_PUBLIC_PROCM_ROOM_ID;
-  const url = process.env.NEXT_PUBLIC_PROCM_WS_URL;
-  if (!roomId || !url) return;
+async function resolveConfig(): Promise<ProcmConfig | null> {
+  const publicRoomId = process.env.NEXT_PUBLIC_PROCM_ROOM_ID;
+  const publicUrl = process.env.NEXT_PUBLIC_PROCM_WS_URL;
+  if (publicRoomId && publicUrl) return { roomId: publicRoomId, url: publicUrl };
 
-  // 运行时从 public 加载 ESM bundle，绕开 webpack 打包（npm 包内无 browser 入口）
-  const moduleUrl = BUNDLE_URL;
-  const mod = (await import(/* webpackIgnore: true */ moduleUrl)) as unknown as ProcmBrowserModule;
-  const clientName = 'web-browser';
-  const client = mod.createProcmClient({ roomId, url, clientName });
-  const logger = mod.setupLogger({ client, clientName });
-  logger.info('[procm] browser logger connected', { roomId });
+  const response = await fetchWithAuth('/api/procm-config', { cache: 'no-store' });
+  if (!response.ok) throw new Error(`procm config request failed: ${response.status}`);
+  const config = await response.json() as Partial<ProcmConfig>;
+  return config.roomId && config.url ? { roomId: config.roomId, url: config.url } : null;
 }
 
-export function initProcmLogger(): Promise<void> {
-  if (initialized) return Promise.resolve();
+export async function initProcmLogger(): Promise<void> {
+  if (initialized || typeof window === 'undefined') return;
   initialized = true;
-  initPromise ??= setup().catch((error) => {
-    console.warn('[procm] browser logger init failed', error);
+
+  const config = await resolveConfig();
+  if (!config) return;
+
+  const mod = await import(/* webpackIgnore: true */ BUNDLE_URL) as unknown as ProcmBrowserModule;
+  const client = mod.createProcmClient({ ...config, clientName: 'web' });
+  const pending: unknown[] = [];
+  const logger = mod.setupLogger({
+    client,
+    clientName: 'web',
+    onLog: (entry) => {
+      if (client.connectionState !== 'open') pending.push(entry);
+    },
   });
-  return initPromise;
+  client.onState((state) => {
+    if (state !== 'open') return;
+    for (const entry of pending.splice(0)) client.publish(PROCM_LOG_TOPIC, entry);
+  });
+  logger.info('[procm] web logger initialized', { roomId: config.roomId });
 }

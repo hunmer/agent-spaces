@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createOutputAssetItems, createOutputResourceId, groupOutputAssetItems, removeOutputAssetItems, removeOutputVersionImages, updateOutputVersion } from './output-resources.js';
+import { createOutputAssetItems, createOutputResourceId, groupOutputAssetItems, removeEmptyOutputVersions, removeOutputAssetItems, removeOutputVersionImages, updateOutputVersion } from './output-resources.js';
 
 test('output resources remain optional and legacy images stay ungrouped', () => {
   const items = createOutputAssetItems(['a.png', 'b.png']);
@@ -121,4 +121,18 @@ test('new output resource IDs are unique', () => {
   const first = createOutputResourceId();
   const second = createOutputResourceId();
   assert.notEqual(first, second);
+});
+
+test('removing the last image prunes the empty output version and keeps a nearby active version', () => {
+  const versions = [
+    { output: { images: ['a.png'] } },
+    { output: { images: ['b.png'] } },
+    { output: { images: ['c.png'] } },
+  ];
+  const result = removeEmptyOutputVersions(
+    updateOutputVersion(versions, 1, { images: [], resources: [] }),
+    1,
+  );
+  assert.deepEqual(result.versions.map((version) => version.output.images), [['a.png'], ['c.png']]);
+  assert.equal(result.activeVersion, 0);
 });

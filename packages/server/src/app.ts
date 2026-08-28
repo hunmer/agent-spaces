@@ -11,7 +11,7 @@ import { setupProcmLogger } from './procm-logger.js';
 // ---- procm 结构化日志 ----
 // 由 procm 管理时（自动注入 PROCM_ROOM_ID/PROCM_WS_URL）连接 room 并发布日志；否则仅向控制台输出结构化帧。
 // 必须在下方自制文件日志劫持之前安装，使 __origLog 指向 procm 的 console，文件日志可同步记录结构化帧。
-setupProcmLogger('server');
+const procmLogger = setupProcmLogger('server');
 
 // ---- 日志输出到文件 ----
 const __logDir = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'logs');
@@ -171,6 +171,26 @@ if (process.env.SKYOFFICE_ENABLED !== 'false') {
 }
 
 app.use('/api', authMiddleware);
+
+app.get('/api/procm-config', (_req, res) => {
+  const roomId = process.env.PROCM_ROOM_ID;
+  const url = process.env.PROCM_WS_URL;
+  res.json(roomId && url ? { roomId, url } : { roomId: null, url: null });
+});
+
+app.post('/api/procm-log', (req, res) => {
+  const level = req.body?.level;
+  const args = Array.isArray(req.body?.args) ? req.body.args.slice(0, 20) : [];
+  if (!['debug', 'info', 'log', 'warn', 'error'].includes(level)) {
+    res.status(400).json({ error: 'invalid log level' });
+    return;
+  }
+  if (level === 'warn') procmLogger.warn('', args);
+  else if (level === 'error') procmLogger.error('', args);
+  else if (level === 'debug') procmLogger.debug('', args);
+  else procmLogger.info('', args);
+  res.status(204).end();
+});
 
 // Serve static files from public/
 const publicDir = resolveRuntimeDir('public');

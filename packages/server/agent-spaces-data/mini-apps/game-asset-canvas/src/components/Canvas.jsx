@@ -56,7 +56,7 @@ import { decorateEdgesForSelection } from '../utils/edge-display';
 import { countNodesWithOutput } from '../utils/batch-run';
 import { collectGroupNodeIds } from '../utils/group-helpers';
 import { CanvasGalleryContextProvider } from '../utils/canvas-gallery';
-import { createOutputAssetItems, createOutputResourceId, removeOutputAssetItems, removeOutputVersionImages, updateOutputVersion } from '../utils/output-resources';
+import { createOutputAssetItems, createOutputResourceId, removeEmptyOutputVersions, removeOutputAssetItems, removeOutputVersionImages, updateOutputVersion } from '../utils/output-resources';
 import { COMPACT_NODE_ZOOM_THRESHOLD } from './nodes/compact-node';
 
 const EDGE_PATH_STYLES = ['bezier', 'straight', 'step', 'smoothstep'];
@@ -1112,28 +1112,47 @@ export default function Canvas({ hostConfig }) {
       const activeVersion = Number.isInteger(data?.activeVersion)
         ? data.activeVersion
         : (Array.isArray(data?.versions) && data.versions.length ? data.versions.length - 1 : undefined);
-      const versions = updateOutputVersion(data?.versions, activeVersion, next);
+      const versionUpdate = removeEmptyOutputVersions(
+        updateOutputVersion(data?.versions, activeVersion, next),
+        activeVersion,
+      );
+      const nextVersionOutput = versionUpdate.versions[versionUpdate.activeVersion]?.output;
       return {
         __versionSkip: true,
-        output: {
-          ...(data?.output || {}),
-          images: next.images,
-          resources: next.resources,
-        },
-        ...(versions !== data?.versions ? { versions } : {}),
+        output: next.images.length > 0 || !nextVersionOutput
+          ? { ...(data?.output || {}), images: next.images, resources: next.resources }
+          : { ...nextVersionOutput },
+        ...(versionUpdate.versions !== data?.versions
+          ? { versions: versionUpdate.versions, activeVersion: versionUpdate.activeVersion }
+          : {}),
       };
     };
     const target = groupExecution.getExecutionTargetForNode(nodeId);
-    if (target) groupExecution.updateExecutionNodeData(target, patchOutput);
-    else updateNodeData(nodeId, patchOutput);
-  }, [groupExecution.getExecutionTargetForNode, groupExecution.updateExecutionNodeData, updateNodeData]);
+    if (target) {
+      const currentData = groupExecution.getExecutionNodeData(target);
+      const currentImages = Array.isArray(currentData?.output?.images) ? currentData.output.images : [];
+      const currentResources = Array.isArray(currentData?.output?.resources) ? currentData.output.resources : [];
+      const next = removeOutputAssetItems(currentImages, currentResources, ids);
+      // 素材执行实例通常一组对应一个结果；最后一张图删除后，实例本身也应移除，避免留下空分组。
+      if (target.mode === 'assets' && currentData && currentImages.length > 0 && next.images.length === 0) {
+        groupExecution.removeAsset(target.groupId, target.runId);
+      } else {
+        groupExecution.updateExecutionNodeData(target, patchOutput);
+      }
+    } else updateNodeData(nodeId, patchOutput);
+  }, [groupExecution.getExecutionNodeData, groupExecution.getExecutionTargetForNode, groupExecution.removeAsset, groupExecution.updateExecutionNodeData, updateNodeData]);
   const handleRemoveVersionImages = useCallback((nodeId, versionIndex, ids) => {
     const patchVersion = (data) => {
       const versions = Array.isArray(data?.versions) ? data.versions : [];
       const targetVersion = versions[versionIndex];
       if (!targetVersion?.output) return { __versionSkip: true };
       const nextVersions = removeOutputVersionImages(versions, versionIndex, ids);
-      const patch = { __versionSkip: true, versions: nextVersions };
+      const versionUpdate = removeEmptyOutputVersions(nextVersions, versionIndex);
+      const patch = {
+        __versionSkip: true,
+        versions: versionUpdate.versions,
+        activeVersion: versionUpdate.activeVersion,
+      };
       const activeVersion = Number.isInteger(data?.activeVersion) ? data.activeVersion : -1;
       if (activeVersion === versionIndex) {
         // 当前 output 可能不是传入的历史快照，必须基于当前 output 自身删除，不能用历史 next 覆盖。
@@ -1143,7 +1162,10 @@ export default function Canvas({ hostConfig }) {
           currentOutput.resources,
           ids,
         );
-        patch.output = { ...currentOutput, images: currentNext.images, resources: currentNext.resources };
+        const nextVersionOutput = versionUpdate.versions[versionUpdate.activeVersion]?.output;
+        patch.output = currentNext.images.length > 0 || !nextVersionOutput
+          ? { ...currentOutput, images: currentNext.images, resources: currentNext.resources }
+          : { ...nextVersionOutput };
       }
       return patch;
     };

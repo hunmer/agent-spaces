@@ -2,12 +2,11 @@
 
 import { useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import dynamic from 'next/dynamic'
 
 import { Bot, GitBranch } from 'lucide-react'
 
 import { ExpandableTabs } from '@/components/ui/expandable-tabs'
-import { UsageDashboard } from '@/components/home/usage-dashboard'
-import { WorkflowExecutionPanel } from '@/components/home/workflow-execution-panel'
 import { useWorkspaceStore } from '@/stores/workspace'
 import type { Workspace } from '@agent-spaces/shared'
 
@@ -15,6 +14,19 @@ const TABS = [
   { title: 'Agent', icon: Bot, value: 'Agent' },
   { title: 'Workflow', icon: GitBranch, value: 'Workflow' },
 ]
+
+const UsageDashboard = dynamic(
+  () => import('@/components/home/usage-dashboard').then((m) => m.UsageDashboard),
+  { ssr: false, loading: () => <PanelLoading /> },
+)
+const WorkflowExecutionPanel = dynamic(
+  () => import('@/components/home/workflow-execution-panel').then((m) => m.WorkflowExecutionPanel),
+  { ssr: false, loading: () => <PanelLoading /> },
+)
+
+function PanelLoading() {
+  return <div className='h-32 w-full animate-pulse rounded-md bg-muted/40' aria-hidden='true' />
+}
 
 export function HomePage({ initialWorkspaces }: { initialWorkspaces: Workspace[] }) {
   const setWorkspaces = useWorkspaceStore((store) => store.setWorkspaces)

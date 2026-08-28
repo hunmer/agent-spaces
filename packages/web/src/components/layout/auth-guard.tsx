@@ -57,7 +57,13 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   }, [checkAuth]);
 
   if (isLogin) return <>{children}</>;
-  if (state === "checking") return null;
+  if (state === "checking") {
+    return (
+      <div className="flex h-[var(--app-content-height)] items-center justify-center bg-background">
+        <div className="h-6 w-6 animate-spin rounded-full border-2 border-muted border-t-primary" aria-label="Loading" />
+      </div>
+    );
+  }
   if (state === "error") {
     return (
       <div className="flex h-[var(--app-content-height)] items-center justify-center bg-background">
