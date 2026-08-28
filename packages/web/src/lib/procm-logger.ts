@@ -1,95 +1,40 @@
-import { fetchWithAuth } from '@/lib/auth';
+// 浏览器 console -> Web custom server -> 当前 Web 进程 stdout。
+// 这样日志归属托管 Web 进程，可直接在 dashboard 的 LogPanel 中查看，
+// 不会创建独立的 room 成员或改变 room 消息语义。
 
-type ProcmClient = {
-  memberId: string;
-  connectionState: string;
-  onState: (handler: (state: string) => void) => () => void;
-  subscribe: (topic: string, handler: (message: { messageId: string; memberId: string }) => void) => () => void;
-  publish: (topic: string, payload: unknown) => string;
-};
-
-type ProcmBrowserModule = {
-  createProcmClient: (options: { roomId: string; url: string; token?: string; clientName: string }) => ProcmClient;
-  setupLogger: (options: {
-    client: ProcmClient;
-    clientName: string;
-    onLog?: (entry: unknown) => void;
-  }) => { info: (message: string, data?: unknown) => void };
-};
-
-const BUNDLE_URL = '/sdk/procm-browser.js';
-const PROCM_LOG_TOPIC = '$procm/log';
 let initialized = false;
+let relaySuccessLogged = false;
+const levels = ['debug', 'info', 'log', 'warn', 'error'] as const;
 
-type ProcmConfig = { roomId: string; url: string; token?: string };
-
-async function resolveConfig(): Promise<ProcmConfig | null> {
-  const publicRoomId = process.env.NEXT_PUBLIC_PROCM_ROOM_ID;
-  const publicUrl = process.env.NEXT_PUBLIC_PROCM_WS_URL;
-  const publicToken = process.env.NEXT_PUBLIC_PROCM_HTTP_TOKEN;
-  try {
-    const response = await fetchWithAuth('/api/procm-config', { cache: 'no-store' });
-    if (response.ok) {
-      const config = await response.json() as Partial<ProcmConfig>;
-      if (config.roomId && config.url) return config as ProcmConfig;
-    }
-  } catch { /* use build-time values when runtime config is unavailable */ }
-  return publicRoomId && publicUrl ? { roomId: publicRoomId, url: publicUrl, token: publicToken } : null;
+function serializeArg(arg: unknown): unknown {
+  if (arg instanceof Error) return { __type: 'Error', name: arg.name, message: arg.message, stack: arg.stack };
+  if (arg === undefined) return null;
+  if (typeof arg !== 'object' || arg === null) return arg;
+  try { return JSON.parse(JSON.stringify(arg)); } catch { return String(arg); }
 }
 
-export async function initProcmLogger(): Promise<void> {
-  if (initialized || typeof window === 'undefined') return;
+export function initProcmLogger(): Promise<void> {
+  if (initialized || typeof window === 'undefined') return Promise.resolve();
   initialized = true;
-
-  const nativeInfo = console.info.bind(console);
-  const nativeWarn = console.warn.bind(console);
-  const nativeError = console.error.bind(console);
-
-  const config = await resolveConfig();
-  if (!config) {
-    nativeWarn('[procm-debug] no room config; console will not publish');
-    return;
+  for (const level of levels) {
+    const original = console[level].bind(console);
+    console[level] = (...args: unknown[]) => {
+      original(...args);
+      // api-polyfill rewrites relative /api URLs to the backend (3100). Use
+      // the current Web origin so this is handled by server.mjs (3000).
+      void fetch(`${window.location.origin}/api/procm-browser-log`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ level, args: args.map(serializeArg) }),
+      }).then((response) => {
+        if (!response.ok) original('[procm-debug] browser log relay failed', response.status, window.location.origin);
+        else if (!relaySuccessLogged) {
+          relaySuccessLogged = true;
+          original('[procm-debug] browser log relay ok', { origin: window.location.origin, status: response.status });
+        }
+      }).catch((error) => original('[procm-debug] browser log relay error', error));
+    };
   }
-  nativeInfo('[procm-debug] config resolved', {
-    roomId: config.roomId,
-    url: config.url,
-    hasToken: Boolean(config.token),
-  });
-
-  const mod = await import(/* webpackIgnore: true */ BUNDLE_URL) as unknown as ProcmBrowserModule;
-  const client = mod.createProcmClient({ ...config, clientName: 'web' });
-  const originalPublish = client.publish.bind(client);
-  client.publish = (topic, payload) => {
-    try {
-      const messageId = originalPublish(topic, payload);
-      nativeInfo('[procm-debug] publish sent', { topic, messageId, state: client.connectionState });
-      return messageId;
-    } catch (error) {
-      nativeError('[procm-debug] publish failed', {
-        topic,
-        state: client.connectionState,
-        error: error instanceof Error ? error.message : String(error),
-      });
-      throw error;
-    }
-  };
-  nativeInfo('[procm-debug] client created', { state: client.connectionState });
-  client.subscribe(PROCM_LOG_TOPIC, (message) => {
-    if (message.memberId !== client.memberId) return;
-    nativeInfo('[procm-debug] publish acknowledged', { topic: PROCM_LOG_TOPIC, messageId: message.messageId });
-  });
-  const pending: unknown[] = [];
-  const logger = mod.setupLogger({
-    client,
-    clientName: 'web',
-    onLog: (entry) => {
-      if (client.connectionState !== 'open') pending.push(entry);
-    },
-  });
-  client.onState((state) => {
-    nativeInfo('[procm-debug] connection state', { state, pending: pending.length });
-    if (state !== 'open') return;
-    for (const entry of pending.splice(0)) client.publish(PROCM_LOG_TOPIC, entry);
-  });
-  logger.info('[procm] web logger initialized', { roomId: config.roomId });
+  console.info('[procm] browser log bridge installed');
+  return Promise.resolve();
 }

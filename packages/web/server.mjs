@@ -52,6 +52,15 @@ const handle = app.getRequestHandler();
 
 await app.prepare();
 
+async function readJsonBody(req) {
+  let body = '';
+  for await (const chunk of req) {
+    body += chunk;
+    if (body.length > 1024 * 1024) throw new Error('request body too large');
+  }
+  return JSON.parse(body || '{}');
+}
+
 function normalizeHtmlAppUrl(req) {
   if (!req.url) return;
 
@@ -79,6 +88,27 @@ function normalizeHtmlAppUrl(req) {
 }
 
 const server = http.createServer((req, res) => {
+    if (req.method === 'POST' && req.url === '/api/procm-browser-log') {
+      void readJsonBody(req).then((payload) => {
+        const level = payload?.level;
+        const args = Array.isArray(payload?.args) ? payload.args.slice(0, 20) : [];
+        if (!['debug', 'info', 'log', 'warn', 'error'].includes(level)) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'invalid log level' }));
+          return;
+        }
+        // server.mjs installs the procm logger before handling requests. Use
+        // its console wrapper so stdout still receives a structured marker
+        // that dashboard LogPanel can decode for level/data fields.
+        console[level](...args);
+        res.writeHead(204);
+        res.end();
+      }).catch((error) => {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: error instanceof Error ? error.message : String(error) }));
+      });
+      return;
+    }
     if (dev) normalizeHtmlAppUrl(req);
 
     if (dev) {
