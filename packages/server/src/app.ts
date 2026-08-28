@@ -175,7 +175,8 @@ app.use('/api', authMiddleware);
 app.get('/api/procm-config', (_req, res) => {
   const roomId = process.env.PROCM_ROOM_ID;
   const url = process.env.PROCM_WS_URL;
-  res.json(roomId && url ? { roomId, url } : { roomId: null, url: null });
+  const token = process.env.PROCM_HTTP_TOKEN;
+  res.json(roomId && url ? { roomId, url, ...(token ? { token } : {}) } : { roomId: null, url: null });
 });
 
 app.post('/api/procm-log', (req, res) => {
