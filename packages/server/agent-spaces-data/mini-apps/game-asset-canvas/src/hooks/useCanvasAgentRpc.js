@@ -364,12 +364,7 @@ export default function useCanvasAgentRpc({ nodes, edges, groups = [], createNod
             // 期望的是深合并：保留原 params.prompt/aspect/size，只改 model。
             // 但 useCanvasState.updateNodeData 对 data 做浅合并，data.params 整个替换会丢其他字段。
             // 这里读当前节点 data，对「对象型字段」做一层合并，其余字段保持浅合并语义。
-            const node = curNodes.find((n) => n.id === payload.nodeId);
-            if (node?.data) {
-              updateFn(payload.nodeId, mergeNodeData(node.data, incoming));
-            } else {
-              updateFn(payload.nodeId, incoming);
-            }
+            updateFn(payload.nodeId, (current) => mergeNodeData(current || {}, incoming));
             result = { ok: true };
             break;
           }
@@ -381,10 +376,10 @@ export default function useCanvasAgentRpc({ nodes, edges, groups = [], createNod
               result = { ok: false, message: `节点不存在：${missingIds.join(', ')}` };
               break;
             }
-            setNodesFn((prev) => prev.map((node) => {
-              const update = updates.find((item) => item.nodeId === node.id);
-              return update ? { ...node, data: { ...node.data, ...mergeNodeData(node.data, update.data || {}) } } : node;
-            }));
+            // 每个节点通过统一 updateNodeData 入口独立提交，避免批量快照覆盖并发中的其他输出。
+            updates.forEach((update) => {
+              updateFn(update.nodeId, (current) => mergeNodeData(current || {}, update.data || {}));
+            });
             const preparedEdges = prepareBatchEdges(curNodes, curEdges, Array.isArray(payload.edges) ? payload.edges : []);
             if (preparedEdges.toAdd.length) setEdgesFn((prev) => [...prev, ...preparedEdges.toAdd]);
             result = {

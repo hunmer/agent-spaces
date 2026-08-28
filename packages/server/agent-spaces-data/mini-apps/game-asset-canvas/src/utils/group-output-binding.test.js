@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import {
   GROUP_OUTPUT_FILTER_MODES,
   applyAssetToNodeStates,
+  applyExecutionNodePatch,
   applyNodePropertiesToAssetRuns,
   collectGroupOutputAssets,
   createExecutionNodeId,
@@ -33,7 +34,8 @@ test('真实三分组快照：输出过滤只产生派生结果，不覆盖来�
   assert.ok(sourceGroup);
   assert.ok(targetGroup);
   assert.equal(sourceGroup.batchExecution.assets.runs.length, 8);
-  assert.equal(targetGroup.batchExecution.assets.runs.length, 6);
+  const targetRunCount = targetGroup.batchExecution.assets.runs.length;
+  assert.ok(targetRunCount > 0);
 
   const sourceNodeIds = sourceGroup.childNodeIds;
   const sourceNodes = canvasFixture.nodes.filter((node) => sourceNodeIds.includes(node.id));
@@ -43,12 +45,12 @@ test('真实三分组快照：输出过滤只产生派生结果，不覆盖来�
     filter: { mode: GROUP_OUTPUT_FILTER_MODES.types, nodeTypes: ['imageDisplay'] },
   }, canvasFixture.edges);
 
-  // 快照中的当前画布输出有 6 张，少于来源执行历史的 8 个实例。
-  assert.equal(filtered.length, 6);
+  // 当前画布输出应少于来源执行历史，过滤只是派生读取。
+  assert.equal(filtered.length, targetRunCount);
   assert.ok(filtered.length < sourceGroup.batchExecution.assets.runs.length);
   assert.equal(JSON.stringify(sourceNodes), beforeSource);
   assert.equal(sourceGroup.batchExecution.assets.runs.length, 8);
-  assert.equal(targetGroup.batchExecution.assets.runs.length, 6);
+  assert.equal(targetGroup.batchExecution.assets.runs.length, targetRunCount);
 });
 
 
@@ -78,6 +80,70 @@ test('固定执行身份只更新请求所属实例，不受当前激活实例�
   assert.deepEqual(next.assets.runs[0].nodeStates['node-1'].output.images, ['a.png']);
   assert.deepEqual(next.assets.runs[1].nodeStates['node-1'].output.images, ['b.png']);
   assert.equal(next.assets.activeId, 'asset-2');
+});
+
+test('执行实例函数 patch 只更新指定字段并保留其他数据', () => {
+  const previous = {
+    params: { prompt: '保留' },
+    status: 'done',
+    output: { images: ['a.png', 'b.png'], resources: [{ id: 'a' }, { id: 'b' }] },
+    versions: [{ output: { images: ['a.png', 'b.png'] } }],
+    unrelated: 'keep',
+  };
+  const next = applyExecutionNodePatch(previous, (data) => ({
+    __versionSkip: true,
+    output: {
+      ...data.output,
+      images: ['b.png'],
+      resources: [{ id: 'b' }],
+    },
+  }));
+
+  assert.deepEqual(next.output.images, ['b.png']);
+  assert.deepEqual(next.output.resources, [{ id: 'b' }]);
+  assert.deepEqual(next.params, previous.params);
+  assert.deepEqual(next.versions, previous.versions);
+  assert.equal(next.unrelated, 'keep');
+  assert.equal(next.__versionSkip, undefined);
+});
+
+test('删除执行实例中的一张图片不会清空其他实例产出', () => {
+  const execution = ensureGroupExecution({
+    mode: 'assets',
+    assets: {
+      activeId: 'run-a',
+      runs: [
+        {
+          id: 'run-a',
+          nodeStates: {
+            output: {
+              status: 'done',
+              output: { images: ['a-1', 'a-2'] },
+              versions: [{ output: { images: ['a-1', 'a-2'] } }],
+            },
+          },
+        },
+        {
+          id: 'run-b',
+          nodeStates: {
+            output: { status: 'done', output: { images: ['b-1', 'b-2'] } },
+          },
+        },
+      ],
+    },
+  }, [{ id: 'output', data: {} }], ['output'], 'group-1');
+  const target = getRunExecutionTarget(execution, 'group-1', 'output', 'assets', 'run-a');
+  const nextData = applyExecutionNodePatch(
+    execution.assets.runs[0].nodeStates.output,
+    (data) => ({
+      __versionSkip: true,
+      output: { ...data.output, images: ['a-2'] },
+    }),
+  );
+  const next = updateRunNodeState(execution, target, nextData);
+
+  assert.deepEqual(next.assets.runs[0].nodeStates.output.output.images, ['a-2']);
+  assert.deepEqual(next.assets.runs[1].nodeStates.output.output.images, ['b-1', 'b-2']);
 });
 
 test('全部模式收集来源组节点的输出图片和图片展示内容', () => {

@@ -1,190 +1,116 @@
 # 文件索引
 
-> 完整目录树。统计：**101 个 JS/JSX 源码文件**，src 总 146 文件，vendor ~51MB。
+> 统计（2026-08-28）：src 下约 **297 个 JS/JSX**（含 ~62 个 `*.test.js`，不含 vendor），vendor ~51MB+。
 
-## 项目根
+## 项目根（game-asset-canvas/）
 
 ```
 game-asset-canvas/
-  manifest.json              # mini-app 注册（id/name/type=react/mainFile/enableAgents/agents）
+  manifest.json              # mini-app 注册（agents: canvas-assistant/prompt-optimizer/game-planner；agentChatPlacement: mini-app-slot）
   agents.json                # agent 配置（与 manifest.agents 同步）
   configs/                   # 运行时数据（见 data-model.md）
-  data/                      # 图片文件（gen/output/uploads）
+  data/                      # 图片/媒体文件（uploads 等）
   chat/                      # agent 会话存档
+  docs/                      # video-editor-handoff.md
+  tests/                     # 3 个 .test.mjs（node:test，画布右键菜单/历史/边展示）
+  spine-editor-build/        # Spine 编辑器独立构建产物（历史）
+  findings.md / progress.md / task_plan.md / handoff-storyboard.md / spine-editor-handoff.md  # 历史交接文档
   src/                       # ← 源码
 ```
 
-## src/
+## src/ 顶层
 
 ```
 src/
   index.jsx                  # 入口：<ReactFlowProvider><Canvas/></ReactFlowProvider>
-  api.js                     # Agent 画布操作 API（10 个 handler，RPC 到浏览器）
-  tools.js                   # Agent 工具签名/描述（VALID_NODE_TYPES/NODE_LABELS/NODE_TYPE_DESC）
-  CLAUDE.md                  # 旧版单文件契约（历史参考，新文档在 claude/）
-  handoff.md                 # 历次迭代交接文档（changelog 类参考，非契约）
-  assets/                    # 静态资源（图标/参考图）
-  claude/                    # ← 本目录（AI 上下文详情）
+  api.js                     # Agent 画布 API（~27 handler，RPC 到浏览器，1210 行）
+  api/                       # asset 类 handler 拆分（assets/constants/helpers）
+  tools.js                   # Agent 工具元数据（description/inputSchema）
+  context/ImageSelectionContext.js  # 跨节点图片多选
+  handoff.md                 # 逐轮交接索引文档（改动历史查 git log）
+  CLAUDE.md + claude/        # ← 本 AI 上下文
+  assets/  vendor/           # 静态资源 / 本地大资源
 ```
 
-## src/components/（顶层 17 个）
+## src/components/（顶层约 45 个）
 
-```
-components/
-  Canvas.jsx                 # 编排层（~400行）：hook 装配 + ReactFlow 变更回调 + JSX
-  Toolbar.jsx                # 顶栏（工作区插槽/自动布局/导出/设置/队列插槽/清空）
-  RightPanel.jsx             # 右侧 Tabs（新增节点/节点管理/生成记录）
-  SettingsDialog.jsx         # 设置页（工作流槽位 + BBox AI + 反推 AI）
-  ExecutionQueuePopover.jsx  # 执行队列弹窗 + 中断
-  NodeFormDialog.jsx         # 文生图/编辑图片表单（提示词库 + 合并提交）
-  NodeExecuteDialog.jsx      # 节点执行弹窗（不建节点，产出只写历史）
-  WorkspaceSwitcher.jsx      # 工作区切换 popover
-  DeleteWorkspacesDialog.jsx # 批量删除工作区确认弹窗
-  CreateWorkspaceDialog.jsx  # 新建工作区对话框
-  ConnectionLine.jsx         # 自定义连线样式
-  PromptPickerDialog.jsx     # 提示词库选择器
-  UiSplitterDialog.jsx       # 雪碧图拆分对话框（fabric + 连通域检测）
-  BBoxViewerDialog.jsx       # UI 拆分对话框（fabric + JSON bbox + AI 分析 + ZIP）
-  PixelEditorDialog.jsx      # Pixelorama iframe + postMessage 双向通信
-  FileUpload.jsx             # 通用文件上传
-  AssetLibrary.jsx           # 素材库面板
-```
+关键分组（全量清单见 module-responsibilities.md）：
+- 编排：`Canvas.jsx`
+- 面板/弹层：`Toolbar` / `RightPanel`（→ right-panel/）/ `SettingsDialog` / `ExecutionQueuePopover` / `NodeFormDialog` / `NodeExecuteDialog` / `PastePropertiesDialog` / `CanvasVersionPanel`
+- 工作区：`WorkspaceSwitcher` / `CreateWorkspaceDialog`（创建/重命名+数据目录）/ `DeleteWorkspacesDialog`
+- 大对话框：`UiSplitterDialog` / `GridStitchDialog` / `BBoxViewerDialog` / `PixelEditorDialog` / `PhotopeaDialog` / `DirectorDeskDialog` / `VideoEditorDialog` / `CutoutDialog` / `ImageEditorDialog` / `MaskPaintDialog` / `PromptOptimizeDialog` / `PromptPickerDialog` / `StoryboardGenerationDialog` / `ConnectionTargetDialog` / `SpineEditorDialog` / `ExportImagesDialog` / `AssetLibraryPickerDialog` / `GroupConfirmDialog` / `DeleteGroupDialog` / `BatchRunConfirmDialog`
+- 通用件：`FileUpload` / `ImageHoverCard` / `FrameSequencePlayer` / `GridAnimationPreview` / `AutoResizeTextarea` / `BorderBeam` / `ConnectionLine` / `AssetLibrary`
+- Spine 宿主 UI：`SpineEditorDialog` / `SpineCompareViewer` / `ReskinPanel`（+ SpinePanels.test）
 
-## src/components/canvas/（5 个）
+## src/components/canvas/（16 个）
 
-```
-canvas/
-  AddNodeMenuItems.jsx       # render-prop 菜单项（适配 ContextMenu + DropdownMenu）
-  MultiSelectToolbar.jsx     # 底部多选浮出 toolbar（分组/对齐/删除）
-  DropNodeMenu.jsx           # 拖拽落空菜单
-  CanvasContextMenu.jsx      # 右键菜单（ContextMenuTrigger 包裹）
-  GroupOverlays.jsx          # ViewportPortal 内 WorkflowGroupOverlay 列表
-```
+`CanvasWorkspace`（主视图）/ `CanvasOverlayDialogs`（弹窗层）/ `CanvasContextMenu` / `DropNodeMenu` / `AddNodeMenuItems` / `ImageSelectionMenuItems` / `ImageSelectionToolbar` / `MultiSelectToolbar` / `AlignmentGuides` / `FloatingEdge` + `floating-edge-utils` / `GroupOverlays` / `GroupMiniMap` / `GroupExecutionToolbar` / `GroupRunSelectionDialog` / `GroupOutputBindingDialog`
 
-## src/components/nodes/（19 个）
+## src/components/nodes/（43 个）
 
-```
-nodes/
-  NodeShell.jsx              # 节点外壳（Handle/状态/NodeResizer/NodeToolbar/nodrag nopan nowheel）
-  TextToImageNode.jsx        # 文字生成图片
-  EditImageNode.jsx          # 编辑图片
-  ImageDisplayNode.jsx       # 图片展示
-  ImageProcessNode.jsx       # 12 个 ip* + 旧 imageProcess 共用
-  ImageEditorNode.jsx        # 图片编辑（Painterro）
-  PixelEditorNode.jsx        # 像素编辑器（Pixelorama）
-  UiSplitterNode.jsx         # 雪碧图拆分
-  BBoxViewerNode.jsx         # UI 拆分
-  TextToVoiceNode.jsx        # 生成配音
-  VideoGeneratorNode.jsx     # 生成视频
-  ImageCompareNode.jsx       # 图片对比
-  PromptReverseNode.jsx      # 反推提示词
-  CutoutNode.jsx             # 统一抠图（4 mode）
-  NoteNode.jsx               # 便签
-  ImageResult.jsx            # 产出网格（max=0 不截断）
-  UpstreamImageList.jsx      # 上游连线图只读占位
-  PickedPromptBadge.jsx      # 已选提示词展示条
-  ParamField.jsx             # 通用参数字段（number/color/select/bool/text + showWhen）
-```
+外壳/通用：`NodeShell` / `EditableNodeTitle` / `FloatingHandle` / `NodeDialogContext` / `NodeOutput` / `ImageResult` / `UpstreamImageList` / `UploadSection` / `ParamField` / `PickedPromptBadge` / `TextResult` / `TextVariableEditor` / `CountAndConcurrency` / `FramePlayer` / `SpinePreviewViewer` / `compact-node`
 
-## src/hooks/（17 个）
+业务节点：Text / Storyboard / TextToImage / EditImage / ImageDisplay / ImageProcess（12 个 ip* 共用）/ ImageEditor / MaskPaint / PixelEditor / Photopea / UiSplitter / BBoxViewer / Cutout / DepthExtract / DirectorDesk / WorkflowRunner / PromptReverse / TextToVoice / AudioDisplay / VideoGenerator / VideoDisplay / VideoEditor / ImageCompare / SpineEditor / SpineDisplay / Note
 
-```
-hooks/
-  useWorkspaces.js           # 工作区清单
-  useCanvasState.js          # 节点/边/分组单一数据源 + 持久化 + 多端同步
-  useWorkflow.js             # callPluginTool 调工作流
-  useGenerationHistory.js    # 生成记录（按工作区隔离）
-  useSettings.js             # settings.json 读写
-  useExecutionQueue.js       # 执行队列
-  usePromptLibrary.js        # 自定义提示词库
-  usePanelLayout.js          # 面板布局 + MiniMap 显隐
-  useImageOutputs.js         # 产出图转节点
-  useSelectionClipboard.js   # 选中 + 复制粘贴 + 对齐分布 + 批量删除
-  useGroupOperations.js      # 分组数据 ops + overlay
-  useNodeCrud.js             # 节点 CRUD + 定位/布局/导出 + 尺寸自适应 + 表单提交
-  useNodeExecutions.js       # 执行回调（工作流/媒体/本地算法/抠图/反推）
-  useCanvasAgentRpc.js       # WS message 监听
-  useDecoratedNodes.js       # 节点 data 注入回调
-  useAssetLibrary.js         # 素材库
-  useViewportActivation.js   # 节点首次进入视窗后永久激活正文
-```
+## src/components/right-panel/（8 个）+ ui-splitter/（10 个）
 
-## src/utils/（16 个顶层 + image-ops/ 11 个）
+- right-panel：`index`（tab 装配 + agent-chat 插槽）/ `AddNodeTab` / `NodeManageTab` / `HistoryTab` / `PresetsTab` / `CharactersTab` / `search` / `constants`
+- ui-splitter：Sheet 拆分编辑器（Toolbar/CutoutSettings/InputImageList/SplitResultPanel + fabric/keyboard/5 个 hooks）
 
-```
-utils/
-  constants.js               # 全局常量（NODE_TYPES/NODE_META/IMAGE_PROCESSORS/CUTOUT_PARAMS/WORKFLOWS/Agent 提示词）
-  canvas-constants.js        # Canvas 依赖聚合点（NODE_COMPONENTS/ADD_NODE_ITEMS/initialData/DEFAULT_SIZE）
-  canvas-id.js               # genId + seq / autoPosition + positionIndex（模块级单例）
-  processing-controllers.js  # AbortController 注册表单例
-  input-images.js            # computeInputImages（fixed-point 多跳转发）
-  workflow.js                # runWorkflow/generateImages/generateAudio/generateVideo/runAgentVisionText
-  cutout.js                  # runCutout 统一执行入口（4 mode 分流）
-  storage.js                 # loadCanvas/saveCanvas/onAnyConfigChanged + debounce + 面板布局
-  settings.js                # DEFAULT_SETTINGS/WORKFLOW_SLOTS/mergeSettings
-  prompts.js                 # 内置提示词库
-  layout.js                  # dagre autoLayout
-  export.js                  # serializeCanvas/downloadJson
-  clipboard.js               # copyNodes/pasteNodes/hasClipboard（模块级内存）
-  align-distribute.js        # computeAlignment
-  group-helpers.js           # collectGroupNodeIds/findLeafNodeIds
-  image-ops/
-    index.js                 # PROCESSORS 注册表 + runProcessor 统一入口
-    cdn.js                   # vendor/CDN 库加载封装
-    io.js                    # urlToImageData/imageDataToBlob/imageDataToUrl
-    imageDataOps.js          # 纯函数 ImageData 操作
-    gif.js                   # GIF 拆帧 + 合成
-    spriteSheet.js           # Sheet 拆分 + 合成
-    sprite-splitter.js       # Sprite Sheet 拆分辅助
-    pixelate.js              # pixelate（降采样 + Wu 量化）
-    matte.js                 # chromaKey/whiteKey/erodeAlpha/hexToRgb
-    stroke.js                # resizeNearest/innerStroke/crop
-    compose.js               # composeLayers
-```
+## src/hooks/（26 个）
+
+见 module-responsibilities.md「hooks」表。
+
+## src/utils/（约 50 顶层 + image-ops/ 11 + reskin/ 9）
+
+见 module-responsibilities.md「utils」表（核心/画布交互/节点功能/reskin 四组）。
 
 ## src/services/（1 个）
 
 ```
 services/
-  canvas.js                  # 服务端单写者（画布/历史/设置/工作区/素材库/提示词库 CRUD）
+  canvas.js                  # 服务端单写者（31 handler，chokidar 热重载）
 ```
 
-## src/vendor/（~51MB）
+## src/spine/（编辑核心，非 React）
 
-```
-vendor/
-  fabric.min.js              # 5.3.0 UMD（fabric 画布编辑器）
-  browser-image-compression.js  # 2.0.2 UMD（图片压缩，Web Worker）
-  painterro.min.js           # 1.2.92 IIFE（图片编辑节点）
-  jszip.js / gifenc.js / gifuct-js.js / image-q.js  # 图像处理 + ZIP
-  img-comparison-slider.js   # 图片对比 web component
-  pixelorama-web/            # ~45MB（Godot 4.7 导出，含 index.pck/wasm + service worker + SimHei.ttf）
-```
+`runtime.js` / `loaders`（3.8/4.2 版本路由）/ `core`（骨骼/gizmo）/ `exporters`（PoseExporter）/ `components` / `data` / `test`（8 个 node:test）
+
+## src/vendor/
+
+`fabric.min.js` / `painterro.min.js` / `browser-image-compression.js` / `jszip.js` / `gifenc.js` / `gifuct-js.js` / `image-q.js` / `img-comparison-slider.js` / `pixelorama-web/`（~45MB Godot 导出）/ `director-desk-web/`（3D 导演台构建产物）/ `spine/`（PixiJS/pixi-spine/JSZip 固定版本 dist）/ `fast-image-sequence/`（历史遗留，已不引用）
 
 ## configs/（运行时数据）
 
 ```
 configs/
-  settings.json              # 全局共享（用户级偏好）
-  prompt-library.json        # 全局共享（自定义提示词库）
-  panel-layout.json          # 全局共享（面板布局 + MiniMap）
-  workspaces.json            # 全局共享（工作区清单 + activeId）
-  canvas.json                # 旧版顶层画布（迁移前，新数据走 workspaces/<id>/）
-  generation-history.json    # 旧版顶层历史（同上）
-  workspaces/
-    <id>/
-      canvas.json            # 工作区隔离的画布
-      generation-history.json  # 工作区隔离的历史
-      asset-library.json     # 工作区隔离的素材库
+  settings.json                  # 全局（工作流槽位/模型列表/AI Agent 配置/画布样式/队列并发等）
+  prompt-library.json            # 全局（自定义提示词库）
+  panel-layout.json              # 全局（{canvas-main:72, canvas-right:28}）
+  node-presets.json              # 全局（节点预设子图模板）
+  spine-reskin-history.json      # 全局（Spine 换肤记录，按资源签名分组）
+  workspaces.json                # 全局（{activeId, workspaces[]:{id,name,createdAt,directory?}}）
+  workspaces/<id>/
+    canvas.json                  # 画布（nodes/edges/groups/viewport）
+    canvas-versions.json         # 画布版本快照
+    generation-history.json      # 生成记录（HISTORY_MAX=200）
+    last-params.json             # 每节点类型上次提交参数
+    asset-library.json           # 素材库
+    storyboard-characters.json   # 分镜角色库
 ```
 
 ## 关键路径速查
 
 | 想做什么 | 看哪里 |
 |---------|--------|
-| 加新节点类型 | `utils/constants.js`（NODE_TYPES/NODE_META/IMAGE_TAGS）+ `utils/canvas-constants.js`（NODE_COMPONENTS/ADD_NODE_ITEMS/initialData）+ `components/nodes/<新>.jsx` + `components/RightPanel.jsx`（ADD_ITEMS）+ `api.js`/`tools.js`（VALID_NODE_TYPES/NODE_LABELS） |
-| 加新工作流槽位 | `utils/settings.js`（DEFAULT_SETTINGS + WORKFLOW_SLOTS）+ `components/SettingsDialog.jsx` |
-| 加新图像处理器 | `utils/image-ops/index.js`（PROCESSORS）+ `utils/constants.js`（IMAGE_PROCESSORS + IMAGE_PROCESSOR_CATEGORIES + NODE_TYPE_TO_PROCESSOR） |
-| 改 Agent RPC | `src/api.js`（服务端入口）+ `src/hooks/useCanvasAgentRpc.js`（浏览器分流） |
-| 改宿主能力 | `packages/web/src/components/mini-apps/use-mini-app-host-api.tsx` + `react-renderer.tsx` allowlist + `ui-exports.ts`（**需重启 web**） |
-| 改服务端单写者 | `src/services/canvas.js`（chokidar 热重载，无需重启） |
+| 加新节点类型 | `utils/constants.js`（NODE_TYPES/NODE_META/IMAGE_TAGS）+ `utils/canvas-constants.js`（NODE_COMPONENTS/ADD_NODE_ITEMS/initialData/PARAMS_SCHEMA 映射）+ 节点组件 + `api.js`（VALID_NODE_TYPES）+ `tools.js`（NODE_TYPE_ENUM）+ `right-panel/AddNodeTab`；生成类还要 `useCanvasAgentRpc.buildNodeExecution` + `executeNode` 的 GENERATABLE Set。见 handoff「新增节点 Checklist」 |
+| 加/改 agent | `manifest.json` agents[]（零宿主改动，刷新生效） |
+| 加 agent 工具 | `api.js` handler + `tools.js` 元数据 |
+| 加新工作流槽位 | `utils/settings.js` + `SettingsDialog.jsx` |
+| 加新图像处理器 | `utils/image-ops/index.js`（PROCESSORS）+ `utils/constants.js` |
+| 改 Agent RPC | `src/api.js` + `src/hooks/useCanvasAgentRpc.js` |
+| 改服务端单写者 | `src/services/canvas.js`（热重载） |
+| 改宿主能力/白名单 | `packages/web/.../use-mini-app-host-api.tsx` + `react-renderer.tsx` + `ui-exports.ts`（**需重启 web**） |
+| 改分镜 | `StoryboardNode` + `StoryboardGenerationDialog` + `hooks/useStoryboardOperations` + `utils/storyboard*.js` |
+| 改视频编辑器 | `VideoEditorNode` + `VideoEditorDialog` + `FrameSequencePlayer` + `utils/frame-selection/video-*/grid-stitch` |
+| 改 Spine | `src/spine/`（核心）+ `components/Spine*Dialog`（宿主 UI）+ `utils/reskin/`（换肤）+ `vendor/spine/` |

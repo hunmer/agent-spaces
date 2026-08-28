@@ -28,3 +28,11 @@
 - Active-group resolution now validates that the group still exists before applying scoped selection; stale ids fall back to the prior selected-node inference.
 - During implementation, unrelated concurrent edits appeared in `Canvas.jsx`, `useNodeCrud.js`, `FloatingEdge.jsx`, `ImageDisplayNode.jsx`, config/index/workflow files, and others. They were preserved and not reverted.
 - Project conventions require post-change synchronization of `src/CLAUDE.md` and `src/handoff.md`; the new interaction contract was appended to both.
+
+## Unified output state update investigation (2026-08-28)
+- Current writes are split between `useCanvasState.updateNodeData`, direct `setNodes` background replacement, `useGroupExecution.commit/commitRunState`, and output helpers in `Canvas.jsx`.
+- `ImageResult` historical deletion calls `onRemoveVersionImages`; Canvas currently constructs a full `output` patch for the active version, which can overwrite unrelated output when execution state is stale.
+- `useGroupExecution.js` contains many `[GroupExecutionDebug]` logs at mode/count/switch/binding/remove boundaries; user requested retaining diagnostics only at a unified update entry.
+- The target contract is a single update dispatcher accepting `{ source, key, value, method }`; method must define merge/replace/remove semantics and reject ambiguous full-object writes.
+- Current `useGroupExecution.commit` and `commitRunState` still call `setGroups/setNodes` with full snapshots. `Canvas` output deletion can interleave with these commits, so a stale execution snapshot can replace unrelated output/history data.
+- `useCanvasState.updateNodeData` is the only existing node-data helper, but it accepts an unstructured `(nodeId, patch)` and has no source/key/method validation or centralized diagnostics.

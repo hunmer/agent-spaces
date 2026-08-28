@@ -94,11 +94,11 @@ export function PluginConfigSchemeControl({
           <Command>
             <CommandList>
               <CommandGroup>
-                <CommandItem value="__default__" className="text-xs" onSelect={() => void onSelect('')}>
+                <CommandItem value="__default__" className="text-xs" onClick={() => void onSelect('')}>
                   {defaultLabel || t('sidebar.defaultConfig')}
                 </CommandItem>
                 {schemes.map(name => (
-                  <CommandItem key={name} value={name} className="text-xs" onSelect={() => void onSelect(name)}>
+                  <CommandItem key={name} value={name} className="text-xs" onClick={() => void onSelect(name)}>
                     {name}
                   </CommandItem>
                 ))}
@@ -106,7 +106,7 @@ export function PluginConfigSchemeControl({
               <CommandGroup>
                 <CommandItem
                   className="text-xs text-primary"
-                  onSelect={() => {
+                  onClick={() => {
                     if (onCreateRequest) {
                       onCreateRequest();
                       return;
@@ -118,7 +118,7 @@ export function PluginConfigSchemeControl({
                   <Plus className="mr-1 h-3 w-3" /> {t('sidebar.addScheme')}
                 </CommandItem>
                 {selectedScheme ? (
-                  <CommandItem className="text-xs text-destructive" onSelect={() => void deleteCurrentScheme()}>
+                  <CommandItem className="text-xs text-destructive" onClick={() => void deleteCurrentScheme()}>
                     <Trash2 className="mr-1 h-3 w-3" /> {t('sidebar.deleteScheme')}
                   </CommandItem>
                 ) : null}

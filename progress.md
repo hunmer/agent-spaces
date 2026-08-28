@@ -39,3 +39,10 @@
 - Switched game-asset-canvas workspace image persistence to fire-and-forget background tasks; Canvas replaces output URLs with authenticated local-file URLs on completion.
 - Documented manifest one-line enablement and event contract in `packages/web/public/learn/miniapp.md`.
 - Validation: server `tsc --noEmit`, miniapp Babel compilation, and `git diff --check` passed.
+- New request: consolidate all node/group/output updates behind a source/key/value/method dispatcher; remove noisy GroupExecutionDebug logs.
+- Diagnosed remaining risk: `useGroupExecution` full-snapshot commits can race output deletion and overwrite unrelated runs/groups. Ranked hypotheses recorded in `task_plan.md`; implementation now starts with dispatcher and commit migration.
+- Added `utils/canvas-state-updates.js` and `useCanvasState.updateCanvasData` with required `source/targetType/targetId/key/value/method` fields and `[CanvasStateUpdate]` diagnostics.
+- Migrated `useGroupExecution.commit`, background URL replacement, output add/delete/clear/reorder, preview mode, RPC batch node updates, and group property updates to targeted dispatches where applicable.
+- Fixed `applyExecutionNodePatch` to merge function results with prior execution-node data; this prevents deleting output images from dropping params/status/versions and later restoring empty snapshots.
+- Removed all requested `[GroupExecutionDebug]`, `[clear-debug]`, and `[clear]` logs from the mini-app source.
+- Added regression tests in `canvas-state-updates.test.js` and `group-output-binding.test.js`; focused suite passes 47/47 and Babel syntax checks pass for all touched JS/JSX files.

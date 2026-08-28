@@ -56,7 +56,7 @@ import { decorateEdgesForSelection } from '../utils/edge-display';
 import { countNodesWithOutput } from '../utils/batch-run';
 import { collectGroupNodeIds } from '../utils/group-helpers';
 import { CanvasGalleryContextProvider } from '../utils/canvas-gallery';
-import { createOutputAssetItems, createOutputResourceId, removeOutputAssetItems, updateOutputVersion } from '../utils/output-resources';
+import { createOutputAssetItems, createOutputResourceId, removeOutputAssetItems, removeOutputVersionImages, updateOutputVersion } from '../utils/output-resources';
 import { COMPACT_NODE_ZOOM_THRESHOLD } from './nodes/compact-node';
 
 const EDGE_PATH_STYLES = ['bezier', 'straight', 'step', 'smoothstep'];
@@ -94,7 +94,7 @@ export default function Canvas({ hostConfig }) {
   const activeWorkspace = workspaces.find((ws) => ws.id === activeId);
   const {
     nodes, edges, groups, viewport, hasSavedViewport, loaded,
-    setNodes, setEdges, setGroups, setViewport, updateNodeData,
+    setNodes, setEdges, setGroups, setViewport, updateCanvasData, updateNodeData,
     operationHistory, undo, redo, canUndo, canRedo,
   } = useCanvasState(activeId);
   // 落地策略由 directory 驱动：设了则产图落到工作区目录，否则落 data（详见 useWorkflow/generateImages）
@@ -171,19 +171,26 @@ export default function Canvas({ hostConfig }) {
       const localFileUrl = window.AgentSpaces?.localFileUrl;
       if (typeof localFileUrl !== 'function') return;
       const replacements = new Map(result.originalUrls.map((url, i) => [url, localFileUrl(result.urls[i])]));
-      setNodes((prev) => prev.map((node) => {
+      nodesRef.current.forEach((node) => {
         const output = node.data?.output;
         const images = output?.images;
-        if (!Array.isArray(images)) return node;
+        if (!Array.isArray(images)) return;
         const nextImages = images.map((url) => replacements.get(url) || url);
-        if (nextImages.every((url, i) => url === images[i])) return node;
+        if (nextImages.every((url, i) => url === images[i])) return;
         const resources = Array.isArray(output.resources)
           ? output.resources.map((item) => ({ ...item, url: replacements.get(item.url) || item.url, thumb: replacements.get(item.thumb) || item.thumb }))
           : output.resources;
-        return { ...node, data: { ...node.data, output: { ...output, images: nextImages, resources } } };
-      }));
+        updateCanvasData({
+          source: 'background-persist',
+          targetType: 'node',
+          targetId: node.id,
+          key: 'data.output',
+          value: { ...output, images: nextImages, resources },
+          method: 'replace',
+        });
+      });
     });
-  }, [setNodes]);
+  }, [updateCanvasData]);
 
   useEffect(() => {
     const onKeyDown = (event) => {
@@ -231,7 +238,7 @@ export default function Canvas({ hostConfig }) {
     settings,
     directory: activeWorkspace?.directory,
   });
-  const groupExecution = useGroupExecution({ groups, nodes, edges, setGroups, setNodes });
+  const groupExecution = useGroupExecution({ groups, nodes, edges, updateCanvasData });
 
   // —— 执行队列（onComplete/onError 用 imageOutputs + updateNodeData + addHistory）——
   const { jobs, submit, cancel, clearFinished, runningCount, queuedCount } = useExecutionQueue({
@@ -376,7 +383,7 @@ export default function Canvas({ hostConfig }) {
 
   const crud = useNodeCrud({
     nodes, edges, groups, setNodes, setEdges, setGroups,
-    reactFlow, selectedId, setSelectedId, updateNodeData, settings, submit,
+    reactFlow, selectedId, setSelectedId, updateCanvasData, updateNodeData, settings, submit,
     setDropNodeMenu, setContextMenu, setPendingConnection,
     getViewportCenter, getLastParams, saveLastParams,
     onDropPreset: handleDropPreset,
@@ -407,7 +414,8 @@ export default function Canvas({ hostConfig }) {
 
   // —— 分组操作 + overlay 移动/连线 ——
   const groupOps = useGroupOperations({
-    groups, nodes, edges, setGroups, setNodes, setEdges, reactFlow, canvasRef: wrappingRef,
+    groups, nodes, edges, setGroups, setNodes, setEdges, updateCanvasData,
+    reactFlow, canvasRef: wrappingRef,
   });
 
   // —— 选中 + 复制粘贴 + 对齐分布 + 批量删除 ——
@@ -621,8 +629,11 @@ export default function Canvas({ hostConfig }) {
 
   const handleOutputPreviewModeChange = useCallback((id, enabled) => {
     if (!id) return;
-    updateNodeData(id, { outputPreviewMode: enabled === true });
-  }, [updateNodeData]);
+    const patch = { outputPreviewMode: enabled === true };
+    const target = groupExecution.getExecutionTargetForNode(id);
+    if (target) groupExecution.updateExecutionNodeData(target, patch);
+    else updateNodeData(id, patch);
+  }, [groupExecution.getExecutionTargetForNode, groupExecution.updateExecutionNodeData, updateNodeData]);
 
   const allNodePreviewsEnabled = nodes.length > 0
     && nodes.every((node) => node.data?.outputPreviewMode === true);
@@ -630,12 +641,18 @@ export default function Canvas({ hostConfig }) {
   const enableAllNodePreviews = useCallback(() => {
     // 切换式：全部已开 → 全关；否则全开（修复原来只能开不能关的问题）
     const turnOn = !allNodePreviewsEnabled;
-    setNodes((prev) => prev.map((node) => (
-      node.data?.outputPreviewMode === turnOn
-        ? node
-        : { ...node, data: { ...(node.data || {}), outputPreviewMode: turnOn } }
-    )));
-  }, [setNodes, allNodePreviewsEnabled]);
+    nodesRef.current.forEach((node) => {
+      if (node.data?.outputPreviewMode === turnOn) return;
+      updateCanvasData({
+        source: 'preview-mode',
+        targetType: 'node',
+        targetId: node.id,
+        key: 'data.outputPreviewMode',
+        value: turnOn,
+        method: 'replace',
+      });
+    });
+  }, [allNodePreviewsEnabled, updateCanvasData]);
 
   // —— 注入到节点 data 的回调集合 ——
   // deps 逐个解构具体 callback（而非整个 executions/crud 对象），任一稳定则 nodeCallbacks 稳定，
@@ -917,11 +934,6 @@ export default function Canvas({ hostConfig }) {
   // fileName 同时作为入库 name（文件名）和 title（去掉扩展名的可读标题）
   const handleAssetsPickerConfirm = useCallback(async (pickedGroups) => {
     if (!pickedGroups?.length) return;
-    // [asset-label-debug] 写入素材库的 url/分类，和历史记录 url 做一致性比对
-    console.log('[asset-label-debug] picker confirm', {
-      groups: pickedGroups.map((g) => ({ id: g.id, name: g.name })),
-      images: assetsPickerImages.map((it) => ({ url: it.url, thumb: it.thumb })),
-    });
     for (const grp of pickedGroups) {
       for (const item of assetsPickerImages) {
         const url = item.url;
@@ -938,9 +950,8 @@ export default function Canvas({ hostConfig }) {
             size: 0,
             uploadedAt: Date.now(),
           });
-          console.log('[asset-label-debug] addAsset ok', { categoryId: grp.id, name: grp.name, url });
         } catch (err) {
-          console.error('[asset-label-debug] addAsset failed:', err, { url });
+          console.error('addAsset failed:', err, { url });
         }
       }
     }
@@ -1073,7 +1084,7 @@ export default function Canvas({ hostConfig }) {
   // 这些是用户对当前产出图的手动编辑，不是新生成，加 __versionSkip 避免被版本存档误捕获。
   // makeOnUpdate 是浅合并整对象，这里需要读旧 images 增删，故直接调 updateNodeData 传函数 patch。
   const handleOutputImagesChange = useCallback((nodeId, mutator) => {
-    updateNodeData(nodeId, (data) => {
+    const patch = (data) => {
       const prev = Array.isArray(data?.output?.images) ? data.output.images : [];
       const next = mutator(prev);
       const previousResources = Array.isArray(data?.output?.resources) ? data.output.resources : [];
@@ -1084,8 +1095,11 @@ export default function Canvas({ hostConfig }) {
           : { ...item.resource, id: createOutputResourceId(), url: item.url, thumb: item.url }
       ));
       return { __versionSkip: true, output: { ...(data?.output || {}), images: next, resources } };
-    });
-  }, [updateNodeData]);
+    };
+    const target = groupExecution.getExecutionTargetForNode(nodeId);
+    if (target) groupExecution.updateExecutionNodeData(target, patch);
+    else updateNodeData(nodeId, patch);
+  }, [groupExecution.getExecutionTargetForNode, groupExecution.updateExecutionNodeData, updateNodeData]);
   const handleAddOutputImages = useCallback((nodeId, urls) => {
     if (!Array.isArray(urls) || !urls.length) return;
     handleOutputImagesChange(nodeId, (prev) => [...prev, ...urls.filter(Boolean)]);
@@ -1113,10 +1127,34 @@ export default function Canvas({ hostConfig }) {
     if (target) groupExecution.updateExecutionNodeData(target, patchOutput);
     else updateNodeData(nodeId, patchOutput);
   }, [groupExecution.getExecutionTargetForNode, groupExecution.updateExecutionNodeData, updateNodeData]);
+  const handleRemoveVersionImages = useCallback((nodeId, versionIndex, ids) => {
+    const patchVersion = (data) => {
+      const versions = Array.isArray(data?.versions) ? data.versions : [];
+      const targetVersion = versions[versionIndex];
+      if (!targetVersion?.output) return { __versionSkip: true };
+      const nextVersions = removeOutputVersionImages(versions, versionIndex, ids);
+      const patch = { __versionSkip: true, versions: nextVersions };
+      const activeVersion = Number.isInteger(data?.activeVersion) ? data.activeVersion : -1;
+      if (activeVersion === versionIndex) {
+        // 当前 output 可能不是传入的历史快照，必须基于当前 output 自身删除，不能用历史 next 覆盖。
+        const currentOutput = data?.output || {};
+        const currentNext = removeOutputAssetItems(
+          currentOutput.images,
+          currentOutput.resources,
+          ids,
+        );
+        patch.output = { ...currentOutput, images: currentNext.images, resources: currentNext.resources };
+      }
+      return patch;
+    };
+    const target = groupExecution.getExecutionTargetForNode(nodeId);
+    if (target) groupExecution.updateExecutionNodeData(target, patchVersion);
+    else updateNodeData(nodeId, patchVersion);
+  }, [groupExecution.getExecutionTargetForNode, groupExecution.updateExecutionNodeData, updateNodeData]);
   // 产出图重排序：拖拽调整顺序，写回 data.output.images
   const handleReorderOutputImages = useCallback((nodeId, next, nextResources) => {
     if (!Array.isArray(next)) return;
-    updateNodeData(nodeId, (data) => ({
+    const patch = (data) => ({
       __versionSkip: true,
       output: {
         ...(data?.output || {}),
@@ -1125,13 +1163,24 @@ export default function Canvas({ hostConfig }) {
           ? nextResources
           : createOutputAssetItems(next, data?.output?.resources).map((item) => item.resource),
       },
-    }));
-  }, [updateNodeData]);
+    });
+    const target = groupExecution.getExecutionTargetForNode(nodeId);
+    if (target) groupExecution.updateExecutionNodeData(target, patch);
+    else updateNodeData(nodeId, patch);
+  }, [groupExecution.getExecutionTargetForNode, groupExecution.updateExecutionNodeData, updateNodeData]);
   const handleClearOutputImages = useCallback((nodeId) => {
     // 清空产出同时清空版本历史：避免清空后 versions 残留，刷新页面版本按钮又出现
-    console.log('[clear] handleClearOutputImages', nodeId);
-    updateNodeData(nodeId, { __versionSkip: true, output: { images: [], resources: [] }, versions: [], activeVersion: undefined, status: 'idle' });
-  }, [updateNodeData]);
+    const patch = {
+      __versionSkip: true,
+      output: { images: [], resources: [] },
+      versions: [],
+      activeVersion: undefined,
+      status: 'idle',
+    };
+    const target = groupExecution.getExecutionTargetForNode(nodeId);
+    if (target) groupExecution.updateExecutionNodeData(target, patch);
+    else updateNodeData(nodeId, patch);
+  }, [groupExecution.getExecutionTargetForNode, groupExecution.updateExecutionNodeData, updateNodeData]);
   // 清空生成记录：可选同时重置画布上所有节点的产出/版本/状态。
   // alsoResetNodes=true 时逐个走 handleClearOutputImages 复用单节点重置字段集。
   const handleClearHistoryAndReset = useCallback((alsoResetNodes) => {
@@ -1467,6 +1516,7 @@ export default function Canvas({ hostConfig }) {
     // 产出区操作（写 data.output.images）
     onAddOutputImages: handleAddOutputImages,
     onRemoveOutputImage: handleRemoveOutputImage,
+    onRemoveVersionImages: handleRemoveVersionImages,
     onClearOutputImages: handleClearOutputImages,
     onReorderOutputImages: handleReorderOutputImages,
     // 版本切换（还原 params/output/status 到指定历史版本）
@@ -1486,7 +1536,7 @@ export default function Canvas({ hostConfig }) {
     handleScopedProcessLocal, handleScopedCutout, handleCutoutCreate, handleScopedDepth,
     handleScopedCancelProcess, handleScopedPromptReverse,
     handleExportImagesWithPicker, handleAutoSize, handleAutoSizeToContent, handleBBoxCutout, handleResetParams,
-    handleAddToAssets, handleAddOutputImages, handleRemoveOutputImage, handleClearOutputImages, handleReorderOutputImages,
+    handleAddToAssets, handleAddOutputImages, handleRemoveOutputImage, handleRemoveVersionImages, handleClearOutputImages, handleReorderOutputImages,
     handleSwitchVersion, handleDeleteUpstreamImage, handleExportVideosWithPicker,
     groupExecution.requestPropertyApply,
     storyboardOperations.importStoryboard, storyboardOperations.generateSceneMedia,

@@ -125,3 +125,43 @@ fs.writeFileSync(p, JSON.stringify(d, null, 2));
 ## Q: panel-layout.json 旧格式（数组）报错？
 
 **A:** 旧版是数组，新版是 `{canvas-main:72, canvas-right:28}` 对象。重置为对象格式即可。
+
+## Q: 切上游历史版本后，更下游节点还残留旧图？
+
+**A:** 透传节点（imageDisplay/videoDisplay）有连入边时必须转发 `computeInputImages/Videos` 本轮派生值（包括空数组），不能回退到节点持久化的旧 `data.images/videos`。检查 `useDecoratedNodes` 派生逻辑。
+
+## Q: 同一张图出现多次时列表渲染错乱 / React 报 key 重复？
+
+**A:** 工作流可能返回重复 URL。上游输入列表统一用 `utils/list-keys.js` 的 `occurrenceKeys` 生成「出现序号+URL」唯一 key，不要 `key={url}`。
+
+## Q: 刷新后视频编辑器的动画组/帧全没了？
+
+**A:** `VideoEditorDialog` 的 currentVideo effect 曾在首次挂载就清空数据。必须用 ref 记录前值并跳过首次挂载，仅前后视频 URL 确实变化时才清 frames/animGroups/videoInfo。
+
+## Q: Agent 并发操作时部分 RPC 请求超时？
+
+**A:** 宿主 `mini-app-renderer.tsx` 的 taskEvents 只发了 `.at(-1)`，React 批处理把多条 WS 事件合并，其余 `ctx.requestClient` 拿不到响应。必须用事件对象游标把本轮新增项逐条送给 `onTaskEvent`（宿主层改动，需重启 web）。
+
+## Q: 分组多实例执行结果写到别的实例上了？
+
+**A:** 请求没带/没按 `executionTarget` 写回。运行状态、取消、历史和产出只能按冻结的执行节点身份（`nodeIds[templateNodeId]`，由 groupId+runId+templateNodeId 稳定生成）写入对应 run；完成回调里禁止读当前 `activeId` 认领。队列活动集合用 `executionNodeId`，不能用实例间重复的 `placeholderNodeId`。
+
+## Q: 中断队列后节点一直转圈 / 晚到的结果覆盖了「已取消」？
+
+**A:** `useExecutionQueue.cancel` 必须经 `onCancel(job)` 立即把 placeholderNodeId 写为 `loading:false, status:'cancelled'`；异步任务晚到结果用 `cancelledJobIdsRef` 丢弃，中断异常不能再走 `onError` 覆盖节点状态。
+
+## Q: 旧数据没有缩略图（resources/thumb）怎么办？
+
+**A:** Toolbar「调试 → 一键补缩略图」批量补。协议上展示处始终回退 `thumb || url`；不要把 `images` 改成对象数组。
+
+## Q: 粘贴节点时弹出的「应用属性」选什么？
+
+**A:** 粘贴单个节点且当前选中节点与来源同类型时，先经 `PastePropertiesDialog` 选字段（默认全不选，可全选/反选；params 按子字段展开）。产出/派生/运行态字段（output/images/videos/status/loading/error 等）不参与应用。素材实例模式复制 `uploadedImages` 要排除来源的 `groupAssetInputUrls`、保留目标 run 自己的。
+
+## Q: Spine 骨骼 gizmo 首次加载偏到右下角？
+
+**A:** `_boneToContainer` 误用了 `worldTransform`（把父容器 fit/zoom/pan 重复应用）。角色和骨骼 Graphics 同挂 `spineContainer`，只应用 `spine.transform.localTransform`。
+
+## Q: 文本连线后目标节点的输入框不见了？
+
+**A:** 正常行为：文本字段有连线时 Tiptap HoverCard 列出边并隐藏输入框；全部断线后显示 fallback 输入（`data.textVariableValues` 手动值仍可用）。目标组件保留 `data.params` 模板，执行时用派生值。

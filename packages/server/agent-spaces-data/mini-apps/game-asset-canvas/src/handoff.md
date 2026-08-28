@@ -285,3 +285,9 @@ generateImages(workflowId, input, {directory, historyId})   ← utils/workflow.j
 
 - **write-mini-app-code** (`docs/skills/write-mini-app-code/SKILL.md`) — 改本 mini-app 前必读
 - **handoff** — 继续交接时用
+
+## 产出删除回归修复（2026-08-28）
+
+- `utils/canvas-state-updates.js` 提供按 `source/targetType/targetId/key/value/method` 的局部更新函数；`useCanvasState.updateCanvasData` 是唯一业务数据更新入口并输出 `[CanvasStateUpdate]`。
+- `useGroupExecution.commit` 已迁移到该入口；执行节点函数 patch 会先与旧 data 合并，避免删除图片时丢失其他字段或实例快照。
+- ImageResult 分组/历史切换仍为展示态；历史删除只修改指定版本。回归测试覆盖跨分组删除、跨版本隔离和执行实例局部 patch。

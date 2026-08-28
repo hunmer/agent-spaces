@@ -37,10 +37,28 @@ Migrate `packages/web` from the current shadcn setup toward Coss UI conventions 
 
 ## Current Task
 - Target: `packages/server/agent-spaces-data/mini-apps/game-asset-canvas/src`
-- Goal: group-scoped Ctrl+A, node context-menu info copy, and one-click downstream image-display creation.
+- Goal: prevent deleting one output image from clearing other output/history groups by routing node/group/output data writes through a source/key/value/method dispatcher.
 
 ## Background Service Extension (2026-08-28)
 - [completed] Add generic mini-app background service manager and built-in async image persistence task
 - [completed] Wire background register/submit events into mini-app WS and host API
 - [completed] Migrate game-asset-canvas workspace image persistence to background submission and result replacement
 - [completed] Update miniapp documentation and validate compilation
+
+## Unified Output State Updates (2026-08-28)
+- [completed] Inventory every node/group/history/output write path
+- [completed] Define and implement one source/key/value/method update dispatcher
+- [completed] Route ImageResult historical deletion and execution writes through dispatcher
+- [completed] Remove noisy GroupExecutionDebug logs; keep dispatcher diagnostics only
+- [completed] Add regression tests for single-image deletion preserving all groups
+- [completed] Run focused tests and document residual risks
+
+## Resolution
+- Root cause confirmed: execution function patches were treated as full node-data replacements, and full execution commits could race output deletion. Both paths now use targeted updates and preserve unrelated fields.
+- Residual scope: layout/selection/import/restore operations still intentionally use collection setters because they are explicit structural/full-canvas operations, not output or execution data patches.
+
+## Ranked hypotheses
+1. Full `batchExecution` commits from `useGroupExecution` overwrite newer run/output data.
+2. Execution node updates derive from stale `run.nodeStates`/`nodesRef` and replace unrelated node data.
+3. Output resource IDs fail to match images (lower likelihood; would not explain cross-group clearing alone).
+4. Output-binding effect commits a filtered display snapshot as persistent source data.

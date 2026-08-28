@@ -155,7 +155,10 @@ export function updateRunNodeState(execution, target, nodeData) {
 
 export function applyExecutionNodePatch(oldData, patch) {
   const previous = oldData || {};
-  const next = typeof patch === 'function' ? patch(previous) : { ...previous, ...(patch || {}) };
+  // 函数 patch 与对象 patch 具有相同的局部更新语义；不能把函数返回值
+  // 当作完整 data 替换，否则删除 output 图片时会丢掉该执行实例的其他字段。
+  const patchValue = typeof patch === 'function' ? patch(previous) : patch;
+  const next = { ...previous, ...(patchValue || {}) };
   const isDone = next?.status === 'done';
   const wasNotDone = previous?.status !== 'done';
   const hasOutputImages = Array.isArray(next?.output?.images) && next.output.images.length > 0;

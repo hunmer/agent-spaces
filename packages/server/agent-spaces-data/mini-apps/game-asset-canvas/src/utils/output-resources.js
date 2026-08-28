@@ -91,3 +91,13 @@ export function updateOutputVersion(versions, activeVersion, output) {
     ? { ...version, output: { ...(version.output || {}), ...output } }
     : version);
 }
+
+export function removeOutputVersionImages(versions, versionIndex, ids) {
+  if (!Array.isArray(versions) || !Number.isInteger(versionIndex) || !versions[versionIndex]) {
+    return versions;
+  }
+  const version = versions[versionIndex];
+  const output = version.output || {};
+  const next = removeOutputAssetItems(output.images, output.resources, ids);
+  return updateOutputVersion(versions, versionIndex, next);
+}

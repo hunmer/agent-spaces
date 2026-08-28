@@ -903,7 +903,7 @@
     }
   ],
   "createdAt": 1782287549292,
-  "updatedAt": 1787889572791,
+  "updatedAt": 1787889976298,
   "published": false,
   "enabledPlugins": [
     "workflow.openai",
@@ -920,5 +920,7 @@
     "nodeDisplayMode": "normal"
   },
   "lastOpenedAt": 1787889520815,
-  "pluginConfigSchemes": {}
+  "pluginConfigSchemes": {
+    "workflow.ai-image": "本地gemini"
+  }
 }

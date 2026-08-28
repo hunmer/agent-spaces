@@ -1,20 +1,20 @@
 # 游戏资产生成画布 (game-asset-canvas)
 
-Agent Spaces 宿主里的 React mini-app，用 ReactFlow 搭一个节点化的游戏资产生成画布：节点调工作流（文生图/编辑/抠图/放大/语音/视频）或跑本地图像算法（GIF/像素化/网格拼接），节点间连线传递图片/视频/文本产物，支持多工作区隔离 + 复制粘贴 + 分组 overlay/多实例执行 + Agent RPC 操控画布。
+Agent Spaces 宿主里的 React mini-app，用 ReactFlow 搭一个节点化的游戏资产生成画布：38 种节点调工作流（文生图/编辑/抠图/放大/语音/视频/深度图/任意工作流）或跑本地图像算法，外加浏览器端编辑器（Painterro/Pixelorama/Photopea/蒙版/Spine 骨骼/3D 导演台）与分镜创作子域；节点间连线传图片/视频/音频/文本产物，支持多工作区隔离 + 复制粘贴/属性粘贴 + 分组多实例执行 + 执行队列 + 画布版本 + Agent RPC 操控画布。
 
-项目**无 package.json、无构建步骤**，所有运行时依赖经宿主 allowlist（`@xyflow/react` / `@dagrejs/dagre` / `@agent-spaces/ui`）或本地 vendor / CDN 加载（fabric/painterro/pixelorama/gifenc/browser-image-compression/PixiJS/pixi-spine/JSZip）。源码三层结构：Canvas.jsx 只做编排，业务逻辑在 hooks，纯函数/单例在 utils，展示子组件在 components/canvas；Spine 编辑子域集中在 `src/spine/`。
+项目**无 package.json、无构建步骤**，所有运行时依赖经宿主 allowlist（`@xyflow/react` / `@dagrejs/dagre` / `@agent-spaces/ui`）或本地 vendor / CDN 加载。源码三层结构：Canvas.jsx 只做编排，业务逻辑在 hooks（26 个），纯函数/单例在 utils，展示子组件在 components/canvas；编辑器子域独立目录（`src/spine/`、`ui-splitter/`、`utils/reskin/`）。
 
-> **本文件是轻量索引**，细节在 `claude/*.md`。旧版单文件契约已废弃（仍保留作历史参考），新内容请写到 `claude/` 详情文件。
+> **本文件是轻量索引**，细节在 `claude/*.md`；逐轮改动与最新坑点查 `src/handoff.md`（活文档，优先级更高）。
 
 ## 优先约定（务必遵守）
 
 - **改动生效**：`src/**` 刷新即生效；`src/services/*.js` chokidar 热重载；宿主层（`packages/web/*` / `packages/server/*`）**必须重启 web**。
-- **ReactFlow**：不要在 `decoratedNodes` 覆盖 `selected`；建节点必须同时给顶层 `width/height` + `style:{width,height}`；节点内容区加 `nodrag nopan nowheel`；`deleteKeyCode={['Backspace','Delete']}`。
-- **工作流**：必须 `max_wait_ms:600000`（默认 120s jimeng/可灵超时）；外链图提交前 `normalizeImageUrls`；产出图 `persistImagesToBackend` 下载到 data/。
-- **持久化**：写入走 `services/canvas.js` 单写者（不绕过）；多工作区数据存 `configs/workspaces/<id>/`，设置/提示词库/面板布局全局共享。
-- **本地算法**：`(ImageData, params) => ImageData` 统一签名；云端处理器（enhance/compress/cutout.workflow）用 `__url` 透传跳过 ImageData 管道；批量并发用 `Promise.allSettled`。
+- **ReactFlow**：不要在 `decoratedNodes` 覆盖 `selected`；建节点必须同时给顶层 `width/height` + `style:{width,height}`；节点内容区加 `nodrag nopan nowheel`；边颜色/标签是展示态不写持久化。
+- **数据派生**：透传节点（imageDisplay/videoDisplay）转发本轮派生输入（含空数组）；videoEditor 上游视频去重合并；输出协议 `images: string[]` + 可选 `resources[]`（thumb/groupName/label）；列表 key 用 occurrenceKeys。
+- **工作流**：必须 `max_wait_ms:600000`；提交前 `normalizeImageUrls`；产出 `persistImagesToBackend` 落地（工作区 directory 时单写落本地）；媒体节点走 onGenerateMedia + returnRawEndOutput。
+- **持久化**：写入走 `services/canvas.js` 单写者；多工作区数据存 `configs/workspaces/<id>/`，settings/提示词库/面板布局/节点预设全局共享；config 初读三重读取。
+- **执行**：生成记录双路径都写 history；队列中断立即清节点状态并丢弃晚到结果；分组多实例按冻结的 executionTarget 写回。
 - **依赖**：从 `@agent-spaces/ui` 命名导入图标（不要直接 `lucide-react`）；不要 `URL.createObjectURL` 存图（用 `uploadFile`）。
-- **TDZ 规避**：被依赖的 const/useCallback 必须先声明（如 `REMBG_MODELS` 在 `CUTOUT_PARAMS` 前）。
 
 更多见 [开发约定](claude/conventions.md)。
 
@@ -22,16 +22,16 @@ Agent Spaces 宿主里的 React mini-app，用 ReactFlow 搭一个节点化的�
 
 | 文件 | 用途 | 何时阅读 |
 |------|------|---------|
-| [架构总览](claude/overview.md) | 在宿主中的位置、三层源码结构、核心数据流、关键设计取舍 | 首次了解项目时 |
-| [开发约定](claude/conventions.md) | 改动生效规则、ReactFlow/状态/工作流/图片处理/Agent RPC 约定、命名风格、安全边界 | 改代码前必读 |
-| [模块职责](claude/module-responsibilities.md) | 节点类型清单、17 个 hooks、utils、components、services、api/tools 职责 | 找某模块在哪实现 |
-| [入口与启动](claude/entrypoints.md) | manifest 注册、index.jsx、Canvas 启动流程、工作区切换重载、服务端单写者加载 | 调启动问题/理解初始化 |
-| [对外接口](claude/public-interfaces.md) | Agent 画布 API（10 handler）、服务端单写者 handlers、宿主 API、工作流契约 | 改 Agent 能力/service handler 时 |
-| [依赖与配置](claude/dependencies-and-config.md) | 宿主暴露的库、vendor 本地库、CDN 库、configs/ 数据布局、环境差异 | 加新依赖/改配置时 |
-| [数据模型](claude/data-model.md) | Node/Edge/Group/HistoryItem/Settings/Workspaces/PromptItem/AssetLibrary 结构 | 改持久化数据时 |
-| [测试与质量](claude/testing-and-quality.md) | 语法自检脚本、质量风险表、lint/类型检查、调试技巧 | 验收/排查问题时 |
-| [文件索引](claude/file-map.md) | 完整目录树（101 个 JS/JSX）+ 关键路径速查 | 找文件位置 |
-| [FAQ](claude/faq.md) | 改动不生效/删除键失效/工作流超时/图片丢失/错位等常见问题定位 | 遇到坑先查这里 |
+| [架构总览](claude/overview.md) | 在宿主中的位置、源码结构、核心数据流、关键设计取舍 | 首次了解项目时 |
+| [开发约定](claude/conventions.md) | 改动生效规则、ReactFlow/数据派生/执行/Agent RPC/UI-CSS 约定、安全边界 | 改代码前必读 |
+| [模块职责](claude/module-responsibilities.md) | 38 种节点类型、26 个 hooks、utils 四组、components、services、spine 子域 | 找某模块在哪实现 |
+| [入口与启动](claude/entrypoints.md) | manifest 注册、Canvas 启动流程、工作区切换重载、Chat 插槽、RPC 启动 | 调启动问题/理解初始化 |
+| [对外接口](claude/public-interfaces.md) | Agent 画布 API（~27 handler）、RPC 13 case、服务端 31 handler、宿主 API、插件工具、工作流契约 | 改 Agent 能力/service handler 时 |
+| [依赖与配置](claude/dependencies-and-config.md) | 宿主暴露的库、vendor/CDN 库、configs/ 数据布局、settings 全字段、工作区 directory | 加新依赖/改配置时 |
+| [数据模型](claude/data-model.md) | Node/Edge/Group/HistoryItem/版本快照/LastParams/预设/Settings/Workspaces 结构 | 改持久化数据时 |
+| [测试与质量](claude/testing-and-quality.md) | node:test 运行方式、语法自检脚本、质量风险表、调试技巧 | 验收/排查问题时 |
+| [文件索引](claude/file-map.md) | 目录树（297 个 JS/JSX）+ 关键路径速查 | 找文件位置 |
+| [FAQ](claude/faq.md) | 改动不生效/删除键失效/派生残留/key 重复/RPC 超时/执行写错 run 等常见问题 | 遇到坑先查这里 |
 | [更新记录](claude/changelog.md) | init-project 索引生成/更新记录（最近 5 条） | 看本索引何时更新过 |
 
 ## 模块索引（项目内的子域）
@@ -39,52 +39,39 @@ Agent Spaces 宿主里的 React mini-app，用 ReactFlow 搭一个节点化的�
 ```mermaid
 graph TD
     A[index.jsx 入口] --> B[Canvas.jsx 编排层]
-    B --> C[hooks 17个]
-    B --> D[components/canvas 5个]
-    B --> E[components/nodes 19个]
-    C --> F[utils 纯函数/单例]
-    F --> G[utils/image-ops 本地算法]
-    D --> K[spine 编辑器 React UI]
+    B --> C[hooks 26个]
+    B --> D[components/canvas 16个]
+    B --> E[components/nodes 43个]
+    B --> RP[right-panel 8个 + agent-chat 插槽]
+    C --> F[utils ~50顶层 + image-ops + reskin]
+    B --> K[Spine 宿主 UI]
     K --> L[src/spine 编辑核心]
     L --> M[vendor/spine 本地 dist]
-    B --> H[services/canvas.js 单写者]
-    I[api.js / tools.js] -.RPC.-> J[useCanvasAgentRpc]
+    B --> H[services/canvas.js 单写者 31 handler]
+    I[api.js + api/ + tools.js] -.RPC 13 case.-> J[useCanvasAgentRpc]
     J --> C
 ```
 
-- **components/**（顶层 17 + canvas 5 + nodes 19）：UI 展示
-- **hooks/**（17）：业务逻辑，自带 state/effect
-- **utils/**（16 顶层 + 11 image-ops）：纯函数/常量/单例
-- **services/**（1）：服务端单写者
-- **api.js / tools.js**：Agent 对外接口（RPC 到浏览器）
+- **components/**（顶层 ~45 + canvas 16 + nodes 43 + right-panel 8 + ui-splitter 10）：UI 展示与对话框
+- **hooks/**（26）：业务逻辑，自带 state/effect
+- **utils/**（~50 顶层 + 11 image-ops + 9 reskin）：纯函数/常量/单例
+- **services/**（1）+ **api/ api.js tools.js**：服务端单写者 + Agent 对外接口
+- **spine/**：Spine 编辑核心（非 React），宿主 UI 在 components/Spine*
 
 ## 扫描状态
 
-- **更新时间**：2026-07-29
-- **已扫描**：`src/` 全部源码（101 个 JS/JSX），关键文件定点读取 13 个（Canvas/constants/services/api/workflow/image-ops/useCanvasState/useNodeExecutions/useCanvasAgentRpc/settings/storage/manifest/handoff）
-- **跳过**：`vendor/`（51MB 二进制）、`assets/`（静态资源）、`chat/` `data/` `configs/`（运行时数据）、`src/handoff.md`（已提炼到详情）
-- **覆盖率**：核心源码 100%，节点组件（19 个）和顶层 components（17 个）按文件名 + 关键代表性样本（NodeShell 不在本轮定点读取，但其约定已在 conventions/faq 提炼）
-- **2026-07-29 增量**：Spine 独立 Vite/iframe 项目已迁入 `src/spine/`，宿主 UI 在 `SpineEditorDialog.jsx` / `SpinePanels.jsx` / `ReskinPanel.jsx`，运行时固定 dist 在 `vendor/spine/`。
-- **2026-07-30 增量**：Spine loader 按 JSON 版本路由 3.8/4.2 runtime；4.2 使用本地 `spine-pixi-v7@4.2.119` IIFE。录制停止后先预览，再选择导出到画布或下载。
-- **2026-07-30 换肤生成图**：`ReskinPanel` 使用 Media Gallery 展示 `edit_image` 生成图；图片保留到手动删除，`runReskin` 支持复用并跳过重复生成。
-- **2026-07-30 换肤稳定性**：SAM 结果先转 Canvas 再侵蚀；Pixi atlas 热预览更新既有 ImageResource，支持重复替换；表单滚动且日志保持固定高度。
-- **2026-07-30 换肤白图修复**：热预览使用保持原 region 坐标的 atlas（旧 UV 不采样 repack 布局）；SAM 对整图使用 bbox prompt；形状交集先 rembg 去背景，再做连通域 + 原轮廓 IoU；生成记录展示原图、生成/去背景阶段与最终 Atlas 前后对比。
-- **2026-07-30 换肤记录持久化**：生成记录迁移到 `configs/spine-reskin-history.json`，按资源签名隔离并通过 `services/canvas.js` 单写；图片和三件套先上传，JSON 仅保存 URL，支持刷新恢复与多端同步。
-- **2026-07-30 独立 SAM 插件**：SAM 换肤改为 `workflow.sam/sam_segment_with_boxes`，整图与全部 bbox 一次提交；灰度 mask 只写入生成图 alpha。`workflow.rembg` 仅保留给形状交集和局部重绘去背景。
-- **2026-07-31 编辑图片蒙版入口**：输入缩略图悬浮时在底部显示编辑/删除图标，可直接打开 `MaskPaintDialog`；绘制快照存 `data.editMaskPaintData`，导出结果复用 `params.mask`。
-- **2026-08-01 文本产物**：新增 Markdown `TextNode`；`computeInputTexts` 按 edge 的 `inputTarget` 派生文本引用，反推提示词结果改由节点外置 `NodeOutput` 展示并可继续连线。
-- **2026-08-01 画布样式菜单**：画布菜单支持切换背景、Handle 上下/左右方向和自动吸附，使用全局 settings 持久化。
-- **2026-08-04 文件拖拽自动平移**：系统文件或节点图片拖到画布 72px 边缘热区时按距离连续平移，四角支持双轴移动，离开或结束拖拽立即停止。
-- **2026-08-04 输出分组与标签**：`output.images` 继续保存 URL 数组；并行 `output.resources[]` 可选携带 `groupName`/`label`，节点输出按组折叠并在缩略图右上角展示标签。视频编辑器导出的精灵图以动画组名称写入 `groupName`。
-- **2026-08-04 动画组刷新持久化**：视频编辑器的 currentVideo 清理 effect 用 ref 跳过首次挂载，仅在用户实际切换视频时清空帧和动画组，避免刷新后覆盖已保存数据。
-- **2026-08-04 分镜创作**：从“文案转分镜”移植角色与分镜能力；新增内联 storyboard 节点、工作区共享角色库和场景级图片/视频/语音输出。
-- **2026-08-04 分镜交互调整**：角色管理从 RightPanel 移入 storyboard 节点；AI 拆镜按按钮展开并使用 Settings 全局 Agent；分镜支持手柄拖拽排序。
-- **2026-08-04 角色库对话框**：storyboard 节点以按钮打开角色库 Dialog，节点正文不再内嵌角色编辑区域。
-- **2026-08-04 分镜生成交互**：角色生图使用文生图/图生图双 Tab Dialog；storyboard 顶部设置图标打开统一四 Tab 参数 Dialog。生成素材保存在对应 scene 并在卡片内预览；场景角色通过 Avatar Group + checkbox 选择器维护。
-- **2026-08-04 分镜导航与瀑布流**：scene 图片用宿主 `Masonry` 三列布局并读取自然宽高比；列表左侧 sticky 缩略导航以首图或序号展示，点击平滑滚动到 scene ref。
-- **2026-08-04 分镜输出 Handle**：列表右侧按 scene 数量在 `NodeShell` 外部渲染 source handle，避免 overflow 裁剪；多素材连接先选素材再过滤兼容输入，边以 `data.sourceAsset` 保存选中图片/视频/音频并只向下游派生该素材。
-- **2026-08-27 分组全选与节点快捷动作**：激活分组时 `Ctrl/Cmd+A` 仅选中组内节点；节点右键菜单支持复制节点 JSON 信息，以及创建并连线下游图片展示节点。
+- **更新时间**：2026-08-28
+- **已扫描**：src 全部源码结构（297 个 JS/JSX，不含 vendor；含 ~62 个 node:test）；定点核对 6 个权威源（constants/settings/api/services/manifest/handoff）
+- **跳过**：vendor/（二进制）、assets/、chat/、data/、configs/ 内容值、根目录历史交接文档
+- **覆盖率**：目录结构与常量/接口 100%；组件内部实现按 handoff.md 提炼，未逐文件细读
 - **建议下一步深挖**：
-  - 如需精确节点组件实现细节，定点读 `components/nodes/<具体>.jsx`
-  - 如需精确 image-ops 算法实现，定点读 `utils/image-ops/<具体>.js`（gif.js / matte.js / pixelate.js 等）
-  - 改宿主层时另读 `packages/web/src/components/mini-apps/react-renderer.tsx` + `ui-exports.ts` + `use-mini-app-host-api.tsx`
+  - 精确节点组件实现：定点读 `components/nodes/<具体>.jsx`
+  - 精确算法实现：`utils/image-ops/`、`utils/reskin/`
+  - 改宿主层：`packages/web/src/components/mini-apps/react-renderer.tsx` + `ui-exports.ts` + `use-mini-app-host-api.tsx`
+
+## 产出状态更新约定（2026-08-28）
+
+- 节点/分组业务数据写入统一调用 `useCanvasState.updateCanvasData({ source, targetType, targetId, key, value, method })`；入口按目标 id 和 key 做局部更新并输出唯一 `[CanvasStateUpdate]` 调试日志。
+- `updateNodeData(nodeId, patch)` 仅是兼容包装，函数 patch 表示基于当前 data 生成局部 patch，不得作为完整 data 替换。
+- `useGroupExecution.commit` 不得直接 `setNodes/setGroups` 全量映射；执行实例提交必须携带 `source: 'group-execution'` 并精确更新目标分组/节点。
+- ImageResult 的分组/历史切换只改变展示态；删除历史图片只更新指定版本，不能把过滤后的展示数组写回其他版本或分组。

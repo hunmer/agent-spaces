@@ -13,12 +13,14 @@
   "mainFile": "index.jsx",
   "icon": "🎮",
   "enableAgents": true,
-  "agents": [{ "id": "canvas-assistant", ... }]
+  "agentChatPlacement": "mini-app-slot",
+  "agents": ["canvas-assistant", "prompt-optimizer", "game-planner"]
 }
 ```
 
 - 宿主扫到 `manifest.json` 后用 `react-renderer.tsx` 把 `src/index.jsx` 默认导出渲染进容器。
-- `enableAgents: true` + `agents[]` 注册画布助手 agent（systemPrompt 内嵌节点类型清单和操作策略）。
+- `enableAgents: true` + `agents[]` 注册 3 个画布 agent（systemPrompt 内嵌操作策略，工具描述自解释）。
+- `agentChatPlacement: "mini-app-slot"`：宿主把 MiniAppAgentDock 经 React Portal 挂到 RightPanel 注册的 `agent-chat` DOM 插槽（mini-app 经 registerHostSlot/updateHostSlotState 同步 tab 状态；Chat 会话仍归宿主管理，插槽激活态独立于 DOM 保存）。
 
 ## 代码入口（src/index.jsx）
 
@@ -49,17 +51,20 @@ useCanvasState(activeId)            // loadCanvas 读 configs/workspaces/<active
    ↓ loaded=true
 Canvas 渲染门控：!activeId || !loaded → 显示「加载中…」（避免空数据闪烁）
    ↓
-useWorkflow / useGenerationHistory / useSettings / useExecutionQueue / usePanelLayout
-useImageOutputs → useExecutionQueue（onComplete 前向引用 addImageNodesFromUrls）
-useNodeCrud / useNodeExecutions / useSelectionClipboard / useGroupOperations
-useCanvasAgentRpc（订阅一次 WS）
+useWorkflow(directory) / useGenerationHistory / useSettings / useExecutionQueue / usePanelLayout
+useLastParams / useNodePresets / useImageOutputs / useImageSelection
+useNodeCrud / useNodeExecutions / useSelectionClipboard / useGroupOperations / useGroupExecution
+useStoryboardOperations / useCharacterLibrary / useAssetLibrary / useSpineReskinHistory
+useAlignmentGuides / useCanvasDragAutoPan / useViewportActivation
+   ↓ nodeCallbacks useMemo（decoratedNodes 依赖的回调聚合）
+useCanvasAgentRpc（订阅一次 WS；必须在 nodeCallbacks 之后，TDZ）
 useDecoratedNodes（注入 callbacks）
    ↓
 <ResizablePanelGroup>
-  <ResizablePanel id=canvas-main>  <Toolbar/> + <ReactFlow nodes={decoratedNodes}> + <MultiSelectToolbar/> + <DropNodeMenu/> </ResizablePanel>
+  <ResizablePanel id=canvas-main>  <Toolbar/> + <ReactFlow nodes={decoratedNodes}> + CanvasWorkspace 子层 </ResizablePanel>
   <ResizableHandle/>
-  <ResizablePanel id=canvas-right> <RightPanel/> </ResizablePanel>
-  <SettingsDialog/> <NodeFormDialog/> <NodeExecuteDialog/>
+  <ResizablePanel id=canvas-right> <RightPanel/>（含 agent-chat 宿主插槽）</ResizablePanel>
+  <CanvasOverlayDialogs/>  # 弹窗层聚合
 </ResizablePanelGroup>
 ```
 
@@ -88,7 +93,7 @@ WorkspaceSwitcher 切换 → invokeService('switch_workspace', {id})
 
 ## Agent RPC 启动
 
-`useCanvasAgentRpc` 在 `Canvas` 挂载时 `useEffect([])` 调 `window.AgentSpaces.onTaskEvent(cb)` 订阅 WS，按 `event === 'miniApp.clientRequest'` 分流到节点/边操作。`respond(requestId, result)` 用 `AS.respondClientRequest` 回给服务端（Promise resolve）。
+`useCanvasAgentRpc` 在 `Canvas` 挂载时 `useEffect([])` 调 `window.AgentSpaces.onTaskEvent(cb)` 订阅 WS，按 `event === 'miniApp.clientRequest'` 分流 13 个 case。`respond(requestId, result)` 用 `AS.respondClientRequest` 回给服务端（Promise resolve）。onTaskEvent 回调是 async（waitNodeResult 用 `await new Promise` 轮询）。
 
 ## 无构建步骤
 

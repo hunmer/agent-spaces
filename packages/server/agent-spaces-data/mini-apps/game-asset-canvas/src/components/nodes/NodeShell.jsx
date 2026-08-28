@@ -147,6 +147,7 @@ export default function NodeShell({
     onAddToAssets: data?.onAddToAssets,
     onAddImages: data?.onAddImages,
     onRemoveImage: data?.onRemoveImage,
+    onRemoveVersionImages: data?.onRemoveVersionImages,
     onClearImages: data?.onClearImages,
     onReorderImages: data?.onReorderImages,
     versions: data?.versions,

@@ -25,7 +25,7 @@ import { dedupeTags } from '../utils/canvas-constants';
  * @param {object} deps.callbacks  注入到节点 data 的回调集合：
  *   { makeOnUpdate, onGenerate, onGenerateMedia, onExportImages, onProcessImage, onProcessLocal,
  *     onCutout, onCutoutCreate, onCancelProcess, onPromptReverse, onEditImages, onAutoSize, onAutoSizeToContent,
- *     onBBoxCutout }
+ *     onBBoxCutout, onRemoveVersionImages }
  * @returns {{ decoratedNodes: Array }}
  */
 export default function useDecoratedNodes({
@@ -52,7 +52,7 @@ export default function useDecoratedNodes({
       onProcessImage, onProcessLocal, onCutout, onCutoutCreate, onCancelProcess,
       onPromptReverse, onEditImages, onAutoSize, onAutoSizeToContent, onBBoxCutout, onResetParams,
       onAddToAssets,
-      onAddOutputImages, onRemoveOutputImage, onClearOutputImages, onReorderOutputImages,
+      onAddOutputImages, onRemoveOutputImage, onRemoveVersionImages, onClearOutputImages, onReorderOutputImages,
       onSwitchVersion,
       onDeleteUpstreamImage,
       onExportVideos,
@@ -198,6 +198,9 @@ export default function useDecoratedNodes({
           // 产出区添加/删除单张/清空（绑定 nodeId，写 data.output.images；节点 ImageResult 透传）
           onAddImages: onAddOutputImages ? (urls) => onAddOutputImages(nd.id, urls) : undefined,
           onRemoveImage: onRemoveOutputImage ? (index) => onRemoveOutputImage(nd.id, index) : undefined,
+          onRemoveVersionImages: onRemoveVersionImages
+            ? (versionIndex, ids) => onRemoveVersionImages(nd.id, versionIndex, ids)
+            : undefined,
           onClearImages: onClearOutputImages ? () => onClearOutputImages(nd.id) : undefined,
           onReorderImages: onReorderOutputImages ? (next, nextResources) => onReorderOutputImages(nd.id, next, nextResources) : undefined,
           // 版本切换（还原 params/output/status 到历史版本；节点 ImageResult 渲染版本标记）

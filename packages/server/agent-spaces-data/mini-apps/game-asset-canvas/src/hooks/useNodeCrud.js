@@ -99,7 +99,7 @@ export function historyToNodePatch(item) {
  */
 export default function useNodeCrud({
   nodes, edges, groups, setNodes, setEdges, setGroups,
-  reactFlow, selectedId, setSelectedId, updateNodeData, settings, submit,
+  reactFlow, selectedId, setSelectedId, updateCanvasData, updateNodeData, settings, submit,
   setDropNodeMenu, setContextMenu, setPendingConnection,
   getViewportCenter, getLastParams, saveLastParams,
   onDropPreset,
@@ -575,14 +575,21 @@ export default function useNodeCrud({
         width: w,
         height: h,
         style: { ...nd.style, width: w, height: h },
-        data: {
-          ...nd.data,
-          rotation: nextRotation,
-          imageSize: { width: naturalWidth, height: naturalHeight },
-        },
       };
     }));
-  }, [setNodes]);
+    updateCanvasData?.({
+      source: 'node-auto-size',
+      targetType: 'node',
+      targetId: nodeId,
+      key: 'data',
+      value: (data) => ({
+        ...(data || {}),
+        rotation: nextRotation,
+        imageSize: { width: naturalWidth, height: naturalHeight },
+      }),
+      method: 'update',
+    });
+  }, [setNodes, updateCanvasData]);
 
   // 首次内容高度自适应（NodeShell ResizeObserver 上报，仅首次触发）
   const handleAutoSizeToContent = useCallback((nodeId, height) => {

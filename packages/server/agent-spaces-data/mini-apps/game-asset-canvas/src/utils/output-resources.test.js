@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createOutputAssetItems, createOutputResourceId, groupOutputAssetItems, removeOutputAssetItems, updateOutputVersion } from './output-resources.js';
+import { createOutputAssetItems, createOutputResourceId, groupOutputAssetItems, removeOutputAssetItems, removeOutputVersionImages, updateOutputVersion } from './output-resources.js';
 
 test('output resources remain optional and legacy images stay ungrouped', () => {
   const items = createOutputAssetItems(['a.png', 'b.png']);
@@ -88,6 +88,20 @@ test('updating the active output version persists manual deletions across versio
   assert.deepEqual(next[0], versions[0]);
   assert.deepEqual(next[1].output, { images: [], resources: [] });
   assert.deepEqual(versions[1].output.images, ['current.png']);
+});
+
+test('permanently removing an image from one history version preserves other versions', () => {
+  const versions = [
+    { output: { images: ['a.png'], resources: [{ id: 'a', url: 'a.png', groupName: '1' }] } },
+    { output: { images: ['b.png', 'c.png'], resources: [
+      { id: 'b', url: 'b.png', groupName: '1' },
+      { id: 'c', url: 'c.png', groupName: '2' },
+    ] } },
+  ];
+  const next = removeOutputVersionImages(versions, 1, 'b');
+  assert.deepEqual(next[0], versions[0]);
+  assert.deepEqual(next[1].output.images, ['c.png']);
+  assert.deepEqual(next[1].output.resources.map((item) => item.id), ['c']);
 });
 
 test('deleting an ID from history 1 does not change the same index in history 2', () => {

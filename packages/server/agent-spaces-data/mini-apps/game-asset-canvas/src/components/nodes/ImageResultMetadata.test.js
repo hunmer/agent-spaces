@@ -45,5 +45,22 @@ test('history output selection stays display-only and never calls parent writeba
   assert.match(resultSource, /setDisplayVersion\(i\)/);
   assert.doesNotMatch(resultSource, /onSwitchVersion\(i\)/);
   assert.match(resultSource, /const isHistoricalView = !!displaySnapshot/);
-  assert.match(resultSource, /onRemoveImage && !isHistoricalView/);
+  assert.match(resultSource, /const handleDisplayedRemove = \(ids\) =>/);
+  assert.match(resultSource, /removeOutputAssetItems\(displayImages, displayResources, ids\)/);
+});
+
+test('historical delete delegates the selected version index for permanent persistence', () => {
+  assert.match(resultSource, /onRemoveVersionImages\(displayVersion, ids\)/);
+  assert.match(resultSource, /onRemoveVersionImages\(displayVersion, displayItems\.map\(\(item\) => item\.id\)\)/);
+});
+
+test('historical delete path keeps current output as its own source', () => {
+  const canvasSource = fs.readFileSync(new URL('../Canvas.jsx', import.meta.url), 'utf8');
+  const handler = canvasSource.slice(
+    canvasSource.indexOf('const handleRemoveVersionImages = useCallback'),
+    canvasSource.indexOf('// 产出图重排序', canvasSource.indexOf('const handleRemoveVersionImages = useCallback')),
+  );
+  assert.match(handler, /removeOutputVersionImages\(versions, versionIndex, ids\)/);
+  assert.match(handler, /removeOutputAssetItems\(\s*currentOutput\.images,\s*currentOutput\.resources,\s*ids/);
+  assert.doesNotMatch(handler, /patch\.output = \{[^}]*images: next\.images/);
 });

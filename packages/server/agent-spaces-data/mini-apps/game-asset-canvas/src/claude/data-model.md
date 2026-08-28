@@ -19,7 +19,7 @@ interface Node {
 }
 
 interface NodeData {
-  label?: string;                // 节点标题（NODE_META[type].label 默认）
+  title?: string;                 // 自定义标题（EditableNodeTitle 原位编辑；空则回退 NODE_META[type].label）
   status?: 'idle' | 'running' | 'done' | 'error' | 'cancelled';
   error?: string;                // 错误信息（status='error' 时）
   statusMsg?: string;            // 运行中状态文案（如「压缩图片 3/5…」）
@@ -43,9 +43,11 @@ interface NodeData {
   textVariableValues?: Record<string, Record<string, string>>; // 持久化：字段 -> 变量 -> 手动 fallback
   textVariableBindings?: Record<string, Record<string, Array<object>>>; // 运行时派生，不持久化
   selectionCount?: number;       // 当前选中节点总数（多选时隐藏 NodeToolbar）
+  outputPreviewMode?: boolean;   // 节点级输出预览开关（缺省 false）
   agentConfig?: object;          // BBox/反推提示词 AI 配置（从 settings 注入）
   groupAssetInputUrls?: string[]; // 分组「按上传素材执行」注入的只读输入 URL
   protectedUpstreamImageUrls?: string[]; // 运行时派生：来自上述分组素材、不可断开的上游 URL
+  // 各功能对话框的编辑态存 data.<featureData>（gridStitchData/editMaskPaintData/bboxData 等），不进 Dialog useState
 }
 ```
 
@@ -280,17 +282,36 @@ interface CanvasFile {
 
 ```typescript
 interface HistoryItem {
-  id: string;                    // genId('hist')，如 'hist-xyz'
+  id: string;                    // genId('hist')，如 'hist-xyz'（与工作区目录落地子目录共用）
   nodeId: string | null;         // 来源节点 id（队列产出为 null）
   nodeType: string;              // NODE_TYPES 值（用于 HistoryCard 取 label）
   prompt: string;                // 提示词或处理描述（如 '抠图·workflow'）
   model: string;                 // 模型名 / 'local' / 'image_enchanter' / 'rembg' / 'agent_run'
   images: string[];              // 产出 URL 数组（媒体节点单元素数组）
+  resources?: Array<{ url: string; thumb?: string }>;  // 可选缩略资源（补缩略图后写入；旧数据缺省回退 images）
   mediaType?: 'audio' | 'video' | 'text';  // 媒体产出标记（HistoryCard 按此渲染播放器）
   text?: string;                 // 反推提示词的文本产出（截断 5000）
   createdAt: number;             // Date.now()
 }
 ```
+
+## 画布版本快照
+
+存 `configs/workspaces/<id>/canvas-versions.json`。`api.js` 的 `create_canvas_version` / `list_canvas_versions` / `restore_canvas_version` 维护；`utils/canvas-history.js` 负责快照创建与恢复。
+
+## 上次提交参数（LastParams）
+
+存 `configs/workspaces/<id>/last-params.json`（按工作区隔离）：
+
+```typescript
+Record<nodeType, paramsObject>   // 每节点类型一份（已剥离图片字段）
+```
+
+写：执行回调提交时 `saveLastParams(nodeType, paramsSubset)`；读：`createNodeAt` 合并优先级 `dataPatch.params > lastParams > initialData.params`。
+
+## 节点预设（NodePresets）
+
+存全局 `configs/node-presets.json`（跨工作区共享）：选中节点子图 + 内部连线 + 相关分组的可复用模板数组。`useNodePresets` 维护（add/remove/rename）。
 
 ## Spine 换肤生成记录
 
@@ -338,6 +359,7 @@ interface Workspace {
   id: string;                    // 'default' 或 'ws-<base36>-<random>'
   name: string;
   createdAt: number;
+  directory?: string;            // 可选宿主机绝对路径「数据保存目录」；设了产图落 <directory>/<historyId>/<index>.<ext>（单写非双写）
 }
 ```
 

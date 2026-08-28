@@ -3,7 +3,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { IMAGE_REORDER_MIME } from '../../utils/canvas-constants';
 import { ImageSelectionContext } from '../../context/ImageSelectionContext';
 import { useCanvasGallery } from '../../utils/canvas-gallery';
-import { createOutputAssetItems, groupOutputAssetItems } from '../../utils/output-resources';
+import { createOutputAssetItems, groupOutputAssetItems, removeOutputAssetItems } from '../../utils/output-resources';
 import ImageHoverCard from '../ImageHoverCard';
 
 // 图片加载失败占位：onError 时切换为该块，显示破损图标 + url
@@ -18,7 +18,7 @@ function BrokenImagePlaceholder({ url }) {
 
 /**
  * 节点内的图片网格结果展示，点击用 MediaGallery 打开大图（可翻页）。
- * @param {{ images: string[], resources?: Array<{id?:string,url:string,thumb?:string,groupName?:string,label?:string}>, max?: number, preview?: boolean, onImageLoad?: Function, onAddToAssets?: (payload:string|{url,fileName?}|Array<string|{url,fileName?}>)=>void, fileName?: string, onAddImages?:(urls:string[])=>void, onRemoveImage?:(ids:string|string[])=>void, onClearImages?:()=>void, versions?:Array, activeVersion?:number, onSwitchVersion?:(index:number)=>void }} props
+ * @param {{ images: string[], resources?: Array<{id?:string,url:string,thumb?:string,groupName?:string,label?:string}>, max?: number, preview?: boolean, onImageLoad?: Function, onAddToAssets?: (payload:string|{url,fileName?}|Array<string|{url,fileName?}>)=>void, fileName?: string, onAddImages?:(urls:string[])=>void, onRemoveImage?:(ids:string|string[])=>void, onRemoveVersionImages?:(versionIndex:number,ids:string|string[])=>void, onClearImages?:()=>void, versions?:Array, activeVersion?:number, onSwitchVersion?:(index:number)=>void }} props
  * @param {number} [props.max] 单网格最多展示张数，0 或缺省表示全部（GIF 拆帧等可能产出数十帧）
  * @param {boolean} [props.preview] 输出预览模式：无标签/边框，图片全宽纵向排列
  * @param {Function} [props.onImageLoad] 图片加载完成回调
@@ -32,21 +32,55 @@ function BrokenImagePlaceholder({ url }) {
  * @param {number} [props.activeVersion] 当前选中的版本索引
  * @param {Function} [props.onSwitchVersion] 版本切换回调，回传版本索引
  */
-export default function ImageResult({ nodeId, images, resources = [], max = 0, preview = false, onImageLoad, onAddToAssets, fileName, onAddImages, onRemoveImage, onClearImages, onReorderImages, versions, activeVersion, onSwitchVersion }) {
+export default function ImageResult({ nodeId, images, resources = [], max = 0, preview = false, onImageLoad, onAddToAssets, fileName, onAddImages, onRemoveImage, onRemoveVersionImages, onClearImages, onReorderImages, versions, activeVersion, onSwitchVersion }) {
   const openCanvasGallery = useCanvasGallery();
   const all = images || [];
   // 产出/历史分组切换只改变展示快照，不能调用父级写回当前节点数据。
   const [displayVersion, setDisplayVersion] = useState(null);
-  useEffect(() => { setDisplayVersion(null); }, [versions]);
-  const displaySnapshot = Number.isInteger(displayVersion)
+  const [displayOverrides, setDisplayOverrides] = useState({});
+  useEffect(() => {
+    setDisplayVersion(null);
+    setDisplayOverrides({});
+  }, [versions]);
+  const baseDisplaySnapshot = Number.isInteger(displayVersion)
     && Array.isArray(versions) && versions[displayVersion]?.output
     ? versions[displayVersion].output
     : null;
+  const displaySnapshot = baseDisplaySnapshot && displayOverrides[displayVersion]
+    ? displayOverrides[displayVersion]
+    : baseDisplaySnapshot;
   const displayImages = Array.isArray(displaySnapshot?.images) ? displaySnapshot.images : all;
   const displayResources = Array.isArray(displaySnapshot?.resources)
     ? displaySnapshot.resources
     : resources;
   const isHistoricalView = !!displaySnapshot;
+  const handleDisplayedRemove = (ids) => {
+    if (!isHistoricalView) {
+      onRemoveImage?.(ids);
+      return;
+    }
+    if (onRemoveVersionImages) {
+      onRemoveVersionImages(displayVersion, ids);
+      return;
+    }
+    const next = removeOutputAssetItems(displayImages, displayResources, ids);
+    setDisplayOverrides((current) => ({ ...current, [displayVersion]: next }));
+  };
+  const handleDisplayedClear = () => {
+    if (!isHistoricalView) {
+      onClearImages?.();
+      return;
+    }
+    if (onRemoveVersionImages) {
+      const displayItems = createOutputAssetItems(displayImages, displayResources);
+      onRemoveVersionImages(displayVersion, displayItems.map((item) => item.id));
+      return;
+    }
+    setDisplayOverrides((current) => ({
+      ...current,
+      [displayVersion]: { images: [], resources: [] },
+    }));
+  };
   const assetItems = useMemo(
     () => createOutputAssetItems(displayImages, displayResources),
     [displayImages, displayResources],
@@ -208,7 +242,7 @@ export default function ImageResult({ nodeId, images, resources = [], max = 0, p
             </button>
           )}
           {/* 清空：仅在有产出时显示 */}
-          {onClearImages && !isHistoricalView && all.length > 0 && (
+          {onClearImages && displayImages.length > 0 && (
             <button
               type="button"
               title="清空产出"
@@ -250,8 +284,8 @@ export default function ImageResult({ nodeId, images, resources = [], max = 0, p
         <OutputAssetSection
           key={section.key}
           section={section}
-          onClear={onRemoveImage && !isHistoricalView
-            ? () => onRemoveImage(section.items.map((item) => item.id))
+          onClear={onRemoveImage
+            ? () => handleDisplayedRemove(section.items.map((item) => item.id))
             : undefined}
         >
           <div className="grid grid-cols-3 gap-1">
@@ -297,7 +331,7 @@ export default function ImageResult({ nodeId, images, resources = [], max = 0, p
                   {sel && <Check className="h-2.5 w-2.5" />}
                 </button>
               )}
-              {(onAddToAssets || (onRemoveImage && !isHistoricalView)) && (
+              {(onAddToAssets || onRemoveImage) && (
                 <div className="game-asset-output-actions nodrag nopan nowheel">
                   {onAddToAssets && (
                     <button
@@ -309,10 +343,10 @@ export default function ImageResult({ nodeId, images, resources = [], max = 0, p
                       <FolderPlus className="h-3 w-3" />
                     </button>
                   )}
-                  {onRemoveImage && !isHistoricalView && (
+                  {onRemoveImage && (
                     <button
                       type="button"
-                      onClick={(e) => { e.stopPropagation(); onRemoveImage(item.id); }}
+                      onClick={(e) => { e.stopPropagation(); handleDisplayedRemove(item.id); }}
                       title="从产出删除"
                       className="game-asset-output-action rounded border border-border bg-background/90 text-muted-foreground shadow-sm hover:bg-destructive hover:text-destructive-foreground"
                     >
@@ -332,14 +366,14 @@ export default function ImageResult({ nodeId, images, resources = [], max = 0, p
           <AlertDialogHeader>
             <AlertDialogTitle>清空产出？</AlertDialogTitle>
             <AlertDialogDescription>
-              将移除当前节点的全部 {all.length} 张产出，此操作不可撤销。
+              将移除当前展示中的全部 {displayImages.length} 张产出，此操作不可撤销。
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>取消</AlertDialogCancel>
             <AlertDialogAction
               variant="destructive"
-              onClick={(e) => { e.stopPropagation(); setConfirmClear(false); onClearImages(); }}
+              onClick={(e) => { e.stopPropagation(); setConfirmClear(false); handleDisplayedClear(); }}
             >
               清空
             </AlertDialogAction>

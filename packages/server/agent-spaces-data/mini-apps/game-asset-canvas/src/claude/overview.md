@@ -2,7 +2,7 @@
 
 ## 一句话定位
 
-Agent Spaces 宿主里的 React mini-app，用 ReactFlow 搭一个**节点化的游戏资产生成画布**：节点调工作流（文生图/编辑/抠图/放大/语音/视频）或跑本地图像算法（GIF/像素化/网格拼接），节点间连线传图，支持多工作区隔离 + 复制粘贴 + 分组 overlay + Agent RPC 操控画布。
+Agent Spaces 宿主里的 React mini-app，用 ReactFlow 搭一个**节点化的游戏资产生成画布**：38 种节点调工作流（文生图/编辑/抠图/放大/语音/视频/深度图/任意工作流）或跑本地图像算法（GIF/像素化/网格拼接），外加浏览器端编辑器（Painterro/Pixelorama/Photopea/蒙版/Spine 骨骼/3D 导演台）与分镜创作子域；节点间连线传图片/视频/音频/文本产物，支持多工作区隔离 + 复制粘贴/属性粘贴 + 分组 overlay/多实例执行 + 执行队列 + 画布版本 + Agent RPC 操控画布。
 
 ## 在宿主中的位置
 
@@ -27,29 +27,30 @@ Agent Spaces
 ```text
 src/
   index.jsx                 # 入口：<ReactFlowProvider><Canvas/></ReactFlowProvider>
-  CLAUDE.md                 # 旧版单文件契约（已被本 claude/ 目录替代为详情，仍保留作历史参考）
-  api.js                    # Agent 可调用的画布操作 API（→ RPC 到浏览器）
+  api.js + api/             # Agent 可调用的画布操作 API（→ RPC 到浏览器）；api/ 是 asset 类拆分
   tools.js                  # Agent 工具签名/描述（供宿主注册到 LLM function calling）
-  handoff.md                # 历次迭代的交接文档（仅作 changelog 类参考，不要当代码契约）
+  handoff.md                # 活的索引型交接文档（改 X 去 Y + 坑点清单）
   components/
-    Canvas.jsx              # 编排层（~400行）：hook 装配 + ReactFlow 变更回调 + JSX
-    Toolbar/RightPanel/...   # 顶层 UI
-    canvas/                 # 画布级子组件（右键菜单/落空菜单/多选 toolbar/分组 overlay/添加菜单项）
-    nodes/                  # 节点组件（19个）+ NodeShell 通用外壳 + ImageResult/ParamField 等通用件
-  hooks/                    # 业务逻辑 hooks（17个，见 module-responsibilities.md）
-  utils/                    # 纯函数/常量/单例
-    constants.js            # 全局常量（NODE_TYPES/NODE_META/IMAGE_PROCESSORS/CUTOUT_PARAMS/工作流 ID/Agent 提示词）
-    canvas-constants.js     # Canvas 依赖聚合点（NODE_COMPONENTS/ADD_NODE_ITEMS/initialData）
-    workflow.js             # 工作流调用 + 媒体提取 + 视觉 Agent 文本反推
-    cutout.js               # 统一抠图执行入口（4 种 mode 分流）
-    storage.js / settings.js / layout.js / clipboard.js / export.js / canvas-id.js
-    processing-controllers.js / align-distribute.js / group-helpers.js / input-images.js
-    prompts.js              # 内置提示词库
-    image-ops/              # 本地图像算法（FrameRonin 移植，ImageData 出入参）
+    Canvas.jsx              # 编排层：hook 装配 + ReactFlow 变更回调 + nodeCallbacks useMemo
+    right-panel/            # 右侧 tab 装配（含 agent-chat 宿主插槽）
+    canvas/                 # 画布级子组件（主视图/弹窗层/菜单/多选/辅助线/FloatingEdge/分组 overlay+执行）
+    nodes/                  # 43 个节点组件（NodeShell 外壳 + EditableNodeTitle + 各业务节点）
+    ui-splitter/            # Sheet 拆分编辑器子域
+  hooks/                    # 业务逻辑 hooks（26 个，见 module-responsibilities.md）
+  context/                  # ImageSelectionContext（跨节点图片多选）
+  utils/                    # 纯函数/常量/单例（~50 顶层 + image-ops/ + reskin/）
+    constants.js            # 单一数据源：NODE_TYPES/NODE_META/各 OPTIONS 枚举/WORKFLOWS
+    canvas-constants.js     # Canvas 依赖聚合点（NODE_COMPONENTS/ADD_NODE_ITEMS/NODE_PARAMS_SCHEMA）
+    workflow.js             # 工作流调用 + 产图落地（data 目录 / 工作区数据目录）
+    storyboard*.js          # 分镜子域（解析/handle/生成参数兼容）
+    output-resources.js     # 输出资源协议（images+resources/thumb/groupName）
+    image-ops/              # 本地图像算法（ImageData 出入参）
+    reskin/                 # Spine 换肤管线
   services/
-    canvas.js               # 服务端单写者：画布/历史/设置/工作区/素材库/提示词库 CRUD
-  vendor/                   # 本地大资源（~51MB，Pixelorama web 导出 + fabric/painterro/gifenc 等 UMD）
-  assets/                   # 静态资源（图标/参考图等）
+    canvas.js               # 服务端单写者：31 个 handler（画布/历史/版本/角色/换肤/工作区/素材库）
+  spine/                    # Spine 编辑核心（非 React：loaders/core/exporters）
+  vendor/                   # 本地大资源（Pixelorama ~45MB + director-desk + spine dist + UMD 库）
+  assets/                   # 静态资源
 ```
 
 ## 核心数据流
@@ -58,16 +59,21 @@ src/
 useCanvasState (单一数据源)
    │ nodes / edges / groups
    ↓
-computeInputImages (utils/input-images.js) —— fixed-point 多跳转发，派生 data.images 给接收节点
+computeInputImages / computeInputVideos / computeInputAudios / computeInputTexts (utils/input-images.js 等)
+   —— fixed-point 多跳转发：上游 output.images 派生到下游 data.images（含空数组，透传节点不回退旧值）
+   —— 同步派生 data.imageResources（仅缩略展示）；文本按 edge.inputTarget/inputVariable 派生到 data.textInputValues
    ↓
-decoratedNodes (useDecoratedNodes) —— 注入回调 onUpdate/onGenerate/onProcess*/onCutout/onExportImages 等
+decoratedNodes (useDecoratedNodes) —— 注入 onUpdate/onGenerate/onGenerateMedia/onProcess*/onCutout 等回调
+   —— videoEditor 上游视频去重合并（非覆盖）
    ↓
 <ReactFlow nodes={decoratedNodes} .../>
    ↓
-节点内回调 → useNodeExecutions → 工作流(云端)/本地算法/抠图/反推 → updateNodeData(output.images)
+节点内回调 → useNodeExecutions → 工作流(云端)/本地算法/抠图/反推 → updateNodeData(output.images + output.resources)
    ↓
-产出回 nodes → 触发 computeInputImages 重算 → 下游节点 data.images 更新
+产出回 nodes → 触发 computeInput* 重算 → 下游节点输入更新
 ```
+
+Agent 通路：`api.js handler → ctx.requestClient → mini-app-client-rpc.ts 广播 → useCanvasAgentRpc 分流（13 case）→ respondClientRequest`。宿主 Chat 经 `agentChatPlacement: "mini-app-slot"` Portal 到 RightPanel 注册的 `agent-chat` 插槽（不复制 Chat 实现）。
 
 ## 关键设计取舍
 
@@ -77,6 +83,10 @@ decoratedNodes (useDecoratedNodes) —— 注入回调 onUpdate/onGenerate/onPro
 4. **多工作区数据隔离零宿主改动**：宿主 `safeProjectSubdirPath` 支持子目录、`listConfigs` 递归扫描、config 广播带完整相对路径 → 节点/历史按 `configs/workspaces/<id>/` 隔离，设置/提示词库/面板布局仍全局共享。
 5. **本地算法 vs 云端工作流二选一**：`image-ops` 纯 JS（无 WASM 依赖，opencv 全砍），通过 `runProcessor` 统一入口；`enhance`/`compress`/`cutout.workflow` 走工作流，用 `__url` 透传机制跳过 ImageData 管道。
 6. **Agent RPC 用 ref 持有最新值**：`useCanvasAgentRpc` effect deps=`[]` 只订阅一次 WS，靠 ref 读最新闭包，避免 nodes/edges 变化重订阅抖动。
+7. **原图与缩略图分离**：协议保持 `images: string[]`，并行 `resources[{url,thumb,groupName,label}]` 只服务展示；旧数据回退 `thumb || url`，补缩略图走调试菜单（不重写 images 协议）。
+8. **工作区数据目录单写非双写**：directory 设了产图只落一份文件（`{historyId}/{index}.ext`）+ localFileUrl；历史子目录 id 与 addHistory 共用，天然可追溯。
+9. **分组多实例 = 模板 + 执行身份冻结**：每个 run 用稳定 `nodeIds[templateNodeId]` + `executionTarget` 定向写回，画布 nodes 是当前 run 的实时视图。
+10. **编辑器子域独立目录**：Spine（src/spine/ + vendor/spine/）、Sheet 拆分（ui-splitter/）、换肤管线（utils/reskin/）自成体系，React 宿主只做 Dialog 壳。
 
 ## 运行时形态
 

@@ -17,6 +17,7 @@ import TextResult from './TextResult';
  * @param {Function} [props.onAddToAssets]
  * @param {Function} [props.onAddImages]
  * @param {Function} [props.onRemoveImage]
+ * @param {Function} [props.onRemoveVersionImages]
  * @param {Function} [props.onClearImages]
  * @param {Function} [props.onReorderImages]
  * @param {Array} [props.versions]
@@ -35,6 +36,7 @@ export default function NodeOutput({
   onAddToAssets,
   onAddImages,
   onRemoveImage,
+  onRemoveVersionImages,
   onClearImages,
   onReorderImages,
   versions,
@@ -116,6 +118,7 @@ export default function NodeOutput({
               onAddToAssets={onAddToAssets}
               onAddImages={onAddImages}
               onRemoveImage={onRemoveImage}
+              onRemoveVersionImages={onRemoveVersionImages}
               onClearImages={onClearImages}
               onReorderImages={onReorderImages}
               versions={versions}

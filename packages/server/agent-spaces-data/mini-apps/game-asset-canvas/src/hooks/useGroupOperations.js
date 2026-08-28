@@ -27,7 +27,7 @@ import {
  * @param {React.RefObject<HTMLElement>} deps.canvasRef 画布根元素（读取分组和节点屏幕矩形）
  */
 export default function useGroupOperations({
-  groups, nodes, edges, setGroups, setNodes, setEdges, reactFlow, canvasRef,
+  groups, nodes, edges, setGroups, setNodes, setEdges, updateCanvasData, reactFlow, canvasRef,
 }) {
   const [selectedGroupId, setSelectedGroupId] = useState(null);
   const [deleteGroupId, setDeleteGroupId] = useState(null);
@@ -112,8 +112,19 @@ export default function useGroupOperations({
 
   // 更新分组（重命名/颜色/锁定等，WorkflowGroupOverlay 回调）
   const updateGroup = useCallback((groupId, updates) => {
+    if (updateCanvasData) {
+      updateCanvasData({
+        source: 'group-properties',
+        targetType: 'group',
+        targetId: groupId,
+        key: '$',
+        value: updates,
+        method: 'merge',
+      });
+      return;
+    }
     setGroups((prev) => prev.map((g) => (g.id === groupId ? { ...g, ...updates } : g)));
-  }, [setGroups]);
+  }, [setGroups, updateCanvasData]);
 
   // 合并选中节点为一个分组（底部 toolbar 触发）：取当前选中节点 id 建 group 数据，
   // 分组名 = 「分组 N」（N = 当前分组数 + 1）。建完清空选中，避免工具栏持续显示。

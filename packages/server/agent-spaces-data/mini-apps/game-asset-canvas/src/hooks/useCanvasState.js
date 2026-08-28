@@ -8,6 +8,11 @@ import {
   restoreHistoryNodes,
 } from '../utils/canvas-history';
 import { ensureEdgeIds } from '../utils/canvas-edges';
+import {
+  applyCanvasCollectionUpdate,
+  summarizeCanvasUpdateValue,
+  UPDATE_METHODS,
+} from '../utils/canvas-state-updates';
 
 const DEFAULT_VIEWPORT = { x: 0, y: 0, zoom: 1 };
 const MAX_OPERATION_HISTORY = 50;
@@ -33,6 +38,12 @@ export default function useCanvasState(workspaceId) {
   const resetOperationHistoryRef = useRef(true);
   const applyingOperationHistoryRef = useRef(false);
   operationHistoryRef.current = operationHistory;
+
+  // 统一数据更新入口的 refs：执行队列可能在 React 提交前连续发起多次局部更新。
+  const nodesRef = useRef(nodes);
+  const groupsRef = useRef(groups);
+  nodesRef.current = nodes;
+  groupsRef.current = groups;
 
   // 初次加载 + 工作区切换时重新读取
   useEffect(() => {
@@ -177,51 +188,85 @@ export default function useCanvasState(workspaceId) {
     if (index < entries.length - 1) applyOperationHistory(index + 1);
   }, [applyOperationHistory]);
 
+  const updateCanvasData = useCallback((request) => {
+    const {
+      source,
+      targetType = 'node',
+      targetId,
+      key,
+      value,
+      method = 'merge',
+    } = request || {};
+    if (typeof source !== 'string' || !source.trim()
+      || (targetType !== 'node' && targetType !== 'group')
+      || typeof targetId !== 'string' || !targetId
+      || typeof key !== 'string' || !key.trim()
+      || !UPDATE_METHODS.has(method)) {
+      return false;
+    }
+
+    console.debug('[CanvasStateUpdate]', {
+      source,
+      targetType,
+      targetId,
+      key,
+      method,
+      valueSummary: summarizeCanvasUpdateValue(value),
+    });
+
+    if (targetType === 'group') {
+      setGroups((prev) => {
+        const next = applyCanvasCollectionUpdate(prev, request);
+        groupsRef.current = next;
+        return next;
+      });
+      return true;
+    }
+    setNodes((prev) => {
+      const next = applyCanvasCollectionUpdate(prev, request);
+      nodesRef.current = next;
+      return next;
+    });
+    return true;
+  }, [setGroups, setNodes]);
+
   const updateNodeData = useCallback((nodeId, patch) => {
-    setNodes((prev) => prev.map((nd) => {
-      if (nd.id !== nodeId) return nd;
-      const oldData = nd.data || {};
-      const merged = typeof patch === 'function' ? patch(oldData) : { ...(oldData || {}), ...patch };
-      // 自动版本存档：仅当状态从非 done 转为 done 且本次有产出图时，存一个完整快照。
-      // 用「状态转换」而非「done 出现」作为触发条件，避免 setNodes updater 被多次调用
-      // （ReactFlow batching / 重渲染）导致同一批产出重复加版本。
-      // 版本切换走专用回调（带 __switchVersion 标记），不会触发新增版本。
-      const isDone = merged?.status === 'done';
-      const wasNotDone = oldData?.status !== 'done';
-      const hasOutputImages = Array.isArray(merged?.output?.images) && merged.output.images.length > 0;
-      const isSwitch = merged?.__switchVersion === true;
-      if (isDone && wasNotDone && hasOutputImages && !isSwitch && !merged.__versionSkip) {
-        const versions = Array.isArray(oldData.versions) ? [...oldData.versions] : [];
-        versions.push({
-          params: merged.params ? { ...merged.params } : undefined,
-          output: { ...merged.output },
-          createdAt: Date.now(),
-        });
-        merged.versions = versions;
-        merged.activeVersion = versions.length - 1;
-      }
-      // 清理内部标记，避免持久化
-      delete merged.__switchVersion;
-      delete merged.__versionSkip;
-      // [debug-clear] 监控 output.images / versions 的变化，定位清空后旧产出回来的来源
-      const prevImgs = Array.isArray(oldData?.output?.images) ? oldData.output.images : [];
-      const nextImgs = Array.isArray(merged?.output?.images) ? merged.output.images : [];
-      if (prevImgs.length === 0 && nextImgs.length > 0 || prevImgs.length > 0 && nextImgs.length === 0) {
-        console.log('[clear-debug] updateNodeData image-count change', nodeId, {
-          prevImgCount: prevImgs.length, nextImgCount: nextImgs.length,
-          prevVersions: Array.isArray(oldData?.versions) ? oldData.versions.length : 0,
-          nextVersions: Array.isArray(merged?.versions) ? merged.versions.length : 0,
-          patchKeys: typeof patch === 'function' ? '(function)' : Object.keys(patch || {}),
-        });
-      }
-      return { ...nd, data: { ...oldData, ...merged } };
-    }));
-  }, []);
+    updateCanvasData({
+      source: 'node-data',
+      targetType: 'node',
+      targetId: nodeId,
+      key: 'data',
+      method: 'update',
+      value: (oldData = {}) => {
+        const merged = typeof patch === 'function' ? patch(oldData) : { ...oldData, ...patch };
+        const nextData = { ...oldData, ...(merged || {}) };
+        // 自动版本存档：仅当状态从非 done 转为 done 且本次有产出图时，存一个完整快照。
+        const isDone = nextData?.status === 'done';
+        const wasNotDone = oldData?.status !== 'done';
+        const hasOutputImages = Array.isArray(nextData?.output?.images)
+          && nextData.output.images.length > 0;
+        const isSwitch = nextData?.__switchVersion === true;
+        if (isDone && wasNotDone && hasOutputImages && !isSwitch && !nextData.__versionSkip) {
+          const versions = Array.isArray(oldData.versions) ? [...oldData.versions] : [];
+          versions.push({
+            params: nextData.params ? { ...nextData.params } : undefined,
+            output: { ...nextData.output },
+            createdAt: Date.now(),
+          });
+          nextData.versions = versions;
+          nextData.activeVersion = versions.length - 1;
+        }
+        delete nextData.__switchVersion;
+        delete nextData.__versionSkip;
+        return nextData;
+      },
+    });
+  }, [updateCanvasData]);
 
   return {
     nodes, edges, groups, viewport, hasSavedViewport, loaded,
     setNodes, setEdges, setGroups, setViewport,
-    updateNodeData, undo, redo,
+    updateCanvasData, updateNodeData, undo, redo,
     canUndo: operationHistory.index > 0,
     canRedo: operationHistory.index >= 0 && operationHistory.index < operationHistory.entries.length - 1,
     operationHistory: operationHistory.entries.slice(1).map((entry, index) => ({

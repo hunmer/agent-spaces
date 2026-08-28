@@ -44,6 +44,8 @@
 | `spine/spine-pixi-v7-4.2.119.min.js` | 4.2.119 | 190KB | 按 JSON 版本懒加载 IIFE，缓存独立 namespace | Spine 4.2 JSON 解析/渲染 |
 | `spine/jszip-3.10.1.min.js` | 3.10.1 | 95KB | `(0,eval)` 挂 `window.JSZip` | Spine 三件套 ZIP |
 | `pixelorama-web/` | Godot 4.7 导出 | ~45MB | iframe（含 index.pck 12MB + index.wasm 37MB + service worker） | 像素编辑器节点 |
+| `director-desk-web/` | storyai-3d-director-desk 构建 | - | iframe + postMessage（director-desk-ready/captures-sent/panorama） | 3D 导演台节点 |
+| `fast-image-sequence/` | 历史遗留 dist | - | 已不引用（播放由 FrameSequencePlayer.jsx 直接完成） | - |
 
 ### Pixelorama 特殊处理
 - **COOP/COEP（SharedArrayBuffer 前提）由自带 service worker 注入**：`index.service.worker.js` 的 `ensureCrossOriginIsolationHeaders` 给响应补 `Cross-Origin-Opener-Policy: same-origin` + `Cross-Origin-Embedder-Policy: require-corp`。零宿主改动。
@@ -65,14 +67,18 @@ URL 集中在 `utils/image-ops/cdn.js`。经宿主 `window.AgentSpaces.loadCdnMo
 configs/
   settings.json                  # 全局共享（用户级偏好）
   prompt-library.json            # 全局共享（自定义提示词库，数组）
-  panel-layout.json              # 全局共享（{layout:{panelId:pct}, showMinimap, savedAt}）
+  panel-layout.json              # 全局共享（{canvas-main:72, canvas-right:28}）
+  node-presets.json              # 全局共享（节点预设子图模板，跨工作区）
   spine-reskin-history.json      # Spine 换肤记录（按 assetSignature 分组，URL-only）
-  workspaces.json                # 全局共享（{activeId, workspaces:[{id,name,createdAt}]}）
+  workspaces.json                # 全局共享（{activeId, workspaces:[{id,name,createdAt,directory?}]}）
   workspaces/
     <id>/
-      canvas.json                # 按工作区隔离（{nodes, edges, groups, savedAt}）
+      canvas.json                # 按工作区隔离（{nodes, edges, groups, viewport, savedAt}）
+      canvas-versions.json       # 画布版本快照
       generation-history.json    # 按工作区隔离（[item, ...]，HISTORY_MAX=200）
-      asset-library.json         # 按工作区隔离（{categories:[{id,name,createdAt,assets}]}）
+      last-params.json           # 每节点类型上次提交参数
+      asset-library.json         # 按工作区隔离（{categories:[...]}）
+      storyboard-characters.json # 分镜角色库（按工作区隔离）
 ```
 
 > 旧版顶层 `canvas.json` / `generation-history.json` 仍存在（迁移前数据），新数据全走 `workspaces/<id>/`。
@@ -82,8 +88,14 @@ Spine 换肤记录通过 `save_spine_reskin_history` / `delete_spine_reskin_hist
 
 ### settings.json 字段（utils/settings.js DEFAULT_SETTINGS）
 - 工作流槽位：`textToImageWorkflowId/Name` / `editImageWorkflowId/Name` / `imageEnchanterWorkflowId/Name` / `textToVoiceWorkflowId/Name` / `videoGeneratorWorkflowId/Name`
-- BBox AI 分析：`bboxAgentConfigId` / `bboxAgentName` / `bboxAiUserPrompt` / `bboxCompressThresholdMB`（默认 2）/ `bboxCompressTargetMB`（默认 1）
+- 模型列表：`textToImageModels` / `editImageModels`（设置页可增删）
+- BBox AI 分析：`bboxAgentConfigId` / `bboxAgentName` / `bboxAiUserPrompt` / `bboxCompressThresholdMB`（2）/ `bboxCompressTargetMB`（1）
 - 反推提示词：`promptReverseAgentConfigId` / `promptReverseName` / `promptReverseUserPrompt`
+- 提示词优化：`promptOptimizeAgentConfigId` / `promptOptimizeName` / `promptOptimizeUserPrompt`
+- 分镜创作：`storyboardAgentConfigId` / `storyboardAgentName`
+- 执行与通知：`executionConcurrency`（默认 3）/ `notifyOnComplete`（默认 false）
+- 画布样式：`bgVariant`（dots/lines/cross）/ `attributionPosition`（top-bottom/left-right）/ `snapGrid`
+- 生成记录视图：`historyViewMode`（'list' | 'masonry'）
 
 > systemPrompt 归 agent preset 自带（openAgentEditor 弹窗里编辑），**不存 settings.json**。
 
@@ -91,11 +103,11 @@ Spine 换肤记录通过 `save_spine_reskin_history` / `delete_spine_reskin_hist
 ```json
 {
   "activeId": "default",
-  "workspaces": [{ "id": "default", "name": "默认工作区", "createdAt": 1730000000000 }]
+  "workspaces": [{ "id": "default", "name": "默认工作区", "createdAt": 1730000000000, "directory": "D:\\assets" }]
 }
 ```
-- 首次无清单时兜底返回 `default` 默认工作区（不阻塞使用）。
-- 至少保留一个工作区；删当前激活时 activeId 回退到第一个。
+- `directory`（可选）：宿主机绝对路径「数据保存目录」。设了之后该工作区产图**只落一份**到 `<directory>/<historyId>/<index>.<ext>`，返回 localFileUrl；没设回退 data 目录。依赖宿主 `saveImageToDir`/`localFileUrl`/`revealAbsolutePath` + 服务端 `POST /api/mini-apps/:id/data/write-absolute` 路由（均已具备）。
+- 首次无清单时兜底返回 `default`；至少保留一个工作区；删当前激活时 activeId 回退到第一个。
 
 ## 环境差异
 
