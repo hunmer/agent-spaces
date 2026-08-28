@@ -46,3 +46,4 @@
 - Fixed `applyExecutionNodePatch` to merge function results with prior execution-node data; this prevents deleting output images from dropping params/status/versions and later restoring empty snapshots.
 - Removed all requested `[GroupExecutionDebug]`, `[clear-debug]`, and `[clear]` logs from the mini-app source.
 - Added regression tests in `canvas-state-updates.test.js` and `group-output-binding.test.js`; focused suite passes 47/47 and Babel syntax checks pass for all touched JS/JSX files.
+- Added handoff document `packages/server/agent-spaces-data/mini-apps/game-asset-canvas/handoff-data-state-updates.md` with the current data update contract, deletion flow, validation commands, runtime state, and remaining migration boundaries.

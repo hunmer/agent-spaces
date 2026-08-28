@@ -1051,7 +1051,7 @@
     }
   ],
   "createdAt": 1782271756656,
-  "updatedAt": 1787890256394,
+  "updatedAt": 1787896339716,
   "published": false,
   "enabledPlugins": [
     "workflow.openai",
@@ -1060,12 +1060,10 @@
     "workflow.jimeng",
     "workflow.ai-image"
   ],
-  "lastRunAt": 1787891549623,
+  "lastRunAt": 1787901859956,
   "groups": [],
   "description": "编辑图片",
   "variables": [],
   "lastOpenedAt": 1787890222779,
-  "pluginConfigSchemes": {
-    "workflow.ai-image": "本地gemini"
-  }
+  "pluginConfigSchemes": {}
 }
