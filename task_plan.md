@@ -38,3 +38,9 @@ Migrate `packages/web` from the current shadcn setup toward Coss UI conventions 
 ## Current Task
 - Target: `packages/server/agent-spaces-data/mini-apps/game-asset-canvas/src`
 - Goal: group-scoped Ctrl+A, node context-menu info copy, and one-click downstream image-display creation.
+
+## Background Service Extension (2026-08-28)
+- [completed] Add generic mini-app background service manager and built-in async image persistence task
+- [completed] Wire background register/submit events into mini-app WS and host API
+- [completed] Migrate game-asset-canvas workspace image persistence to background submission and result replacement
+- [completed] Update miniapp documentation and validate compilation

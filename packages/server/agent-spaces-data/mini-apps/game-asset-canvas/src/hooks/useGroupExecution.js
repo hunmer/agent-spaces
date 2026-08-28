@@ -282,6 +282,14 @@ export default function useGroupExecution({ groups, nodes, edges, setGroups, set
     if (mode !== GROUP_EXECUTION_MODES.count && mode !== GROUP_EXECUTION_MODES.assets) return;
     const context = getContext(groupId);
     if (!context || context.busy) return;
+    console.debug('[GroupExecutionDebug] setMode before', {
+      groupId,
+      fromMode: context.execution.mode,
+      toMode: mode,
+      countRuns: context.execution.count?.runs?.map((run) => run.id) || [],
+      assetRuns: context.execution.assets?.runs?.map((run) => run.id) || [],
+      activeId: context.execution[context.execution.mode]?.activeId || null,
+    });
     let execution = saveActiveRun(context.execution, context.currentStates);
     let targetStates = null;
     if (mode === GROUP_EXECUTION_MODES.assets && !execution.assets.templateNodeStates) {
@@ -296,12 +304,27 @@ export default function useGroupExecution({ groups, nodes, edges, setGroups, set
       targetStates = mergeRunNodeStates(active.nodeStates, context.currentNodes, context.nodeIds);
     }
     commit(groupId, { ...execution, mode }, targetStates);
+    console.debug('[GroupExecutionDebug] setMode after', {
+      groupId,
+      mode,
+      countRuns: execution.count?.runs?.map((run) => run.id) || [],
+      assetRuns: execution.assets?.runs?.map((run) => run.id) || [],
+      activeId: execution[mode]?.activeId || null,
+    });
   }, [commit, getContext]);
 
   const setCount = useCallback((groupId, value) => {
     const context = getContext(groupId);
     if (!context || context.busy) return;
     const target = clampExecutionCount(value);
+    console.debug('[GroupExecutionDebug] setCount before', {
+      groupId,
+      requested: value,
+      target,
+      mode: context.execution.mode,
+      countRuns: context.execution.count?.runs?.map((run) => run.id) || [],
+      assetRuns: context.execution.assets?.runs?.map((run) => run.id) || [],
+    });
     let execution = saveActiveRun(context.execution, context.currentStates);
     const currentRuns = execution.count.runs;
     let runs = currentRuns.filter((run) => run.index <= target);
@@ -321,6 +344,13 @@ export default function useGroupExecution({ groups, nodes, edges, setGroups, set
       ? mergeRunNodeStates(active.nodeStates, context.currentNodes, context.nodeIds)
       : null;
     commit(groupId, execution, targetStates);
+    console.debug('[GroupExecutionDebug] setCount after', {
+      groupId,
+      target,
+      activeId,
+      countRuns: runs.map((run) => run.id),
+      assetRuns: execution.assets?.runs?.map((run) => run.id) || [],
+    });
   }, [commit, getContext]);
 
   const switchRun = useCallback((groupId, mode, runId) => {
@@ -330,6 +360,15 @@ export default function useGroupExecution({ groups, nodes, edges, setGroups, set
     const section = execution[mode];
     const run = section?.runs.find((item) => item.id === runId);
     if (!run) return;
+    console.debug('[GroupExecutionDebug] switchRun', {
+      groupId,
+      mode,
+      runId,
+      beforeMode: execution.mode,
+      beforeActiveId: section.activeId,
+      countRuns: execution.count?.runs?.map((item) => item.id) || [],
+      assetRuns: execution.assets?.runs?.map((item) => item.id) || [],
+    });
     const nextExecution = {
       ...execution,
       mode,
@@ -478,13 +517,32 @@ export default function useGroupExecution({ groups, nodes, edges, setGroups, set
 
   const setOutputBinding = useCallback((targetGroupId, value) => {
     const binding = normalizeGroupOutputBinding(value);
-    if (!binding || wouldCreateGroupOutputBindingCycle(
-      groupsRef.current,
-      binding.sourceGroupId,
-      targetGroupId,
-    )) return;
+    if (!binding) {
+      console.debug('[GroupExecutionDebug] setOutputBinding ignored', {
+        targetGroupId, reason: 'invalid-binding', value,
+      });
+      return;
+    }
+    if (wouldCreateGroupOutputBindingCycle(groupsRef.current, binding.sourceGroupId, targetGroupId)) {
+      console.debug('[GroupExecutionDebug] setOutputBinding ignored', {
+        targetGroupId, sourceGroupId: binding.sourceGroupId, reason: 'cycle',
+      });
+      return;
+    }
     const context = getContext(targetGroupId);
-    if (!context || context.busy) return;
+    if (!context || context.busy) {
+      console.debug('[GroupExecutionDebug] setOutputBinding ignored', {
+        targetGroupId, sourceGroupId: binding.sourceGroupId,
+        reason: context ? 'group-running' : 'group-missing',
+      });
+      return;
+    }
+    console.debug('[GroupExecutionDebug] setOutputBinding before', {
+      targetGroupId,
+      sourceGroupId: binding.sourceGroupId,
+      previousBinding: context.execution.assets?.binding || null,
+      previousRunIds: context.execution.assets?.runs?.map((run) => run.id) || [],
+    });
     let execution = saveActiveRun(context.execution, context.currentStates);
     execution = {
       ...execution,
@@ -497,6 +555,12 @@ export default function useGroupExecution({ groups, nodes, edges, setGroups, set
       },
     };
     commit(targetGroupId, execution);
+    console.debug('[GroupExecutionDebug] setOutputBinding after', {
+      targetGroupId,
+      sourceGroupId: binding.sourceGroupId,
+      runIds: execution.assets.runs?.map((run) => run.id) || [],
+      activeId: execution.assets.activeId || null,
+    });
   }, [commit, getContext]);
 
   const disconnectOutputBinding = useCallback((targetGroupId) => {
@@ -522,6 +586,11 @@ export default function useGroupExecution({ groups, nodes, edges, setGroups, set
       if (!binding || binding.sourceGroupId === targetGroup.id) continue;
       const sourceGroup = groups.find((group) => group.id === binding.sourceGroupId);
       if (!sourceGroup) {
+        console.debug('[GroupExecutionDebug] output binding source missing', {
+          targetGroupId: targetGroup.id,
+          sourceGroupId: binding.sourceGroupId,
+          previousRunIds: targetGroup.batchExecution?.assets?.runs?.map((run) => run.id) || [],
+        });
         disconnectOutputBinding(targetGroup.id);
         continue;
       }
@@ -530,6 +599,21 @@ export default function useGroupExecution({ groups, nodes, edges, setGroups, set
       const sourceNodeIds = collectGroupNodeIds(groups, sourceGroup.id);
       const assets = collectGroupOutputAssets(nodes, sourceNodeIds, binding, edgesRef.current);
       const sourceSignature = groupOutputAssetsSignature(binding, assets);
+      console.debug('[GroupExecutionDebug] output binding evaluation', {
+        targetGroupId: targetGroup.id,
+        sourceGroupId: binding.sourceGroupId,
+        sourceMode: sourceGroup.batchExecution?.mode || null,
+        sourceActiveId: sourceGroup.batchExecution?.[sourceGroup.batchExecution?.mode]?.activeId || null,
+        previousSignature: context.execution.assets.sourceSignature || null,
+        nextSignature: sourceSignature,
+        signatureChanged: context.execution.assets.sourceSignature !== sourceSignature,
+        previousSignatureLength: (context.execution.assets.sourceSignature || '').length,
+        nextSignatureLength: sourceSignature.length,
+        previousActiveId: context.execution.assets.activeId || null,
+        previousRunIds: context.execution.assets.runs?.map((run) => run.id) || [],
+        sourceAssetCount: assets.length,
+        sourceAssetUrls: assets.map((asset) => asset.url),
+      });
       if (context.execution.assets.sourceSignature === sourceSignature) continue;
 
       const template = context.execution.assets.templateNodeStates || context.currentStates;
@@ -561,6 +645,12 @@ export default function useGroupExecution({ groups, nodes, edges, setGroups, set
           sourceSignature,
         },
       };
+      console.debug('[GroupExecutionDebug] output binding commit', {
+        targetGroupId: targetGroup.id,
+        activeId,
+        nextRunIds: runs.map((run) => run.id),
+        clearedRunCount: context.execution.assets.runs?.length || 0,
+      });
       commit(targetGroup.id, execution, activeRun?.nodeStates || template);
     }
   }, [commit, disconnectOutputBinding, getContext, groups, nodes]);

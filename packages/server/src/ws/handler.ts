@@ -16,6 +16,7 @@ import { listConfigs } from '../services/mini-apps.js';
 import { handleMiniAppClientResponse } from '../services/mini-app-client-rpc.js';
 import { postTeamRuntimeMessage } from '../services/team-runtime.js';
 import { loadTeam } from '../services/team-internal.js';
+import { registerBackgroundService, submitBackgroundTask } from '../services/mini-app-background.js';
 
 type EventHandler = (ws: WebSocket, workspaceId: string, data: unknown) => void;
 
@@ -69,6 +70,14 @@ export function handleConnection(ws: WebSocket, workspaceId: string) {
     }
   });
 }
+
+registerHandler('miniApp.background.register', (_ws, projectId, data) => {
+  registerBackgroundService(projectId, (data || {}) as any);
+});
+
+registerHandler('miniApp.background.submit', (_ws, projectId, data) => {
+  submitBackgroundTask(projectId, data || {});
+});
 
 // Register terminal handlers
 const terminalEvents = [

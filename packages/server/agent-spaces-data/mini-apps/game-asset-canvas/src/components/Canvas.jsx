@@ -162,6 +162,30 @@ export default function Canvas({ hostConfig }) {
   edgesRef.current = edges;
 
   useEffect(() => {
+    const subscribe = window.AgentSpaces?.subscribeTaskEvents;
+    if (typeof subscribe !== 'function') return undefined;
+    return subscribe((event, data) => {
+      if (event !== 'miniApp.background.completed') return;
+      const result = data?.result;
+      if (!Array.isArray(result?.originalUrls) || !Array.isArray(result?.urls)) return;
+      const localFileUrl = window.AgentSpaces?.localFileUrl;
+      if (typeof localFileUrl !== 'function') return;
+      const replacements = new Map(result.originalUrls.map((url, i) => [url, localFileUrl(result.urls[i])]));
+      setNodes((prev) => prev.map((node) => {
+        const output = node.data?.output;
+        const images = output?.images;
+        if (!Array.isArray(images)) return node;
+        const nextImages = images.map((url) => replacements.get(url) || url);
+        if (nextImages.every((url, i) => url === images[i])) return node;
+        const resources = Array.isArray(output.resources)
+          ? output.resources.map((item) => ({ ...item, url: replacements.get(item.url) || item.url, thumb: replacements.get(item.thumb) || item.thumb }))
+          : output.resources;
+        return { ...node, data: { ...node.data, output: { ...output, images: nextImages, resources } } };
+      }));
+    });
+  }, [setNodes]);
+
+  useEffect(() => {
     const onKeyDown = (event) => {
       const tag = event.target?.tagName;
       const editable = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT'
@@ -1053,8 +1077,12 @@ export default function Canvas({ hostConfig }) {
       const prev = Array.isArray(data?.output?.images) ? data.output.images : [];
       const next = mutator(prev);
       const previousResources = Array.isArray(data?.output?.resources) ? data.output.resources : [];
-      const byUrl = new Map(previousResources.map((item) => [item?.url, item]));
-      const resources = next.map((url) => byUrl.get(url) || { id: createOutputResourceId(), url, thumb: url });
+      // 按 URL 出现顺序匹配资源，不能用 Map<url, resource>：重复 URL 可能属于不同产出分组。
+      const resources = createOutputAssetItems(next, previousResources).map((item) => (
+        item.resource?.id
+          ? item.resource
+          : { ...item.resource, id: createOutputResourceId(), url: item.url, thumb: item.url }
+      ));
       return { __versionSkip: true, output: { ...(data?.output || {}), images: next, resources } };
     });
   }, [updateNodeData]);

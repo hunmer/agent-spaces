@@ -32,3 +32,10 @@
 - Added node context-menu actions to copy structured node JSON and create/connect a downstream image-display node while preserving direct group membership.
 - Updated `src/CLAUDE.md` and `src/handoff.md` with the new interaction contract.
 - Final validation passed: four Babel compilation checks, 3/3 group-helper tests, and `git diff --check`.
+
+## 2026-08-28
+- Added `mini-app-background.ts`: generic per-miniapp background handler registry with default `src/background.js` and built-in `persist-images` task.
+- Added `miniApp.background.register/submit` WS events and `registerBackgroundService`/`submitBackgroundTask` host APIs.
+- Switched game-asset-canvas workspace image persistence to fire-and-forget background tasks; Canvas replaces output URLs with authenticated local-file URLs on completion.
+- Documented manifest one-line enablement and event contract in `packages/web/public/learn/miniapp.md`.
+- Validation: server `tsc --noEmit`, miniapp Babel compilation, and `git diff --check` passed.

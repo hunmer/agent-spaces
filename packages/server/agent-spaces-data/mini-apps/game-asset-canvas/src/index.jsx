@@ -5,6 +5,10 @@ import Canvas from './components/Canvas';
 import { NodeDialogProvider } from './components/nodes/NodeDialogContext';
 
 export default function App({ hostConfig }) {
+  // manifest.backgroundService 开启后，宿主提供的后台服务自动注册。
+  if (hostConfig?.backgroundService?.enabled !== false) {
+    window.AgentSpaces?.registerBackgroundService(hostConfig?.backgroundService || { enabled: true });
+  }
   // 阻止浏览器默认的「保存网页」（Ctrl/Cmd+S）行为，仅 preventDefault，不阻断事件传播
   useEffect(() => {
     const handleKeyDown = (e) => {

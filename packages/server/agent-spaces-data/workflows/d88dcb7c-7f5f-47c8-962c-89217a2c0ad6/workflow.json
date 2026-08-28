@@ -903,7 +903,7 @@
     }
   ],
   "createdAt": 1782287549292,
-  "updatedAt": 1785824340268,
+  "updatedAt": 1787889572791,
   "published": false,
   "enabledPlugins": [
     "workflow.openai",
@@ -919,6 +919,6 @@
   "layoutSnapshot": {
     "nodeDisplayMode": "normal"
   },
-  "lastOpenedAt": 1785824291937,
+  "lastOpenedAt": 1787889520815,
   "pluginConfigSchemes": {}
 }

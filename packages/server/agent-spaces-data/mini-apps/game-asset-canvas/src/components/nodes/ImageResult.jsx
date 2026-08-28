@@ -35,7 +35,22 @@ function BrokenImagePlaceholder({ url }) {
 export default function ImageResult({ nodeId, images, resources = [], max = 0, preview = false, onImageLoad, onAddToAssets, fileName, onAddImages, onRemoveImage, onClearImages, onReorderImages, versions, activeVersion, onSwitchVersion }) {
   const openCanvasGallery = useCanvasGallery();
   const all = images || [];
-  const assetItems = useMemo(() => createOutputAssetItems(all, resources), [all, resources]);
+  // 产出/历史分组切换只改变展示快照，不能调用父级写回当前节点数据。
+  const [displayVersion, setDisplayVersion] = useState(null);
+  useEffect(() => { setDisplayVersion(null); }, [versions]);
+  const displaySnapshot = Number.isInteger(displayVersion)
+    && Array.isArray(versions) && versions[displayVersion]?.output
+    ? versions[displayVersion].output
+    : null;
+  const displayImages = Array.isArray(displaySnapshot?.images) ? displaySnapshot.images : all;
+  const displayResources = Array.isArray(displaySnapshot?.resources)
+    ? displaySnapshot.resources
+    : resources;
+  const isHistoricalView = !!displaySnapshot;
+  const assetItems = useMemo(
+    () => createOutputAssetItems(displayImages, displayResources),
+    [displayImages, displayResources],
+  );
   const list = max > 0 ? assetItems.slice(0, max) : assetItems;
   const sections = useMemo(() => groupOutputAssetItems(list), [list]);
   const hasVersions = Array.isArray(versions) && versions.length > 1 && onSwitchVersion;
@@ -48,15 +63,16 @@ export default function ImageResult({ nodeId, images, resources = [], max = 0, p
 
   // 拖拽排序（原生 HTML5 DnD，参考 UpstreamImageList）：仅在非预览态 + 注入 onReorderImages + 多图时启用。
   // draggingRef 用 ref 保证 dragstart→dragover 间同步读取（state 异步会读到 null）。
-  const sortable = !preview && typeof onReorderImages === 'function' && list.length > 1;
+  const sortable = !preview && !isHistoricalView && typeof onReorderImages === 'function' && assetItems.length > 1;
   const draggingRef = useRef(null);
   const [draggingIdx, setDraggingIdx] = useState(null);
   const [overIdx, setOverIdx] = useState(null);
   const [confirmClear, setConfirmClear] = useState(false);
   if (!list.length && !onAddImages && !hasVersions) return null;
   const reorderMove = (from, to) => {
-    if (from === to || from < 0 || to < 0 || from >= list.length || to >= list.length) return;
-    const next = [...list];
+    if (from === to || from < 0 || to < 0 || from >= assetItems.length || to >= assetItems.length) return;
+    // list 可能是 max/展示筛选后的子集；排序写回必须基于完整数据源，不能丢掉未展示分组。
+    const next = [...assetItems];
     const [m] = next.splice(from, 1);
     next.splice(to, 0, m);
     onReorderImages(next.map((item) => item.url), next.map((item) => item.resource));
@@ -168,7 +184,7 @@ export default function ImageResult({ nodeId, images, resources = [], max = 0, p
         </span>
         <div className="flex items-center gap-1">
           {/* 添加：Popover 内嵌上传，复用 window.AgentSpaces.uploadFile，上传成功回传新 url 数组 */}
-          {onAddImages && <AddImagesButton onAddImages={onAddImages} />}
+          {onAddImages && !isHistoricalView && <AddImagesButton onAddImages={onAddImages} />}
           {/* 添加当前产出：把当前版本的产出图一次性入库（对齐 HistoryTab 单条记录行为） */}
           {onAddToAssets && all.length > 0 && (
             <button
@@ -192,7 +208,7 @@ export default function ImageResult({ nodeId, images, resources = [], max = 0, p
             </button>
           )}
           {/* 清空：仅在有产出时显示 */}
-          {onClearImages && all.length > 0 && (
+          {onClearImages && !isHistoricalView && all.length > 0 && (
             <button
               type="button"
               title="清空产出"
@@ -214,10 +230,13 @@ export default function ImageResult({ nodeId, images, resources = [], max = 0, p
               key={i}
               type="button"
               title={v?.createdAt ? new Date(v.createdAt).toLocaleString() : `版本 ${i + 1}`}
-              onClick={(e) => { e.stopPropagation(); onSwitchVersion(i); }}
+              onClick={(e) => {
+                e.stopPropagation();
+                setDisplayVersion(i);
+              }}
               className={
                 'flex size-5 shrink-0 items-center justify-center rounded-full border text-[10px] font-medium transition ' +
-                (i === activeVersion
+                (i === (displayVersion ?? activeVersion)
                   ? 'border-primary bg-primary text-primary-foreground'
                   : 'border-border bg-background text-muted-foreground hover:border-primary hover:text-primary')
               }
@@ -231,7 +250,7 @@ export default function ImageResult({ nodeId, images, resources = [], max = 0, p
         <OutputAssetSection
           key={section.key}
           section={section}
-          onClear={onRemoveImage
+          onClear={onRemoveImage && !isHistoricalView
             ? () => onRemoveImage(section.items.map((item) => item.id))
             : undefined}
         >
@@ -278,7 +297,7 @@ export default function ImageResult({ nodeId, images, resources = [], max = 0, p
                   {sel && <Check className="h-2.5 w-2.5" />}
                 </button>
               )}
-              {(onAddToAssets || onRemoveImage) && (
+              {(onAddToAssets || (onRemoveImage && !isHistoricalView)) && (
                 <div className="game-asset-output-actions nodrag nopan nowheel">
                   {onAddToAssets && (
                     <button
@@ -290,7 +309,7 @@ export default function ImageResult({ nodeId, images, resources = [], max = 0, p
                       <FolderPlus className="h-3 w-3" />
                     </button>
                   )}
-                  {onRemoveImage && (
+                  {onRemoveImage && !isHistoricalView && (
                     <button
                       type="button"
                       onClick={(e) => { e.stopPropagation(); onRemoveImage(item.id); }}
@@ -386,13 +405,22 @@ function PreviewImage({ url, thumb, label, onOpen, onImageLoad, onDragStart }) {
 function OutputAssetSection({ section, preview = false, onClear, children }) {
   const [expanded, setExpanded] = useState(true);
   if (!section.groupName) return children;
+  const stopSectionEvent = (event) => {
+    event.stopPropagation();
+    // NodeShell/ReactFlow 外层可能把点击解释为节点操作；分组展示交互必须在组件内终止。
+    event.nativeEvent?.stopImmediatePropagation?.();
+  };
   return (
-    <div className="overflow-hidden rounded-md border border-border bg-card">
+    <div
+      className="overflow-hidden rounded-md border border-border bg-card"
+      onPointerDown={stopSectionEvent}
+      onClick={stopSectionEvent}
+    >
       <div className="flex items-center bg-muted/60 hover:bg-muted">
         <button
           type="button"
           aria-expanded={expanded}
-          onClick={(event) => { event.stopPropagation(); setExpanded((value) => !value); }}
+          onClick={(event) => { stopSectionEvent(event); setExpanded((value) => !value); }}
           className="flex min-w-0 flex-1 items-center gap-1.5 px-2 py-1.5 text-left text-[11px] font-medium text-foreground"
         >
           <ChevronDown className={`h-3.5 w-3.5 shrink-0 transition-transform ${expanded ? '' : '-rotate-90'}`} />
@@ -403,7 +431,7 @@ function OutputAssetSection({ section, preview = false, onClear, children }) {
           <button
             type="button"
             title={`清空当前组产出（${section.groupName}）`}
-            onClick={(event) => { event.stopPropagation(); onClear(); }}
+            onClick={(event) => { stopSectionEvent(event); onClear(); }}
             className="mr-1 flex size-6 shrink-0 items-center justify-center rounded text-muted-foreground transition hover:bg-background hover:text-destructive"
           >
             <Trash2 className="h-3.5 w-3.5" />

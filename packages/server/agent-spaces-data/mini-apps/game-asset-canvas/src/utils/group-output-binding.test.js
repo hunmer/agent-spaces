@@ -15,12 +15,42 @@ import {
   wouldCreateGroupOutputBindingCycle,
 } from './group-execution.js';
 
+const canvasFixture = JSON.parse(readFileSync(new URL(
+  '../../configs/workspaces/ws-ms2k5lgk-fy8e/canvas.json',
+  import.meta.url,
+), 'utf8'));
+
 const nodes = [
   { id: 'a', type: 'textToImage', data: { label: 'A', output: { images: ['a1', 'a2'] } } },
   { id: 'b', type: 'editImage', data: { label: 'B', output: { images: ['b1'] } } },
   { id: 'c', type: 'textToImage', data: { label: 'C', output: { images: ['c1'] } } },
   { id: 'd', type: 'imageDisplay', data: { images: ['upload-only'] } },
 ];
+
+test('真实三分组快照：输出过滤只产生派生结果，不覆盖来源分组实例', () => {
+  const sourceGroup = canvasFixture.groups.find((group) => group.id === 'group-mtbadts3-4');
+  const targetGroup = canvasFixture.groups.find((group) => group.id === 'group-mt9vl4s7-22');
+  assert.ok(sourceGroup);
+  assert.ok(targetGroup);
+  assert.equal(sourceGroup.batchExecution.assets.runs.length, 8);
+  assert.equal(targetGroup.batchExecution.assets.runs.length, 6);
+
+  const sourceNodeIds = sourceGroup.childNodeIds;
+  const sourceNodes = canvasFixture.nodes.filter((node) => sourceNodeIds.includes(node.id));
+  const beforeSource = JSON.stringify(sourceNodes);
+  const filtered = collectGroupOutputAssets(sourceNodes, sourceNodeIds, {
+    sourceGroupId: sourceGroup.id,
+    filter: { mode: GROUP_OUTPUT_FILTER_MODES.types, nodeTypes: ['imageDisplay'] },
+  }, canvasFixture.edges);
+
+  // 快照中的当前画布输出有 6 张，少于来源执行历史的 8 个实例。
+  assert.equal(filtered.length, 6);
+  assert.ok(filtered.length < sourceGroup.batchExecution.assets.runs.length);
+  assert.equal(JSON.stringify(sourceNodes), beforeSource);
+  assert.equal(sourceGroup.batchExecution.assets.runs.length, 8);
+  assert.equal(targetGroup.batchExecution.assets.runs.length, 6);
+});
+
 
 test('不同实例的同一模板节点拥有稳定且不重复的执行节点 ID', () => {
   const first = createExecutionNodeId('group-1', 'asset-1', 'node-1');

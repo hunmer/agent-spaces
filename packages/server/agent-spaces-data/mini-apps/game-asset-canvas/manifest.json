@@ -22,6 +22,9 @@
   ],
   "icon": "🎮",
   "enableAgents": true,
+  "backgroundService": {
+    "enabled": true
+  },
   "agentChatPlacement": "mini-app-slot",
   "agents": [
     {
@@ -64,5 +67,5 @@
     }
   ],
   "createdAt": "2026-07-22T00:00:00.000Z",
-  "updatedAt": "2026-08-27T12:39:55.892Z"
+  "updatedAt": "2026-08-28T03:58:21.483Z"
 }

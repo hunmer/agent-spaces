@@ -57,6 +57,12 @@ export function isBackendUrl(url) {
  */
 export async function persistImagesToBackend(urls, opts = {}) {
   const { directory, historyId } = opts;
+  const submitBackgroundTask = window.AgentSpaces?.submitBackgroundTask;
+  if (directory && typeof submitBackgroundTask === 'function') {
+    submitBackgroundTask({ type: 'persist-images', urls: normalizeImageUrls(urls), directory, historyId });
+    // 后台完成后通过 miniApp.background.completed 推送替换映射；生成节点不再等待磁盘 IO。
+    return Array.isArray(urls) ? urls.slice() : [];
+  }
   const saveImageToDir = directory ? window.AgentSpaces?.saveImageToDir : null;
   const localFileUrl = window.AgentSpaces?.localFileUrl;
   const out = [];

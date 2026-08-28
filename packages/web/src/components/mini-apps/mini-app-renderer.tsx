@@ -83,7 +83,9 @@ function rewriteRelativePathsToSrcFile(html: string, srcFileBase: string): strin
  * 用沙箱 iframe（srcdoc）加载完整 HTML，让浏览器原生解析 import map、module script、<link>。
  * 用于 Excalidraw 这类需要原生 ESM 的项目；普通 HTML 项目仍走旧 innerHTML 路径。
  */
-function renderHtmlInSandboxIframe(container: HTMLDivElement, html: string) {
+const MINI_APP_CONSOLE_BRIDGE_SOURCE = 'agent-spaces:mini-app-console';
+
+function renderHtmlInSandboxIframe(container: HTMLDivElement, html: string): () => void {
   container.innerHTML = '';
   const projectId = getMiniAppProjectIdFromLocation();
   const origin = typeof window !== 'undefined' ? window.location.origin : '';
@@ -103,6 +105,31 @@ function renderHtmlInSandboxIframe(container: HTMLDivElement, html: string) {
     finalHtml = finalHtml.replace(/__MINIAPP_SRC_FILE_BASE__/g, srcFileBase);
   }
 
+  // srcdoc runs in a separate Window, so the host logger cannot observe its console.
+  // Forward a formatted copy to the parent while retaining the iframe's native output.
+  const consoleBridge = `<script>(function(){
+    var levels = ['debug','info','log','warn','error'];
+    function format(value) {
+      if (value instanceof Error) return value.stack || value.message;
+      if (typeof value === 'string') return value;
+      try { return JSON.stringify(value); } catch (_) { return String(value); }
+    }
+    levels.forEach(function(level) {
+      var original = console[level];
+      if (typeof original !== 'function') return;
+      console[level] = function() {
+        try {
+          parent.postMessage({ source: '${MINI_APP_CONSOLE_BRIDGE_SOURCE}', level: level,
+            args: Array.prototype.map.call(arguments, format) }, '*');
+        } catch (_) {}
+        return original.apply(console, arguments);
+      };
+    });
+  })();</script>`;
+  finalHtml = /<head\b[^>]*>/i.test(finalHtml)
+    ? finalHtml.replace(/<head\b[^>]*>/i, (match) => `${match}${consoleBridge}`)
+    : `${consoleBridge}${finalHtml}`;
+
   const iframe = document.createElement('iframe');
   iframe.setAttribute('srcdoc', finalHtml);
   iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-popups allow-forms allow-modals allow-downloads');
@@ -112,6 +139,17 @@ function renderHtmlInSandboxIframe(container: HTMLDivElement, html: string) {
   iframe.style.display = 'block';
   iframe.setAttribute('title', 'mini-app sandbox');
   container.appendChild(iframe);
+
+  const handleMessage = (event: MessageEvent) => {
+    if (event.source !== iframe.contentWindow || event.data?.source !== MINI_APP_CONSOLE_BRIDGE_SOURCE) return;
+    const level = event.data.level;
+    if (!['debug', 'info', 'log', 'warn', 'error'].includes(level)) return;
+    const args = Array.isArray(event.data.args) ? event.data.args : [];
+    const target = console[level as 'debug' | 'info' | 'log' | 'warn' | 'error'];
+    target?.apply(console, args);
+  };
+  window.addEventListener('message', handleMessage);
+  return () => window.removeEventListener('message', handleMessage);
 }
 
 function installAgentSpacesUiGlobals() {
@@ -147,6 +185,7 @@ export function MiniAppRenderer({
   allowScroll = false,
 }: MiniAppRendererProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const sandboxCleanupRef = useRef<(() => void) | null>(null);
   const taskEventListenersRef = useRef(new Set<(event: string, data: unknown) => void>());
   const lastDispatchedTaskEventRef = useRef<MiniAppTaskEvent | null>(taskEvents?.at(-1) ?? null);
   const { resolvedTheme } = useTheme();
@@ -200,13 +239,15 @@ export function MiniAppRenderer({
     if (!containerRef.current) return;
 
     const container = containerRef.current;
+    sandboxCleanupRef.current?.();
+    sandboxCleanupRef.current = null;
     clearReactRenderer();
 
     // 沙箱分支：检测到 module script 或 importmap 时，用 iframe srcdoc 让浏览器原生解析 ESM/import map。
     // Excalidraw 等需要原生 ESM 的 HTML 项目走此路径；普通 HTML 项目走下方旧逻辑。
     const needsSandbox = /<script[^>]*\btype\s*=\s*["'](?:module|importmap)["'][^>]*>/i.test(html);
     if (needsSandbox) {
-      renderHtmlInSandboxIframe(container, html);
+      sandboxCleanupRef.current = renderHtmlInSandboxIframe(container, html);
       onError(null);
       return;
     }
@@ -237,6 +278,11 @@ export function MiniAppRenderer({
     }
     onError(null);
   }, [clearReactRenderer, componentProps, onError]);
+
+  useEffect(() => () => {
+    sandboxCleanupRef.current?.();
+    sandboxCleanupRef.current = null;
+  }, []);
 
   useEffect(() => {
     if (!sourceCode || type !== 'html') return;

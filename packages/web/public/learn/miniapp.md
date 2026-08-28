@@ -84,3 +84,13 @@ Mini-app 内置 Agent 对话能力，自包含执行，不依赖 workspace：
 - `miniApp.configChanged` — configs 写入后广播
 - `miniApp.clientRequest` / `clientResponse` — RPC 双向
 - `miniApp.taskSnapshot` / `configSnapshot` — 客户端连入时推送快照
+
+## Background service
+
+Mini-app 可在 `manifest.json` 增加一行配置开启后台服务：
+
+```json
+{ "backgroundService": { "enabled": true } }
+```
+
+默认加载 `src/background.js`，也可用 `entry` 指定入口。入口导出函数（或 `{ onTask }`）接收任务并返回结果。宿主 API 提供 `registerBackgroundService(config)` 与 `submitBackgroundTask(task)`；任务通过现有 `/ws` 长连接提交，立即返回 `taskId`，完成后广播 `miniApp.background.completed`，失败广播 `miniApp.background.failed`。服务端内置 `persist-images` 任务，用于把生成图片异步写入工作区目录。

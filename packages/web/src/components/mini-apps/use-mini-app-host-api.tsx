@@ -535,6 +535,17 @@ export function useMiniAppHostApi(
       return data?.result;
     };
 
+    // Background service：注册一次后即可提交不阻塞 UI 的后台任务。
+    const registerBackgroundService = (config: { entry?: string; enabled?: boolean } = {}) => {
+      getWS(projectId).send('miniApp.background.register' as any, config);
+      return { ok: true };
+    };
+    const submitBackgroundTask = (task: Record<string, unknown>) => {
+      const taskId = crypto.randomUUID?.() ?? `bg-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      getWS(projectId).send('miniApp.background.submit' as any, { ...task, taskId });
+      return { accepted: true, taskId };
+    };
+
     const readConfigJson = async <T,>(filePath = LAST_SELECTION_CONFIG): Promise<T | null> => {
       const path = normalizeRelativePath(filePath, LAST_SELECTION_CONFIG);
       const resp = await fetchWithAuth(`/api/mini-apps/${encodedProjectId}/configs/content?path=${encodeURIComponent(path)}`);
@@ -1038,6 +1049,8 @@ export function useMiniAppHostApi(
       onConfigChanged,
       onConfigReady,
       invokeService,
+      registerBackgroundService,
+      submitBackgroundTask,
       openAgentEditor,
       localFileUrl,
       proxyImageUrl,

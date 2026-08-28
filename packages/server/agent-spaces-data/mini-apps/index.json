@@ -101,7 +101,7 @@
       "@agent-spaces/builtin"
     ],
     "createdAt": "2026-06-12T10:29:24.362Z",
-    "updatedAt": "2026-07-13T02:19:55.356Z",
+    "updatedAt": "2026-08-28T02:11:50.095Z",
     "icon": "✍️",
     "storeUrl": "http://localhost:3101/mini-app/copywriting.zip",
     "storeChecksum": "ac59766d402fe6250a20ab5a90859816",
@@ -425,6 +425,9 @@
     ],
     "icon": "🎮",
     "enableAgents": true,
+    "backgroundService": {
+      "enabled": true
+    },
     "agentChatPlacement": "mini-app-slot",
     "agents": [
       {
@@ -467,6 +470,6 @@
       }
     ],
     "createdAt": "2026-07-22T00:00:00.000Z",
-    "updatedAt": "2026-08-27T12:39:55.892Z"
+    "updatedAt": "2026-08-28T03:58:21.483Z"
   }
 ]
