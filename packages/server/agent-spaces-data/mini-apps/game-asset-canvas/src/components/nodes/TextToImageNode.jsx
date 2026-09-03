@@ -7,6 +7,7 @@ import CountAndConcurrency from './CountAndConcurrency';
 import { ASPECT_OPTIONS, DEFAULT_MODEL, MODEL_OPTIONS, NODE_TYPES, SIZE_OPTIONS, WORKFLOWS } from '../../utils/constants';
 import { hasPrompt } from '../../utils/prompts';
 import TextVariableEditor from './TextVariableEditor';
+import WorkflowExecutionButton from './WorkflowExecutionButton';
 
 /**
  * 文字生成图片节点。
@@ -14,6 +15,7 @@ import TextVariableEditor from './TextVariableEditor';
  *   - prompt:       用户在输入框自由输入的提示词
  *   - pickedPrompt: 从提示词库选中的提示词（可选，展示为标签，提交时与 prompt 合并）
  * data.output: { images: string[] }
+ * data.workflowExecution: { workflowId, logId } 最近一次成功生成对应的工作流日志
  */
 
 // 参数 schema（agent 通过 get_node_params 读取）。
@@ -180,14 +182,17 @@ export default function TextToImageNode({ id, data, selected }) {
           取消生成
         </button>
       ) : (
-        <button
-          type="button"
-          disabled={!hasPrompt(params)}
-          onClick={handleRun}
-          className="w-full rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          生成图片
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            disabled={!hasPrompt(params)}
+            onClick={handleRun}
+            className="min-w-0 flex-1 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            生成图片
+          </button>
+          <WorkflowExecutionButton execution={status === 'done' ? data?.workflowExecution : null} />
+        </div>
       )}
 
       {error && (

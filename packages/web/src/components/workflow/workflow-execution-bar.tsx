@@ -1,7 +1,8 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import type { ExecutionLog, OutputField, WorkflowNode } from '@agent-spaces/shared';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -75,6 +76,10 @@ export function WorkflowExecutionBar({
   onUpdateNodeData,
 }: ExecutionBarProps) {
   const t = useTranslations('workflows');
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const appliedUrlLogIdRef = useRef<string | null>(null);
   const [inputDialogOpen, setInputDialogOpen] = useState(false);
   const [selectedStartNodeId, setSelectedStartNodeId] = useState<string | null>(null);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
@@ -188,6 +193,27 @@ export function WorkflowExecutionBar({
     setTimeout(() => setCopiedKey(null), 1500);
   };
 
+  const selectLog = useCallback((selectedLog: ExecutionLog) => {
+    appliedUrlLogIdRef.current = selectedLog.id;
+    const nextSearchParams = new URLSearchParams(searchParams.toString());
+    nextSearchParams.set('logId', selectedLog.id);
+    router.replace(`${pathname}?${nextSearchParams.toString()}`, { scroll: false });
+    onSelectLog(selectedLog);
+  }, [onSelectLog, pathname, router, searchParams]);
+
+  const urlLogId = searchParams.get('logId');
+  useEffect(() => {
+    if (!urlLogId) {
+      appliedUrlLogIdRef.current = null;
+      return;
+    }
+    if (appliedUrlLogIdRef.current === urlLogId) return;
+    const linkedLog = logs.find(item => item.id === urlLogId);
+    if (!linkedLog) return;
+    appliedUrlLogIdRef.current = urlLogId;
+    onSelectLog(linkedLog);
+  }, [logs, onSelectLog, urlLogId]);
+
   return (
     <div
       className={cn(
@@ -270,9 +296,9 @@ export function WorkflowExecutionBar({
                     selectedLogId === item.id && 'bg-muted ring-1 ring-primary',
                     statusColor,
                   )}
-                  onClick={() => onSelectLog(item)}
+                  onClick={() => selectLog(item)}
                   onKeyDown={(event) => {
-                    if (event.key === 'Enter' || event.key === ' ') onSelectLog(item);
+                    if (event.key === 'Enter' || event.key === ' ') selectLog(item);
                   }}
                 >
                   {/* Popover trigger in top-right corner */}

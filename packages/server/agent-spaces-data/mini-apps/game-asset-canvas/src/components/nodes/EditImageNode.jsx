@@ -11,12 +11,14 @@ import { ASPECT_OPTIONS, DEFAULT_MODEL, MODEL_OPTIONS, NODE_TYPES, SIZE_OPTIONS,
 import { normalizeImageUrls, resolveReferenceImages, promptToText, dedupeUrls } from '../../utils/workflow';
 import UploadSection from './UploadSection';
 import TextVariableEditor from './TextVariableEditor';
+import WorkflowExecutionButton from './WorkflowExecutionButton';
 
 /**
  * 编辑图片节点。
  * data.params: { prompt, model, aspect, size }
  * data.images: string[]  上游通过连线推入的待编辑图片 URL（或手动粘贴）
  * data.output: { images: string[] }  编辑后的产出
+ * data.workflowExecution: { workflowId, logId } 最近一次成功编辑对应的工作流日志
  */
 
 // 参数 schema（agent 通过 get_node_params 读取）。与 TextToImageNode 同构，
@@ -314,14 +316,17 @@ export default function EditImageNode({ id, data, selected }) {
           取消生成
         </button>
       ) : (
-        <button
-          type="button"
-          disabled={allInputImages.length === 0 || !((params.pickedPrompt || '').trim() || editPromptToText(prompt))}
-          onClick={handleRun}
-          className="w-full rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          编辑图片
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            disabled={allInputImages.length === 0 || !((params.pickedPrompt || '').trim() || editPromptToText(prompt))}
+            onClick={handleRun}
+            className="min-w-0 flex-1 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            编辑图片
+          </button>
+          <WorkflowExecutionButton execution={status === 'done' ? data?.workflowExecution : null} />
+        </div>
       )}
 
       {error && (

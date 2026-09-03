@@ -249,7 +249,7 @@ export function extractMentionedReferences(html) {
  * 同步执行工作流，返回 end 节点的 output 对象。
  * @param {string} workflowId
  * @param {Record<string, unknown>} input start 节点 inputFields 的值
- * @param {{ meta?: Record<string, unknown>, returnRawEndOutput?: boolean }} [opts]
+ * @param {{ meta?: Record<string, unknown>, returnRawEndOutput?: boolean, onExecution?: Function }} [opts]
  *   returnRawEndOutput: true 时跳过图片专用提取，直接返回首个 completed end 节点的完整 output
  *   （供音频/视频等非图片媒体节点使用）
  * @returns {Promise<Record<string, unknown>>} end 节点 outputs（如 { result: [url...] }）
@@ -266,6 +266,8 @@ export async function runWorkflow(workflowId, input, opts = {}) {
   const data = res && typeof res === 'object' && 'result' in res && typeof res.success === 'boolean'
     ? res.result
     : res;
+
+  opts.onExecution?.({ workflowId, logId: data?.executionId || null });
 
   const status = data?.status;
   const timedOut = !!data?.timedOut;
@@ -344,14 +346,16 @@ function hasImages(out) {
  * @param {string} workflowId
  * @param {object} input
  * @param {{directory?:string, historyId?:string}} [opts] directory 设了则落到工作区目录，historyId 作为子目录名
- * @returns {Promise<{urls:string[], resources:Array<{url:string,thumb:string}>}>}
+ * @returns {Promise<{urls:string[], resources:Array<{url:string,thumb:string}>, workflowExecution:{workflowId:string,logId:string}|null}>}
  */
 export async function generateImages(workflowId, input, opts = {}) {
   const workflowInput = Array.isArray(input?.images)
     ? { ...input, images: normalizeImageUrls(input.images) }
     : input;
+  let workflowExecution = null;
   const output = await runWorkflow(workflowId, workflowInput, {
     meta: { mode: workflowId, executionTarget: opts.executionTarget || undefined },
+    onExecution: (execution) => { workflowExecution = execution?.logId ? execution : null; },
   });
   const result = output?.result;
   let urls;
@@ -367,7 +371,7 @@ export async function generateImages(workflowId, input, opts = {}) {
   // 否则落到后端 data 目录。避免外链失效（防盗链/CORS/过期）。失败保留原地址。
   const persisted = await persistImagesToBackend(normalized, { directory: opts.directory, historyId: opts.historyId });
   const resources = await generateImageResources(persisted, { historyId: opts.historyId });
-  return { urls: persisted, resources };
+  return { urls: persisted, resources, workflowExecution };
 }
 
 /**

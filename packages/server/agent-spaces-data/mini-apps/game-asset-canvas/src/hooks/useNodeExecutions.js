@@ -83,7 +83,7 @@ export default function useNodeExecutions({
         setWorkflowExecutionId(requestNodeId, data.executionId);
       }
     });
-    update({ status: 'running', error: undefined });
+    update({ status: 'running', error: undefined, workflowExecution: null });
     // 提前生成 histId：作为落地子目录名，与 history 记录共用（count 多次调用工作流落到同一子目录）
     const histId = genId('hist');
     try {
@@ -101,8 +101,9 @@ export default function useNodeExecutions({
       }
       const urls = batches.flatMap((batch) => batch.urls || []).filter(Boolean);
       const resources = batches.flatMap((batch) => batch.resources || []).filter((item) => item?.url);
+      const workflowExecution = batches.map((batch) => batch.workflowExecution).filter(Boolean).at(-1) || null;
       if (!urls.length) throw new Error('未返回图片');
-      update({ status: 'done', output: { images: urls, resources } });
+      update({ status: 'done', output: { images: urls, resources }, workflowExecution });
       // 落地已在 generateImages 内完成（按 directory 决定走工作区目录或 data），这里只记录历史
       addHistory({
         id: histId,

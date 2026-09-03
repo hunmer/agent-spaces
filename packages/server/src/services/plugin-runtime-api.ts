@@ -412,7 +412,7 @@ export function createBuiltinPluginApi(source: PluginSource = {}): Record<string
 
   const api = {
     async fetchText(url: string, options: FetchOptions = {}): Promise<string> {
-      const res = await httpGet(url, { ...options, timeout: options.timeout || 30000 });
+      const res = await httpGet(url, { ...options, timeout: options.timeout || 1000 * 60 * 1 });
       return collectBody(res, options.encoding);
     },
 
@@ -422,7 +422,7 @@ export function createBuiltinPluginApi(source: PluginSource = {}): Record<string
     },
 
     async fetchBuffer(url: string, options: FetchOptions = {}) {
-      const res = await httpGet(url, { ...options, timeout: options.timeout || 60000 });
+      const res = await httpGet(url, { ...options, timeout: options.timeout || 1000 * 60 * 3 });
       const buffer = await collectBuffer(res);
       return {
         buffer,
@@ -445,7 +445,7 @@ export function createBuiltinPluginApi(source: PluginSource = {}): Record<string
     },
 
     async postJson<T = any>(url: string, options: PostOptions = {}): Promise<T> {
-      const res = await httpPost(url, { ...options, timeout: options.timeout || 60000 });
+      const res = await httpPost(url, { ...options, timeout: options.timeout || 1000 * 60 * 3 });
       const text = await collectBody(res);
       return JSON.parse(text);
     },

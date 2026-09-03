@@ -36,6 +36,12 @@ function getBaseUrl(args) {
   return (args.baseUrl && String(args.baseUrl).trim()) || DEFAULT_BASE_URL
 }
 
+// 节点参数 timeout（秒）→ 毫秒；未填或非法时返回 fallbackMs（保持旧行为）
+function getTimeoutMs(args, fallbackMs) {
+  const sec = Number(args.timeout)
+  return Number.isFinite(sec) && sec > 0 ? Math.round(sec * 1000) : fallbackMs
+}
+
 function getHeaders(args) {
   const apiKey = args.apiKey
   if (!apiKey) throw new Error('缺少 apiKey（请填写 Bearer Token）')
@@ -180,7 +186,7 @@ async function runChatCompletions(ctx, args, baseUrl, body) {
   const resp = await ctx.api.postJson(`${baseUrl}${CHAT_COMPLETIONS_PATH}`, {
     headers,
     body,
-    timeout: 180000,
+    timeout: getTimeoutMs(args, 180000),
   })
   const choice = resp && resp.choices && resp.choices[0]
   if (!choice) throw new Error(`chat/completions 响应异常: ${JSON.stringify(resp).slice(0, 200)}`)
@@ -199,7 +205,7 @@ async function runResponses(ctx, args, baseUrl, body) {
   const resp = await ctx.api.postJson(`${baseUrl}${RESPONSES_PATH}`, {
     headers,
     body,
-    timeout: 180000,
+    timeout: getTimeoutMs(args, 180000),
   })
   const output = (resp && resp.output) || []
   const images = extractImagesFromResponsesOutput(output, ctx)
@@ -349,7 +355,9 @@ async function extractImages(taskData, ctx) {
 async function pollTask(ctx, args, baseUrl, taskId) {
   const headers = getHeaders(args)
   const url = `${baseUrl}${TASK_PATH}/${encodeURIComponent(taskId)}`
-  for (let i = 0; i < POLL_MAX_ATTEMPTS; i++) {
+  const maxMs = getTimeoutMs(args, POLL_MAX_ATTEMPTS * POLL_INTERVAL)
+  const deadline = Date.now() + maxMs
+  while (Date.now() < deadline) {
     await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL))
     let result
     try {
@@ -366,7 +374,7 @@ async function pollTask(ctx, args, baseUrl, taskId) {
       throw new Error(`图片任务失败: ${data.fail_reason || result.message || '未知错误'}`)
     }
   }
-  throw new Error(`轮询超时（约 ${Math.round((POLL_MAX_ATTEMPTS * POLL_INTERVAL) / 60000)} 分钟）`)
+  throw new Error(`轮询超时（约 ${Math.round(maxMs / 60000)} 分钟）`)
 }
 
 // 提交后兼容两种响应：task_id 异步任务，或直接返回 OpenAI 格式图片数据。
@@ -484,6 +492,16 @@ module.exports = (t) => [
         default: 1,
         tooltip: t('field.n.tooltip', 'Number of images to generate.'),
       },
+      {
+        key: 'timeout',
+        label: t('field.timeout.label', 'Timeout (seconds)'),
+        type: 'number',
+        dataType: 'number',
+        tooltip: t(
+          'field.timeout.tooltip',
+          'Leave empty to use defaults: 180s for sync requests, 300s for task submission, 600s for polling.',
+        ),
+      },
     ],
     outputs: [
       { key: 'success', type: 'boolean', dataType: 'boolean' },
@@ -550,7 +568,7 @@ module.exports = (t) => [
         const r = await ctx.api.postJson(`${baseUrl}${GENERATIONS_PATH}?async=true`, {
           headers,
           body,
-          timeout: 60000,
+          timeout: getTimeoutMs(args, 1000 * 60 * 5),
         })
         return r
       })
@@ -672,6 +690,16 @@ module.exports = (t) => [
         default: 1,
         tooltip: t('field.n.tooltip', 'Number of images to generate.'),
       },
+      {
+        key: 'timeout',
+        label: t('field.timeout.label', 'Timeout (seconds)'),
+        type: 'number',
+        dataType: 'number',
+        tooltip: t(
+          'field.timeout.tooltip',
+          'Leave empty to use defaults: 180s for sync requests, 300s for task submission, 600s for polling.',
+        ),
+      },
     ],
     outputs: [
       { key: 'success', type: 'boolean', dataType: 'boolean' },
@@ -759,11 +787,21 @@ module.exports = (t) => [
       ctx.logger.info(`编辑指令: ${prompt}`)
 
       const out = await submitAndPoll(ctx, args, baseUrl, async () => {
-        const resp = await globalThis.fetch(`${baseUrl}${EDITS_PATH}?async=true`, {
-          method: 'POST',
-          headers: { Authorization: headers.Authorization, 'Content-Type': mp.contentType },
-          body: mp.body,
-        })
+        // sandbox 无 AbortController，用 Promise.race 实现提交超时
+        const submitTimeoutMs = getTimeoutMs(args, 1000 * 60 * 5)
+        const resp = await Promise.race([
+          globalThis.fetch(`${baseUrl}${EDITS_PATH}?async=true`, {
+            method: 'POST',
+            headers: { Authorization: headers.Authorization, 'Content-Type': mp.contentType },
+            body: mp.body,
+          }),
+          new Promise((_, reject) =>
+            setTimeout(
+              () => reject(new Error(`提交编辑超时（${Math.round(submitTimeoutMs / 1000)} 秒）`)),
+              submitTimeoutMs,
+            ),
+          ),
+        ])
         if (!resp.ok) {
           const text = await resp.text()
           throw new Error(`提交编辑失败: HTTP ${resp.status} ${text.slice(0, 200)}`)

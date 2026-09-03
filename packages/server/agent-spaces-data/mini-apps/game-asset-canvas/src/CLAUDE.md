@@ -11,7 +11,7 @@ Agent Spaces 宿主里的 React mini-app，用 ReactFlow 搭一个节点化的�
 - **改动生效**：`src/**` 刷新即生效；`src/services/*.js` chokidar 热重载；宿主层（`packages/web/*` / `packages/server/*`）**必须重启 web**。
 - **ReactFlow**：不要在 `decoratedNodes` 覆盖 `selected`；建节点必须同时给顶层 `width/height` + `style:{width,height}`；节点内容区加 `nodrag nopan nowheel`；边颜色/标签是展示态不写持久化。
 - **数据派生**：透传节点（imageDisplay/videoDisplay）转发本轮派生输入（含空数组）；videoEditor 上游视频去重合并；输出协议 `images: string[]` + 可选 `resources[]`（thumb/groupName/label）；列表 key 用 occurrenceKeys。
-- **工作流**：必须 `max_wait_ms:600000`；提交前 `normalizeImageUrls`；产出 `persistImagesToBackend` 落地（工作区 directory 时单写落本地）；媒体节点走 onGenerateMedia + returnRawEndOutput。
+- **工作流**：必须 `max_wait_ms:600000`；提交前 `normalizeImageUrls`；产出 `persistImagesToBackend` 落地（工作区 directory 时单写落本地）；图片生成完成后把 `{workflowId, logId}` 存到 `data.workflowExecution` 供节点跳转执行日志；媒体节点走 onGenerateMedia + returnRawEndOutput。
 - **持久化**：写入走 `services/canvas.js` 单写者；多工作区数据存 `configs/workspaces/<id>/`，settings/提示词库/面板布局/节点预设全局共享；config 初读三重读取。
 - **执行**：生成记录双路径都写 history；队列中断立即清节点状态并丢弃晚到结果；分组多实例按冻结的 executionTarget 写回。
 - **依赖**：从 `@agent-spaces/ui` 命名导入图标（不要直接 `lucide-react`）；不要 `URL.createObjectURL` 存图（用 `uploadFile`）。

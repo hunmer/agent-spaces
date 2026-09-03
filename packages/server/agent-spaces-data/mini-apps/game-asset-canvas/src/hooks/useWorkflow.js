@@ -11,7 +11,7 @@ import { generateImages } from '../utils/workflow';
  * histId 由调用方传入（与 history 记录共用，作为落地子目录名）。
  *
  * @param {string} [directory] 当前工作区数据目录（宿主机绝对路径），可选
- * @returns {(workflowId: string, input: object, histId?: string, executionTarget?: object) => Promise<{ urls: string[], resources: Array<{url:string,thumb:string}> }>}
+ * @returns {(workflowId: string, input: object, histId?: string, executionTarget?: object) => Promise<{ urls: string[], resources: Array<{url:string,thumb:string}>, workflowExecution: {workflowId:string,logId:string}|null }>}
  */
 export default function useWorkflow(directory) {
   return useCallback(async (workflowId, input, histId, executionTarget = null) => {

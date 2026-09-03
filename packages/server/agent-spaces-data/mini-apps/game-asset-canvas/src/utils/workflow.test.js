@@ -78,6 +78,7 @@ test('generateImages normalizes relative input images before workflow execution'
           success: true,
           result: {
             status: 'completed',
+            executionId: 'execution-log-1',
             timedOut: false,
             steps: [{
               nodeType: 'end',
@@ -99,7 +100,10 @@ test('generateImages normalizes relative input images before workflow execution'
       'http://localhost:3000/static/uploads/composite.png',
     ]);
     assert.deepEqual(result.urls, ['http://localhost:3000/static/uploads/generated.png']);
-    assert.deepEqual(result.resources, [{ url: 'http://localhost:3000/static/uploads/generated.png', thumb: '/api/thumb.jpg' }]);
+    assert.equal(result.resources.length, 1);
+    assert.equal(result.resources[0].url, 'http://localhost:3000/static/uploads/generated.png');
+    assert.equal(result.resources[0].thumb, '/api/thumb.jpg');
+    assert.deepEqual(result.workflowExecution, { workflowId: 'edit-image', logId: 'execution-log-1' });
     assert.equal(thumbnailArgs.url, 'http://localhost:3000/static/uploads/generated.png');
     assert.match(thumbnailArgs.target, /^thumbs\/generated\/.+\.jpg$/);
   } finally {
