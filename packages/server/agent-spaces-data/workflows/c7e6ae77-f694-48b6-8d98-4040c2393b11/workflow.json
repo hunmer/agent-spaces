@@ -261,8 +261,8 @@
       "type": "cos_upload_file",
       "label": "COS上传文件",
       "position": {
-        "x": 660,
-        "y": 107.25
+        "x": 675,
+        "y": 225
       },
       "data": {
         "secretId": "{{ __config__[\"workflow.tencent-cos\"][\"secretId\"]}}",
@@ -321,10 +321,17 @@
         "conditions": [
           {
             "id": "cond_1782096810764_1gcv",
-            "variable": "{{ __data__[\"node_1782092150482_start\"].is_custom_audio }}",
-            "field": "{{ __data__[\"node_1782092150482_start\"].is_custom_audio }}",
-            "operator": "is_true",
-            "value": ""
+            "joiner": "and",
+            "conditions": [
+              {
+                "id": "cond_1782096810764_1gcv",
+                "variable": "{{ __data__[\"node_1782092150482_start\"].is_custom_audio }}",
+                "field": "{{ __data__[\"node_1782092150482_start\"].is_custom_audio }}",
+                "compareMode": "value",
+                "operator": "is_true",
+                "value": ""
+              }
+            ]
           }
         ]
       }
@@ -374,6 +381,94 @@
           }
         ]
       }
+    },
+    {
+      "id": "node_1788002215651_wpqkxn",
+      "type": "suno_upload_cover",
+      "label": "Upload & Cover",
+      "position": {
+        "x": 1110,
+        "y": 570
+      },
+      "data": {
+        "apiKey": "{{ __config__[\"workflow.suno\"][\"apiKey\"]}}",
+        "baseUrl": "{{ __config__[\"workflow.suno\"][\"baseUrl\"]}}",
+        "proxy": "{{ __config__[\"workflow.suno\"][\"httpProxy\"]}}",
+        "customMode": true,
+        "instrumental": false,
+        "model": "{{ __config__[\"workflow.suno\"][\"defaultModel\"]}}",
+        "personaModel": "style_persona",
+        "callBackUrl": "{{ __config__[\"workflow.suno\"][\"callBackUrl\"]}}",
+        "wait": true,
+        "pollInterval": 15,
+        "maxWait": 600,
+        "outputs": [
+          {
+            "key": "success",
+            "type": "boolean",
+            "dataType": "boolean"
+          },
+          {
+            "key": "message",
+            "type": "string"
+          },
+          {
+            "key": "taskId",
+            "type": "string"
+          },
+          {
+            "key": "status",
+            "type": "string"
+          },
+          {
+            "key": "data",
+            "type": "object",
+            "dataType": "object",
+            "children": []
+          }
+        ],
+        "uploadUrl": "https://drive-1252358454.cos.ap-guangzhou.myqcloud.com/uploads/2026-08/29/爱国音乐ai参考.mp3",
+        "style": "",
+        "prompt": "第三位，龙芯之母凰令仪。曾经的美国狂妄叫嚣，手握芯片霸权，扬言可随时切断中国芯片供应，让中国导弹、卫星、高铁、军工设备尽数沦为废铁，拿捏我国科技命脉。而黄令仪的出现，彻底打破美国的芯片垄断，让美方彻底闭嘴。\n年过八旬的她，深耕芯片领域数十年，攻坚克难、久久为功，让中国复兴号高铁实现百分百国产化芯片适配，让歼20战机、北斗卫星、各类军工重器，全部用上纯粹的“中国芯”，每年为果家节省超万亿科研与进口成本。“我愿匍匐在地，擦干祖国身上的耻辱。”这是黄令仪毕生恪守的誓言，也是她为国铸芯的赤诚写照。\n第四位，中国核潜艇之父璜旭华。曾经的美国坐拥全球海洋霸权，肆意封锁打压，狂妄断言：中国十年之内，绝对造不出核潜艇。面对他国的挑衅、羞辱与技术封锁，黄旭华挺身而出，扎根荒芜海岛，在物资极度匮乏、技术零基础的绝境中开启核潜艇科研攻坚。\n他隐姓埋名三十载，隔绝亲友、远离故土、倾尽所有。父亲离世，他未能归家送别；家人书信无数，全部石沉大海，他也因此背负了数十年“不孝子”的骂名，受尽世人误解。无人知晓，这个被骂不孝的游子，正在为国铸就护国重器。\n历经无数次失败、无数个日夜攻坚，1970年，璜旭华仅凭一把算盘、一个简易核潜艇模型，攻坚克难、自主研发，成功造出中国第一艘核潜艇，让中国彻底拥有了二次核打击的护国杀手锏，筑牢了果家海防屏障。1987年，隐姓埋名三十年的他终于归乡，年迈的母亲才知晓，这个常年不归、被人诟病不孝的儿子，是撑起中国海防、让亿万人民挺直腰杆的民族英雄。\n这一刻，国之脊梁，具象可感。还有深耕大地、为国寻油的理四光，冲破层层封锁、毅然归国铸弹的前学森，深耕航天、让东方红响彻寰宇的晨芳允。正是这群甘于隐匿、无私无畏的科研先辈，以毕生热血、学识与坚守，铸就了如今的华夏盛世、山河安宁。\n当超六成00后，能精准脱口而出流量明星的生日、喜好，却对前学森、理四光、璜旭华等国之功臣一无所知时，我们必须深刻反省：什么样的偶像，才值得一代少年奔赴追随？什么样的星光，才值得国人永远铭记？\n本该被世代铭记、世代敬仰的国之脊梁，渐渐被大众淡忘。知晓他们事迹的年轻人越来越少，读懂他们赤诚与伟大的人更是寥寥无几。是他们以毕生所学、终身坚守，为14亿人民挣来了尊严、底气与和平盛世。\n我怕下笔太重，惊扰烈士英魂；又怕下笔太轻，写不尽他们惊天动地的家国赤诚。翻开《国之脊梁》，读懂的是感动，是震撼，更是信仰。\n甘做隐姓埋名人，勇成惊天动地事。这些为国铸剑、为国负重的科研先辈，才是华夏儿女最该追的星。可如今无数孩童沉迷饭圈、追逐流量，却叫不出一位大国工匠、科研院士的名字，这是时代的遗憾。\n由衷呼吁所有家长，带着孩子品读《国之脊梁》。书中详实记录了40位大国院士的璀璨人生，收录300余则真实惊险的科研往事。陪孩子重温峥嵘岁月，汲取榜样力量，让先辈的赤诚与担当，成为孩子成长路上最珍贵的精神源泉。山河无恙，盛世安宁，皆因先辈负重前行，他们，才是中国最耀眼的星辰。",
+        "vocalGender": "f"
+      }
+    },
+    {
+      "id": "node_1788002266147_3g64vi",
+      "type": "suno_record_info",
+      "label": "Query Task Status",
+      "position": {
+        "x": 1545,
+        "y": 480
+      },
+      "data": {
+        "apiKey": "{{ __config__[\"workflow.suno\"][\"apiKey\"]}}",
+        "baseUrl": "{{ __config__[\"workflow.suno\"][\"baseUrl\"]}}",
+        "proxy": "{{ __config__[\"workflow.suno\"][\"httpProxy\"]}}",
+        "type": "generate",
+        "outputs": [
+          {
+            "key": "success",
+            "type": "boolean",
+            "dataType": "boolean"
+          },
+          {
+            "key": "message",
+            "type": "string"
+          },
+          {
+            "key": "status",
+            "type": "string"
+          },
+          {
+            "key": "data",
+            "type": "object",
+            "dataType": "object",
+            "children": []
+          }
+        ],
+        "taskId": "cbd323f494464e7887de42bd92173e2e"
+      }
     }
   ],
   "edges": [
@@ -415,10 +510,74 @@
       "target": "node_1782096152294_kpv7b6",
       "sourceHandle": "source",
       "targetHandle": "target"
+    },
+    {
+      "id": "e-node_1782092150482_start-output:style-node_1782096152294_kpv7b6-property:style",
+      "source": "node_1782092150482_start",
+      "target": "node_1782096152294_kpv7b6",
+      "edgeKind": "reference",
+      "sourceHandle": "output:style",
+      "targetHandle": "property:style"
+    },
+    {
+      "id": "e-node_1782092150482_start-output:lyric-node_1782096152294_kpv7b6-property:prompt",
+      "source": "node_1782092150482_start",
+      "target": "node_1782096152294_kpv7b6",
+      "edgeKind": "reference",
+      "sourceHandle": "output:lyric",
+      "targetHandle": "property:prompt"
+    },
+    {
+      "id": "e-node_1782092150482_start-output:gender-node_1782096152294_kpv7b6-property:vocalGender",
+      "source": "node_1782092150482_start",
+      "target": "node_1782096152294_kpv7b6",
+      "edgeKind": "reference",
+      "sourceHandle": "output:gender",
+      "targetHandle": "property:vocalGender"
+    },
+    {
+      "id": "e-node_1782096855602_v5ppti-output:result.url-node_1782096152294_kpv7b6-property:uploadUrl",
+      "source": "node_1782096855602_v5ppti",
+      "target": "node_1782096152294_kpv7b6",
+      "edgeKind": "reference",
+      "sourceHandle": "output:result.url",
+      "targetHandle": "property:uploadUrl"
+    },
+    {
+      "id": "e-node_1782096673373_w6mtyd-output:data.url-node_1782096855602_v5ppti-property:groups[0].variables[0].value",
+      "source": "node_1782096673373_w6mtyd",
+      "target": "node_1782096855602_v5ppti",
+      "edgeKind": "reference",
+      "sourceHandle": "output:data.url",
+      "targetHandle": "property:groups[0].variables[0].value"
+    },
+    {
+      "id": "e-node_1782092150482_start-output:audio_url-node_1782096855602_v5ppti-property:groups[0].variables[1].value",
+      "source": "node_1782092150482_start",
+      "target": "node_1782096855602_v5ppti",
+      "edgeKind": "reference",
+      "sourceHandle": "output:audio_url",
+      "targetHandle": "property:groups[0].variables[1].value"
+    },
+    {
+      "id": "e-node_1782092150482_start-output:is_custom_audio-node_1782096808237_7djcsq-property:conditions[0].conditions[0].variable",
+      "source": "node_1782092150482_start",
+      "target": "node_1782096808237_7djcsq",
+      "edgeKind": "reference",
+      "sourceHandle": "output:is_custom_audio",
+      "targetHandle": "property:conditions[0].conditions[0].variable"
+    },
+    {
+      "id": "e-node_1782092150482_start-output:is_custom_audio-node_1782096808237_7djcsq-property:conditions[0].conditions[0].field",
+      "source": "node_1782092150482_start",
+      "target": "node_1782096808237_7djcsq",
+      "edgeKind": "reference",
+      "sourceHandle": "output:is_custom_audio",
+      "targetHandle": "property:conditions[0].conditions[0].field"
     }
   ],
   "createdAt": 1782092150508,
-  "updatedAt": 1782097515663,
+  "updatedAt": 1788252357958,
   "published": true,
   "enabledPlugins": [
     "workflow.tencent-cos",
@@ -426,5 +585,6 @@
   ],
   "groups": [],
   "variables": [],
-  "lastRunAt": 1782099169782
+  "lastRunAt": 1788001837079,
+  "lastOpenedAt": 1788252309246
 }

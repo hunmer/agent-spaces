@@ -1,4 +1,4 @@
-// 节点剪贴板：复制选中节点子图（含内部连线）到内存，粘贴时生成新 id + 偏移。
+// 节点剪贴板：复制选中节点及其内部/上游连线到内存，粘贴时生成新 id + 偏移。
 // 用模块级 ref 实现「单页应用内全局剪贴板」，切换工作区后仍可粘贴（跨工作区复制）。
 // 刷新页面失效（非持久化，可接受 —— 跨工作区复制是临时操作）。
 
@@ -19,7 +19,7 @@ const TRANSIENT_DATA_KEYS = new Set([
 /**
  * 序列化节点子图为干净数据（剥离函数回调 + 选中标记）。
  * @param {Array} selectedNodes 选中的节点（含完整 data）
- * @param {Array} allEdges 全部边（过滤出选中节点之间的内部连线）
+ * @param {Array} allEdges 全部边（过滤出内部连线及指向选中节点的上游连线）
  */
 export function copyNodes(selectedNodes, allEdges) {
   if (!selectedNodes?.length) return;
@@ -37,9 +37,9 @@ export function copyNodes(selectedNodes, allEdges) {
       data,
     };
   });
-  // 仅保留两端都在选中集合内的边（外部连线不复制）
+  // 保留所有指向选中节点的边：内部边两端都会映射，上游边仅映射目标。
   const cleanEdges = (allEdges || [])
-    .filter((e) => idSet.has(e.source) && idSet.has(e.target))
+    .filter((e) => idSet.has(e.target))
     .map((e) => ({
       source: e.source,
       target: e.target,
@@ -135,11 +135,11 @@ export function serializeClipboard() {
 }
 
 /**
- * 粘贴：生成新 id（保留选中集内部连线映射），整体偏移避免与原节点重叠。
- * @param {object} opts { genId:(prefix)=>string, offset?:{x,y}, targetCenter?:{x,y} }
+ * 粘贴：生成新 id（映射内部连线，并在上游仍存在时恢复入边），整体偏移避免重叠。
+ * @param {object} opts { genId:(prefix)=>string, offset?:{x,y}, targetCenter?:{x,y}, existingNodeIds?:Iterable<string> }
  * @returns {{ nodes: Node[], edges: Edge[] } | null} 待加入画布的新节点/边（调用方负责 setNodes/setEdges）
  */
-export function pasteNodes({ genId, offset, targetCenter }) {
+export function pasteNodes({ genId, offset, targetCenter, existingNodeIds }) {
   if (!hasClipboard()) return null;
   let off = offset || { x: 40, y: 40 };
   if (!offset && Number.isFinite(targetCenter?.x) && Number.isFinite(targetCenter?.y)) {
@@ -159,6 +159,7 @@ export function pasteNodes({ genId, offset, targetCenter }) {
     };
   }
   const idMap = new Map(); // oldId -> newId
+  const existingIdSet = existingNodeIds == null ? null : new Set(existingNodeIds);
   const newNodes = clipboard.nodes.map((n) => {
     const newId = genId(n.type);
     idMap.set(n.id, newId);
@@ -172,7 +173,8 @@ export function pasteNodes({ genId, offset, targetCenter }) {
   });
   const newEdges = clipboard.edges
     .map((e) => {
-      const source = idMap.get(e.source);
+      const source = idMap.get(e.source)
+        || (existingIdSet == null || existingIdSet.has(e.source) ? e.source : null);
       const target = idMap.get(e.target);
       if (!source || !target) return null;
       return {

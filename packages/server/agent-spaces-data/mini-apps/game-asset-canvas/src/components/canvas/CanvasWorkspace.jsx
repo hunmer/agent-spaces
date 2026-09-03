@@ -71,7 +71,6 @@ export default function CanvasWorkspace({
             <ReactFlow
               key={activeId}
               {...reactFlowProps}
-              colorMode="system"
               connectionLineComponent={ConnectionLine}
               connectionRadius={160}
               nodeTypes={reactFlowProps.nodeTypes}

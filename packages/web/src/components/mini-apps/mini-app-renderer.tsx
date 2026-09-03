@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import * as AgentSpacesUI from '@/lib/ui-exports';
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/components/layout/theme-provider';
@@ -189,12 +189,22 @@ export function MiniAppRenderer({
   const taskEventListenersRef = useRef(new Set<(event: string, data: unknown) => void>());
   const lastDispatchedTaskEventRef = useRef<MiniAppTaskEvent | null>(taskEvents?.at(-1) ?? null);
   const { resolvedTheme } = useTheme();
+  const resolvedComponentProps = useMemo(() => {
+    const hostConfig = componentProps?.hostConfig;
+    return {
+      ...componentProps,
+      hostConfig: {
+        ...(hostConfig && typeof hostConfig === 'object' ? hostConfig : {}),
+        colorMode: resolvedTheme,
+      },
+    };
+  }, [componentProps, resolvedTheme]);
   const { clearReactRenderer } = useMiniAppReactRenderer({
     enabled: type === 'react',
     containerRef,
     sourceCode,
     onError,
-    componentProps,
+    componentProps: resolvedComponentProps,
     files,
     mainFile,
   });
@@ -266,7 +276,7 @@ export function MiniAppRenderer({
         const fn = new Function('container', 'props', 'AgentSpacesUI', 'AgentSpaces', 'AgentSpacesAPI', script);
         fn(
           container,
-          componentProps || {},
+          resolvedComponentProps,
           (window as any).AgentSpacesUI,
           (window as any).AgentSpaces,
           (window as any).AgentSpacesAPI,
@@ -277,7 +287,7 @@ export function MiniAppRenderer({
       }
     }
     onError(null);
-  }, [clearReactRenderer, componentProps, onError]);
+  }, [clearReactRenderer, onError, resolvedComponentProps]);
 
   useEffect(() => () => {
     sandboxCleanupRef.current?.();

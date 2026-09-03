@@ -1888,6 +1888,7 @@ export default function Canvas({ hostConfig }) {
             onSelectContextImage: imageSelection.selectForContextMenu,
           }}
           reactFlowProps={{
+            colorMode: hostConfig?.colorMode || 'light',
             nodes: renderedNodes,
             edges: floatingEdges,
             viewport,

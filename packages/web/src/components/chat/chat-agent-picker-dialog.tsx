@@ -443,7 +443,7 @@ export function ChatAgentPickerDialog({
             <div className="flex size-7 items-center justify-center rounded-lg bg-primary/10">
               <Bot className="size-4 text-primary" />
             </div>
-            <DialogHeader className="flex-1 space-y-0">
+            <DialogHeader className="flex-1 space-y-0 p-6">
               <DialogTitle className="text-base">{t("dialog.addToChatTitle")}</DialogTitle>
               <DialogDescription className="text-xs">
                 {t("dialog.addToChatDesc")}

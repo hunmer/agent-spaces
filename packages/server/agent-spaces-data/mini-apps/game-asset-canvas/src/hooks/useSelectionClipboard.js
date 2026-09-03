@@ -134,7 +134,11 @@ export default function useSelectionClipboard({
 
   const requestNodePaste = useCallback(() => {
     if (!hasClipboard()) return;
-    const result = pasteNodes({ genId, targetCenter: getPasteCenter?.() });
+    const result = pasteNodes({
+      genId,
+      targetCenter: getPasteCenter?.(),
+      existingNodeIds: nodesRef.current.map((node) => node.id),
+    });
     if (!result) return;
     commitPaste(result);
   }, [commitPaste, getPasteCenter]);

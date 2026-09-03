@@ -20,6 +20,49 @@ test('copy and paste preserves a selected FileUpload connection target', () => {
   assert.equal(pasted?.edges[0]?.data?.inputTarget, 'mask');
 });
 
+test('paste reconnects a copied node to its existing upstream node', () => {
+  const target = {
+    id: 'target', type: 'editImage', position: { x: 100, y: 0 }, data: {},
+  };
+  copyNodes([target], [{
+    id: 'upstream-edge',
+    source: 'upstream',
+    target: 'target',
+    sourceHandle: 'image-output',
+    targetHandle: 'image-input',
+    data: { inputTarget: 'images' },
+  }]);
+
+  const pasted = pasteNodes({
+    genId: (prefix) => `${prefix}-copy`,
+    existingNodeIds: ['upstream', 'target'],
+  });
+
+  assert.deepEqual(pasted.edges, [{
+    source: 'upstream',
+    target: 'editImage-copy',
+    sourceHandle: 'image-output',
+    targetHandle: 'image-input',
+    data: { inputTarget: 'images' },
+    id: 'edge-copy',
+    markerEnd: { type: 'arrowclosed' },
+    animated: true,
+  }]);
+});
+
+test('paste drops an upstream connection when its source is absent from the target canvas', () => {
+  copyNodes([
+    { id: 'target', type: 'editImage', position: { x: 100, y: 0 }, data: {} },
+  ], [{ source: 'other-workspace-node', target: 'target' }]);
+
+  const pasted = pasteNodes({
+    genId: (prefix) => `${prefix}-copy`,
+    existingNodeIds: ['target'],
+  });
+
+  assert.deepEqual(pasted.edges, []);
+});
+
 test('paste centers the copied node bounds around the requested viewport point', () => {
   const nodes = [
     { id: 'left', type: 'textToImage', position: { x: 100, y: 200 }, width: 200, height: 100, data: {} },
