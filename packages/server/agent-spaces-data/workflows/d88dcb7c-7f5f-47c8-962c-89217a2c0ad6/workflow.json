@@ -903,7 +903,7 @@
     }
   ],
   "createdAt": 1782287549292,
-  "updatedAt": 1787889976298,
+  "updatedAt": 1788404372975,
   "published": false,
   "enabledPlugins": [
     "workflow.openai",
@@ -912,15 +912,15 @@
     "workflow.jimeng",
     "workflow.ai-image"
   ],
-  "lastRunAt": 1787896348077,
+  "lastRunAt": 1788404843535,
   "groups": [],
   "description": "文字生成图片",
   "variables": [],
   "layoutSnapshot": {
     "nodeDisplayMode": "normal"
   },
-  "lastOpenedAt": 1787889520815,
+  "lastOpenedAt": 1788405109261,
   "pluginConfigSchemes": {
-    "workflow.ai-image": "本地gemini"
+    "workflow.ai-image": "hyhawang"
   }
 }

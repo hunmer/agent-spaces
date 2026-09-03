@@ -10,7 +10,7 @@ import { resolveServerAssetUrl } from '@/lib/server';
 import { getWS } from '@/lib/ws';
 import { cn } from '@/lib/utils';
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable';
-import { Progress } from '@/components/ui/progress';
+import { Progress, ProgressIndicator, ProgressTrack } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { AvatarGroup } from '@/components/ui/avatar-group';
@@ -443,7 +443,11 @@ export function MiniAppPreview({ type, sourceCode, error, onError, projectId, pr
             return (
               <div className="flex h-full w-full flex-col items-center justify-center gap-4 px-32 text-muted-foreground">
                 <Loader2 className="h-6 w-6 animate-spin" />
-                <Progress value={reloadProgress} className="max-w-xs" />
+                <Progress value={reloadProgress} className="max-w-xs">
+                  <ProgressTrack>
+                    <ProgressIndicator className="transition-none" />
+                  </ProgressTrack>
+                </Progress>
                 <span className="text-xs tabular-nums">{reloadProgress}%</span>
               </div>
             );
