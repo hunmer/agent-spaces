@@ -89,3 +89,21 @@
 - `useExecutionQueue` 原先也只复制 `placeholderNodeId` 到 job，活动集合与取消回写仍会把不同实例视为同一节点；现已让 job 保存 `executionNodeId/executionTarget`。
 - 执行节点 ID 使用 `groupId + runId + templateNodeId` 的编码组合，旧 run 在 `ensureGroupExecution` 时自动补 `nodeIds` 映射。
 - 图片、音频、视频请求通过宿主 `callPluginTool` 的 meta 携带冻结 `executionTarget`，不污染工作流 start inputFields。
+
+## 外网图片后台下载队列
+
+- handoff 记载现有 `persistImagesToBackend/generateImages` 会在工作流返回阶段同步落地；本需求需要独立的 miniapp background service 持久队列，不能依赖页面生命周期。
+- 节点异步写回必须复用已有 `executionTarget` 冻结身份，避免分组素材实例切换后更新当前可见实例。
+- 初次全仓 `rg` 范围过大命中 vendor 压缩内容，后续限定 mini-app、server background service 与 web host API 目录。
+- 宿主 API 已提供 `registerBackgroundService` 与 `submitBackgroundTask`；server 的 `mini-app-background.ts` 在 Node 进程执行 handler，完成/失败后广播 `miniApp.background.completed/failed`。
+- 当前 server background service 是纯内存 handler + fire-and-forget Promise，任务本身不持久化；浏览器刷新不会中断下载，但刷新期间完成事件会丢失。
+- `src/utils/workflow.js` 已有未闭环实现：仅当 workspace 配置 `directory` 时提交 `persist-images` 后台任务，并立即返回外链；没有携带节点字段/执行身份，也没有消费完成事件。
+- 默认 background handler 返回本机绝对路径，未转换成本地 HTTP 地址；项目应提供 `src/background.js` 自定义 handler并通过 mini-app data 文件服务或 local-file 映射返回 HTTP URL。
+- `Toolbar` 右侧已有 `queueSlot`（生成执行队列）和操作历史，下载队列适合新增独立 slot/Popover，避免混淆工作流执行与文件下载。
+- 采用 `configs/download-queue.json` 作为持久状态；自定义 `src/background.js` 在服务端更新 running/done/error，并直接原子写回目标 canvas/history。
+- background ctx 需补 `readConfig/updateConfig/saveImage`：`saveImage` 负责安全写入 workspace directory 或 mini-app data，并生成带鉴权 token 的本地 HTTP URL。
+- 写回目标由 `{workspaceId,nodeId,executionTarget,historyId}` 冻结；目标节点 data 内只按精确 URL 映射递归替换，兼容 `output.images/resources/versions` 与队列占位节点的顶层 `images/resources`。
+- `generateImages` 新增 `deferPersistence`：节点执行路径设 true 并转交后台队列；分镜、角色库、reskin 等非节点消费者保持原同步落地行为，避免兼容回归。
+- 后台下载对画布防抖保存竞争最多重试 6 次（每次 300ms），仅在目标 data 确实含原 URL 时写回；分组非激活 run 不改当前画布节点。
+- 最终定向测试 12/12、11 文件 Babel、server TypeScript 与 diff check 通过；全量 289/292，3 项既有 reskin/FFmpeg 失败。
+- `dev:server` 已通过 procm HTTP 重启，进程 running，监听 127.0.0.1:3100，重启后日志无 error。

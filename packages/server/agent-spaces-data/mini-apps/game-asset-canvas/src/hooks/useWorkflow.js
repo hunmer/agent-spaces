@@ -2,13 +2,8 @@ import { useCallback } from 'react';
 import { generateImages } from '../utils/workflow';
 
 /**
- * 执行一次图片生成工作流：调用 generateImages 取 URL。
- *
- * 落地策略由 directory 决定：
- * - directory 有值（工作区数据目录）：产出图落到该目录下 `{histId}/{index}` 子路径，返回指向本地文件的 httpUrl。
- * - directory 无值：维持原行为，落到后端 data 目录。
- *
- * histId 由调用方传入（与 history 记录共用，作为落地子目录名）。
+ * 执行一次节点图片生成工作流。先返回工作流 URL，节点写回后再由下载队列后台落地。
+ * histId 由调用方传入，与生成历史和后台下载目录共用。
  *
  * @param {string} [directory] 当前工作区数据目录（宿主机绝对路径），可选
  * @returns {(workflowId: string, input: object, histId?: string, executionTarget?: object) => Promise<{ urls: string[], resources: Array<{url:string,thumb:string}>, workflowExecution: {workflowId:string,logId:string}|null }>}
@@ -19,6 +14,7 @@ export default function useWorkflow(directory) {
       directory,
       historyId: histId,
       executionTarget,
+      deferPersistence: true,
     });
   }, [directory]);
 }

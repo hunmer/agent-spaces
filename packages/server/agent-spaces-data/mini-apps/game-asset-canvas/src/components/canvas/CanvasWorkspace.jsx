@@ -9,6 +9,7 @@ import Toolbar from '../Toolbar';
 import RightPanel from '../RightPanel';
 import ConnectionLine from '../ConnectionLine';
 import ExecutionQueuePopover from '../ExecutionQueuePopover';
+import DownloadQueuePopover from '../DownloadQueuePopover';
 import WorkspaceSwitcher from '../WorkspaceSwitcher';
 import CanvasContextMenu from './CanvasContextMenu';
 import DropNodeMenu from './DropNodeMenu';
@@ -34,6 +35,7 @@ export default function CanvasWorkspace({
   onPanelLayoutChange,
   toolbarProps,
   workspaceSwitcherProps,
+  downloadQueueProps,
   queueProps,
   canvasContainerProps,
   canvasContextMenuProps,
@@ -62,6 +64,7 @@ export default function CanvasWorkspace({
           <Toolbar
             {...toolbarProps}
             workspaceSlot={<WorkspaceSwitcher {...workspaceSwitcherProps} />}
+            downloadQueueSlot={<DownloadQueuePopover {...downloadQueueProps} />}
             queueSlot={<ExecutionQueuePopover {...queueProps} />}
           />
           <CanvasContextMenu

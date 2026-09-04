@@ -23,6 +23,7 @@ game-asset-canvas/
 ```
 src/
   index.jsx                  # 入口：<ReactFlowProvider><Canvas/></ReactFlowProvider>
+  background.js             # 服务端后台图片下载、队列状态和节点 URL 定向写回
   api.js                     # Agent 画布 API（~27 handler，RPC 到浏览器，1210 行）
   api/                       # asset 类 handler 拆分（assets/constants/helpers）
   tools.js                   # Agent 工具元数据（description/inputSchema）
@@ -36,7 +37,7 @@ src/
 
 关键分组（全量清单见 module-responsibilities.md）：
 - 编排：`Canvas.jsx`
-- 面板/弹层：`Toolbar` / `RightPanel`（→ right-panel/）/ `SettingsDialog` / `ExecutionQueuePopover` / `NodeFormDialog` / `NodeExecuteDialog` / `PastePropertiesDialog` / `CanvasVersionPanel`
+- 面板/弹层：`Toolbar` / `RightPanel`（→ right-panel/）/ `SettingsDialog` / `ExecutionQueuePopover` / `DownloadQueuePopover` / `NodeFormDialog` / `NodeExecuteDialog` / `PastePropertiesDialog` / `CanvasVersionPanel`
 - 工作区：`WorkspaceSwitcher` / `CreateWorkspaceDialog`（创建/重命名+数据目录）/ `DeleteWorkspacesDialog`
 - 大对话框：`UiSplitterDialog` / `GridStitchDialog` / `BBoxViewerDialog` / `PixelEditorDialog` / `PhotopeaDialog` / `DirectorDeskDialog` / `VideoEditorDialog` / `CutoutDialog` / `ImageEditorDialog` / `MaskPaintDialog` / `PromptOptimizeDialog` / `PromptPickerDialog` / `StoryboardGenerationDialog` / `ConnectionTargetDialog` / `SpineEditorDialog` / `ExportImagesDialog` / `AssetLibraryPickerDialog` / `GroupConfirmDialog` / `DeleteGroupDialog` / `BatchRunConfirmDialog`
 - 通用件：`FileUpload` / `ImageHoverCard` / `FrameSequencePlayer` / `GridAnimationPreview` / `AutoResizeTextarea` / `BorderBeam` / `ConnectionLine` / `AssetLibrary`
@@ -88,6 +89,7 @@ configs/
   prompt-library.json            # 全局（自定义提示词库）
   panel-layout.json              # 全局（{canvas-main:72, canvas-right:28}）
   node-presets.json              # 全局（节点预设子图模板）
+  download-queue.json            # 全局任务表（按 workspaceId 过滤展示）
   spine-reskin-history.json      # 全局（Spine 换肤记录，按资源签名分组）
   workspaces.json                # 全局（{activeId, workspaces[]:{id,name,createdAt,directory?}}）
   workspaces/<id>/

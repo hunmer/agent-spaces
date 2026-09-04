@@ -105,6 +105,7 @@ export default function useExecutionQueue(opts = {}) {
         const result = await generateImages(task.workflowId, task.input, {
           directory: directoryRef.current,
           historyId: job.histId,
+          deferPersistence: true,
         });
         images = result.urls;
         resources = result.resources;

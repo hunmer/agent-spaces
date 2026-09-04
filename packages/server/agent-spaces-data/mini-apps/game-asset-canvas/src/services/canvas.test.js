@@ -69,6 +69,19 @@ test('save_generation_history replaces the workspace list without duplicating en
   ]);
 });
 
+test('clear_download_queue preserves active tasks', () => {
+  const ctx = createContext();
+  ctx.configs.set('download-queue.json', [
+    { id: 'queued', workspaceId: 'ws-1', status: 'queued' },
+    { id: 'running', workspaceId: 'ws-1', status: 'running' },
+    { id: 'done', workspaceId: 'ws-1', status: 'done' },
+    { id: 'other', workspaceId: 'ws-2', status: 'done' },
+  ]);
+  const result = canvasService.clear_download_queue({ workspaceId: 'ws-1' }, ctx);
+  assert.equal(result.count, 3);
+  assert.deepEqual(ctx.configs.get('download-queue.json').map((item) => item.id), ['queued', 'running', 'other']);
+});
+
 test('save_asset_library preserves thumbnail metadata', () => {
   const ctx = createContext();
   canvasService.save_asset_library({

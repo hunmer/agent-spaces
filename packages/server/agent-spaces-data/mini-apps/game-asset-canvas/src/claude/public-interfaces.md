@@ -46,13 +46,14 @@ Agent（LLM function calling）调用，经 `ctx.requestClient` RPC 到浏览器
 - useCanvasAgentRpc 调用必须放在 Canvas.jsx 的 nodeCallbacks useMemo **之后**（TDZ：依赖 handleGenerate/handleGenerateMedia）。
 - 宿主 `mini-app-renderer.tsx` 的 taskEvents 必须**增量全量分发**（事件游标），只发最后一条会让并发 `ctx.requestClient` 超时。
 
-## 2. 服务端单写者 handlers（src/services/canvas.js，31 个）
+## 2. 服务端单写者 handlers（src/services/canvas.js，32 个）
 
 前端经 `window.AgentSpaces.invokeService(handler, payload)` 调用，ctx 提供 `readConfig/writeConfig/updateConfig`。
 
 ### 画布（`configs/workspaces/<id>/`）
 - `save_canvas({workspaceId, state})` / `load_canvas` / `clear_canvas`
 - `add_history({workspaceId, item})`（头部追加，HISTORY_MAX=200）/ `save_generation_history`（整文件写，补缩略图用，必须保留 resources）/ `remove_history` / `clear_history`
+- `clear_download_queue({workspaceId})`（仅清该工作区已结束的下载任务）
 - `save_last_params({workspaceId, params})`（每节点类型上次提交参数）
 
 ### 分镜角色 / Spine 换肤
@@ -74,6 +75,7 @@ Agent（LLM function calling）调用，经 `ctx.requestClient` RPC 到浏览器
 |-----|------|
 | `getConfig` / `writeConfigJson` / `onConfigChanged` / `onConfigReady` / `isConfigReady` | config 读写 + 多端同步 |
 | `invokeService(handler, payload)` | 调服务端单写者 |
+| `registerBackgroundService(config)` / `submitBackgroundTask(task)` | 注册 Node 后台 handler / 提交刷新后继续运行的任务 |
 | `uploadFile(file)` | 上传到 `data/uploads/`，返回 `{url}` |
 | `downloadImage(url)` | 下载外链图到 `data/`，返回 `{httpUrl}` |
 | `saveImageToDir(url, dir, filename)` | 产图写工作区数据目录（绝对路径），无扩展名自动补 |

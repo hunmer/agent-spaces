@@ -146,3 +146,34 @@ test('generateImages forwards the frozen execution target in request metadata', 
     globalThis.window = previousWindow;
   }
 });
+
+test('generateImages deferPersistence leaves external images for the background queue', async () => {
+  const { generateImages } = loadWorkflowModule();
+  const previousWindow = globalThis.window;
+  let browserDownloads = 0;
+  globalThis.window = {
+    location: { origin: 'http://localhost:3000' },
+    AgentSpaces: {
+      downloadImage: async () => { browserDownloads += 1; throw new Error('must not download in browser'); },
+      generateThumbnail: async ({ url }) => ({ httpUrl: url }),
+      callPluginTool: async () => ({
+        success: true,
+        result: {
+          status: 'completed',
+          steps: [{
+            nodeType: 'end',
+            status: 'completed',
+            output: { images: ['https://cdn.example.com/result.png'] },
+          }],
+        },
+      }),
+    },
+  };
+  try {
+    const result = await generateImages('image-workflow', {}, { deferPersistence: true });
+    assert.deepEqual(result.urls, ['https://cdn.example.com/result.png']);
+    assert.equal(browserDownloads, 0);
+  } finally {
+    globalThis.window = previousWindow;
+  }
+});

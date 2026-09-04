@@ -31,6 +31,7 @@ export default function useNodeExecutions({
   settings,
   createNodeAt,
   saveLastParams,
+  enqueueImageDownloads,
 }) {
   // 节点内部更新 data 的回调（注入到 data.onUpdate）—— 留在 Canvas 也可，但与执行强相关放这里
   const makeOnUpdate = useCallback((nodeId) => (patch) => {
@@ -104,8 +105,8 @@ export default function useNodeExecutions({
       const workflowExecution = batches.map((batch) => batch.workflowExecution).filter(Boolean).at(-1) || null;
       if (!urls.length) throw new Error('未返回图片');
       update({ status: 'done', output: { images: urls, resources }, workflowExecution });
-      // 落地已在 generateImages 内完成（按 directory 决定走工作区目录或 data），这里只记录历史
-      addHistory({
+      // 先记录外链结果，再提交 background service 下载并定向替换。
+      const historyWrite = addHistory({
         id: histId,
         nodeId: requestNodeId,
         templateNodeId: nodeId,
@@ -117,6 +118,13 @@ export default function useNodeExecutions({
         resources,
         createdAt: Date.now(),
       }).catch((e) => console.error('addHistory failed:', e));
+      historyWrite.finally(() => enqueueImageDownloads?.({
+        urls,
+        nodeId,
+        executionTarget,
+        historyId: histId,
+        label: `${NODE_META[nodeType]?.label || '节点'}图片`,
+      }));
       notifyDone('生成完成', `${NODE_META[nodeType]?.label || '节点'}产出了 ${urls.length} 张图`);
     } catch (err) {
       if (wfHandle.aborted) {
@@ -129,7 +137,7 @@ export default function useNodeExecutions({
       try { unsubStarted?.(); } catch {}
       clearWorkflowHandle(requestNodeId);
     }
-  }, [runWorkflow, updateNodeData, updateExecutionNodeData, addHistory, settings, saveLastParams]);
+  }, [runWorkflow, updateNodeData, updateExecutionNodeData, addHistory, settings, saveLastParams, enqueueImageDownloads]);
 
   // 媒体节点（音频/视频）生成：与 handleGenerate 同款，但产出写 output.audio(s) / output.video(s)。
   // count > 1 时按 count 并发调用，产出合并为 audios/videos 数组（媒体单值 audio/video 保留兼容：取首项）。
@@ -300,11 +308,12 @@ export default function useNodeExecutions({
     const tag = processType === 'segment' ? IMAGE_TAGS.segment : IMAGE_TAGS.enhance;
     const normalized = normalizeImageUrls(sourceImages.filter(Boolean));
     const resultId = createNodeAt(NODE_TYPES.imageDisplay, null);
+    const histId = genId('hist');
     updateNodeData(resultId, { images: [], source: 'processing', loading: true, error: undefined, tags: [tag] });
     try {
       const results = await Promise.allSettled(
         normalized.map((url) =>
-          runWorkflow(workflowId, { image_url: url, process_type: processType }, resultId)
+          runWorkflow(workflowId, { image_url: url, process_type: processType }, histId)
             .then(({ urls }) => urls || []),
         ),
       );
@@ -321,20 +330,26 @@ export default function useNodeExecutions({
         error: failed ? `${failed} 张失败` : undefined,
         tags: [tag],
       });
-      addHistory({
-        id: genId('hist'),
-        nodeId: null,
+      const historyWrite = addHistory({
+        id: histId,
+        nodeId: resultId,
         nodeType: NODE_TYPES.imageDisplay,
         prompt: processType === 'segment' ? '抠图' : '放大',
         model: 'image_enchanter',
         images: allUrls,
         createdAt: Date.now(),
       }).catch((e) => console.error('processImage addHistory failed:', e));
+      historyWrite.finally(() => enqueueImageDownloads?.({
+        urls: allUrls,
+        nodeId: resultId,
+        historyId: histId,
+        label: processType === 'segment' ? '抠图图片' : '放大图片',
+      }));
     } catch (err) {
       console.error('processImage failed:', err);
       updateNodeData(resultId, { source: 'error', loading: false, error: err?.message || String(err) });
     }
-  }, [settings, runWorkflow, createNodeAt, updateNodeData, addHistory]);
+  }, [settings, runWorkflow, createNodeAt, updateNodeData, addHistory, enqueueImageDownloads]);
 
   // 图像处理节点「执行」：调本地算法（utils/image-ops），不走工作流。
   const handleProcessLocal = useCallback(async (
@@ -369,8 +384,9 @@ export default function useNodeExecutions({
       if (!urls.length) throw new Error('处理未返回图片');
       update({ status: 'done', output: { images: urls } });
       const histNodeType = nodeType || NODE_TYPES.imageProcess;
-      addHistory({
-        id: genId('hist'),
+      const histId = genId('hist');
+      const historyWrite = addHistory({
+        id: histId,
         nodeId: requestNodeId,
         templateNodeId: nodeId,
         executionTarget,
@@ -380,6 +396,10 @@ export default function useNodeExecutions({
         images: urls,
         createdAt: Date.now(),
       }).catch((e) => console.error('processLocal addHistory failed:', e));
+      historyWrite.finally(() => enqueueImageDownloads?.({
+        urls, nodeId, executionTarget, historyId: histId,
+        label: `${NODE_META[histNodeType]?.label || '图像处理'}图片`,
+      }));
       notifyDone('处理完成', `${NODE_META[histNodeType]?.label || '节点'}处理完成，产出 ${urls.length} 张图`);
     } catch (err) {
       if (controller.signal.aborted) return;
@@ -388,7 +408,7 @@ export default function useNodeExecutions({
     } finally {
       clearController(requestNodeId, controller);
     }
-  }, [updateNodeData, updateExecutionNodeData, addHistory, settings, runWorkflow, saveLastParams]);
+  }, [updateNodeData, updateExecutionNodeData, addHistory, settings, runWorkflow, saveLastParams, enqueueImageDownloads]);
 
   // 统一抠图节点「执行抠图」：调 runCutout 分流（白底/色度键本地算法 / 工作流抠图 / rembg 插件）。
   const handleCutout = useCallback(async (
@@ -421,8 +441,9 @@ export default function useNodeExecutions({
       if (controller.signal.aborted) return;
       if (!urls.length) throw new Error('抠图未返回图片');
       update({ status: 'done', output: { images: urls } });
-      addHistory({
-        id: genId('hist'),
+      const histId = genId('hist');
+      const historyWrite = addHistory({
+        id: histId,
         nodeId: requestNodeId,
         templateNodeId: nodeId,
         executionTarget,
@@ -432,6 +453,9 @@ export default function useNodeExecutions({
         images: urls,
         createdAt: Date.now(),
       }).catch((e) => console.error('cutout addHistory failed:', e));
+      historyWrite.finally(() => enqueueImageDownloads?.({
+        urls, nodeId, executionTarget, historyId: histId, label: '抠图图片',
+      }));
       notifyDone('抠图完成', `抠图完成，产出 ${urls.length} 张图`);
     } catch (err) {
       if (controller.signal.aborted) return;
@@ -440,7 +464,7 @@ export default function useNodeExecutions({
     } finally {
       clearController(requestNodeId, controller);
     }
-  }, [updateNodeData, updateExecutionNodeData, addHistory, settings, runWorkflow, saveLastParams]);
+  }, [updateNodeData, updateExecutionNodeData, addHistory, settings, runWorkflow, saveLastParams, enqueueImageDownloads]);
 
   // 节点工具栏「抠图」按钮：创建统一抠图节点，预填当前节点产出图作为输入。mode 默认 workflow。
   const handleCutoutCreate = useCallback((sourceImages) => {
@@ -473,8 +497,9 @@ export default function useNodeExecutions({
       if (controller.signal.aborted) return;
       if (!urls.length) throw new Error('深度图提取未返回图片');
       update({ status: 'done', output: { images: urls } });
-      addHistory({
-        id: genId('hist'),
+      const histId = genId('hist');
+      const historyWrite = addHistory({
+        id: histId,
         nodeId: requestNodeId,
         templateNodeId: nodeId,
         executionTarget,
@@ -484,6 +509,9 @@ export default function useNodeExecutions({
         images: urls,
         createdAt: Date.now(),
       }).catch((e) => console.error('depth addHistory failed:', e));
+      historyWrite.finally(() => enqueueImageDownloads?.({
+        urls, nodeId, executionTarget, historyId: histId, label: '深度图图片',
+      }));
       notifyDone('深度图提取完成', `深度图提取完成，产出 ${urls.length} 张图`);
     } catch (err) {
       if (controller.signal.aborted) return;
@@ -492,7 +520,7 @@ export default function useNodeExecutions({
     } finally {
       clearController(requestNodeId, controller);
     }
-  }, [updateNodeData, updateExecutionNodeData, addHistory, saveLastParams]);
+  }, [updateNodeData, updateExecutionNodeData, addHistory, saveLastParams, enqueueImageDownloads]);
 
   // 统一取消入口（节点【取消生成】按钮调用）：
   // - 工作流类（文生图/编辑图/配音/视频）：标记 aborted + stopWorkflow(executionId) 真中断引擎

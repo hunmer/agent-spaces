@@ -57,12 +57,6 @@ export function isBackendUrl(url) {
  */
 export async function persistImagesToBackend(urls, opts = {}) {
   const { directory, historyId } = opts;
-  const submitBackgroundTask = window.AgentSpaces?.submitBackgroundTask;
-  if (directory && typeof submitBackgroundTask === 'function') {
-    submitBackgroundTask({ type: 'persist-images', urls: normalizeImageUrls(urls), directory, historyId });
-    // 后台完成后通过 miniApp.background.completed 推送替换映射；生成节点不再等待磁盘 IO。
-    return Array.isArray(urls) ? urls.slice() : [];
-  }
   const saveImageToDir = directory ? window.AgentSpaces?.saveImageToDir : null;
   const localFileUrl = window.AgentSpaces?.localFileUrl;
   const out = [];
@@ -345,7 +339,8 @@ function hasImages(out) {
  * 兼容多种 output 字段名：result / images / image_urls（image_enchanter 工作流 end 节点用 image_urls）。
  * @param {string} workflowId
  * @param {object} input
- * @param {{directory?:string, historyId?:string}} [opts] directory 设了则落到工作区目录，historyId 作为子目录名
+ * @param {{directory?:string, historyId?:string, deferPersistence?:boolean}} [opts]
+ *   deferPersistence 为 true 时由调用方在节点写回后提交 background service。
  * @returns {Promise<{urls:string[], resources:Array<{url:string,thumb:string}>, workflowExecution:{workflowId:string,logId:string}|null}>}
  */
 export async function generateImages(workflowId, input, opts = {}) {
@@ -367,11 +362,11 @@ export async function generateImages(workflowId, input, opts = {}) {
   else urls = [];
   // 规范化：相对路径补全为完整 http URL
   const normalized = normalizeImageUrls(urls);
-  // 非后端地址的外链图统一落地：directory 设了则落到工作区目录（返回指向本地文件的 httpUrl），
-  // 否则落到后端 data 目录。避免外链失效（防盗链/CORS/过期）。失败保留原地址。
-  const persisted = await persistImagesToBackend(normalized, { directory: opts.directory, historyId: opts.historyId });
-  const resources = await generateImageResources(persisted, { historyId: opts.historyId });
-  return { urls: persisted, resources, workflowExecution };
+  const outputUrls = opts.deferPersistence
+    ? normalized
+    : await persistImagesToBackend(normalized, { directory: opts.directory, historyId: opts.historyId });
+  const resources = await generateImageResources(outputUrls, { historyId: opts.historyId });
+  return { urls: outputUrls, resources, workflowExecution };
 }
 
 /**

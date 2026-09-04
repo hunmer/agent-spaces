@@ -40,11 +40,12 @@
 ## 执行/工作流约定
 
 - **必须 `max_wait_ms:600000`**（默认 120s 会超时）；解析兜底 end → data.images → 任意 completed；媒体节点走 `onGenerateMedia` + `returnRawEndOutput:true`。
-- **提交前 `normalizeImageUrls`**；产出图 `persistImagesToBackend` 落地（外链换 httpUrl）。
+- **提交前 `normalizeImageUrls`**；节点外网图片先写回，再由 `useDownloadQueue` 提交 background service，后台替换为本地 httpUrl。非节点流程仍可直接用 `persistImagesToBackend`。
 - **中断**：`callPluginTool` 不可中断；中断靠 `stopWorkflow(executionId)`（并行订阅 `workflow:started` 拿 id）。
 - **生成记录双路径都写 history**：节点内「生成」走 handleGenerate，表单「⚡生成」走 useExecutionQueue.submit → onComplete 也必须调 addHistory。
 - **队列中断立即清节点状态**：cancel 经 onCancel 把 placeholderNodeId 写 `loading:false,status:'cancelled'`；晚到结果用 cancelledJobIdsRef 丢弃。
 - **工作区数据目录单写非双写**：directory 设了产图只落一份 `{historyId}/{index}.ext`，返回 localFileUrl；**historyId 必须在 generateImages 前生成**（与 addHistory 共用同 id）；改动需同步 `useWorkflow` + `useExecutionQueue.submit` 两处调用点。
+- **下载队列不可依赖页面事件收尾**：`src/background.js` 必须直接更新 `download-queue.json`、目标 canvas 和 generation-history；普通节点按 nodeId，分组实例按冻结 executionTarget。宿主 `mini-app-background.ts` 改动需重启 server。
 - **分组多实例执行冻结节点身份**：`nodeIds[templateNodeId]` 稳定生成，请求携带 `executionTarget`，结果按 target 写回对应 run；禁止完成时读当前 activeId 认领；队列活动集合用 executionNodeId。
 - **分组「运行所有」先选 runs 再串行**；运行期间允许切换实例，禁止切模式/上传/删除/拖连线。
 

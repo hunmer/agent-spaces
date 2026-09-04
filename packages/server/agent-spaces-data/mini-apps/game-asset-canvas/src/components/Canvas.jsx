@@ -23,6 +23,7 @@ import useWorkflow from '../hooks/useWorkflow';
 import useGenerationHistory from '../hooks/useGenerationHistory';
 import useSettings from '../hooks/useSettings';
 import useExecutionQueue from '../hooks/useExecutionQueue';
+import useDownloadQueue from '../hooks/useDownloadQueue';
 import useWorkspaces from '../hooks/useWorkspaces';
 import usePanelLayout from '../hooks/usePanelLayout';
 import useImageOutputs, { useVideoOutputs } from '../hooks/useImageOutputs';
@@ -239,6 +240,7 @@ export default function Canvas({ hostConfig }) {
     directory: activeWorkspace?.directory,
   });
   const groupExecution = useGroupExecution({ groups, nodes, edges, updateCanvasData });
+  const downloadQueue = useDownloadQueue(activeId, activeWorkspace?.directory);
 
   // —— 执行队列（onComplete/onError 用 imageOutputs + updateNodeData + addHistory）——
   const { jobs, submit, cancel, clearFinished, runningCount, queuedCount } = useExecutionQueue({
@@ -247,21 +249,25 @@ export default function Canvas({ hostConfig }) {
     onComplete: (job, images, histId, resources) => {
       const tag = job.nodeType === NODE_TYPES.editImage ? IMAGE_TAGS.editImage : IMAGE_TAGS.textToImage;
       if (job.placeholderNodeId) {
-        updateNodeData(job.placeholderNodeId, {
+        const patch = {
           images,
           resources,
           source: 'queue',
           loading: false,
           error: undefined,
           tags: dedupeTags([...(job.tags || []), tag]),
-        });
+        };
+        if (job.executionTarget) groupExecution.updateExecutionNodeData(job.executionTarget, patch);
+        else updateNodeData(job.placeholderNodeId, patch);
       } else {
         addImageNodesFromUrls(images, { tags: [tag], resources });
       }
-      // 落地已在 generateImages 内完成（按 directory 决定走工作区目录或 data），这里只记录历史
-      addHistory({
+      // 先记录外链结果，再提交 background service 下载并定向替换。
+      const historyWrite = addHistory({
         id: histId,
         nodeId: job.placeholderNodeId || null,
+        templateNodeId: job.placeholderNodeId || null,
+        executionTarget: job.executionTarget || null,
         nodeType: job.nodeType,
         prompt: job.input?.prompt || '',
         model: job.input?.model || '',
@@ -269,6 +275,15 @@ export default function Canvas({ hostConfig }) {
         resources,
         createdAt: Date.now(),
       }).catch((e) => console.error('queue addHistory failed:', e));
+      if (job.placeholderNodeId) {
+        historyWrite.finally(() => downloadQueue.enqueue({
+          urls: images,
+          nodeId: job.placeholderNodeId,
+          executionTarget: job.executionTarget,
+          historyId: histId,
+          label: `${NODE_META[job.nodeType]?.label || '节点'}图片`,
+        }));
+      }
     },
     onError: (job, err) => {
       if (job.placeholderNodeId) {
@@ -410,6 +425,7 @@ export default function Canvas({ hostConfig }) {
     settings,
     createNodeAt: crud.createNodeAt,
     saveLastParams,
+    enqueueImageDownloads: downloadQueue.enqueue,
   });
 
   // —— 分组操作 + overlay 移动/连线 ——
@@ -1862,6 +1878,11 @@ export default function Canvas({ hostConfig }) {
             onCreate: handleCreate,
             onDelete: handleDelete,
             onRename: renameWorkspace,
+          }}
+          downloadQueueProps={{
+            tasks: downloadQueue.tasks,
+            activeCount: downloadQueue.activeCount,
+            onClearFinished: downloadQueue.clearFinished,
           }}
           queueProps={{
             jobs,

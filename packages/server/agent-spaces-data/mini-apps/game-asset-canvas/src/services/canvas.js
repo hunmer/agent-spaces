@@ -111,6 +111,18 @@ export default {
     return { ok: true };
   },
 
+  // 下载队列由 background.js 写入；这里只清理已结束项，运行中任务必须保留。
+  clear_download_queue: ({ workspaceId }, ctx) => {
+    let remaining = [];
+    ctx.updateConfig('download-queue.json', (prev) => {
+      remaining = (Array.isArray(prev) ? prev : [])
+        .filter((item) => item?.workspaceId !== workspaceId
+          || item?.status === 'queued' || item?.status === 'running');
+      return remaining;
+    });
+    return { ok: true, count: remaining.length };
+  },
+
   // —— 分镜角色库（按工作区隔离）——
   save_storyboard_characters: ({ workspaceId, characters }, ctx) => {
     const list = Array.isArray(characters) ? characters.filter((item) => item?.id) : [];

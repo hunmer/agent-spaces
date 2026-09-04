@@ -174,6 +174,7 @@ Agent → api.js handler → ctx.requestClient(type, payload, timeoutMs)
 38. **分组激活优先约束键盘全选**：按 `Ctrl/Cmd+A` 时若 `useGroupOperations.selectedGroupId` 有效，只选中该分组（含嵌套子分组）的节点；未激活分组时才沿用“从当前已选节点推断最小包含分组，否则全画布”的逻辑。节点右键菜单可复制 `{id,type,typeLabel,title,position,data}` JSON，并可在源节点右侧创建、连线一个图片展示节点；新节点继承源节点的直接分组归属。
 39. **图片工作流节点保留执行日志入口**：`generateImages` 通过 `runWorkflow.onExecution` 保留 `execute_workflow_sync` 返回的 `executionId`，节点完成后把 `{workflowId,logId}` 写到 `data.workflowExecution`；文生图/编辑图片底栏按钮新窗口打开 `/workflows/<workflowId>?logId=<logId>`。新一轮执行开始时先清空旧入口。
 39. **粘贴节点保留可用的上游入边**：`copyNodes` 保存选中节点之间的内部边，以及外部节点指向选中节点的入边；`pasteNodes` 将目标改为新节点 ID，上游源节点仅在目标画布仍存在时沿用原 ID。跨工作区粘贴不得创建悬空边，选中节点指向外部下游的出边不复制。
+40. **外网图片进入持久后台下载队列**：图片节点先写回工作流外链，再提交 `persist-images` 到 mini-app background service。`src/background.js` 在服务端保存到工作区 directory（未配置则 data/downloads），把目标节点及生成历史中的精确 URL 替换成本地 HTTP 地址；任务状态存 `configs/download-queue.json`。任务必须携带 `workspaceId/nodeId/historyId`，分组实例还必须携带冻结的 `executionTarget`，页面刷新不影响下载。
 
 ## 工作区数据目录（产图落本地）
 
@@ -181,10 +182,12 @@ Agent → api.js handler → ctx.requestClient(type, payload, timeoutMs)
 
 **数据流（directory 驱动落地）**：
 ```
-generateImages(workflowId, input, {directory, historyId})   ← utils/workflow.js
-  └─ persistImagesToBackend(urls, {directory, historyId})
-       ├─ directory 有值 → saveImageToDir(url, dir, '{historyId}/{index}') → localFileUrl(绝对路径)
-       └─ directory 无值 → downloadImage(url) → data httpUrl（原行为）
+generateImages(..., {deferPersistence:true})  ← 节点先拿外链并写回 output/history
+  └─ useDownloadQueue.enqueue({workspaceId,nodeId,executionTarget,historyId,urls})
+       └─ src/background.js（Node 服务端）下载并原子替换 canvas/history URL
+
+generateImages(..., {deferPersistence:false}) ← 分镜/角色库等非节点流程
+  └─ persistImagesToBackend 维持同步落地
 ```
 
 **historyId 前置**（关键时序）：两个调用点都在调用前 `genId('hist')`，落地子目录与 addHistory 复用同一 id：
@@ -193,11 +196,12 @@ generateImages(workflowId, input, {directory, historyId})   ← utils/workflow.j
 
 **directory 来源链**：`Canvas.activeWorkspace?.directory`（来自 workspaces.json，create/rename_workspace 写入）→ `useWorkflow(directory)` / `useExecutionQueue({directory})`。
 
-**依赖的宿主/服务端能力**（均已具备，无需重启）：
+**依赖的宿主/服务端能力**：
 - `window.AgentSpaces.saveImageToDir(url, dir, filename)` — fetch 图→base64→写绝对路径，filename 无扩展名时按 content-type 自动补全。
 - `window.AgentSpaces.localFileUrl(absPath)` — 绝对路径→`/api/mini-apps/:id/local-file?path=...` http URL。
 - `window.AgentSpaces.revealAbsolutePath(absPath)` — 在文件管理器定位（重命名对话框「打开文件夹」按钮用）。
 - 服务端 `POST /api/mini-apps/:id/data/write-absolute` — 写任意绝对路径，filename 支持子路径（拒绝 `..`/逃逸）。
+- `mini-app-background.ts` 为自定义后台 handler 提供 `readConfig/updateConfig/saveImage`；修改该宿主服务后需重启 server。
 
 **workspace 字段**：`workspaces.json` 的 `workspaces[]` 增加 `directory?`（可选，留空不存键）。`CreateWorkspaceDialog` 复用为创建/重命名双模式（mode 区分，重命名模式可改 directory + 打开文件夹）。
 

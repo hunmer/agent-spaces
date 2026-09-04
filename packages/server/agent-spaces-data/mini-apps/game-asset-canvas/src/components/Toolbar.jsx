@@ -37,7 +37,7 @@ import {
  *           edgePathStyle, edgeLineStyle, edgePathStyles, edgeLineStyles, onEdgePathStyleChange, onEdgeLineStyleChange,
  *           bgVariant, handlePosition, snapEnabled, onCanvasStyleChange,
  *           onSelectAll, onInvertSelect, onClearSelection,
- *           operationHistory, onUndo, onRedo, canUndo, canRedo, onOpenVersions, queueSlot, workspaceSlot }} props
+ *           operationHistory, onUndo, onRedo, canUndo, canRedo, onOpenVersions, downloadQueueSlot, queueSlot, workspaceSlot }} props
  */
 export default function Toolbar({
   onClear, onAutoLayout, onExport, onExportAssetLibrary, onExportWorkspace, onImport, onImportAssetLibrary, onImportWorkspace, onImportImages, onOpenSettings, onOpenPromptManager, onBackfillThumbnails,
@@ -45,7 +45,7 @@ export default function Toolbar({
   bgVariant, handlePosition, snapEnabled, onCanvasStyleChange,
   onSelectAll, onInvertSelect, onClearSelection,
   operationHistory, onUndo, onRedo, canUndo, canRedo, onOpenVersions,
-  queueSlot, workspaceSlot,
+  downloadQueueSlot, queueSlot, workspaceSlot,
 }) {
   // 素材库/工作区 导出/导入中状态：控制对应菜单项禁用 + 文案切换。
   const [exporting, setExporting] = useState(false);
@@ -368,6 +368,7 @@ export default function Toolbar({
       />
 
       <div className="ml-auto flex items-center gap-2">
+        {downloadQueueSlot}
         {queueSlot}
         <Popover>
           <PopoverTrigger
