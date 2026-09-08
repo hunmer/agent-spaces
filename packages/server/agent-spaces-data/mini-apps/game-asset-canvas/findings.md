@@ -1,5 +1,35 @@
 # Findings
 
+## 连线自动选路迁移（2026-09-08）
+
+- codeauto `PillEdge` 以 `abs(dx) > 100 && abs(dy) > 80` 判定：成立用 `getSmoothStepPath({ borderRadius: 18 })`，否则用 `getBezierPath`。
+- 当前 `edgePathStyle` 从 Canvas state 进入新 edge.data、decorateEdges、FloatingEdge、ConnectionLine 和 Toolbar 四选一菜单。
+- 宿主 mini-app `@xyflow/react` 白名单已有 `getBezierPath`，尚未导出 `getSmoothStepPath`，需要补充该标准 API。
+- `getSmoothStepPath` 已加入宿主白名单；edge 和连接预览共享 `getAutoEdgePath`，旧 pathStyle 数据无需迁移。
+
+
+## 节点工具栏与 Handle 定位修复（2026-09-08）
+
+- `NodeHandles` 顶部输入为 `left: 35%`、底部输出为 `left: 65%`，两者明确没有居中。
+- `NodeShell` 的 source handles 当前与主节点卡片同层，`NodeOutput` 是根节点之后的 sibling；底部 handle 无法跟随外置产出卡片高度。
+- `NodeHoverMenu` 当前用 `-right-3.5 bottom-3` 放在节点右侧外沿；需要改为节点内部右下角定位。
+- 可执行节点不应统一改写执行逻辑：生成类可用 Canvas 的 `buildNodeExecution` 后备，图像处理/抠图/反推/工作流节点直接传入组件现有 `handleRun`。
+- 底部输出区域使用 `ResizeObserver` 监听折叠高度，并调用 `useUpdateNodeInternals` 更新 React Flow 连线锚点。
+
+
+## 节点视觉与交互样式迁移（2026-09-08）
+
+- CodeGraph 与 zvec-grep 工具当前未提供，按项目规则回退到 `rg`。
+- 参考项目的通用节点采用 `group` hover、右下角竖向快捷按钮簇、展开式操作菜单，以及左右 target/source、上下 source 共四个 handle 的表现。
+- 工作区已有 4 个与本任务无关的未提交文件，必须保留。
+- 当前通用 `NodeShell` 和图片/视频/音频展示节点均只有一入一出，并通过 `settings.attributionPosition` 在上下/左右布局间切换。
+- `StoryboardNode` 的输出 handle 按场景动态生成，属于明确业务限制；本次只迁移其 NodeShell header，不替换场景 handle。
+- 为兼容旧 edge 中缺少 `sourceHandle`/`targetHandle` 的数据，左右主 handle 保持无 ID；新增顶部输入和底部输出使用独立 ID。
+- 节点现有 title 支持持久化自定义，但不存在 subtitle 字段；header 将优先展示 `data.subtitle`，否则展示 NODE_META 的固定说明。
+- `textToVoice` 同时具备文本输入 schema 和音频输出能力，原组件未挂 handle；本次按非受限节点接入双输入双输出。
+- 文字节点与工作流执行节点保留仅输出，便签保留无 handle，分镜保留动态场景输出。
+- `procm-mcp` 工具未暴露，但本地 7331 HTTP 后端可用；按 `procm-http` 流程只重启了受影响的 `dev:web`。
+
 - CodeGraph 当前不可用，已按项目规则回退到 `rg`。
 - `useImageOutputs.buildImageNodes`、`useNodeCrud.addImageNodesAt`、`handleDropFiles` 都先按固定 `260x240` 创建节点。
 - `ImageDisplayNode` 在 `<img onLoad>` 后调用 `handleAutoSize`，因此会先显示错误比例再跳变。

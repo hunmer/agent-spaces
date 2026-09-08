@@ -134,7 +134,7 @@
 `CanvasWorkspace`（主视图装配）/ `CanvasOverlayDialogs`（弹窗层聚合）/ `CanvasContextMenu` / `DropNodeMenu` / `AddNodeMenuItems` / `ImageSelectionMenuItems` / `ImageSelectionToolbar` / `MultiSelectToolbar` / `AlignmentGuides` / `FloatingEdge` + `floating-edge-utils` / `GroupOverlays` / `GroupMiniMap` / `GroupExecutionToolbar`（运行所有/停止所有）/ `GroupRunSelectionDialog`（run 缩略图多选）/ `GroupOutputBindingDialog`
 
 ### nodes 子目录（43 个）
-- 外壳与通用：`NodeShell`（Handle/状态/NodeResizer/NodeToolbar/EditableNodeTitle）/ `EditableNodeTitle`（data.title 原位编辑）/ `FloatingHandle`（getFloatingHandleProps）/ `NodeDialogContext` / `NodeOutput`（文本/媒体外置输出）/ `ImageResult`（产出网格+分组折叠+缩略图+occurrenceKeys）/ `UpstreamImageList` / `UploadSection` / `ParamField` / `PickedPromptBadge` / `TextResult` / `TextVariableEditor`（Tiptap 变量高亮）/ `CountAndConcurrency` / `FramePlayer` / `SpinePreviewViewer` / `compact-node`
+- 外壳与通用：`NodeShell`（header/状态/NodeResizer/EditableNodeTitle）/ `NodeHandles`（双输入双输出与颜色）/ `NodeHoverMenu`（hover 右下角操作菜单）/ `EditableNodeTitle`（data.title 原位编辑）/ `FloatingHandle` / `NodeDialogContext` / `NodeOutput`（文本/媒体外置输出）/ `ImageResult`（产出网格+分组折叠+缩略图+occurrenceKeys）/ `UpstreamImageList` / `UploadSection` / `ParamField` / `PickedPromptBadge` / `TextResult` / `TextVariableEditor`（Tiptap 变量高亮）/ `CountAndConcurrency` / `FramePlayer` / `SpinePreviewViewer` / `compact-node`
 - 业务节点：TextToImage / EditImage / ImageDisplay / ImageProcess（12 个 ip* 共用）/ ImageEditor / MaskPaint / PixelEditor / Photopea / UiSplitter / BBoxViewer / Cutout / DepthExtract / DirectorDesk / WorkflowRunner / PromptReverse / TextToVoice / AudioDisplay / VideoGenerator / VideoDisplay / VideoEditor / ImageCompare / SpineEditor / SpineDisplay / Storyboard / Text / Note
 
 ### ui-splitter 子目录（10 个）

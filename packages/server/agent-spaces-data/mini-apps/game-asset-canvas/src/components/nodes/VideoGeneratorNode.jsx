@@ -163,7 +163,7 @@ export default function VideoGeneratorNode({ id, data, selected }) {
   const usCount = upstreamImages.length;
 
   return (
-    <NodeShell id={id} nodeType={NODE_TYPES.videoGenerator} data={data} selected={selected} targetHandle sourceHandle>
+    <NodeShell id={id} nodeType={NODE_TYPES.videoGenerator} data={data} selected={selected} targetHandle sourceHandle onRun={handleRun}>
       <PickedPromptBadge
         pickedPrompt={params.pickedPrompt}
         onClear={() => set({ pickedPrompt: undefined })}

@@ -1,3 +1,94 @@
+# 连线自动选路迁移（2026-09-08）
+
+## 目标
+
+- 移除 bezier/straight/step/smoothstep 四种固定路径选择。
+- 复刻 codeauto：横纵跨度同时较大时 SmoothStep，否则 Bezier。
+- 已有边、新建边和拖拽连接预览统一自动选路。
+
+## 阶段
+
+1. [complete] 比对 codeauto PillEdge 与当前 FloatingEdge/ConnectionLine。
+2. [complete] 添加自动路径与移除四选一的回归断言。
+3. [complete] 实现自动选路并清理固定路径状态和边数据。
+4. [complete] 运行测试、语法/类型检查并重启 Web。
+
+## 约束
+
+- 保留实线/虚线、颜色、标签、插入和删除连线功能。
+- 不迁移旧 edge.pathStyle；渲染时直接忽略，保持数据兼容。
+
+## 结果
+
+- 已完全移除四种固定路径菜单和 Canvas 路径 state；新边不再写 pathStyle，旧字段渲染时忽略。
+- FloatingEdge 与 ConnectionLine 统一自动判定 SmoothStep/Bezier，标签坐标使用 React Flow 路径函数返回值。
+
+---
+
+# 节点工具栏与 Handle 定位修复（2026-09-08）
+
+## 目标
+
+- hover 工具栏固定在节点右下角，并增加运行、删除图标。
+- 上下 Handle 水平居中。
+- NodeShell 底部输出 Handle 以包含外置 NodeOutput 的完整高度定位。
+
+## 阶段
+
+1. [complete] 建立源码回归测试并确认当前 DOM 定位问题。
+2. [complete] 接入运行/删除回调并修正工具栏、Handle DOM 结构。
+3. [complete] 运行定向测试、Babel、diff 检查并重启 Web 服务。
+
+## 约束
+
+- 复用现有执行和删除行为，不改变业务语义。
+- 分镜动态输出 Handle 保持原有专用实现。
+
+## 结果
+
+- 根因确认：上下 Handle 被显式设为 35%/65%；底部 Handle 位于 NodeOutput 之前；工具栏使用负 right 偏移且没有统一运行/删除回调。
+- 修复后节点工具栏位于内部右下角；可运行节点复用各自 handleRun，删除沿用历史关联确认；外置产出高度变化会刷新 React Flow Handle 坐标。
+
+## Errors Encountered
+
+| Error | Attempt | Resolution |
+|---|---:|---|
+| 最终 `rg` 组合表达式被 PowerShell 拆分为路径参数 | 1 | 改用 `Select-String -SimpleMatch` 完成三项定位核对 |
+
+---
+
+# 节点视觉与交互样式迁移（2026-09-08）
+
+## 目标
+
+- 参考 `C:/Users/Administrator/Downloads/codeauto (1)` 迁移节点 handle、hover 菜单和 header 样式。
+- 通用节点使用两个输入、两个输出 handle 并按类型区分颜色；保留有明确连接限制的节点语义。
+- 移除设置中的 handle 上下/左右二选一功能。
+- 仅调整呈现和现有操作入口，不改变节点执行、持久化和连接业务逻辑。
+
+## 阶段
+
+1. [complete] 比对参考项目与当前节点架构，盘点公共组件、例外节点和设置入口。
+2. [complete] 实现公共双输入双输出 handle、header 与 hover 菜单样式。
+3. [complete] 接入节点并移除 handle 方向设置，保留明确业务限制。
+4. [complete] 运行语法、单元测试和 diff 检查，记录残余风险。
+
+## 约束
+
+- 仅修改 game-asset-canvas mini-app 内与本次样式迁移直接相关的文件。
+- 不使用真实浏览器测试，除非静态与现有测试无法验证关键行为。
+- 保留工作区已有未提交修改。
+
+## Errors Encountered
+
+| Error | Attempt | Resolution |
+|---|---:|---|
+| 首次组合补丁未匹配 `progress.md` 标题 | 1 | 按文件实际标题 `# Progress` 拆分补丁 |
+| 根目录没有 Babel CLI | 1 | 改用仓库已有 `@babel/core` + `@babel/preset-react` API 转换 13 个文件 |
+| 从 mini-app 目录运行节点测试导致宿主相对路径 ENOENT | 1 | 按项目约定从仓库根重跑，31/31 通过 |
+
+---
+
 # 图片展示节点比例与旋转
 
 ## 目标

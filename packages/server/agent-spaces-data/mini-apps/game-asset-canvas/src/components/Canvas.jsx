@@ -60,7 +60,6 @@ import { CanvasGalleryContextProvider } from '../utils/canvas-gallery';
 import { createOutputAssetItems, createOutputResourceId, removeEmptyOutputVersions, removeOutputAssetItems, removeOutputVersionImages, updateOutputVersion } from '../utils/output-resources';
 import { COMPACT_NODE_ZOOM_THRESHOLD } from './nodes/compact-node';
 
-const EDGE_PATH_STYLES = ['bezier', 'straight', 'step', 'smoothstep'];
 const EDGE_LINE_STYLES = ['solid', 'dashed'];
 
 function waitForCanvasState() {
@@ -128,7 +127,6 @@ export default function Canvas({ hostConfig }) {
   const [contextMenu, setContextMenu] = useState(null);
   // 拖拽连线到空白处放手的「添加节点」菜单：{ clientX, clientY, source, sourceHandle } | null
   const [dropNodeMenu, setDropNodeMenu] = useState(null);
-  const [edgePathStyle, setEdgePathStyle] = useState('bezier');
   const [edgeLineStyle, setEdgeLineStyle] = useState('solid');
   const [hoveredNodeId, setHoveredNodeId] = useState(null);
   const [isConnecting, setIsConnecting] = useState(false);
@@ -518,7 +516,6 @@ export default function Canvas({ hostConfig }) {
             sourceHandle: conn.sourceHandle, targetHandle: conn.targetHandle,
             markerEnd: { type: MarkerType.ArrowClosed },
             data: {
-              pathStyle: edgePathStyle,
               lineStyle: edgeLineStyle,
               inputTarget,
               inputType: originOutputType,
@@ -531,7 +528,7 @@ export default function Canvas({ hostConfig }) {
       }
       return next;
     });
-  }, [edgeLineStyle, edgePathStyle, setEdges]);
+  }, [edgeLineStyle, setEdges]);
 
   const onConnect = useCallback((conn) => {
     const sourceNode = nodesRef.current.find((node) => node.id === conn.source);
@@ -605,18 +602,16 @@ export default function Canvas({ hostConfig }) {
   const nodeTypes = useMemo(() => NODE_COMPONENTS, []);
   const floatingEdges = useMemo(
     () => decorateEdgesForSelection(
-      edges, nodes, edgePathStyle, edgeLineStyle, NODE_PARAMS_SCHEMA, hoveredNodeId,
+      edges, nodes, edgeLineStyle, NODE_PARAMS_SCHEMA, hoveredNodeId,
     ),
-    [edgeLineStyle, edgePathStyle, edges, hoveredNodeId, nodes],
+    [edgeLineStyle, edges, hoveredNodeId, nodes],
   );
   const connectionLineStyle = useMemo(() => ({
-    pathStyle: edgePathStyle,
     strokeDasharray: edgeLineStyle === 'dashed' ? '6 4' : 'none',
-  }), [edgeLineStyle, edgePathStyle]);
+  }), [edgeLineStyle]);
   const backgroundVariant = settings.bgVariant === 'lines' ? BackgroundVariant.Lines
     : settings.bgVariant === 'cross' ? BackgroundVariant.Cross
     : BackgroundVariant.Dots;
-  const handlePosition = settings.attributionPosition === 'left-right' ? 'left-right' : 'top-bottom';
   const snapEnabled = settings.snapGrid !== false;
   const handleCanvasStyleChange = useCallback(async (patch) => {
     try {
@@ -1533,6 +1528,18 @@ export default function Canvas({ hostConfig }) {
     else updateNodeData(nodeId, patchVersion);
   }, [groupExecution.getExecutionTargetForNode, groupExecution.updateExecutionNodeData, updateNodeData]);
 
+  const handleRunNode = useCallback((nodeId) => {
+    const node = decoratedNodesRef.current.find((item) => item.id === nodeId);
+    const spec = buildNodeExecution(node, node?.data?.textInputValues);
+    if (!node || !spec) {
+      toast.warning('当前节点缺少执行条件或不支持直接运行');
+      return;
+    }
+    const options = { workflowId: spec.workflowId, input: spec.input };
+    if (spec.kind === 'image') handleScopedGenerate(node.id, node.type, options);
+    else handleScopedGenerateMedia(node.id, node.type, spec.kind, options);
+  }, [handleScopedGenerate, handleScopedGenerateMedia]);
+
   const nodeCallbacks = useMemo(() => ({
     makeOnUpdate,
     onGenerate: handleScopedGenerate,
@@ -1569,6 +1576,8 @@ export default function Canvas({ hostConfig }) {
     onSaveStoryboardCharacter: characterLibrary.saveCharacter,
     onDeleteStoryboardCharacter: characterLibrary.deleteCharacter,
     onDeleteEdge: handleDeleteEdgeById,
+    onRunNode: handleRunNode,
+    onDeleteNode: handleDeleteNodeWithHistoryCheck,
   }), [
     makeOnUpdate, handleScopedGenerate, handleScopedGenerateMedia, handleProcessImage,
     handleScopedProcessLocal, handleScopedCutout, handleCutoutCreate, handleScopedDepth,
@@ -1579,6 +1588,7 @@ export default function Canvas({ hostConfig }) {
     groupExecution.requestPropertyApply,
     storyboardOperations.importStoryboard, storyboardOperations.generateSceneMedia,
     characterLibrary.saveCharacter, characterLibrary.deleteCharacter, handleDeleteEdgeById,
+    handleRunNode, handleDeleteNodeWithHistoryCheck,
   ]);
 
   // —— Agent RPC（WS message 监听，ref 持有最新值只订阅一次）——
@@ -1852,14 +1862,10 @@ export default function Canvas({ hostConfig }) {
             onOpenVersions: () => setVersionsOpen(true),
             onOpenPromptManager: () => setPromptManagerOpen(true),
             onBackfillThumbnails: handleBackfillThumbnails,
-            edgePathStyle,
             edgeLineStyle,
-            edgePathStyles: EDGE_PATH_STYLES,
             edgeLineStyles: EDGE_LINE_STYLES,
-            onEdgePathStyleChange: setEdgePathStyle,
             onEdgeLineStyleChange: setEdgeLineStyle,
             bgVariant: settings.bgVariant,
-            handlePosition,
             snapEnabled,
             onCanvasStyleChange: handleCanvasStyleChange,
             onSelectAll: selection.handleSelectAll,

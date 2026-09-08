@@ -62,6 +62,8 @@ export default function useDecoratedNodes({
       onSaveStoryboardCharacter,
       onDeleteStoryboardCharacter,
       onDeleteEdge,
+      onRunNode,
+      onDeleteNode,
     } = callbacks || {};
     return nodes.map((nd) => {
       const up = upstreamMap.get(nd.id);
@@ -152,7 +154,6 @@ export default function useDecoratedNodes({
           ...data,
           nodeJson: JSON.stringify(nd, null, 2),
           selectionCount,
-          floatingHandlePosition: settings.attributionPosition === 'left-right' ? 'left-right' : 'top-bottom',
           onOutputPreviewHeight: (height) => onOutputPreviewHeight?.(nd.id, height),
           onOutputPreviewModeChange: (enabled) => onOutputPreviewModeChange?.(nd.id, enabled),
           onUpdate: makeOnUpdate?.(nd.id),
@@ -208,6 +209,10 @@ export default function useDecoratedNodes({
           // 删除一张上游输入图（断开产出该图的连入边）
           onDeleteUpstreamImage: onDeleteUpstreamImage ? (url) => onDeleteUpstreamImage(nd.id, url) : undefined,
           onDeleteEdge,
+          onRunNode: buildNodeExecutionSupport(nd.type) && onRunNode
+            ? () => onRunNode(nd.id)
+            : undefined,
+          onDeleteNode: onDeleteNode ? () => onDeleteNode(nd.id) : undefined,
           onApplyToGroup: propertyApplyNodeIds?.has(nd.id) && onApplyToGroup
             ? () => onApplyToGroup(nd.id)
             : undefined,
@@ -231,4 +236,11 @@ export default function useDecoratedNodes({
   ]);
 
   return { decoratedNodes };
+}
+
+function buildNodeExecutionSupport(nodeType) {
+  return nodeType === NODE_TYPES.textToImage
+    || nodeType === NODE_TYPES.editImage
+    || nodeType === NODE_TYPES.textToVoice
+    || nodeType === NODE_TYPES.videoGenerator;
 }

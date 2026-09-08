@@ -42,7 +42,7 @@ interface NodeData {
   onDeleteEdge?: (edgeId: string) => void; // 运行时注入：变量 HoverCard 删除对应文本边
   textVariableValues?: Record<string, Record<string, string>>; // 持久化：字段 -> 变量 -> 手动 fallback
   textVariableBindings?: Record<string, Record<string, Array<object>>>; // 运行时派生，不持久化
-  selectionCount?: number;       // 当前选中节点总数（多选时隐藏 NodeToolbar）
+  selectionCount?: number;       // 当前选中节点总数（多选时隐藏节点操作菜单）
   outputPreviewMode?: boolean;   // 节点级输出预览开关（缺省 false）
   agentConfig?: object;          // BBox/反推提示词 AI 配置（从 settings 注入）
   groupAssetInputUrls?: string[]; // 分组「按上传素材执行」注入的只读输入 URL
@@ -189,13 +189,12 @@ interface Edge {
       thumb?: string;
       label?: string;
     };
-    pathStyle?: string;
     lineStyle?: string;
   };
 }
 ```
 
-- Handle 位置由全局设置决定：上下时 source=Bottom、target=Top；左右时 source=Right、target=Left。
+- Handle 固定为左/上输入、右/下输出；连线路径按端点跨度自动在 Bezier 与 SmoothStep 之间切换。
 - 连线语义：「source 产出图 → target 输入区」。旧边或 `inputTarget='images'` 由 `computeInputImages` 派生到 target 的 `data.images`；其它目标派生到 `data.fileUploadInputs[inputTarget]`。
 - 多上传区声明集中在 `utils/connection-targets.js`。当前编辑图片节点声明 `images`（输入图片）和 `mask`（蒙版图片），手动连线时由用户选择。
 - 文本边缺少 `inputVariable` 时保持整字段覆盖；存在时以目标节点持久化的 `data.params[inputTarget]` 为模板，只替换对应 `{变量}`。变量值优先级：整字段边 > 变量边 > `textVariableValues` 手动 fallback > 原占位符。
@@ -344,7 +343,7 @@ interface SpineReskinHistoryItem {
 
 存 `configs/settings.json`（全局共享）。结构见 `utils/settings.js DEFAULT_SETTINGS`，前端读时用 `mergeSettings` 补默认值。
 
-画布样式字段：`bgVariant: 'dots' | 'lines' | 'cross'`、`attributionPosition: 'top-bottom' | 'left-right'`、`snapGrid: boolean`。
+画布样式字段：`bgVariant: 'dots' | 'lines' | 'cross'`、`snapGrid: boolean`。Handle 位置固定为左/上输入、右/下输出，不再保存方向设置。
 
 ## 工作区清单（WorkspacesFile）
 

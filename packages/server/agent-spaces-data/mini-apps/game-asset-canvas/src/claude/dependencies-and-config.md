@@ -14,7 +14,7 @@
 
 | 库 | 版本 | 用途 | 暴露方式 |
 |----|------|------|---------|
-| `@xyflow/react` | 12.10.2 | ReactFlow/NodeResizer/NodeToolbar/useReactFlow/ViewportPortal | bare import allowlist |
+| `@xyflow/react` | 12.10.2 | ReactFlow/NodeResizer/NodeToolbar/useReactFlow/ViewportPortal/getBezierPath/getSmoothStepPath | bare import allowlist |
 | `@dagrejs/dagre` | 3.0.0 | 自动布局（default + graphlib） | bare import allowlist |
 | `@agent-spaces/ui` | - | 宿主 UI 组件库 + lucide 图标 | `window.AgentSpacesUI` + bare import |
 
@@ -94,7 +94,7 @@ Spine 换肤记录通过 `save_spine_reskin_history` / `delete_spine_reskin_hist
 - 提示词优化：`promptOptimizeAgentConfigId` / `promptOptimizeName` / `promptOptimizeUserPrompt`
 - 分镜创作：`storyboardAgentConfigId` / `storyboardAgentName`
 - 执行与通知：`executionConcurrency`（默认 3）/ `notifyOnComplete`（默认 false）
-- 画布样式：`bgVariant`（dots/lines/cross）/ `attributionPosition`（top-bottom/left-right）/ `snapGrid`
+- 画布样式：`bgVariant`（dots/lines/cross）/ `snapGrid`；Handle 固定为双输入双输出布局
 - 生成记录视图：`historyViewMode`（'list' | 'masonry'）
 
 > systemPrompt 归 agent preset 自带（openAgentEditor 弹窗里编辑），**不存 settings.json**。

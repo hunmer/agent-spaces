@@ -113,7 +113,7 @@ export default function CutoutNode({ id, type, data, selected }) {
   const usCount = upstreamImages.length;
 
   return (
-    <NodeShell id={id} nodeType={type || NODE_TYPES.cutout} data={data} selected={selected} targetHandle sourceHandle>
+    <NodeShell id={id} nodeType={type || NODE_TYPES.cutout} data={data} selected={selected} targetHandle sourceHandle onRun={handleRun}>
       {/* 模式选择 */}
       <label className="flex items-center justify-between gap-2 text-xs">
         <span className="text-muted-foreground">抠图模式</span>

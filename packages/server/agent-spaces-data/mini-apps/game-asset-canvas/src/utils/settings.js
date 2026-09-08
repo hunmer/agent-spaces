@@ -62,9 +62,8 @@ export const DEFAULT_SETTINGS = {
   notifyOnComplete: false,
   // 执行队列同时运行的任务数
   executionConcurrency: 3,
-  // 画布样式（与宿主工作流画布使用相同字段名）
+  // 画布样式
   bgVariant: 'dots',
-  attributionPosition: 'top-bottom',
   snapGrid: true,
   // 生成记录 tab 视图模式：'list'(卡片列表) | 'masonry'(图片瀑布流)
   historyViewMode: 'list',

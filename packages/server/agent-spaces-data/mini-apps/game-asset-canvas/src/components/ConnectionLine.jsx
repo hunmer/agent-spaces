@@ -1,5 +1,5 @@
 import { useNodes, useReactFlow } from '@xyflow/react';
-import { getEdgePath } from './canvas/FloatingEdge';
+import { getAutoEdgePath } from './canvas/FloatingEdge';
 
 /**
  * 自定义连接线预览：
@@ -51,14 +51,13 @@ export default function ConnectionLine({
   }
 
   return segments.map(({ key, x, y, position }) => {
-    const d = getEdgePath({
+    const [d] = getAutoEdgePath({
       sourceX: x,
       sourceY: y,
       sourcePosition: position,
       targetX: toX,
       targetY: toY,
       targetPosition: toPosition,
-      pathStyle: connectionLineStyle?.pathStyle,
     });
     return (
       <g key={key}>

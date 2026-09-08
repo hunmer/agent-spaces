@@ -58,7 +58,7 @@
 
 ## Q: 多选节点时各节点 toolbar 还在显示？
 
-**A:** NodeShell 的 NodeToolbar 必须 `isVisible={selected && selectionCount <= 1}`。`selectionCount`（当前选中节点总数）由 Canvas `onSelectionChange` 维护，经 decoratedNodes 注入到每个节点 data。多选时全隐藏避免干扰框选。
+**A:** NodeShell 的 `NodeHoverMenu` 只在节点 hover 或菜单打开时显示，并要求 `selectionCount <= 1`。`selectionCount`（当前选中节点总数）由 Canvas `onSelectionChange` 维护，经 decoratedNodes 注入到每个节点 data。多选时全隐藏避免干扰框选。
 
 ## Q: Dialog 内按 Delete 误删节点？
 

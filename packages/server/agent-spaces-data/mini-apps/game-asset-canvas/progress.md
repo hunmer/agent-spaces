@@ -1,5 +1,22 @@
 # Progress
 
+- 2026-09-08：开始连线自动选路迁移；已确认 codeauto 使用跨度阈值在 SmoothStep 与 Bezier 间自动切换。
+- 2026-09-08：已移除 Canvas/Toolbar/edge data 的四选一链路，FloatingEdge 与 ConnectionLine 统一使用 getAutoEdgePath；宿主补充 getSmoothStepPath 导出。
+- 2026-09-08：自动选路与既有节点/边定向测试 10/10 通过；同步修正一份仍断言旧标签/颜色规则的测试夹具。
+- 2026-09-08：最终验证通过：Babel 5 文件、宿主 react-renderer ESLint、git diff check；dev:web 经 procm HTTP 重启并在 3000 端口就绪。
+
+- 2026-09-08：开始修复 hover 工具栏与 Handle 定位；已确认上下 Handle 人为偏离中心，底部 Handle 未包含 sibling NodeOutput 高度。
+- 2026-09-08：先添加回归断言并确认 3 项失败，随后修正右下角工具栏、运行/删除快捷动作、Handle 居中和外置产出后的底部锚点。
+- 2026-09-08：可执行节点复用原 handleRun；NodeOutput 折叠高度经 ResizeObserver 触发 updateNodeInternals。
+- 2026-09-08：验证通过：节点测试 32/32、Babel 17 文件、git diff check；dev:web 经 procm HTTP 重启并在 3000 端口就绪。
+
+- 2026-09-08：开始节点视觉与交互样式迁移；已读取技能、项目约定及参考项目节点/菜单样式。
+- 2026-09-08：确认仅迁移 handle、hover 菜单和 header，正在盘点公共组件、设置入口与受限节点。
+- 2026-09-08：完成盘点；决定以共享组件迁移普通节点与独立媒体节点，保留分镜动态场景 handle 和旧 edge 兼容。
+- 2026-09-08：新增 `NodeHandles` 与 `NodeHoverMenu`，接入 NodeShell、图片/视频/音频展示和生成配音节点；移除 handle 方向设置链路。
+- 2026-09-08：Header 改为图标块 + title/subtitle，两类 handle 分别使用蓝色与绿色；原工具栏动作收进 hover 右下角菜单。
+- 2026-09-08：验证通过：节点测试 31/31、分镜与菜单定向测试 17/17、Babel 13 文件、git diff check；`dev:web` 经 procm HTTP 重启并在 3000 端口就绪。
+
 - 2026-08-04：完成交接文档、开发规范与相关源码阅读。
 - 2026-08-04：确认根因是带图节点创建前未预加载尺寸，现有逻辑依赖渲染后 `onLoad` 修正。
 - 2026-08-04：新增尺寸算法回归测试，红灯为缺少 `image-display-size.js`（预期失败）。

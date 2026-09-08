@@ -1,9 +1,8 @@
 import { Children, isValidElement, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { NodeResizer, NodeToolbar, Position } from '@xyflow/react';
+import { NodeResizer, useUpdateNodeInternals } from '@xyflow/react';
 import {
-  Badge, ClipboardCopy, Download, FolderPlus, Images, Loader, MoreVertical, RotateCcw, toast,
+  Badge, ClipboardCopy, Download, FolderPlus, Images, Loader, RotateCcw, toast,
   ContextMenu, ContextMenuContent, ContextMenuGroup, ContextMenuItem, ContextMenuLabel, ContextMenuSeparator, ContextMenuTrigger,
-  Popover, PopoverContent, PopoverTrigger,
 } from '@agent-spaces/ui';
 import BorderBeam from '../BorderBeam';
 import { NODE_META, NODE_TYPES } from '../../utils/constants';
@@ -12,9 +11,9 @@ import useViewportActivation from '../../hooks/useViewportActivation';
 import ImageResult from './ImageResult';
 import SpinePreviewViewer from './SpinePreviewViewer';
 import NodeOutput from './NodeOutput';
-import FloatingHandle from './FloatingHandle';
 import EditableNodeTitle from './EditableNodeTitle';
-import { getFloatingHandleProps } from '../canvas/floating-edge-utils';
+import NodeHandles from './NodeHandles';
+import NodeHoverMenu from './NodeHoverMenu';
 
 const STATUS_TEXT = {
   idle: '',
@@ -114,7 +113,7 @@ function isNodeFooterAction(child) {
  */
 export default function NodeShell({
   id, nodeType, data, selected, resizable = true,
-  targetHandle, sourceHandle, children, toolbarActions,
+  targetHandle, sourceHandle, children, toolbarActions, onRun,
 }) {
   const showFullNode = data?.compactView !== true;
   const meta = NODE_META[nodeType] || { label: '节点', icon: '🔹', color: '#64748b' };
@@ -163,7 +162,7 @@ export default function NodeShell({
   const selectionCount = data?.selectionCount ?? 1;
   const [toolbarHovered, setToolbarHovered] = useState(false);
   const [nodeMenuOpen, setNodeMenuOpen] = useState(false);
-  const toolbarVisible = showFullNode && (!!selected || toolbarHovered || nodeMenuOpen) && selectionCount <= 1;
+  const toolbarVisible = showFullNode && (toolbarHovered || nodeMenuOpen) && selectionCount <= 1;
   const toolbarLeaveTimerRef = useRef(null);
   const showToolbar = () => {
     if (toolbarLeaveTimerRef.current) clearTimeout(toolbarLeaveTimerRef.current);
@@ -178,6 +177,8 @@ export default function NodeShell({
   }, []);
   const rootRef = useRef(null);
   const footerRef = useRef(null);
+  const outputRef = useRef(null);
+  const updateNodeInternals = useUpdateNodeInternals();
   // 图片右键菜单：右键命中图片缩略图才弹出 ContextMenu（与画布右键菜单同款组件、同款风格）；
   // 命中节点空白/标题等非图片区域则放行浏览器原生菜单。
   // urlRef 存当前右键命中的图片 url，避免 ContextMenuItem onClick 闭包读旧值。
@@ -223,6 +224,15 @@ export default function NodeShell({
     ro.observe(root);
     return () => ro.disconnect();
   }, []);
+
+  useLayoutEffect(() => {
+    const output = outputRef.current;
+    if (!output || !id || typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(() => updateNodeInternals(id));
+    observer.observe(output);
+    updateNodeInternals(id);
+    return () => observer.disconnect();
+  }, [id, updateNodeInternals]);
 
   const reportOutputPreviewHeight = useCallback(() => {
     if (!outputPreviewEnabled) return;
@@ -304,100 +314,46 @@ export default function NodeShell({
     }
   };
 
-  // 统一的全图标 toolbar：预览/正常分支共用，避免进入预览后按钮消失。
-  // 【编辑】【抠图】【放大】已移到画布级 ImageSelectionToolbar（图片选中后顶部浮出）。
-  const hasExtraButtons = outputImages.length > 0 && onExportImages;
-  const shouldShowToolbar = true;
-  const toolbarButtonClass = 'flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-border bg-background text-muted-foreground shadow-sm transition hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-50';
-  const toolbarButtons = (
-    <>
-      {data?.onApplyToGroup && (
-        <button
-          type="button"
-          title="应用到其他节点"
-          aria-label="应用到其他节点"
-          onClick={(event) => {
-            event.stopPropagation();
-            data.onApplyToGroup();
-          }}
-          className={toolbarButtonClass}
-        >
-          <ClipboardCopy className="h-3.5 w-3.5" />
-        </button>
-      )}
-      {canPreviewOutput && (
-        <button
-          type="button"
-          title={outputPreviewEnabled ? '切换到表单' : '切换到预览'}
-          aria-label={outputPreviewEnabled ? '切换到表单' : '切换到预览'}
-          onClick={(event) => {
-            event.stopPropagation();
-            data?.onOutputPreviewModeChange?.(!outputPreviewEnabled);
-          }}
-          className={toolbarButtonClass}
-        >
-          <Images className="h-3.5 w-3.5" />
-        </button>
-      )}
-      {/* 节点自定义 toolbar 按钮（如「打开骨骼编辑器」「打开图片编辑」等对话框入口） */}
-      {toolbarActions?.map((action, i) => (
-        <button
-          key={i}
-          type="button"
-          title={action.title || action.label}
-          aria-label={action.title || action.label}
-          disabled={action.disabled}
-          onClick={(e) => { e.stopPropagation(); action.onClick?.(); }}
-          className={toolbarButtonClass}
-        >
-          {action.icon}
-        </button>
-      ))}
-      {/* 编辑/抠图/放大 已移到画布级 ImageSelectionToolbar（图片选中后顶部浮出） */}
-      {outputImages.length > 0 && onExportImages && (
-        <button
-          type="button"
-          title="导出图片"
-          aria-label="导出图片"
-          onClick={(e) => { e.stopPropagation(); onExportImages(outputImages); }}
-          className={toolbarButtonClass}
-        >
-          <Download className="h-3.5 w-3.5" />
-        </button>
-      )}
-      <Popover open={nodeMenuOpen} onOpenChange={setNodeMenuOpen}>
-        <PopoverTrigger
-          render={(
-            <button
-              type="button"
-              title="更多操作"
-              aria-label="更多操作"
-              className={`${toolbarButtonClass} nodrag nowheel`}
-              onClick={(event) => event.stopPropagation()}
-            />
-          )}
-        >
-          <MoreVertical className="h-3.5 w-3.5" />
-        </PopoverTrigger>
-        <PopoverContent
-          side="top"
-          align="end"
-          className="w-44 p-1"
-          onClick={(event) => event.stopPropagation()}
-          onWheelCapture={(event) => event.stopPropagation()}
-        >
-          <button
-            type="button"
-            onClick={handleCopyNodeInfo}
-            className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm text-foreground outline-none transition hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent"
-          >
-            <ClipboardCopy className="h-3.5 w-3.5" />
-            复制节点信息
-          </button>
-        </PopoverContent>
-      </Popover>
-    </>
-  );
+  // 原节点顶部工具栏动作统一收进 hover 后出现的右下角菜单，动作回调保持不变。
+  const menuActions = [
+    data?.onApplyToGroup ? {
+      key: 'apply-to-group',
+      label: '应用到其他节点',
+      icon: <ClipboardCopy className="h-3.5 w-3.5" />,
+      onClick: data.onApplyToGroup,
+    } : null,
+    canPreviewOutput ? {
+      key: 'toggle-preview',
+      label: outputPreviewEnabled ? '切换到表单' : '切换到预览',
+      icon: <Images className="h-3.5 w-3.5" />,
+      onClick: () => data?.onOutputPreviewModeChange?.(!outputPreviewEnabled),
+    } : null,
+    ...(toolbarActions || []).map((action, index) => ({
+      key: action.key || `custom-${index}`,
+      label: action.title || action.label,
+      icon: action.icon,
+      disabled: action.disabled,
+      onClick: action.onClick,
+    })),
+    outputImages.length > 0 && onExportImages ? {
+      key: 'export-images',
+      label: '导出图片',
+      icon: <Download className="h-3.5 w-3.5" />,
+      onClick: () => onExportImages(outputImages),
+    } : null,
+    onResetParams ? {
+      key: 'reset-params',
+      label: '重置参数',
+      icon: <RotateCcw className="h-3.5 w-3.5" />,
+      onClick: onResetParams,
+    } : null,
+    {
+      key: 'copy-node-info',
+      label: '复制节点信息',
+      icon: <ClipboardCopy className="h-3.5 w-3.5" />,
+      onClick: handleCopyNodeInfo,
+    },
+  ];
 
   if (outputPreviewEnabled) {
     return (
@@ -464,15 +420,15 @@ export default function NodeShell({
             borderWidth={2}
           />
         )}
-        <NodeToolbar isVisible={toolbarVisible} position={Position.Top} align="center" offset={8}>
-          <div
-            className="flex items-center justify-center gap-1"
-            onMouseEnter={showToolbar}
-            onMouseLeave={hideToolbar}
-          >
-            {toolbarButtons}
-          </div>
-        </NodeToolbar>
+        <NodeHoverMenu
+          actions={menuActions}
+          visible={toolbarVisible}
+          open={nodeMenuOpen}
+          onOpenChange={setNodeMenuOpen}
+          onRun={onRun || data?.onRunNode}
+          onDelete={data?.onDeleteNode}
+          running={isRunning}
+        />
         {resizable && (
           <NodeResizer
             isVisible={!!selected && showFullNode}
@@ -484,12 +440,7 @@ export default function NodeShell({
             onResizeEnd={() => { userResizedRef.current = true; }}
           />
         )}
-        {targetHandle && (
-          <FloatingHandle
-            type="target"
-            {...getFloatingHandleProps(data?.floatingHandlePosition, 'target')}
-          />
-        )}
+        <NodeHandles target={targetHandle} source={sourceHandle} />
         <div data-node-card className={`mx-auto w-full overflow-hidden rounded-lg bg-card shadow-sm ${showFullNode ? '' : 'invisible pointer-events-none'}`} style={{ maxWidth: '640px' }}>
           <div className="scrollbar-none nodrag nopan nowheel w-full" style={{ maxHeight: '60vh', overflowY: 'auto' }}>
             {status === 'running' ? (
@@ -511,12 +462,6 @@ export default function NodeShell({
           </div>
         </div>
         {compactView}
-        {sourceHandle && (
-          <FloatingHandle
-            type="source"
-            {...getFloatingHandleProps(data?.floatingHandlePosition, 'source')}
-          />
-        )}
       </div>
       </ContextMenuTrigger>
       {contextImageOpen && contextImageUrlRef.current && (
@@ -549,17 +494,15 @@ export default function NodeShell({
           borderWidth={2}
         />
       )}
-      {shouldShowToolbar ? (
-        <NodeToolbar isVisible={toolbarVisible} position={Position.Top} align="center" offset={8}>
-          <div
-            className="flex items-center justify-center gap-1"
-            onMouseEnter={showToolbar}
-            onMouseLeave={hideToolbar}
-          >
-            {toolbarButtons}
-          </div>
-        </NodeToolbar>
-      ) : null}
+      <NodeHoverMenu
+        actions={menuActions}
+        visible={toolbarVisible}
+        open={nodeMenuOpen}
+        onOpenChange={setNodeMenuOpen}
+        onRun={onRun || data?.onRunNode}
+        onDelete={data?.onDeleteNode}
+        running={isRunning}
+      />
       {resizable && (
         <NodeResizer
           isVisible={!!selected && showFullNode}
@@ -571,27 +514,32 @@ export default function NodeShell({
           onResizeEnd={() => { userResizedRef.current = true; }}
         />
       )}
-      {targetHandle && (
-        <FloatingHandle
-          type="target"
-          {...getFloatingHandleProps(data?.floatingHandlePosition, 'target')}
-        />
-      )}
+      <NodeHandles target={targetHandle} sourceRight={sourceHandle} />
       <div className="flex h-full w-full flex-col overflow-hidden rounded-lg border border-border bg-card text-card-foreground shadow-sm">
       <div
         data-node-header
         className={`flex shrink-0 items-center justify-between gap-2 px-3 py-2 ${showFullNode ? '' : 'invisible pointer-events-none'}`}
         style={{ borderBottom: '1px solid var(--border)', backgroundColor: `rgb(${hexToRgb(meta.color)} / 0.12)` }}
       >
-        <div className="flex min-w-0 flex-1 items-center gap-2">
-          <span className="text-base leading-none">{meta.icon}</span>
-          <EditableNodeTitle
-            value={customTitle}
-            fallback={meta.label}
-            onChange={(title) => onUpdate?.({ title })}
-            className="truncate text-sm font-semibold"
-            inputClassName="h-6 w-full rounded px-1 text-sm font-semibold"
-          />
+        <div className="flex min-w-0 flex-1 items-center gap-2.5">
+          <span
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border bg-background/80 text-base leading-none shadow-sm"
+            aria-hidden="true"
+          >
+            {meta.icon}
+          </span>
+          <div className="flex min-w-0 flex-1 flex-col">
+            <EditableNodeTitle
+              value={customTitle}
+              fallback={meta.label}
+              onChange={(title) => onUpdate?.({ title })}
+              className="truncate text-sm font-semibold leading-tight"
+              inputClassName="h-6 w-full rounded px-1 text-sm font-semibold"
+            />
+            <span className="truncate text-[10px] leading-tight text-muted-foreground">
+              {data?.subtitle || meta.subtitle || '画布节点'}
+            </span>
+          </div>
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
           {queuePosition > 0 && (
@@ -606,18 +554,6 @@ export default function NodeShell({
             >
               {STATUS_TEXT[status] || status}
             </span>
-          )}
-          {/* 重置参数：表单回 initialData 默认值 + 清掉该 nodeType 的持久化记忆。
-              nodrag/nopan 防误触画布；仅对有 params 的节点注入（data.onResetParams 为 undefined 时不渲染） */}
-          {onResetParams && (
-            <button
-              type="button"
-              title="重置参数（恢复默认值并清除记忆）"
-              onClick={(e) => { e.stopPropagation(); onResetParams(); }}
-              className="rounded p-1 text-muted-foreground transition hover:bg-foreground/10 hover:text-foreground"
-            >
-              <RotateCcw className="h-3.5 w-3.5" />
-            </button>
           )}
         </div>
       </div>
@@ -635,21 +571,17 @@ export default function NodeShell({
         </div>
       )}
       </div>
-      {sourceHandle && (
-        <FloatingHandle
-          type="source"
-          {...getFloatingHandleProps(data?.floatingHandlePosition, 'source')}
-        />
-      )}
     </div>
     {/* 产出卡片：节点外部下方独立卡片，不随表单滚动，不受 resize 钳制。 */}
     <div
-      className={showFullNode ? '' : 'invisible pointer-events-none'}
+      ref={outputRef}
+      className={`relative ${showFullNode ? '' : 'invisible pointer-events-none'}`}
     >
       <NodeOutput
         {...outputProps}
         width={nodeWidth || undefined}
       />
+      <NodeHandles sourceBottom={sourceHandle} />
     </div>
     </ContextMenuTrigger>
     {contextImageOpen && contextImageUrlRef.current && (

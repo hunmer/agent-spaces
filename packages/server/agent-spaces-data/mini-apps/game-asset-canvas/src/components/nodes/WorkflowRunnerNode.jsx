@@ -210,7 +210,7 @@ export default function WorkflowRunnerNode({ id, data, selected }) {
   const canRun = !running && !!(params.workflowId || '').trim();
 
   return (
-    <NodeShell id={id} nodeType={NODE_TYPES.workflowRunner} data={data} selected={selected} sourceHandle>
+    <NodeShell id={id} nodeType={NODE_TYPES.workflowRunner} data={data} selected={selected} sourceHandle onRun={handleRun}>
       {/* 选择工作流 */}
       <div className="flex flex-col gap-1">
         <span className="text-xs font-medium text-muted-foreground">目标工作流</span>

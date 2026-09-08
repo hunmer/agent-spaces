@@ -182,7 +182,7 @@ export default function EditImageNode({ id, data, selected }) {
   }, [onGenerate, id, params, prompt, allInputImages, connectedMask]);
 
   return (
-    <NodeShell id={id} nodeType={NODE_TYPES.editImage} data={data} selected={selected} targetHandle sourceHandle>
+    <NodeShell id={id} nodeType={NODE_TYPES.editImage} data={data} selected={selected} targetHandle sourceHandle onRun={handleRun}>
       <div className="flex flex-col gap-1">
         <span className="text-xs font-medium text-muted-foreground">输入图片</span>
         <UploadSection>

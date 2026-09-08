@@ -98,7 +98,7 @@ export default function DepthExtractNode({ id, type, data, selected }) {
   const usCount = upstreamImages.length;
 
   return (
-    <NodeShell id={id} nodeType={type || NODE_TYPES.depthExtract} data={data} selected={selected} targetHandle sourceHandle>
+    <NodeShell id={id} nodeType={type || NODE_TYPES.depthExtract} data={data} selected={selected} targetHandle sourceHandle onRun={handleRun}>
       <p className="text-[10px] leading-snug text-muted-foreground">
         调用 Depth Anything 插件批量提取单目深度图（GPU 并行）
       </p>

@@ -85,7 +85,7 @@ export default function PromptReverseNode({ id, type, data, selected }) {
   const usCount = upstreamImages.length;
 
   return (
-    <NodeShell id={id} nodeType={type || NODE_TYPES.promptReverse} data={data} selected={selected} targetHandle sourceHandle>
+    <NodeShell id={id} nodeType={type || NODE_TYPES.promptReverse} data={data} selected={selected} targetHandle sourceHandle onRun={handleRun}>
       <p className="text-[10px] leading-snug text-muted-foreground">
         多张图 → AI 反推每张图的文生图提示词（需在「设置 → 反推提示词 AI」配置模型）
       </p>

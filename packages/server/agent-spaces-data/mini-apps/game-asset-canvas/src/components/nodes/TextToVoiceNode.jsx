@@ -75,7 +75,7 @@ export default function TextToVoiceNode({ id, data, selected }) {
   }, [onGenerate, id, params]);
 
   return (
-    <NodeShell id={id} nodeType={NODE_TYPES.textToVoice} data={data} selected={selected}>
+    <NodeShell id={id} nodeType={NODE_TYPES.textToVoice} data={data} selected={selected} targetHandle sourceHandle onRun={handleRun}>
       <PickedPromptBadge
         pickedPrompt={params.pickedPrompt}
         onClear={() => set({ pickedPrompt: undefined })}

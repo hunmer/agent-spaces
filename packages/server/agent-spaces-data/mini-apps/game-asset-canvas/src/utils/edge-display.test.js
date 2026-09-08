@@ -18,7 +18,7 @@ test('悬浮目标节点时边标签显示图片输入属性名', () => {
     id: 'edge', source: 'source', target: 'target', data: { inputTarget: 'images' },
   }];
 
-  const [edge] = decorateEdgesForSelection(edges, nodes, 'bezier', 'solid', schemas, 'target');
+  const [edge] = decorateEdgesForSelection(edges, nodes, 'solid', schemas, 'target');
   assert.equal(edge.label, '输入图片');
 });
 
@@ -34,7 +34,7 @@ test('悬浮来源节点时边标签显示目标节点的文本属性名', () =>
     data: { inputType: 'text', inputTarget: 'prompt' },
   }];
 
-  const [edge] = decorateEdgesForSelection(edges, nodes, 'bezier', 'solid', schemas, 'source');
+  const [edge] = decorateEdgesForSelection(edges, nodes, 'solid', schemas, 'source');
   assert.equal(edge.label, '提示词');
 });
 
@@ -50,7 +50,7 @@ test('变量级文本边标签同时显示目标属性和变量名', () => {
     data: { inputType: 'text', inputTarget: 'prompt', inputVariable: 'subject' },
   }];
 
-  const [edge] = decorateEdgesForSelection(edges, nodes, 'bezier', 'solid', schemas, 'source');
+  const [edge] = decorateEdgesForSelection(edges, nodes, 'solid', schemas, 'source');
   assert.equal(edge.label, '提示词 · {subject}');
 });
 
@@ -65,7 +65,7 @@ test('每条边使用不同颜色且路径、箭头和标签颜色一致', () =>
     { id: 'edge-b', source: 'source-b', target: 'target', data: { inputType: 'text', inputTarget: 'prompt' } },
   ];
 
-  const decorated = decorateEdgesForSelection(edges, nodes, 'bezier', 'solid', schemas);
+  const decorated = decorateEdgesForSelection(edges, nodes, 'solid', schemas);
   assert.notEqual(decorated[0].style.stroke, decorated[1].style.stroke);
   decorated.forEach((edge, index) => {
     assert.equal(edge.style.stroke, getEdgeColor(edges[index], index));
@@ -83,6 +83,6 @@ test('仅选中节点但未悬浮时不显示边标签', () => {
     id: 'edge', source: 'source', target: 'target', data: { inputType: 'text', inputTarget: 'prompt' },
   }];
 
-  const [edge] = decorateEdgesForSelection(edges, nodes, 'bezier', 'solid', schemas);
+  const [edge] = decorateEdgesForSelection(edges, nodes, 'solid', schemas);
   assert.equal(edge.label, null);
 });

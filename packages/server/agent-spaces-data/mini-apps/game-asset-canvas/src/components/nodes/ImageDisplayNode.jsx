@@ -1,9 +1,9 @@
 import { useCallback, useRef, useState, useEffect } from 'react';
-import { NodeResizer, NodeToolbar, Position } from '@xyflow/react';
-import { ChevronLeft, ChevronRight, Download, FileUpload, Loader, Popover, PopoverContent, PopoverTrigger, RotateCw, Upload, X, toast } from '@agent-spaces/ui';
+import { NodeResizer } from '@xyflow/react';
+import { ChevronLeft, ChevronRight, Download, Expand, FileUpload, Pencil, Popover, PopoverContent, PopoverTrigger, RotateCw, Scissors, Upload, X, toast } from '@agent-spaces/ui';
 import useViewportActivation from '../../hooks/useViewportActivation';
-import { getFloatingHandleProps } from '../canvas/floating-edge-utils';
-import FloatingHandle from './FloatingHandle';
+import NodeHandles from './NodeHandles';
+import NodeHoverMenu from './NodeHoverMenu';
 import { useCanvasGallery } from '../../utils/canvas-gallery';
 import { downloadImages } from '../../utils/export';
 import { normalizeImageRotation } from '../../utils/image-display-size';
@@ -16,7 +16,7 @@ import { normalizeImageRotation } from '../../utils/image-display-size';
  *   限定整节点只能从该处拖动（图片区域不触发拖拽，便于点图看大图/框选）。
  * - 图片主体（满宽 object-contain），点击看大图。
  * - 选中时底部浮出 overlay：来源 tags + 多图切换箭头 + 上传按钮。
- * - Handle 左(输入)/右(输出)，NodeResizer 选中时显示，NodeToolbar 导出/抠图/放大/编辑（复用 NodeShell 行为）。
+ * - 双输入/双输出 Handle，NodeResizer 选中时显示，hover 右下角菜单提供导出/抠图/放大/编辑。
  *
  * data.images: string[]  当前展示的图片（http URL）；多图时底部箭头切换。
  * data.source: 'upload' | 'url' | 'upstream' | 'history' | ...  来源标记
@@ -34,9 +34,9 @@ export default function ImageDisplayNode({ id, data, selected }) {
   const viewportActivated = useViewportActivation(rootRef);
   const [uploading, setUploading] = useState(false);
   const [uploadOpen, setUploadOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [nodeHovered, setNodeHovered] = useState(false);
   const loading = data?.loading;
-  const source = data?.source;
-  const tags = Array.isArray(data?.tags) ? data.tags.filter(Boolean) : [];
   // 多图当前索引；图片集合变化时自动夹回有效范围
   const [imgIndex, setImgIndex] = useState(0);
   useEffect(() => {
@@ -121,72 +121,32 @@ export default function ImageDisplayNode({ id, data, selected }) {
     }
   }, [downloading, images]);
 
-  const sourceLabel = data?.source === 'upstream' ? '来自连线'
-    : source === 'url' ? '来自 URL'
-    : source === 'history' ? '来自记录'
-    : source === 'storyboard' ? '来自分镜'
-    : source === 'segment' ? '抠图结果'
-    : source === 'enhance' ? '放大结果'
-    : source === 'error' ? '处理失败'
-    : '已上传';
+  const menuActions = [
+    showEditButton ? { key: 'edit', label: '编辑图片', icon: <Pencil className="h-3.5 w-3.5" />, onClick: () => onEditImages(images) } : null,
+    { key: 'rotate', label: '顺时针旋转 90°', icon: <RotateCw className="h-3.5 w-3.5" />, onClick: handleRotate },
+    showProcessButtons ? { key: 'segment', label: '抠图', icon: <Scissors className="h-3.5 w-3.5" />, onClick: () => onProcessImage(images, 'segment') } : null,
+    showProcessButtons ? { key: 'enhance', label: '放大', icon: <Expand className="h-3.5 w-3.5" />, onClick: () => onProcessImage(images, 'enhance') } : null,
+    images.length > 0 && onExportImages ? { key: 'export', label: '导出到画布', icon: <Upload className="h-3.5 w-3.5" />, onClick: () => onExportImages(images) } : null,
+    showDownloadButton ? { key: 'download', label: downloading ? '下载中…' : '下载到本地', icon: <Download className="h-3.5 w-3.5" />, disabled: downloading, onClick: handleDownload } : null,
+  ];
 
   return (
-    <div ref={rootRef} className="group relative h-full w-full overflow-visible">
+    <div
+      ref={rootRef}
+      className="group relative h-full w-full overflow-visible"
+      onMouseEnter={() => setNodeHovered(true)}
+      onMouseLeave={() => setNodeHovered(false)}
+    >
       <UploadFillStyles />
-      {/* NodeToolbar：导出/抠图/放大/编辑（选中且单选时） */}
-      {showToolbar && (
-        <NodeToolbar isVisible={showFullNode && !!selected && selectionCount <= 1} position={Position.Top} align="center" offset={8}>
-          <div className="flex items-center gap-1">
-            {showEditButton && (
-              <button
-                type="button"
-                onClick={(e) => { e.stopPropagation(); onEditImages(images); }}
-                className="rounded-md border border-border bg-background px-2.5 py-1 text-xs font-medium text-foreground shadow-sm transition hover:border-primary hover:text-primary"
-              >编辑</button>
-            )}
-            <button
-              type="button"
-              onClick={handleRotate}
-              title="顺时针旋转 90°"
-              aria-label="顺时针旋转 90°"
-              className="flex h-7 w-7 items-center justify-center rounded-md border border-border bg-background text-foreground shadow-sm transition hover:border-primary hover:text-primary"
-            >
-              <RotateCw className="h-3.5 w-3.5" />
-            </button>
-            {showProcessButtons && (
-              <>
-                <button
-                  type="button"
-                  onClick={(e) => { e.stopPropagation(); onProcessImage(images, 'segment'); }}
-                  className="rounded-md border border-border bg-background px-2.5 py-1 text-xs font-medium text-foreground shadow-sm transition hover:border-primary hover:text-primary"
-                >抠图</button>
-                <button
-                  type="button"
-                  onClick={(e) => { e.stopPropagation(); onProcessImage(images, 'enhance'); }}
-                  className="rounded-md border border-border bg-background px-2.5 py-1 text-xs font-medium text-foreground shadow-sm transition hover:border-primary hover:text-primary"
-                >放大</button>
-              </>
-            )}
-            <button
-              type="button"
-              onClick={(e) => { e.stopPropagation(); onExportImages(images); }}
-              className="rounded-md border border-border bg-background px-2.5 py-1 text-xs font-medium text-foreground shadow-sm transition hover:border-primary hover:text-primary"
-            >导出图片</button>
-            {showDownloadButton && (
-              <button
-                type="button"
-                onClick={(e) => { e.stopPropagation(); handleDownload(); }}
-                disabled={downloading}
-                title="下载到本地（多图打 zip）"
-                className="flex items-center gap-1 rounded-md border border-border bg-background px-2.5 py-1 text-xs font-medium text-foreground shadow-sm transition hover:border-primary hover:text-primary disabled:opacity-60"
-              >
-                {downloading ? <Loader className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
-                下载
-              </button>
-            )}
-          </div>
-        </NodeToolbar>
-      )}
+      <NodeHoverMenu
+        actions={showToolbar ? menuActions : []}
+        visible={showFullNode && (nodeHovered || menuOpen) && selectionCount <= 1}
+        open={menuOpen}
+        onOpenChange={setMenuOpen}
+        onRun={data?.onRunNode}
+        onDelete={data?.onDeleteNode}
+        running={loading}
+      />
 
       {/* 选中时显示 resize 控件 */}
       <NodeResizer
@@ -198,14 +158,7 @@ export default function ImageDisplayNode({ id, data, selected }) {
         lineClassName="!border-primary/40"
       />
 
-      <FloatingHandle
-        type="target"
-        {...getFloatingHandleProps(data?.floatingHandlePosition, 'target')}
-      />
-      <FloatingHandle
-        type="source"
-        {...getFloatingHandleProps(data?.floatingHandlePosition, 'source')}
-      />
+      <NodeHandles target source />
 
       <div className={`absolute inset-0 overflow-hidden rounded-lg bg-card shadow-sm ${showFullNode ? '' : 'invisible pointer-events-none'}`}>
       <div className="absolute -right-10 top-1.5 z-30 nodrag nopan">

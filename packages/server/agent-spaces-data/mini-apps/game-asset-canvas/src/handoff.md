@@ -131,7 +131,9 @@ Agent → api.js handler → ctx.requestClient(type, payload, timeoutMs)
 8. **提示词交互 = 展示+合并（非填充）**：选中提示词库存到 `params.pickedPrompt`，用 PickedPromptBadge 展示；提交时 `[pickedPrompt, prompt]` 去空去重合并。三处表单一致。
 9. **多工作区隔离用 configs 子目录**：`configs/workspaces/<id>/{canvas,history}.json`；settings/prompt-library 顶层共享。切换由 activeId 驱动，子 hook 接收 workspaceId 重载。
 10. **剪贴板是模块级内存**：`utils/clipboard.js` 用模块级 ref（非 localStorage），刷新失效。焦点在 input/textarea/contenteditable 时放行浏览器原生 Ctrl+C/V。
-11. **多选隐藏节点 toolbar**：NodeToolbar `isVisible={selected && selectionCount <= 1}`。
+11. **多选隐藏节点菜单**：`NodeHoverMenu` 仅在节点 hover 或菜单打开时显示，并要求 `selectionCount <= 1`。
+12. **节点快捷操作与底部 Handle**：hover 工具栏固定在节点内部右下角，运行直接复用各节点现有 `handleRun`，删除走 `handleDeleteNodeWithHistoryCheck`。`NodeShell` 底部 source handle 必须渲染在外置 `NodeOutput` 之后，并在产出折叠高度变化时调用 `updateNodeInternals`；右侧 source handle 仍跟随主体。
+13. **连线路径自动选择**：`FloatingEdge.getAutoEdgePath` 复刻 codeauto，横纵跨度同时超过 100/80 时用 SmoothStep（圆角 18），否则用 Bezier；`ConnectionLine` 必须复用该函数。画布不再维护或写入 `edgePathStyle/pathStyle`，旧边残留字段直接忽略。
 12. **图标从 `@agent-spaces/ui` 命名导入**，不要直接 `import from 'lucide-react'`（不在 allowlist）。
 13. **config 初始读取要三重读取**：`getConfig + onConfigReady + onAnyConfigChanged`（挂载时快照可能未 ready）。
 14. **生成记录必须双路径都写 history**：节点内「生成」走 handleGenerate，表单「⚡生成」走 useExecutionQueue.submit → onComplete。onComplete 必须也调 addHistory。
@@ -151,7 +153,7 @@ Agent → api.js handler → ctx.requestClient(type, payload, timeoutMs)
 26. **本地 FileUpload 上传入口属于缩略图网格**：未达到 `max` 时，紧凑上传入口始终渲染为三列缩略图网格的第一个单元格，后接已有图片；不要恢复为缩略图整行 + 下方独立上传行。
 27. **节点产出缩略图操作栏底部居中**：`ImageResult` 的“添加到素材库/删除”按钮统一放在 `.game-asset-output-actions`，悬浮时在图片内部底部居中并排显示；定位、尺寸、显隐必须用组件内作用域 CSS，不要恢复右上/右下负偏移或 Tailwind `group-hover`。
 28. **共享 FileUpload 图片预览走 Gallery**：宿主 `packages/web/src/components/ui/file-upload.tsx` 点击图片缩略图调用 `openMediaGallery`，Gallery 只包含有预览 URL 的图片文件并按图片子集定位；缩略图自身悬浮时用 `group/preview` 显示半透明遮罩和眼睛图标，最右侧删除按钮仅在文件行 hover/focus 时显示。该文件是宿主层，修改后必须重启 Web。
-29. **画布样式设置沿用工作流字段名**：`bgVariant`（dots/lines/cross）、`attributionPosition`（top-bottom/left-right）、`snapGrid` 存全局 settings；所有节点 Handle 方向统一走 `getFloatingHandleProps`，不要在节点内写死方位。
+29. **画布样式与 Handle**：`bgVariant`（dots/lines/cross）、`snapGrid` 存全局 settings；通用节点用 `NodeHandles` 固定为左/上蓝色输入、右/下绿色输出。旧 `attributionPosition` 仅作为历史冗余字段忽略；分镜动态场景输出 handle 保持专用实现。
 29. **自动吸附包含网格与辅助线对齐**：`settings.snapGrid` 开启时，ReactFlow 先按固定网格吸附，`useAlignmentGuides` 再将单个拖动节点与其他可见节点的左/中/右、上/中/下基准线对齐并显示辅助线；匹配阈值固定为屏幕 6px（按 zoom 换算）。多选拖拽不介入，松手、关闭自动吸附或离开阈值后必须清除辅助线。
 30. **文件拖拽靠近画布边缘时自动平移**：画布外层统一通过 `useCanvasDragAutoPan` 接管系统文件和 `CANVAS_DROP_MIME` 图片拖拽；72px 热区内按距离加速，四角同时沿双轴平移。位移必须通过受控 `setViewport` 更新，mini-app renderer 的 `useReactFlow()` 实例不保证暴露 `panBy`。`drop`、`dragend`、离开画布和组件卸载都必须停止动画帧，不能影响节点类型拖拽。
 29. **复制并应用节点属性有剪贴板与素材实例两个入口**：粘贴单个节点时，若当前至少选中一个节点且全部与来源同类型，先由 `PastePropertiesDialog` 选择字段；当节点所属分组处于“按上传素材执行”且至少有两个素材 run 时，节点顶部工具栏另有“应用到其他节点”入口，目标是其他素材 run 中同一 nodeId 的节点快照，不是画布分组内其他节点。字段默认全不选，列表顶部提供“全选/反选”；`params` 按子字段展开，`output/images/videos/status/loading/error` 等产出、派生输入和运行态字段不参与属性应用。素材实例模式复制 `uploadedImages` 时必须排除来源的 `groupAssetInputUrls`、保留每个目标 run 的 `groupAssetInputUrls`，只替换人工上传图；双槽 `first/second.uploadedImages` 同样处理，并同步更新 `assets.templateNodeStates` 供后续新 run 继承。多节点剪贴板直接沿用原粘贴行为。

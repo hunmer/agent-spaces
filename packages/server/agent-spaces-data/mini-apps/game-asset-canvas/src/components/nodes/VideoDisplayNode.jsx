@@ -1,9 +1,9 @@
 import { useCallback, useRef, useState, useEffect } from 'react';
-import { NodeResizer, NodeToolbar, Position } from '@xyflow/react';
+import { NodeResizer } from '@xyflow/react';
 import { ChevronLeft, ChevronRight, Upload } from '@agent-spaces/ui';
 import useViewportActivation from '../../hooks/useViewportActivation';
-import { getFloatingHandleProps } from '../canvas/floating-edge-utils';
-import FloatingHandle from './FloatingHandle';
+import NodeHandles from './NodeHandles';
+import NodeHoverMenu from './NodeHoverMenu';
 
 /**
  * 视频展示节点：纯展示视频，无外壳边框/标题栏（结构对标 ImageDisplayNode）。
@@ -11,7 +11,7 @@ import FloatingHandle from './FloatingHandle';
  * - 顶部一条窄的自定义拖拽 handle（.image-drag-handle，复用同款 dragHandle 规则）
  * - 视频主体（满宽），<video controls> 播放，双击全屏
  * - 选中时底部 overlay：来源标签 + 多视频切换箭头 + 上传按钮
- * - 顶部 NodeToolbar：导出视频到画布
+ * - hover 右下角菜单：导出视频到画布
  *
  * data.videos: string[]  当前展示的视频（http URL）；多个时底部箭头切换
  * data.source: 'upload' | 'upstream' | ...  来源标记
@@ -24,6 +24,8 @@ export default function VideoDisplayNode({ id, data, selected }) {
   const rootRef = useRef(null);
   const viewportActivated = useViewportActivation(rootRef);
   const [uploading, setUploading] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [nodeHovered, setNodeHovered] = useState(false);
   const source = data?.source;
   const tags = Array.isArray(data?.tags) ? data.tags.filter(Boolean) : [];
   // 多视频当前索引；集合变化时夹回有效范围
@@ -79,16 +81,26 @@ export default function VideoDisplayNode({ id, data, selected }) {
     : '已上传';
 
   return (
-    <div ref={rootRef} className="group relative h-full w-full overflow-visible">
-      {showToolbar && (
-        <NodeToolbar isVisible={!!selected && selectionCount <= 1} position={Position.Top} align="center" offset={8}>
-          <button
-            type="button"
-            onClick={(e) => { e.stopPropagation(); onExportVideos(videos); }}
-            className="rounded-md border border-border bg-background px-2.5 py-1 text-xs font-medium text-foreground shadow-sm transition hover:border-primary hover:text-primary"
-          >导出视频</button>
-        </NodeToolbar>
-      )}
+    <div
+      ref={rootRef}
+      className="group relative h-full w-full overflow-visible"
+      onMouseEnter={() => setNodeHovered(true)}
+      onMouseLeave={() => setNodeHovered(false)}
+    >
+      <NodeHoverMenu
+          actions={showToolbar ? [{
+            key: 'export-video',
+            label: '导出视频',
+            icon: <Upload className="h-3.5 w-3.5" />,
+            onClick: () => onExportVideos(videos),
+          }] : []}
+          visible={(nodeHovered || menuOpen) && selectionCount <= 1}
+          open={menuOpen}
+          onOpenChange={setMenuOpen}
+          onRun={data?.onRunNode}
+          onDelete={data?.onDeleteNode}
+          running={data?.status === 'running'}
+      />
 
       <NodeResizer
         isVisible={!!selected}
@@ -99,14 +111,7 @@ export default function VideoDisplayNode({ id, data, selected }) {
         lineClassName="!border-primary/40"
       />
 
-      <FloatingHandle
-        type="target"
-        {...getFloatingHandleProps(data?.floatingHandlePosition, 'target')}
-      />
-      <FloatingHandle
-        type="source"
-        {...getFloatingHandleProps(data?.floatingHandlePosition, 'source')}
-      />
+      <NodeHandles target source />
 
       <div className="absolute inset-0 overflow-hidden rounded-lg bg-card shadow-sm">
         {/* 顶部自定义拖拽 handle */}

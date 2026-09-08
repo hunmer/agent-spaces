@@ -148,7 +148,7 @@ export default function ImageProcessNode({ id, type, data, selected }) {
   const usCount = upstreamImages.length;
 
   return (
-    <NodeShell id={id} nodeType={type || NODE_TYPES.imageProcess} data={data} selected={selected} targetHandle sourceHandle>
+    <NodeShell id={id} nodeType={type || NODE_TYPES.imageProcess} data={data} selected={selected} targetHandle sourceHandle onRun={handleRun}>
       {processor?.desc && (
         <p className="text-[10px] leading-snug text-muted-foreground">{processor.desc}</p>
       )}

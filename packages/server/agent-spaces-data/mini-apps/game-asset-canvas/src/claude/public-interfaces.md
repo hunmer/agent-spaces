@@ -104,7 +104,7 @@ Agent（LLM function calling）调用，经 `ctx.requestClient` RPC 到浏览器
 
 新增库必须**两处都改**（`react-renderer.tsx` allowlist + 顶部 import；`ui-exports.ts` 导出），需重启 web。
 
-- `@xyflow/react@12.10.2`：ReactFlow, NodeResizer, NodeToolbar, useReactFlow, ViewportPortal, **MarkerType**, useUpdateNodeInternals 等
+- `@xyflow/react@12.10.2`：ReactFlow, NodeResizer, NodeToolbar, useReactFlow, ViewportPortal, **MarkerType**, useUpdateNodeInternals, getBezierPath, getSmoothStepPath 等
 - `@dagrejs/dagre@3.0.0`：default + graphlib
 - `@agent-spaces/ui`：Dialog/Tabs/Select/Popover/MediaGallery/ResizablePanel/WorkflowGroupOverlay/Markdown/ColorPicker/Switch/Tooltip/FileUpload/Masonry + lucide 图标（不要直接 import lucide-react）
 

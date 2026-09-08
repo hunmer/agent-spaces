@@ -56,6 +56,7 @@ import {
   ViewportPortal,
   getSimpleBezierPath,
   getBezierPath,
+  getSmoothStepPath,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import dagre, { graphlib } from '@dagrejs/dagre';
@@ -237,6 +238,7 @@ function resolveExternalModule(id: string) {
       ViewportPortal,
       getSimpleBezierPath,
       getBezierPath,
+      getSmoothStepPath,
     };
   }
   if (id === '@dagrejs/dagre') {

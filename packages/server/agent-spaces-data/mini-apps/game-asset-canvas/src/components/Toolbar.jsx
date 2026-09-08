@@ -34,15 +34,15 @@ import {
  *   文件▾(导出[JSON/素材库]/导入[JSON/素材库]) | 画布▾(自动布局[横向/垂直]/清空) | 工具▾(...) | 选择▾(全选/反选/取消选择)
  *
  * @param {{ onClear, onAutoLayout, onExport, onExportAssetLibrary, onExportWorkspace, onImport, onImportAssetLibrary, onImportWorkspace, onImportImages, onOpenSettings, onOpenPromptManager, onBackfillThumbnails,
- *           edgePathStyle, edgeLineStyle, edgePathStyles, edgeLineStyles, onEdgePathStyleChange, onEdgeLineStyleChange,
- *           bgVariant, handlePosition, snapEnabled, onCanvasStyleChange,
+ *           edgeLineStyle, edgeLineStyles, onEdgeLineStyleChange,
+ *           bgVariant, snapEnabled, onCanvasStyleChange,
  *           onSelectAll, onInvertSelect, onClearSelection,
  *           operationHistory, onUndo, onRedo, canUndo, canRedo, onOpenVersions, downloadQueueSlot, queueSlot, workspaceSlot }} props
  */
 export default function Toolbar({
   onClear, onAutoLayout, onExport, onExportAssetLibrary, onExportWorkspace, onImport, onImportAssetLibrary, onImportWorkspace, onImportImages, onOpenSettings, onOpenPromptManager, onBackfillThumbnails,
-  edgePathStyle, edgeLineStyle, edgePathStyles, edgeLineStyles, onEdgePathStyleChange, onEdgeLineStyleChange,
-  bgVariant, handlePosition, snapEnabled, onCanvasStyleChange,
+  edgeLineStyle, edgeLineStyles, onEdgeLineStyleChange,
+  bgVariant, snapEnabled, onCanvasStyleChange,
   onSelectAll, onInvertSelect, onClearSelection,
   operationHistory, onUndo, onRedo, canUndo, canRedo, onOpenVersions,
   downloadQueueSlot, queueSlot, workspaceSlot,
@@ -259,33 +259,9 @@ export default function Toolbar({
                 ))}
               </MenubarSubContent>
             </MenubarSub>
-            <MenubarSub>
-              <MenubarSubTrigger>Handle 位置</MenubarSubTrigger>
-              <MenubarSubContent>
-                {[
-                  ['top-bottom', '上下'],
-                  ['left-right', '左右'],
-                ].map(([value, label]) => (
-                  <MenubarItem key={value} onClick={() => onCanvasStyleChange?.({ attributionPosition: value })}>
-                    {handlePosition === value ? '✓ ' : ''}{label}
-                  </MenubarItem>
-                ))}
-              </MenubarSubContent>
-            </MenubarSub>
             <MenubarItem onClick={() => onCanvasStyleChange?.({ snapGrid: !snapEnabled })}>
               {snapEnabled ? '✓ ' : ''}自动吸附
             </MenubarItem>
-            <MenubarSeparator />
-            <MenubarSub>
-              <MenubarSubTrigger>连线</MenubarSubTrigger>
-              <MenubarSubContent>
-                {(edgePathStyles || []).map((style) => (
-                  <MenubarItem key={style} onClick={() => onEdgePathStyleChange?.(style)}>
-                    {edgePathStyle === style ? '✓ ' : ''}{style}
-                  </MenubarItem>
-                ))}
-              </MenubarSubContent>
-            </MenubarSub>
             <MenubarSeparator />
             <MenubarSub>
               <MenubarSubTrigger>线条</MenubarSubTrigger>

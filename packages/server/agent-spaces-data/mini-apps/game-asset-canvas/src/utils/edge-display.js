@@ -18,7 +18,7 @@ export function getEdgeColor(edge, index = 0) {
 }
 
 export function decorateEdgesForSelection(
-  edges, nodes, pathStyle, lineStyle, nodeParamsSchema = {}, hoveredNodeId = null,
+  edges, nodes, lineStyle, nodeParamsSchema = {}, hoveredNodeId = null,
 ) {
   const selectedIds = new Set(nodes.filter((node) => node.selected).map((node) => node.id));
   const nodeMap = new Map(nodes.map((node) => [node.id, node]));
@@ -49,7 +49,7 @@ export function decorateEdgesForSelection(
         ? (targetLabel || `输入${inputIndex}`)
         : (isHoveredOutput ? (targetLabel || `输出${outputIndex}`) : null),
       data: {
-        ...(edge.data || {}), pathStyle, lineStyle, highlightColor,
+        ...(edge.data || {}), lineStyle, highlightColor,
         selected: edge.selected === true,
         source: edge.source, target: edge.target, sourceHandle: edge.sourceHandle,
       },
