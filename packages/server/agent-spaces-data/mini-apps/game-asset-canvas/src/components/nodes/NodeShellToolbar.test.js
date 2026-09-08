@@ -13,11 +13,11 @@ const toolbarSource = fs.readFileSync(new URL('../Toolbar.jsx', import.meta.url)
 const textToVoiceSource = fs.readFileSync(new URL('./TextToVoiceNode.jsx', import.meta.url), 'utf8');
 const canvasSource = fs.readFileSync(new URL('../Canvas.jsx', import.meta.url), 'utf8');
 
-test('node actions move into a bottom-right menu shown by node hover', () => {
+test('node actions appear in a vertical top-right menu on node hover', () => {
   assert.doesNotMatch(shellSource, /<NodeToolbar/);
   assert.match(shellSource, /toolbarHovered \|\| nodeMenuOpen/);
   assert.match(shellSource, /<NodeHoverMenu[\s\S]*actions=\{menuActions\}/);
-  assert.match(menuSource, /absolute bottom-2 right-2/);
+  assert.match(menuSource, /absolute right-2 top-2[\s\S]*flex flex-col/);
   assert.match(menuSource, /<MoreVertical className="h-3\.5 w-3\.5" \/>/);
   assert.match(menuSource, /aria-label="运行节点"/);
   assert.match(menuSource, /aria-label="删除节点"/);

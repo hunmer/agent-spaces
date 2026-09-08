@@ -21,7 +21,7 @@
 4. **删除键**：`deleteKeyCode={['Backspace','Delete']}`；焦点在输入框时 ReactFlow 故意忽略。
 5. **懒加载**：不开 `onlyRenderVisibleElements`，统一 `useViewportActivation`（首次进入视窗永久激活）。
 6. **手动连线**：`Canvas.jsx` 的 addConnections 用 `MarkerType.ArrowClosed`，必须从 `@xyflow/react` 显式导入。
-7. **节点操作菜单**：节点 hover 后在右下角显示 `NodeHoverMenu`；多选时用 `selectionCount` 隐藏，菜单打开期间保持可见。
+7. **节点操作菜单**：节点 hover 后在右上角纵向显示 `NodeHoverMenu`；多选时用 `selectionCount` 隐藏，菜单打开期间保持可见。
 8. **底部输出 Handle**：`NodeShell` 的右侧 source handle 跟随主体；底部 source handle 放在外置 `NodeOutput` 之后，并用 `ResizeObserver + updateNodeInternals` 同步折叠高度变化。
 9. **边颜色是展示态**：`decorateEdgesForSelection` 按顺序 `getEdgeColor(edge,index)`；变量 Decoration 复用同函数同顺序（{变量} 与边同色）；颜色不写入持久化 edges；label 仅在边关联**选中或 hover** 节点时显示（hoveredNodeId 控制，不持久化）。
 10. **连线路径自动选择**：横纵跨度同时超过 100/80 时使用 `getSmoothStepPath(borderRadius=18)`，否则使用 `getBezierPath`；边和拖拽预览统一复用 `getAutoEdgePath`，不再持久化或提供 pathStyle 四选一。

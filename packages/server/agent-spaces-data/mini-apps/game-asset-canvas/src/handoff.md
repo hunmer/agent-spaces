@@ -131,7 +131,7 @@ Agent → api.js handler → ctx.requestClient(type, payload, timeoutMs)
 8. **提示词交互 = 展示+合并（非填充）**：选中提示词库存到 `params.pickedPrompt`，用 PickedPromptBadge 展示；提交时 `[pickedPrompt, prompt]` 去空去重合并。三处表单一致。
 9. **多工作区隔离用 configs 子目录**：`configs/workspaces/<id>/{canvas,history}.json`；settings/prompt-library 顶层共享。切换由 activeId 驱动，子 hook 接收 workspaceId 重载。
 10. **剪贴板是模块级内存**：`utils/clipboard.js` 用模块级 ref（非 localStorage），刷新失效。焦点在 input/textarea/contenteditable 时放行浏览器原生 Ctrl+C/V。
-11. **多选隐藏节点菜单**：`NodeHoverMenu` 仅在节点 hover 或菜单打开时显示，并要求 `selectionCount <= 1`。
+11. **多选隐藏节点菜单**：`NodeHoverMenu` 仅在节点 hover 或菜单打开时于右上角纵向显示，并要求 `selectionCount <= 1`。
 12. **节点快捷操作与底部 Handle**：hover 工具栏固定在节点内部右下角，运行直接复用各节点现有 `handleRun`，删除走 `handleDeleteNodeWithHistoryCheck`。`NodeShell` 底部 source handle 必须渲染在外置 `NodeOutput` 之后，并在产出折叠高度变化时调用 `updateNodeInternals`；右侧 source handle 仍跟随主体。
 13. **连线路径自动选择**：`FloatingEdge.getAutoEdgePath` 复刻 codeauto，横纵跨度同时超过 100/80 时用 SmoothStep（圆角 18），否则用 Bezier；`ConnectionLine` 必须复用该函数。画布不再维护或写入 `edgePathStyle/pathStyle`，旧边残留字段直接忽略。
 12. **图标从 `@agent-spaces/ui` 命名导入**，不要直接 `import from 'lucide-react'`（不在 allowlist）。

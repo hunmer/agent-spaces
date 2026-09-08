@@ -47,7 +47,7 @@
 ## 结果
 
 - 根因确认：上下 Handle 被显式设为 35%/65%；底部 Handle 位于 NodeOutput 之前；工具栏使用负 right 偏移且没有统一运行/删除回调。
-- 修复后节点工具栏位于内部右下角；可运行节点复用各自 handleRun，删除沿用历史关联确认；外置产出高度变化会刷新 React Flow Handle 坐标。
+- 修复后节点工具栏位于内部右上角并纵向排列；可运行节点复用各自 handleRun，删除沿用历史关联确认；外置产出高度变化会刷新 React Flow Handle 坐标。
 
 ## Errors Encountered
 

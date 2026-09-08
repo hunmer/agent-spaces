@@ -4,6 +4,7 @@
 - 2026-09-08：已移除 Canvas/Toolbar/edge data 的四选一链路，FloatingEdge 与 ConnectionLine 统一使用 getAutoEdgePath；宿主补充 getSmoothStepPath 导出。
 - 2026-09-08：自动选路与既有节点/边定向测试 10/10 通过；同步修正一份仍断言旧标签/颜色规则的测试夹具。
 - 2026-09-08：最终验证通过：Babel 5 文件、宿主 react-renderer ESLint、git diff check；dev:web 经 procm HTTP 重启并在 3000 端口就绪。
+- 2026-09-08：按反馈将共享 NodeHoverMenu 调整为节点内部右上角纵向排列；测试 6/6、Babel、diff check 通过，dev:web 已重启。
 
 - 2026-09-08：开始修复 hover 工具栏与 Handle 定位；已确认上下 Handle 人为偏离中心，底部 Handle 未包含 sibling NodeOutput 高度。
 - 2026-09-08：先添加回归断言并确认 3 项失败，随后修正右下角工具栏、运行/删除快捷动作、Handle 居中和外置产出后的底部锚点。

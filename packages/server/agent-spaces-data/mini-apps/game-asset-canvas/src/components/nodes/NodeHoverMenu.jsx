@@ -7,7 +7,7 @@ export default function NodeHoverMenu({ actions = [], visible, open, onOpenChang
 
   return (
     <div
-      className={`nodrag nopan nowheel absolute bottom-2 right-2 z-40 flex items-center gap-0.5 rounded-full border border-border bg-background/95 p-0.5 shadow-md backdrop-blur-sm transition-all duration-150 ${
+      className={`nodrag nopan nowheel absolute right-2 top-2 z-40 flex flex-col items-center gap-0.5 rounded-full border border-border bg-background/95 p-0.5 shadow-md backdrop-blur-sm transition-all duration-150 ${
         visible ? 'translate-x-0 opacity-100' : 'pointer-events-none translate-x-1 opacity-0'
       }`}
       onClick={(event) => event.stopPropagation()}
@@ -57,7 +57,7 @@ export default function NodeHoverMenu({ actions = [], visible, open, onOpenChang
         </PopoverTrigger>
         <PopoverContent
           side="right"
-          align="end"
+          align="start"
           sideOffset={8}
           className="w-48 p-1"
           onClick={(event) => event.stopPropagation()}
