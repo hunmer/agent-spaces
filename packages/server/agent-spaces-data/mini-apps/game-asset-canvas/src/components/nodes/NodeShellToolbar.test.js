@@ -30,6 +30,11 @@ test('node actions move into a bottom-right menu shown by node hover', () => {
   assert.match(decorationSource, /nodeJson: JSON\.stringify\(nd, null, 2\)/);
 });
 
+test('depth extract nodes receive the execution callback', () => {
+  assert.match(decorationSource, /onCutout, onCutoutCreate, onDepth, onCancelProcess/);
+  assert.match(decorationSource, /onCutoutCreate,\n\s+onDepth,\n\s+onCancelProcess/);
+});
+
 test('unrestricted nodes render two blue inputs and two green outputs', () => {
   assert.equal((handlesSource.match(/type="target"/g) || []).length, 2);
   assert.equal((handlesSource.match(/type="source"/g) || []).length, 2);

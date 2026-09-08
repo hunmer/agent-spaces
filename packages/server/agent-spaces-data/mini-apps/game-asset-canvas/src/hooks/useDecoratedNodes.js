@@ -49,7 +49,7 @@ export default function useDecoratedNodes({
     ]);
     const {
       makeOnUpdate, onGenerate, onGenerateMedia, onExportImages,
-      onProcessImage, onProcessLocal, onCutout, onCutoutCreate, onCancelProcess,
+      onProcessImage, onProcessLocal, onCutout, onCutoutCreate, onDepth, onCancelProcess,
       onPromptReverse, onEditImages, onAutoSize, onAutoSizeToContent, onBBoxCutout, onResetParams,
       onAddToAssets,
       onAddOutputImages, onRemoveOutputImage, onRemoveVersionImages, onClearOutputImages, onReorderOutputImages,
@@ -165,6 +165,7 @@ export default function useDecoratedNodes({
           onProcessLocal,
           onCutout,
           onCutoutCreate,
+          onDepth,
           onCancelProcess,
           onPromptReverse,
           onEditImages: (imgs) => onEditImages?.(imgs),
