@@ -642,6 +642,40 @@
     ]
   },
   {
+    "id": "workflow.lumimatte",
+    "name": "LumiMatte Image Toolkit",
+    "version": "1.0.0",
+    "description": "Image toolkit backed by the local LumiMatte inference server: AI matting (single/batch), inpainting, super resolution, layered PSD export with real layer pixels, plus health check and model inventory.",
+    "author": {
+      "name": "workflow"
+    },
+    "tags": [
+      "Image",
+      "Matting",
+      "Super Resolution",
+      "Inpainting",
+      "PSD"
+    ],
+    "type": "server",
+    "hasView": false,
+    "hasWorkflow": true,
+    "path": "lumimatte",
+    "iconUrl": "plugins/lumimatte/icon.svg",
+    "md5": "ce112e1537116b0aa05f905147dd8d18",
+    "updatedAt": "2026-09-12T00:00:00.000Z",
+    "files": [
+      "actions.js",
+      "icon.svg",
+      "info.json",
+      "lang.json",
+      "main.js",
+      "README.md",
+      "shared.js",
+      "tools.js",
+      "workflow.js"
+    ]
+  },
+  {
     "id": "workflow.mail",
     "name": "Email",
     "version": "1.0.0",

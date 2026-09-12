@@ -9,8 +9,9 @@ import NodeHoverMenu from './NodeHoverMenu';
  * 视频展示节点：纯展示视频，无外壳边框/标题栏（结构对标 ImageDisplayNode）。
  *
  * - 顶部一条窄的自定义拖拽 handle（.image-drag-handle，复用同款 dragHandle 规则）
- * - 视频主体（满宽），<video controls> 播放，双击全屏
- * - 选中时底部 overlay：来源标签 + 多视频切换箭头 + 上传按钮
+ * - 视频主体（inset-0 铺满），<video controls> 播放，双击全屏
+ * - 选中时底部 overlay：来源标签 + 多视频切换箭头
+ * - 左上角常驻上传按钮（同图片节点），底部 overlay 不再放上传入口
  * - hover 右下角菜单：导出视频到画布
  *
  * data.videos: string[]  当前展示的视频（http URL）；多个时底部箭头切换
@@ -113,7 +114,20 @@ export default function VideoDisplayNode({ id, data, selected }) {
 
       <NodeHandles target source />
 
-      <div className="absolute inset-0 overflow-hidden rounded-lg bg-card shadow-sm">
+      <div className="absolute inset-0 overflow-hidden">
+        {/* 左上角常驻上传按钮（同图片节点右上角同款样式） */}
+        <div className="absolute -left-10 top-1.5 z-30 nodrag nopan">
+          <button
+            type="button"
+            title="上传视频"
+            aria-label="上传视频"
+            onClick={(event) => { event.stopPropagation(); fileRef.current?.click(); }}
+            className="flex h-7 w-7 items-center justify-center rounded-md bg-background/85 text-muted-foreground shadow ring-1 ring-border backdrop-blur-sm hover:text-primary"
+          >
+            <Upload className="h-3.5 w-3.5" />
+          </button>
+        </div>
+
         {/* 顶部自定义拖拽 handle */}
         <div
           className="image-drag-handle absolute left-0 right-0 top-0 z-10 h-5 cursor-move opacity-0 transition group-hover:opacity-100"
@@ -122,8 +136,8 @@ export default function VideoDisplayNode({ id, data, selected }) {
           <div className="mx-auto mt-1 h-1 w-8 rounded-full bg-foreground/30" />
         </div>
 
-        {/* 视频主体区域 */}
-        <div className="image-drag-handle nopan absolute bottom-0 left-2 right-2 top-0 flex items-center justify-center p-3">
+        {/* 视频主体区域：inset-0 铺满节点，无边框无内边距；Handle 在节点外侧（负偏移），铺满不遮挡。 */}
+        <div className="image-drag-handle nopan absolute inset-0 flex items-center justify-center">
           {uploading ? (
             <div className="flex h-full w-full items-center justify-center gap-2 text-xs text-primary">
               <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-primary border-t-transparent" />
@@ -137,7 +151,7 @@ export default function VideoDisplayNode({ id, data, selected }) {
                 controls
                 onDoubleClick={toggleFullscreen}
                 title="双击全屏"
-                className="max-h-full max-w-full rounded border border-border object-contain"
+                className="max-h-full max-w-full rounded-lg object-contain"
               />
             )
           ) : (
@@ -181,12 +195,6 @@ export default function VideoDisplayNode({ id, data, selected }) {
                 className="shrink-0 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary"
               >{t}</span>
             ))}
-            <button
-              type="button"
-              onClick={(e) => { e.stopPropagation(); fileRef.current?.click(); }}
-              className="ml-auto flex items-center gap-1 rounded border border-border px-1.5 py-0.5 text-muted-foreground transition hover:border-primary hover:text-primary"
-              title="更换视频"
-            ><Upload className="h-3 w-3" />更换</button>
           </div>
         )}
 

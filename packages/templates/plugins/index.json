@@ -643,6 +643,40 @@
     ]
   },
   {
+    "id": "workflow.lumimatte",
+    "name": "LumiMatte 图像处理",
+    "version": "1.0.0",
+    "description": "基于 LumiMatte 本地离线推理服务的图像处理：AI 智能抠图（单张/批量）、智能局部消除、画质超分放大、PSD 分层工程导出（支持图层真实像素），以及服务健康检查与模型清单查询",
+    "author": {
+      "name": "workflow"
+    },
+    "tags": [
+      "图片处理",
+      "抠图",
+      "超分",
+      "局部消除",
+      "PSD"
+    ],
+    "type": "server",
+    "hasView": false,
+    "hasWorkflow": true,
+    "path": "lumimatte",
+    "iconUrl": "plugins/lumimatte/icon.svg",
+    "md5": "ce112e1537116b0aa05f905147dd8d18",
+    "updatedAt": "2026-09-12T00:00:00.000Z",
+    "files": [
+      "actions.js",
+      "icon.svg",
+      "info.json",
+      "lang.json",
+      "main.js",
+      "README.md",
+      "shared.js",
+      "tools.js",
+      "workflow.js"
+    ]
+  },
+  {
     "id": "workflow.mail",
     "name": "邮件发送",
     "version": "1.0.0",

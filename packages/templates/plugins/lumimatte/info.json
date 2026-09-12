@@ -1,0 +1,41 @@
+{
+  "id": "workflow.lumimatte",
+  "name": "LumiMatte 图像处理",
+  "name_zh": "LumiMatte 图像处理",
+  "name_en": "LumiMatte Image Toolkit",
+  "icon": "icon.svg",
+  "version": "1.0.0",
+  "description": "基于 LumiMatte 本地离线推理服务的图像处理插件：AI 智能抠图（单张/批量）、智能局部消除、画质超分放大、PSD 分层工程导出（支持图层真实像素），以及服务健康检查与模型清单查询",
+  "description_zh": "基于 LumiMatte 本地离线推理服务的图像处理插件：AI 智能抠图（单张/批量）、智能局部消除、画质超分放大、PSD 分层工程导出（支持图层真实像素），以及服务健康检查与模型清单查询",
+  "description_en": "Image toolkit backed by the local LumiMatte inference server: AI matting (single/batch), inpainting, super resolution, layered PSD export with real layer pixels, plus health check and model inventory.",
+  "author": { "name": "workflow" },
+  "tags": ["图片处理", "抠图", "超分", "局部消除", "PSD"],
+  "tags_zh": ["图片处理", "抠图", "超分", "局部消除", "PSD"],
+  "tags_en": ["Image", "Matting", "Super Resolution", "Inpainting", "PSD"],
+  "type": "server",
+  "hasWorkflow": true,
+  "hasView": false,
+  "entries": {
+    "server": "main.js",
+    "workflow": "workflow.js",
+    "tools": "tools.js"
+  },
+  "config": [
+    {
+      "key": "baseUrl",
+      "label": "LumiMatte Base URL",
+      "desc": "LumiMatte HTTP 服务地址 / LumiMatte server URL，默认 http://127.0.0.1:8317",
+      "type": "string",
+      "value": "http://127.0.0.1:8317",
+      "placeholder": "http://127.0.0.1:8317",
+      "required": true
+    },
+    {
+      "key": "timeout",
+      "label": "Timeout (ms) / 超时(ms)",
+      "desc": "单次请求超时时间。首次调用某引擎需加载模型(10~30s)，4x 超分可达 30s+，建议保持较大值 / Per-request timeout; first call per engine loads the model (10-30s).",
+      "type": "number",
+      "value": 300000
+    }
+  ]
+}

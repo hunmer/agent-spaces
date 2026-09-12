@@ -7,6 +7,15 @@
 //     - pred_only  "true"=仅深度图（默认） / "false"=原图+深度图左右拼接
 //   响应：200 → image/png；Header X-Saved-As = 服务器保存的文件名
 //
+//   POST /predict/batch  同 /predict，files 字段重复多图（≤16），返回 ZIP
+//
+//   POST /predict/video  multipart/form-data 上传视频，逐帧深度推理，返回深度视频 MP4
+//     - file        待推理视频（MP4/AVI/MOV 等 OpenCV 可解码格式，输出无音轨）
+//     - grayscale   同上
+//     - pred_only   同上（false 时原视频+深度视频左右拼接）
+//     - max_frames  处理帧数上限，"0"=全部（服务端硬上限 3600，超出截断）
+//   响应：200 → video/mp4；Header X-Saved-As / X-Frames / X-FPS / X-Truncated
+//
 // 运行时说明：插件在 vm sandbox 中执行，仅注入 fetch / Buffer / setTimeout 等，
 // 没有 FormData / Blob，因此 multipart body 需手动拼装（参考 ai-image / rembg 插件做法）。
 
@@ -14,6 +23,8 @@ const fs = require('fs')
 
 const DEFAULT_BASE_URL = 'http://localhost:7860'
 const DEFAULT_TIMEOUT = 120000
+// 视频逐帧推理耗时与帧数成正比（远慢于单图），默认超时放宽到 10 分钟
+const DEFAULT_VIDEO_TIMEOUT = 600000
 // API 文档：/predict/batch 单次请求最大文件数
 const MAX_BATCH_FILES = 16
 
@@ -28,8 +39,14 @@ function getTimeout(args) {
   return Number.isFinite(n) && n > 0 ? n : DEFAULT_TIMEOUT
 }
 
+function getVideoTimeout(args) {
+  const n = Number(args.timeout)
+  return Number.isFinite(n) && n > 0 ? n : DEFAULT_VIDEO_TIMEOUT
+}
+
 // ── 文件名 / MIME 工具 ─────────────────────────────────────
-function mimeFromExt(file) {
+// fallback：扩展名无法识别时的兜底 MIME（图片调用方用默认 image/png，视频传 video/mp4）
+function mimeFromExt(file, fallback = 'image/png') {
   const m = /\.([a-z0-9]+)$/i.exec(file || '')
   const ext = (m && m[1] || '').toLowerCase()
   if (ext === 'jpg' || ext === 'jpeg') return 'image/jpeg'
@@ -37,7 +54,12 @@ function mimeFromExt(file) {
   if (ext === 'gif') return 'image/gif'
   if (ext === 'bmp') return 'image/bmp'
   if (ext === 'png') return 'image/png'
-  return 'image/png'
+  if (ext === 'mp4' || ext === 'm4v') return 'video/mp4'
+  if (ext === 'mov') return 'video/quicktime'
+  if (ext === 'avi') return 'video/x-msvideo'
+  if (ext === 'mkv') return 'video/x-matroska'
+  if (ext === 'webm') return 'video/webm'
+  return fallback
 }
 
 function extFromMime(mime) {
@@ -50,38 +72,53 @@ function basename(p) {
   return m ? m[0] : 'image.png'
 }
 
-// ── 图片输入解析 ───────────────────────────────────────────
+// ── 媒体输入解析 ───────────────────────────────────────────
 // 接受 data URI / http(s) URL / 本地路径，统一返回 { buffer, mime, filename }
-async function resolveImage(input) {
+// opts.label: 错误提示与默认文件名前缀（image / video）
+// opts.fallbackMime: 扩展名无法识别时的兜底 MIME
+async function resolveMedia(input, opts = {}) {
+  const label = opts.label || 'image'
+  const fallbackMime = opts.fallbackMime || 'image/png'
   if (typeof input !== 'string' || !input.trim()) {
-    throw new Error('Image input must not be empty')
+    throw new Error(`${label[0].toUpperCase()}${label.slice(1)} input must not be empty`)
   }
 
   // data:image/png;base64,xxxx
   const dataMatch = /^data:([^;,]+)?(;base64)?,(.*)$/is.exec(input)
   if (dataMatch) {
-    const mime = (dataMatch[1] || 'image/png').split(';')[0]
+    const mime = (dataMatch[1] || fallbackMime).split(';')[0]
     const isBase64 = !!dataMatch[2]
     const buffer = isBase64
       ? Buffer.from(dataMatch[3], 'base64')
       : Buffer.from(decodeURIComponent(dataMatch[3]), 'utf-8')
-    return { buffer, mime, filename: `image.${extFromMime(mime)}` }
+    return { buffer, mime, filename: `${label}.${extFromMime(mime)}` }
   }
 
   // http(s) URL：客户端下载成 buffer，统一走 POST /predict 上传
   if (/^https?:\/\//i.test(input)) {
     const resp = await globalThis.fetch(input)
     if (!resp.ok) {
-      throw new Error(`Failed to download image: HTTP ${resp.status} ${input}`)
+      throw new Error(`Failed to download ${label}: HTTP ${resp.status} ${input}`)
     }
     const buffer = Buffer.from(await resp.arrayBuffer())
-    const mime = (resp.headers.get('content-type') || mimeFromExt(input)).split(';')[0].trim()
-    return { buffer, mime, filename: basename(input) || `image.${extFromMime(mime)}` }
+    const mime = (resp.headers.get('content-type') || mimeFromExt(input, fallbackMime))
+      .split(';')[0]
+      .trim()
+    return { buffer, mime, filename: basename(input) || `${label}.${extFromMime(mime)}` }
   }
 
   // 本地路径
   const buffer = fs.readFileSync(input)
-  return { buffer, mime: mimeFromExt(input), filename: basename(input) }
+  return { buffer, mime: mimeFromExt(input, fallbackMime), filename: basename(input) }
+}
+
+async function resolveImage(input) {
+  return resolveMedia(input)
+}
+
+// 视频输入（data URI / URL / 本地路径），扩展名无法识别时按 video/mp4 处理
+async function resolveVideo(input) {
+  return resolveMedia(input, { label: 'video', fallbackMime: 'video/mp4' })
 }
 
 // string / string[] / JSON 字符串 → 图片数组
@@ -312,6 +349,60 @@ async function predictBatchFromFiles(ctx, args, images) {
   }
 }
 
+// ── 主调用：上传视频逐帧深度估计，返回 MP4 ─────────────────
+// video: { buffer, mime, filename }（由 resolveVideo 产出）
+// 处理耗时与帧数成正比（本机约 2 fps），超时默认放宽到 DEFAULT_VIDEO_TIMEOUT。
+// 返回 { buffer, savedAs, frames, fps, truncated }
+async function predictVideoFromFile(ctx, args, video) {
+  if (!video.buffer) {
+    throw new Error('Video parse failed: missing buffer')
+  }
+
+  const baseUrl = getBaseUrl(args)
+  const fields = {
+    file: { buffer: video.buffer, mime: video.mime, filename: video.filename },
+  }
+  // 与 predictFromFile 一致：仅显式 false / 正整数时才写字段，避免歧义
+  if (args.grayscale === false) fields.grayscale = 'false'
+  if (args.pred_only === false) fields.pred_only = 'false'
+  const maxFrames = Number(args.max_frames)
+  if (Number.isFinite(maxFrames) && maxFrames > 0) {
+    fields.max_frames = String(Math.floor(maxFrames))
+  }
+
+  const { body, contentType } = buildMultipart(fields)
+  const url = `${baseUrl}/predict/video`
+  ctx.logger.info(
+    `Depth Anything POST ${url} (file=${video.filename}, grayscale=${fields.grayscale || 'true'}, ` +
+      `pred_only=${fields.pred_only || 'true'}, max_frames=${fields.max_frames || '0'})`,
+  )
+
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), getVideoTimeout(args))
+  try {
+    const resp = await globalThis.fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': contentType },
+      body,
+      signal: controller.signal,
+    })
+    if (!resp.ok) {
+      throw new Error(await readError(resp))
+    }
+    const buffer = Buffer.from(await resp.arrayBuffer())
+    return {
+      buffer,
+      // 服务端保存的文件名与处理元信息（非必需，仅透传）
+      savedAs: resp.headers.get('x-saved-as') || '',
+      frames: Number(resp.headers.get('x-frames')) || 0,
+      fps: Number(resp.headers.get('x-fps')) || 0,
+      truncated: (resp.headers.get('x-truncated') || '') === 'true',
+    }
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
 // ── 结果保存：PNG buffer → 公网可访问 httpPath ─────────────
 function saveResultImage(ctx, buffer, extHint) {
   const saved = ctx.api.savePublicFile(buffer, extHint || 'png')
@@ -324,17 +415,21 @@ function saveResultImage(ctx, buffer, extHint) {
 module.exports = {
   DEFAULT_BASE_URL,
   DEFAULT_TIMEOUT,
+  DEFAULT_VIDEO_TIMEOUT,
   MAX_BATCH_FILES,
   getBaseUrl,
   getTimeout,
+  getVideoTimeout,
   mimeFromExt,
   extFromMime,
   basename,
   resolveImage,
+  resolveVideo,
   toImageArray,
   buildMultipart,
   predictFromFile,
   predictBatchFromFiles,
+  predictVideoFromFile,
   parseZip,
   saveResultImage,
 }

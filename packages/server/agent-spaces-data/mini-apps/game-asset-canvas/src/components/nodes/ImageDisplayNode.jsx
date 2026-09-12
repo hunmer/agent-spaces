@@ -160,7 +160,7 @@ export default function ImageDisplayNode({ id, data, selected }) {
 
       <NodeHandles target source />
 
-      <div className={`absolute inset-0 overflow-hidden rounded-lg bg-card shadow-sm ${showFullNode ? '' : 'invisible pointer-events-none'}`}>
+      <div className={`absolute inset-0 overflow-hidden ${showFullNode ? '' : 'invisible pointer-events-none'}`}>
       <div className="absolute -right-10 top-1.5 z-30 nodrag nopan">
         <Popover open={uploadOpen} onOpenChange={setUploadOpen}>
           <PopoverTrigger
@@ -190,9 +190,8 @@ export default function ImageDisplayNode({ id, data, selected }) {
       {/* 图片主体区域：作为节点拖拽 handle（.image-drag-handle，配合 Canvas node.dragHandle）。
           img 本身 draggable={false} 防止浏览器原生拖图虚影，但父容器是 ReactFlow 拖拽区，
           按住图片拖动即可移动整个节点。nowheel 防滚轮误触画布缩放。
-          水平内缩(left-2/right-2)给左右 Handle 留空间，避免视觉遮挡 + 事件覆盖；
-          p-3 让图片本身不贴边。 */}
-      <div className="image-drag-handle nopan nowheel absolute bottom-0 left-2 right-2 top-0 flex items-center justify-center p-3">
+          inset-0 铺满节点，无边框无内边距；Handle 在节点外侧（负偏移），铺满不遮挡。 */}
+      <div className="image-drag-handle nopan nowheel absolute inset-0 flex items-center justify-center">
         {loading ? (
           <div className="flex h-full w-full items-center justify-center gap-2 text-xs text-primary">
             <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-primary border-t-transparent" />
@@ -211,7 +210,7 @@ export default function ImageDisplayNode({ id, data, selected }) {
                 src={currentThumb}
                 alt=""
                 draggable={false}
-                className="max-h-full max-w-full select-none object-contain"
+                className="max-h-full max-w-full select-none rounded-lg object-contain"
                 style={{ transform: `rotate(${rotation}deg)` }}
                 onLoad={handleImgLoad}
               />
