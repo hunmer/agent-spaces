@@ -366,6 +366,70 @@ module.exports = (t) => [
     },
   },
   {
+    // 提取音轨：优先无损流复制（-vn -c:a copy → m4a），失败或空输出回退转码 aac 192k。
+    name: 'ffmpeg_extract_audio',
+    label: t('action.extractAudio.label', '提取音频'),
+    category: t('category', 'FFmpeg'),
+    icon: 'Music',
+    description: t('action.extractAudio.description', 'Extract the audio track from a video as an m4a audio file (stream copy first, re-encode to AAC as fallback).'),
+    tool: false,
+    properties: [
+      { key: 'inputPath', label: t('field.inputPath.label', 'Video URL or Path'), type: 'text', dataType: 'string', required: true, tooltip: t('field.inputUrlOrPath.tooltip', 'Local absolute path or a public http(s) URL of the video file.') },
+      { key: 'ffmpegPath', label: t('field.ffmpegPath.label', 'FFmpeg Path'), type: 'text', dataType: 'string', default: '{{ __config__["workflow.ffmpeg"]["ffmpegPath"] }}' },
+    ],
+    outputs: [
+      { key: 'success', type: 'boolean', dataType: 'boolean' },
+      { key: 'message', type: 'string' },
+      { key: 'data', type: 'object', dataType: 'object', children: [
+        { key: 'httpPath', type: 'string' },
+        { key: 'dir', type: 'string' },
+      ] },
+    ],
+    run: async (ctx, args) => {
+      let inputPath = args.inputPath
+      if (!inputPath) return { success: false, message: t('message.inputRequired', 'inputPath is required') }
+      if (ctx.api.resolveInputPath) inputPath = ctx.api.resolveInputPath(inputPath)
+
+      const dataDir = ctx.api.getMiniAppDataDir && ctx.api.getMiniAppDataDir()
+      if (!dataDir) {
+        return { success: false, message: t('message.noDataDir', 'Mini-app data directory unavailable (not called from a mini-app context).') }
+      }
+
+      const id = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+      const dir = path.join(dataDir, 'video-output')
+      await fs.promises.mkdir(dir, { recursive: true })
+      const outFile = path.join(dir, `${id}.m4a`)
+      const bin = resolveFfmpegBin(args)
+
+      // 单次尝试：失败（如容器不支持流复制）或产物未生成（如无音轨）都算不成功，-y 覆盖后供下一步重试
+      const tryRun = async (codecArgs, label) => {
+        try {
+          await runBin(bin, ['-y', '-i', inputPath, ...codecArgs, outFile], ctx)
+          await fs.promises.access(outFile)
+          return true
+        } catch (err) {
+          ctx.logger.info(`提取音频(${label})失败: ${err?.message || err}`)
+          return false
+        }
+      }
+
+      ctx.logger.info(`提取音频: ${inputPath} -> ${outFile}`)
+      const ok = await tryRun(['-vn', '-c:a', 'copy'], 'copy')
+        || await tryRun(['-vn', '-c:a', 'aac', '-b:a', '192k'], 'reencode')
+      if (!ok) {
+        return { success: false, message: t('message.extractAudioFailed', 'Audio extraction failed (the video may have no audio track).') }
+      }
+      const rel = path.relative(dataDir, outFile).split(path.sep).join('/')
+      const buffer = await fs.promises.readFile(outFile)
+      const saved = ctx.api.saveMiniAppDataFile && ctx.api.saveMiniAppDataFile(rel, buffer)
+      return {
+        success: true,
+        message: t('message.extractAudioDone', 'Audio extracted.'),
+        data: { httpPath: saved?.httpPath || rel, dir: `video-output/${id}.m4a` },
+      }
+    },
+  },
+  {
     // 取视频第一帧，输出到 stdout 并转 base64 返回（用于缩略图，不落盘）。
     // 前端可直接 <img src="data:image/jpeg;base64,...">，避免用 <video> 渲染缩略图。
     name: 'ffmpeg_first_frame',

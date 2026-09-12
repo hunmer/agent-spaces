@@ -899,8 +899,10 @@ function isMiniAppRuntimeKind(value: unknown): value is 'open-agent-sdk' | 'clau
 const LOCAL_FILE_MIME: Record<string, string> = {
   '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.gif': 'image/gif',
   '.webp': 'image/webp', '.svg': 'image/svg+xml', '.bmp': 'image/bmp', '.ico': 'image/x-icon',
-  '.mp4': 'video/mp4', '.webm': 'video/webm', '.mov': 'video/quicktime',
+  '.mp4': 'video/mp4', '.webm': 'video/webm', '.mov': 'video/quicktime', '.m4v': 'video/mp4',
   '.mp3': 'audio/mpeg', '.wav': 'audio/wav', '.flac': 'audio/flac', '.aac': 'audio/aac',
+  // m4a/ogg/opus：ffmpeg 提取音轨等产物的常见容器
+  '.m4a': 'audio/mp4', '.ogg': 'audio/ogg', '.opus': 'audio/opus',
 };
 
 router.get('/:id/local-file', (req: Request<{ id: string }>, res: Response) => {

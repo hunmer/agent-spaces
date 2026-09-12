@@ -26,7 +26,7 @@ import useExecutionQueue from '../hooks/useExecutionQueue';
 import useDownloadQueue from '../hooks/useDownloadQueue';
 import useWorkspaces from '../hooks/useWorkspaces';
 import usePanelLayout from '../hooks/usePanelLayout';
-import useImageOutputs, { useVideoOutputs } from '../hooks/useImageOutputs';
+import useImageOutputs, { useVideoOutputs, useAudioOutputs } from '../hooks/useImageOutputs';
 import useSelectionClipboard from '../hooks/useSelectionClipboard';
 import useGroupOperations from '../hooks/useGroupOperations';
 import useGroupExecution from '../hooks/useGroupExecution';
@@ -230,6 +230,13 @@ export default function Canvas({ hostConfig }) {
   const { addImageNodesFromUrls, addImageNodesGrouped, handleExportImages } = useImageOutputs({ setNodes, setGroups });
   // —— 视频节点批量产出（视频导出到画布）——
   const { addVideoNodesFromUrls, handleExportVideos } = useVideoOutputs({ setNodes });
+  // —— 音频节点批量产出（提取音频导出到画布）——
+  const { addAudioNodesFromUrls } = useAudioOutputs({ setNodes });
+  // 视频提取音频 → 在源节点右侧插入音频展示节点
+  const handleExportAudios = useCallback((sourceNode, audios) => {
+    if (!audios?.length) return;
+    addAudioNodesFromUrls(audios, { sourceNode, tags: [IMAGE_TAGS.export], source: 'export' });
+  }, [addAudioNodesFromUrls]);
   const storyboardOperations = useStoryboardOperations({
     updateNodeData,
     characters: characterLibrary.characters,
@@ -1572,6 +1579,8 @@ export default function Canvas({ hostConfig }) {
     onDeleteUpstreamImage: handleDeleteUpstreamImage,
     // 视频导出到画布（生成 videoDisplay 节点）
     onExportVideos: handleExportVideosWithPicker,
+    // 提取音频导出到画布（生成 audioDisplay 节点）
+    onExportAudios: handleExportAudios,
     onApplyToGroup: groupExecution.requestPropertyApply,
     onImportStoryboard: storyboardOperations.importStoryboard,
     onGenerateStoryboardMedia: storyboardOperations.generateSceneMedia,
@@ -1586,7 +1595,7 @@ export default function Canvas({ hostConfig }) {
     handleScopedCancelProcess, handleScopedPromptReverse,
     handleExportImagesWithPicker, handleAutoSize, handleAutoSizeToContent, handleBBoxCutout, handleResetParams,
     handleAddToAssets, handleAddOutputImages, handleRemoveOutputImage, handleRemoveVersionImages, handleClearOutputImages, handleReorderOutputImages,
-    handleSwitchVersion, handleDeleteUpstreamImage, handleExportVideosWithPicker,
+    handleSwitchVersion, handleDeleteUpstreamImage, handleExportVideosWithPicker, handleExportAudios,
     groupExecution.requestPropertyApply,
     storyboardOperations.importStoryboard, storyboardOperations.generateSceneMedia,
     characterLibrary.saveCharacter, characterLibrary.deleteCharacter, handleDeleteEdgeById,

@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState, useEffect } from 'react';
 import { NodeResizer } from '@xyflow/react';
-import { Camera, ChevronLeft, ChevronRight, Crop, Upload, toast } from '@agent-spaces/ui';
+import { AudioLines, Camera, ChevronLeft, ChevronRight, Crop, Upload, toast } from '@agent-spaces/ui';
 import useViewportActivation from '../../hooks/useViewportActivation';
 import NodeHandles from './NodeHandles';
 import NodeHoverMenu from './NodeHoverMenu';
@@ -9,6 +9,7 @@ import { normalizeImageUrl } from '../../utils/workflow';
 
 const FFMPEG_PLUGIN_ID = 'workflow.ffmpeg';
 const FFMPEG_CUSTOM = 'ffmpeg_custom';
+const FFMPEG_EXTRACT_AUDIO = 'ffmpeg_extract_audio';
 
 /**
  * 视频展示节点：纯展示视频，无外壳边框/标题栏（结构对标 ImageDisplayNode）。
@@ -34,6 +35,7 @@ export default function VideoDisplayNode({ id, data, selected }) {
   const [nodeHovered, setNodeHovered] = useState(false);
   const [trimOpen, setTrimOpen] = useState(false);
   const [capturing, setCapturing] = useState(false);
+  const [extractingAudio, setExtractingAudio] = useState(false);
   const source = data?.source;
   const tags = Array.isArray(data?.tags) ? data.tags.filter(Boolean) : [];
   // 多视频当前索引；集合变化时夹回有效范围
@@ -48,6 +50,7 @@ export default function VideoDisplayNode({ id, data, selected }) {
 
   const onExportVideos = data?.onExportVideos;
   const onExportImages = data?.onExportImages;
+  const onExportAudios = data?.onExportAudios;
   // 截帧入口只需有视频；导出入口还需回调存在
   const showToolbar = videos.length > 0;
 
@@ -86,6 +89,24 @@ export default function VideoDisplayNode({ id, data, selected }) {
       setCapturing(false);
     }
   }, [capturing, current, onExportImages]);
+
+  // 提取音轨：ffmpeg_extract_audio（流复制优先，转码兜底）→ 音频展示节点插入画布
+  const handleExtractAudio = useCallback(async () => {
+    if (!current || extractingAudio) return;
+    setExtractingAudio(true);
+    try {
+      const ret = await window.AgentSpaces.callPluginTool(FFMPEG_PLUGIN_ID, FFMPEG_EXTRACT_AUDIO, {
+        inputPath: current,
+      });
+      if (!ret?.success || !ret?.data?.httpPath) throw new Error(ret?.message || '提取音频失败');
+      onExportAudios?.([normalizeImageUrl(ret.data.httpPath)]);
+      toast.success('已提取音频，音频节点已插入画布');
+    } catch (err) {
+      toast.error(`提取音频失败：${err?.message || err}`);
+    } finally {
+      setExtractingAudio(false);
+    }
+  }, [current, extractingAudio, onExportAudios]);
 
   const handleFile = useCallback(async (e) => {
     const file = e.target.files?.[0];
@@ -157,6 +178,13 @@ export default function VideoDisplayNode({ id, data, selected }) {
               icon: <Crop className="h-3.5 w-3.5" />,
               onClick: () => setTrimOpen(true),
               disabled: !onExportVideos,
+            },
+            {
+              key: 'extract-audio',
+              label: extractingAudio ? '提取音频中…' : '提取音频',
+              icon: <AudioLines className="h-3.5 w-3.5" />,
+              disabled: extractingAudio || !onExportAudios,
+              onClick: handleExtractAudio,
             },
           ] : []}
           visible={(nodeHovered || menuOpen) && selectionCount <= 1}
