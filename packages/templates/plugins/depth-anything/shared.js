@@ -9,12 +9,15 @@
 //
 //   POST /predict/batch  同 /predict，files 字段重复多图（≤16），返回 ZIP
 //
-//   POST /predict/video  multipart/form-data 上传视频，逐帧深度推理，返回深度视频 MP4
+//   POST /predict/video  multipart/form-data 提交视频转深度视频任务（异步）
 //     - file        待推理视频（MP4/AVI/MOV 等 OpenCV 可解码格式，输出无音轨）
 //     - grayscale   同上
 //     - pred_only   同上（false 时原视频+深度视频左右拼接）
 //     - max_frames  处理帧数上限，"0"=全部（服务端硬上限 3600，超出截断）
-//   响应：200 → video/mp4；Header X-Saved-As / X-Frames / X-FPS / X-Truncated
+//     - resolution  输出分辨率："source"=跟随源视频（默认）；数字=目标高度像素（如 "720"），宽等比缩放
+//   响应：202 → JSON { job_id, status_url, result_url, total_frames, fps, output_size }
+//   进度：GET /predict/video/status/{job_id} → { state, frames_done, total_frames, progress, speed_fps }
+//   结果：GET /predict/video/result/{job_id} → 200 video/mp4；未完成 400；已有任务运行中提交返回 409
 //
 // 运行时说明：插件在 vm sandbox 中执行，仅注入 fetch / Buffer / setTimeout 等，
 // 没有 FormData / Blob，因此 multipart body 需手动拼装（参考 ai-image / rembg 插件做法）。
@@ -67,9 +70,14 @@ function extFromMime(mime) {
   return sub === 'jpeg' ? 'jpg' : sub
 }
 
-function basename(p) {
-  const m = /[^/\\?]+/.exec(p || '')
-  return m ? m[0] : 'image.png'
+// 取路径/URL 最后一段文件名（去掉 ?query、#hash；兼容 Windows 反斜杠与盘符路径）。
+// 匹配不到时返回 fallback（避免把盘符 'G:' 之类当成文件名）。
+function basename(p, fallback = 'image.png') {
+  const last = String(p || '')
+    .replace(/[?#].*$/, '')
+    .split(/[\\/]/)
+    .pop()
+  return last || fallback
 }
 
 // ── 媒体输入解析 ───────────────────────────────────────────
@@ -104,12 +112,13 @@ async function resolveMedia(input, opts = {}) {
     const mime = (resp.headers.get('content-type') || mimeFromExt(input, fallbackMime))
       .split(';')[0]
       .trim()
-    return { buffer, mime, filename: basename(input) || `${label}.${extFromMime(mime)}` }
+    return { buffer, mime, filename: basename(input, `${label}.${extFromMime(mime)}`) }
   }
 
   // 本地路径
   const buffer = fs.readFileSync(input)
-  return { buffer, mime: mimeFromExt(input, fallbackMime), filename: basename(input) }
+  const mime = mimeFromExt(input, fallbackMime)
+  return { buffer, mime, filename: basename(input, `${label}.${extFromMime(mime)}`) }
 }
 
 async function resolveImage(input) {
@@ -349,10 +358,15 @@ async function predictBatchFromFiles(ctx, args, images) {
   }
 }
 
-// ── 主调用：上传视频逐帧深度估计，返回 MP4 ─────────────────
+// ── 主调用：提交视频深度任务 → 轮询进度 → 拉取 MP4 ─────────
 // video: { buffer, mime, filename }（由 resolveVideo 产出）
-// 处理耗时与帧数成正比（本机约 2 fps），超时默认放宽到 DEFAULT_VIDEO_TIMEOUT。
-// 返回 { buffer, savedAs, frames, fps, truncated }
+// 进度通过 ctx.logger.info 输出（每次轮询一条，间隔 VIDEO_POLL_INTERVAL ms）。
+// 超时为总预算（默认 DEFAULT_VIDEO_TIMEOUT，10 分钟），轮询期间持续扣减。
+// 返回 { buffer, savedAs, frames, fps, speedFps, truncated }
+const VIDEO_POLL_INTERVAL = 1500
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+
 async function predictVideoFromFile(ctx, args, video) {
   if (!video.buffer) {
     throw new Error('Video parse failed: missing buffer')
@@ -369,37 +383,69 @@ async function predictVideoFromFile(ctx, args, video) {
   if (Number.isFinite(maxFrames) && maxFrames > 0) {
     fields.max_frames = String(Math.floor(maxFrames))
   }
+  // resolution：source/auto/空 = 跟随源视频（不写字段走服务端默认）；其余（如 '720'）透传
+  const resolution = String(args.resolution || '').trim().toLowerCase()
+  if (resolution && !['source', 'auto', '0'].includes(resolution)) {
+    fields.resolution = resolution
+  }
 
+  // 阶段 1：提交任务（202 + job_id）
   const { body, contentType } = buildMultipart(fields)
   const url = `${baseUrl}/predict/video`
   ctx.logger.info(
     `Depth Anything POST ${url} (file=${video.filename}, grayscale=${fields.grayscale || 'true'}, ` +
       `pred_only=${fields.pred_only || 'true'}, max_frames=${fields.max_frames || '0'})`,
   )
+  const submitResp = await globalThis.fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': contentType },
+    body,
+  })
+  if (!submitResp.ok) {
+    throw new Error(await readError(submitResp))
+  }
+  const job = await submitResp.json()
+  const deadline = Date.now() + getVideoTimeout(args)
+  if (ctx.logger && job.output_size) {
+    ctx.logger.info(`Depth Anything video job ${job.job_id}: output ${job.output_size[0]}x${job.output_size[1]}`)
+  }
 
-  const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(), getVideoTimeout(args))
-  try {
-    const resp = await globalThis.fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': contentType },
-      body,
-      signal: controller.signal,
-    })
-    if (!resp.ok) {
-      throw new Error(await readError(resp))
+  // 阶段 2：轮询进度（服务端后台逐帧推理，每批更新一次进度）
+  let status
+  while (true) {
+    if (Date.now() > deadline) {
+      throw new Error(`Video processing timeout after ${getVideoTimeout(args) / 1000}s (job ${job.job_id})`)
     }
-    const buffer = Buffer.from(await resp.arrayBuffer())
-    return {
-      buffer,
-      // 服务端保存的文件名与处理元信息（非必需，仅透传）
-      savedAs: resp.headers.get('x-saved-as') || '',
-      frames: Number(resp.headers.get('x-frames')) || 0,
-      fps: Number(resp.headers.get('x-fps')) || 0,
-      truncated: (resp.headers.get('x-truncated') || '') === 'true',
+    const stResp = await globalThis.fetch(`${baseUrl}/predict/video/status/${job.job_id}`)
+    if (!stResp.ok) {
+      throw new Error(await readError(stResp))
     }
-  } finally {
-    clearTimeout(timer)
+    status = await stResp.json()
+    if (status.state === 'done') break
+    if (status.state === 'error') {
+      throw new Error(`Depth Anything video job failed: ${status.error || 'unknown error'}`)
+    }
+    const pct = status.progress != null ? ` ${Math.round(status.progress * 100)}%` : ''
+    ctx.logger.info(
+      `Depth Anything video ${job.job_id}: ${status.frames_done}/` +
+        `${status.total_frames || '?'} frames${pct} (${status.speed_fps} fps)`,
+    )
+    await sleep(VIDEO_POLL_INTERVAL)
+  }
+
+  // 阶段 3：拉取结果 MP4
+  const resp = await globalThis.fetch(`${baseUrl}${status.result_url}`)
+  if (!resp.ok) {
+    throw new Error(await readError(resp))
+  }
+  const buffer = Buffer.from(await resp.arrayBuffer())
+  return {
+    buffer,
+    savedAs: resp.headers.get('x-saved-as') || status.saved_as || '',
+    frames: status.frames_done || 0,
+    fps: status.fps || job.fps || 0,
+    speedFps: status.speed_fps || 0,
+    truncated: !!status.truncated,
   }
 }
 

@@ -266,6 +266,14 @@ module.exports = (t) => [
         const outputArgs = tokens.map((tok) => tok.replace(/^"(.*)"$/, '$1'))
         await runBin(bin, ['-y', '-i', inputPath, ...outputArgs, outFile], ctx)
 
+        // ffmpeg 对 0 帧输出（如 -ss 超出媒体时长）以退出码 0 结束且不落盘，
+        // readFile 的 ENOENT 有误导性，这里提前给出可读错误。
+        try {
+          await fs.promises.access(outFile)
+        } catch {
+          return { success: false, message: t('message.customNoOutput', 'No output file was created (check -ss/-t/-frames; -ss may exceed the media duration).') }
+        }
+
         const rel = path.relative(dataDir, outFile).split(path.sep).join('/')
         const buffer = await fs.promises.readFile(outFile)
         const saved = ctx.api.saveMiniAppDataFile && ctx.api.saveMiniAppDataFile(rel, buffer)

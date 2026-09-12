@@ -1,9 +1,23 @@
-import { MoreVertical, Play, Popover, PopoverContent, PopoverTrigger, Trash2 } from '@agent-spaces/ui';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger, MoreVertical, Play, Trash2 } from '@agent-spaces/ui';
 
+/**
+ * 节点 hover 工具菜单：右上角纵向小图标列（运行/删除/更多），
+ * 点「更多」弹出宿主 DropdownMenu 菜单；action.children 用 DropdownMenuSub
+ * 渲染子菜单（hover 展开，交互由组件内置）。
+ */
 export default function NodeHoverMenu({ actions = [], visible, open, onOpenChange, onRun, onDelete, running = false }) {
   const availableActions = actions.filter(Boolean);
   if (availableActions.length === 0 && !onRun && !onDelete) return null;
   const buttonClass = 'flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground transition hover:bg-accent hover:text-primary disabled:cursor-not-allowed disabled:opacity-50';
+
+  const renderItemChildren = (item) => (
+    <>
+      <span className="flex h-4 w-4 shrink-0 items-center justify-center text-muted-foreground">
+        {item.icon}
+      </span>
+      <span className="truncate">{item.label}</span>
+    </>
+  );
 
   return (
     <div
@@ -42,8 +56,8 @@ export default function NodeHoverMenu({ actions = [], visible, open, onOpenChang
           <Trash2 className="h-3.5 w-3.5" />
         </button>
       )}
-      <Popover open={open} onOpenChange={onOpenChange}>
-        <PopoverTrigger
+      <DropdownMenu open={open} onOpenChange={onOpenChange}>
+        <DropdownMenuTrigger
           render={(
             <button
               type="button"
@@ -54,8 +68,8 @@ export default function NodeHoverMenu({ actions = [], visible, open, onOpenChang
           )}
         >
           <MoreVertical className="h-3.5 w-3.5" />
-        </PopoverTrigger>
-        <PopoverContent
+        </DropdownMenuTrigger>
+        <DropdownMenuContent
           side="right"
           align="start"
           sideOffset={8}
@@ -63,30 +77,49 @@ export default function NodeHoverMenu({ actions = [], visible, open, onOpenChang
           onClick={(event) => event.stopPropagation()}
           onWheelCapture={(event) => event.stopPropagation()}
         >
-          {availableActions.map((action, index) => (
-            <button
-              key={action.key || action.label || index}
-              type="button"
-              disabled={action.disabled}
-              onClick={(event) => {
-                event.stopPropagation();
-                action.onClick?.(event);
-                onOpenChange?.(false);
-              }}
-              className={`flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm outline-none transition disabled:cursor-not-allowed disabled:opacity-50 ${
-                action.destructive
-                  ? 'text-destructive hover:bg-destructive/10'
-                  : 'text-foreground hover:bg-accent hover:text-accent-foreground'
-              }`}
-            >
-              <span className="flex h-4 w-4 shrink-0 items-center justify-center text-muted-foreground">
-                {action.icon}
-              </span>
-              <span className="truncate">{action.label}</span>
-            </button>
-          ))}
-        </PopoverContent>
-      </Popover>
+          {availableActions.map((action, index) => {
+            const key = action.key || action.label || index;
+            const children = Array.isArray(action.children) ? action.children.filter(Boolean) : null;
+            if (children) {
+              return (
+                <DropdownMenuSub key={key}>
+                  <DropdownMenuSubTrigger disabled={action.disabled}>
+                    {renderItemChildren(action)}
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent className="w-40">
+                    {children.map((child, childIndex) => (
+                      <DropdownMenuItem
+                        key={child.key || child.label || childIndex}
+                        disabled={child.disabled}
+                        variant={child.destructive ? 'destructive' : undefined}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          child.onClick?.(event);
+                        }}
+                      >
+                        {renderItemChildren(child)}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
+              );
+            }
+            return (
+              <DropdownMenuItem
+                key={key}
+                disabled={action.disabled}
+                variant={action.destructive ? 'destructive' : undefined}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  action.onClick?.(event);
+                }}
+              >
+                {renderItemChildren(action)}
+              </DropdownMenuItem>
+            );
+          })}
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
   );
 }

@@ -21,6 +21,10 @@ test('node actions appear in a vertical top-right menu on node hover', () => {
   assert.match(menuSource, /<MoreVertical className="h-3\.5 w-3\.5" \/>/);
   assert.match(menuSource, /aria-label="运行节点"/);
   assert.match(menuSource, /aria-label="删除节点"/);
+  // 菜单弹层用宿主 DropdownMenu；action.children 渲染为 hover 展开的 SubMenu
+  assert.doesNotMatch(menuSource, /<Popover/);
+  assert.match(menuSource, /<DropdownMenu open=\{open\} onOpenChange=\{onOpenChange\}/);
+  assert.match(menuSource, /<DropdownMenuSub[\s\S]*<DropdownMenuSubTrigger/);
   assert.match(shellSource, /onRun=\{onRun \|\| data\?\.onRunNode\}/);
   assert.match(shellSource, /onDelete=\{data\?\.onDeleteNode\}/);
   assert.match(canvasSource, /onRunNode: handleRunNode/);
