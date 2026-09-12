@@ -11,6 +11,7 @@ const PROPERTY_LABELS = {
   label: '节点名称',
   text: '文本内容',
   uploadedImages: '上传图片',
+  uploadedVideos: '上传视频',
   referenceImages: '参考图片',
   outputPreviewMode: '输出预览模式',
 };

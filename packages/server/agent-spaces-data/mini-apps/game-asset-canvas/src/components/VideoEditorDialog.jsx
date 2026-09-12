@@ -10,6 +10,7 @@ import { composeSpriteSheet } from '../utils/image-ops/spriteSheet';
 import { urlToImageData, imageDataToDataUrl, imageDataToUrl } from '../utils/image-ops/io';
 import { resolveFrameSelection, updateFrameSelection } from '../utils/frame-selection';
 import { cropPointFromClient, cropRegionFromPoints, normalizeCropRegion } from '../utils/video-crop';
+import { trimVideo } from '../utils/video-trim';
 
 const FFMPEG_PLUGIN_ID = 'workflow.ffmpeg';
 const FFMPEG_PROBE = 'ffmpeg_probe';
@@ -246,6 +247,38 @@ export default function VideoEditorDialog({ open, data, onUpdate, onClose }) {
       setBusy(false); setBusyMsg('');
     }
   }, [currentVideo, resizeW, resizeH, videos, onUpdate]);
+
+  // 视频裁剪（时间区间）：起点/终点秒，可从播放器当前位置取值；fast=流复制
+  const [trimStart, setTrimStart] = useState('');
+  const [trimEnd, setTrimEnd] = useState('');
+  const [trimFast, setTrimFast] = useState(false);
+  const handleSetTrimFromPlayer = useCallback((which) => {
+    const t = videoRef.current?.currentTime;
+    if (!Number.isFinite(t)) return;
+    const v = t.toFixed(2);
+    if (which === 'start') setTrimStart(v);
+    else setTrimEnd(v);
+  }, []);
+  const handleTrim = useCallback(async () => {
+    const s = Number(trimStart);
+    const e = Number(trimEnd);
+    if (!currentVideo || !Number.isFinite(s) || !Number.isFinite(e) || e <= s) {
+      onUpdate?.({ error: '请输入有效的裁剪起点和终点（终点需大于起点）' });
+      return;
+    }
+    setBusy(true); setBusyMsg(trimFast ? '快速剪切中…' : '裁剪视频中（重编码）…');
+    try {
+      const httpUrl = await trimVideo(currentVideo, s, e, { fast: trimFast });
+      // 产出视频追加到列表并切换（与尺寸调整一致）
+      const merged = Array.from(new Set([...videos, httpUrl]));
+      onUpdate?.({ videos: merged, output: { video: httpUrl }, error: undefined });
+      setActiveVideoIdx(merged.length - 1);
+    } catch (err) {
+      onUpdate?.({ error: `裁剪失败：${err?.message || err}` });
+    } finally {
+      setBusy(false); setBusyMsg('');
+    }
+  }, [currentVideo, trimEnd, trimFast, trimStart, videos, onUpdate]);
 
   // —— 动画组操作 ——
   const addGroup = useCallback(() => {
@@ -606,6 +639,11 @@ export default function VideoEditorDialog({ open, data, onUpdate, onClose }) {
                   resizeW={resizeW} setResizeW={setResizeW}
                   resizeH={resizeH} setResizeH={setResizeH}
                   onResize={handleResize}
+                  trimStart={trimStart} setTrimStart={setTrimStart}
+                  trimEnd={trimEnd} setTrimEnd={setTrimEnd}
+                  trimFast={trimFast} onSetTrimFast={setTrimFast}
+                  onSetTrimFromPlayer={handleSetTrimFromPlayer}
+                  onTrim={handleTrim}
                   hasVideo={!!currentVideo}
                   cropEnabled={cropEnabled}
                   cropRegion={cropRegion}
@@ -707,10 +745,11 @@ function VideoCropOverlay({ enabled, region, onChange }) {
   );
 }
 
-/** 编辑 tab：截帧参数 + 视频信息 + 尺寸调整 */
+/** 编辑 tab：截帧参数 + 视频裁剪 + 视频信息 + 尺寸调整 */
 function EditTab({
   params, set, videoInfo, onProbe, onExtract,
   resizeW, setResizeW, resizeH, setResizeH, onResize, hasVideo,
+  trimStart, setTrimStart, trimEnd, setTrimEnd, trimFast, onSetTrimFast, onSetTrimFromPlayer, onTrim,
   cropEnabled, cropRegion, onCropToggle, onCropReset,
 }) {
   return (
@@ -785,6 +824,51 @@ function EditTab({
         >
           截取帧
         </button>
+      </section>
+
+      {/* 视频裁剪：时间区间 */}
+      <section className="flex flex-col gap-2 border-t border-border pt-3">
+        <h4 className="text-xs font-semibold text-foreground">视频裁剪</h4>
+        {(['start', 'end']).map((which) => (
+          <div key={which} className="flex items-end gap-2">
+            <label className="flex flex-1 flex-col gap-1">
+              <span className="text-[11px] text-muted-foreground">{which === 'start' ? '起点（秒）' : '终点（秒）'}</span>
+              <input
+                type="number" min="0" step="0.01"
+                value={which === 'start' ? trimStart : trimEnd}
+                onChange={(e) => (which === 'start' ? setTrimStart : setTrimEnd)(e.target.value)}
+                placeholder={which === 'start' ? '0' : '视频末尾'}
+                className="w-full rounded-md border border-border bg-background px-2 py-1 text-xs outline-none focus:border-primary"
+              />
+            </label>
+            <button
+              type="button"
+              disabled={!hasVideo}
+              onClick={() => onSetTrimFromPlayer(which)}
+              className="shrink-0 pb-1.5 text-[11px] text-primary transition hover:underline disabled:opacity-50"
+            >
+              取当前位置
+            </button>
+          </div>
+        ))}
+        <button
+          type="button"
+          disabled={!hasVideo || !(Number(trimEnd) > Number(trimStart))}
+          onClick={onTrim}
+          className="w-full rounded-md border border-border px-3 py-1.5 text-xs font-medium transition hover:border-primary hover:text-primary disabled:opacity-50"
+        >
+          应用裁剪
+        </button>
+        <label className="flex cursor-pointer items-center gap-2 text-[11px] text-muted-foreground">
+          <input
+            type="checkbox"
+            checked={trimFast}
+            onChange={(e) => onSetTrimFast(e.target.checked)}
+            className="h-3.5 w-3.5 accent-primary"
+          />
+          <span>快速剪切（不重编码，切点对齐关键帧）</span>
+        </label>
+        <span className="text-[10px] text-muted-foreground">在播放器中定位到目标时间后点「取当前位置」；产出追加到视频列表。</span>
       </section>
 
       {/* 尺寸调整 */}

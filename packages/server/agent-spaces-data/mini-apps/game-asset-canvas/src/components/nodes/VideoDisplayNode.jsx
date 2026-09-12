@@ -1,9 +1,10 @@
 import { useCallback, useRef, useState, useEffect } from 'react';
 import { NodeResizer } from '@xyflow/react';
-import { Camera, ChevronLeft, ChevronRight, Upload, toast } from '@agent-spaces/ui';
+import { Camera, ChevronLeft, ChevronRight, Crop, Upload, toast } from '@agent-spaces/ui';
 import useViewportActivation from '../../hooks/useViewportActivation';
 import NodeHandles from './NodeHandles';
 import NodeHoverMenu from './NodeHoverMenu';
+import TrimVideoDialog from '../TrimVideoDialog';
 import { normalizeImageUrl } from '../../utils/workflow';
 
 const FFMPEG_PLUGIN_ID = 'workflow.ffmpeg';
@@ -31,6 +32,7 @@ export default function VideoDisplayNode({ id, data, selected }) {
   const [uploading, setUploading] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [nodeHovered, setNodeHovered] = useState(false);
+  const [trimOpen, setTrimOpen] = useState(false);
   const [capturing, setCapturing] = useState(false);
   const source = data?.source;
   const tags = Array.isArray(data?.tags) ? data.tags.filter(Boolean) : [];
@@ -149,6 +151,13 @@ export default function VideoDisplayNode({ id, data, selected }) {
               icon: <Upload className="h-3.5 w-3.5" />,
               onClick: () => onExportVideos(videos),
             } : null,
+            {
+              key: 'trim-video',
+              label: '裁剪视频',
+              icon: <Crop className="h-3.5 w-3.5" />,
+              onClick: () => setTrimOpen(true),
+              disabled: !onExportVideos,
+            },
           ] : []}
           visible={(nodeHovered || menuOpen) && selectionCount <= 1}
           open={menuOpen}
@@ -265,6 +274,19 @@ export default function VideoDisplayNode({ id, data, selected }) {
           onChange={handleFile}
         />
       </div>
+
+      {/* 视频裁剪：编辑态存 data.trimData，产出经 onExportVideos 以新视频节点插入画布 */}
+      <TrimVideoDialog
+        open={trimOpen}
+        videoUrl={current}
+        trimData={data?.trimData}
+        onUpdate={onUpdate}
+        onClose={() => setTrimOpen(false)}
+        onConfirm={(url) => {
+          onExportVideos?.([url]);
+          toast.success('裁剪完成，视频节点已插入画布');
+        }}
+      />
     </div>
   );
 }

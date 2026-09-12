@@ -291,6 +291,81 @@ module.exports = (t) => [
     },
   },
   {
+    // 时间区间裁剪：-ss/-to 作为 input seeking（-i 之前），copy 模式快但对齐关键帧，reencode 精确。
+    name: 'ffmpeg_trim',
+    label: t('action.trim.label', '裁剪视频'),
+    category: t('category', 'FFmpeg'),
+    icon: 'Scissors',
+    description: t('action.trim.description', 'Trim a video by start/end seconds. copy mode is fast but keyframe-aligned; reencode mode is frame-accurate.'),
+    tool: false,
+    properties: [
+      { key: 'inputPath', label: t('field.inputPath.label', 'Video URL or Path'), type: 'text', dataType: 'string', required: true, tooltip: t('field.inputUrlOrPath.tooltip', 'Local absolute path or a public http(s) URL of the video file.') },
+      { key: 'start', label: t('field.trimStart.label', 'Start (seconds)'), type: 'number', dataType: 'number', default: 0 },
+      { key: 'end', label: t('field.trimEnd.label', 'End (seconds)'), type: 'number', dataType: 'number' },
+      { key: 'mode', label: t('field.trimMode.label', 'Mode'), type: 'select', dataType: 'string', default: 'reencode', options: [
+        { label: t('field.trimModeOption.reencode', 'Reencode (frame-accurate)'), value: 'reencode' },
+        { label: t('field.trimModeOption.copy', 'Copy (fast, keyframe-aligned)'), value: 'copy' },
+      ] },
+      { key: 'ffmpegPath', label: t('field.ffmpegPath.label', 'FFmpeg Path'), type: 'text', dataType: 'string', default: '{{ __config__["workflow.ffmpeg"]["ffmpegPath"] }}' },
+    ],
+    outputs: [
+      { key: 'success', type: 'boolean', dataType: 'boolean' },
+      { key: 'message', type: 'string' },
+      { key: 'data', type: 'object', dataType: 'object', children: [
+        { key: 'httpPath', type: 'string' },
+        { key: 'dir', type: 'string' },
+      ] },
+    ],
+    run: async (ctx, args) => {
+      let inputPath = args.inputPath
+      if (!inputPath) return { success: false, message: t('message.inputRequired', 'inputPath is required') }
+      const start = Math.max(0, toNumber(args.start) || 0)
+      const end = toNumber(args.end)
+      if (end == null || end <= start) return { success: false, message: t('message.trimRangeInvalid', 'end must be greater than start') }
+      if (ctx.api.resolveInputPath) inputPath = ctx.api.resolveInputPath(inputPath)
+
+      const dataDir = ctx.api.getMiniAppDataDir && ctx.api.getMiniAppDataDir()
+      if (!dataDir) {
+        return { success: false, message: t('message.noDataDir', 'Mini-app data directory unavailable (not called from a mini-app context).') }
+      }
+
+      const id = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+      const dir = path.join(dataDir, 'video-output')
+      await fs.promises.mkdir(dir, { recursive: true })
+      // copy 模式不转码，输出容器须与源兼容：从源 URL 推断扩展名，默认 mp4
+      const mode = args.mode === 'copy' ? 'copy' : 'reencode'
+      const srcExt = (String(inputPath).split('?')[0].match(/\.([a-zA-Z0-9]{2,5})$/) || [])[1]
+      const ext = mode === 'copy' ? (srcExt ? srcExt.toLowerCase() : 'mp4') : 'mp4'
+      const outFile = path.join(dir, `${id}.${ext}`)
+      const bin = resolveFfmpegBin(args)
+      const codecArgs = mode === 'copy'
+        ? ['-c', 'copy', '-avoid_negative_ts', 'make_zero']
+        : ['-c:v', 'libx264', '-preset', 'veryfast', '-c:a', 'aac']
+
+      ctx.logger.info(`裁剪视频: ${inputPath} [${start}s..${end}s] mode=${mode} -> ${outFile}`)
+
+      try {
+        await runBin(bin, ['-y', '-ss', start.toFixed(3), '-to', end.toFixed(3), '-i', inputPath, ...codecArgs, outFile], ctx)
+        try {
+          await fs.promises.access(outFile)
+        } catch {
+          return { success: false, message: t('message.customNoOutput', 'No output file was created (check start/end values).') }
+        }
+        const rel = path.relative(dataDir, outFile).split(path.sep).join('/')
+        const buffer = await fs.promises.readFile(outFile)
+        const saved = ctx.api.saveMiniAppDataFile && ctx.api.saveMiniAppDataFile(rel, buffer)
+        return {
+          success: true,
+          message: t('message.trimDone', 'Video trimmed.'),
+          data: { httpPath: saved?.httpPath || rel, dir: `video-output/${id}.${ext}` },
+        }
+      } catch (err) {
+        ctx.logger.error(`裁剪失败: ${err?.stack || err}`)
+        return { success: false, message: t('message.trimFailed', 'Trim failed: {error}').replace('{error}', err.message) }
+      }
+    },
+  },
+  {
     // 取视频第一帧，输出到 stdout 并转 base64 返回（用于缩略图，不落盘）。
     // 前端可直接 <img src="data:image/jpeg;base64,...">，避免用 <video> 渲染缩略图。
     name: 'ffmpeg_first_frame',

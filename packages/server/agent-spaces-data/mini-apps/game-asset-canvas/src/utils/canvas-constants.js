@@ -280,11 +280,12 @@ export function initialData(type) {
     };
   }
   if (type === NODE_TYPES.depthExtract) {
-    // 提取深度图节点：调 depth-anything 插件批量提取；params = { grayscale, predOnly }
+    // 提取深度图节点：调 depth-anything 插件批量提取（图片）/ 视频转深度视频（视频）；params = { grayscale, predOnly, maxFrames, resolution }
     return {
       status: 'idle',
-      output: { images: [] },
+      output: { images: [], videos: [] },
       uploadedImages: [],
+      uploadedVideos: [],
       upstreamOrder: [],
       params: defaultDepthParams(),
     };

@@ -3,7 +3,7 @@ import { NODE_TYPES, IMAGE_TAGS, WORKFLOWS, NODE_META, defaultCutoutParams } fro
 import { generateAudio, generateVideo, normalizeImageUrls, runAgentVisionText, runWithConcurrency } from '../utils/workflow';
 import { runProcessor } from '../utils/image-ops';
 import { runCutout } from '../utils/cutout';
-import { runDepth } from '../utils/depth';
+import { runDepth, runDepthVideo } from '../utils/depth';
 import { genId } from '../utils/canvas-id';
 import { registerController, clearController, abortController,
   registerWorkflowHandle, setWorkflowExecutionId, getWorkflowHandle,
@@ -478,45 +478,100 @@ export default function useNodeExecutions({
     });
   }, [createNodeAt]);
 
-  // 提取深度图节点「⚡ 提取深度图」：调 runDepth → callPluginTool('workflow.depth-anything', 'depth_batch_predict')。
-  // params = { grayscale, predOnly }，透传到插件入参（字符串 'true'/'false'）。
-  const handleDepth = useCallback(async (nodeId, params, sourceImages, executionTarget = null) => {
+  // 提取深度图节点「⚡ 提取深度图」：按输入类型分流——
+  // 图片走 runDepth → callPluginTool('workflow.depth-anything', 'depth_batch_predict')；
+  // 视频走 runDepthVideo → depth_video_predict（服务端同时只允许一个视频任务，多视频串行）。
+  // params = { grayscale, predOnly, maxFrames, resolution }，透传到插件入参（字符串）。
+  const handleDepth = useCallback(async (nodeId, params, sourceImages, sourceVideos = [], executionTarget = null) => {
     const requestNodeId = executionTarget?.nodeId || nodeId;
     const update = (patch) => (executionTarget
       ? updateExecutionNodeData?.(executionTarget, patch)
       : updateNodeData(nodeId, patch));
-    if (!sourceImages?.length) return;
+    const imgs = (sourceImages || []).filter(Boolean);
+    const vids = (sourceVideos || []).filter(Boolean);
+    if (!imgs.length && !vids.length) return;
     try { saveLastParams?.(NODE_TYPES.depthExtract, params || {}); }
     catch (e) { console.error('saveLastParams failed:', e); }
     const controller = new AbortController();
     registerController(requestNodeId, controller);
 
-    update({ status: 'running', error: undefined, output: { images: [] } });
+    update({ status: 'running', error: undefined, statusMsg: '', output: { images: [], videos: [] } });
+    let imageUrls = [];
+    const videoUrls = [];
+    const videoErrors = [];
     try {
-      const urls = await runDepth(sourceImages, params || {}, { executionTarget });
+      if (imgs.length) {
+        update({ statusMsg: `提取深度图（${imgs.length} 张）…` });
+        imageUrls = await runDepth(imgs, params || {}, { executionTarget, signal: controller.signal });
+      }
       if (controller.signal.aborted) return;
-      if (!urls.length) throw new Error('深度图提取未返回图片');
-      update({ status: 'done', output: { images: urls } });
+      // 逐帧推理耗时与帧数成正比，单个视频失败不阻塞后续
+      for (let i = 0; i < vids.length; i++) {
+        update({ statusMsg: `视频转深度视频（${i + 1}/${vids.length}）…` });
+        try {
+          videoUrls.push(await runDepthVideo(vids[i], params || {}, { executionTarget, signal: controller.signal }));
+        } catch (err) {
+          if (controller.signal.aborted) return;
+          console.error('depth video failed:', err);
+          videoErrors.push(`${vids[i]}: ${err?.message || err}`);
+        }
+      }
+      if (controller.signal.aborted) return;
+      if (!imageUrls.length && !videoUrls.length) {
+        throw new Error(videoErrors[0] || '深度提取未返回结果');
+      }
+      update({
+        status: 'done',
+        statusMsg: '',
+        output: { images: imageUrls, videos: videoUrls },
+        ...(videoErrors.length && videoUrls.length ? { error: `${videoErrors.length} 个视频转换失败` } : {}),
+      });
       const histId = genId('hist');
-      const historyWrite = addHistory({
-        id: histId,
-        nodeId: requestNodeId,
-        templateNodeId: nodeId,
-        executionTarget,
-        nodeType: NODE_TYPES.depthExtract,
-        prompt: '提取深度图',
-        model: 'depth-anything',
-        images: urls,
-        createdAt: Date.now(),
-      }).catch((e) => console.error('depth addHistory failed:', e));
-      historyWrite.finally(() => enqueueImageDownloads?.({
-        urls, nodeId, executionTarget, historyId: histId, label: '深度图图片',
-      }));
-      notifyDone('深度图提取完成', `深度图提取完成，产出 ${urls.length} 张图`);
+      const historyWrites = [];
+      if (imageUrls.length) {
+        historyWrites.push(addHistory({
+          id: histId,
+          nodeId: requestNodeId,
+          templateNodeId: nodeId,
+          executionTarget,
+          nodeType: NODE_TYPES.depthExtract,
+          prompt: '提取深度图',
+          model: 'depth-anything',
+          images: imageUrls,
+          createdAt: Date.now(),
+        }));
+      }
+      if (videoUrls.length) {
+        historyWrites.push(addHistory({
+          id: imageUrls.length ? genId('hist') : histId,
+          nodeId: requestNodeId,
+          templateNodeId: nodeId,
+          executionTarget,
+          nodeType: NODE_TYPES.depthExtract,
+          prompt: '视频转深度视频',
+          model: 'depth-anything',
+          images: videoUrls,
+          mediaType: 'video',
+          createdAt: Date.now(),
+        }));
+      }
+      Promise.allSettled(historyWrites).then((results) => {
+        for (const r of results) {
+          if (r.status === 'rejected') console.error('depth addHistory failed:', r.reason);
+        }
+        if (imageUrls.length) enqueueImageDownloads?.({
+          urls: imageUrls, nodeId, executionTarget, historyId: histId, label: '深度图图片',
+        });
+      });
+      const parts = [];
+      if (imageUrls.length) parts.push(`${imageUrls.length} 张深度图`);
+      if (videoUrls.length) parts.push(`${videoUrls.length} 个深度视频`);
+      if (videoErrors.length) parts.push(`${videoErrors.length} 个视频失败`);
+      notifyDone('深度提取完成', `深度提取完成，产出 ${parts.join('，')}`);
     } catch (err) {
       if (controller.signal.aborted) return;
       console.error('depth failed:', err);
-      update({ status: 'error', error: err?.message || String(err) });
+      update({ status: 'error', statusMsg: '', error: err?.message || String(err) });
     } finally {
       clearController(requestNodeId, controller);
     }

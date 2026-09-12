@@ -10,12 +10,15 @@ const {
   getBaseUrl,
   getTimeout,
   resolveImage,
+  resolveVideo,
   toImageArray,
   predictFromFile,
   predictBatchFromFiles,
+  predictVideoFromFile,
   parseZip,
   saveResultImage,
   MAX_BATCH_FILES,
+  DEFAULT_VIDEO_TIMEOUT,
 } = require('./shared')
 
 const CONFIG_PREFIX = '{{ __config__["workflow.depth-anything"]'
@@ -81,6 +84,24 @@ const batchOutput = [
       },
       { key: 'total', type: 'number', dataType: 'number' },
       { key: 'successCount', type: 'number', dataType: 'number' },
+    ],
+  },
+]
+
+// ── 视频动作输出 ───────────────────────────────────────────
+const videoOutput = [
+  { key: 'success', type: 'boolean', dataType: 'boolean' },
+  { key: 'message', type: 'string' },
+  {
+    key: 'data',
+    type: 'object',
+    dataType: 'object',
+    children: [
+      { key: 'videoUrl', type: 'string' },
+      { key: 'frames', type: 'number', dataType: 'number' },
+      { key: 'fps', type: 'number', dataType: 'number' },
+      { key: 'truncated', type: 'boolean', dataType: 'boolean' },
+      { key: 'size', type: 'number', dataType: 'number' },
     ],
   },
 ]
@@ -296,6 +317,122 @@ module.exports = (t) => [
           .replace('{successCount}', successCount)
           .replace('{total}', list.length),
         data: { results, total: list.length, successCount },
+      }
+    },
+  },
+
+  // ── 动作 3：视频转深度视频 ─────────────────────────────
+  {
+    name: 'depth_video_predict',
+    label: t('action.video.label', 'Video to Depth Video'),
+    category: t('category', 'Depth Anything'),
+    icon: 'Video',
+    description: t(
+      'action.video.description',
+      'Convert a video to a depth video (frame-by-frame inference). Input can be a video URL, local file path, or data URI. Output MP4 has no audio track.',
+    ),
+    properties: [
+      {
+        key: 'video',
+        label: t('field.video.label', 'Video'),
+        type: 'textarea',
+        dataType: 'string',
+        required: true,
+        tooltip: t('field.video.tooltip', 'Video URL / local path / data URI (MP4/AVI/MOV...)'),
+      },
+      {
+        key: 'grayscale',
+        label: t('field.grayscale.label', 'Color Mode'),
+        type: 'select',
+        dataType: 'string',
+        default: 'true',
+        options: GRAYSCALE_OPTIONS,
+        tooltip: t(
+          'field.grayscale.tooltip',
+          'true = grayscale depth map (default); false = Inferno colormap.',
+        ),
+      },
+      {
+        key: 'pred_only',
+        label: t('field.predOnly.label', 'Output Mode'),
+        type: 'select',
+        dataType: 'string',
+        default: 'true',
+        options: PRED_ONLY_OPTIONS,
+        tooltip: t(
+          'field.predOnly.tooltip',
+          'true = depth video only (default); false = original + depth side by side.',
+        ),
+      },
+      {
+        key: 'max_frames',
+        label: t('field.maxFrames.label', 'Max Frames'),
+        type: 'number',
+        dataType: 'number',
+        default: 0,
+        tooltip: t('field.maxFrames.tooltip', '0 = all frames (server hard cap 3600, excess truncated).'),
+      },
+      {
+        key: 'resolution',
+        label: t('field.resolution.label', 'Resolution'),
+        type: 'text',
+        dataType: 'string',
+        default: 'source',
+        tooltip: t(
+          'field.resolution.tooltip',
+          '"source" follows the input video; or target height in pixels, e.g. "720" (width scaled proportionally).',
+        ),
+      },
+      {
+        key: 'video_timeout',
+        label: t('field.videoTimeout.label', 'Video Timeout (ms)'),
+        type: 'number',
+        dataType: 'number',
+        default: DEFAULT_VIDEO_TIMEOUT,
+        tooltip: t(
+          'field.videoTimeout.tooltip',
+          'Total budget for one video job (submit + poll + download). Frame-by-frame inference is slow; default 10 minutes.',
+        ),
+      },
+    ],
+    configProperties: configProperties(t),
+    outputs: videoOutput,
+    run: async (ctx, args) => {
+      if (!args.video) {
+        return { success: false, message: t('message.needVideo', 'Provide a video input.') }
+      }
+      const video = await resolveVideo(args.video)
+      // select 控件值为字符串归一化成布尔；超时用 video_timeout 覆盖
+      // （config 的 timeout 是单图超时，直接透传会把视频总预算压到 2 分钟）
+      const videoTimeout = Number(args.video_timeout)
+      const normArgs = {
+        ...args,
+        grayscale: String(args.grayscale) !== 'false',
+        pred_only: String(args.pred_only) !== 'false',
+        timeout: Number.isFinite(videoTimeout) && videoTimeout > 0 ? videoTimeout : undefined,
+      }
+      const out = await predictVideoFromFile(ctx, normArgs, video)
+      const saved = ctx.api.savePublicFile(out.buffer, 'mp4')
+      if (!saved || !saved.httpPath) {
+        throw new Error('Failed to save result video')
+      }
+      let message = t('message.videoDone', 'Depth video generated ({frames} frames, {size} MB)').replace(
+        '{frames}',
+        out.frames,
+      ).replace('{size}', (out.buffer.length / 1024 / 1024).toFixed(1))
+      if (out.truncated) {
+        message += t('message.videoTruncated', ' (frame limit reached, truncated)')
+      }
+      return {
+        success: true,
+        message,
+        data: {
+          videoUrl: saved.httpPath,
+          frames: out.frames,
+          fps: out.fps,
+          truncated: out.truncated,
+          size: out.buffer.length,
+        },
       }
     },
   },

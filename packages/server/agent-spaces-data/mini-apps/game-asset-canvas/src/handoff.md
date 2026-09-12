@@ -116,6 +116,7 @@ Agent → api.js handler → ctx.requestClient(type, payload, timeoutMs)
 | 把宿主 Chat 嵌入右侧面板 | `manifest.json` + `mini-app-preview/index.tsx` + `mini-app-host-slots.ts` + `components/right-panel/index.jsx` | `agentChatPlacement: "mini-app-slot"`，宿主 Portal 到 `agent-chat` 插槽 |
 | 改 vendor 资源 | `vendor/` + 对应 Dialog/Node | 见下「Vendor 资源」 |
 | 视频编辑器节点 | `components/nodes/VideoEditorNode.jsx` + `components/VideoEditorDialog.jsx` + `components/FrameSequencePlayer.jsx` | 节点外壳 + 大对话框（双播放器/帧选区/动画组）+ React 内置帧播放器 |
+| 深度节点图片/视频分流 | `components/nodes/DepthExtractNode.jsx` + `utils/depth.js` + `hooks/useNodeExecutions.js(handleDepth)` + 插件 `depth-anything` 的 `depth_video_predict` | 图片走批量接口；视频逐帧转深度视频（服务端单任务，多视频串行）；连线按 edge.data.inputType 分流 |
 | 视频帧截取/区域截取/尺寸调整 | ffmpeg 插件（`ffmpeg_extract_frames` / `ffmpeg_custom` / `ffmpeg_probe`） | 经 `callPluginTool('workflow.ffmpeg', action, args)` 调用；帧为原分辨率无损 PNG，归一化 cropRegion 在插件内转 ffmpeg crop |
 | 插件访问 mini-app data 目录 | `plugin-runtime-api.ts`（getMiniAppDataDir/saveMiniAppDataFile）+ `routes/plugin.ts:187`（透传 workspaceId） | 打通了 workspaceId → 插件 api 断点，使 ffmpeg 产物能写到当前 mini-app 的 data 沙箱 |
 
@@ -177,6 +178,8 @@ Agent → api.js handler → ctx.requestClient(type, payload, timeoutMs)
 39. **图片工作流节点保留执行日志入口**：`generateImages` 通过 `runWorkflow.onExecution` 保留 `execute_workflow_sync` 返回的 `executionId`，节点完成后把 `{workflowId,logId}` 写到 `data.workflowExecution`；文生图/编辑图片底栏按钮新窗口打开 `/workflows/<workflowId>?logId=<logId>`。新一轮执行开始时先清空旧入口。
 39. **粘贴节点保留可用的上游入边**：`copyNodes` 保存选中节点之间的内部边，以及外部节点指向选中节点的入边；`pasteNodes` 将目标改为新节点 ID，上游源节点仅在目标画布仍存在时沿用原 ID。跨工作区粘贴不得创建悬空边，选中节点指向外部下游的出边不复制。
 40. **外网图片进入持久后台下载队列**：图片节点先写回工作流外链，再提交 `persist-images` 到 mini-app background service。`src/background.js` 在服务端保存到工作区 directory（未配置则 data/downloads），把目标节点及生成历史中的精确 URL 替换成本地 HTTP 地址；任务状态存 `configs/download-queue.json`。任务必须携带 `workspaceId/nodeId/historyId`，分组实例还必须携带冻结的 `executionTarget`，页面刷新不影响下载。
+41. **派生按边类型过滤**：`computeInputImages` / `computeInputVideos` 会跳过 `edge.data.inputType` 与自身媒体类型不符的边（旧边无 inputType 保持原行为）。双产出节点（videoEditor 同时有 output.images 精灵图与 output.videos）连出的视频边不得把精灵图混入目标 `data.images`。depthExtract 是双产出节点：仅产出视频时按 video 连线（`getNodeEffectiveOutputType`），图+视频混合按 image。
+42. **深度节点视频转换超时与串行**：Depth Anything 服务端同时只允许一个视频任务（409），多视频必须串行；视频动作用独立 `video_timeout`（默认 10 分钟）做总预算，不能复用单图 `timeout` config（120s 会掐死长视频）。
 
 ## 工作区数据目录（产图落本地）
 

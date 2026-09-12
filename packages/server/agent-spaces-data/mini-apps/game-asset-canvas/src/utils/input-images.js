@@ -101,6 +101,8 @@ export function computeInputImages(nodes, edges) {
       for (const e of incoming) {
         const src = byId.get(e.source);
         if (!src) continue;
+        // 显式视频/音频/文本边不参与图片派生（双产出节点如 videoEditor 连出的视频边不应混入其 output.images）
+        if (e.data?.inputType && e.data?.inputType !== CONNECTION_INPUT_TYPES.image) continue;
         const targetId = resolveFileUploadTarget(node.type, e.data?.inputTarget);
         if (!upstreamByTarget[targetId]) upstreamByTarget[targetId] = [];
         if (!resourcesByTarget[targetId]) resourcesByTarget[targetId] = [];
@@ -263,14 +265,15 @@ function joinUniqueText(values = []) {
  *
  * - 视频产出字段：output.videos 优先，降级 output.video（单值兼容 videoGenerator）
  * - 透传类节点（videoDisplay）无 output 时回退 data.videos / 上游派生视频
- * - receiver 含 videoDisplay（透传）+ videoGenerator（消费参考，非透传）
+ * - receiver 含 videoDisplay（透传）+ videoGenerator（消费参考，非透传）+ depthExtract（视频输入，非透传）
  *
  * @param {Array} nodes
  * @param {Array} edges
  * @returns {Map<string, {videos: string[], isDisplay: boolean}>} nodeId -> 派生输入
  */
 export function computeInputVideos(nodes, edges) {
-  const VIDEO_RECEIVER_TYPES = new Set([NODE_TYPES.videoDisplay, NODE_TYPES.videoGenerator, NODE_TYPES.videoEditor]);
+  // depthExtract 是生成类接收器（非透传）：上游视频仅作输入，不回传为自身产出
+  const VIDEO_RECEIVER_TYPES = new Set([NODE_TYPES.videoDisplay, NODE_TYPES.videoGenerator, NODE_TYPES.videoEditor, NODE_TYPES.depthExtract]);
   const VIDEO_PASSTHROUGH_TYPES = new Set([NODE_TYPES.videoDisplay, NODE_TYPES.videoEditor]);
 
   // 取某节点「作为 source 时应给出的产出视频」
@@ -308,6 +311,8 @@ export function computeInputVideos(nodes, edges) {
       for (const e of incoming) {
         const src = byId.get(e.source);
         if (!src) continue;
+        // 对称图片派生：显式非视频边（图片/音频/文本）不参与视频派生；旧边无 inputType 保持原行为
+        if (e.data?.inputType && e.data?.inputType !== CONNECTION_INPUT_TYPES.video) continue;
         const selectedAsset = selectedEdgeAsset(e, CONNECTION_INPUT_TYPES.video);
         upstream.push(...(selectedAsset === null
           ? sourceVideos(src, derived)

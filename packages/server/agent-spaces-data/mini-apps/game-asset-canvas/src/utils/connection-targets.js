@@ -69,6 +69,7 @@ const VIDEO_INPUT_NODE_TYPES = new Set([
   NODE_TYPES.videoDisplay,
   NODE_TYPES.videoGenerator,
   NODE_TYPES.videoEditor,
+  NODE_TYPES.depthExtract,
 ]);
 
 const AUDIO_INPUT_NODE_TYPES = new Set([
@@ -112,6 +113,22 @@ export function getNodeOutputType(nodeType) {
   if (VIDEO_OUTPUT_NODE_TYPES.has(nodeType)) return CONNECTION_INPUT_TYPES.video;
   if (AUDIO_OUTPUT_NODE_TYPES.has(nodeType)) return CONNECTION_INPUT_TYPES.audio;
   return CONNECTION_INPUT_TYPES.image;
+}
+
+/**
+ * 双产出节点（如 depthExtract：图片输入产深度图、视频输入产深度视频）按实际产出内容决定连线类型：
+ * 仅产出视频时按 video 连线，其余（仅图 / 图+视频混合 / 无产出）按 image。
+ * 单产出节点回退 getNodeOutputType。
+ */
+export function getNodeEffectiveOutputType(node) {
+  const nodeType = node?.type;
+  if (nodeType === NODE_TYPES.depthExtract) {
+    const hasVideos = Array.isArray(node?.data?.output?.videos) && node.data.output.videos.length > 0;
+    const hasImages = Array.isArray(node?.data?.output?.images) && node.data.output.images.length > 0;
+    if (hasVideos && !hasImages) return CONNECTION_INPUT_TYPES.video;
+    return CONNECTION_INPUT_TYPES.image;
+  }
+  return getNodeOutputType(nodeType);
 }
 
 export function getConnectionTargetsForInputType(inputType, targetNodeType, targetParamsSchema = []) {

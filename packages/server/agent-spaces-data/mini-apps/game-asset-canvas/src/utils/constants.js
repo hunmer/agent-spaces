@@ -699,8 +699,8 @@ export function defaultCutoutParams(mode) {
 }
 
 // ============ 提取深度图节点（depthExtract）============
-// 调 workflow.depth-anything 插件 depth_batch_predict 动作，GPU 并行批量提取单目深度图。
-// 参数表存 data.params（ParamField 渲染），值透传到插件的 grayscale/pred_only 入参（字符串）。
+// 调 workflow.depth-anything 插件 depth_batch_predict（图片）/ depth_video_predict（视频）动作。
+// 参数表存 data.params（ParamField 渲染），值透传到插件的 grayscale/pred_only/max_frames/resolution 入参（字符串）。
 export const DEPTH_PARAMS = [
   {
     key: 'grayscale',
@@ -720,6 +720,31 @@ export const DEPTH_PARAMS = [
     options: [
       { value: 'true', label: '仅深度图（默认）' },
       { value: 'false', label: '原图+深度图（拼接）' },
+    ],
+  },
+  // 以下仅对视频输入生效
+  {
+    key: 'maxFrames',
+    label: '视频·帧数上限',
+    type: 'number',
+    default: 0,
+    min: 0,
+    max: 3600,
+    tooltip: '处理帧数上限，0=全部（服务端硬上限 3600）',
+  },
+  {
+    key: 'resolution',
+    label: '视频·分辨率',
+    type: 'select',
+    default: 'source',
+    tooltip: '输出高度像素，宽度等比缩放',
+    options: [
+      { value: 'source', label: '跟随源（默认）' },
+      { value: '360', label: '360p' },
+      { value: '480', label: '480p' },
+      { value: '540', label: '540p' },
+      { value: '720', label: '720p' },
+      { value: '1080', label: '1080p' },
     ],
   },
 ];

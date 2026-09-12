@@ -13,7 +13,7 @@ import { ImageSelectionContext } from '../context/ImageSelectionContext';
 import useImageSelection from '../hooks/useImageSelection';
 import useAssetLibrary from '../hooks/useAssetLibrary';
 import {
-  CONNECTION_INPUT_TYPES, getConnectionTargets, getConnectionTargetsByInputType, getNodeOutputType,
+  CONNECTION_INPUT_TYPES, getConnectionTargets, getConnectionTargetsByInputType, getNodeOutputType, getNodeEffectiveOutputType,
   withTextTargetVariables,
 } from '../utils/connection-targets';
 import { resolveStoryboardHandleAssets } from '../utils/storyboard-assets.js';
@@ -553,11 +553,12 @@ export default function Canvas({ hostConfig }) {
       return;
     }
     const sourceAsset = storyboardAssets?.[0] || null;
+    // 双产出节点（如 depthExtract）按当前实际产出决定连线类型：仅视频产出时按 video 连
     const connection = getConnectionTargets(
       sourceNode?.type,
       targetNode?.type,
       targetParamsSchema,
-      sourceAsset?.type,
+      sourceAsset?.type || getNodeEffectiveOutputType(sourceNode),
     );
     const { inputType } = connection;
     const targets = inputType === CONNECTION_INPUT_TYPES.text
