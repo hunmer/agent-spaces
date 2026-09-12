@@ -343,6 +343,15 @@ export default function AudioDisplayNode({ data, selected }) {
       onMouseEnter={() => setNodeHovered(true)}
       onMouseLeave={() => setNodeHovered(false)}
     >
+      <style>{`
+        @keyframes audio-separate-scan {
+          0% { transform: translateX(-110%); }
+          100% { transform: translateX(310%); }
+        }
+        .audio-separate-progress-bar {
+          animation: audio-separate-scan 1.2s ease-in-out infinite;
+        }
+      `}</style>
       <NodeHoverMenu
         actions={current ? [{
           key: 'separate-vocals',

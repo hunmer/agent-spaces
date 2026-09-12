@@ -57,6 +57,7 @@ export default function CanvasWorkspace({
     <ResizablePanelGroup
       direction="horizontal"
       className="h-full min-h-0"
+      hideHandleOnIdle
       defaultLayout={panelLayout}
       onLayoutChange={onPanelLayoutChange}
     >
