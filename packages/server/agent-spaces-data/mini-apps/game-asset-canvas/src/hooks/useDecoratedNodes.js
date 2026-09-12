@@ -162,7 +162,7 @@ export default function useDecoratedNodes({
           onGenerateMedia,
           onExportImages: (imgs) => onExportImages?.(nd, imgs),
           onExportVideos: (vids) => onExportVideos?.(nd, vids),
-          onExportAudios: (auds) => onExportAudios?.(nd, auds),
+          onExportAudios: (auds, opts) => onExportAudios?.(nd, auds, opts),
           onProcessImage,
           onProcessLocal,
           onCutout,

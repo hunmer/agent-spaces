@@ -1,9 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { NodeResizer } from '@xyflow/react';
-import { AudioLines, ChevronLeft, ChevronRight, Pause, Play, Upload } from '@agent-spaces/ui';
+import { AudioLines, ChevronLeft, ChevronRight, Mic, Pause, Play, Upload, toast } from '@agent-spaces/ui';
 import useViewportActivation from '../../hooks/useViewportActivation';
 import NodeHandles from './NodeHandles';
 import NodeHoverMenu from './NodeHoverMenu';
+import { normalizeImageUrl } from '../../utils/workflow';
+
+const AUDIO_SEPARATOR_PLUGIN_ID = 'workflow.audio-separator';
+const AUDIO_SEPARATE_ACTION = 'audio_separate';
+const SEPARATE_HQ_MODEL = 'model_bs_roformer_ep_317_sdr_12.9755.ckpt';
+// UVR stem → 中文名（产物节点标题）
+const STEM_TITLES = { Vocals: '人声', Instrumental: '伴奏' };
 
 /**
  * 音频展示节点：无边框铺满式波形播放器（结构对标 VideoDisplayNode，内容区零内边距）。
@@ -14,6 +21,8 @@ import NodeHoverMenu from './NodeHoverMenu';
  * - 交互：波形区域点击 + 拖拽 seek（nodrag nopan），播放/暂停按钮 + 当前时间/总时长；
  *   多音频时底部 ‹ 1/N › 切换；节点拖动只走顶部窄条与空白面（.audio-drag-handle）。
  * - 离屏不解码：useViewportActivation 首次进入视口才 fetch。
+ * - 人声分离：hover 菜单调 audio-separator 插件（本地 HTTP 服务），产物 stem 在右侧
+ *   插入带「人声/伴奏」标题的音频节点（data.title 选中时显示）。
  *
  * data.audios: string[]  当前展示的音频（http URL），上游连线时由派生逻辑覆盖
  * data.source: 'upload' | 'upstream' | ...  来源标记
@@ -99,6 +108,7 @@ export default function AudioDisplayNode({ data, selected }) {
   const audioCtxRef = useRef(null);
   const viewportActivated = useViewportActivation(rootRef);
   const [uploading, setUploading] = useState(false);
+  const [separating, setSeparating] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [nodeHovered, setNodeHovered] = useState(false);
   const [audioIndex, setAudioIndex] = useState(0);
@@ -285,6 +295,41 @@ export default function AudioDisplayNode({ data, selected }) {
     else a.pause();
   }, [current]);
 
+  // 人声分离：audio-separator 插件（本地 HTTP 服务，GPU 加速）→ 每个 stem 在源节点右侧插入音频节点。
+  // 产物落插件临时目录，filePath 经 localFileUrl 转本地 http URL（token 持久化，可直接存画布）。
+  const onExportAudios = data?.onExportAudios;
+  const handleSeparateVocals = useCallback(async (model) => {
+    const AS = window.AgentSpaces;
+    if (!current || separating) return;
+    if (!/^https?:/i.test(normalizeImageUrl(current) || '')) {
+      toast.error('当前音频不是 http 地址，无法分离');
+      return;
+    }
+    if (!AS?.callPluginTool || !AS?.localFileUrl || !onExportAudios) {
+      toast.error('宿主插件能力不可用');
+      return;
+    }
+    setSeparating(true);
+    try {
+      const ret = await AS.callPluginTool(AUDIO_SEPARATOR_PLUGIN_ID, AUDIO_SEPARATE_ACTION, {
+        input: normalizeImageUrl(current),
+        output_format: 'MP3',
+        ...(model ? { model } : {}),
+      });
+      const outputs = ret?.success ? ret?.data?.outputs : null;
+      if (!Array.isArray(outputs) || outputs.length === 0) {
+        throw new Error(ret?.message || '人声分离失败');
+      }
+      const urls = outputs.map((o) => normalizeImageUrl(AS.localFileUrl(o.filePath)));
+      onExportAudios(urls, { titles: outputs.map((o) => STEM_TITLES[o.stem] || o.stem) });
+      toast.success(`人声分离完成，已插入 ${urls.length} 个音频节点`);
+    } catch (err) {
+      toast.error(`人声分离失败：${err?.message || err}`);
+    } finally {
+      setSeparating(false);
+    }
+  }, [current, separating, onExportAudios]);
+
   const sourceLabel = data?.source === 'upstream' ? '来自连线'
     : data?.source === 'history' ? '来自记录'
     : data?.source === 'storyboard' ? '来自分镜'
@@ -299,6 +344,16 @@ export default function AudioDisplayNode({ data, selected }) {
       onMouseLeave={() => setNodeHovered(false)}
     >
       <NodeHoverMenu
+        actions={current ? [{
+          key: 'separate-vocals',
+          label: separating ? '人声分离中…' : '人声分离',
+          icon: <Mic className="h-3.5 w-3.5" />,
+          disabled: separating,
+          children: [
+            { key: 'separate-fast', label: '快速分离（默认模型）', disabled: separating, onClick: () => handleSeparateVocals() },
+            { key: 'separate-hq', label: '高质量分离（首次需下载模型）', disabled: separating, onClick: () => handleSeparateVocals(SEPARATE_HQ_MODEL) },
+          ],
+        }] : []}
         visible={(nodeHovered || menuOpen) && selectionCount <= 1}
         open={menuOpen}
         onOpenChange={setMenuOpen}
@@ -337,6 +392,19 @@ export default function AudioDisplayNode({ data, selected }) {
         >
           <div className="mx-auto mt-1 h-1 w-8 rounded-full bg-foreground/30" />
         </div>
+
+        {/* 人声分离运行态：顶部 indeterminate 进度条 + 状态 pill（不挡波形试听，进度不可知——服务端 job 无百分比） */}
+        {separating && (
+          <>
+            <div className="audio-separate-progress pointer-events-none absolute left-0 right-0 top-0 z-30 h-[3px] overflow-hidden rounded-t-lg bg-primary/15">
+              <div className="audio-separate-progress-bar h-full w-1/3 rounded-full bg-primary" />
+            </div>
+            <div className="nodrag nopan absolute left-1.5 top-1.5 z-30 flex items-center gap-1.5 rounded-full bg-background/85 py-1 pl-1.5 pr-3 shadow ring-1 ring-border backdrop-blur-sm">
+              <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+              <span className="text-[11px] text-primary">人声分离中…</span>
+            </div>
+          </>
+        )}
 
         {uploading ? (
           <div className="absolute inset-0 flex items-center justify-center gap-2 rounded-lg bg-card text-xs text-primary ring-1 ring-border">
@@ -410,9 +478,9 @@ export default function AudioDisplayNode({ data, selected }) {
                     ><ChevronRight className="h-3.5 w-3.5" /></button>
                   </div>
                 )}
-                {selected && sourceLabel ? (
-                  <span className="shrink-0 truncate rounded-full bg-background/85 px-2 py-1 text-[10px] text-muted-foreground shadow ring-1 ring-border backdrop-blur-sm">
-                    {sourceLabel}
+                {selected && (data?.title || sourceLabel) ? (
+                  <span className="max-w-[45%] shrink-0 truncate rounded-full bg-background/85 px-2 py-1 text-[10px] text-muted-foreground shadow ring-1 ring-border backdrop-blur-sm">
+                    {data?.title || sourceLabel}
                   </span>
                 ) : null}
               </div>

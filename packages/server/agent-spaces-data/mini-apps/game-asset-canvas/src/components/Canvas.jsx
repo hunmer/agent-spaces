@@ -232,10 +232,10 @@ export default function Canvas({ hostConfig }) {
   const { addVideoNodesFromUrls, handleExportVideos } = useVideoOutputs({ setNodes });
   // —— 音频节点批量产出（提取音频导出到画布）——
   const { addAudioNodesFromUrls } = useAudioOutputs({ setNodes });
-  // 视频提取音频 → 在源节点右侧插入音频展示节点
-  const handleExportAudios = useCallback((sourceNode, audios) => {
+  // 视频提取音频 → 在源节点右侧插入音频展示节点（opts.titles 可带每轨标题，如人声/伴奏）
+  const handleExportAudios = useCallback((sourceNode, audios, opts = {}) => {
     if (!audios?.length) return;
-    addAudioNodesFromUrls(audios, { sourceNode, tags: [IMAGE_TAGS.export], source: 'export' });
+    addAudioNodesFromUrls(audios, { sourceNode, tags: [IMAGE_TAGS.export], source: 'export', titles: opts.titles });
   }, [addAudioNodesFromUrls]);
   const storyboardOperations = useStoryboardOperations({
     updateNodeData,

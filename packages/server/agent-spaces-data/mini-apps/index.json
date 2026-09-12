@@ -413,7 +413,8 @@
       "workflow.lumimatte",
       "workflow.sam",
       "workflow.ffmpeg",
-      "workflow.depth-anything"
+      "workflow.depth-anything",
+      "workflow.audio-separator"
     ],
     "agentPermissions": [
       "Files"
@@ -471,6 +472,6 @@
       }
     ],
     "createdAt": "2026-07-22T00:00:00.000Z",
-    "updatedAt": "2026-09-12T07:29:38.248Z"
+    "updatedAt": "2026-09-12T10:25:11.740Z"
   }
 ]

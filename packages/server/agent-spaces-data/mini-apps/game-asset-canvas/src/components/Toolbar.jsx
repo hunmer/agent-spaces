@@ -26,6 +26,7 @@ import {
   Undo2,
   toast,
 } from '@agent-spaces/ui';
+import { TOOLBAR_RADIUS, TOOLBAR_SHADOW } from './floatingStyles';
 
 /**
  * 顶部工具栏：标题 + Menubar + 右侧插槽（工作区切换/执行队列/节点数）。
@@ -191,7 +192,14 @@ export default function Toolbar({
   };
 
   return (
-    <div className="flex flex-wrap items-center gap-2 border-b border-border bg-card px-3 py-2">
+    <div
+      className="flex flex-wrap items-center gap-2 border border-border bg-card px-3 py-2"
+      style={{
+        margin: '12px 12px 0',
+        borderRadius: TOOLBAR_RADIUS,
+        boxShadow: TOOLBAR_SHADOW,
+      }}
+    >
       {workspaceSlot}
       <div className="mx-1 h-5 w-px bg-border" />
 

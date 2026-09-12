@@ -18,7 +18,7 @@ mini-app 根: packages/server/agent-spaces-data/mini-apps/game-asset-canvas/
     tools.js             # Agent 工具元数据（description/inputSchema）—— 改 agent 工具描述改这里
     components/
       Canvas.jsx         # 编排层（状态/hook 装配 + ReactFlow 回调）
-      RightPanel.jsx     # 右侧三 tab：新增节点/节点管理/生成记录
+      RightPanel.jsx     # 右侧 tabs（新增节点/预设/节点管理/生成记录/素材库/Chat 插槽）：organic-notch 风格——激活按钮自身是白 pill、按钮内挂缺口 SVG 搭在卡片上，按钮行+卡片共处一个 drop-shadow 容器形成统一剪影（无测量逻辑、无背景渐变）
       Toolbar.jsx / SettingsDialog.jsx / ExecutionQueuePopover.jsx
       NodeFormDialog.jsx / NodeExecuteDialog.jsx
       PromptPickerDialog.jsx / FileUpload.jsx
@@ -118,6 +118,7 @@ Agent → api.js handler → ctx.requestClient(type, payload, timeoutMs)
 | 视频编辑器节点 | `components/nodes/VideoEditorNode.jsx` + `components/VideoEditorDialog.jsx` + `components/FrameSequencePlayer.jsx` | 节点外壳 + 大对话框（双播放器/帧选区/动画组）+ React 内置帧播放器 |
 | 深度节点图片/视频分流 | `components/nodes/DepthExtractNode.jsx` + `utils/depth.js` + `hooks/useNodeExecutions.js(handleDepth)` + 插件 `depth-anything` 的 `depth_video_predict` | 图片走批量接口；视频逐帧转深度视频（服务端单任务，多视频串行）；连线按 edge.data.inputType 分流 |
 | 视频帧截取/区域截取/尺寸调整 | ffmpeg 插件（`ffmpeg_extract_frames` / `ffmpeg_custom` / `ffmpeg_probe`） | 经 `callPluginTool('workflow.ffmpeg', action, args)` 调用；帧为原分辨率无损 PNG，归一化 cropRegion 在插件内转 ffmpeg crop |
+| 音频人声分离 | `components/nodes/AudioDisplayNode.jsx` + 插件 `audio-separator` 的 `audio_separate` | hover 菜单「人声分离」（快速/高质量模型）；产物 stem 的本地 filePath 经 `localFileUrl` 转 http URL，`onExportAudios(urls, {titles})` 在右侧插入带「人声/伴奏」标题（`data.title`）的音频节点；需本地启动 audio-separator HTTP 服务（127.0.0.1:8365，见插件 README） |
 | 插件访问 mini-app data 目录 | `plugin-runtime-api.ts`（getMiniAppDataDir/saveMiniAppDataFile）+ `routes/plugin.ts:187`（透传 workspaceId） | 打通了 workspaceId → 插件 api 断点，使 ffmpeg 产物能写到当前 mini-app 的 data 沙箱 |
 
 ## 核心约束 / 坑点（去重精选）
@@ -181,6 +182,7 @@ Agent → api.js handler → ctx.requestClient(type, payload, timeoutMs)
 41. **派生按边类型过滤**：`computeInputImages` / `computeInputVideos` 会跳过 `edge.data.inputType` 与自身媒体类型不符的边（旧边无 inputType 保持原行为）。双产出节点（videoEditor 同时有 output.images 精灵图与 output.videos）连出的视频边不得把精灵图混入目标 `data.images`。depthExtract 是双产出节点：仅产出视频时按 video 连线（`getNodeEffectiveOutputType`），图+视频混合按 image。
 42. **深度节点视频转换超时与串行**：Depth Anything 服务端同时只允许一个视频任务（409），多视频必须串行；视频动作用独立 `video_timeout`（默认 10 分钟）做总预算，不能复用单图 `timeout` config（120s 会掐死长视频）。
 43. **节点底部操作块固定 footer**：NodeShell 会把带 `data-fixed-footer` 的直接子元素整体抽到节点底部固定 footer（不随表单滚动，位于 `overflow-auto` 内容区之外）；生成类节点（文生图/编辑图片/图像处理/抠图/深度提取/配音/视频/工作流/反推提示词）的「执行/取消按钮 + 已取消/错误提示」统一用该标记包裹。旧的「单个 w-full button」自动识别仍兼容。
+44. **SVG presentation attribute 不支持 var()**：`fill="var(--card)"` 解析失败回退 `none`（图形静默不可见）；引用主题变量必须走 `style={{ fill: 'var(--card)' }}`。RightPanel 的 organic-notch 缺口即因此踩坑两轮。
 
 ## 工作区数据目录（产图落本地）
 

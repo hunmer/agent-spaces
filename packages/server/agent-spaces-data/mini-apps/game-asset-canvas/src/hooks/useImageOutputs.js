@@ -120,6 +120,8 @@ function buildAudioNodes(prevNodes, urls, opts) {
   const positions = findFreePositions(anchor, size.w, size.h, urls.length, prevNodes, {
     gap, direction: 'right', cols: Math.min(3, Math.max(1, urls.length)),
   });
+  // opts.titles: 与 urls 等长的标题数组（如人声分离的「人声/伴奏」），写入 data.title；缺省不写
+  const titles = Array.isArray(opts.titles) ? opts.titles : null;
   const additions = urls.map((url, index) => ({
     id: genId(NODE_TYPES.audioDisplay),
     type: NODE_TYPES.audioDisplay,
@@ -132,6 +134,7 @@ function buildAudioNodes(prevNodes, urls, opts) {
       source: opts.source || 'queue',
       tags: dedupeTags(opts.tags),
       label: NODE_META[NODE_TYPES.audioDisplay].label,
+      ...(titles?.[index] ? { title: titles[index] } : {}),
     },
   }));
   return { additions, positions };

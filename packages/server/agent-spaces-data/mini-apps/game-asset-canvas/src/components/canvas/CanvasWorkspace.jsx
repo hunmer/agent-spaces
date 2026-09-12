@@ -21,6 +21,7 @@ import FloatingEdge from './FloatingEdge';
 import AlignmentGuides from './AlignmentGuides';
 import { NODE_META } from '../../utils/constants';
 import { PANEL_ID_MAIN, PANEL_ID_RIGHT } from '../../utils/canvas-constants';
+import { FLOATING_RADIUS, FLOATING_SHADOW } from '../floatingStyles';
 
 const EDGE_TYPES = { floating: FloatingEdge };
 const DEFAULT_EDGE_OPTIONS = {
@@ -68,12 +69,17 @@ export default function CanvasWorkspace({
             queueSlot={<ExecutionQueuePopover {...queueProps} />}
           />
           <CanvasContextMenu
-            triggerElement={<div className="relative min-h-0 flex-1" {...canvasContainerProps} />}
+            triggerElement={<div className="relative min-h-0 flex-1 p-3" {...canvasContainerProps} />}
             {...canvasContextMenuProps}
           >
             <ReactFlow
               key={activeId}
               {...reactFlowProps}
+              className="h-full w-full overflow-hidden border border-border bg-card"
+              style={{
+                borderRadius: FLOATING_RADIUS,
+                boxShadow: FLOATING_SHADOW,
+              }}
               connectionLineComponent={ConnectionLine}
               connectionRadius={160}
               nodeTypes={reactFlowProps.nodeTypes}
