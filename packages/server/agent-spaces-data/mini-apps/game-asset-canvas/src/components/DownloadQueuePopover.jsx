@@ -22,7 +22,6 @@ export default function DownloadQueuePopover({ tasks = [], activeCount = 0, onCl
         )}
       >
         <Download className="h-4 w-4" />
-        <span>下载队列</span>
         {activeCount > 0 && (
           <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold leading-none text-primary-foreground">
             {activeCount > 99 ? '99+' : activeCount}
