@@ -97,9 +97,17 @@
       "scale": 1,
       "xOffset": 0,
       "yOffset": 0
+    },
+    {
+      "id": "m-1789198192369",
+      "name": " (001)",
+      "url": "https://cdn.jsdelivr.net/gh/Eikanya/Live2d-model@master/BanG%20Dream!/asneeded/live2d/chara/001/001_miku_romecin/.model.json",
+      "scale": 1,
+      "xOffset": 0,
+      "yOffset": 0
     }
   ],
-  "currentModelId": "m-1784285568774",
+  "currentModelId": "m-1789198192369",
   "repositories": [
     {
       "id": "default-repo",
@@ -6697,6 +6705,12 @@
   "libraryLastUpdated": 1784279006407,
   "favoriteModels": [],
   "recentModels": [
+    {
+      "id": "m-1789198192369",
+      "name": " (001)",
+      "url": "https://cdn.jsdelivr.net/gh/Eikanya/Live2d-model@master/BanG%20Dream!/asneeded/live2d/chara/001/001_miku_romecin/.model.json",
+      "timestamp": 1789198192369
+    },
     {
       "id": "m-1784285568774",
       "name": "normal (rfb_1601)",

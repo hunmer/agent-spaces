@@ -118,6 +118,38 @@
     ]
   },
   {
+    "id": "workflow.audio-separator",
+    "name": "音频人声分离",
+    "version": "1.0.0",
+    "description": "调用本地 audio-separator HTTP 服务（GPU 加速）将音频分离为人声与伴奏，支持多种 UVR 模型",
+    "author": {
+      "name": "workflow"
+    },
+    "tags": [
+      "音频",
+      "人声分离",
+      "AI"
+    ],
+    "type": "server",
+    "hasView": false,
+    "hasWorkflow": true,
+    "path": "audio-separator",
+    "iconUrl": "plugins/audio-separator/icon.svg",
+    "md5": "64e5725ea0d8050aea65d452b41b4c8f",
+    "updatedAt": "2026-09-12T07:28:22.971Z",
+    "files": [
+      "actions.js",
+      "icon.svg",
+      "info.json",
+      "lang.json",
+      "main.js",
+      "README.md",
+      "shared.js",
+      "tools.js",
+      "workflow.js"
+    ]
+  },
+  {
     "id": "workflow.baidu-image",
     "name": "百度AI图像处理",
     "version": "1.0.0",
@@ -494,8 +526,8 @@
     "hasWorkflow": true,
     "path": "ffmpeg",
     "iconUrl": "plugins/ffmpeg/icon.svg",
-    "md5": "94b652d56018bc05f9cda4477799b56d",
-    "updatedAt": "2026-09-12T03:09:52.193Z",
+    "md5": "d4b1314c29da67106b0e39e085e5d084",
+    "updatedAt": "2026-09-12T04:08:31.395Z",
     "files": [
       "actions.js",
       "frames.js",

@@ -89,7 +89,10 @@ function ImageContextMenuItems({ url, onAddToAssets }) {
 }
 
 function isNodeFooterAction(child) {
-  if (!isValidElement(child) || child.props?.type !== 'button') return false;
+  if (!isValidElement(child)) return false;
+  // 显式标记：带 data-fixed-footer 的子元素整体固定到底部（可包含按钮组/错误信息，不限单个 w-full 按钮）
+  if (child.props?.['data-fixed-footer'] !== undefined) return true;
+  if (child.props?.type !== 'button') return false;
   return typeof child.props?.className === 'string' && /(?:^|\s)w-full(?:\s|$)/.test(child.props.className);
 }
 

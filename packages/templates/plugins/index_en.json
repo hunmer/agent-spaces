@@ -118,6 +118,38 @@
     ]
   },
   {
+    "id": "workflow.audio-separator",
+    "name": "Audio Vocal Separator",
+    "version": "1.0.0",
+    "description": "Separate audio into vocals and instrumental stems via a local audio-separator HTTP service (GPU accelerated), with multiple UVR models.",
+    "author": {
+      "name": "workflow"
+    },
+    "tags": [
+      "Audio",
+      "Vocal Separation",
+      "AI"
+    ],
+    "type": "server",
+    "hasView": false,
+    "hasWorkflow": true,
+    "path": "audio-separator",
+    "iconUrl": "plugins/audio-separator/icon.svg",
+    "md5": "64e5725ea0d8050aea65d452b41b4c8f",
+    "updatedAt": "2026-09-12T07:28:22.971Z",
+    "files": [
+      "actions.js",
+      "icon.svg",
+      "info.json",
+      "lang.json",
+      "main.js",
+      "README.md",
+      "shared.js",
+      "tools.js",
+      "workflow.js"
+    ]
+  },
+  {
     "id": "workflow.baidu-image",
     "name": "Baidu AI Image",
     "version": "1.0.0",
@@ -494,8 +526,8 @@
     "hasWorkflow": true,
     "path": "ffmpeg",
     "iconUrl": "plugins/ffmpeg/icon.svg",
-    "md5": "94b652d56018bc05f9cda4477799b56d",
-    "updatedAt": "2026-09-12T03:09:52.193Z",
+    "md5": "d4b1314c29da67106b0e39e085e5d084",
+    "updatedAt": "2026-09-12T04:08:31.395Z",
     "files": [
       "actions.js",
       "frames.js",

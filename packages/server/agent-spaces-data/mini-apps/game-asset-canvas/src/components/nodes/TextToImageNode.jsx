@@ -173,31 +173,34 @@ export default function TextToImageNode({ id, data, selected }) {
         onChange={(patch) => set(patch)}
       />
 
-      {running ? (
-        <button
-          type="button"
-          onClick={() => onCancelProcess?.(id)}
-          className="w-full rounded-md border border-destructive bg-background px-3 py-1.5 text-sm font-medium text-destructive transition hover:bg-destructive hover:text-destructive-foreground"
-        >
-          取消生成
-        </button>
-      ) : (
-        <div className="flex items-center gap-2">
+      {/* data-fixed-footer：整块固定在节点底部 footer，不进入滚动区 */}
+      <div data-fixed-footer className="flex flex-col gap-2">
+        {running ? (
           <button
             type="button"
-            disabled={!hasPrompt(params)}
-            onClick={handleRun}
-            className="min-w-0 flex-1 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+            onClick={() => onCancelProcess?.(id)}
+            className="w-full rounded-md border border-destructive bg-background px-3 py-1.5 text-sm font-medium text-destructive transition hover:bg-destructive hover:text-destructive-foreground"
           >
-            生成图片
+            取消生成
           </button>
-          <WorkflowExecutionButton execution={status === 'done' ? data?.workflowExecution : null} />
-        </div>
-      )}
+        ) : (
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              disabled={!hasPrompt(params)}
+              onClick={handleRun}
+              className="min-w-0 flex-1 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              生成图片
+            </button>
+            <WorkflowExecutionButton execution={status === 'done' ? data?.workflowExecution : null} />
+          </div>
+        )}
 
-      {error && (
-        <p className="rounded-md bg-red-500/10 px-2 py-1 text-xs text-red-500">{error}</p>
-      )}
+        {error && (
+          <p className="rounded-md bg-red-500/10 px-2 py-1 text-xs text-red-500">{error}</p>
+        )}
+      </div>
     </NodeShell>
   );
 }

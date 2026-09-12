@@ -180,6 +180,7 @@ Agent → api.js handler → ctx.requestClient(type, payload, timeoutMs)
 40. **外网图片进入持久后台下载队列**：图片节点先写回工作流外链，再提交 `persist-images` 到 mini-app background service。`src/background.js` 在服务端保存到工作区 directory（未配置则 data/downloads），把目标节点及生成历史中的精确 URL 替换成本地 HTTP 地址；任务状态存 `configs/download-queue.json`。任务必须携带 `workspaceId/nodeId/historyId`，分组实例还必须携带冻结的 `executionTarget`，页面刷新不影响下载。
 41. **派生按边类型过滤**：`computeInputImages` / `computeInputVideos` 会跳过 `edge.data.inputType` 与自身媒体类型不符的边（旧边无 inputType 保持原行为）。双产出节点（videoEditor 同时有 output.images 精灵图与 output.videos）连出的视频边不得把精灵图混入目标 `data.images`。depthExtract 是双产出节点：仅产出视频时按 video 连线（`getNodeEffectiveOutputType`），图+视频混合按 image。
 42. **深度节点视频转换超时与串行**：Depth Anything 服务端同时只允许一个视频任务（409），多视频必须串行；视频动作用独立 `video_timeout`（默认 10 分钟）做总预算，不能复用单图 `timeout` config（120s 会掐死长视频）。
+43. **节点底部操作块固定 footer**：NodeShell 会把带 `data-fixed-footer` 的直接子元素整体抽到节点底部固定 footer（不随表单滚动，位于 `overflow-auto` 内容区之外）；生成类节点（文生图/编辑图片/图像处理/抠图/深度提取/配音/视频/工作流/反推提示词）的「执行/取消按钮 + 已取消/错误提示」统一用该标记包裹。旧的「单个 w-full button」自动识别仍兼容。
 
 ## 工作区数据目录（产图落本地）
 

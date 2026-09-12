@@ -126,38 +126,41 @@ export default function PromptReverseNode({ id, type, data, selected }) {
           : '输入：无（上传或连线）'}
       </div>
 
-      {running ? (
-        <div className="flex items-center gap-2">
-          <div className="flex-1 truncate rounded-md bg-primary/70 px-3 py-1.5 text-xs font-medium text-primary-foreground opacity-90">
-            {statusMsg || '反推中…'}
+      {/* data-fixed-footer：整块固定在节点底部 footer，不进入滚动区 */}
+      <div data-fixed-footer className="flex flex-col gap-2">
+        {running ? (
+          <div className="flex items-center gap-2">
+            <div className="flex-1 truncate rounded-md bg-primary/70 px-3 py-1.5 text-xs font-medium text-primary-foreground opacity-90">
+              {statusMsg || '反推中…'}
+            </div>
+            <button
+              type="button"
+              onClick={() => onCancelProcess?.(id)}
+              title="取消生成"
+              className="shrink-0 rounded-md border border-destructive bg-background px-3 py-1.5 text-xs font-medium text-destructive transition hover:bg-destructive hover:text-destructive-foreground"
+            >
+              取消生成
+            </button>
           </div>
+        ) : (
           <button
             type="button"
-            onClick={() => onCancelProcess?.(id)}
-            title="取消生成"
-            className="shrink-0 rounded-md border border-destructive bg-background px-3 py-1.5 text-xs font-medium text-destructive transition hover:bg-destructive hover:text-destructive-foreground"
+            onClick={handleRun}
+            disabled={uploading || !inputImages.length}
+            className="w-full rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            取消生成
+            🔍 反推提示词
           </button>
-        </div>
-      ) : (
-        <button
-          type="button"
-          onClick={handleRun}
-          disabled={uploading || !inputImages.length}
-          className="w-full rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          🔍 反推提示词
-        </button>
-      )}
+        )}
 
-      {error && (
-        <p className="rounded-md bg-red-500/10 px-2 py-1 text-xs text-red-500">{error}</p>
-      )}
+        {error && (
+          <p className="rounded-md bg-red-500/10 px-2 py-1 text-xs text-red-500">{error}</p>
+        )}
 
-      {cancelled && (
-        <p className="rounded-md bg-muted px-2 py-1 text-xs text-muted-foreground">已取消</p>
-      )}
+        {cancelled && (
+          <p className="rounded-md bg-muted px-2 py-1 text-xs text-muted-foreground">已取消</p>
+        )}
+      </div>
     </NodeShell>
   );
 }

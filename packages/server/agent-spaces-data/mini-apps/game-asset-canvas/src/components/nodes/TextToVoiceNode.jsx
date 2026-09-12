@@ -137,28 +137,31 @@ export default function TextToVoiceNode({ id, data, selected }) {
         onChange={(patch) => set(patch)}
       />
 
-      {running ? (
-        <button
-          type="button"
-          onClick={() => onCancelProcess?.(id)}
-          className="w-full rounded-md border border-destructive bg-background px-3 py-1.5 text-sm font-medium text-destructive transition hover:bg-destructive hover:text-destructive-foreground"
-        >
-          取消生成
-        </button>
-      ) : (
-        <button
-          type="button"
-          disabled={!hasPrompt(params)}
-          onClick={handleRun}
-          className="w-full rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          生成配音
-        </button>
-      )}
+      {/* data-fixed-footer：整块固定在节点底部 footer，不进入滚动区 */}
+      <div data-fixed-footer className="flex flex-col gap-2">
+        {running ? (
+          <button
+            type="button"
+            onClick={() => onCancelProcess?.(id)}
+            className="w-full rounded-md border border-destructive bg-background px-3 py-1.5 text-sm font-medium text-destructive transition hover:bg-destructive hover:text-destructive-foreground"
+          >
+            取消生成
+          </button>
+        ) : (
+          <button
+            type="button"
+            disabled={!hasPrompt(params)}
+            onClick={handleRun}
+            className="w-full rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            生成配音
+          </button>
+        )}
 
-      {error && (
-        <p className="rounded-md bg-red-500/10 px-2 py-1 text-xs text-red-500">{error}</p>
-      )}
+        {error && (
+          <p className="rounded-md bg-red-500/10 px-2 py-1 text-xs text-red-500">{error}</p>
+        )}
+      </div>
 
       {audios.length > 0 && (
         <div className="flex flex-col gap-1.5">

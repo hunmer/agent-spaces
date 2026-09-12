@@ -205,57 +205,59 @@ export default function ImageProcessNode({ id, type, data, selected }) {
         {multipleIn && inputImages.length < minInputs && ` · 需 ≥${minInputs} 张`}
       </div>
 
-      {/* 执行按钮 + 取消按钮（处理中时显示） */}
-      {running ? (
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            disabled
-            className="flex-1 cursor-not-allowed rounded-md bg-primary/70 px-3 py-1.5 text-xs font-medium text-primary-foreground opacity-80"
-          >
-            {data?.statusMsg || '处理中…'}
-          </button>
-          <button
-            type="button"
-            onClick={() => onCancelProcess?.(id)}
-            title="取消生成"
-            className="shrink-0 rounded-md border border-destructive bg-background px-3 py-1.5 text-xs font-medium text-destructive transition hover:bg-destructive hover:text-destructive-foreground"
-          >
-            取消生成
-          </button>
-        </div>
-      ) : (
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={handleRun}
-            disabled={uploading || !inputImages.length || (multipleIn && inputImages.length < minInputs)}
-            className="flex-1 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            ⚡ 执行
-          </button>
-          {isGridStitch && (
+      {/* 执行按钮 + 取消按钮（处理中时显示）。data-fixed-footer：整块固定在节点底部 footer，不进入滚动区 */}
+      <div data-fixed-footer className="flex flex-col gap-2">
+        {running ? (
+          <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={() => setGridDialogOpen(true)}
-              disabled={uploading || inputImages.length < minInputs}
-              title="打开网格拼接编辑器"
-              aria-label="打开网格拼接编辑器"
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border bg-background text-foreground transition hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+              disabled
+              className="flex-1 cursor-not-allowed rounded-md bg-primary/70 px-3 py-1.5 text-xs font-medium text-primary-foreground opacity-80"
             >
-              <Pencil className="h-4 w-4" />
+              {data?.statusMsg || '处理中…'}
             </button>
-          )}
-        </div>
-      )}
+            <button
+              type="button"
+              onClick={() => onCancelProcess?.(id)}
+              title="取消生成"
+              className="shrink-0 rounded-md border border-destructive bg-background px-3 py-1.5 text-xs font-medium text-destructive transition hover:bg-destructive hover:text-destructive-foreground"
+            >
+              取消生成
+            </button>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleRun}
+              disabled={uploading || !inputImages.length || (multipleIn && inputImages.length < minInputs)}
+              className="flex-1 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              ⚡ 执行
+            </button>
+            {isGridStitch && (
+              <button
+                type="button"
+                onClick={() => setGridDialogOpen(true)}
+                disabled={uploading || inputImages.length < minInputs}
+                title="打开网格拼接编辑器"
+                aria-label="打开网格拼接编辑器"
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border bg-background text-foreground transition hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <Pencil className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+        )}
 
-      {cancelled && (
-        <p className="rounded-md bg-muted px-2 py-1 text-xs text-muted-foreground">已取消</p>
-      )}
+        {cancelled && (
+          <p className="rounded-md bg-muted px-2 py-1 text-xs text-muted-foreground">已取消</p>
+        )}
 
-      {error && (
-        <p className="rounded-md bg-red-500/10 px-2 py-1 text-xs text-red-500">{error}</p>
-      )}
+        {error && (
+          <p className="rounded-md bg-red-500/10 px-2 py-1 text-xs text-red-500">{error}</p>
+        )}
+      </div>
 
       {isGridStitch && (
         <GridStitchDialog

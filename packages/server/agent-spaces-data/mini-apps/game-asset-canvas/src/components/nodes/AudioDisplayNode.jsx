@@ -353,7 +353,7 @@ export default function AudioDisplayNode({ data, selected }) {
             <span className="pointer-events-none select-none">点击上传音频，或连接上游节点</span>
           </button>
         ) : (
-          <div className="audio-drag-handle absolute inset-0 cursor-move overflow-hidden rounded-lg bg-gradient-to-b from-card to-muted/30 ring-1 ring-border/70">
+          <div className="audio-drag-handle absolute inset-0 cursor-move overflow-hidden rounded-lg bg-gradient-to-b from-card to-secondary ring-1 ring-border">
             {/* 波形画布：铺满节点，点击/拖拽 seek */}
             <div
               ref={surfaceRef}
