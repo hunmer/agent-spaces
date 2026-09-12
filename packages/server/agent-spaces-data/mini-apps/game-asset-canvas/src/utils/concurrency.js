@@ -8,14 +8,16 @@
  * @param {Array} items 输入数组
  * @param {number} limit 最大并发数（<=0/NaN/Infinity → 不限）
  * @param {(item, index) => Promise<any>} fn 每项执行函数
+ * @param {(done: number, total: number) => void} [onProgress] 每完成一项回调（含失败项）
  * @returns {Promise<Array<{status:'fulfilled',value}|{status:'rejected',reason}>>}
  */
-export async function mapWithConcurrency(items, limit, fn) {
+export async function mapWithConcurrency(items, limit, fn, onProgress) {
   const list = Array.isArray(items) ? items : [...items];
   const n = Number(limit);
   const max = Number.isFinite(n) && n >= 1 ? Math.min(Math.floor(n), list.length) : list.length;
   const results = new Array(list.length);
   let idx = 0;
+  let done = 0;
   const worker = async () => {
     while (true) {
       const i = idx++;
@@ -25,6 +27,8 @@ export async function mapWithConcurrency(items, limit, fn) {
       } catch (reason) {
         results[i] = { status: 'rejected', reason };
       }
+      done += 1;
+      if (typeof onProgress === 'function') onProgress(done, list.length);
     }
   };
   await Promise.all(Array.from({ length: max }, worker));

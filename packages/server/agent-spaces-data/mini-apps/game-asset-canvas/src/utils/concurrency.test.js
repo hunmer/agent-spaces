@@ -62,6 +62,20 @@ test('mapWithConcurrency falls back to unlimited when limit invalid', async () =
   assert.equal(peak, items.length, 'limit<=0 应退化为不限并发（等价 allSettled）');
 });
 
+test('mapWithConcurrency reports progress for every item including failures', async () => {
+  const events = [];
+  await mapWithConcurrency(['a', 'bad', 'c'], 2, async (v) => {
+    await delay(5);
+    if (v === 'bad') throw new Error('boom');
+    return v;
+  }, (done, total) => events.push([done, total]));
+  // 完成计数单调递增至 total；total 恒为 3
+  assert.deepEqual(events.map((e) => e[0]).sort((a, b) => a - b), [1, 2, 3]);
+  assert.ok(events.every((e) => e[1] === 3));
+  // 无回调时不抛错（向后兼容）
+  await mapWithConcurrency([1], 1, (v) => v, undefined);
+});
+
 test('clampConcurrency clamps to range with fallback', () => {
   assert.equal(clampConcurrency(undefined, 4), 4);
   assert.equal(clampConcurrency('', 2), 2);

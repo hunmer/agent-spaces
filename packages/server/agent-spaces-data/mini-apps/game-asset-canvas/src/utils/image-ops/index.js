@@ -172,7 +172,7 @@ export const PROCESSORS = {
         ? clampConcurrency(params.concurrency, 2)
         : Infinity;
       // 每张图一次调用（image_enchanter / lumimatte_super_res 均为单图输入）
-      const results = await mapWithConcurrency(inputUrls, limit, perUrl);
+      const results = await mapWithConcurrency(inputUrls, limit, perUrl, ctx?.onProgress);
       // 收集所有成功的产出 URL（一张输入可能返回多张，扁平化）
       const outUrls = [];
       let failed = 0;

@@ -7,6 +7,7 @@ import { Scissors } from '@agent-spaces/ui';
 import {
   CUTOUT_MODES, CUTOUT_PARAMS, DEFAULT_CUTOUT_MODE, defaultCutoutParams,
 } from '../utils/constants';
+import { mapWithConcurrency } from '../utils/concurrency';
 import ParamField from './nodes/ParamField';
 
 /**
@@ -61,27 +62,18 @@ export default function CutoutDialog({
     setError('');
     setProgress({ done: 0, total: urls.length });
     try {
-      // 并发限流：按 concurrency 同时跑，保证产出顺序与输入对齐；单张失败置 null 不阻塞。
-      const out = new Array(urls.length).fill(null);
-      let done = 0;
-      let idx = 0;
-      const limit = Math.max(1, Math.min(concurrency, urls.length));
-      const worker = async () => {
-        while (true) {
-          const i = idx++;
-          if (i >= urls.length) return;
-          try {
-            const v = await onRun(mode, modeParams || {}, [urls[i]]);
-            out[i] = Array.isArray(v) ? (v[0] || null) : (v || null);
-          } catch (err) {
-            out[i] = null;
-            console.warn('[cutout-dialog] item failed:', i, err);
-          }
-          done += 1;
-          setProgress({ done, total: urls.length });
-        }
-      };
-      await Promise.all(Array.from({ length: limit }, worker));
+      // 并发限流：按 concurrency 同时跑（utils/concurrency 统一实现），产出顺序与输入对齐，单张失败置 null 不阻塞
+      const results = await mapWithConcurrency(
+        urls,
+        Math.max(1, Math.min(concurrency, urls.length)),
+        (url) => onRun(mode, modeParams || {}, [url]),
+        (done, total) => setProgress({ done, total }),
+      );
+      const out = results.map((r) => {
+        if (r.status !== 'fulfilled') return null;
+        const v = r.value;
+        return Array.isArray(v) ? (v[0] || null) : (v || null);
+      });
       const okCount = out.filter(Boolean).length;
       if (!okCount) throw new Error('全部抠图失败');
       onClose?.({ ok: true, urls: out });

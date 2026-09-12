@@ -176,3 +176,30 @@ test('rembg cutout also respects concurrency param', async () => {
     delete globalThis.window;
   }
 });
+
+test('lumimatte cutout forwards onProgress with done/total', async () => {
+  const { runCutout } = loadCutout();
+  const delay = (ms) => new Promise((r) => setTimeout(r, ms));
+  globalThis.window = {
+    AgentSpaces: {
+      callPluginTool: async (_p, _a, args) => {
+        await delay(5);
+        return { success: true, data: { imageUrl: args.image.replace('/in/', '/out/') } };
+      },
+    },
+  };
+  try {
+    const events = [];
+    const urls = await runCutout(
+      'lumimatte',
+      Array.from({ length: 4 }, (_, i) => `https://example.com/in/${i}.png`),
+      {},
+      { onProgress: (done, total) => events.push([done, total]) },
+    );
+    assert.equal(urls.length, 4);
+    assert.deepEqual(events.map((e) => e[0]).sort((a, b) => a - b), [1, 2, 3, 4]);
+    assert.ok(events.every((e) => e[1] === 4));
+  } finally {
+    delete globalThis.window;
+  }
+});

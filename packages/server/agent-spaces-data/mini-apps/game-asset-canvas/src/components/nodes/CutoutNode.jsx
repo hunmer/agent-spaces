@@ -188,7 +188,7 @@ export default function CutoutNode({ id, type, data, selected }) {
             disabled
             className="flex-1 cursor-not-allowed rounded-md bg-primary/70 px-3 py-1.5 text-xs font-medium text-primary-foreground opacity-80"
           >
-            处理中…
+            {data?.statusMsg || '处理中…'}
           </button>
           <button
             type="button"

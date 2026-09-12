@@ -217,7 +217,7 @@
     "id": "workflow.depth-anything",
     "name": "Depth Anything 深度估计",
     "version": "1.0.0",
-    "description": "基于 Depth Anything HTTP 服务的单目深度估计，支持从 URL 或本地文件输入，输出灰度深度图或彩色热力图（Inferno），可仅输出深度图或原图+深度图左右拼接，并支持批量处理",
+    "description": "基于 Depth Anything HTTP 服务的单目深度估计，支持从 URL 或本地文件输入，输出灰度深度图或彩色热力图（Inferno），可仅输出深度图或原图+深度图左右拼接，并支持批量处理；支持视频逐帧转深度视频（输出无音轨 MP4）",
     "author": {
       "name": "workflow"
     },
@@ -232,8 +232,8 @@
     "hasWorkflow": true,
     "path": "depth-anything",
     "iconUrl": "plugins/depth-anything/icon.svg",
-    "md5": "bdf6225223c2e6150ab57a9206360b9f",
-    "updatedAt": "2026-08-01T05:40:14.900Z",
+    "md5": "77bc4612744358d37a335f4c93bd9cc0",
+    "updatedAt": "2026-09-12T03:09:52.192Z",
     "files": [
       "actions.js",
       "icon.svg",
@@ -495,8 +495,8 @@
     "hasWorkflow": true,
     "path": "ffmpeg",
     "iconUrl": "plugins/ffmpeg/icon.svg",
-    "md5": "1e59b0b9f91264d73570e0312c1ae1fd",
-    "updatedAt": "2026-08-04T01:13:48.930Z",
+    "md5": "94b652d56018bc05f9cda4477799b56d",
+    "updatedAt": "2026-09-12T03:09:52.193Z",
     "files": [
       "actions.js",
       "frames.js",
@@ -646,7 +646,7 @@
     "id": "workflow.lumimatte",
     "name": "LumiMatte 图像处理",
     "version": "1.0.0",
-    "description": "基于 LumiMatte 本地离线推理服务的图像处理：AI 智能抠图（单张/批量）、智能局部消除、画质超分放大、PSD 分层工程导出（支持图层真实像素），以及服务健康检查与模型清单查询",
+    "description": "基于 LumiMatte 本地离线推理服务的图像处理插件：AI 智能抠图（单张/批量）、智能局部消除、画质超分放大、PSD 分层工程导出（支持图层真实像素），以及服务健康检查与模型清单查询",
     "author": {
       "name": "workflow"
     },
@@ -662,8 +662,8 @@
     "hasWorkflow": true,
     "path": "lumimatte",
     "iconUrl": "plugins/lumimatte/icon.svg",
-    "md5": "ce112e1537116b0aa05f905147dd8d18",
-    "updatedAt": "2026-09-12T00:00:00.000Z",
+    "md5": "4f6f43209f8c79e7a470135482b7c4a3",
+    "updatedAt": "2026-09-12T02:30:42.260Z",
     "files": [
       "actions.js",
       "icon.svg",

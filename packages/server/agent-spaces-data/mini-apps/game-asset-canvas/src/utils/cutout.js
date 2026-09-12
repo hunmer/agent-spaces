@@ -70,11 +70,13 @@ async function runWorkflowCutout(urls, ctx) {
   const workflowId = ctx?.workflowId || WORKFLOWS.image_enchanter;
   const runWorkflowFn = ctx?.runWorkflowFn;
   if (typeof runWorkflowFn !== 'function') throw new Error('runWorkflowFn 未注入');
-  const results = await Promise.allSettled(
-    urls.map((url) =>
+  const results = await mapWithConcurrency(
+    urls,
+    Infinity,
+    (url) =>
       runWorkflowFn(workflowId, { image_url: url, process_type: 'segment' })
         .then((out) => ({ urls: extractWorkflowImageUrls(out), summary: summarizeWorkflowOutput(out) })),
-    ),
+    ctx?.onProgress,
   );
   const outUrls = [];
   const emptySummaries = [];
@@ -172,6 +174,7 @@ async function runRembgCutout(urls, modeParams = {}, ctx = {}) {
         { meta: { executionTarget: ctx.executionTarget || undefined } },
       )
         .then(extractPluginImageUrl),
+    ctx.onProgress,
   );
   const outUrls = [];
   let failed = 0;
@@ -213,6 +216,7 @@ async function runLumimatteCutout(urls, modeParams = {}, ctx = {}) {
         { meta: { executionTarget: ctx.executionTarget || undefined } },
       )
         .then(extractPluginImageUrl),
+    ctx.onProgress,
   );
   const outUrls = [];
   let failed = 0;

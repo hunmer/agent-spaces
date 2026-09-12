@@ -367,22 +367,25 @@ export default function useNodeExecutions({
     registerController(requestNodeId, controller);
 
     const normalizedImages = normalizeImageUrls(sourceImages.filter(Boolean));
-    // enhance 处理器走 image_enchanter 工作流，需注入 workflowId + runWorkflowFn
+    // enhance 处理器走 image_enchanter 工作流 / LumiMatte 插件，需注入 workflowId + runWorkflowFn + 进度回调
     const extraCtx = processorId === 'enhance'
       ? {
           workflowId: settings.imageEnchanterWorkflowId || WORKFLOWS.image_enchanter,
           runWorkflowFn: (workflowId, input, histId) => (
             runWorkflow(workflowId, input, histId, executionTarget)
           ),
+          onProgress: (done, total) => {
+            if (total > 1) update({ statusMsg: `放大 ${done}/${total}…` });
+          },
         }
       : {};
 
-    update({ status: 'running', error: undefined, output: { images: [] } });
+    update({ status: 'running', error: undefined, statusMsg: '', output: { images: [] } });
     try {
       const urls = await runProcessor(processorId, normalizedImages, processorParams || {}, extraCtx);
       if (controller.signal.aborted) return;
       if (!urls.length) throw new Error('处理未返回图片');
-      update({ status: 'done', output: { images: urls } });
+      update({ status: 'done', statusMsg: '', output: { images: urls } });
       const histNodeType = nodeType || NODE_TYPES.imageProcess;
       const histId = genId('hist');
       const historyWrite = addHistory({
@@ -404,13 +407,13 @@ export default function useNodeExecutions({
     } catch (err) {
       if (controller.signal.aborted) return;
       console.error('processLocal failed:', err);
-      update({ status: 'error', error: err?.message || String(err) });
+      update({ status: 'error', statusMsg: '', error: err?.message || String(err) });
     } finally {
       clearController(requestNodeId, controller);
     }
   }, [updateNodeData, updateExecutionNodeData, addHistory, settings, runWorkflow, saveLastParams, enqueueImageDownloads]);
 
-  // 统一抠图节点「执行抠图」：调 runCutout 分流（白底/色度键本地算法 / 工作流抠图 / rembg 插件）。
+  // 统一抠图节点「执行抠图」：调 runCutout 分流（白底/色度键本地算法 / 工作流抠图 / rembg / lumimatte 插件）。
   const handleCutout = useCallback(async (
     nodeId, mode, modeParams, sourceImages, executionTarget = null,
   ) => {
@@ -432,15 +435,19 @@ export default function useNodeExecutions({
             runWorkflow(workflowId, input, histId, executionTarget)
           ),
         }
-      : { executionTarget };
+      : {};
     extraCtx.executionTarget = executionTarget;
+    // 多图批量进度（workflow/rembg/lumimatte 模式透传到 mapWithConcurrency）
+    extraCtx.onProgress = (done, total) => {
+      if (total > 1) update({ statusMsg: `抠图 ${done}/${total}…` });
+    };
 
-    update({ status: 'running', error: undefined, output: { images: [] } });
+    update({ status: 'running', error: undefined, statusMsg: '', output: { images: [] } });
     try {
       const urls = await runCutout(mode, sourceImages, modeParams || {}, extraCtx);
       if (controller.signal.aborted) return;
       if (!urls.length) throw new Error('抠图未返回图片');
-      update({ status: 'done', output: { images: urls } });
+      update({ status: 'done', statusMsg: '', output: { images: urls } });
       const histId = genId('hist');
       const historyWrite = addHistory({
         id: histId,
@@ -460,7 +467,7 @@ export default function useNodeExecutions({
     } catch (err) {
       if (controller.signal.aborted) return;
       console.error('cutout failed:', err);
-      update({ status: 'error', error: err?.message || String(err) });
+      update({ status: 'error', statusMsg: '', error: err?.message || String(err) });
     } finally {
       clearController(requestNodeId, controller);
     }

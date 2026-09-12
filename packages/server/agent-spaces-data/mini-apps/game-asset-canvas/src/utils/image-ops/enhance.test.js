@@ -170,3 +170,22 @@ test('enhance cloud engine stays unlimited (legacy behavior)', async () => {
   });
   assert.equal(peak, items.length, 'cloud 引擎应保持不限并发');
 });
+
+test('enhance lumimatte engine forwards ctx.onProgress', async () => {
+  const { runProcessor } = loadImageOps();
+  const delay = (ms) => new Promise((r) => setTimeout(r, ms));
+  setupHost({
+    'workflow.lumimatte:lumimatte_super_res': async (args) => {
+      await delay(5);
+      return { success: true, data: { imageUrl: args.image.replace('/in/', '/out/') } };
+    },
+  });
+  const events = [];
+  const items = Array.from({ length: 5 }, (_, i) => `http://in-${i}.png`);
+  const urls = await runProcessor('enhance', items, { engine: 'lumimatte' }, {
+    onProgress: (done, total) => events.push([done, total]),
+  });
+  assert.equal(urls.length, 5);
+  assert.deepEqual(events.map((e) => e[0]).sort((a, b) => a - b), [1, 2, 3, 4, 5]);
+  assert.ok(events.every((e) => e[1] === 5));
+});
