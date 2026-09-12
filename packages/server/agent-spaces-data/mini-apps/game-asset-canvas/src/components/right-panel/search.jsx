@@ -39,29 +39,33 @@ export function matchNode(item, query) {
 }
 
 // 通用搜索栏：搜索图标 + 受控 input + 清除按钮。三个 tab（新增节点/节点管理/生成记录）共用。
-export function SearchBar({ value, onChange, placeholder }) {
+// right：可选，渲染在输入框右侧的附加内容（如新增节点 tab 的「选择节点」下拉）。
+export function SearchBar({ value, onChange, placeholder, right }) {
   const hasValue = (value || '').trim().length > 0;
   return (
     <div className="nodrag nopan nowheel border-b border-border p-2">
-      <div className="relative">
-        <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-        <input
-          type="text"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={placeholder || '搜索'}
-          className="h-7 w-full rounded-md border border-border bg-background pl-7 pr-7 text-xs outline-none transition focus:border-primary"
-        />
-        {hasValue && (
-          <button
-            type="button"
-            onClick={() => onChange('')}
-            title="清除搜索"
-            className="absolute right-1.5 top-1/2 flex h-4 w-4 -translate-y-1/2 items-center justify-center rounded text-muted-foreground transition hover:text-foreground"
-          >
-            ✕
-          </button>
-        )}
+      <div className="flex items-center gap-1">
+        <div className="relative min-w-0 flex-1">
+          <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+          <input
+            type="text"
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder={placeholder || '搜索'}
+            className="h-7 w-full rounded-md border border-border bg-background pl-7 pr-7 text-xs outline-none transition focus:border-primary"
+          />
+          {hasValue && (
+            <button
+              type="button"
+              onClick={() => onChange('')}
+              title="清除搜索"
+              className="absolute right-1.5 top-1/2 flex h-4 w-4 -translate-y-1/2 items-center justify-center rounded text-muted-foreground transition hover:text-foreground"
+            >
+              ✕
+            </button>
+          )}
+        </div>
+        {right}
       </div>
     </div>
   );

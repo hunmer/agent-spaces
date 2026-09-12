@@ -54,13 +54,22 @@ export default function CanvasWorkspace({
   children,
 }) {
   return (
-    <ResizablePanelGroup
-      direction="horizontal"
-      className="h-full min-h-0"
-      hideHandleOnIdle
-      defaultLayout={panelLayout}
-      onLayoutChange={onPanelLayoutChange}
-    >
+    <>
+      <style>{`.game-asset-canvas-resize-handle {
+  opacity: 0;
+  transition: opacity 150ms ease;
+}
+.game-asset-canvas-resize-handle:hover,
+.game-asset-canvas-resize-handle:focus-visible {
+  opacity: 1;
+}`}</style>
+      <ResizablePanelGroup
+        direction="horizontal"
+        className="h-full min-h-0"
+        hideHandleOnIdle
+        defaultLayout={panelLayout}
+        onLayoutChange={onPanelLayoutChange}
+      >
       <ResizablePanel id={PANEL_ID_MAIN} order={1} minSize="40%">
         <div className="flex h-full min-h-0 flex-col bg-background text-foreground">
           <Toolbar
@@ -128,13 +137,14 @@ export default function CanvasWorkspace({
         </div>
       </ResizablePanel>
 
-      <ResizableHandle />
+      <ResizableHandle className="game-asset-canvas-resize-handle" />
 
       <ResizablePanel id={PANEL_ID_RIGHT} order={2} minSize="18%" maxSize="48%">
         <RightPanel {...rightPanelProps} />
       </ResizablePanel>
 
       {children}
-    </ResizablePanelGroup>
+      </ResizablePanelGroup>
+    </>
   );
 }

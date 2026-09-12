@@ -35,6 +35,7 @@ import {
  *   hoverDelay?: number,               // HoverCard 显示延迟 ms（默认 500）
  *   disabled?: boolean,                // 禁止打开；变为 true 时立即关闭
  *   closeOnScroll?: boolean,           // 任意祖先滚动时立即关闭
+ *   side?: 'top'|'bottom'|'left'|'right', // HoverCard 弹出方向（默认 bottom）
  *   onDragStart?: (e:Event)=>void,
  *   children: React.ReactNode,
  *   onOpenChange?: (open:boolean)=>void,
@@ -49,6 +50,7 @@ export default function ImageHoverCard({
   hoverDelay = 500,
   disabled = false,
   closeOnScroll = false,
+  side = 'bottom',
   onOpenChange,
   renderTrigger,
   children,
@@ -99,7 +101,7 @@ export default function ImageHoverCard({
           </div>
         }
       />
-      <HoverCardContent className="flex max-w-[500px] w-auto flex-col items-center p-1">
+      <HoverCardContent side={side} className="flex max-w-[500px] w-auto flex-col items-center p-1">
         <img
           src={url}
           alt={title || ''}

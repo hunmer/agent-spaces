@@ -118,7 +118,6 @@ export default function DepthExtractNode({ id, type, data, selected }) {
   ];
 
   // 产出：图片走 NodeShell 的 output.images，视频单独渲染（对称 VideoGeneratorNode）
-  const outputVideos = Array.isArray(data?.output?.videos) ? data.output.videos.filter(Boolean) : [];
 
   const upCount = uploadedImages.length;
   const usCount = upstreamImages.length;
@@ -235,22 +234,6 @@ export default function DepthExtractNode({ id, type, data, selected }) {
         )}
       </div>
 
-      {outputVideos.length > 0 && (
-        <div className="flex flex-col gap-1.5">
-          <span className="text-xs font-medium text-muted-foreground">
-            深度视频（{outputVideos.length}）
-          </span>
-          {outputVideos.map((url, i) => (
-            <video
-              key={`out-vid-${i}-${url}`}
-              src={url}
-              controls
-              preload="metadata"
-              className="w-full rounded border border-border"
-            />
-          ))}
-        </div>
-      )}
     </NodeShell>
   );
 }

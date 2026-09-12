@@ -59,6 +59,10 @@ test('bottom output handle is rendered after the external NodeOutput content', (
   assert.match(shellSource, /updateNodeInternals\(id\)/);
 });
 
+test('restored loading nodes render the running placeholder on first mount', () => {
+  assert.match(shellSource, /const status = data\?\.status \|\| \(data\?\.loading \? 'running' : 'idle'\)/);
+});
+
 test('node header renders icon beside title and subtitle', () => {
   assert.match(shellSource, /aria-hidden="true"[\s\S]*\{meta\.icon\}/);
   assert.match(shellSource, /<EditableNodeTitle[\s\S]*\{data\?\.subtitle \|\| meta\.subtitle \|\| '画布节点'\}/);

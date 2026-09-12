@@ -1,5 +1,5 @@
 // 新增节点 tab：可点击添加、可拖拽到画布；可执行节点 hover 右上角 ⚡ 直接执行。
-// 顶部搜索框（支持拼音/首字母）+ 分类筛选 + 列表按分组展示（每组标题 + 计数 + 卡片网格，按容器宽度自适应列数）。
+// 顶部搜索框（支持拼音/首字母，右侧挂「选择节点」下拉直接添加）+ 分类筛选 + 列表按分组展示（每组标题 + 计数 + 卡片网格，按容器宽度自适应列数）。
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ScrollArea, Plus, SearchSelect, Zap } from '@agent-spaces/ui';
 import { NODE_META } from '../../utils/constants';
@@ -70,21 +70,25 @@ export default function AddNodeTab({ onAdd, onDragStartNode, onExecute }) {
 
   return (
     <div ref={scrollRef} className="flex h-full min-h-0 flex-col">
-      {/* Combobox：按分组浏览节点，输入名称/类型/拼音关键字后可直接添加。 */}
-      <div className="border-b border-border p-2">
-        <SearchSelect
-          value=""
-          onChange={(type) => onAdd?.(type)}
-          options={pickerOptions}
-          placeholder="选择节点"
-          searchPlaceholder="搜索节点（支持拼音）"
-          allowCustom={false}
-          triggerPrefix={<Plus className="size-3.5 text-muted-foreground" />}
-        />
-      </div>
-
-      {/* 卡片区域搜索：用于筛选下方可拖拽节点列表。 */}
-      <SearchBar value={query} onChange={setQuery} placeholder="筛选节点卡片（支持拼音）" />
+      {/* 卡片区域搜索：用于筛选下方可拖拽节点列表；右侧挂 Combobox（按分组浏览节点，
+          输入名称/类型/拼音关键字后可直接添加）。触发按钮覆写为与搜索框同高（h-7/text-xs）。 */}
+      <SearchBar
+        value={query}
+        onChange={setQuery}
+        placeholder="筛选节点卡片（支持拼音）"
+        right={
+          <SearchSelect
+            value=""
+            onChange={(type) => onAdd?.(type)}
+            options={pickerOptions}
+            placeholder="选择节点"
+            searchPlaceholder="搜索节点（支持拼音）"
+            allowCustom={false}
+            triggerPrefix={<Plus className="size-3.5 text-muted-foreground" />}
+            className="w-32 shrink-0 [&_button]:h-7 [&_button]:rounded-md [&_button]:px-2 [&_button]:text-xs"
+          />
+        }
+      />
 
       {/* 分类筛选 chips（搜索时隐藏，让结果跨分类展示） */}
       {!hasQuery && (

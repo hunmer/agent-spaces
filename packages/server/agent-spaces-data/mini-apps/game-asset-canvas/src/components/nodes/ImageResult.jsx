@@ -17,7 +17,7 @@ function BrokenImagePlaceholder({ url }) {
 }
 
 /**
- * 节点内的图片网格结果展示，点击用 MediaGallery 打开大图（可翻页）。
+ * 节点内的图片网格结果展示，双击用 MediaGallery 打开大图（可翻页）。
  * @param {{ images: string[], resources?: Array<{id?:string,url:string,thumb?:string,groupName?:string,label?:string}>, max?: number, preview?: boolean, onImageLoad?: Function, onAddToAssets?: (payload:string|{url,fileName?}|Array<string|{url,fileName?}>)=>void, fileName?: string, onAddImages?:(urls:string[])=>void, onRemoveImage?:(ids:string|string[])=>void, onRemoveVersionImages?:(versionIndex:number,ids:string|string[])=>void, onClearImages?:()=>void, versions?:Array, activeVersion?:number, onSwitchVersion?:(index:number)=>void }} props
  * @param {number} [props.max] 单网格最多展示张数，0 或缺省表示全部（GIF 拆帧等可能产出数十帧）
  * @param {boolean} [props.preview] 输出预览模式：无标签/边框，图片全宽纵向排列
@@ -304,7 +304,10 @@ export default function ImageResult({ nodeId, images, resources = [], max = 0, p
               onClick={(e) => {
                 e.stopPropagation();
                 // ctrl/meta + 点击图片本体：增删切换（跨节点累加多选）
-                if ((e.ctrlKey || e.metaKey) && nodeId) { toggle(nodeId, url, true); return; }
+                if ((e.ctrlKey || e.metaKey) && nodeId) toggle(nodeId, url, true);
+              }}
+              onDoubleClick={(e) => {
+                e.stopPropagation();
                 open(i);
               }}
               className={`game-asset-output-thumb group relative block aspect-square cursor-pointer overflow-hidden rounded border transition-colors ${
@@ -314,7 +317,7 @@ export default function ImageResult({ nodeId, images, resources = [], max = 0, p
                   : 'border-border'
               } ${sortable ? 'cursor-grab active:cursor-grabbing' : ''}`}
             >
-              <ImageHoverCard disabled={draggingIdx !== null} url={url} triggerShape="fixed" className="h-full w-full border-0">
+              <ImageHoverCard disabled={preview || draggingIdx !== null} url={url} side="top" triggerShape="fixed" className="h-full w-full border-0">
                 <GridImage url={item.resource.thumb || url} />
               </ImageHoverCard>
               {item.label && <OutputLabelBadge label={item.label} />}
@@ -396,8 +399,8 @@ function ImageLoadingPlaceholder() {
 }
 
 /**
- * 预览态单图：加载中显示 spinner 占位，加载完毕才展示；失败切换占位块（点击仍可尝试打开 gallery）。
- * 单击打开 gallery。
+ * 预览态单图：加载中显示 spinner 占位，加载完毕才展示；失败切换占位块（双击仍可尝试打开 gallery）。
+ * 双击打开 gallery。
  */
 function PreviewImage({ url, thumb, label, onOpen, onImageLoad, onDragStart }) {
   const [failed, setFailed] = useState(false);
@@ -407,12 +410,13 @@ function PreviewImage({ url, thumb, label, onOpen, onImageLoad, onDragStart }) {
   useEffect(() => { setFailed(false); setLoaded(false); }, [displayUrl]);
   return (
     <div className="game-asset-output-thumb relative w-full">
-    <ImageHoverCard url={url} triggerShape="fixed" className="w-full border-0">
+    <ImageHoverCard disabled url={url} side="top" triggerShape="fixed" className="w-full border-0">
       <button
         type="button"
         draggable
         onDragStart={onDragStart}
-        onClick={(e) => { e.stopPropagation(); onOpen(); }}
+        onClick={(e) => e.stopPropagation()}
+        onDoubleClick={(e) => { e.stopPropagation(); onOpen(); }}
         className="block w-full overflow-hidden"
       >
         {failed ? (
@@ -511,15 +515,17 @@ function OutputStyles() {
     }
     .game-asset-output-actions {
       position: absolute;
-      left: 50%;
-      bottom: 2px;
+      top: 50%;
+      left: 2px;
+      right: 2px;
       z-index: 20;
       display: flex;
       align-items: center;
+      justify-content: space-between;
       gap: 4px;
       opacity: 0;
       pointer-events: none;
-      transform: translateX(-50%);
+      transform: translateY(-50%);
       transition: opacity 150ms ease;
     }
     .game-asset-output-action {

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { ChevronDown, ChevronUp, Check, Loader2, X } from '@agent-spaces/ui';
 import ImageResult from './ImageResult';
 import TextResult from './TextResult';
+import VideoResult from './VideoResult';
 
 /**
  * 节点产出卡片：渲染在节点主体外部下方，固定不随表单滚动。
@@ -30,6 +31,7 @@ export default function NodeOutput({
   status = 'idle',
   statusMsg,
   images = [],
+  videos = [],
   resources = [],
   text = '',
   fileName,
@@ -45,8 +47,10 @@ export default function NodeOutput({
   onClearText,
   onMouseEnter,
   onMouseLeave,
+  hideToggle = false,
 }) {
   const hasImages = images.length > 0;
+  const hasVideos = videos.length > 0;
   const hasText = typeof text === 'string' && text.length > 0;
   const [expanded, setExpanded] = useState(true);
   // 耗时统计：running 时从挂载起实时累加；done/error 时定格最后一次运行耗时。
@@ -63,7 +67,7 @@ export default function NodeOutput({
   }, [status]);
 
   // Hooks 必须在早返回之前执行，避免 status 切到 running 时改变 Hook 调用顺序。
-  if (!hasImages && !hasText && status !== 'running') return null;
+  if (!hasImages && !hasVideos && !hasText && status !== 'running') return null;
 
   const isRunning = status === 'running';
   const Icon = isRunning ? Loader2 : status === 'error' ? X : Check;
@@ -84,7 +88,7 @@ export default function NodeOutput({
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
     >
-      <button
+      {!hideToggle && <button
         type="button"
         onClick={(e) => { e.stopPropagation(); setExpanded((v) => !v); }}
         className={`flex w-full items-center gap-1.5 rounded-md border border-border px-2 py-1 text-[11px] text-left transition-colors ${
@@ -98,18 +102,18 @@ export default function NodeOutput({
         </span>
         {timeText && <span className="text-muted-foreground/70">{timeText}</span>}
         {expanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-      </button>
+      </button>}
 
       {expanded && (
-        <div className="nodrag nopan rounded-b-md border border-t-0 border-border bg-card p-2">
-          {isRunning && !hasImages ? (
+        <div className={`nodrag nopan border-border bg-card ${hideToggle ? 'rounded-md border-0 p-0' : 'rounded-b-md border border-t-0 p-2'}`}>
+          {isRunning && !hasImages && !hasVideos ? (
             <div className="flex min-h-[80px] w-full flex-col items-center justify-center gap-2 text-muted-foreground">
               <Loader2 className="h-5 w-5 animate-spin" />
               <span className="text-xs">{statusMsg || '生成中…'}</span>
             </div>
           ) : hasText ? (
             <TextResult text={text} onClear={onClearText} />
-          ) : (
+          ) : hasImages ? (
             <ImageResult
               nodeId={nodeId}
               images={images}
@@ -125,6 +129,8 @@ export default function NodeOutput({
               activeVersion={activeVersion}
               onSwitchVersion={onSwitchVersion}
             />
+          ) : (
+            <VideoResult videos={videos} />
           )}
         </div>
       )}

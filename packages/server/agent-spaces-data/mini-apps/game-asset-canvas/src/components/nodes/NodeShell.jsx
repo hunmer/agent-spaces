@@ -1,7 +1,7 @@
 import { Children, isValidElement, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { NodeResizer, useUpdateNodeInternals } from '@xyflow/react';
 import {
-  Badge, ClipboardCopy, Download, FolderPlus, Images, Loader, RotateCcw, toast,
+  Badge, ChevronDown, ClipboardCopy, Download, FolderPlus, Loader, RotateCcw, toast,
   ContextMenu, ContextMenuContent, ContextMenuGroup, ContextMenuItem, ContextMenuLabel, ContextMenuSeparator, ContextMenuTrigger,
 } from '@agent-spaces/ui';
 import BorderBeam from '../BorderBeam';
@@ -11,6 +11,7 @@ import useViewportActivation from '../../hooks/useViewportActivation';
 import ImageResult from './ImageResult';
 import SpinePreviewViewer from './SpinePreviewViewer';
 import NodeOutput from './NodeOutput';
+import VideoResult from './VideoResult';
 import EditableNodeTitle from './EditableNodeTitle';
 import NodeHandles from './NodeHandles';
 import NodeHoverMenu from './NodeHoverMenu';
@@ -121,7 +122,8 @@ export default function NodeShell({
   const showFullNode = data?.compactView !== true;
   const meta = NODE_META[nodeType] || { label: '节点', icon: '🔹', color: '#64748b' };
   const customTitle = data?.title || data?.label;
-  const status = data?.status || 'idle';
+  // 兼容旧节点/队列占位：历史数据可能只有 loading=true，首次恢复时也必须显示运行占位。
+  const status = data?.status || (data?.loading ? 'running' : 'idle');
   const queuePosition = Math.max(0, Number(data?.queuePosition) || 0);
   const isRunning = status === 'running' || data?.queueStatus === 'running';
   const statusColor = status === 'running' ? '#3b82f6'
@@ -131,10 +133,11 @@ export default function NodeShell({
   // 产出图片：文生图/编辑节点存在 data.output.images；图片展示节点存在 data.images
   const outputImages = data?.output?.images?.length ? data.output.images : (data?.images || []);
   const previewImages = data?.output?.images || [];
+  const previewVideos = Array.isArray(data?.output?.videos) ? data.output.videos.filter(Boolean) : [];
   // spineDisplay 的产出是 spineAssets（三件套），非 images，需单独判断
   const hasSpineAssets = nodeType === NODE_TYPES.spineDisplay
     && !!(data?.spineAssets?.skel && data?.spineAssets?.atlas && data?.spineAssets?.png);
-  const canPreviewOutput = previewImages.length > 0 || hasSpineAssets || status === 'running';
+  const canPreviewOutput = previewImages.length > 0 || previewVideos.length > 0 || hasSpineAssets || status === 'running';
   const outputPreviewEnabled = data?.outputPreviewMode === true && canPreviewOutput;
   const onUpdate = data?.onUpdate;
   // 产出卡片 props（预览分支与正常分支共用）：图片/回调/版本/状态
@@ -143,6 +146,7 @@ export default function NodeShell({
     status,
     statusMsg: data?.statusMsg,
     images: data?.output?.images || [],
+    videos: previewVideos,
     resources: data?.output?.resources || [],
     text: nodeType === NODE_TYPES.promptReverse ? (data?.output?.text || '') : '',
     fileName: data?.params?.fileName,
@@ -165,6 +169,21 @@ export default function NodeShell({
   const selectionCount = data?.selectionCount ?? 1;
   const [toolbarHovered, setToolbarHovered] = useState(false);
   const [nodeMenuOpen, setNodeMenuOpen] = useState(false);
+  const [previewFormExpanded, setPreviewFormExpanded] = useState(false);
+  useEffect(() => {
+    setPreviewFormExpanded(outputPreviewEnabled && !!selected);
+  }, [outputPreviewEnabled, selected]);
+  useEffect(() => {
+    if (!previewFormExpanded) return undefined;
+    const handleDocumentPointerDown = (event) => {
+      const target = event.target;
+      const insideNode = rootRef.current?.contains(target) || outputRef.current?.contains(target);
+      const insidePanel = target?.closest?.('[data-preview-form-panel]');
+      if (!insideNode && !insidePanel) setPreviewFormExpanded(false);
+    };
+    document.addEventListener('pointerdown', handleDocumentPointerDown, true);
+    return () => document.removeEventListener('pointerdown', handleDocumentPointerDown, true);
+  }, [previewFormExpanded]);
   const toolbarVisible = showFullNode && (toolbarHovered || nodeMenuOpen) && selectionCount <= 1;
   const toolbarLeaveTimerRef = useRef(null);
   const showToolbar = () => {
@@ -264,6 +283,7 @@ export default function NodeShell({
   // 用户手动 NodeResizer 拖拽后置 userResizedRef=true，停止自动跟随，尊重手动尺寸（原 disconnect 约定的等价实现）。
   const viewportActivated = useViewportActivation(rootRef);
   const contentInnerRef = useRef(null);
+  const previewFormInnerRef = useRef(null);
   const userResizedRef = useRef(false);
   useLayoutEffect(() => {
     userResizedRef.current = false; // 重置：节点重挂载时恢复自动跟随
@@ -324,12 +344,6 @@ export default function NodeShell({
       label: '应用到其他节点',
       icon: <ClipboardCopy className="h-3.5 w-3.5" />,
       onClick: data.onApplyToGroup,
-    } : null,
-    canPreviewOutput ? {
-      key: 'toggle-preview',
-      label: outputPreviewEnabled ? '切换到表单' : '切换到预览',
-      icon: <Images className="h-3.5 w-3.5" />,
-      onClick: () => data?.onOutputPreviewModeChange?.(!outputPreviewEnabled),
     } : null,
     ...(toolbarActions || []).map((action, index) => ({
       key: action.key || `custom-${index}`,
@@ -413,6 +427,7 @@ export default function NodeShell({
         className="relative w-full overflow-visible"
         onMouseEnter={showToolbar}
         onMouseLeave={hideToolbar}
+        onClickCapture={() => setPreviewFormExpanded(true)}
       >
         {isRunning && (
           <BorderBeam
@@ -459,13 +474,50 @@ export default function NodeShell({
                   onHeightChange={reportOutputPreviewHeight}
                 />
               ) : (
-                <ImageResult nodeId={id} images={previewImages} resources={data?.output?.resources || []} preview onImageLoad={reportOutputPreviewHeight} />
+                <>
+                  <ImageResult nodeId={id} images={previewImages} resources={data?.output?.resources || []} preview onImageLoad={reportOutputPreviewHeight} />
+                </>
               )
             ) : null}
           </div>
         </div>
+        {previewVideos.length > 0 && (
+          <div ref={outputRef} className="relative mt-1" style={{ width: nodeWidth || undefined }}>
+            <VideoResult videos={previewVideos} />
+            <NodeHandles sourceBottom={sourceHandle} />
+          </div>
+        )}
         {compactView}
       </div>
+      {previewFormExpanded && (
+        <div
+          className="relative mt-1 w-full overflow-hidden rounded-lg border border-border bg-card text-card-foreground shadow-sm"
+          style={{ maxWidth: nodeWidth || undefined }}
+          data-preview-form-panel
+          onPointerDown={(event) => event.stopPropagation()}
+          onClick={(event) => event.stopPropagation()}
+        >
+          <button
+            type="button"
+            aria-expanded="true"
+            className="flex w-full items-center gap-1.5 border-b border-border bg-muted/60 px-2.5 py-1.5 text-left text-xs font-medium hover:bg-muted"
+            onClick={() => setPreviewFormExpanded(false)}
+          >
+            <ChevronDown className="h-3.5 w-3.5 shrink-0" />
+            <span className="flex-1">编辑参数</span>
+          </button>
+          <div className="scrollbar-none nodrag nopan nowheel max-h-[60vh] overflow-auto">
+            <div ref={previewFormInnerRef} className="flex flex-col gap-2 p-3">
+              {viewportActivated ? contentChildren : null}
+            </div>
+            {viewportActivated && footerAction && (
+              <div className="nodrag nopan nowheel border-t border-border bg-card p-3">
+                {footerAction}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
       </ContextMenuTrigger>
       {contextImageOpen && contextImageUrlRef.current && (
         <ContextMenuContent className="w-52">
