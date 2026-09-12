@@ -1,7 +1,7 @@
 import { Children, isValidElement, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { NodeResizer, useUpdateNodeInternals } from '@xyflow/react';
 import {
-  Badge, ChevronDown, ClipboardCopy, Download, FolderPlus, Loader, RotateCcw, toast,
+  Badge, ChevronDown, ClipboardCopy, Download, FolderPlus, Loader, RotateCcw, Skeleton, toast,
   ContextMenu, ContextMenuContent, ContextMenuGroup, ContextMenuItem, ContextMenuLabel, ContextMenuSeparator, ContextMenuTrigger,
 } from '@agent-spaces/ui';
 import BorderBeam from '../BorderBeam';
@@ -290,7 +290,8 @@ export default function NodeShell({
     const onAutoSizeToContent = data?.onAutoSizeToContent;
     const root = rootRef.current;
     const inner = contentInnerRef.current;
-    if (!viewportActivated || !onAutoSizeToContent || !root || !id || !inner) return;
+    // 运行占位使用固定的加载内容高度，不能用它覆盖节点已持久化的手动尺寸。
+    if (status === 'running' || !viewportActivated || !onAutoSizeToContent || !root || !id || !inner) return;
 
     const measure = () => {
       if (userResizedRef.current) return;
@@ -304,7 +305,7 @@ export default function NodeShell({
     if (footerRef.current) ro.observe(footerRef.current);
     measure();
     return () => ro.disconnect();
-  }, [viewportActivated, data?.onAutoSizeToContent, id, outputPreviewEnabled, showFullNode, hasFooterAction]);
+  }, [status, viewportActivated, data?.onAutoSizeToContent, id, outputPreviewEnabled, showFullNode, hasFooterAction]);
 
   const compactView = !showFullNode ? (
     <div
@@ -424,7 +425,8 @@ export default function NodeShell({
       <div
         ref={rootRef}
         data-output-preview
-        className="relative w-full overflow-visible"
+        className={`relative min-h-0 w-full overflow-visible ${isRunning ? 'h-full' : 'h-fit'}`}
+        style={{ height: isRunning ? '100%' : 'fit-content' }}
         onMouseEnter={showToolbar}
         onMouseLeave={hideToolbar}
         onClickCapture={() => setPreviewFormExpanded(true)}
@@ -459,12 +461,15 @@ export default function NodeShell({
           />
         )}
         <NodeHandles target={targetHandle} source={sourceHandle} />
-        <div data-node-card className={`mx-auto w-full overflow-hidden rounded-lg bg-card shadow-sm ${showFullNode ? '' : 'invisible pointer-events-none'}`} style={{ maxWidth: '640px' }}>
-          <div className="scrollbar-none nodrag nopan nowheel w-full" style={{ maxHeight: '60vh', overflowY: 'auto' }}>
+        <div data-node-card className={`mx-auto h-full w-full overflow-hidden rounded-lg bg-card shadow-sm ${showFullNode ? '' : 'invisible pointer-events-none'}`} style={{ maxWidth: '640px' }}>
+          <div className="scrollbar-none nodrag nopan nowheel h-full w-full" style={{ maxHeight: '60vh', overflowY: 'auto' }}>
             {status === 'running' ? (
-              <div className="flex min-h-[160px] w-full flex-col items-center justify-center gap-2 text-muted-foreground">
-                <Loader className="h-6 w-6" />
-                <span className="text-xs">{data?.statusMsg || '处理中…'}</span>
+              <div className="relative h-full min-h-[160px] w-full overflow-hidden">
+                <Skeleton className="absolute inset-0 h-full w-full rounded-none opacity-70" />
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-muted-foreground">
+                  <Loader className="h-6 w-6 animate-spin" />
+                  <span className="text-xs">{data?.statusMsg || '处理中…'}</span>
+                </div>
               </div>
             ) : viewportActivated ? (
               hasSpineAssets ? (

@@ -63,6 +63,14 @@ test('restored loading nodes render the running placeholder on first mount', () 
   assert.match(shellSource, /const status = data\?\.status \|\| \(data\?\.loading \? 'running' : 'idle'\)/);
 });
 
+test('running placeholders do not overwrite the persisted node size', () => {
+  assert.match(shellSource, /if \(status === 'running' \|\| !viewportActivated/);
+  assert.match(shellSource, /\}, \[status, viewportActivated, data\?\.onAutoSizeToContent/);
+  assert.match(shellSource, /isRunning \? '100%' : 'fit-content'/);
+  assert.match(shellSource, /<Skeleton className="absolute inset-0 h-full w-full rounded-none opacity-70" \/>/);
+  assert.match(shellSource, /data-node-card className=\{`mx-auto h-full w-full/);
+});
+
 test('node header renders icon beside title and subtitle', () => {
   assert.match(shellSource, /aria-hidden="true"[\s\S]*\{meta\.icon\}/);
   assert.match(shellSource, /<EditableNodeTitle[\s\S]*\{data\?\.subtitle \|\| meta\.subtitle \|\| '画布节点'\}/);
