@@ -1,11 +1,12 @@
 /**
  * 统一抠图节点（cutout）的执行入口。
  *
- * 合并四种抠图能力，按 mode 分流：
+ * 合并五种抠图能力，按 mode 分流：
  * - whiteKey   本地算法：把接近白色的像素置透明（复用 image-ops PROCESSORS['white-key']）
  * - chromaKey  本地算法：绿幕/蓝幕/自定义键色抠除（PROCESSORS['chroma-key']）
  * - workflow   云端工作流：调 image_enchanter 工作流 process_type=segment（多图并发）
  * - rembg      Rembg 插件：调 workflow.rembg 插件（rembg_remove/mask/alpha_matting/sam）
+ * - lumimatte  LumiMatte 插件：调 workflow.lumimatte 插件 lumimatte_matting（ISNet 本地推理）
  *
  * 节点层（CutoutNode + Canvas.handleCutout）调 runCutout 后回填 data.output.images，
  * 与 handleProcessLocal 走同一套取消/状态机。
@@ -21,9 +22,13 @@
 import { runProcessor } from './image-ops';
 import { WORKFLOWS } from './constants';
 import { normalizeImageUrls } from './workflow';
+import { mapWithConcurrency, clampConcurrency } from './concurrency';
 
 // Rembg 插件 id（与 packages/templates/plugins/rembg/info.json 的 id 一致）
 const REMBG_PLUGIN_ID = 'workflow.rembg';
+
+// LumiMatte 插件 id（与 packages/templates/plugins/lumimatte/info.json 的 id 一致）
+const LUMIMATTE_PLUGIN_ID = 'workflow.lumimatte';
 
 // rembgMode → 插件动作名映射
 const REMBG_ACTION_MAP = {
@@ -49,6 +54,8 @@ export async function runCutout(mode, inputUrls, modeParams = {}, ctx = {}) {
       return runWorkflowCutout(urls, ctx);
     case 'rembg':
       return runRembgCutout(urls, modeParams, ctx);
+    case 'lumimatte':
+      return runLumimatteCutout(urls, modeParams, ctx);
     default:
       throw new Error(`未知抠图模式：${mode}`);
   }
@@ -152,16 +159,19 @@ async function runRembgCutout(urls, modeParams = {}, ctx = {}) {
       : modeParams.extras;
   }
 
-  const results = await Promise.allSettled(
-    urls.map((url) =>
+  // 并发限流：modeParams.concurrency（参数表暴露，默认 4），避免大批量无限并发压后端
+  const limit = clampConcurrency(modeParams.concurrency, 4);
+  const results = await mapWithConcurrency(
+    urls,
+    limit,
+    (url) =>
       AS.callPluginTool(
         REMBG_PLUGIN_ID,
         action,
         { ...baseArgs, image: url },
         { meta: { executionTarget: ctx.executionTarget || undefined } },
       )
-        .then(extractRembgImageUrl),
-    ),
+        .then(extractPluginImageUrl),
   );
   const outUrls = [];
   let failed = 0;
@@ -181,16 +191,57 @@ async function runRembgCutout(urls, modeParams = {}, ctx = {}) {
 }
 
 /**
- * 从 rembg 插件返回结构提取 imageUrl。
+ * LumiMatte 插件抠图：调 lumimatte_matting（ISNet 本地推理），每张图并发调用。
+ * 插件 config（baseUrl/timeout）由后端从插件配置注入，无用户参数。
+ * 注意：服务端推理全局串行化，首次调用某引擎会加载模型（10~30s），大批量耗时较长。
+ *
+ * 返回结构与 rembg 一致：{ success, message, data:{ imageUrl, size, model } }
+ */
+async function runLumimatteCutout(urls, modeParams = {}, ctx = {}) {
+  const AS = window.AgentSpaces;
+  if (!AS?.callPluginTool) throw new Error('宿主 callPluginTool 不可用');
+  // 并发限流：LumiMatte 服务端推理全局串行，默认 2（超出部分只是在服务端排队占内存）
+  const limit = clampConcurrency(modeParams.concurrency, 2);
+  const results = await mapWithConcurrency(
+    urls,
+    limit,
+    (url) =>
+      AS.callPluginTool(
+        LUMIMATTE_PLUGIN_ID,
+        'lumimatte_matting',
+        { image: url },
+        { meta: { executionTarget: ctx.executionTarget || undefined } },
+      )
+        .then(extractPluginImageUrl),
+  );
+  const outUrls = [];
+  let failed = 0;
+  let firstErr = '';
+  for (const r of results) {
+    if (r.status === 'fulfilled' && r.value) {
+      outUrls.push(r.value);
+    } else {
+      failed += 1;
+      if (r.status === 'rejected' && !firstErr) firstErr = String(r.reason?.message || r.reason);
+    }
+  }
+  if (!outUrls.length) {
+    throw new Error(firstErr || (failed ? `${failed} 张图片 LumiMatte 抠图全部失败` : 'LumiMatte 未返回图片'));
+  }
+  return outUrls;
+}
+
+/**
+ * 从插件动作返回结构提取 imageUrl（rembg / lumimatte 单图动作通用）。
  * 单图动作返回 { success, message, data:{ imageUrl, size, model } }，
  * 兼容 callPluginTool 的 { success, result } 包装。
  */
-function extractRembgImageUrl(ret) {
+function extractPluginImageUrl(ret) {
   const data = ret && typeof ret === 'object' && 'result' in ret && typeof ret.success === 'boolean'
     ? ret.result
     : ret;
   const url = data?.data?.imageUrl || data?.imageUrl || data?.data?.httpPath;
-  if (!url) throw new Error(data?.message || 'Rembg 未返回 imageUrl');
+  if (!url) throw new Error(data?.message || '插件未返回 imageUrl');
   return url;
 }
 

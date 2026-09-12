@@ -392,7 +392,7 @@ export default function useNodeExecutions({
         executionTarget,
         nodeType: histNodeType,
         prompt: processorId,
-        model: processorId === 'enhance' ? 'image_enchanter' : 'local',
+        model: processorId === 'enhance' ? (processorParams?.engine === 'lumimatte' ? 'lumimatte' : 'image_enchanter') : 'local',
         images: urls,
         createdAt: Date.now(),
       }).catch((e) => console.error('processLocal addHistory failed:', e));
@@ -449,7 +449,7 @@ export default function useNodeExecutions({
         executionTarget,
         nodeType: NODE_TYPES.cutout,
         prompt: `抠图·${mode}`,
-        model: mode === 'workflow' ? 'image_enchanter' : (mode === 'rembg' ? 'rembg' : 'local'),
+        model: mode === 'workflow' ? 'image_enchanter' : (mode === 'rembg' ? 'rembg' : (mode === 'lumimatte' ? 'lumimatte' : 'local')),
         images: urls,
         createdAt: Date.now(),
       }).catch((e) => console.error('cutout addHistory failed:', e));

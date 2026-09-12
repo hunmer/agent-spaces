@@ -44,7 +44,7 @@ const VALID_NODE_TYPES = [
   'textToVoice',   // 生成配音
   'videoGenerator',// 生成视频
   'imageCompare',  // 图片对比
-  'cutout',        // 抠图（统一节点：白底/色度键/工作流/rembg）
+  'cutout',        // 抠图（统一节点：白底/色度键/工作流/rembg/lumimatte）
   'depthExtract',  // 提取深度图（调 depth-anything 插件）
   'directorDesk',  // 3D导演台
   'photopea',      // 在线PS（Photopea）

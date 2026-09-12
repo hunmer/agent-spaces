@@ -26,14 +26,17 @@ import { composeSpriteSheet, splitByTransparent, splitSpriteSheet } from './spri
 import { imageDataToUrl, urlToImageData } from './io';
 import { innerStroke, resizeNearest } from './stroke';
 import { getImageCompression } from './cdn';
+import { mapWithConcurrency, clampConcurrency } from '../concurrency';
 
 /**
  * 处理器清单。节点 constants.IMAGE_PROCESSORS 里的参数表与此处的 id 一一对应，
  * 但常量定义放 constants.js（UI 层），run 实现放这里（算法层），解耦 UI 与算法。
  *
- * 注意：'enhance'（图片放大）不是本地算法，而是调用 image_enchanter 工作流（云端 AI 放大）。
- * 它的 run 通过 ctx.workflowId 拿到工作流 ID（由节点层 handleProcessLocal 从 settings 注入），
- * 用 ctx.urls[0] 调工作流，产出 URL 用 __url 标记透传（跳过 ImageData 转换），与 __gifUrl 同款机制。
+ * 注意：'enhance'（图片放大）不是本地算法，按 params.engine 分流：
+ * - cloud（默认）：image_enchanter 工作流（云端 AI 放大），workflowId/runWorkflowFn 由节点层
+ *   handleProcessLocal 从 settings 注入 ctx
+ * - lumimatte：workflow.lumimatte 插件 lumimatte_super_res（本地 2x/4x 超分）
+ * 两者均用 ctx.urls 原始 URL 调用，产出 URL 用 __url 标记透传（跳过 ImageData 转换）。
  */
 export const PROCESSORS = {
   // ============ GIF ============
@@ -148,37 +151,44 @@ export const PROCESSORS = {
     },
   },
 
-  // ============ 云端 AI 放大（走 image_enchanter 工作流，支持批量）============
-  // 非本地算法：run 内对每张输入图并发调工作流，用 __url 透传产出 URL，跳过 ImageData 管道。
-  // workflowId 由节点层 handleProcessLocal 从 settings.imageEnchanterWorkflowId 注入到 ctx。
+  // ============ 云端 AI 放大 / LumiMatte 插件超分（支持批量）============
+  // 非本地算法：run 内对每张输入图并发调用，用 __url 透传产出 URL，跳过 ImageData 管道。
+  // params.engine 分流（默认 cloud，旧存档无 engine 走云端）：
+  // - cloud:     image_enchanter 工作流；workflowId 由节点层 handleProcessLocal 注入 ctx
+  // - lumimatte: workflow.lumimatte 插件 lumimatte_super_res（2x/4x 本地超分，推理串行）
   // 批量并发：Promise.allSettled，部分失败不阻塞成功的；全部失败才抛错。
   'enhance': {
     multipleIn: true,
-    async run(_inputs, _params, ctx) {
-      const { urls, workflowId, runWorkflowFn } = ctx || {};
+    async run(_inputs, params, ctx) {
+      const { urls } = ctx || {};
       const inputUrls = Array.isArray(urls) ? urls.filter(Boolean) : [];
       if (!inputUrls.length) throw new Error('图片放大需要输入图');
-      if (!workflowId) throw new Error('未配置放大工作流（settings.imageEnchanterWorkflowId）');
-      if (typeof runWorkflowFn !== 'function') throw new Error('runWorkflowFn 未注入');
-      // 并发：每张图一次工作流调用（image_enchanter input 为单图）
-      const results = await Promise.allSettled(
-        inputUrls.map((url) =>
-          runWorkflowFn(workflowId, { image_url: url, process_type: 'enhance' })
-            .then((out) => out?.urls || []),
-        ),
-      );
+      const perUrl = params.engine === 'lumimatte'
+        ? runLumimatteSuperRes(params, ctx)
+        : runCloudEnhance(ctx);
+      // 并发限流：lumimatte 引擎按 params.concurrency（默认 2，服务端推理串行）；
+      // cloud 引擎保持不限并发（远端工作流自管配额）
+      const limit = params.engine === 'lumimatte'
+        ? clampConcurrency(params.concurrency, 2)
+        : Infinity;
+      // 每张图一次调用（image_enchanter / lumimatte_super_res 均为单图输入）
+      const results = await mapWithConcurrency(inputUrls, limit, perUrl);
       // 收集所有成功的产出 URL（一张输入可能返回多张，扁平化）
       const outUrls = [];
       let failed = 0;
+      let firstErr = '';
       for (const r of results) {
         if (r.status === 'fulfilled') {
           for (const u of r.value) if (u) outUrls.push(u);
         } else {
           failed += 1;
+          if (!firstErr) firstErr = String(r.reason?.message || r.reason);
         }
       }
       if (!outUrls.length) {
-        throw new Error(failed ? `${failed} 张图片放大全部失败` : '放大未返回图片');
+        throw new Error(failed
+          ? `${failed} 张图片放大全部失败${firstErr ? `：${firstErr}` : ''}`
+          : '放大未返回图片');
       }
       // __url 标记：runProcessor 识别后直接用 URL，不再走 imageDataToUrl
       // 把部分失败信息附加到首个产出（runProcessor 不读 error 字段，仅作记录）
@@ -263,6 +273,48 @@ export const PROCESSORS = {
     },
   },
 };
+
+/**
+ * enhance 引擎分流：云端 image_enchanter 工作流。
+ * 返回 perUrl 函数（url → 产出 URL 数组），与 lumimatte 分支同构。
+ */
+function runCloudEnhance(ctx) {
+  const { workflowId, runWorkflowFn } = ctx || {};
+  if (!workflowId) throw new Error('未配置放大工作流（settings.imageEnchanterWorkflowId）');
+  if (typeof runWorkflowFn !== 'function') throw new Error('runWorkflowFn 未注入');
+  return (url) =>
+    runWorkflowFn(workflowId, { image_url: url, process_type: 'enhance' })
+      .then((out) => out?.urls || []);
+}
+
+/**
+ * enhance 引擎分流：workflow.lumimatte 插件 lumimatte_super_res（2x/4x 本地超分）。
+ * scale/denoiseLevel/faceEnhance/tileSize 由节点参数表透传；baseUrl/timeout 由插件配置注入。
+ * 返回 { success, message, data:{ imageUrl } }，提取 data.imageUrl。
+ */
+function runLumimatteSuperRes(params, ctx) {
+  const LUMIMATTE_PLUGIN_ID = 'workflow.lumimatte';
+  const args = { scale: Number(params.scale) === 4 ? 4 : 2 };
+  if (params.denoiseLevel != null && params.denoiseLevel !== '') args.denoiseLevel = Number(params.denoiseLevel);
+  if (params.faceEnhance != null) args.faceEnhance = params.faceEnhance !== false;
+  if (params.tileSize != null && params.tileSize !== '') args.tileSize = Number(params.tileSize);
+  return async (url) => {
+    const AS = window.AgentSpaces;
+    if (!AS?.callPluginTool) throw new Error('宿主 callPluginTool 不可用');
+    const ret = await AS.callPluginTool(
+      LUMIMATTE_PLUGIN_ID,
+      'lumimatte_super_res',
+      { ...args, image: url },
+      { meta: { executionTarget: ctx?.executionTarget || undefined } },
+    );
+    const data = ret && typeof ret === 'object' && 'result' in ret && typeof ret.success === 'boolean'
+      ? ret.result
+      : ret;
+    const out = data?.data?.imageUrl || data?.imageUrl;
+    if (!out) throw new Error(data?.message || 'LumiMatte 超分未返回 imageUrl');
+    return [out];
+  };
+}
 
 /**
  * PNG 无损压缩：用 canvas 重绘 + 缩放到最长边（browser-image-compression 不支持 png 输出）。

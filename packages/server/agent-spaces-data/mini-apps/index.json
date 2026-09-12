@@ -410,6 +410,7 @@
     "enabledPlugins": [
       "@agent-spaces/builtin",
       "workflow.rembg",
+      "workflow.lumimatte",
       "workflow.sam",
       "workflow.ffmpeg",
       "workflow.depth-anything"
@@ -470,6 +471,6 @@
       }
     ],
     "createdAt": "2026-07-22T00:00:00.000Z",
-    "updatedAt": "2026-09-12T03:27:12.498Z"
+    "updatedAt": "2026-09-12T03:55:23.518Z"
   }
 ]

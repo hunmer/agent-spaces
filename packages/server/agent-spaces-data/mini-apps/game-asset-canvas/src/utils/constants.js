@@ -435,11 +435,36 @@ export const IMAGE_PROCESSORS = [
       { key: 'mode', label: '混合模式', type: 'select', default: 'normal', options: ['normal', 'multiply', 'screen', 'overlay', 'add'] },
     ],
   },
-  // ---- 画质增强（云端 AI，走 image_enchanter 工作流）----
+  // ---- 画质增强（engine 选择：云端 AI 工作流 / LumiMatte 插件本地超分）----
   {
     id: 'enhance', label: '图片放大', category: 'enhance', multipleIn: true, minInputs: 1,
-    desc: '调用 image_enchanter 工作流云端 AI 放大（高清化），支持批量，非本地算法',
-    params: [],
+    desc: 'AI 放大高清化，支持批量：云端 image_enchanter 工作流，或 LumiMatte 插件本地超分（2x/4x）',
+    params: [
+      {
+        key: 'engine', label: '执行引擎', type: 'select', default: 'cloud',
+        options: [
+          { value: 'cloud', label: '云端工作流（image_enchanter）' },
+          { value: 'lumimatte', label: 'LumiMatte 插件（本地超分）' },
+        ],
+      },
+      {
+        key: 'scale', label: '放大倍数', type: 'select', default: '2',
+        options: [
+          { value: '2', label: '2x' },
+          { value: '4', label: '4x' },
+        ],
+        showWhen: { key: 'engine', eq: 'lumimatte' },
+      },
+      { key: 'denoiseLevel', label: '降噪强度(0-1)', type: 'number', default: 0.5, min: 0, max: 1, step: 0.05,
+        showWhen: { key: 'engine', eq: 'lumimatte' } },
+      { key: 'faceEnhance', label: '面部增强', type: 'bool', default: true,
+        showWhen: { key: 'engine', eq: 'lumimatte' } },
+      { key: 'tileSize', label: '分块尺寸', type: 'number', default: 256, min: 64, max: 1024,
+        showWhen: { key: 'engine', eq: 'lumimatte' } },
+      { key: 'concurrency', label: '并发上限', type: 'number', default: 2, min: 1, max: 8,
+        tooltip: '批量多图时同时处理的张数（LumiMatte 推理串行，过大无收益）',
+        showWhen: { key: 'engine', eq: 'lumimatte' } },
+    ],
   },
   // ---- 图片压缩（browser-image-compression，本地浏览器端，Web Worker 不卡 UI）----
   // mode='size'：压缩到目标体积（maxSizeMB）。mode='dimensions'：缩放到最长边 ≤ maxWidthOrHeight。
@@ -605,6 +630,7 @@ export const CUTOUT_MODES = [
   { value: 'chromaKey', label: '色度键抠图（本地）', desc: '绿幕/蓝幕/自定义键色抠除，带平滑带' },
   { value: 'workflow', label: '工作流抠图（云端）', desc: '调用 image_enchanter 工作流云端 AI 抠图' },
   { value: 'rembg', label: 'Rembg 抠图（插件）', desc: '调用 Rembg 插件 HTTP 服务，多分割模型可选' },
+  { value: 'lumimatte', label: 'LumiMatte 抠图（插件）', desc: '调用 LumiMatte 插件 ISNet 本地推理抠图（人像/发丝/商品）' },
 ];
 
 // 默认 mode
@@ -687,6 +713,15 @@ export const CUTOUT_PARAMS = {
     { key: 'extras', label: 'SAM Prompt(JSON)', type: 'text', default: '',
       tooltip: 'JSON 对象，如 {"sam_prompt":[{"type":"point","data":[724,740],"label":1}]}',
       showWhen: { key: 'rembgMode', eq: 'sam' } },
+    // 并发上限（批量多图时限流，避免压垮插件服务）
+    { key: 'concurrency', label: '并发上限', type: 'number', default: 4, min: 1, max: 8,
+      tooltip: '批量多图时同时处理的张数' },
+  ],
+  // ---- LumiMatte 抠图（插件，ISNet 本地推理）----
+  // baseUrl/timeout 由插件配置注入；服务端推理全局串行，并发默认 2（超出部分在服务端排队）
+  lumimatte: [
+    { key: 'concurrency', label: '并发上限', type: 'number', default: 2, min: 1, max: 8,
+      tooltip: '批量多图时同时处理的张数（LumiMatte 推理串行，过大无收益）' },
   ],
 };
 
