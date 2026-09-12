@@ -711,11 +711,12 @@ export default function Canvas({ hostConfig }) {
       groupExecution.getExecutionTargetForNode(nodeId),
     )
   ), [groupExecution.getExecutionTargetForNode, handleCutout]);
-  const handleScopedDepth = useCallback((nodeId, params, sourceImages) => (
+  const handleScopedDepth = useCallback((nodeId, params, sourceImages, sourceVideos) => (
     handleDepth(
       nodeId,
       params,
       sourceImages,
+      sourceVideos,
       groupExecution.getExecutionTargetForNode(nodeId),
     )
   ), [groupExecution.getExecutionTargetForNode, handleDepth]);

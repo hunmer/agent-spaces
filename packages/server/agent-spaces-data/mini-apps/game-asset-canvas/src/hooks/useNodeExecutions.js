@@ -487,8 +487,9 @@ export default function useNodeExecutions({
     const update = (patch) => (executionTarget
       ? updateExecutionNodeData?.(executionTarget, patch)
       : updateNodeData(nodeId, patch));
-    const imgs = (sourceImages || []).filter(Boolean);
-    const vids = (sourceVideos || []).filter(Boolean);
+    // 只接受字符串 URL：防止调用方漏传 videos 时把 executionTarget 对象顶位混入
+    const imgs = (sourceImages || []).filter((v) => typeof v === 'string' && v);
+    const vids = (sourceVideos || []).filter((v) => typeof v === 'string' && v);
     if (!imgs.length && !vids.length) return;
     try { saveLastParams?.(NODE_TYPES.depthExtract, params || {}); }
     catch (e) { console.error('saveLastParams failed:', e); }
