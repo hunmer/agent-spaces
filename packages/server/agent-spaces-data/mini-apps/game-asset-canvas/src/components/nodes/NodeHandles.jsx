@@ -12,6 +12,8 @@ export default function NodeHandles({
   targetTop = target,
   sourceRight = source,
   sourceBottom = source,
+  // 顶部 handle 默认悬在顶边上方 18px；带上方名称徽标的节点可上移避开徽标
+  targetTopOffset = -HANDLE_OFFSET,
 }) {
   return (
     <>
@@ -31,7 +33,7 @@ export default function NodeHandles({
             position={Position.Top}
             accentColor={INPUT_COLOR}
             aria-label="节点输入（顶部）"
-            style={{ top: -HANDLE_OFFSET, left: '50%', zIndex: 50 }}
+            style={{ top: targetTopOffset, left: '50%', zIndex: 50 }}
           />
       )}
       {sourceRight && (

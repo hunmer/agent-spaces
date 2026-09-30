@@ -19,6 +19,7 @@ import { WORKFLOW_NODE_DRAG_HANDLE_CLASS } from './workflow-node-handles';
 import { parseWorkflowFieldHandleId } from './workflow-field-handles';
 import { isGeneratedRuntimeReferenceEdge } from './workflow-edge-capacity';
 import type { WorkflowFieldKeyRenameParams } from './workflow-properties-io-sections';
+import { collectLockedWorkflowGroupNodeIds } from './workflow-canvas-helpers';
 
 const DEFAULT_SOURCE_HANDLE_ID = 'source';
 const LOOP_BODY_NODE_Z_INDEX = -100;
@@ -197,7 +198,7 @@ function createNormalReachableNodePairKeys(adjacency: Map<string, string[]>): Se
 }
 
 interface UseCanvasDataParams {
-  workflow: Pick<Workflow, 'nodes' | 'edges'>;
+  workflow: Pick<Workflow, 'nodes' | 'edges' | 'groups'>;
   selectedNodeId: string | null | undefined;
   selectedNodeIds: string[];
   selectedEdgeId: string | null;
@@ -331,6 +332,7 @@ export function useCanvasData({
   const rfNodes: Node[] = useMemo(() =>
     {
       const nodeById = new Map(workflow.nodes.map(node => [node.id, node]));
+      const lockedNodeIds = collectLockedWorkflowGroupNodeIds(workflow.groups || []);
       return workflow.nodes.filter(n => !isHiddenWorkflowNode(n)).map(n => {
       const definition = getNodeDefinition(n.type);
       const { minWidth, minHeight, width, height } = getWorkflowNodeSize(definition, n.data);
@@ -351,6 +353,7 @@ export function useCanvasData({
         type: 'custom',
         position: n.position,
         dragHandle: hasCustomView || hasPropertyNodeView ? `.${WORKFLOW_NODE_DRAG_HANDLE_CLASS}` : undefined,
+        draggable: !isCanvasLocked && !lockedNodeIds.has(n.id),
         selected: isSelected,
         zIndex,
         width,
@@ -397,7 +400,7 @@ export function useCanvasData({
       };
     });
     },
-    [workflow.nodes, workflow.edges, selectedNodeIdSet, selectedNodeIds, isPreview, isCanvasLocked, executionNodeIdsWithScope, execStatus, debugNodeId, debugStatus, pausedNodeId, pausedReason, partialExecutionStartNodeId, handlePosition, floatingHandles, logPanelLayout, nodeDisplayMode, propertyModeBadgePosition, executionStepByNodeId, executionStepsByNodeId, embeddedMode, onAutoLayout, onFieldKeyRename, layoutEngine],
+    [workflow.nodes, workflow.edges, workflow.groups, selectedNodeIdSet, selectedNodeIds, isPreview, isCanvasLocked, executionNodeIdsWithScope, execStatus, debugNodeId, debugStatus, pausedNodeId, pausedReason, partialExecutionStartNodeId, handlePosition, floatingHandles, logPanelLayout, nodeDisplayMode, propertyModeBadgePosition, executionStepByNodeId, executionStepsByNodeId, embeddedMode, onAutoLayout, onFieldKeyRename, layoutEngine],
   );
 
   const runningEdgeIds = useMemo(() => {

@@ -4,6 +4,14 @@ import { computeInputAudios, computeInputImages, computeInputTexts, computeInput
 import { computeTextVariableBindings, computeTextOutputSuggestions } from '../utils/text-variable-bindings.js';
 import { dedupeTags } from '../utils/canvas-constants';
 
+// 展示类节点的自定义拖拽 handle（节点内容区可点选/播放/编辑，不触发整节点拖拽）
+const DRAG_HANDLE_BY_TYPE = {
+  [NODE_TYPES.imageDisplay]: '.image-drag-handle',
+  [NODE_TYPES.videoDisplay]: '.image-drag-handle',
+  [NODE_TYPES.audioDisplay]: '.audio-drag-handle',
+  [NODE_TYPES.text]: '.text-drag-handle',
+};
+
 /**
  * 给每个节点的 data 注入回调与派生数据（computeInputImages 派生输入图 + 注入执行/编辑回调）。
  * 从 Canvas.jsx 抽出（原 B13）。
@@ -147,10 +155,8 @@ export default function useDecoratedNodes({
           height: previewHeight,
           style: { ...nd.style, height: previewHeight },
         } : {}),
-        // 图片/视频展示节点：限定只能从 .image-drag-handle 拖动（媒体区域可点选/播放不触发拖拽）
-        dragHandle: (nd.type === NODE_TYPES.imageDisplay || nd.type === NODE_TYPES.videoDisplay)
-          ? '.image-drag-handle'
-          : nd.type === NODE_TYPES.audioDisplay ? '.audio-drag-handle' : nd.dragHandle,
+        // 展示类节点限定拖拽 handle：媒体区域/编辑区可点选播放编辑，不触发整节点拖拽
+        dragHandle: DRAG_HANDLE_BY_TYPE[nd.type] || nd.dragHandle,
         data: {
           ...data,
           nodeJson: JSON.stringify(nd, null, 2),

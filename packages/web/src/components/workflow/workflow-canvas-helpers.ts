@@ -9,6 +9,25 @@ export function isNonNull<T>(value: T | null): value is T {
   return value !== null;
 }
 
+export function collectLockedWorkflowGroupNodeIds(
+  groups: Array<{ id: string; locked: boolean; childNodeIds: string[]; childGroupIds: string[] }>,
+): Set<string> {
+  const groupById = new Map(groups.map(group => [group.id, group]));
+  const lockedNodeIds = new Set<string>();
+  const collectNodes = (groupId: string, visited: Set<string>) => {
+    if (visited.has(groupId)) return;
+    visited.add(groupId);
+    const group = groupById.get(groupId);
+    if (!group) return;
+    group.childNodeIds.forEach(nodeId => lockedNodeIds.add(nodeId));
+    group.childGroupIds.forEach(childGroupId => collectNodes(childGroupId, visited));
+  };
+  groups.forEach(group => {
+    if (group.locked) collectNodes(group.id, new Set());
+  });
+  return lockedNodeIds;
+}
+
 export function findSmallestContainingRectId(
   point: { x: number; y: number },
   targets: Array<{ id: string; rect: { left: number; top: number; right: number; bottom: number } }>,

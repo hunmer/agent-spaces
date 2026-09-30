@@ -4,10 +4,24 @@ import {
   addCloneToSourceGroups,
   alignAutoLayoutLayers,
   appendImmediateCanvasClone,
+  collectLockedWorkflowGroupNodeIds,
   findSmallestContainingRectId,
   getGridLayoutPositions,
   resolveGroupBoundsNode,
 } from './workflow-canvas-helpers';
+
+test('collectLockedWorkflowGroupNodeIds includes nodes in nested child groups', () => {
+  const groups = [
+    { id: 'locked', name: 'Locked', locked: true, disabled: false, childNodeIds: ['direct'], childGroupIds: ['nested'], savedNodeStates: {} },
+    { id: 'nested', name: 'Nested', locked: false, disabled: false, childNodeIds: ['nested-node'], childGroupIds: [], savedNodeStates: {} },
+    { id: 'unlocked', name: 'Unlocked', locked: false, disabled: false, childNodeIds: ['free'], childGroupIds: [], savedNodeStates: {} },
+  ];
+
+  assert.deepEqual(
+    [...collectLockedWorkflowGroupNodeIds(groups)].sort(),
+    ['direct', 'nested-node'],
+  );
+});
 
 test('findSmallestContainingRectId picks the innermost matching group', () => {
   const targets = [

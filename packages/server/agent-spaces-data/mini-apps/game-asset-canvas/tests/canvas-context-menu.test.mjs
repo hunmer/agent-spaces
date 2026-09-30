@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import {
   addNodeToContextGroup,
   getContextMenuGroupId,
+  groupContextMenuOptions,
   selectContextMenuNode,
 } from '../src/utils/canvas-context-menu.js';
 
@@ -26,3 +27,17 @@ selectContextMenuNode([
 ], 'image', () => actions.push('close'));
 assert.deepEqual(actions, ['select', 'close']);
 
+const groupedOptions = groupContextMenuOptions([
+  { value: 'a', label: '节点 A', group: '基础' },
+  { value: 'b', label: '节点 B', group: '图片' },
+  { value: 'c', label: '节点 C', group: '基础' },
+  { value: 'd', label: '节点 D' },
+]);
+assert.deepEqual(groupedOptions.map((group) => ({
+  label: group.label,
+  values: group.items.map((item) => item.value),
+})), [
+  { label: '基础', values: ['a', 'c'] },
+  { label: '图片', values: ['b'] },
+  { label: '其他', values: ['d'] },
+]);

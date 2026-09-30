@@ -85,6 +85,7 @@ import {
 import {
   areStringArraysEqual,
   appendImmediateCanvasClone,
+  collectLockedWorkflowGroupNodeIds,
   findSmallestContainingRectId,
   isConnectionEndOnCanvasNode,
   isNonNull,
@@ -1081,7 +1082,9 @@ export function WorkflowCanvas({
 
   const handleNodesChange = useCallback((changes: NodeChange[]) => {
     if (isCanvasLocked) return;
-    const positionChanges = changes.filter(isPositionNodeChange);
+    const lockedNodeIds = collectLockedWorkflowGroupNodeIds(workflow.groups || []);
+    const allowedChanges = changes.filter(change => !isPositionNodeChange(change) || !lockedNodeIds.has(change.id));
+    const positionChanges = allowedChanges.filter(isPositionNodeChange);
     const positionCount = positionChanges.length;
     const selectionChanges = changes.filter(
       (change): change is NodeChange & { type: 'select'; id: string; selected: boolean } => change.type === 'select',
@@ -1107,19 +1110,19 @@ export function WorkflowCanvas({
         draggedNodeIdsRef.current.add(change.id);
       }
       setCanvasNodes((nodes) => {
-        const nextNodes = applyNodeChanges(changes, nodes);
+        const nextNodes = applyNodeChanges(allowedChanges, nodes);
         canvasNodesRef.current = nextNodes;
         return nextNodes;
       });
     }
 
     const parentChanges = isNodeDraggingRef.current
-      ? changes.filter(change => change.type !== 'position')
-      : changes;
+      ? allowedChanges.filter(change => change.type !== 'position')
+      : allowedChanges;
     if (parentChanges.length > 0) {
       onNodesChange(parentChanges);
     }
-  }, [isCanvasLocked, onNodesChange, onNodesSelect, selectEdge, selectedNodeIds, workflow.nodes]);
+  }, [isCanvasLocked, onNodesChange, onNodesSelect, selectEdge, selectedNodeIds, workflow.groups, workflow.nodes]);
 
   const handleEdgesChangeWithLock = useCallback((changes: EdgeChange[]) => {
     if (isCanvasLocked) return;

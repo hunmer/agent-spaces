@@ -21,16 +21,42 @@ import {
 
 const debuggedCanvasImageDrags = new WeakSet();
 
-// 外部应用拖拽图片时，浏览器不一定会填充 dataTransfer.files：
-// 部分应用只提供 DataTransfer.items，另一些则仅提供图片 URL 文本。
-async function getDroppedImageFiles(dataTransfer) {
-  const files = Array.from(dataTransfer?.files || []).filter((file) => file.type?.startsWith('image/'));
+// 拖入画布受支持的媒体文件类型（图片/视频/音频）
+const MEDIA_FILE_TYPE_RE = /^(image|video|audio)\//i;
+// 文本类文件：MIME（text/plain / text/markdown）或扩展名（.txt/.md/.markdown）
+// 多数系统拖拽 .md 不上报 MIME（type 为空），必须按扩展名兜底
+const TEXT_FILE_RE = /\.(txt|md|markdown)$/i;
+const isTextFileType = (file) => file?.type === 'text/plain'
+  || file?.type === 'text/markdown'
+  || TEXT_FILE_RE.test(file?.name || '');
+// 媒体 + 文本（txt/md → 文字节点）都可在落点建节点
+const isDroppableFileType = (type, name) => MEDIA_FILE_TYPE_RE.test(type || '')
+  || type === 'text/plain'
+  || type === 'text/markdown'
+  || TEXT_FILE_RE.test(name || '');
+
+// 读取 txt 文本：优先 UTF-8（带 BOM 按对应 Unicode 解码），出现替换符再按 GBK 兜底
+// （中文 Windows 旧版记事本的 ANSI 文件不是 UTF-8，直接 text() 会乱码）
+async function readTextFileContent(file) {
+  const buffer = await file.arrayBuffer();
+  const bytes = new Uint8Array(buffer);
+  if (bytes[0] === 0xff && bytes[1] === 0xfe) return new TextDecoder('utf-16le').decode(buffer);
+  if (bytes[0] === 0xfe && bytes[1] === 0xff) return new TextDecoder('utf-16be').decode(buffer);
+  const utf8 = new TextDecoder('utf-8').decode(buffer);
+  return utf8.includes('\uFFFD') ? new TextDecoder('gbk').decode(buffer) : utf8;
+}
+
+// 外部应用拖拽媒体文件时，浏览器不一定会填充 dataTransfer.files：
+// 部分应用只提供 DataTransfer.items，另一些则仅提供资源 URL 文本。
+// URL 兜底仅认媒体 blob（拖网页链接建文本节点语义不通，不做）。
+async function getDroppedFiles(dataTransfer) {
+  const files = Array.from(dataTransfer?.files || []).filter((file) => isDroppableFileType(file.type, file.name));
   if (files.length) return files;
 
   const itemFiles = Array.from(dataTransfer?.items || [])
     .filter((item) => item.kind === 'file')
     .map((item) => item.getAsFile?.())
-    .filter((file) => file?.type?.startsWith('image/'));
+    .filter((file) => isDroppableFileType(file?.type, file?.name));
   if (itemFiles.length) return itemFiles;
 
   const uriText = dataTransfer?.getData?.('text/uri-list') || dataTransfer?.getData?.('text/plain');
@@ -40,8 +66,8 @@ async function getDroppedImageFiles(dataTransfer) {
     const response = await fetch(uri);
     if (!response.ok) return [];
     const blob = await response.blob();
-    if (!blob.type?.startsWith('image/')) return [];
-    const name = decodeURIComponent(new URL(uri).pathname.split('/').pop() || 'dropped-image');
+    if (!MEDIA_FILE_TYPE_RE.test(blob.type || '')) return [];
+    const name = decodeURIComponent(new URL(uri).pathname.split('/').pop() || 'dropped-media');
     return [new File([blob], name, { type: blob.type })];
   } catch {
     return [];
@@ -288,12 +314,12 @@ export default function useNodeCrud({
   const handleDragOver = useCallback((event) => {
     event.preventDefault();
     const types = Array.from(event.dataTransfer.types || []);
-    const hasImageItem = Array.from(event.dataTransfer.items || [])
-      .some((item) => item.kind === 'file' && (item.type?.startsWith('image/') || !item.type));
-    // 外部应用通常声明 copy（Files、URI 或 image/*），若强制 move 会显示禁用光标。
-    const isExternalImageDrag = types.includes('Files') || types.includes('text/uri-list') || hasImageItem;
+    const hasMediaItem = Array.from(event.dataTransfer.items || [])
+      .some((item) => item.kind === 'file' && (isDroppableFileType(item.type) || !item.type));
+    // 外部应用通常声明 copy（Files、URI 或媒体/文本类型），若强制 move 会显示禁用光标。
+    const isExternalMediaDrag = types.includes('Files') || types.includes('text/uri-list') || hasMediaItem;
     const isImageDrag = types.includes(CANVAS_DROP_MIME);
-    event.dataTransfer.dropEffect = isImageDrag || isExternalImageDrag ? 'copy' : 'move';
+    event.dataTransfer.dropEffect = isImageDrag || isExternalMediaDrag ? 'copy' : 'move';
     if (isImageDrag && !debuggedCanvasImageDrags.has(event.dataTransfer)) {
       debuggedCanvasImageDrags.add(event.dataTransfer);
       debugCanvasImageDrag('canvas:dragover', event.dataTransfer, { isImageDrag });
@@ -340,62 +366,109 @@ export default function useNodeCrud({
     });
   }, [setNodes]);
 
-  // 系统图片文件拖入画布：在落点建图片展示节点（loading 占位），串行上传
+  // 系统文件拖入画布：媒体（图片/视频/音频）按类型建对应展示节点（loading 占位）并上传；
+  // txt 本地读文本建「文字」节点。图片按自身宽高定尺寸；视频/音频/文字用类型默认尺寸。
   const handleDropFiles = useCallback(async (fileList, position) => {
-    const files = Array.from(fileList || []).filter((f) => f.type?.startsWith('image/'));
+    const files = Array.from(fileList || []).filter((f) => isDroppableFileType(f.type, f.name));
     if (!files.length) return;
     const AS = window.AgentSpaces;
-    if (!AS?.uploadFile) return;
+    if (files.some((f) => MEDIA_FILE_TYPE_RE.test(f.type || '')) && !AS?.uploadFile) return;
 
     const dimensions = await Promise.all(files.map(loadImageFileDimensions));
-    const fallbackSize = DEFAULT_SIZE[NODE_TYPES.imageDisplay];
-    const sizes = dimensions.map((value) => value
-      ? getImageDisplayNodeSize(value.width, value.height)
-      : fallbackSize);
-    const cellW = Math.max(...sizes.map((size) => size.w));
-    const cellH = Math.max(...sizes.map((size) => size.h));
     const gap = 20;
     const cols = 3;
-    const ids = files.map(() => genId(NODE_TYPES.imageDisplay));
-    setNodes((prev) => {
-      const additions = files.map((_, i) => {
-        const id = ids[i];
-        const size = sizes[i];
-        const col = i % cols;
-        const row = Math.floor(i / cols);
+    const kinds = [
+      { re: /^image\//, type: NODE_TYPES.imageDisplay, field: 'images' },
+      { re: /^video\//, type: NODE_TYPES.videoDisplay, field: 'videos' },
+      { re: /^audio\//, type: NODE_TYPES.audioDisplay, field: 'audios' },
+    ];
+    const uploads = [];
+    let offsetY = 0;
+    kinds.forEach((kind) => {
+      const entries = files
+        .map((file, i) => ({ file, i }))
+        .filter(({ file }) => kind.re.test(file.type || ''));
+      if (!entries.length) return;
+      const fallbackSize = DEFAULT_SIZE[kind.type];
+      const sizes = entries.map(({ i }) => (dimensions[i]
+        ? getImageDisplayNodeSize(dimensions[i].width, dimensions[i].height)
+        : fallbackSize));
+      const cellW = Math.max(...sizes.map((size) => size.w));
+      const cellH = Math.max(...sizes.map((size) => size.h));
+      const ids = entries.map(() => genId(kind.type));
+      const meta = NODE_META[kind.type];
+      setNodes((prev) => [...prev, ...entries.map(({ file, i }, k) => {
+        const size = sizes[k];
+        const col = k % cols;
+        const row = Math.floor(k / cols);
         return {
-          id,
-          type: NODE_TYPES.imageDisplay,
+          id: ids[k],
+          type: kind.type,
           position: {
             x: (position?.x || 120) + col * (cellW + gap) - size.w / 2,
-            y: (position?.y || 120) + row * (cellH + gap) - size.h / 2,
+            y: (position?.y || 120) + offsetY + row * (cellH + gap) - size.h / 2,
           },
           width: size.w, height: size.h,
           style: { width: size.w, height: size.h },
           data: {
-            ...initialData(NODE_TYPES.imageDisplay),
+            ...initialData(kind.type),
             source: 'upload',
             loading: true,
-            images: [],
             tags: [IMAGE_TAGS.upload],
-            label: NODE_META[NODE_TYPES.imageDisplay].label,
-            ...(dimensions[i] ? { imageSize: dimensions[i] } : {}),
+            label: meta.label,
+            // 拖入文件以文件名作为节点名称（节点上方名称徽标展示）
+            ...(file.name ? { title: file.name } : {}),
+            ...(kind.field === 'images' && dimensions[i] ? { imageSize: dimensions[i] } : {}),
+            [kind.field]: [],
           },
         };
-      });
-      return [...prev, ...additions];
+      })]);
+      offsetY += Math.ceil(entries.length / cols) * (cellH + gap);
+      entries.forEach(({ file }, k) => uploads.push({ id: ids[k], file, field: kind.field }));
     });
 
-    files.forEach((file, i) => {
+    // txt/md 文件：本地读文本直接建「文字」节点（内容进 data.output.text，可连线传递），无需上传
+    const textEntries = files
+      .map((file, i) => ({ file, i }))
+      .filter(({ file }) => isTextFileType(file));
+    if (textEntries.length) {
+      const contents = await Promise.all(textEntries.map(({ file }) => readTextFileContent(file)));
+      const type = NODE_TYPES.text;
+      const size = DEFAULT_SIZE[type];
+      const meta = NODE_META[type];
+      setNodes((prev) => [...prev, ...textEntries.map(({ file }, k) => {
+        const col = k % cols;
+        const row = Math.floor(k / cols);
+        return {
+          id: genId(type),
+          type,
+          position: {
+            x: (position?.x || 120) + col * (size.w + gap) - size.w / 2,
+            y: (position?.y || 120) + offsetY + row * (size.h + gap) - size.h / 2,
+          },
+          width: size.w, height: size.h,
+          style: { width: size.w, height: size.h },
+          data: {
+            ...initialData(type),
+            output: { text: contents[k] },
+            // 文件名作为节点名称（上方名称徽标展示）
+            ...(file.name ? { title: file.name } : {}),
+            label: meta.label,
+          },
+        };
+      })]);
+    }
+
+    uploads.forEach(({ id, file, field }) => {
       AS.uploadFile(file)
         .then((uploaded) => {
           const httpUrl = uploaded?.url || uploaded?.httpPath;
           if (!httpUrl) throw new Error('上传未返回 URL');
-          updateNodeData(ids[i], { images: [httpUrl], loading: false, source: 'upload' });
+          updateNodeData(id, { [field]: [httpUrl], loading: false, source: 'upload' });
         })
         .catch((err) => {
           console.error('drop upload failed:', err);
-          updateNodeData(ids[i], { loading: false, source: 'error', error: `上传失败：${err?.message || String(err)}` });
+          updateNodeData(id, { loading: false, source: 'error', error: `上传失败：${err?.message || String(err)}` });
         });
     });
   }, [setNodes, updateNodeData]);
@@ -416,20 +489,20 @@ export default function useNodeCrud({
     // drop 落在节点内（含节点内 FileUpload/dropzone）：交给节点自行处理，画布不建节点。
     // 否则事件冒泡到这里会因 dataTransfer.files 非空误建 imageDisplay，且 FileUpload 的 onChange 也被触发导致重复消费。
     if (event.target instanceof Element && event.target.closest('.react-flow__node')) return;
-    // 先消费图片文件；外部应用可能通过 items 或 URI 异步提供图片数据。
-    const hasImageItem = Array.from(event.dataTransfer.items || [])
-      .some((item) => item.kind === 'file' && (item.type?.startsWith('image/') || !item.type));
-    const hasImageFile = event.dataTransfer.files?.length > 0;
-    if (hasImageFile || hasImageItem) {
+    // 先消费媒体/txt 文件；外部应用可能通过 items 或 URI 异步提供文件数据。
+    const hasMediaItem = Array.from(event.dataTransfer.items || [])
+      .some((item) => item.kind === 'file' && (isDroppableFileType(item.type) || !item.type));
+    const hasMediaFile = event.dataTransfer.files?.length > 0;
+    if (hasMediaFile || hasMediaItem) {
       const position = reactFlow.screenToFlowPosition({ x: event.clientX, y: event.clientY });
-      getDroppedImageFiles(event.dataTransfer).then((files) => handleDropFiles(files, position));
+      getDroppedFiles(event.dataTransfer).then((files) => handleDropFiles(files, position));
       return;
     }
     const position = reactFlow.screenToFlowPosition({ x: event.clientX, y: event.clientY });
     const uriText = event.dataTransfer.getData('text/uri-list') || event.dataTransfer.getData('text/plain');
     const uri = uriText?.split(/\r?\n/).find((value) => value && !value.startsWith('#'))?.trim();
     if (/^https?:\/\//i.test(uri || '')) {
-      getDroppedImageFiles(event.dataTransfer).then((files) => handleDropFiles(files, position));
+      getDroppedFiles(event.dataTransfer).then((files) => handleDropFiles(files, position));
       return;
     }
     // 历史项拖拽：携带预填 patch

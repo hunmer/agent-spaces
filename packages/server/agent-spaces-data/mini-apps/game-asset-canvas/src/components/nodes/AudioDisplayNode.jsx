@@ -4,6 +4,7 @@ import { AudioLines, ChevronLeft, ChevronRight, Mic, Pause, Play, Upload, toast 
 import useViewportActivation from '../../hooks/useViewportActivation';
 import NodeHandles from './NodeHandles';
 import NodeHoverMenu from './NodeHoverMenu';
+import NodeTopBadge from './NodeTopBadge';
 import { normalizeImageUrl } from '../../utils/workflow';
 
 const AUDIO_SEPARATOR_PLUGIN_ID = 'workflow.audio-separator';
@@ -99,6 +100,7 @@ function guessAudioMime(contentType, url) {
 export default function AudioDisplayNode({ data, selected }) {
   const audios = Array.isArray(data?.audios) ? data.audios.filter(Boolean) : [];
   const onUpdate = data?.onUpdate;
+  const loading = data?.loading;
   const inputRef = useRef(null);
   const rootRef = useRef(null);
   const surfaceRef = useRef(null);
@@ -370,6 +372,15 @@ export default function AudioDisplayNode({ data, selected }) {
         onDelete={data?.onDeleteNode}
         running={data?.status === 'running'}
       />
+      <NodeTopBadge
+        title={data?.title}
+        fallback={data?.label || '音频展示'}
+        inputs={audios}
+        source={data?.source}
+        tags={data?.tags}
+        onRename={(title) => onUpdate?.({ title })}
+      />
+
       <NodeResizer
         isVisible={!!selected}
         minWidth={240}
@@ -378,7 +389,7 @@ export default function AudioDisplayNode({ data, selected }) {
         handleClassName="!w-2.5 !h-2.5 !rounded-sm !border-2 !border-background"
         lineClassName="!border-primary/40"
       />
-      <NodeHandles target source />
+      <NodeHandles target source targetTopOffset={-40} />
 
       <div className="absolute inset-0 overflow-hidden">
         {/* 左上角常驻上传按钮（同视频展示节点） */}
@@ -415,7 +426,7 @@ export default function AudioDisplayNode({ data, selected }) {
           </>
         )}
 
-        {uploading ? (
+        {uploading || loading ? (
           <div className="absolute inset-0 flex items-center justify-center gap-2 rounded-lg bg-card text-xs text-primary ring-1 ring-border">
             <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-primary border-t-transparent" />
             上传中…

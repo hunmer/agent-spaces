@@ -145,6 +145,8 @@ export default function Canvas({ hostConfig }) {
   const [historyFocusNodeId, setHistoryFocusNodeId] = useState(null);
   // 保存预设对话框：{ pendingNodes, groupCount } | null。底部多选工具栏【保存预设】触发。
   const [savePresetState, setSavePresetState] = useState(null);
+  // 激活分组的素材库导入对话框状态。
+  const [groupAssetLibraryState, setGroupAssetLibraryState] = useState(null);
 
   const reactFlow = useReactFlow();
   const wrappingRef = useRef(null);
@@ -750,6 +752,54 @@ export default function Canvas({ hostConfig }) {
 
   // —— 添加到素材库：节点产出图 / 生成记录图 共用的分组选择器 ——
   const { addAsset, createCategory, categories: assetCategories } = useAssetLibrary(activeId);
+
+  const activeGroup = useMemo(
+    () => groups.find((group) => group.id === groupOps.selectedGroupId) || null,
+    [groupOps.selectedGroupId, groups],
+  );
+  const activeGroupAssets = useMemo(() => {
+    if (!activeGroup) return [];
+    const nodeMap = new Map(nodes.map((node) => [node.id, node]));
+    const seen = new Set();
+    return collectGroupNodeIds(groups, activeGroup.id).flatMap((nodeId) => {
+      const node = nodeMap.get(nodeId);
+      const output = node?.data?.output;
+      const images = Array.isArray(output?.images) && output.images.length
+        ? output.images
+        : (Array.isArray(node?.data?.images) ? node.data.images : []);
+      const resources = Array.isArray(output?.resources)
+        ? output.resources
+        : (Array.isArray(node?.data?.resources) ? node.data.resources : []);
+      const resourceMap = new Map(resources.map((item) => [item?.url, item]));
+      return images.filter((url) => url && !seen.has(url)).map((url) => {
+        seen.add(url);
+        const resource = resourceMap.get(url);
+        return { url, thumb: resource?.thumb || url, name: resource?.name || extractFileNameFromUrl(url) };
+      });
+    });
+  }, [activeGroup, groups, nodes]);
+
+  const handleGroupAssetsSubmit = useCallback(async (categoryName, assets) => {
+    const latest = await window.AgentSpaces?.invokeService?.('list_assets', { workspaceId: activeId });
+    let category = (latest?.categories || []).find((item) => item.name === categoryName);
+    if (!category) {
+      const created = await createCategory(categoryName);
+      category = (created?.categories || []).find((item) => item.name === categoryName)
+        || (created?.categories || []).at?.(-1);
+    }
+    if (!category?.id) throw new Error(`创建素材分组「${categoryName}」失败`);
+    for (const asset of assets || []) {
+      await addAsset(category.id, {
+        id: `ast-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+        url: asset.url,
+        thumb: asset.thumb || asset.url,
+        name: asset.name || extractFileNameFromUrl(asset.url),
+        size: 0,
+        uploadedAt: Date.now(),
+      });
+    }
+    toast.success(`已添加 ${assets?.length || 0} 个素材到「${categoryName}」`);
+  }, [activeId, addAsset, createCategory]);
 
   // 导出当前工作区素材库为 zip（按分类转文件夹）。导出时直接调 list_assets service 拿最新全量数据，
   // 避免闭包内 categories 陈旧。onProgress 透传给工具函数，由 Toolbar 侧更新 toast 进度。
@@ -1786,7 +1836,10 @@ export default function Canvas({ hostConfig }) {
     },
     style: {
       ...node.style,
-      '--floating-handle-size': (isConnecting || node.id === hoveredNodeId) ? '24px' : '8px',
+      '--floating-handle-size': (isConnecting || node.id === hoveredNodeId) ? '24px' : '0px',
+      '--floating-handle-opacity': (isConnecting || node.id === hoveredNodeId) ? '1' : '0',
+      '--floating-handle-visibility': (isConnecting || node.id === hoveredNodeId) ? 'visible' : 'hidden',
+      '--floating-handle-pointer-events': (isConnecting || node.id === hoveredNodeId) ? 'auto' : 'none',
     },
   })), [compactNodes, decoratedNodes, hoveredNodeId, isConnecting, queuePositions, queueStatuses]);
 
@@ -1924,6 +1977,12 @@ export default function Canvas({ hostConfig }) {
             onPick: crud.handleAddAtMenu,
             imageSelectionMenuProps,
             onSelectContextImage: imageSelection.selectForContextMenu,
+            groupMenuProps: activeGroup ? {
+              group: activeGroup,
+              assets: activeGroupAssets,
+              onUngroup: groupOps.ungroup,
+              onAddToAssets: () => setGroupAssetLibraryState({ group: activeGroup, assets: activeGroupAssets }),
+            } : null,
           }}
           reactFlowProps={{
             colorMode: hostConfig?.colorMode || 'light',
@@ -2135,6 +2194,13 @@ export default function Canvas({ hostConfig }) {
               groupCount: savePresetState?.groupCount || 0,
               onClose: () => setSavePresetState(null),
               onConfirm: confirmSavePreset,
+            }}
+            groupAssetLibraryDialog={{
+              open: !!groupAssetLibraryState,
+              group: groupAssetLibraryState?.group,
+              assets: groupAssetLibraryState?.assets || [],
+              onClose: () => setGroupAssetLibraryState(null),
+              onSubmit: handleGroupAssetsSubmit,
             }}
           />
         </CanvasWorkspace>

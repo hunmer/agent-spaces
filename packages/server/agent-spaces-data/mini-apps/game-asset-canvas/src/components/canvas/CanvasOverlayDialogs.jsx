@@ -16,6 +16,7 @@ import ConnectionTargetDialog from '../ConnectionTargetDialog';
 import PastePropertiesDialog from '../PastePropertiesDialog';
 import BatchRunConfirmDialog from '../BatchRunConfirmDialog';
 import SavePresetDialog from '../SavePresetDialog';
+import GroupAssetLibraryDialog from '../GroupAssetLibraryDialog';
 import { NODE_META } from '../../utils/constants';
 
 function NodeContextMenu({ state, onClose, onAction }) {
@@ -111,6 +112,7 @@ export default function CanvasOverlayDialogs({
   selectionPropertyPaste,
   groupPropertyPaste,
   savePresetDialog,
+  groupAssetLibraryDialog,
 }) {
   const groupState = groupConfirmDialog.state;
   const pendingConnection = connectionTargetDialog.state;
@@ -200,6 +202,7 @@ export default function CanvasOverlayDialogs({
       <PastePropertiesDialog {...selectionPropertyPaste} />
       <PastePropertiesDialog {...groupPropertyPaste} />
       <SavePresetDialog {...savePresetDialog} />
+      <GroupAssetLibraryDialog {...groupAssetLibraryDialog} />
     </>
   );
 }

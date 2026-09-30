@@ -110,6 +110,18 @@ export default function useGroupOperations({
     setDeleteGroupId(null);
   }, [deleteGroupId, setEdges, setGroups, setNodes]);
 
+  // 解除分组：保留节点，仅移除当前分组及其父级引用。
+  const ungroup = useCallback((groupId) => {
+    if (!groupId) return;
+    setGroups((prev) => prev
+      .filter((group) => group.id !== groupId)
+      .map((group) => ({
+        ...group,
+        childGroupIds: group.childGroupIds.filter((id) => id !== groupId),
+      })));
+    setSelectedGroupId((current) => (current === groupId ? null : current));
+  }, [setGroups]);
+
   // 更新分组（重命名/颜色/锁定等，WorkflowGroupOverlay 回调）
   const updateGroup = useCallback((groupId, updates) => {
     if (updateCanvasData) {
@@ -302,6 +314,7 @@ export default function useGroupOperations({
     deleteGroupId, deleteGroupNodeCount,
     groupOverlayItems,
     requestDeleteGroup, cancelDeleteGroup, confirmDeleteGroup,
+    ungroup,
     updateGroup, createGroupFromSelection, selectGroupNodes,
     screenDeltaToFlowDelta, handleGroupMove, handleGroupConnect,
     handleNodeDragStart, handleNodeDrag, handleNodeDragStop,

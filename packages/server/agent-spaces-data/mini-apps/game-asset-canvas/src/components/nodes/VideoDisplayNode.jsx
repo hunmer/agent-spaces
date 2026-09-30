@@ -7,6 +7,7 @@ import {
 import useViewportActivation from '../../hooks/useViewportActivation';
 import NodeHandles from './NodeHandles';
 import NodeHoverMenu from './NodeHoverMenu';
+import NodeTopBadge from './NodeTopBadge';
 import TrimVideoDialog from '../TrimVideoDialog';
 import { normalizeImageUrl } from '../../utils/workflow';
 
@@ -59,6 +60,7 @@ export default function VideoDisplayNode({ id, data, selected }) {
   const [buffered, setBuffered] = useState(0);
   const [duration, setDuration] = useState(0);
   const source = data?.source;
+  const loading = data?.loading;
   const tags = Array.isArray(data?.tags) ? data.tags.filter(Boolean) : [];
   // 多视频当前索引；集合变化时夹回有效范围
   const [vidIndex, setVidIndex] = useState(0);
@@ -249,6 +251,15 @@ export default function VideoDisplayNode({ id, data, selected }) {
       onMouseEnter={() => setNodeHovered(true)}
       onMouseLeave={() => setNodeHovered(false)}
     >
+      <NodeTopBadge
+        title={data?.title}
+        fallback={data?.label || '视频展示'}
+        inputs={videos}
+        source={data?.source}
+        tags={data?.tags}
+        onRename={(title) => onUpdate?.({ title })}
+      />
+
       <NodeHoverMenu
           actions={showToolbar ? [
             {
@@ -299,7 +310,7 @@ export default function VideoDisplayNode({ id, data, selected }) {
         lineClassName="!border-primary/40"
       />
 
-      <NodeHandles target source />
+      <NodeHandles target source targetTopOffset={-40} />
 
       <div className="absolute inset-0 overflow-hidden">
         {/* 左上角常驻上传按钮（同图片节点右上角同款样式） */}
@@ -325,7 +336,7 @@ export default function VideoDisplayNode({ id, data, selected }) {
 
         {/* 视频主体区域：黑底铺满节点，无内边距；Handle 在节点外侧（负偏移），铺满不遮挡。 */}
         <div className="image-drag-handle nopan absolute inset-0 overflow-hidden rounded-lg bg-black">
-          {uploading ? (
+          {uploading || loading ? (
             <div className="flex h-full w-full items-center justify-center gap-2 bg-card text-xs text-primary">
               <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-primary border-t-transparent" />
               上传中…

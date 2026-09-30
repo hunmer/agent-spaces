@@ -3,11 +3,10 @@ import {
   ContextMenu, ContextMenuTrigger, ContextMenuContent,
   ContextMenuGroup, ContextMenuItem, ContextMenuLabel, ContextMenuSeparator,
   ContextMenuSub, ContextMenuSubTrigger, ContextMenuSubContent,
-  SearchSelect,
 } from '@agent-spaces/ui';
 import { createNodePickerOptions } from './AddNodeMenuItems';
 import ImageSelectionMenuItems from './ImageSelectionMenuItems';
-import { selectContextMenuNode } from '../../utils/canvas-context-menu';
+import { groupContextMenuOptions } from '../../utils/canvas-context-menu';
 
 /**
  * 画布右键菜单。
@@ -33,6 +32,7 @@ import { selectContextMenuNode } from '../../utils/canvas-context-menu';
  */
 export default function CanvasContextMenu({
   triggerElement, children, onPick, imageSelectionMenuProps, onSelectContextImage,
+  groupMenuProps,
 }) {
   const [open, setOpen] = useState(false);
   const [showImageMenu, setShowImageMenu] = useState(false);
@@ -66,6 +66,7 @@ export default function CanvasContextMenu({
   };
 
   const nodeOptions = createNodePickerOptions(onPick);
+  const nodeMenuGroups = groupContextMenuOptions(nodeOptions);
 
   return (
     <ContextMenu open={open} onOpenChange={handleOpenChange}>
@@ -73,6 +74,33 @@ export default function CanvasContextMenu({
         {children}
       </ContextMenuTrigger>
       <ContextMenuContent className="w-52">
+        {groupMenuProps?.group && (
+          <>
+            <ContextMenuSub>
+              <ContextMenuSubTrigger>分组菜单</ContextMenuSubTrigger>
+              <ContextMenuSubContent className="w-44">
+                <ContextMenuItem
+                  onClick={() => {
+                    groupMenuProps.onUngroup?.(groupMenuProps.group.id);
+                    setOpen(false);
+                  }}
+                >
+                  解除分组
+                </ContextMenuItem>
+                <ContextMenuItem
+                  disabled={!groupMenuProps.assets?.length}
+                  onClick={() => {
+                    groupMenuProps.onAddToAssets?.();
+                    setOpen(false);
+                  }}
+                >
+                  添加到素材库
+                </ContextMenuItem>
+              </ContextMenuSubContent>
+            </ContextMenuSub>
+            <ContextMenuSeparator />
+          </>
+        )}
         {showImageMenu ? (
           <ContextMenuGroup>
             <ContextMenuLabel>已选 {imageSelectionMenuProps?.selectedCount || 0} 张</ContextMenuLabel>
@@ -89,16 +117,30 @@ export default function CanvasContextMenu({
             />
           </ContextMenuGroup>
         ) : (
-          <ContextMenuGroup>
-            <SearchSelect
-              value=""
-              onChange={(value) => selectContextMenuNode(nodeOptions, value, () => setOpen(false))}
-              options={nodeOptions}
-              placeholder="选择节点"
-              searchPlaceholder="搜索节点（支持拼音）"
-              allowCustom={false}
-            />
-          </ContextMenuGroup>
+          <ContextMenuSub>
+            <ContextMenuSubTrigger>选择节点</ContextMenuSubTrigger>
+            <ContextMenuSubContent className="w-52">
+              {nodeMenuGroups.map((group) => (
+                <ContextMenuSub key={group.label}>
+                  <ContextMenuSubTrigger>{group.label}</ContextMenuSubTrigger>
+                  <ContextMenuSubContent className="w-52">
+                    {group.items.map((option) => (
+                      <ContextMenuItem
+                        key={option.value}
+                        title={option.description}
+                        onClick={() => {
+                          option.onSelect?.();
+                          setOpen(false);
+                        }}
+                      >
+                        {option.label}
+                      </ContextMenuItem>
+                    ))}
+                  </ContextMenuSubContent>
+                </ContextMenuSub>
+              ))}
+            </ContextMenuSubContent>
+          </ContextMenuSub>
         )}
       </ContextMenuContent>
     </ContextMenu>

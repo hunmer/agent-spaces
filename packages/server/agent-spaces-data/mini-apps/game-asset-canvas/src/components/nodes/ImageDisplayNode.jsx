@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight, Download, Expand, FileUpload, Pencil, Popove
 import useViewportActivation from '../../hooks/useViewportActivation';
 import NodeHandles from './NodeHandles';
 import NodeHoverMenu from './NodeHoverMenu';
+import NodeTopBadge from './NodeTopBadge';
 import { useCanvasGallery } from '../../utils/canvas-gallery';
 import { downloadImages } from '../../utils/export';
 import { normalizeImageRotation } from '../../utils/image-display-size';
@@ -138,6 +139,16 @@ export default function ImageDisplayNode({ id, data, selected }) {
       onMouseLeave={() => setNodeHovered(false)}
     >
       <UploadFillStyles />
+      {showFullNode && (
+        <NodeTopBadge
+          title={data?.title}
+          fallback={data?.label || '图片展示'}
+          inputs={images}
+          source={data?.source}
+          tags={data?.tags}
+          onRename={(title) => onUpdate?.({ title })}
+        />
+      )}
       <NodeHoverMenu
         actions={showToolbar ? menuActions : []}
         visible={showFullNode && (nodeHovered || menuOpen) && selectionCount <= 1}
@@ -158,7 +169,7 @@ export default function ImageDisplayNode({ id, data, selected }) {
         lineClassName="!border-primary/40"
       />
 
-      <NodeHandles target source />
+      <NodeHandles target source targetTopOffset={-40} />
 
       <div className={`absolute inset-0 overflow-hidden ${showFullNode ? '' : 'invisible pointer-events-none'}`}>
       <div className="absolute -right-10 top-1.5 z-30 nodrag nopan">

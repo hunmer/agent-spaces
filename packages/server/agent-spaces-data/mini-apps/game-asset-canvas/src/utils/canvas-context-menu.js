@@ -18,3 +18,13 @@ export function selectContextMenuNode(options, value, onClose) {
   onClose();
 }
 
+/** 将 SearchSelect 的扁平节点选项转换为原生菜单可渲染的有序分组。 */
+export function groupContextMenuOptions(options) {
+  const groups = new Map();
+  for (const option of options || []) {
+    const label = option.group || '其他';
+    if (!groups.has(label)) groups.set(label, []);
+    groups.get(label).push(option);
+  }
+  return Array.from(groups, ([label, items]) => ({ label, items }));
+}
