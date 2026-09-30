@@ -17,6 +17,7 @@ const EDITS_PATH = '/images/edits'
 const TASK_PATH = '/images/tasks'
 const CHAT_COMPLETIONS_PATH = '/chat/completions'
 const RESPONSES_PATH = '/responses'
+const VIDEO_GENERATIONS_PATH = '/video/generations'
 const POLL_INTERVAL = 5000
 const POLL_MAX_ATTEMPTS = 120 // 最长 ~10 分钟
 
@@ -25,6 +26,14 @@ const API_MODES = [
   { label: '异步任务 (Images API)', value: 'async_task' },
   { label: 'Chat Completions', value: 'chat_completions' },
   { label: 'Responses', value: 'responses' },
+]
+
+// 视频参考模式（OpenAI 风格 /video/generations，兼容 liblib-api 等服务）
+const VIDEO_MODES = [
+  { label: '自动（有参考图→全能参考，无→文生视频）', value: 'auto' },
+  { label: '全能参考 mixed2video（多图融合，{{Mixed N}} 引用）', value: 'mixed2video' },
+  { label: '首尾帧 frames2video（1图=首帧，2图=首尾帧）', value: 'frames2video' },
+  { label: '文生视频 text2video', value: 'text2video' },
 ]
 
 const CONFIG_APIKEY = '{{ __config__["workflow.ai-image"]["apiKey"] }}'
@@ -401,6 +410,22 @@ function pickTaskId(r) {
   if (typeof r.data === 'string') return r.data
   if (r.data && typeof r.data === 'object') return r.data.task_id || ''
   return ''
+}
+
+// ── 视频生成 ────────────────────────────────────────────────
+
+// 视频参考图归一：http(s) URL 直接透传（服务端免二次上传），其余（本地路径/data URI）转 data URI
+async function toVideoRef(src) {
+  if (/^https?:\/\//i.test(src)) return src
+  const { buffer, mime } = await resolveImage(src)
+  return `data:${mime};base64,${buffer.toString('base64')}`
+}
+
+// modeType 决策：显式指定优先（auto 除外）；auto 按参考图数量（有图→全能参考，无图→文生）
+function resolveVideoMode(mode, refCount) {
+  const m = (mode || 'auto').toString()
+  if (m !== 'auto' && VIDEO_MODES.some((v) => v.value === m)) return m
+  return refCount > 0 ? 'mixed2video' : 'text2video'
 }
 
 module.exports = (t) => [
@@ -909,6 +934,229 @@ module.exports = (t) => [
           data.progress || status || '',
         ),
         data: { status, progress: data.progress || '', taskId: args.taskId },
+      }
+    },
+  },
+
+  {
+    name: 'ai_video_generate',
+    label: t('action.video.label', 'AI Video Generation'),
+    category: t('category', 'AI Image'),
+    icon: 'Video',
+    description: t(
+      'action.video.description',
+      'Generate videos via an OpenAI-style /video/generations API. Supports text-to-video, all-reference (multi-image, {{Mixed N}}) and first/last-frame modes.',
+    ),
+    properties: [
+      {
+        key: 'apiKey',
+        label: t('field.apiKey.label', 'API Key'),
+        type: 'text',
+        dataType: 'string',
+        required: true,
+        default: CONFIG_APIKEY,
+        tooltip: t('field.apiKey.tooltip', 'Bearer token for the image service.'),
+      },
+      {
+        key: 'baseUrl',
+        label: t('field.baseUrl.label', 'API Base URL'),
+        type: 'text',
+        dataType: 'string',
+        default: CONFIG_BASEURL,
+        tooltip: t(
+          'field.videoBaseUrl.tooltip',
+          'OpenAI-style video API base URL (with /v1), e.g. http://127.0.0.1:19201/v1 for the liblib-api bridge.',
+        ),
+      },
+      {
+        key: 'modeType',
+        label: t('field.modeType.label', 'Reference Mode'),
+        type: 'select',
+        dataType: 'string',
+        default: 'auto',
+        options: VIDEO_MODES,
+        tooltip: t(
+          'field.modeType.tooltip',
+          'auto: with reference images → all-reference (mixed2video), without → text-to-video; mixed2video: fuse up to 4 images, reference them in the prompt as {{Mixed 1}}, {{Mixed 2}}…; frames2video: 1 image = first frame, 2 images = first/last frame.',
+        ),
+      },
+      {
+        key: 'prompt',
+        label: t('field.videoPrompt.label', 'Video Description'),
+        type: 'textarea',
+        dataType: 'string',
+        required: true,
+        tooltip: t(
+          'field.videoPrompt.tooltip',
+          'Describe the video. In all-reference mode use {{Mixed 1}} / {{Mixed 2}} to cite reference images by order.',
+        ),
+      },
+      {
+        key: 'model',
+        label: t('field.model.label', 'Model'),
+        type: 'select',
+        dataType: 'string',
+        default: 'wanx3.0',
+        options: [
+          { label: 'wanx3.0（全能参考推荐）', value: 'wanx3.0' },
+          { label: 'MiniMax-Hailuo-o2（最便宜 8power）', value: 'MiniMax-Hailuo-o2' },
+          { label: 'kling-v2-5-turbo-pro', value: 'kling-v2-5-turbo-pro' },
+          { label: 'MiniMax-Hailuo-2.3-Fast', value: 'MiniMax-Hailuo-2.3-Fast' },
+          { label: 'happy-horse-1.1', value: 'happy-horse-1.1' },
+          { label: 'seedance-1.5-pro', value: 'seedance-1.5-pro' },
+          { label: 'wanxiang-v2-6', value: 'wanxiang-v2-6' },
+          { label: 'viduq2', value: 'viduq2' },
+          { label: 'kling-v2-6', value: 'kling-v2-6' },
+          { label: 'star-video2', value: 'star-video2' },
+          { label: 'star-video2.5', value: 'star-video2.5' },
+          { label: 'midjourney-video', value: 'midjourney-video' },
+        ],
+        tooltip: t('field.videoModel.tooltip', 'Model list from the liblib-api bridge (GET /v1/models).'),
+      },
+      {
+        key: 'image',
+        label: t('field.videoImage.label', 'Reference Images'),
+        type: 'textarea',
+        dataType: 'string[]',
+        tooltip: t(
+          'field.videoImage.tooltip',
+          'Image URL / data URI / local path. Order matters: all-reference mode cites them as {{Mixed 1}}, {{Mixed 2}}…; first/last-frame mode takes image 1 as first frame and image 2 as last frame.',
+        ),
+      },
+      {
+        key: 'aspectRatio',
+        label: t('field.aspectRatio.label', 'Aspect Ratio'),
+        type: 'select',
+        dataType: 'string',
+        default: '16:9',
+        options: [
+          { label: '16:9', value: '16:9' },
+          { label: '9:16', value: '9:16' },
+          { label: '1:1', value: '1:1' },
+          { label: '4:3', value: '4:3' },
+          { label: '3:4', value: '3:4' },
+        ],
+      },
+      {
+        key: 'resolution',
+        label: t('field.resolution.label', 'Resolution'),
+        type: 'select',
+        dataType: 'string',
+        default: '480P',
+        options: [
+          { label: '480P（省积分）', value: '480P' },
+          { label: '720P', value: '720P' },
+          { label: '1080P', value: '1080P' },
+        ],
+        tooltip: t('field.resolution.tooltip', 'Not all models support every tier; 480P/720P are the safest.'),
+      },
+      {
+        key: 'duration',
+        label: t('field.duration.label', 'Duration (seconds)'),
+        type: 'number',
+        dataType: 'number',
+        default: 3,
+        tooltip: t('field.duration.tooltip', 'Video length in seconds. Supported values vary by model.'),
+      },
+      {
+        key: 'enableSound',
+        label: t('field.enableSound.label', 'Sound'),
+        type: 'select',
+        dataType: 'string',
+        default: 'on',
+        options: [
+          { label: 'on', value: 'on' },
+          { label: 'off', value: 'off' },
+        ],
+      },
+      {
+        key: 'timeout',
+        label: t('field.timeout.label', 'Timeout (seconds)'),
+        type: 'number',
+        dataType: 'number',
+        tooltip: t('field.videoTimeout.tooltip', 'Video generation is slow; leave empty for the 600s default.'),
+      },
+    ],
+    outputs: [
+      { key: 'success', type: 'boolean', dataType: 'boolean' },
+      { key: 'message', type: 'string' },
+      {
+        key: 'data',
+        type: 'object', dataType: 'object',
+        children: [
+          { key: 'videos', type: 'video[]' },
+          { key: 'modeType', type: 'string' },
+          { key: 'model', type: 'string' },
+          { key: 'created', type: 'number', dataType: 'number' },
+        ],
+      },
+    ],
+    run: async (ctx, args) => {
+      const model = args.model || 'wanx3.0'
+      const prompt = args.prompt
+      if (!prompt) {
+        return { success: false, message: t('message.promptRequired', 'Prompt is required.') }
+      }
+      const baseUrl = getBaseUrl(args)
+      const headers = getHeaders(args)
+
+      const sources = toImageArray(args.image)
+      if (sources.length > 4) {
+        return {
+          success: false,
+          message: t('message.tooManyRefs', 'At most 4 reference images are supported.'),
+        }
+      }
+      const refs = []
+      for (const src of sources) refs.push(await toVideoRef(src))
+
+      const modeType = resolveVideoMode(args.modeType, refs.length)
+      if (modeType === 'frames2video' && refs.length > 2) {
+        return {
+          success: false,
+          message: t('message.framesLimit', 'First/last-frame mode accepts at most 2 images (first frame, last frame).'),
+        }
+      }
+      if (modeType === 'text2video' && refs.length) refs.length = 0
+
+      const body = {
+        model,
+        prompt,
+        modeType,
+        refs,
+        ratio: args.aspectRatio || '16:9',
+        resolution: args.resolution || '480P',
+        duration: Number(args.duration) || 3,
+        enableSound: args.enableSound || 'on',
+      }
+      ctx.logger.info(
+        `视频生成 model=${model} mode=${modeType} 参考图=${refs.length} ${body.ratio} ${body.resolution} ${body.duration}s`,
+      )
+      ctx.logger.info(`提示词: ${prompt}`)
+
+      const timeoutMs = getTimeoutMs(args, 1000 * 60 * 10)
+      let resp
+      try {
+        resp = await ctx.api.postJson(`${baseUrl}${VIDEO_GENERATIONS_PATH}`, {
+          headers,
+          body,
+          timeout: timeoutMs,
+        })
+      } catch (err) {
+        return { success: false, message: `视频生成请求失败: ${err.message}` }
+      }
+
+      const items = (resp && Array.isArray(resp.data) && resp.data) || []
+      const videos = items.map((d) => (d && (d.url || d.video_url)) || '').filter(Boolean)
+      if (!videos.length) {
+        const detail =
+          (resp && resp.error && resp.error.message) || JSON.stringify(resp || {}).slice(0, 200)
+        return { success: false, message: `未获取到视频: ${detail}` }
+      }
+      return {
+        success: true,
+        message: t('message.videoGenerated', 'Generated {count} video(s)').replace('{count}', videos.length),
+        data: { videos, modeType, model, created: resp.created },
       }
     },
   },
