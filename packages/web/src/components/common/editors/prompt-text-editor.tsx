@@ -232,7 +232,6 @@ function createPromptVariableExtension(runtimeRef: React.RefObject<PromptVariabl
           let renderer: ReactRenderer | null = null;
           let showTimer: ReturnType<typeof setTimeout> | null = null;
           let hideTimer: ReturnType<typeof setTimeout> | null = null;
-          let hoverCard: Instance;
 
           const clearShowTimer = () => {
             if (showTimer !== null) clearTimeout(showTimer);
@@ -294,7 +293,7 @@ function createPromptVariableExtension(runtimeRef: React.RefObject<PromptVariabl
             scheduleHide();
           };
 
-          hoverCard = tippy(anchor, {
+          const hoverCard: Instance = tippy(anchor, {
             trigger: 'manual',
             interactive: true,
             appendTo: () => ownerDocument.body,

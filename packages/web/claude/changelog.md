@@ -8,7 +8,6 @@
 - **组件目录核对**: 确认 28 个子域（含本期新增 `cli/`，及既有的 forgeui/reui/shadcn-space/viewers/timeline/composer/workflow vs workflows 单复数并存）。
 - **Store 核对**: 顶层 25 → 26（新增 `cli-sessions.ts`）；workflow-editor/ 12 + search-commands/ 7 不变；总计 44 → 45 文件。
 - **lib 高频变更**: `lib/ui-exports.ts` 本期改动 8 次（web 端最高），疑似集中导出整理。
-- **features/**: 当前仅 `skyoffice/`（Phaser+React），无新增 feature 目录；`features/skyoffice/utils/dom.ts` 为新增小工具。
 - 更新文件：`CLAUDE.md`（功能描述/约定/扫描状态）+ `claude/module-responsibilities.md`（+cli 组件目录/+cli-sessions store/+cli-* lib/+ui-exports）+ `claude/changelog.md`
 
 ## 2026-07-13 — 深挖 chat/ 架构 + 增量核对

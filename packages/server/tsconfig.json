@@ -3,13 +3,13 @@
   "compilerOptions": {
     "outDir": "./dist",
     "rootDir": "./src",
-    "types": ["node"],
+    "types": [
+      "node"
+    ],
     "declaration": false,
-    "declarationMap": false,
-    "experimentalDecorators": true,
-    "emitDecoratorMetadata": true,
-    "useDefineForClassFields": false
+    "declarationMap": false
   },
-  "include": ["src"],
-  "exclude": ["src/skyoffice/examples/**/*"]
+  "include": [
+    "src"
+  ]
 }

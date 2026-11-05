@@ -6,25 +6,25 @@
 
 - **Gemini CLI 运行时** (`adapters/gemini-cli-runtime.ts`，422 行): 新增 `GeminiCliRuntime`，spawn `gemini-cli` 子进程 + stdout JSON 事件解析、附件上下文、权限模式、resume 会话；`AgentRuntimeKind` 新增 `'gemini-cli'`；测试 `adapters/gemini-cli-runtime.test.ts`。新建 `claude/gemini-cli-runtime.md` 详情文件。
 - **RUNTIME_DESCRIPTORS 扩张**: 从 9 个扩至 **20 个 id**（9 独立 runtimeKind + 11 别名复用：openclaw/omp/opencode/qwen/cursor/kimi/kiro/kilocode/antigravity/xiaomimimo/githubcopilot）。更新 `claude/ai-adapters.md`（descriptor 列表 + Gemini CLI 章节）。
-- **TypeScript LSP WS 下线**: `/ws/lsp/typescript` 端点从 `app.ts` 移除，`ws/typescript-lsp.ts` 删除；upgrade dispatcher 五路 → 四路。更新 `CLAUDE.md`（SkyOffice 约定）、`claude/public-interfaces.md`（WS 表移除 LSP 行）、`claude/module-responsibilities.md`（ws 表移除 typescript-lsp）。
+- **TypeScript LSP WS 下线**: `/ws/lsp/typescript` 端点从 `app.ts` 移除，`ws/typescript-lsp.ts` 删除；upgrade dispatcher 五路 → 四路。更新 `CLAUDE.md`（历史条目，相关模块已移除）、`claude/public-interfaces.md`（WS 表移除 LSP 行）、`claude/module-responsibilities.md`（ws 表移除 typescript-lsp）。
 - **mini-app 子系统迭代**: 新增 `ws/mini-app-channels.ts`（`miniApp.taskStop` 事件，前端凭 taskId 中断 mini-app agent）；`services/mini-app-services.ts` 新增 `startServicesWatcher`（app.ts 启动调用）；`services/builtin-tools/mini-app-tools.ts` 本期改动 6 次（全仓库最高）。更新 `claude/public-interfaces.md`（WS 表 +mini-app-channels）、`claude/module-responsibilities.md`（ws 表 +mini-app-channels/+html-utils）。
-- **文档修正**: `claude/public-interfaces.md` 移除 2 个虚构路由（`routes/code-favorites.ts`、`routes/task.ts` 实际不存在）；`claude/module-responsibilities.md` 修正 SkyOffice mapRoutes 描述（`packages/skyoffice-web/` 已删除）。
+- **文档修正**: `claude/public-interfaces.md` 移除 2 个虚构路由（`routes/code-favorites.ts`、`routes/task.ts` 实际不存在）；`claude/module-responsibilities.md` 修正可视化办公模块 mapRoutes 描述（旧 web 包已删除）。
 - 更新文件：`CLAUDE.md`（功能描述/约定/文件索引 +gemini-cli-runtime/扫描状态）+ `claude/ai-adapters.md` + `claude/public-interfaces.md` + `claude/module-responsibilities.md` + `claude/changelog.md`；新建 `claude/gemini-cli-runtime.md`
 
-## 2026-07-18 — 深挖 SkyOffice 房间 + Grok 协议（新增 2 个详情文件）
+## 2026-07-18 — 深挖已移除的可视化办公模块 + Grok 协议（新增 2 个详情文件）
 
-- 精读 `skyoffice/rooms/SkyOffice.ts`（135 行，房间生命周期 + 5 类 message handler + Dispatcher 命令模式）、`rooms/schema/OfficeState.ts`（Player/Agent/ChatMessage schema）、`broadcast/Bridge.ts`（Agent 广播 → 房间状态的核心枢纽：dispatch 路由 7 种 AgentBroadcastType + 椅子占用机制 + bizRoomId↔colyseusRoomId 映射）
+- 精读已移除的可视化办公房间实现（房间生命周期 + 5 类 message handler + Dispatcher 命令模式）、状态 schema（Player/Agent/ChatMessage）、广播桥接层（Agent 广播 → 房间状态的核心枢纽：dispatch 路由 7 种广播类型 + 椅子占用机制 + 业务 roomId↔内部 roomId 映射）
 - 精读 `adapters/grok-runtime.ts`（345 行）：spawn 子进程 + streaming-json 按行解析、text/thought/end/error 事件 schema、缓冲 flush 策略、自定义模型 config.toml 生成、normalizeGrokEndpoint 按 provider 归一化 backend、env_key 区分（XAI_API_KEY 原生 / AGENT_SPACES_GROK_API_KEY 自定义）
-- 新建 `claude/skyoffice.md`：双源实体模型（Player=sessionId vs Agent=业务agentId）、Bridge dispatch 路由表、椅子占用算法、Agent 广播协议 JSON 示例、相对原版的裁剪清单、前端集成指引
+- 新建可视化办公模块详情文件（本期已删除）：双源实体模型（Player=sessionId vs Agent=业务agentId）、dispatch 路由表、椅子占用算法、Agent 广播协议 JSON 示例、相对原版的裁剪清单、前端集成指引
 - 新建 `claude/grok-runtime.md`：CLI 参数表、JSON 事件 schema、usage/cost 归一化、结果判定逻辑、config.toml 模板、backend 归一化表、环境变量、日志规范
-- 更新 `CLAUDE.md` 文件索引：+grok-runtime.md +skyoffice.md 两行
+- 更新 `CLAUDE.md` 文件索引：+grok-runtime.md +办公模块详情文件两行
 
-## 2026-07-18 — SkyOffice 合并 + Grok 运行时
+## 2026-07-18 — 可视化办公模块合并 + Grok 运行时
 
-- **SkyOffice**（`src/skyoffice/`）：Colyseus 0.15 房间服务合并进主后端单进程。因 colyseus 纯 CJS，采用独立 `tsconfig.json` + CJS 隔离编译（输出 `dist/skyoffice/`，靠 `dist/skyoffice/package.json` 覆盖上层 ESM）。主后端 `app.ts` 顶部 `import 'reflect-metadata'` + `createRequire(import.meta.url)` 桥接加载 `attachSkyOffice` / `mountSkyOfficeRoutes` / `getColyseusUpgradeHandler`。三路 upgrade 冲突由 `app.ts` 统一 dispatcher 五路分流（`/ws`、`/ws/speech`、`/ws/lsp/typescript`、`/agent-ws` + Colyseus 委托）
-- **SkyOffice API**：`/api/skyoffice/rooms`（CRUD，自管 per-room token，**在主 authMiddleware 之前挂载**）、`/api/skyoffice/map`（地图数据）、`/skyoffice/colyseus`（monitor，**无鉴权**）；Agent WS `/agent-ws?roomId=...&token=...`；Viewer 连 `/<colyseusRoomId>`；`SKYOFFICE_ENABLED=false` 可关闭
+- **可视化办公模块**（本期已整体移除）：原房间服务合并进主后端单进程，现已连同挂载点、路由与升级分发分支一并删除。
+- **可视化办公 API**（本期已全部移除）：房间 CRUD、地图数据、monitor；Agent WS 与 Viewer 连接均已移除；原环境开关同步移除
 - **Grok 运行时**（`adapters/grok-runtime.ts`）：`AgentRuntimeKind` 新增 `'grok'`，spawn 子进程 + JSON 事件流，支持 baseURL/resume/maxTurns/tools/permission/thinking；已在 `RUNTIME_DESCRIPTORS` 登记（descriptor 8 → 9）；测试 `src/adapters/grok-runtime.test.ts`
-- 更新文件：`CLAUDE.md`（功能描述 + 约定 + 扫描状态）、`claude/ai-adapters.md`（+Grok 章节 + Runtime 管理 descriptor 8→9）、`claude/module-responsibilities.md`（adapters 表 +Grok、+SkyOffice 子目录）、`claude/public-interfaces.md`（+SkyOffice REST/WS）、`claude/changelog.md`
+- 更新文件：`CLAUDE.md`（功能描述 + 约定 + 扫描状态）、`claude/ai-adapters.md`（+Grok 章节 + Runtime 管理 descriptor 8→9）、`claude/module-responsibilities.md`（adapters 表 +Grok、+可视化办公子目录）、`claude/public-interfaces.md`（+可视化办公 REST/WS）、`claude/changelog.md`
 
 ## 2026-07-13 — 深挖 team-runtime.ts + 增量核对
 

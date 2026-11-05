@@ -57,23 +57,13 @@
 | User Settings | `/api/user/settings` | 内联 |
 | Git Config | `/api/git-config` | 内联 |
 
-### SkyOffice 端点（`/api/skyoffice/*`，在主 authMiddleware **之前**挂载，自管 per-room token）
-
-| 端点 | 说明 |
-|---|---|
-| `GET/POST/DELETE /api/skyoffice/rooms` | 房间 CRUD（创建返回 roomId + token；列表/删除） |
-| `GET /api/skyoffice/map/chairs` 等 | 地图数据（chairs 等静态资源） |
-| `/skyoffice/colyseus` | Colyseus monitor（**无鉴权，生产需加防护**） |
-
 ## WebSocket 端点
 
 | 路径 | 处理器 | 参数 |
 |---|---|---|
 | `/ws` | `ws/handler.ts` → handleConnection | workspaceId, token |
 | `/ws/speech` | `routes/speech-recognition.ts` → handleSpeechStream | token, configId |
-| `/agent-ws` | `skyoffice/broadcast/BroadcastServer.ts` → handleUpgrade | roomId, token（SkyOffice Agent 推送：spawn/move/talk/action） |
-| `/<colyseusRoomId>` | Colyseus transport（委托自主 dispatcher） | roomId（Viewer 连接，无 token） |
-| `miniApp.taskStop` 事件 | `ws/mini-app-channels.ts` → registerMiniAppChannels | taskId（前端凭 taskId 主动中断 mini-app agent 执行） |
+  | `miniApp.taskStop` 事件 | `ws/mini-app-channels.ts` → registerMiniAppChannels | taskId（前端凭 taskId 主动中断 mini-app agent 执行） |
 
 > 注：原 `/ws/lsp/typescript`（TypeScript LSP）端点已于本期下线，`ws/typescript-lsp.ts` 文件已删除。
 

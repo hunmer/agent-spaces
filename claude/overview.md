@@ -26,4 +26,3 @@ Agent Spaces 是一个**多智能体协作编程平台**，支持 AI Agent 的�
 - AI Agent 执行采用**多运行时适配器**模式：支持 Claude Code、OpenAI Codex、Grok、Gemini CLI、LangChain、Hermes、Pi、Open Agent SDK；`RUNTIME_DESCRIPTORS` 登记 20 个 runtime id（含 11 个别名复用既有 runtimeKind）。
 - Workflow 执行引擎支持 HTTP 回调、Webhook 触发、定时调度。
 - SQLite 作为主存储，JSON 文件辅助，无外部数据库依赖。
-- **SkyOffice**（Colyseus 房间服务）因 colyseus 0.15 纯 CJS，采用**独立 tsconfig + CJS 隔离编译**（输出到 `dist/skyoffice/`，靠 `dist/skyoffice/package.json` 覆盖上层 ESM 声明），主后端用 `createRequire(import.meta.url)` 桥接加载；三路 upgrade 冲突由 `app.ts` 统一 dispatcher 五路分流（`/ws`、`/ws/speech`、`/ws/lsp/typescript`、`/agent-ws` + Colyseus 委托）；`SKYOFFICE_ENABLED=false` 可关闭。

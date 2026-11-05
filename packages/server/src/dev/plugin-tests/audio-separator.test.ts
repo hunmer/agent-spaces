@@ -4,7 +4,7 @@ import type { LoadedPlugin } from '../plugin-test-harness.js'
 // 需要 audio-separator HTTP 服务在 http://127.0.0.1:8365 运行（D:\audio-separator-service\start.bat）。
 // 服务未启动时跳过断言，避免环境不具备时测试失败。
 export default async function run(plugin: LoadedPlugin) {
-  const health = await plugin.runAction('audio_separator_list_models', { filter: 'roformer', limit: 1 })
+  const health = (await plugin.runAction('audio_separator_list_models', { filter: 'roformer', limit: 1 })) as { success: boolean; message?: string }
   if (!health.success) {
     console.log('[audio-separator.test] service not running, skip:', health.message)
     return { success: true, skipped: true }

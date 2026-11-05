@@ -2,7 +2,7 @@
 
 多智能体协作编程平台。支持 AI Agent 创建/编排/执行/可视化，Workflow 可视化编辑，Team 多 Agent 协作，代码编辑器 + Git + 知识库管理。pnpm monorepo，Web (Next.js 16) + Server (Express 5) + Electron + Flutter。
 
-核心能力：多 AI 运行时适配（Claude Code/Codex/Grok/LangChain 等）、可视化 Workflow 执行引擎、Team 多 Agent 团队协作（成员/角色/消息/收件箱/运行时编排）、SkyOffice 多 Agent 可视化办公空间（Colyseus 房间服务）、WebSocket 实时通信、SQLite 存储。
+核心能力：多 AI 运行时适配（Claude Code/Codex/Grok/LangChain 等）、可视化 Workflow 执行引擎、Team 多 Agent 团队协作（成员/角色/消息/收件箱/运行时编排）、WebSocket 实时通信、SQLite 存储。
 
 ## 约定
 
@@ -46,8 +46,8 @@ graph TD
 
 | 模块 | 路径 | 职责 |
 |---|---|---|
-| Web | [packages/web](packages/web/CLAUDE.md) | Next.js 16 前端 SPA（含 SkyOffice Phaser 集成 `src/features/skyoffice/`、多 CLI 会话面板 `src/components/cli/`） |
-| Server | [packages/server](packages/server/CLAUDE.md) | Express 5 后端 + AI Agent 运行时（20 个 runtime descriptor）+ SkyOffice（Colyseus 房间服务 `src/skyoffice/`） |
+| Web | [packages/web](packages/web/CLAUDE.md) | Next.js 16 前端 SPA（含多 CLI 会话面板 `src/components/cli/`） |
+| Server | [packages/server](packages/server/CLAUDE.md) | Express 5 后端 + AI Agent 运行时（20 个 runtime descriptor） |
 | Electron | [packages/electron](packages/electron/CLAUDE.md) | 桌面壳（窗口/协议/快捷键） |
 | SDK | [packages/sdk](packages/sdk/CLAUDE.md) | 前端统一 API 层 |
 | MCP | [packages/mcp](packages/mcp/CLAUDE.md) | SDK → MCP 服务（stdio/http） |
@@ -60,10 +60,10 @@ graph TD
 ## 扫描状态
 
 - **更新时间**: 2026-07-27
-- **已扫描**: 根目录结构、所有 package.json、主要入口文件、路由/服务/存储/API 层、最近 10 个迭代（runtime 管理 / issue 系统 / notification-hub / usage dashboard / mini-apps / team 协作 / mcp 拆分 / oh-my-pi → pi 迁移核对 / SkyOffice 合并 + Grok 运行时 / **Gemini CLI 运行时 + 多 CLI 会话面板 + TS LSP WS 下线**）
+- **已扫描**: 根目录结构、所有 package.json、主要入口文件、路由/服务/存储/API 层、最近 10 个迭代（runtime 管理 / issue 系统 / notification-hub / usage dashboard / mini-apps / team 协作 / mcp 拆分 / oh-my-pi → pi 迁移核对 / Grok 运行时 / **Gemini CLI 运行时 + 多 CLI 会话面板 + TS LSP WS 下线**）
 - **已覆盖模块**: 10/10（web, server, electron, sdk, mcp, shared, templates, dom-inspector-hook, flutter, documents）
 - **跳过**: node_modules, .next, dist, out, release, agent-spaces-data 运行时数据, build 缓存, `packages/logs`（运行时日志，无 package.json）
-- **已清理模块**: `packages/tauri`（原疑似废弃，现已删除）、`packages/skyoffice-web`（原空壳占位，现已删除）
+- **已清理模块**: `packages/tauri`（原疑似废弃，现已删除）
 - **Gemini CLI 运行时**: `adapters/gemini-cli-runtime.ts`（422 行，spawn `gemini-cli` 子进程 + stdout JSON 事件解析），`AgentRuntimeKind` 新增 `'gemini-cli'`；`RUNTIME_DESCRIPTORS` 扩至 20 个 id（CLI 类 6 + SDK 类 3 + 多对一别名 11：openclaw/omp/opencode/qwen/cursor/kimi/kiro/kilocode/antigravity/xiaomimimo/githubcopilot）
 - **多 CLI 会话面板**: `web/src/components/cli/`（cli-panel/cli-launcher/cli-session-list）+ `stores/cli-sessions.ts` + `lib/cli-panel-layout.ts` + `lib/runtime-cli-settings.ts`，每会话 flex-layout 独立持久化到 localStorage
 - **TypeScript LSP WS 下线**: `/ws/lsp/typescript` 端点已从 `app.ts` 移除，`ws/typescript-lsp.ts` 文件已删除

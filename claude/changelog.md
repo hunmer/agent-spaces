@@ -8,24 +8,10 @@
 - **Gemini CLI 运行时** (`packages/server/src/adapters/gemini-cli-runtime.ts`，422 行): 新增 `GeminiCliRuntime` 实现 `AgentRuntime` 接口，spawn `gemini-cli` 子进程 + stdout JSON 事件解析、附件上下文准备、权限模式、resume 会话；`AgentRuntimeKind` 新增 `'gemini-cli'`；测试 `adapters/gemini-cli-runtime.test.ts`。至此 CLI 适配器覆盖 claude-code/codex/grok/hermes/pi/gemini-cli。
 - **`RUNTIME_DESCRIPTORS` 扩张** (`routes/runtime.ts`): 从原 9 个 descriptor 扩至 **20 个 id**——9 个有独立 `runtimeKind` 适配器（claude-code/codex/grok/gemini-cli/hermes/pi/claude-code-sdk/codex-sdk/open-agent-sdk）+ **11 个别名复用既有 runtimeKind**（openclaw/omp/opencode/qwen/cursor/kimi/kiro/kilocode/antigravity/xiaomimimo/githubcopilot）。
 - **多 CLI 会话面板** (`packages/web/src/components/cli/`): 全新功能。`cli-panel.tsx` + `cli-launcher.tsx` + `cli-session-list.tsx` + `stores/cli-sessions.ts` + `lib/cli-panel-layout.ts` + `lib/runtime-cli-settings.ts` + `lib/cli-icons.ts` + `locales/{en,zh}/cli.json`。每会话的 flex-layout 独立持久化到 localStorage（`agent-spaces:cli-panel:<id>:layout`）。
-- **TypeScript LSP WebSocket 下线**: `/ws/lsp/typescript` 端点已从 `app.ts` 移除，`ws/typescript-lsp.ts` 文件已删除。原五路 upgrade dispatcher 变为四路（`/ws`、`/ws/speech`、`/agent-ws` + Colyseus 委托）。
+- **TypeScript LSP WebSocket 下线**: `/ws/lsp/typescript` 端点已从 `app.ts` 移除，`ws/typescript-lsp.ts` 文件已删除。原五路 upgrade dispatcher 变为三路（`/ws`、`/ws/speech`；后续重构中 `/agent-ws` 与 Colyseus 委托已一并移除）。后续 后续重构时 `/agent-ws` 与 Colyseus 委托一并移除。
 - **Mini-app 子系统迭代**: `ws/mini-app-channels.ts`（新增 `miniApp.taskStop` 事件，前端凭 taskId 主动中断 mini-app agent 执行）；`services/mini-app-services.ts` 新增 `startServicesWatcher`（app.ts 启动调用，服务文件热监听）；`services/builtin-tools/mini-app-tools.ts` 本期改动 6 次（全仓库最高）。
-- **已清理模块**: `packages/tauri`（原疑似废弃，本期确认已删除）、`packages/skyoffice-web`（原空壳占位，本期确认已删除）。
 - **文档修正**: server `claude/public-interfaces.md` 移除过期 `/ws/lsp/typescript` 行 + 2 个虚构路由（`routes/code-favorites.ts` `routes/task.ts` 实际不存在）。
-- 更新文件：根 `CLAUDE.md`（模块索引移除 skyoffice-web、扫描状态）+ `claude/changelog.md` + `claude/overview.md` + `claude/module-responsibilities.md`；server `CLAUDE.md` + `claude/ai-adapters.md` + `claude/public-interfaces.md` + `claude/module-responsibilities.md` + `claude/changelog.md`；web `CLAUDE.md` + `claude/module-responsibilities.md` + `claude/changelog.md`
 - **未改源码**: 本次仅同步文档，无源码变更。
-
-## 2026-07-18 — SkyOffice 模块合并 + Grok 运行时
-
-- **背景**: 自 2026-07-16 以来，SkyOffice（多 Agent 可视化办公空间，Colyseus 房间服务）从独立仓库迁移并深度合并进主后端单进程；新增 Grok 运行时适配器
-- **SkyOffice 后端** (`packages/server/src/skyoffice/`): Colyseus 0.15 房间服务，因 colyseus 纯 CJS 采用**独立 tsconfig + CJS 隔离编译**（编译到 `dist/skyoffice/`，靠 `dist/skyoffice/package.json` 覆盖上层 ESM）；主后端 `app.ts` 顶部 `import 'reflect-metadata'` + `createRequire` 桥接加载；三路 upgrade 冲突由统一 dispatcher 五路分流（`/ws` `/ws/speech` `/ws/lsp/typescript` `/agent-ws` + Colyseus 委托）
-- **SkyOffice 前端** (`packages/web/src/features/skyoffice/`): Phaser + React 集成进主 Web SPA（scenes/components/stores/services），非独立 Vite 项目
-- **skyoffice-web 空壳** (`packages/skyoffice-web/`): 仅有 `.gitignore` + 空 `src/`，原 Vite 前端未迁入，标记为**未启用/占位**
-- **SkyOffice API**: `/api/skyoffice/rooms`（房间 CRUD，自管 per-room token 鉴权，绕开主全局 Bearer）、`/api/skyoffice/map`（地图数据）、`/skyoffice/colyseus`（Colyseus monitor，**无鉴权**）、Agent WS 路径 `/agent-ws?roomId=...&token=...`；`SKYOFFICE_ENABLED=false` 可关闭
-- **Grok 运行时** (`packages/server/src/adapters/grok-runtime.ts`): `AgentRuntimeKind` 新增 `'grok'`，已在 `routes/runtime.ts` 的 `RUNTIME_DESCRIPTORS` 登记（descriptor 8 → 9，label `'Grok CLI'`，含 Windows `.grok/bin/grok.exe` 路径探测）；测试位于 `src/adapters/grok-runtime.test.ts`（非 `test/`）
-- **其他**: `packages/electron`（main.ts/preload/server-launcher 更新）、`packages/sdk`（code-favorites/mini-apps 模块更新）、新增 `packages/logs/`（运行时日志，无 package.json，纳入跳过）
-- 更新文件：根 `CLAUDE.md`（模块索引 + 扫描状态）+ `claude/changelog.md` + `claude/module-responsibilities.md` + `claude/overview.md` + `claude/public-interfaces.md` + `claude/faq.md` + `claude/testing-and-quality.md`；server `CLAUDE.md` + `claude/module-responsibilities.md` + `claude/public-interfaces.md` + `claude/changelog.md`
-- **深挖补充（同日）**: 精读 SkyOffice 房间全链路（SkyOffice.ts/OfficeState.ts/Bridge.ts）+ Grok runtime 全量（345 行）；server 新建 `claude/skyoffice.md`（双源实体模型/Bridge dispatch 路由/椅子占用/广播协议）+ `claude/grok-runtime.md`（CLI 参数/JSON 事件 schema/config.toml/backend 归一化）；server `CLAUDE.md` 文件索引 +2 行
 
 ## 2026-07-16 — oh-my-pi → pi 迁移核对
 

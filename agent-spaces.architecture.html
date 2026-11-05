@@ -600,7 +600,7 @@
         <rect x="400" y="440" width="150" height="60" rx="6" class="c-mask"/>
         <rect x="400" y="440" width="150" height="60" rx="6" class="c-backend" stroke-width="1.5"/>
         <text x="475" y="468" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">WebSocket Gateway</text>
-        <text x="475" y="484" class="t-muted" font-size="9" text-anchor="middle">/ws · /ws/lsp · /agent-ws</text>
+        <text x="475" y="484" class="t-muted" font-size="9" text-anchor="middle">/ws · /ws/speech</text>
 
         <rect x="600" y="200" width="150" height="60" rx="6" class="c-mask"/>
         <rect x="600" y="200" width="150" height="60" rx="6" class="c-backend" stroke-width="1.5"/>
@@ -620,8 +620,8 @@
 
         <rect x="800" y="200" width="150" height="60" rx="6" class="c-mask"/>
         <rect x="800" y="200" width="150" height="60" rx="6" class="c-messagebus" stroke-width="1.5"/>
-        <text x="875" y="228" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Mini App + SkyOffice</text>
-        <text x="875" y="244" class="t-muted" font-size="9" text-anchor="middle">Colyseus rooms · RPC</text>
+        <text x="875" y="228" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Mini App</text>
+        <text x="875" y="244" class="t-muted" font-size="9" text-anchor="middle">RPC</text>
 
         <rect x="800" y="320" width="150" height="60" rx="6" class="c-mask"/>
         <rect x="800" y="320" width="150" height="60" rx="6" class="c-database" stroke-width="1.5"/>
@@ -707,7 +707,7 @@
         <ul>
           <li>&bull; node:sqlite + JSON files — no external DB required</li>
           <li>&bull; Vector index backs knowledge-base retrieval</li>
-          <li>&bull; Mini App subsystem rides on Colyseus rooms (/agent-ws) for live UI RPC</li>
+          <li>&bull; Mini App subsystem exposes live UI via RPC</li>
         </ul>
       </div>
 
@@ -717,7 +717,7 @@
           <h3>Trust boundaries</h3>
         </div>
         <ul>
-          <li>&bull; Single Secret Key → Bearer Token gates every HTTP route AND every WS upgrade (incl. /agent-ws)</li>
+          <li>&bull; Single Secret Key → Bearer Token gates every HTTP route AND every WS upgrade </li>
           <li>&bull; Inside the zone all services share one trusted process</li>
           <li>&bull; Calls to LLM providers and IM bots leave the zone over HTTPS / outbound webhooks</li>
         </ul>

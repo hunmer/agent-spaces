@@ -18,7 +18,6 @@ import { prependPersistentAgentContext } from './persistent-agent-context.js';
 import { broadcastToWorkspace } from '../ws/connection-manager.js';
 import { createAgentMessagePartsTracker } from '../agents/agent-message-parts.js';
 import { activeTeamRuns, asSessionId } from './team-internal.js';
-import { setTeamAgentActivity } from '../skyoffice/team-room.js';
 import {
   createAgentFunctionTools,
   createCommandFunctionTools,
@@ -906,7 +905,6 @@ async function executeTeamReply(
     ? { agentStore: membership.agentStore, agent: membership.agent }
     : resolveTeamAgentSource(targetAgentId);
 
-  await setTeamAgentActivity(teamId, targetAgentId, 'working');
   try {
     if (source?.agentStore === 'agent') {
       return await executePresetTeamReply(teamId, sessionId, targetAgentId, content, history, onRuntime, onEvent, handoffs, onInput, resumeSessionId, resumeAgentSessionId);
@@ -916,7 +914,6 @@ async function executeTeamReply(
     }
     return await executeChatTeamReply(teamId, sessionId, targetAgentId, content, history, onRuntime, onEvent, handoffs, onInput, resumeSessionId, resumeAgentSessionId);
   } finally {
-    await setTeamAgentActivity(teamId, targetAgentId, 'idle');
   }
 }
 

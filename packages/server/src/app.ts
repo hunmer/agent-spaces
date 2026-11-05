@@ -2,9 +2,6 @@
 import { config as loadDotenv } from 'dotenv';
 loadDotenv();
 
-// reflect-metadata 必须在 Colyseus schema 装饰器模块加载前导入（attachSkyOffice 会动态 import skyoffice）
-import 'reflect-metadata';
-
 import { createWriteStream, WriteStream } from 'node:fs';
 import { setupProcmLogger } from './procm-logger.js';
 
@@ -121,17 +118,6 @@ import { ensureBuiltInAgentTemplates } from './services/agent.js';
 import { rebuildIndex as rebuildMiniAppIndex } from './storage/mini-app-store.js';
 import { ensureAgentsConfigs, startServicesWatcher } from './services/mini-app-services.js';
 import { registerAllMiniAppTools } from './services/mini-app-agent.js';
-// SkyOffice（Colyseus 房间服务）已合并进主后端，与主后端同为 ESM 源码统一编译。
-// colyseus 系包无 exports 字段（CJS），故 skyoffice 内部对它们用 default import + 解构；
-// @colyseus/schema 有完整 exports，具名 import 直接可用。
-// 顶部已 import 'reflect-metadata'（装饰器元数据全局 polyfill，必须在 schema 装饰器模块加载前）。
-import {
-  attachSkyOffice,
-  mountSkyOfficeRoutes,
-  getColyseusUpgradeHandler,
-  broadcastServer as skyofficeBroadcast,
-} from './skyoffice/index.js';
-
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORT = parseInt(process.env.PORT || '3100', 10);
 
@@ -164,11 +150,6 @@ app.post('/api/inspector/track', (req, res) => {
   broadcastToAll('inspector.jump', { path, name, line, column: column ?? 1, timestamp });
   res.json({ ok: true });
 });
-
-// SkyOffice HTTP 路由：在主 authMiddleware 之前挂载，由 SkyOffice 自管 per-room token 鉴权
-if (process.env.SKYOFFICE_ENABLED !== 'false') {
-  mountSkyOfficeRoutes(app);
-}
 
 app.use('/api', authMiddleware);
 
@@ -466,12 +447,6 @@ if (existsSync(webDir)) {
 
 const server = createServer(app);
 
-// SkyOffice 实时接入：必须在主后端注册 server.on('upgrade') 之前调用，
-// 以便 attachSkyOffice 摘走 Colyseus transport 的 upgrade handler，交给下方统一 dispatcher 分流。
-if (process.env.SKYOFFICE_ENABLED !== 'false') {
-  attachSkyOffice({ app, server });
-}
-
 const wss = new WebSocketServer({ noServer: true });
 
 // Speech recognition WebSocket on /ws/speech
@@ -518,20 +493,6 @@ server.on('upgrade', (req, socket, head) => {
     speechWss.handleUpgrade(req, socket, head, (ws) => {
       speechWss.emit('connection', ws, req);
     });
-    return;
-  }
-
-  // SkyOffice Agent 广播 WS（由 broadcastServer 处理连接 + per-room token 鉴权）
-  if (pathname === '/agent-ws') {
-    skyofficeBroadcast.handleUpgrade(req, socket, head);
-    return;
-  }
-
-  // Colyseus 房间 viewer 连接：委托给 attachSkyOffice 摘出的 transport upgrade handler
-  // （未启用 SkyOffice 时该 handler 为 null，落到 socket.destroy）
-  const colyseusHandler = getColyseusUpgradeHandler();
-  if (colyseusHandler) {
-    colyseusHandler.call(server, req, socket, head);
     return;
   }
 
