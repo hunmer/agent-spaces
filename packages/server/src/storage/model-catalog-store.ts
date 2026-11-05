@@ -146,6 +146,40 @@ export async function refreshCatalog(): Promise<Catalog> {
   return fresh;
 }
 
+/** 按勾选结果过滤 catalog：selection 为 providerId -> 勾选的模型 id 列表（空数组=整个 provider 不导入） */
+export function filterCatalogBySelection(
+  catalog: Catalog,
+  selection: Record<string, string[]>,
+): Catalog {
+  const providers: Record<string, CatalogProvider> = {};
+  const models: Record<string, CatalogModel> = {};
+  for (const [providerId, modelIds] of Object.entries(selection)) {
+    if (!Array.isArray(modelIds) || modelIds.length === 0) continue;
+    const provider = catalog.providers?.[providerId];
+    if (!provider) continue;
+    const providerModels: Record<string, CatalogModel> = {};
+    for (const modelId of modelIds) {
+      const model = provider.models?.[modelId] ?? catalog.models?.[modelId];
+      if (!model) continue;
+      providerModels[modelId] = model;
+      models[modelId] = model;
+    }
+    providers[providerId] = { ...provider, models: providerModels };
+  }
+  return { providers, models };
+}
+
+/** 将勾选子集落盘（覆盖 catalog.json），返回新 meta */
+export async function saveCatalogSelection(
+  selection: Record<string, string[]>,
+): Promise<CatalogMeta> {
+  const catalog = await getCatalog();
+  const filtered = filterCatalogBySelection(catalog, selection);
+  ensureDir(dirname(catalogFile()));
+  writeJsonFile(catalogFile(), filtered);
+  return getCatalogMeta();
+}
+
 export async function getCatalogMeta(): Promise<CatalogMeta> {
   const file = catalogFile();
   let updatedAt: string | null = null;

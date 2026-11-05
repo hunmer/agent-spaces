@@ -5,6 +5,7 @@ import {
   refreshCatalog,
   getCatalogMeta,
   refreshProviderIcons,
+  saveCatalogSelection,
 } from '../storage/model-catalog-store.js';
 
 const router = Router();
@@ -27,13 +28,27 @@ router.get('/meta', async (_req: Request, res: Response) => {
   }
 });
 
-// 强制刷新 catalog（重新请求 models.dev）
+// 强制刷新 catalog（重新请求 models.dev，全量落盘），返回 meta + 最新全量 catalog（供前端弹窗勾选）
 router.post('/refresh', async (_req: Request, res: Response) => {
   try {
-    await refreshCatalog();
-    res.json(await getCatalogMeta());
+    const catalog = await refreshCatalog();
+    res.json({ ...await getCatalogMeta(), catalog });
   } catch (err: any) {
     res.status(500).json({ error: err?.message || 'Failed to refresh catalog' });
+  }
+});
+
+// 按勾选子集覆盖保存 catalog（providers: { [providerId]: modelId[] }）
+router.post('/select', async (req: Request, res: Response) => {
+  try {
+    const selection = req.body?.providers;
+    if (!selection || typeof selection !== 'object' || Array.isArray(selection)) {
+      res.status(400).json({ error: 'Invalid selection payload' });
+      return;
+    }
+    res.json(await saveCatalogSelection(selection));
+  } catch (err: any) {
+    res.status(500).json({ error: err?.message || 'Failed to save catalog selection' });
   }
 });
 

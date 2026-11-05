@@ -127,7 +127,7 @@ export function ChatRightPanel({ agentId, onFileSelect }: ChatRightPanelProps) {
         defaultLayout={savedLayout}
         onLayoutChange={handleLayoutChange}
       >
-        <ResizablePanel id="chat-agent-workspace-tree" defaultSize="50%" minSize="20%" className="tour-agent-workspace">
+        <ResizablePanel id="chat-agent-workspace-tree" defaultSize="50%" minSize="20%">
           <WorkspaceFileTreePanel
             title={t("agentWorkspace")}
             emptyTitle={t("noAgent")}
@@ -140,7 +140,7 @@ export function ChatRightPanel({ agentId, onFileSelect }: ChatRightPanelProps) {
           />
         </ResizablePanel>
         <ResizableHandle withHandle />
-        <ResizablePanel id="chat-current-workspace-tree" defaultSize="50%" minSize="20%" className="tour-extra-directories">
+        <ResizablePanel id="chat-current-workspace-tree" defaultSize="50%" minSize="20%">
           <MultiDirectoryFileTreePanel
             title={t("extraDirectories")}
             emptyTitle={t("noChatTab")}

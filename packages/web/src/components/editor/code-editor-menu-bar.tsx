@@ -59,7 +59,7 @@ export function EditorMenuBar({ editorRef, activeFilePath, isReadOnly, onSave, o
   };
 
   return (
-    <div className="flex items-center h-7 border-b bg-background shrink-0">
+    <div className="flex items-center h-7 border-b bg-background text-foreground shrink-0">
       <DropdownMenu>
         <DropdownMenuTrigger className="px-3 h-full text-xs hover:bg-accent outline-none cursor-default">
           {t('menuFile')}

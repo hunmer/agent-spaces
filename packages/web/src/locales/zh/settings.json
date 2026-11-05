@@ -157,6 +157,11 @@
   "updateCatalog": "更新目录",
   "catalogUpdating": "更新中...",
   "catalogUpdated": "目录已更新（{providers} 个提供商，{models} 个模型）",
+  "catalogSelectTitle": "选择要导入的模型",
+  "catalogSelectDesc": "仅导入勾选的服务商和模型，默认勾选知名头部服务商与前沿模型，可展开自行调整",
+  "catalogSelectedCount": "已选 {count} 个模型",
+  "catalogSelectCancel": "取消",
+  "catalogSelectConfirm": "导入所选（{count}）",
   "catalogUpdateFailed": "更新目录失败",
   "updateCatalogIcons": "更新提供商图标",
   "iconsUpdating": "更新图标中...",
@@ -185,12 +190,5 @@
   "runtimeCheckUpdateFailed": "检查更新失败",
   "runtimeLatestVersion": "最新版本",
   "runtimeUpToDate": "已最新",
-  "runtimeProcessing": "处理中...",
-  "tour": "新手引导",
-  "tourDesc": "重新播放聊天页面的新手引导。",
-  "replayTour": "重新播放引导",
-  "workspaceTourDesc": "重新播放工作区各标签页的新手引导。",
-  "replayWorkspaceTour": "重新播放工作区引导",
-  "workflowTourDesc": "重新播放工作流编辑器的新手引导。",
-  "replayWorkflowTour": "重新播放工作流引导"
+  "runtimeProcessing": "处理中..."
 }

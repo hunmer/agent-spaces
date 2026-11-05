@@ -167,6 +167,11 @@
   "updateCatalog": "Update Catalog",
   "catalogUpdating": "Updating...",
   "catalogUpdated": "Catalog updated ({providers} providers, {models} models)",
+  "catalogSelectTitle": "Select models to import",
+  "catalogSelectDesc": "Only import the selected providers and models. Top providers and frontier models are preselected; expand to adjust",
+  "catalogSelectedCount": "{count} models selected",
+  "catalogSelectCancel": "Cancel",
+  "catalogSelectConfirm": "Import selected ({count})",
   "catalogUpdateFailed": "Failed to update catalog",
   "updateCatalogIcons": "Update Provider Icons",
   "iconsUpdating": "Updating icons...",
@@ -185,12 +190,5 @@
   "catalogColOutput": "Output $/M",
   "catalogProviderModels": "{count} models",
   "runtimeInstalled": "Installed",
-  "runtimeNotInstalled": "Not installed",
-  "tour": "Onboarding Tour",
-  "tourDesc": "Replay the chat page onboarding tour.",
-  "replayTour": "Replay Tour",
-  "workspaceTourDesc": "Replay the workspace tabs onboarding tour.",
-  "replayWorkspaceTour": "Replay Workspace Tour",
-  "workflowTourDesc": "Replay the workflow editor onboarding tour.",
-  "replayWorkflowTour": "Replay Workflow Tour"
+  "runtimeNotInstalled": "Not installed"
 }

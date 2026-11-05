@@ -13,8 +13,6 @@ import {
   LAYOUT_TEMPLATES_KEY,
   applyLayoutToStorage,
 } from "@/lib/layout-templates";
-import { useJoyride, STATUS } from "react-joyride";
-import type { Status, Step } from "react-joyride";
 import { RIGHT_TO_LEFT_TAB_MAP, renderTabIcon } from "./tab-config";
 
 import { getWS } from "@/lib/ws";
@@ -35,7 +33,6 @@ import type { Issue, IssueStatusChangedPayload, AppNotification } from "@agent-s
 import type { MiniAppProject } from "@agent-spaces/sdk";
 import { sdk } from "@/lib/sdk";
 
-const WORKSPACE_TOUR_KEY = "agent-spaces:workspace-tour-completed";
 const EMPTY_MINI_APP_IDS: string[] = [];
 type LayoutJsonNode = { type?: string; component?: string; name?: string; id?: string; children?: LayoutJsonNode[] };
 
@@ -186,117 +183,6 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
   const isMobile = useIsMobile();
   const searchParams = useSearchParams();
   const pathname = usePathname();
-
-  // ===== 各 tab 引导介绍 (react-joyride) =====
-  const [runTour, setRunTour] = useState(false);
-  const tTour = useTranslations("workspaceShell.tour");
-
-  const tourSteps: Step[] = useMemo(() => [
-    {
-      target: '[data-tour-tab="project-settings"]',
-      content: tTour("projectSettings"),
-      title: tTour("projectSettingsTitle"),
-      placement: "right",
-      skipBeacon: true,
-    },
-    {
-      target: '[data-tour-tab="channel-list"]',
-      content: tTour("channelList"),
-      title: tTour("channelListTitle"),
-      placement: "right",
-    },
-    {
-      target: '[data-tour-tab="issue-list"]',
-      content: tTour("issueList"),
-      title: tTour("issueListTitle"),
-      placement: "right",
-    },
-    {
-      target: '[data-tour-tab="workfolder"]',
-      content: tTour("workfolder"),
-      title: tTour("workfolderTitle"),
-      placement: "right",
-    },
-    {
-      target: '[data-tour-tab="code-editor"]',
-      content: tTour("codeEditor"),
-      title: tTour("codeEditorTitle"),
-      placement: "bottom",
-    },
-    {
-      target: '[data-tour-tab="chat"]',
-      content: tTour("chat"),
-      title: tTour("chatTitle"),
-      placement: "bottom",
-    },
-    {
-      target: '[data-tour-tab="issue-detail"]',
-      content: tTour("issueDetail"),
-      title: tTour("issueDetailTitle"),
-      placement: "bottom",
-    },
-    {
-      target: '[data-tour-tab="terminal"]',
-      content: tTour("terminal"),
-      title: tTour("terminalTitle"),
-      placement: "top",
-    },
-    {
-      target: '[data-tour-tab="git-commits"]',
-      content: tTour("gitCommits"),
-      title: tTour("gitCommitsTitle"),
-      placement: "top",
-    },
-    {
-      target: '[data-tour-tab="worktree-panel"]',
-      content: tTour("worktree"),
-      title: tTour("worktreeTitle"),
-      placement: "top",
-    },
-    {
-      target: '[data-tour-tab="activity-log"]',
-      content: tTour("activityLog"),
-      title: tTour("activityLogTitle"),
-      placement: "top",
-    },
-  ], [tTour]);
-
-  const { Tour } = useJoyride({
-    continuous: true,
-    run: runTour,
-    steps: tourSteps,
-    locale: {
-      back: tTour("back"),
-      close: tTour("close"),
-      last: tTour("last"),
-      next: tTour("next"),
-      skip: tTour("skip"),
-    },
-    options: {
-      showProgress: true,
-      buttons: ["back", "close", "primary", "skip"],
-    },
-    onEvent: (data) => {
-      const finished = [STATUS.FINISHED, STATUS.SKIPPED] as readonly Status[];
-      if (finished.includes(data.status)) {
-        setRunTour(false);
-        try { localStorage.setItem(WORKSPACE_TOUR_KEY, "1"); } catch {}
-      }
-    },
-  });
-
-  // 首次进入自动启动，或通过 URL 参数 ?wstour=1 强制启动
-  useEffect(() => {
-    if (isMobile) return;
-    const force = searchParams.get("wstour") === "1";
-    try {
-      const done = localStorage.getItem(WORKSPACE_TOUR_KEY);
-      if (force || !done) {
-        const timer = setTimeout(() => setRunTour(true), 600);
-        return () => clearTimeout(timer);
-      }
-    } catch {}
-  }, [isMobile, searchParams]);
 
   const activeIssueId = useIssueStore((s) => s.activeIssueId);
   const issueSelectSeq = useIssueStore((s) => s.issueSelectSeq);
@@ -702,7 +588,7 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
       const project = workspaceMiniApps.find((p) => p.id === miniAppId);
       const icon = project?.icon?.trim();
       renderValues.content = (
-        <span title={node.getName()} className="flex items-center justify-center" data-tour-tab={comp}>
+        <span title={node.getName()} className="flex items-center justify-center">
           {icon ? <span className="text-base leading-none">{icon}</span> : node.getName()}
         </span>
       );
@@ -816,7 +702,6 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
         agents={agents}
         onSubmit={(data) => createIssue(workspaceId, data.title, data.description, data.members, data.workflowId)}
       />
-      {Tour}
     </div>
   );
 }

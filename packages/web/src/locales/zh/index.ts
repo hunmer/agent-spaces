@@ -15,7 +15,6 @@ import home from './home.json';
 import importNs from './import.json';
 import issue from './issue.json';
 import knowledgeBase from './knowledgeBase.json';
-import learn from './learn.json';
 import login from './login.json';
 import mcps from './mcps.json';
 import models from './models.json';
@@ -34,7 +33,6 @@ import terminal from './terminal.json';
 import teams from './teams.json';
 import tools from './tools.json';
 import workspace from './workspace.json';
-import workspaceShell from './workspaceShell.json';
 import workspaces from './workspaces.json';
 import worktree from './worktree.json';
 import workflows from './workflows.json';
@@ -58,7 +56,6 @@ const messages = {
   import: importNs,
   issue,
   knowledgeBase,
-  learn,
   login,
   mcps,
   models,
@@ -77,7 +74,6 @@ const messages = {
   teams,
   tools,
   workspace,
-  workspaceShell,
   workspaces,
   worktree,
   workflows,

@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { sdk } from "@/lib/sdk";
 import { useLLMStore, type CatalogModel, type CatalogProvider, type ModelCatalog } from "@/stores/llm";
 import { getProviderIconUrlById } from "@/lib/provider-icon";
+import { CatalogSelectDialog } from "./catalog-select-dialog";
 
 interface CatalogMeta {
   updatedAt: string | null;
@@ -29,6 +30,9 @@ export function ModelCatalogTab() {
   const [activeTab, setActiveTab] = useState<"models" | "providers">("models");
   const [modelQuery, setModelQuery] = useState("");
   const [providerQuery, setProviderQuery] = useState("");
+  const [selectOpen, setSelectOpen] = useState(false);
+  const [selectSaving, setSelectSaving] = useState(false);
+  const [freshCatalog, setFreshCatalog] = useState<ModelCatalog | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -47,16 +51,33 @@ export function ModelCatalogTab() {
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
-      const m = await sdk.llm.refreshCatalog();
-      setMeta(m);
-      // 重新拉取最新 catalog 到 store（用于模型选择自动填充）
-      const fresh = await sdk.llm.getCatalog() as ModelCatalog;
-      setCatalog(fresh);
-      toast.success(t("catalogUpdated", { providers: m.providers, models: m.models }));
+      const result = await sdk.llm.refreshCatalog();
+      setMeta(result);
+      // 拉到最新全量 catalog 后弹窗让用户勾选导入范围（默认勾选头部厂商+前沿模型）
+      const fresh = (result.catalog ?? null) as ModelCatalog | null;
+      setFreshCatalog(fresh);
+      setSelectOpen(true);
     } catch {
       toast.error(t("catalogUpdateFailed"));
     } finally {
       setRefreshing(false);
+    }
+  }, [t]);
+
+  // 确认导入：仅将勾选的服务商/模型子集落盘，并刷新本地 store
+  const handleSelectConfirm = useCallback(async (selection: Record<string, string[]>) => {
+    setSelectSaving(true);
+    try {
+      const m = await sdk.llm.selectCatalog(selection);
+      setMeta(m);
+      const fresh = await sdk.llm.getCatalog() as ModelCatalog;
+      setCatalog(fresh);
+      setSelectOpen(false);
+      toast.success(t("catalogUpdated", { providers: m.providers, models: m.models }));
+    } catch {
+      toast.error(t("catalogUpdateFailed"));
+    } finally {
+      setSelectSaving(false);
     }
   }, [t, setCatalog]);
 
@@ -244,6 +265,14 @@ export function ModelCatalogTab() {
           )}
         </TabsContent>
       </Tabs>
+
+      <CatalogSelectDialog
+        open={selectOpen}
+        catalog={freshCatalog}
+        saving={selectSaving}
+        onCancel={() => setSelectOpen(false)}
+        onConfirm={handleSelectConfirm}
+      />
     </div>
   );
 }

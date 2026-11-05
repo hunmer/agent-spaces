@@ -16,13 +16,8 @@ import { Drawer, DrawerContent } from "@/components/ui/drawer";
 import { Button } from "@/components/ui/button";
 import { MessageSquare, PanelLeft, PanelRight } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { useJoyride, STATUS } from "react-joyride";
-import type { Status } from "react-joyride";
-import type { Step } from "react-joyride";
 import type { ChatAgent } from "@agent-spaces/sdk";
 import type { AgentPreset } from "@/components/sidebar/agent-shared";
-
-const TOUR_KEY = "agent-spaces:chat-tour-completed";
 
 const PANEL_ID_AGENT_LIST = "chat-agent-list";
 const PANEL_ID_CHAT = "chat-main";
@@ -104,83 +99,8 @@ function ChatPageInner() {
   const [leftDrawerOpen, setLeftDrawerOpen] = useState(false);
   const [rightDrawerOpen, setRightDrawerOpen] = useState(false);
 
-  // ===== 引导介绍 (react-joyride) =====
-  const [runTour, setRunTour] = useState(false);
-  const tTour = useTranslations('chat.tour');
-
-  const tourSteps: Step[] = useMemo(() => [
-    {
-      target: ".tour-workspace-switcher",
-      content: tTour("workspaceSwitcher"),
-      title: tTour("workspaceSwitcherTitle"),
-      placement: "right",
-      skipBeacon: true,
-    },
-    {
-      target: ".tour-manage-agents",
-      content: tTour("manageAgents"),
-      title: tTour("manageAgentsTitle"),
-      placement: "right",
-    },
-    {
-      target: ".tour-new-chat",
-      content: tTour("newChat"),
-      title: tTour("newChatTitle"),
-      placement: "right",
-    },
-    {
-      target: ".tour-agent-workspace",
-      content: tTour("agentWorkspace"),
-      title: tTour("agentWorkspaceTitle"),
-      placement: "left",
-    },
-    {
-      target: ".tour-extra-directories",
-      content: tTour("extraDirectories"),
-      title: tTour("extraDirectoriesTitle"),
-      placement: "left",
-    },
-  ], [tTour]);
-
-  const { Tour } = useJoyride({
-    continuous: true,
-    run: runTour,
-    steps: tourSteps,
-    locale: {
-      back: tTour("back"),
-      close: tTour("close"),
-      last: tTour("last"),
-      next: tTour("next"),
-      skip: tTour("skip"),
-    },
-    options: {
-      showProgress: true,
-      buttons: ["back", "close", "primary", "skip"],
-    },
-    onEvent: (data) => {
-      const finished = [STATUS.FINISHED, STATUS.SKIPPED] as readonly Status[];
-      if (finished.includes(data.status)) {
-        setRunTour(false);
-        try { localStorage.setItem(TOUR_KEY, "1"); } catch {}
-      }
-    },
-  });
-
   const searchParams = useSearchParams();
   const router = useRouter();
-
-  // 首次访问自动启动，或通过 URL 参数 ?tour=1 强制启动
-  useEffect(() => {
-    if (isMobile) return;
-    const force = searchParams.get("tour") === "1";
-    try {
-      const done = localStorage.getItem(TOUR_KEY);
-      if (force || !done) {
-        const timer = setTimeout(() => setRunTour(true), 600);
-        return () => clearTimeout(timer);
-      }
-    } catch {}
-  }, [isMobile, searchParams]);
 
   const defaultLayout = useMemo<Layout | undefined>(() => loadLayout(), []);
   const onLayoutChange = useCallback((layout: Layout) => {
@@ -601,7 +521,6 @@ function ChatPageInner() {
         </Drawer>
 
         {dialogs}
-        {Tour}
       </div>
     );
   }
@@ -631,7 +550,6 @@ function ChatPageInner() {
 
         {dialogs}
       </ResizablePanelGroup>
-      {Tour}
     </div>
   );
 }

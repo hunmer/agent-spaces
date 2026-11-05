@@ -132,7 +132,7 @@ export function CliPanel({ workspaceId, boundDirs }: CliPanelProps) {
     return (
       <div
         className="flex h-full items-center justify-center p-6 text-center text-sm text-muted-foreground"
-        data-tour-tab="cli-panel"
+       
       >
         <div className="flex flex-col gap-1">
           <TerminalSquare className="mx-auto size-8 opacity-40" />
@@ -144,7 +144,7 @@ export function CliPanel({ workspaceId, boundDirs }: CliPanelProps) {
   }
 
   return (
-    <div className="relative h-full w-full" data-tour-tab="cli-panel">
+    <div className="relative h-full w-full">
       {sessions.map((session) => (
         <SessionPanel
           key={session.id}

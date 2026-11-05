@@ -7,6 +7,10 @@ export interface ModelCatalogMeta {
   models: number;
 }
 
+export interface ModelCatalogRefreshResult extends ModelCatalogMeta {
+  catalog?: unknown;
+}
+
 export interface ModelCatalogProviderIconsResult {
   saved: string[];
   failed: string[];
@@ -74,8 +78,11 @@ export function createLlmApi(http: HttpClient) {
     getCatalogMeta: (): Promise<ModelCatalogMeta> =>
       http.get("/api/model-catalog/meta"),
 
-    refreshCatalog: (): Promise<ModelCatalogMeta> =>
+    refreshCatalog: (): Promise<ModelCatalogRefreshResult> =>
       http.post("/api/model-catalog/refresh"),
+
+    selectCatalog: (providers: Record<string, string[]>): Promise<ModelCatalogMeta> =>
+      http.post("/api/model-catalog/select", { providers }),
 
     refreshProviderIcons: (): Promise<ModelCatalogProviderIconsResult> =>
       http.post("/api/model-catalog/refresh-icons"),
