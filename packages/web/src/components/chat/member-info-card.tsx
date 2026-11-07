@@ -14,6 +14,7 @@ const RUNTIME_LABELS: Record<string, string> = {
   'codex': 'Codex',
   'langchain': 'LangChain',
   'hermes': 'Hermes',
+  'deepseek-harness': 'DeepSeek Harness',
 };
 
 const PROVIDER_LABELS: Record<string, string> = {

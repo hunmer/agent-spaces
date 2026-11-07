@@ -18,7 +18,8 @@
     "launch": "Launch CLI",
     "detectedTitle": "Detected CLIs",
     "empty": "No CLI detected.",
-    "emptyHint": "Go to Settings → Runtime to discover."
+    "emptyHint": "Go to Settings → Runtime to discover.",
+    "headlessOnlyHint": "DeepSeek Harness runs one-shot through the Agent runtime and cannot be launched as an interactive terminal."
   },
   "panel": {
     "loadingTerminal": "Loading terminal…",

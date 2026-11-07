@@ -22,9 +22,10 @@ export type RuntimeCliId =
   | "kilocode"
   | "antigravity"
   | "xiaomimimo"
-  | "githubcopilot";
+  | "githubcopilot"
+  | "deepseek-harness";
 export type RuntimeCategory = "cli" | "sdk";
-export type SupportedRuntimeKind = "claude-code" | "codex" | "grok" | "gemini-cli" | "open-agent-sdk" | "hermes" | "pi";
+export type SupportedRuntimeKind = "claude-code" | "codex" | "grok" | "gemini-cli" | "open-agent-sdk" | "hermes" | "pi" | "deepseek-harness";
 
 export interface RuntimeCliDiscoveryItem {
   id: RuntimeCliId;
@@ -144,7 +145,7 @@ function normalizeStoredItem(item: unknown): RuntimeCliDiscoveryItem | null {
     "claude-code", "codex", "grok", "gemini-cli", "hermes", "pi",
     "claude-code-sdk", "codex-sdk", "open-agent-sdk",
     "openclaw", "omp", "opencode", "qwen", "cursor", "kimi", "kiro",
-    "kilocode", "antigravity", "xiaomimimo", "githubcopilot",
+    "kilocode", "antigravity", "xiaomimimo", "githubcopilot", "deepseek-harness",
   ];
   if (!value.id || !VALID_IDS.includes(value.id)) return null;
   const id = value.id;
@@ -166,6 +167,7 @@ function normalizeStoredItem(item: unknown): RuntimeCliDiscoveryItem | null {
       || value.runtimeKind === "open-agent-sdk"
       || value.runtimeKind === "hermes"
       || value.runtimeKind === "pi"
+      || value.runtimeKind === "deepseek-harness"
       ? value.runtimeKind
       : null,
   };

@@ -5,6 +5,7 @@ import { createRequire } from 'node:module';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { AgentConfig } from '@agent-spaces/shared';
+import { buildDshSpawnSpec, resolveDshCommand } from '../adapters/deepseek-harness-command.js';
 
 const router = Router();
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -12,7 +13,7 @@ const rootDir = join(__dirname, '../..');
 const workspaceRootDir = join(rootDir, '../..');
 const requireFromRoot = createRequire(join(rootDir, 'package.json'));
 
-type SupportedRuntimeKind = Extract<NonNullable<AgentConfig['runtimeKind']>, 'claude-code' | 'codex' | 'grok' | 'gemini-cli' | 'open-agent-sdk' | 'hermes' | 'pi'>;
+type SupportedRuntimeKind = Extract<NonNullable<AgentConfig['runtimeKind']>, 'claude-code' | 'codex' | 'grok' | 'gemini-cli' | 'open-agent-sdk' | 'hermes' | 'pi' | 'deepseek-harness'>;
 type InstallableRuntimePackageId = RuntimeDescriptor['id'];
 type RuntimeCategory = 'cli' | 'sdk';
 type VersionSource = { type: 'npm'; packageName: string } | { type: 'github'; repo: string };
@@ -24,7 +25,7 @@ type InstallCommandSpec = {
 };
 
 interface RuntimeDescriptor {
-  id: 'claude-code' | 'codex' | 'grok' | 'gemini-cli' | 'hermes' | 'pi' | 'claude-code-sdk' | 'codex-sdk' | 'open-agent-sdk' | 'openclaw' | 'omp' | 'opencode' | 'qwen' | 'cursor' | 'kimi' | 'kiro' | 'kilocode' | 'antigravity' | 'xiaomimimo' | 'githubcopilot';
+  id: 'claude-code' | 'codex' | 'grok' | 'gemini-cli' | 'hermes' | 'pi' | 'deepseek-harness' | 'claude-code-sdk' | 'codex-sdk' | 'open-agent-sdk' | 'openclaw' | 'omp' | 'opencode' | 'qwen' | 'cursor' | 'kimi' | 'kiro' | 'kilocode' | 'antigravity' | 'xiaomimimo' | 'githubcopilot';
   category: RuntimeCategory;
   label: string;
   commands?: string[];
@@ -100,6 +101,21 @@ const RUNTIME_DESCRIPTORS: RuntimeDescriptor[] = [
     updateCommand: {
       command: 'npm',
       args: ['update', '-g', '@google/gemini-cli'],
+      cwd: rootDir,
+    },
+  },
+  {
+    id: 'deepseek-harness',
+    category: 'cli',
+    label: 'DeepSeek Harness CLI',
+    commands: ['dsh'],
+    runtimeKind: 'deepseek-harness',
+    versionArgs: ['--version'],
+    versionSource: { type: 'npm', packageName: '@deepseek-ai/dsh' },
+    installable: true,
+    updateCommand: {
+      command: 'npm',
+      args: ['update', '-g', '@deepseek-ai/dsh'],
       cwd: rootDir,
     },
   },
@@ -379,6 +395,18 @@ function locateCommand(command: string): Promise<string | null> {
 }
 
 async function locateRuntimeCommand(descriptor: RuntimeDescriptor): Promise<string | null> {
+  // DSH_CLI_PATH is authoritative: check the configured command before the default `dsh` name.
+  if (descriptor.id === 'deepseek-harness') {
+    try {
+      const configured = resolveDshCommand();
+      const located = await locateCommand(configured);
+      if (located) return located;
+      return configured !== 'dsh' && existsSync(configured) ? configured : null;
+    } catch {
+      return null;
+    }
+  }
+
   for (const command of descriptor.commands ?? []) {
     const path = await locateCommand(command);
     if (path) return path;
@@ -420,7 +448,10 @@ async function readInstalledCliVersion(descriptor: RuntimeDescriptor, commandPat
   if (!versionArgs || versionArgs.length === 0) return null;
 
   try {
-    const result = await runCommand(commandPath, versionArgs, rootDir);
+    const spec = descriptor.id === 'deepseek-harness'
+      ? buildDshSpawnSpec(commandPath, versionArgs)
+      : { command: commandPath, args: versionArgs };
+    const result = await runCommand(spec.command, spec.args, rootDir);
     return extractNormalizedVersion(result.stdout || result.stderr);
   } catch {
     return null;
@@ -588,6 +619,15 @@ function resolveRuntimeInstallCommand(descriptor: RuntimeDescriptor, alreadyInst
     return {
       command: 'npm',
       args: ['install', '-g', '@google/gemini-cli'],
+      cwd: rootDir,
+      packageManagerLabel: 'npm',
+    };
+  }
+
+  if (descriptor.id === 'deepseek-harness') {
+    return {
+      command: 'npm',
+      args: ['install', '-g', '@deepseek-ai/dsh'],
       cwd: rootDir,
       packageManagerLabel: 'npm',
     };

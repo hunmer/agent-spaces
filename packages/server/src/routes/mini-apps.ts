@@ -885,7 +885,7 @@ router.put('/:id/agents/:agentId', (req: Request<{ id: string; agentId: string }
 // 本地文件代理：mini-app 预览代码用 <img src> 访问任意本地绝对路径的图片/视频/音频。
 // Eagle 等本地资源库场景：缩略图/原图位于资源库目录下，浏览器无法直接读 file://。
 // 鉴权由 auth 中间件通过 query token 放行（见 middleware/auth.ts）。
-function isMiniAppRuntimeKind(value: unknown): value is 'open-agent-sdk' | 'claude-code' | 'codex' | 'grok' | 'gemini-cli' | 'langchain' | 'hermes' | 'pi' {
+function isMiniAppRuntimeKind(value: unknown): value is 'open-agent-sdk' | 'claude-code' | 'codex' | 'grok' | 'gemini-cli' | 'langchain' | 'hermes' | 'pi' | 'deepseek-harness' {
   return value === 'open-agent-sdk'
     || value === 'claude-code'
     || value === 'codex'
@@ -893,7 +893,8 @@ function isMiniAppRuntimeKind(value: unknown): value is 'open-agent-sdk' | 'clau
     || value === 'gemini-cli'
     || value === 'langchain'
     || value === 'hermes'
-    || value === 'pi';
+    || value === 'pi'
+    || value === 'deepseek-harness';
 }
 
 const LOCAL_FILE_MIME: Record<string, string> = {

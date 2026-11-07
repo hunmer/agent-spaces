@@ -18,7 +18,8 @@
     "launch": "启动 CLI",
     "detectedTitle": "已检测到的 CLI",
     "empty": "未检测到 CLI。",
-    "emptyHint": "前往 设置 → Runtime 进行检测。"
+    "emptyHint": "前往 设置 → Runtime 进行检测。",
+    "headlessOnlyHint": "DeepSeek Harness 仅通过 Agent 运行时单次执行，不能作为交互式终端启动。"
   },
   "panel": {
     "loadingTerminal": "终端加载中…",

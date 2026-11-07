@@ -17,6 +17,7 @@ export type {
 export { HermesRuntime } from './hermes-runtime.js';
 export { GrokRuntime } from './grok-runtime.js';
 export { GeminiCliRuntime } from './gemini-cli-runtime.js';
+export { DeepSeekHarnessRuntime } from './deepseek-harness-runtime.js';
 export { LangChainRuntime } from './langchain-runtime.js';
 export { PiRuntime } from './pi-runtime.js';
 
@@ -87,6 +88,11 @@ export function createAgentRuntime(
       return new LazyAgentRuntime(async () => {
         const { GeminiCliRuntime } = await import('./gemini-cli-runtime.js');
         return new GeminiCliRuntime(config);
+      });
+    case 'deepseek-harness':
+      return new LazyAgentRuntime(async () => {
+        const { DeepSeekHarnessRuntime } = await import('./deepseek-harness-runtime.js');
+        return new DeepSeekHarnessRuntime(config);
       });
     case 'langchain':
       return new LangChainRuntime(config);

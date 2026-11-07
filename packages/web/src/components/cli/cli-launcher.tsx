@@ -36,9 +36,14 @@ export function CliLauncher({ onPick }: CliLauncherProps) {
   const { items } = useRuntimeCliSettings();
   const t = useTranslations("cli.launcher");
 
-  // 仅展示「已发现 + 已启用」的 CLI 类工具（SDK 不直接当命令跑）
+  // 仅展示「已发现 + 已启用」的 CLI 类工具（SDK 不直接当命令跑）。
+  // DeepSeek Harness 只支持单次 headless 执行，不能作为交互式终端启动。
   const cliItems = useMemo(
-    () => items.filter((item) => item.category === "cli" && item.found && item.enabled),
+    () => items.filter((item) => item.category === "cli" && item.found && item.enabled && item.id !== "deepseek-harness"),
+    [items],
+  );
+  const hasHeadlessOnlyCli = useMemo(
+    () => items.some((item) => item.id === "deepseek-harness" && item.found && item.enabled),
     [items],
   );
 
@@ -89,6 +94,14 @@ export function CliLauncher({ onPick }: CliLauncherProps) {
             ))
           )}
         </DropdownMenuGroup>
+        {hasHeadlessOnlyCli ? (
+          <>
+            <DropdownMenuSeparator />
+            <div className="px-2 py-2 text-[11px] leading-relaxed text-muted-foreground">
+              {t("headlessOnlyHint")}
+            </div>
+          </>
+        ) : null}
       </DropdownMenuContent>
     </DropdownMenu>
   );

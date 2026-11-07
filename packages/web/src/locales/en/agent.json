@@ -15,7 +15,8 @@
     "geminiCli": "Gemini CLI",
     "langchain": "LangChain",
     "hermes": "Hermes",
-    "pi": "Pi"
+    "pi": "Pi",
+    "deepseekHarness": "DeepSeek Harness"
   },
   "role": {
     "agent": { "name": "Agent" },

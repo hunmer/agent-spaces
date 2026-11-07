@@ -318,6 +318,7 @@ function normalizeMiniAppRuntimeKind(value: unknown): AgentConfig['runtimeKind']
     || value === 'langchain'
     || value === 'hermes'
     || value === 'pi'
+    || value === 'deepseek-harness'
     ? value
     : 'langchain';
 }

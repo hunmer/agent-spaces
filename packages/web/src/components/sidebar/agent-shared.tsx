@@ -1,4 +1,4 @@
-﻿import {
+import {
   BUILT_IN_AGENT_TOOLS,
   type AgentConfig,
   type BuiltInAgentToolName,
@@ -109,6 +109,7 @@ export const RUNTIME_OPTIONS: Array<{ value: NonNullable<AgentConfig["runtimeKin
   { value: "langchain", labelKey: "langchain" },
   { value: "hermes", labelKey: "hermes" },
   { value: "pi", labelKey: "pi" },
+  { value: "deepseek-harness", labelKey: "deepseekHarness" },
 ];
 
 export const ROLE_OPTIONS: BuiltInRole[] = ["agent", "scheduler", "bot"];

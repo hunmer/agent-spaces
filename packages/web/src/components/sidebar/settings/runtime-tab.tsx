@@ -29,7 +29,7 @@ interface DiscoverRuntimeCliResponse {
 
 interface InstallRuntimeCliResponse extends DiscoverRuntimeCliResponse {
   ok: boolean;
-  runtimeId: "claude-code" | "codex" | "grok" | "gemini-cli" | "hermes" | "pi" | "claude-code-sdk" | "codex-sdk" | "open-agent-sdk";
+  runtimeId: "claude-code" | "codex" | "grok" | "gemini-cli" | "hermes" | "pi" | "deepseek-harness" | "claude-code-sdk" | "codex-sdk" | "open-agent-sdk";
   packageManager: string;
   packages: string[];
   stdout: string;
@@ -38,7 +38,7 @@ interface InstallRuntimeCliResponse extends DiscoverRuntimeCliResponse {
 
 interface CheckSdkUpdatesResponse {
   updates: Array<{
-    runtimeId: "claude-code" | "codex" | "grok" | "gemini-cli" | "hermes" | "pi" | "claude-code-sdk" | "codex-sdk" | "open-agent-sdk";
+    runtimeId: "claude-code" | "codex" | "grok" | "gemini-cli" | "hermes" | "pi" | "deepseek-harness" | "claude-code-sdk" | "codex-sdk" | "open-agent-sdk";
     latestVersion: string | null;
     debug: {
       packageName: string | null;
@@ -51,8 +51,8 @@ interface CheckSdkUpdatesResponse {
   }>;
 }
 
-type InstallableRuntimeId = "claude-code" | "codex" | "grok" | "gemini-cli" | "hermes" | "claude-code-sdk" | "codex-sdk" | "open-agent-sdk";
-const INSTALLABLE_CLI_IDS = new Set<InstallableRuntimeId>(["claude-code", "codex", "grok", "gemini-cli", "hermes"]);
+type InstallableRuntimeId = "claude-code" | "codex" | "grok" | "gemini-cli" | "hermes" | "deepseek-harness" | "claude-code-sdk" | "codex-sdk" | "open-agent-sdk";
+const INSTALLABLE_CLI_IDS = new Set<InstallableRuntimeId>(["claude-code", "codex", "grok", "gemini-cli", "hermes", "deepseek-harness"]);
 
 export function RuntimeTab() {
   const t = useTranslations("settings");
@@ -261,6 +261,11 @@ export function RuntimeTab() {
                     <div className="mt-0.5 text-xs text-muted-foreground">
                       {item.latestVersion ? `${t("runtimeLatestVersion")}: ${item.latestVersion}` : null}
                     </div>
+                    {item.id === "deepseek-harness" ? (
+                      <div className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                        {t("runtimeDeepseekHarnessNote")}
+                      </div>
+                    ) : null}
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
