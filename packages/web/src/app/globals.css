@@ -1092,3 +1092,15 @@
 .dark {
   --destructive-foreground: var(--color-red-400);
 }
+
+/* 自定义鼠标光标（外观设置选择后生效）：隐藏系统光标 */
+html[data-custom-cursor] *,
+html[data-custom-cursor] {
+  cursor: none !important;
+}
+/* 文本输入区保留 I 型光标，便于定位插入点 */
+html[data-custom-cursor] input,
+html[data-custom-cursor] textarea,
+html[data-custom-cursor] [contenteditable="true"] {
+  cursor: text !important;
+}

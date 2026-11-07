@@ -4,11 +4,23 @@ import { useState, useCallback, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { useTheme } from "@/components/layout/theme-provider";
 import { cn } from "@/lib/utils";
-import { Plus, ExternalLink } from "lucide-react";
+import { Plus, ExternalLink, MousePointer2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { SearchSelect } from "@/components/ui/search-select";
+import { Switch } from "@/components/ui/switch";
+import { Slider } from "@/components/ui/slider";
 import { sdk } from "@/lib/sdk";
+import {
+  CURSOR_STYLES,
+  getCursorStyleKey,
+  getCursorTrailPercent,
+  isCursorSoundEnabled,
+  loadCursorSettings,
+  setCursorStyle,
+  setCursorSoundEnabled,
+  setCursorTrailPercent,
+} from "@/lib/cursor-style";
 import {
   THEME_STYLE_STORAGE_KEY as STYLE_STORAGE_KEY,
   THEME_STYLE_CUSTOM_CSS_KEY as STYLE_CUSTOM_CSS_KEY,
@@ -125,6 +137,21 @@ export function AppearanceTab() {
     if (typeof window === "undefined") return "";
     return localStorage.getItem(STYLE_CUSTOM_CSS_KEY) || "";
   });
+  const [cursorStyle, setCursorStyleState] = useState(() => {
+    if (typeof window === "undefined") return "";
+    loadCursorSettings();
+    return getCursorStyleKey();
+  });
+  const [cursorSound, setCursorSoundState] = useState(() => {
+    if (typeof window === "undefined") return false;
+    loadCursorSettings();
+    return isCursorSoundEnabled();
+  });
+  const [cursorTrail, setCursorTrailState] = useState(() => {
+    if (typeof window === "undefined") return 100;
+    loadCursorSettings();
+    return getCursorTrailPercent();
+  });
 
   const themeOptions = [
     { value: "light" as const, label: t("themeLight") },
@@ -199,6 +226,38 @@ export function AppearanceTab() {
     // Small delay for font to load before applying
     setTimeout(() => applyFont(name, updated), 100);
   }, [customFonts]);
+
+  const handleCursorChange = useCallback((value: string) => {
+    setCursorStyleState(value);
+    setCursorStyle(value);
+  }, []);
+
+  const handleCursorSoundChange = useCallback((checked: boolean) => {
+    setCursorSoundState(checked);
+    setCursorSoundEnabled(checked);
+  }, []);
+
+  const handleCursorTrailChange = useCallback((value: number) => {
+    setCursorTrailState(value);
+    setCursorTrailPercent(value);
+  }, []);
+
+  const cursorLabelKeys: Record<string, string> = {
+    ring: "cursorRing",
+    ribbon: "cursorRibbon",
+    crosshair: "cursorCrosshair",
+    stardust: "cursorStardust",
+    fluid: "cursorFluid",
+  };
+
+  const cursorOptions = [
+    { value: "", label: t("cursorDefault"), color: "" },
+    ...CURSOR_STYLES.map((s) => ({
+      value: s.key,
+      label: cursorLabelKeys[s.key] ? t(cursorLabelKeys[s.key]) : s.name,
+      color: s.colorDark,
+    })),
+  ];
 
   // Fetch server-side fonts and merge
   useEffect(() => {
@@ -334,6 +393,62 @@ export function AppearanceTab() {
             <Plus className="size-4" />
           </Button>
         </div>
+      </div>
+
+      <div>
+        <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2.5 block">
+          {t("cursor")}
+        </label>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+          {cursorOptions.map(({ value, label, color }) => (
+            <button
+              key={value || "default"}
+              type="button"
+              onClick={() => handleCursorChange(value)}
+              className={cn(
+                "flex items-center gap-2 rounded-xl border px-3 py-2.5 text-left transition-colors cursor-pointer",
+                cursorStyle === value
+                  ? "border-primary bg-primary/5"
+                  : "border-border hover:bg-accent",
+              )}
+            >
+              {color ? (
+                <span
+                  className="size-3 shrink-0 rounded-full"
+                  style={{ backgroundColor: color, boxShadow: `0 0 6px ${color}` }}
+                />
+              ) : (
+                <MousePointer2 className="size-3 shrink-0 text-muted-foreground" />
+              )}
+              <span className="text-xs font-medium truncate">{label}</span>
+            </button>
+          ))}
+        </div>
+        {cursorStyle !== "" && (
+          <div className="mt-3 space-y-3.5 rounded-xl border border-border p-3.5">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-muted-foreground">{t("cursorSound")}</span>
+              <Switch
+                size="sm"
+                checked={cursorSound}
+                onCheckedChange={(checked) => handleCursorSoundChange(Boolean(checked))}
+              />
+            </div>
+            <div>
+              <div className="flex justify-between text-xs mb-2">
+                <span className="text-muted-foreground">{t("cursorTrail")}</span>
+                <span className="font-mono font-medium tabular-nums">{cursorTrail}%</span>
+              </div>
+              <Slider
+                min={30}
+                max={180}
+                step={10}
+                value={cursorTrail}
+                onValueChange={(v) => handleCursorTrailChange(Array.isArray(v) ? v[0] : v)}
+              />
+            </div>
+          </div>
+        )}
       </div>
 
       <CustomFontDialog

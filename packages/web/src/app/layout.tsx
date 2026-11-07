@@ -6,6 +6,7 @@ import { AppShell } from "@/components/layout/app-shell";
 import { DeferredLayoutFeatures } from "@/components/layout/deferred-layout-features";
 import { ViewportInsets } from "@/components/layout/viewport-insets";
 import { ThemeStyleInit } from "@/components/layout/theme-style-init";
+import { CustomCursor } from "@/components/cursor/custom-cursor";
 import { Toaster } from "sonner";
 import "flexlayout-react/style/light.css";
 import "tippy.js/dist/tippy.css";
@@ -43,6 +44,7 @@ export default function RootLayout({
       <body className="h-[var(--app-content-height)] overflow-hidden font-sans">
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           <ThemeStyleInit />
+          <CustomCursor />
           <LocaleProvider>
             <ViewportInsets />
             <AuthGuard>
