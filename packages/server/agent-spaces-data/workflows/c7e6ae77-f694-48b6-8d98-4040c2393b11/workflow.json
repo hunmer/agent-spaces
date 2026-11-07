@@ -248,7 +248,7 @@
             ]
           }
         ],
-        "title": "",
+        "title": "国之脊梁",
         "style": "{{ __data__[\"node_1782092150482_start\"].style }}",
         "prompt": "{{ __data__[\"node_1782092150482_start\"].lyric }}",
         "personaModel": "style_persona",
@@ -261,8 +261,8 @@
       "type": "cos_upload_file",
       "label": "COS上传文件",
       "position": {
-        "x": 630,
-        "y": 255
+        "x": 675,
+        "y": 225
       },
       "data": {
         "secretId": "{{ __config__[\"workflow.tencent-cos\"][\"secretId\"]}}",
@@ -381,6 +381,95 @@
           }
         ]
       }
+    },
+    {
+      "id": "node_1788002215651_wpqkxn",
+      "type": "suno_upload_cover",
+      "label": "Upload & Cover",
+      "position": {
+        "x": 1110,
+        "y": 570
+      },
+      "data": {
+        "apiKey": "{{ __config__[\"workflow.suno\"][\"apiKey\"]}}",
+        "baseUrl": "{{ __config__[\"workflow.suno\"][\"baseUrl\"]}}",
+        "proxy": "{{ __config__[\"workflow.suno\"][\"httpProxy\"]}}",
+        "customMode": true,
+        "instrumental": false,
+        "model": "{{ __config__[\"workflow.suno\"][\"defaultModel\"]}}",
+        "personaModel": "style_persona",
+        "callBackUrl": "{{ __config__[\"workflow.suno\"][\"callBackUrl\"]}}",
+        "wait": true,
+        "pollInterval": 15,
+        "maxWait": 600,
+        "outputs": [
+          {
+            "key": "success",
+            "type": "boolean",
+            "dataType": "boolean"
+          },
+          {
+            "key": "message",
+            "type": "string"
+          },
+          {
+            "key": "taskId",
+            "type": "string"
+          },
+          {
+            "key": "status",
+            "type": "string"
+          },
+          {
+            "key": "data",
+            "type": "object",
+            "dataType": "object",
+            "children": []
+          }
+        ],
+        "uploadUrl": "https://drive-1252358454.cos.ap-guangzhou.myqcloud.com/uploads/2026-11/07/aaa.mp3",
+        "style": "摇滚",
+        "prompt": "被封号我也认！\n小克啊小克，用户忘不了情根。\n从中转站到二十叉，陷得贼老深。\n哥可以放下钱包，放下自尊。\n小克啊我爱你，快忘记我是中国人。",
+        "vocalGender": "",
+        "title": "111"
+      }
+    },
+    {
+      "id": "node_1788002266147_3g64vi",
+      "type": "suno_record_info",
+      "label": "Query Task Status",
+      "position": {
+        "x": 1545,
+        "y": 480
+      },
+      "data": {
+        "apiKey": "{{ __config__[\"workflow.suno\"][\"apiKey\"]}}",
+        "baseUrl": "{{ __config__[\"workflow.suno\"][\"baseUrl\"]}}",
+        "proxy": "{{ __config__[\"workflow.suno\"][\"httpProxy\"]}}",
+        "type": "generate",
+        "outputs": [
+          {
+            "key": "success",
+            "type": "boolean",
+            "dataType": "boolean"
+          },
+          {
+            "key": "message",
+            "type": "string"
+          },
+          {
+            "key": "status",
+            "type": "string"
+          },
+          {
+            "key": "data",
+            "type": "object",
+            "dataType": "object",
+            "children": []
+          }
+        ],
+        "taskId": "cbd323f494464e7887de42bd92173e2e"
+      }
     }
   ],
   "edges": [
@@ -489,7 +578,7 @@
     }
   ],
   "createdAt": 1782092150508,
-  "updatedAt": 1794053884156,
+  "updatedAt": 1794054239306,
   "published": true,
   "enabledPlugins": [
     "workflow.tencent-cos",

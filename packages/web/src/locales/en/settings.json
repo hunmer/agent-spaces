@@ -160,7 +160,7 @@
   "runtimeFound": "Found",
   "runtimeMissing": "Missing",
   "runtimeNotFound": "Command not found on this machine",
-  "runtimeDeepseekHarnessNote": "Runs one-shot headless with your local DSH model and credentials; platform models, tools, MCP, and session resume are not bridged, and it cannot start as an interactive terminal.",
+  "runtimeDeepseekHarnessNote": "Runs one-shot headless; platform models, tools, MCP, and session resume are not bridged, and it cannot start as an interactive terminal. Headless runs need the launching environment to supply the route's credentials (deepseek-official uses DEEPSEEK_API_KEY); saving in the GUI alone is not enough unless the headless credential service is enabled.",
   "runtimeVersion": "Version",
   "runtimeLatestVersion": "Latest",
   "runtimeVersionUnknown": "Unknown",

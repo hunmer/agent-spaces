@@ -153,7 +153,7 @@
   "runtimeFound": "已发现",
   "runtimeMissing": "未发现",
   "runtimeNotFound": "当前机器未找到该命令",
-  "runtimeDeepseekHarnessNote": "使用本机 DSH 模型与凭据，单次 headless 执行；平台模型、工具、MCP 与会话恢复未接入，也不能作为交互式终端启动。",
+  "runtimeDeepseekHarnessNote": "单次 headless 执行；平台模型、工具、MCP 与会话恢复未接入，也不能作为交互式终端启动。headless 默认需启动环境提供该路由凭据（deepseek-official 用 DEEPSEEK_API_KEY），仅在界面保存不保证可用；需先启用 headless 凭据服务。",
   "runtimeUnsupported": "暂不支持作为 Runtime",
   "workflowFaultTolerance": "工作流容错模式",
   "workflowFaultToleranceIgnore": "忽略错误",
