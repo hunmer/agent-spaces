@@ -1,9 +1,7 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { useRouter } from 'next/navigation';
-import { Plus } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -16,15 +14,10 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { MemberPicker } from '@/components/common/member-picker';
-import { SearchSelect } from '@/components/ui/search-select';
-import { WorkflowInfoDialog } from '@/components/workflow/workflow-info-dialog';
 import { getMemberDisplayName } from '@/lib/agent-members';
-import { useWorkflowStore } from '@/stores/workflow';
 import { useLLMStore } from '@/stores/llm';
-import { workflowApi } from '@/lib/workflow-api';
-import { buildWorkflowPrompt } from '@/lib/workflow-prompt';
 
-import type { AgentConfig, Issue, IssueStatus, WorkflowTemplate } from '@agent-spaces/shared';
+import type { AgentConfig, Issue, IssueStatus } from '@agent-spaces/shared';
 
 const STATUS_OPTIONS: IssueStatus[] = [
   'draft', 'in_progress', 'completed', 'stopped', 'archived', 'error',
@@ -38,7 +31,7 @@ interface CreateIssueDialogProps {
   defaultDescription?: string;
   // 编辑模式：传入 issue 即为编辑
   issue?: Issue | null;
-  onSubmit: (data: { title: string; description: string; members: string[]; workflowId?: string; status?: IssueStatus }) => Promise<Issue | void> | Issue | void;
+  onSubmit: (data: { title: string; description: string; members: string[]; status?: IssueStatus }) => Promise<Issue | void> | Issue | void;
 }
 
 export function CreateIssueDialog({ open, onOpenChange, agents = [], defaultTitle, defaultDescription, issue, onSubmit }: CreateIssueDialogProps) {
@@ -47,32 +40,13 @@ export function CreateIssueDialog({ open, onOpenChange, agents = [], defaultTitl
   const [desc, setDesc] = useState('');
   const [members, setMembers] = useState<string[]>([]);
   const [status, setStatus] = useState<IssueStatus>('draft');
-  const [selectedWorkflowId, setSelectedWorkflowId] = useState<string>('');
-  const [workflowInfoOpen, setWorkflowInfoOpen] = useState(false);
-  const [editingWorkflow, setEditingWorkflow] = useState<WorkflowTemplate | null>(null);
-  const [pendingWorkflowPrompt, setPendingWorkflowPrompt] = useState<string>('');
-  const { workflows, loadWorkflows, upsertWorkflow } = useWorkflowStore();
   const { ensure: ensureLLM } = useLLMStore();
-  const pendingDraftWorkflowIdRef = useRef<string | null>(null);
-  const router = useRouter();
   const t = useTranslations('issue');
   const tc = useTranslations('common');
 
   const candidates = agents
     .filter((a) => a.enabled !== false)
     .map((a, i) => ({ id: a.id, label: getMemberDisplayName(agents, a.id), sortIndex: i }));
-  const workspaceWorkflows = workflows.filter((workflow) => workflow.type === 'workspace');
-  const workflowOptions = workspaceWorkflows.map((workflow) => {
-    const agentCount = workflow.nodes.filter((node) => node.type === 'agent').length;
-    return {
-      value: workflow.id,
-      label: `${workflow.name} (${agentCount} agents)`,
-    };
-  });
-
-  useEffect(() => {
-    if (open) loadWorkflows();
-  }, [open, loadWorkflows]);
 
   useEffect(() => {
     if (open) ensureLLM();
@@ -93,7 +67,6 @@ export function CreateIssueDialog({ open, onOpenChange, agents = [], defaultTitl
       setDesc(issue.description);
       setMembers(issue.members?.length ? [...issue.members] : []);
       setStatus(issue.status);
-      setSelectedWorkflowId(issue.workflowId ?? '');
     }
   }, [open, issue]);
 
@@ -103,93 +76,23 @@ export function CreateIssueDialog({ open, onOpenChange, agents = [], defaultTitl
       setDesc('');
       setMembers([]);
       setStatus('draft');
-      setSelectedWorkflowId('');
-      setWorkflowInfoOpen(false);
-      setEditingWorkflow(null);
-      setPendingWorkflowPrompt('');
-      if (pendingDraftWorkflowIdRef.current) {
-        const draftId = pendingDraftWorkflowIdRef.current;
-        pendingDraftWorkflowIdRef.current = null;
-        void workflowApi.delete(draftId).catch(() => {});
-      }
     }
     onOpenChange(val);
   };
 
   const toggleMember = (id: string) => {
-    setMembers((prev) => {
-      const next = prev.includes(id) ? prev.filter((m) => m !== id) : [...prev, id];
-      // 用户手动改了 members，取消 workflow 选择
-      if (selectedWorkflowId) setSelectedWorkflowId('');
-      return next;
-    });
+    setMembers((prev) => prev.includes(id) ? prev.filter((m) => m !== id) : [...prev, id]);
   };
 
   const handleSubmit = async () => {
     if (!title.trim() && !desc.trim()) return;
-    const workflowId = selectedWorkflowId || undefined;
     if (isEdit) {
-      await onSubmit({ title: title.trim(), description: desc.trim(), members, workflowId, status });
+      await onSubmit({ title: title.trim(), description: desc.trim(), members, status });
       handleClose(false);
       return;
     }
-    const created = await onSubmit({ title: title.trim(), description: desc.trim(), members, workflowId });
-    // 仅在新建 workflow 时跳转去配置；选择已有 workflow 不跳转
-    if (workflowId && pendingWorkflowPrompt && created?.channelId) {
-      const prompt = buildWorkflowPrompt({
-        workflowDescription: pendingWorkflowPrompt,
-        issuePrompt: desc.trim() || defaultDescription?.trim() || title.trim() || defaultTitle?.trim() || '',
-      });
-      const params = new URLSearchParams({
-        prompt,
-        returnWorkspaceId: created.workspaceId,
-        returnChannelId: created.channelId,
-      });
-      router.push(`/workflows/${workflowId}?${params.toString()}`);
-    }
+    await onSubmit({ title: title.trim(), description: desc.trim(), members });
     handleClose(false);
-  };
-
-  const handleCreateWorkflow = async () => {
-    const created = await workflowApi.create({
-      type: 'workspace',
-      nodes: [
-        { id: `start_${Date.now()}`, type: 'start', label: 'Start', position: { x: 240, y: 80 }, data: {} },
-        { id: `end_${Date.now()}`, type: 'end', label: 'End', position: { x: 240, y: 360 }, data: {} },
-      ],
-      edges: [],
-    });
-    upsertWorkflow(created);
-    setEditingWorkflow(created);
-    pendingDraftWorkflowIdRef.current = created.id;
-    setWorkflowInfoOpen(true);
-  };
-
-  const handleSaveWorkflow = async (updates: Partial<WorkflowTemplate>) => {
-    if (!editingWorkflow) return;
-    const saved = await workflowApi.update(editingWorkflow.id, {
-      ...updates,
-      type: 'workspace',
-    });
-    upsertWorkflow(saved);
-    setEditingWorkflow(saved);
-    setSelectedWorkflowId(saved.id);
-    setWorkflowInfoOpen(false);
-    pendingDraftWorkflowIdRef.current = null;
-    const workflowHref = `/workflows/${saved.id}`;
-    router.prefetch(workflowHref);
-    void fetch(workflowHref, { credentials: 'same-origin' }).catch(() => {});
-    setPendingWorkflowPrompt(saved.description || '');
-  };
-
-  const handleWorkflowInfoOpenChange = (nextOpen: boolean) => {
-    if (!nextOpen && pendingDraftWorkflowIdRef.current) {
-      const draftId = pendingDraftWorkflowIdRef.current;
-      pendingDraftWorkflowIdRef.current = null;
-      setEditingWorkflow(null);
-      void workflowApi.delete(draftId).catch(() => {});
-    }
-    setWorkflowInfoOpen(nextOpen);
   };
 
   return (
@@ -233,38 +136,6 @@ export function CreateIssueDialog({ open, onOpenChange, agents = [], defaultTitl
                 </div>
               )}
 
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between gap-2">
-                  <label className="text-sm font-medium text-foreground">Workspace Workflow</label>
-                  {!isEdit && (
-                    <Button type="button" variant="outline" size="sm" className="h-8 gap-1.5" onClick={handleCreateWorkflow}>
-                      <Plus className="size-3.5" />
-                      新建工作流
-                    </Button>
-                  )}
-                </div>
-                <SearchSelect
-                  value={selectedWorkflowId}
-                  onChange={(value) => {
-                    setSelectedWorkflowId(value);
-                    if (value) {
-                      const template = workspaceWorkflows.find((workflow) => workflow.id === value);
-                      if (template) {
-                        const agentIds = template.nodes
-                          .filter((node) => node.type === 'agent')
-                          .map((node) => node.data.agentConfigId as string)
-                          .filter(Boolean);
-                        setMembers((prev) => Array.from(new Set([...prev, ...agentIds])));
-                      }
-                    }
-                  }}
-                  options={workflowOptions}
-                  placeholder="选择 workspace 工作流"
-                  searchPlaceholder="搜索工作流"
-                  allowCustom={false}
-                />
-              </div>
-
               <div className="lg:hidden">
                 <MemberPicker
                   key={String(open)}
@@ -299,14 +170,6 @@ export function CreateIssueDialog({ open, onOpenChange, agents = [], defaultTitl
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      <WorkflowInfoDialog
-        open={workflowInfoOpen}
-        onOpenChange={handleWorkflowInfoOpenChange}
-        workflow={editingWorkflow}
-        showCopyInfo={false}
-        onSave={handleSaveWorkflow}
-      />
 
     </>
   );

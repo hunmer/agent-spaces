@@ -42,8 +42,6 @@ function paramTypeHint(name: string): string {
  * 这些在运行时无法仅凭反射判断（返回值是流/FormData/Blob），故显式登记。
  */
 const SPECIAL_STREAM = new Set([
-  'miniApp_agentChat',
-  'workflow_execute',
   'workspace_cloneSse',
 ]);
 const SPECIAL_UPLOAD = new Set([
@@ -53,11 +51,9 @@ const SPECIAL_UPLOAD = new Set([
   'data_importPreview',
   'font_upload',
   'knowledgeBase_uploadFile',
-  'miniApp_uploadFiles',
 ]);
 const SPECIAL_RAW_RESPONSE = new Set([
   'data_exportZip',
-  'miniApp_exportZip',
   'worktree_diff',
 ]);
 

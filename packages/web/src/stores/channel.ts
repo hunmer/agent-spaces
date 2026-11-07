@@ -3,13 +3,6 @@ import type { Channel, Message } from '@agent-spaces/shared';
 import { getWS } from '@/lib/ws';
 import { sdk } from '@/lib/sdk';
 
-export interface MiniAppMessageContext {
-  projectId: string;
-  activeFilePath?: string;
-  projectType?: 'react' | 'html';
-  fileContent?: string;
-}
-
 interface ChannelStore {
   workspaceId: string | null;
   channels: Channel[];
@@ -35,7 +28,6 @@ interface ChannelStore {
     replyToMessageId?: string,
     contextLength?: number,
     agentOverride?: ChannelMessageAgentOverride,
-    miniAppContext?: MiniAppMessageContext,
   ) => void;
   addMessage: (channelId: string, message: Message) => void;
   updateMessage: (channelId: string, message: Message) => void;
@@ -154,9 +146,9 @@ export const useChannelStore = create<ChannelStore>((set, get) => ({
     }
   },
 
-  sendMessage: (workspaceId, channelId, content, mentions = [], attachments = [], replyToMessageId, contextLength, agentOverride, miniAppContext) => {
+  sendMessage: (workspaceId, channelId, content, mentions = [], attachments = [], replyToMessageId, contextLength, agentOverride) => {
     const ws = getWS(workspaceId);
-    ws.send('channel.message', { channelId, content, mentions, attachments, replyToMessageId, contextLength, agentOverride, miniAppContext });
+    ws.send('channel.message', { channelId, content, mentions, attachments, replyToMessageId, contextLength, agentOverride });
   },
 
   addMessage: (channelId, message) => {

@@ -18,7 +18,6 @@ import {
   Zap,
   Wrench,
   Terminal,
-  GitBranch,
 } from "lucide-react";
 import { useCommandPalette } from "@/stores/command-palette";
 import { useChannelStore } from "@/stores/channel";
@@ -184,15 +183,6 @@ export function useSidebarCommands({
           } else {
             dialogs.setToolsDialogOpen(true);
           }
-        },
-      },
-      {
-        id: "open-workflows",
-        label: tSidebar("commands.openWorkflowSettings"),
-        group: tPalette("groups.navigation"),
-        icon: GitBranch,
-        action: () => {
-          router.push("/workflows");
         },
       },
     ];

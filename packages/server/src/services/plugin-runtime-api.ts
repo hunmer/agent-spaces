@@ -9,7 +9,6 @@ import { URL } from 'node:url';
 import { PassThrough, Readable } from 'node:stream';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { getDataDir } from '../storage/json-store.js';
-import { resolveDataPath, writeDataFile } from './mini-apps.js';
 
 // 拼服务端 origin（供插件产物转 httpPath），与 savePublicFile 原逻辑一致。
 function serverOrigin(): string {
@@ -517,14 +516,6 @@ export function createBuiltinPluginApi(source: PluginSource = {}): Record<string
       return { filePath, httpPath: `${serverOrigin()}/static/uploads/${filename}` };
     },
 
-    // 取当前 mini-app 的 data 目录绝对路径（workspaceId 缺失时返回 null）。
-    // 插件据此把产物写到该 mini-app 的隔离沙箱，而非全局 public/uploads。
-    // 注意：resolveDataPath 要求非空 filePath，这里传 '.' 表示 data 目录自身。
-    getMiniAppDataDir(): string | null {
-      const wsId = source.workspaceId;
-      if (!wsId) return null;
-      return resolveDataPath(wsId, '.');
-    },
 
     // 把输入路径规整为 ffmpeg 可处理的形态：
     // - 完整 http(s) URL → 原样返回（ffmpeg 直接下载）
@@ -541,16 +532,6 @@ export function createBuiltinPluginApi(source: PluginSource = {}): Record<string
       return inputPath;
     },
 
-    // 把 buffer 写入当前 mini-app 的 data 目录（relPath 相对 data/，如 'video-frames/x/f.jpg'），
-    // 返回可直接用于 <img>/<video> src 的 httpPath。复用 /api/mini-apps/:id/data/file 路由。
-    saveMiniAppDataFile(relPath: string, buffer: Buffer): { filePath: string; httpPath: string } | null {
-      const wsId = source.workspaceId;
-      if (!wsId) return null;
-      const filePath = resolveDataPath(wsId, relPath);
-      writeDataFile(wsId, relPath, buffer);
-      const rel = relPath.replace(/^\/+/, '');
-      return { filePath, httpPath: `${serverOrigin()}/api/mini-apps/${encodeURIComponent(wsId)}/data/file?path=${encodeURIComponent(rel)}` };
-    },
   };
 
   // 用 source 上下文包装所有方法，使插件内部发起的网络请求在日志中带上 plugin 来源。

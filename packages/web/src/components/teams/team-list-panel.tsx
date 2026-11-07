@@ -3,10 +3,9 @@
 import type { AgentConfig } from "@agent-spaces/shared";
 import type { TeamView } from "@agent-spaces/sdk";
 import { useTranslations } from "next-intl";
-import { EllipsisVertical, Eraser, Loader2, Plus } from "lucide-react";
+import { Eraser, Loader2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { TeamCard } from "@/components/teams/team-card";
 import { formatTime } from "@/components/teams/team-management-utils";
 
@@ -20,7 +19,6 @@ interface TeamListPanelProps {
   selectedTeamId: string;
   availableAgents: AgentConfig[];
   onCreateTeam: () => void;
-  onImportFromWorkflow: () => void;
   onSelectTeam: (team: TeamView) => void;
   onEditTeam: (team: TeamView) => void;
   onDissolveTeam: (team: TeamView) => void;
@@ -39,7 +37,6 @@ export function TeamListPanel({
   selectedTeamId,
   availableAgents,
   onCreateTeam,
-  onImportFromWorkflow,
   onSelectTeam,
   onEditTeam,
   onDissolveTeam,
@@ -58,20 +55,6 @@ export function TeamListPanel({
           <Button variant="ghost" size="icon" onClick={onCreateTeam} disabled={!canCreateTeam} title={t("newTeam")}>
             <Plus className="size-4" />
           </Button>
-          <DropdownMenu>
-            <DropdownMenuTrigger
-              render={
-                <Button variant="ghost" size="icon" disabled={!canCreateTeam}>
-                  <EllipsisVertical className="size-4" />
-                </Button>
-              }
-            />
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={onImportFromWorkflow}>
-                {t("importFromWorkflow")}
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
         </div>
       </div>
       <Tabs defaultValue="active" className="min-h-0 flex-1 flex-col gap-2">

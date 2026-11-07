@@ -4,7 +4,7 @@ import * as agentService from '../agent.js';
 import { createAgentRuntime } from '../../adapters/agent-runtime.js';
 import { getThinkingRuntimeConfig } from '../llm-model-config.js';
 import type { AgentContext } from '../../agents/agent-context.js';
-import { hasActiveIssueAutomation, runIssueAutomation } from '../../agents/issue-agent-runner.js';
+import { hasActiveIssueAutomation } from '../../agents/issue-agent-runner.js';
 import { publishWorkspaceEvent } from './events.js';
 import { prependPersistentAgentContext } from '../persistent-agent-context.js';
 
@@ -72,9 +72,8 @@ export async function runBotAgent(workspaceId: string, preset: AgentConfig, mess
 }
 
 export function startIssueAutomation(workspaceId: string, issueId: string): void {
-  runIssueAutomation(workspaceId, issueId, createBotAgentContext(workspaceId)).catch((err) => {
-    console.error(`[bot-command] issue automation error workspaceId=${workspaceId} issueId=${issueId}:`, err);
-  });
+  // workflow 自动化已随 workflow 引擎移除；保留签名避免调用方破坏
+  console.warn(`[bot-command] issue workflow automation removed; skip workspaceId=${workspaceId} issueId=${issueId}`);
 }
 
 export function createBotAgentContext(workspaceId: string): AgentContext {

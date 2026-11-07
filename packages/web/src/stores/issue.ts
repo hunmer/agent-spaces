@@ -23,7 +23,7 @@ interface IssueStore {
   setCreateDialogOpen: (open: boolean) => void;
 
   loadIssues: (workspaceId: string) => Promise<void>;
-  createIssue: (workspaceId: string, title: string, description: string, members?: string[], workflowId?: string) => Promise<Issue>;
+  createIssue: (workspaceId: string, title: string, description: string, members?: string[]) => Promise<Issue>;
   setActiveIssue: (id: string | null) => void;
   updateIssue: (workspaceId: string, issueId: string, input: UpdateIssueInput) => Promise<void>;
   updateIssueStatus: (workspaceId: string, issueId: string, status: IssueStatus) => Promise<void>;
@@ -68,8 +68,8 @@ export const useIssueStore = create<IssueStore>((set, get) => ({
     }
   },
 
-  createIssue: async (workspaceId, title, description, members, workflowId) => {
-    const issue = await sdk.issue.create(workspaceId, { title, description, members, workflowId });
+  createIssue: async (workspaceId, title, description, members) => {
+    const issue = await sdk.issue.create(workspaceId, { title, description, members });
     get().upsertIssue(issue);
     get().setActiveIssue(issue.id);
     return issue;

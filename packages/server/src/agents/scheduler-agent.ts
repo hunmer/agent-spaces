@@ -5,7 +5,7 @@
 import type { AgentContext } from './agent-context.js';
 import * as issueService from '../services/issue.js';
 import * as workspaceService from '../services/workspace.js';
-import { hasActiveIssueAutomation, runIssueAutomation } from './issue-agent-runner.js';
+import { hasActiveIssueAutomation } from './issue-agent-runner.js';
 import { retryErrorIssues } from '../services/issue-retry.js';
 
 const CHECK_INTERVAL = 10 * 60 *1000; // 10m
@@ -41,17 +41,6 @@ export function startScheduler(workspaceId: string, ctx: AgentContext): void {
 
     console.log(`[scheduler:${workspaceId}] tick: ${unfinished.length} unfinished issue(s):`,
       unfinished.map((i) => ({ id: i.id, title: i.title, status: i.status })));
-
-    if (hasActiveIssueAutomation(workspaceId)) {
-      console.log(`[scheduler:${workspaceId}] issue automation already active, waiting`);
-      return;
-    }
-
-    const nextIssue = unfinished[0];
-    console.log(`[scheduler:${workspaceId}] running automation for issue "${nextIssue.title}" (${nextIssue.id})`);
-    runIssueAutomation(workspaceId, nextIssue.id, ctx).catch((err) => {
-      console.error(`[scheduler:${workspaceId}] issue automation error for issue ${nextIssue.id}:`, err);
-    });
   };
 
   timers.set(workspaceId, setInterval(tick, CHECK_INTERVAL));

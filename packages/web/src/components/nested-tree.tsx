@@ -4,7 +4,7 @@
  * NestedTree —— 通用嵌套树公共组件
  *
  * 从 editor/file-tree.tsx 抽取的纯展示型递归树，不耦合任何编辑器上下文
- * （next-intl / sdk / terminal store），可在任意场景（含 mini-app 预览）复用。
+ * （next-intl / sdk / terminal store），可在任意场景复用。
  *
  * 职责：
  *  1. 递归渲染任意带 children 的节点数据

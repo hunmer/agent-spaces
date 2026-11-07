@@ -14,16 +14,12 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Slider } from "@/components/ui/slider";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { sdk } from "@/lib/sdk";
-import { pluginApi } from "@/lib/workflow-plugin-api";
 import { useAgentStore } from "@/stores/agent";
 import { useChatStore } from "@/stores/chat";
 import { useInspectorHistoryStore } from "@/stores/inspector-history";
-import { useWorkflowStore } from "@/stores/workflow";
 import { McpsDialog } from "@/components/sidebar/mcps-dialog";
 import { SkillsDialog } from "@/components/sidebar/skills-dialog";
 import { ToolsDialog } from "@/components/sidebar/tools-dialog";
-import { WorkflowListDialog } from "@/components/workflow/workflow-list-dialog";
-import { PluginToolDialog } from "@/components/workflow/plugin-tool-dialog";
 import { cn } from "@/lib/utils";
 import {
   IconChevronDown,
@@ -48,7 +44,6 @@ const EMPTY_HISTORY: never[] = [];
 const DEFAULT_CONTEXT_LENGTH = 20;
 
 type DisplayTodoItem = TodoItem & { title?: string; content?: string };
-type MiniAppToolItem = { miniAppId: string; miniAppName: string; name: string; description?: string };
 
 function getTodoTitle(todo: DisplayTodoItem, fallback: string) {
   return todo.subject || todo.title || todo.activeForm || todo.content || fallback;
@@ -61,8 +56,6 @@ interface ToolEntry {
 }
 
 type AgentBindingUpdates = {
-  boundWorkflowIds?: string[];
-  boundWorkflowPluginTools?: Array<{ pluginId: string; toolName: string }>;
   skills?: string[];
   tools?: BuiltInAgentToolName[];
   mcps?: Record<string, unknown>;
@@ -74,8 +67,6 @@ interface ChatInputInfoBarProps {
   skills: string[];
   tools: ToolEntry[];
   activeAgent?: MentionedAgent;
-  workflowIds: string[];
-  workflowPluginTools: Array<{ pluginId: string; toolName: string }>;
   todos: Channel["todos"];
   contextLength: number;
   onContextLengthChange: (contextLength: number) => void;
@@ -92,8 +83,6 @@ export function ChatInputInfoBar({
   skills,
   tools,
   activeAgent,
-  workflowIds,
-  workflowPluginTools,
   todos,
   contextLength,
   onContextLengthChange,
@@ -108,97 +97,17 @@ export function ChatInputInfoBar({
   const tCommon = useTranslations("common");
   const [historyOpen, setHistoryOpen] = useState(false);
   const [contextOpen, setContextOpen] = useState(false);
-  const [workflowOpen, setWorkflowOpen] = useState(false);
-  const [workflowToolOpen, setWorkflowToolOpen] = useState(false);
-  const [miniAppToolOpen, setMiniAppToolOpen] = useState(false);
-  const [miniAppTools, setMiniAppTools] = useState<MiniAppToolItem[]>([]);
-  const [workflowDialogOpen, setWorkflowDialogOpen] = useState(false);
-  const [pluginToolDialogOpen, setPluginToolDialogOpen] = useState(false);
   const [mcpsDialogOpen, setMcpsDialogOpen] = useState(false);
   const [skillsDialogOpen, setSkillsDialogOpen] = useState(false);
   const [toolsDialogOpen, setToolsDialogOpen] = useState(false);
-  const [dialogEnabledPlugins, setDialogEnabledPlugins] = useState<string[]>([]);
-  const [draftWorkflowPluginTools, setDraftWorkflowPluginTools] = useState<Array<{ pluginId: string; toolName: string }>>([]);
   const [draftMcps, setDraftMcps] = useState<string[]>([]);
   const [draftSkills, setDraftSkills] = useState<string[]>([]);
   const [draftTools, setDraftTools] = useState<BuiltInAgentToolName[]>([]);
   const agents = useAgentStore((s) => s.agents);
   const chatAgents = useChatStore((s) => s.agents);
-  const workflows = useWorkflowStore((s) => s.workflows);
-  const loadWorkflows = useWorkflowStore((s) => s.loadWorkflows);
   const history = useInspectorHistoryStore((s) => s.histories[workspaceId] ?? EMPTY_HISTORY);
   const loadHistory = useInspectorHistoryStore((s) => s.loadHistory);
   const clearHistory = useInspectorHistoryStore((s) => s.clearHistory);
-
-  useEffect(() => {
-    if (workflowOpen) void loadWorkflows();
-  }, [loadWorkflows, workflowOpen]);
-
-  useEffect(() => {
-    if (!miniAppToolOpen) return;
-    let cancelled = false;
-    void Promise.all([sdk.workspace.get(workspaceId), sdk.miniApp.list()]).then(async ([workspace, projects]) => {
-      const selected = projects.filter((project) => workspace.miniAppIds?.includes(project.id));
-      const entries = await Promise.all(selected.map(async (project) => {
-        try {
-          const { tools } = await sdk.miniApp.listTools(project.id);
-          return tools.map((tool) => ({
-            miniAppId: project.id,
-            miniAppName: project.name,
-            name: tool.name,
-            description: tool.description,
-          }));
-        } catch {
-          return [];
-        }
-      }));
-      if (!cancelled) setMiniAppTools(entries.flat());
-    });
-    return () => { cancelled = true; };
-  }, [miniAppToolOpen, workspaceId]);
-
-  // 工作流插件 tool 描述缓存：`${pluginId}:${toolName}` -> description
-  const [pluginToolDescMap, setPluginToolDescMap] = useState<Record<string, string>>({});
-  useEffect(() => {
-    if (!workflowToolOpen || workflowPluginTools.length === 0) return;
-    let cancelled = false;
-    const pluginIds = Array.from(new Set(workflowPluginTools.map((item) => item.pluginId)));
-    void Promise.all(
-      pluginIds.map(async (pluginId) => {
-        try {
-          const tools = await pluginApi.getTools(pluginId);
-          return [pluginId, tools] as const;
-        } catch {
-          return [pluginId, []] as const;
-        }
-      }),
-    ).then((entries) => {
-      if (cancelled) return;
-      setPluginToolDescMap((prev) => {
-        const next = { ...prev };
-        for (const [pluginId, tools] of entries) {
-          for (const tool of tools) {
-            next[`${pluginId}:${tool.name}`] = tool.description;
-          }
-        }
-        return next;
-      });
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [workflowToolOpen, workflowPluginTools]);
-
-  useEffect(() => {
-    if (!pluginToolDialogOpen) return;
-    void pluginApi.listWorkflowPlugins().then((items) => {
-      setDialogEnabledPlugins(items.filter((item) => item.enabled).map((item) => item.id));
-    });
-  }, [pluginToolDialogOpen]);
-
-  useEffect(() => {
-    if (pluginToolDialogOpen) setDraftWorkflowPluginTools(workflowPluginTools);
-  }, [pluginToolDialogOpen, workflowPluginTools]);
 
   useEffect(() => {
     if (mcpsDialogOpen) setDraftMcps(mcps);
@@ -212,8 +121,6 @@ export function ChatInputInfoBar({
     if (toolsDialogOpen) setDraftTools(tools.map((tool) => tool.name as BuiltInAgentToolName));
   }, [toolsDialogOpen, tools]);
 
-  const workflowMap = useMemo(() => new Map(workflows.map((workflow) => [workflow.id, workflow])), [workflows]);
-  const selectedWorkflowLabels = workflowIds.map((id) => workflowMap.get(id)?.name || id);
   const suggestions = activeAgent?.suggestions?.filter((item) => item.trim().length > 0) ?? [];
 
   const insertCodeLocation = (path: string, line: number, column: number) => {
@@ -278,8 +185,6 @@ export function ChatInputInfoBar({
     mcps.length,
     skills.length,
     tools.length,
-    workflowIds.length,
-    workflowPluginTools.length,
     todos?.length,
     suggestions.length,
     history.length,
@@ -467,176 +372,6 @@ export function ChatInputInfoBar({
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <Popover open={workflowOpen} onOpenChange={setWorkflowOpen}>
-        <PopoverTrigger
-          render={
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-6 px-2 rounded-full border border-transparent hover:bg-accent text-muted-foreground text-xs"
-            />
-          }
-        >
-          <IconTools className="size-3" />
-          <span className="bar-label">{t("input.workflow")}{workflowIds.length ? ` ${workflowIds.length}` : ""}</span>
-        </PopoverTrigger>
-        <PopoverContent align="start" sideOffset={6} className="min-w-[200px] max-w-xs p-1.5">
-          {selectedWorkflowLabels.length ? (
-            <div className="flex flex-col gap-1">
-              {selectedWorkflowLabels.map((label, index) => {
-                const workflowId = workflowIds[index];
-                const description = workflowMap.get(workflowId)?.description;
-                return (
-                  <Tooltip key={`${workflowId}:${label}`}>
-                    <TooltipTrigger
-                      render={
-                        <button
-                          type="button"
-                          className="rounded-md px-2 py-1 text-left text-xs hover:bg-accent"
-                          onClick={() => onInsertText?.(`[use workflow: ${workflowId}]`)}
-                        />
-                      }
-                    >
-                      {label}
-                    </TooltipTrigger>
-                    {description ? (
-                      <TooltipContent side="right" className="max-w-xs whitespace-pre-wrap text-xs">
-                        {description}
-                      </TooltipContent>
-                    ) : null}
-                  </Tooltip>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="flex items-center gap-2 px-2 py-1.5 text-xs text-muted-foreground">
-              <IconTools size={16} className="opacity-60 shrink-0" />
-              {t("input.noWorkflow")}
-            </div>
-          )}
-          <div >
-            <button
-              type="button"
-              className="flex w-full items-center gap-2 rounded-md px-2 py-1 text-left text-xs text-primary hover:bg-accent"
-              onClick={() => {
-                setWorkflowOpen(false);
-                setWorkflowDialogOpen(true);
-              }}
-            >
-              <IconSettings size={16} className="shrink-0" />
-              {tCommon("manage")}
-            </button>
-          </div>
-        </PopoverContent>
-      </Popover>
-
-      <Popover open={workflowToolOpen} onOpenChange={setWorkflowToolOpen}>
-        <PopoverTrigger
-          render={
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-6 px-2 rounded-full border border-transparent hover:bg-accent text-muted-foreground text-xs"
-            />
-          }
-        >
-          <IconTools className="size-3" />
-          <span className="bar-label">{t("input.workflowTools")}{workflowPluginTools.length ? ` ${workflowPluginTools.length}` : ""}</span>
-        </PopoverTrigger>
-        <PopoverContent align="start" sideOffset={6} className="min-w-[200px] max-w-xs p-1.5">
-          {workflowPluginTools.length ? (
-            <div className="flex max-h-72 flex-col gap-1 overflow-y-auto">
-              {workflowPluginTools.map((item) => {
-                const description = pluginToolDescMap[`${item.pluginId}:${item.toolName}`];
-                return (
-                  <Tooltip key={`${item.pluginId}:${item.toolName}`}>
-                    <TooltipTrigger
-                      render={
-                        <button
-                          type="button"
-                          className="rounded-md px-2 py-1 text-left text-xs hover:bg-accent"
-                          onClick={() => onInsertText?.(`[use workflow plugin tool: ${item.pluginId}:${item.toolName}]`)}
-                        />
-                      }
-                    >
-                      {item.pluginId}:{item.toolName}
-                    </TooltipTrigger>
-                    {description ? (
-                      <TooltipContent side="right" className="max-w-xs whitespace-pre-wrap text-xs">
-                        {description}
-                      </TooltipContent>
-                    ) : null}
-                  </Tooltip>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="flex items-center gap-2 px-2 py-1.5 text-xs text-muted-foreground">
-              <IconTools size={16} className="opacity-60 shrink-0" />
-              {t("input.noWorkflowTools")}
-            </div>
-          )}
-          <div>
-            <button
-              type="button"
-              className="flex w-full items-center gap-2 rounded-md px-2 py-1 text-left text-xs text-primary hover:bg-accent"
-              onClick={() => {
-                setWorkflowToolOpen(false);
-                setPluginToolDialogOpen(true);
-              }}
-            >
-              <IconSettings size={16} className="shrink-0" />
-              {tCommon("manage")}
-            </button>
-          </div>
-        </PopoverContent>
-      </Popover>
-
-      <Popover open={miniAppToolOpen} onOpenChange={setMiniAppToolOpen}>
-        <PopoverTrigger
-          render={
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-6 px-2 rounded-full border border-transparent hover:bg-accent text-muted-foreground text-xs"
-            />
-          }
-        >
-          <IconTools className="size-3" />
-          <span className="bar-label">{t("input.miniAppTools")}{miniAppTools.length ? ` ${miniAppTools.length}` : ""}</span>
-        </PopoverTrigger>
-        <PopoverContent align="start" sideOffset={6} className="min-w-[220px] max-w-xs p-1.5">
-          {miniAppTools.length ? (
-            <div className="flex max-h-72 flex-col gap-1 overflow-y-auto">
-              {miniAppTools.map((tool) => (
-                <Tooltip key={`${tool.miniAppId}:${tool.name}`}>
-                  <TooltipTrigger
-                    render={
-                      <button
-                        type="button"
-                        className="rounded-md px-2 py-1 text-left text-xs hover:bg-accent"
-                        onClick={() => {
-                          onInsertText?.(`Use ${tool.name} tools with miniapp_id: ${tool.miniAppId} and toolName: ${tool.name}`);
-                          setMiniAppToolOpen(false);
-                        }}
-                      />
-                    }
-                  >
-                    {tool.miniAppName}: {tool.name}
-                  </TooltipTrigger>
-                  {tool.description ? <TooltipContent side="right" className="max-w-xs text-xs">{tool.description}</TooltipContent> : null}
-                </Tooltip>
-              ))}
-            </div>
-          ) : (
-            <div className="flex items-center gap-2 px-2 py-1.5 text-xs text-muted-foreground">
-              <IconTools size={16} className="opacity-60 shrink-0" />
-              {t("input.noMiniAppTools")}
-            </div>
-          )}
-        </PopoverContent>
-      </Popover>
-
       <DropdownMenu>
         <DropdownMenuTrigger
           render={
@@ -803,33 +538,6 @@ export function ChatInputInfoBar({
         onSelectedToolsChange={(nextTools) => {
           setDraftTools(nextTools);
           void persistAgentBindings({ tools: nextTools });
-        }}
-      />
-      <WorkflowListDialog
-        open={workflowDialogOpen}
-        workflows={workflows}
-        mode="multiple"
-        defaultSelectedIds={workflowIds}
-        onConfirm={(selected) => {
-          const nextWorkflowIds = selected.map(wf => wf.id);
-          void persistAgentBindings({ boundWorkflowIds: nextWorkflowIds });
-        }}
-        onCreate={() => {}}
-        onClose={() => setWorkflowDialogOpen(false)}
-        showCreate={false}
-      />
-      <PluginToolDialog
-        open={pluginToolDialogOpen}
-        onOpenChange={setPluginToolDialogOpen}
-        projectId="chat-agent-bindings"
-        enabledPlugins={dialogEnabledPlugins}
-        onEnabledPluginsChange={setDialogEnabledPlugins}
-        persistEnabledPlugins={false}
-        selectable
-        selectedTools={draftWorkflowPluginTools}
-        onSelectedToolsChange={(nextTools) => {
-          setDraftWorkflowPluginTools(nextTools);
-          void persistAgentBindings({ boundWorkflowPluginTools: nextTools });
         }}
       />
     </div>

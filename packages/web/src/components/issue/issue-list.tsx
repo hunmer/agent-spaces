@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { useIssueStore } from '@/stores/issue';
 import { useAgentStore } from '@/stores/agent';
-import { useWorkflowStore } from '@/stores/workflow';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Plus, CircleDot, Pencil, Trash2, CircleAlert, Archive, ArchiveRestore, CheckSquare, Square } from 'lucide-react';
@@ -53,8 +52,6 @@ interface IssueListProps {
 export function IssueList({ workspaceId }: IssueListProps) {
   const { issues, activeIssueId, loading, loadIssues, createIssue, updateIssue, updateIssueStatus, deleteIssue, setActiveIssue } = useIssueStore();
   const { agents, ensure: ensureAgents } = useAgentStore();
-  const workflows = useWorkflowStore(s => s.workflows);
-  const loadWorkflows = useWorkflowStore(s => s.loadWorkflows);
   const t = useTranslations('issue');
   const tc = useTranslations('common');
   const [createOpen, setCreateOpen] = useState(false);
@@ -67,8 +64,7 @@ export function IssueList({ workspaceId }: IssueListProps) {
   useEffect(() => {
     loadIssues(workspaceId);
     ensureAgents();
-    loadWorkflows();
-  }, [workspaceId, loadIssues, ensureAgents, loadWorkflows]);
+  }, [workspaceId, loadIssues, ensureAgents]);
 
   const sortCompare = useCallback((a: Issue, b: Issue, field: string) => {
     switch (field) {
@@ -95,8 +91,8 @@ export function IssueList({ workspaceId }: IssueListProps) {
       .filter(g => g.items.length > 0);
   }, [t]);
 
-  const handleCreate = async (data: { title: string; description: string; members: string[]; workflowId?: string }) => {
-    return createIssue(workspaceId, data.title, data.description, data.members, data.workflowId);
+  const handleCreate = async (data: { title: string; description: string; members: string[] }) => {
+    return createIssue(workspaceId, data.title, data.description, data.members);
   };
 
   const handleToggleArchive = async (issue: Issue) => {
@@ -125,7 +121,6 @@ export function IssueList({ workspaceId }: IssueListProps) {
         <div className="min-w-0 flex-1">
           <div className="text-sm font-medium truncate dark:!text-gray-200">{issue.title}</div>
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <span className="truncate">{issue.workflowId ? (workflows.find(w => w.id === issue.workflowId)?.name ?? t('detail.workflow')) : t('detail.noWorkflow')}</span>
             <span className="text-muted-foreground/60 shrink-0">{formatRelativeTime(issue.updatedAt)}</span>
           </div>
         </div>
@@ -170,7 +165,6 @@ export function IssueList({ workspaceId }: IssueListProps) {
         <div className="min-w-0 flex-1">
           <div className="text-sm font-medium truncate">{issue.title}</div>
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <span className="truncate">{issue.workflowId ? (workflows.find(w => w.id === issue.workflowId)?.name ?? t('detail.workflow')) : t('detail.noWorkflow')}</span>
             <span className="text-muted-foreground/60 shrink-0">{formatRelativeTime(issue.updatedAt)}</span>
           </div>
         </div>

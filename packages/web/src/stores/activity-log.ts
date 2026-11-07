@@ -92,30 +92,10 @@ export function startActivityLogListeners(workspaceId: string) {
       store.getState().append({ level: "info", timestamp: ts(), message: `${wsLabel(workspaceId)}Issue status: ${from} -> ${to}` })
     }),
 
-    ws.on("workflow:started", (data) => {
-      const event = data as { workflowId?: string; executionId?: string }
-      store.getState().append({ level: "info", timestamp: ts(), message: `${wsLabel(workspaceId)}Workflow started: ${event.workflowId ?? "-"} (${event.executionId ?? "-"})` })
-    }),
 
-    ws.on("workflow:paused", (data) => {
-      const event = data as { workflowId?: string; executionId?: string }
-      store.getState().append({ level: "warn", timestamp: ts(), message: `${wsLabel(workspaceId)}Workflow paused: ${event.workflowId ?? "-"} (${event.executionId ?? "-"})` })
-    }),
 
-    ws.on("workflow:resumed", (data) => {
-      const event = data as { workflowId?: string; executionId?: string }
-      store.getState().append({ level: "info", timestamp: ts(), message: `${wsLabel(workspaceId)}Workflow resumed: ${event.workflowId ?? "-"} (${event.executionId ?? "-"})` })
-    }),
 
-    ws.on("workflow:completed", (data) => {
-      const event = data as { workflowId?: string; executionId?: string }
-      store.getState().append({ level: "info", timestamp: ts(), message: `${wsLabel(workspaceId)}Workflow completed: ${event.workflowId ?? "-"} (${event.executionId ?? "-"})` })
-    }),
 
-    ws.on("workflow:error", (data) => {
-      const event = data as { workflowId?: string; executionId?: string; error?: { message?: string } }
-      store.getState().append({ level: "error", timestamp: ts(), message: `${wsLabel(workspaceId)}Workflow failed: ${event.workflowId ?? "-"} (${event.executionId ?? "-"}) ${event.error?.message ?? ""}`.trim() })
-    }),
   ]
 
   const wsAny = ws as unknown as Record<string, unknown>

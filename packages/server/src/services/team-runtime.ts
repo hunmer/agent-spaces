@@ -23,7 +23,6 @@ import {
   createCommandFunctionTools,
   createDatabaseFunctionTools,
   createTeamFunctionTools,
-  createWorkflowExecutionFunctionTools,
   createWorkspaceFileFunctionTools,
 } from './builtin-tools/index.js';
 
@@ -618,7 +617,6 @@ function resolveTeamRuntimeTools(
     ...createAgentFunctionTools(TEAM_RUNTIME_WORKSPACE_ID, allowedToolNames),
     ...createDatabaseFunctionTools('', allowedToolNames),
     ...createWorkspaceFileFunctionTools('', allowedToolNames, () => workspace),
-    ...createWorkflowExecutionFunctionTools('', allowedToolNames),
   ];
   const toolNames = functionTools.map((tool) => tool.name);
   return {

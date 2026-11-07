@@ -4,7 +4,6 @@ import { stripHtml } from './html-utils.js';
 import * as issueService from '../services/issue.js';
 import { getChannel } from '../services/channel.js';
 import { createIssueFunctionTools } from '../services/builtin-tools/index.js';
-import { MINI_APP_COMPONENT_CATEGORY_DESCRIPTIONS } from '../services/builtin-tools/mini-app-tools.js';
 import { prependPersistentAgentContext } from '../services/persistent-agent-context.js';
 
 export interface BuiltInToolContext {
@@ -13,12 +12,6 @@ export interface BuiltInToolContext {
   channelId?: string;
   issueId?: string;
   issueTitle?: string;
-}
-
-interface MiniAppPromptContext {
-  projectId: string;
-  activeFilePath?: string;
-  projectType?: 'react' | 'html';
 }
 
 export function buildAgentPrompt(
@@ -34,9 +27,6 @@ export function buildAgentPrompt(
     workingDir?: string;
     excludeNativeClaudeMd?: boolean;
     builtInTools?: BuiltInToolContext[];
-    boundWorkflowIds?: string[];
-    boundWorkflowPluginTools?: Array<{ pluginId: string; toolName: string }>;
-    miniAppContext?: MiniAppPromptContext;
   },
 ): string {
   const parts: string[] = [];
@@ -58,12 +48,6 @@ export function buildAgentPrompt(
     configLines.push('- For Bash commands that create or modify files under the current working directory, use relative paths such as `mkdir -p css js` instead of absolute paths.');
     if (runtimeConfig.builtInTools?.length) {
       configLines.push(...formatBuiltInToolContext(workspaceId, runtimeConfig.builtInTools));
-    }
-    if (runtimeConfig.boundWorkflowIds?.length || runtimeConfig.boundWorkflowPluginTools?.length) {
-      configLines.push(...formatBoundWorkflowContext(runtimeConfig.boundWorkflowIds, runtimeConfig.boundWorkflowPluginTools));
-    }
-    if (runtimeConfig.miniAppContext) {
-      configLines.push(...formatMiniAppPromptContext(runtimeConfig.miniAppContext));
     }
     if (isIssueContextLookup(userPrompt)) {
       configLines.push(
@@ -293,95 +277,6 @@ function formatBuiltInToolContext(workspaceId: string, tools: BuiltInToolContext
   for (const tool of tools) {
     lines.push(`- ${formatCallableToolName(tool.name)}: ${tool.description}`);
   }
-  return lines;
-}
-
-function formatBoundWorkflowContext(
-  workflowIds?: string[],
-  pluginTools?: Array<{ pluginId: string; toolName: string }>,
-): string[] {
-  const lines = [
-    'Bound workflow capabilities:',
-    `- Bound workflows: ${workflowIds?.length ? workflowIds.join(', ') : 'none'}`,
-    `- Bound workflow plugin tools: ${pluginTools?.length ? pluginTools.map((item) => `${item.pluginId}:${item.toolName}`).join(', ') : 'none'}`,
-  ];
-  if (workflowIds?.length) {
-    lines.push('- Prefer the bound workflows above when the task matches an existing workflow capability.');
-    lines.push('- Use list_workflows or get_workflow_latest_result only as supporting tools; the bound workflow IDs above are the approved workflow scope.');
-  }
-  if (pluginTools?.length) {
-    lines.push('- To inspect the bound workflow plugin tool schema before execution, call mcp__agent-spaces__get_bound_workflow_plugin_tool.');
-    lines.push('- To execute a bound workflow plugin tool, call mcp__agent-spaces__execute_bound_workflow_plugin_tool.');
-    lines.push('- If execution fails, read the returned data.tool field for the exact tool schema and metadata.');
-    lines.push('- Do not call unbound workflow plugin tools or invent plugin/tool names outside the bound list above.');
-  }
-  return lines;
-}
-
-function formatMiniAppPromptContext(context: MiniAppPromptContext): string[] {
-  const projectType = context.projectType ?? 'unknown';
-  const componentCategories = MINI_APP_COMPONENT_CATEGORY_DESCRIPTIONS
-    .map((item) => `${item.category} (${item.description})`)
-    .join(', ');
-  const lines = [
-    'Workflow UI project rules:',
-    `- Current Workflow UI project id: ${context.projectId}`,
-    `- Current Workflow UI project mode: ${projectType}`,
-    '- All source code MUST be written under the project `src/` directory (e.g. `src/index.jsx`, `src/components/Foo.jsx`). The project root only holds `manifest.json`, `configs/`, `data/`, and `CLAUDE.md`; do NOT create source files outside `src/`.',
-    `- AgentSpacesUI component categories for list_agent_spaces_ui_components: ${componentCategories}.`,
-  ];
-  if (context.activeFilePath) lines.push(`- Current active file: ${context.activeFilePath}`);
-
-  lines.push(
-    'CLAUDE.md workflow:',
-    '- Before making any changes to the project, read `src/CLAUDE.md` to understand the project context, file structure, and design decisions.',
-    '- After completing edits, update `src/CLAUDE.md` to reflect any new files, changed architecture, or important decisions.',
-    '- Keep the File Structure section in `src/CLAUDE.md` in sync with the actual files.',
-    '',
-    '- If you need available host UI components, call list_agent_spaces_ui_components with the closest category before creating hand-written equivalents. Omit category only when you need the full categorized inventory.',
-    '- If a window.AgentSpacesUI component usage, props, composition pattern, or import source is unclear, inspect its implementation at https://github.com/hunmer/agent-spaces/tree/main/packages/web/src/components/ui before using it.',
-    '- In React mode, prefer components exposed by window.AgentSpacesUI over hand-written UI components. Lucide React icons are also exposed there by their standard names. Example: `const { Button, Card, CardContent, Search, Loader2 } = window.AgentSpacesUI;`.',
-    '- In React mode, do not import host UI components from source paths; destructure them from window.AgentSpacesUI.',
-    '- window.AgentSpacesUI components are built on base-ui (@base-ui/react), NOT Radix. Do not apply Radix controlled-API patterns from memory. For example: Slider takes a single numeric `value`, not an array (`value={[n]}`); `SelectValue` renders the raw selected value by default, so map value→label via a `SelectValue` render function or the `items` prop on Select. Inspect the component source before writing controlled props when unsure.',
-    '',
-    'Styling rules:',
-    '- Prefer Tailwind CSS utility classes via `className` for layout, spacing, color, typography, borders, shadows, and responsive states.',
-    '- Prefer theme-aware Tailwind color tokens such as `bg-background`, `text-foreground`, `text-muted-foreground`, `border-border`, `bg-card`, `text-card-foreground`, `bg-primary`, and `text-primary-foreground` over hard-coded color utilities.',
-    '- The Workflow UI host already provides the current light/dark theme through its renderer container. Do not implement an internal theme switcher, force `dark`/`light` classes, or override global theme CSS variables such as `--background`, `--foreground`, `--card-*`, or `--popover-*` inside preview code.',
-    '- Avoid hard-coded text colors like `text-white`, `text-black`, `text-slate-*`, `text-gray-*`, or one-off hex colors unless they are tied to explicit semantic status states and include matching `dark:` variants.',
-    '- Do not hard-code only the background color while leaving text to inherit unrelated theme tokens. Any custom dark or light surface must set a matching readable foreground color in the same container, preferably with semantic tokens or paired light/dark Tailwind classes.',
-    '- When adding custom surface, border, or muted text styling, verify the class choices work in both light and dark themes; use paired light/dark utilities only when semantic tokens are not sufficient.',
-    '- Avoid inline `style` objects and `<style>` blocks for ordinary UI styling. Use them only for dynamic runtime values, CSS variables, canvas/SVG sizing, or styles that Tailwind cannot express clearly.',
-    '- When using window.AgentSpacesUI components in React mode, pass visual adjustments through `className` instead of wrapping components with custom styled elements.',
-    '- Keep repeated class combinations in small local constants only when reuse improves readability; do not create a separate CSS file for simple Tailwind styling.',
-    '- To execute enabled plugin tools from preview code, call `window.AgentSpaces.callPluginTool(pluginId, toolName, args)`.',
-    '- Before consuming plugin tool results in preview code, inspect the tool detail when needed and follow its documented output shape. Do not assume business data is on the top-level `success` wrapper.',
-    '- In preview code, assign `const result = await window.AgentSpaces.callPluginTool(...)` and read fields according to the plugin output. If the response is wrapped as `{ success, result }`, use the inner `result` object for plugin data.',
-    '- `window.AgentSpacesAPI.callPluginTool` and `window.AgentSpacesAPI.executePluginTool` are compatibility aliases; prefer `window.AgentSpaces.callPluginTool` in new code.',
-    '- When a plugin tool input schema property has a `default` value, `window.AgentSpaces.callPluginTool` can use that default automatically; do not add extra UI input fields for those properties unless the user explicitly needs to override them.',
-    '- Do not build UI or code to read/write API keys, tokens, or account credentials in preview code. `window.AgentSpaces.callPluginTool` injects the plugin default credentials from plugin config at execution time, so omit credential arguments and let the plugin resolve them.',
-    '- Preview code can persist JSON configuration with async helpers `await window.AgentSpacesUI.readConfigJson(path)` and `await window.AgentSpacesUI.writeConfigJson(path, value)`. Paths are relative to the Workflow UI project `configs/` directory.',
-    '- For remembering the last submitted selection, prefer `await window.AgentSpacesUI.readLastSelection()` and `await window.AgentSpacesUI.writeLastSelection(value)`, which use `configs/last-selection.json`.',
-    '- Preview code can save generated text or binary data under the Workflow UI project `data/` directory with `await window.AgentSpacesUI.saveDataFile(path, content)`.',
-    '- Preview code can download a remote file into the Workflow UI project `data/` directory with `await window.AgentSpacesUI.downloadFile(url, path?)`.',
-    '- The same config and data file helpers are also available on `window.AgentSpaces` and `window.AgentSpacesAPI` for compatibility.',
-    '- In HTML mode, window.AgentSpacesUI and window.AgentSpaces are available, but plain HTML/CSS/JS is acceptable when React components are not practical.',
-    '',
-    'Multi-file project layout rules:',
-    '- The preview renderer supports ES module imports between local files. You MUST split large projects into multiple files instead of writing everything in index.jsx.',
-    '- The entry point is defined by manifest.json `mainFile` (default: `index.jsx`). This file MUST export a default React component.',
-    '- Use standard import syntax: `import Foo from "./components/Foo"` or `import { helper } from "./utils"`. The renderer resolves `.jsx`/`.js` extensions and `index.jsx` barrel files automatically.',
-    '- Recommended file structure for non-trivial projects:',
-    '  - `index.jsx` — entry point, composes the top-level layout from sub-components.',
-    '  - `components/` — one file per UI component (e.g. `components/Header.jsx`, `components/VoiceSelector.jsx`).',
-    '  - `hooks/` — custom React hooks shared across components (e.g. `hooks/useTTS.js`).',
-    '  - `utils/` — pure utility functions, constants, configuration helpers (e.g. `utils/providers.js`, `utils/styles.js`).',
-    '- All files live under `src/` and are auto-discovered there. Sub-directories are supported, but do not place source files in the project root or in `configs/`/`data/`.',
-    '- Each file should have a single responsibility. If a component exceeds ~200 lines, split it.',
-    '- Do NOT use barrel re-export files (index.jsx that only re-exports). Import directly from the target file.',
-    '- All files share the same `window.AgentSpacesUI`, `window.AgentSpaces`, and `window.AgentSpacesAPI` globals. Do not pass them through imports.',
-  );
-
   return lines;
 }
 

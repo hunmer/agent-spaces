@@ -46,31 +46,6 @@ export function toStaticHref(href: string) {
     return `/workspace/_.html${query.toString() ? `?${query.toString()}` : ""}${hash ? `#${hash}` : ""}`;
   }
 
-  if (path === "/workflows/share") {
-    return `/workflows/share.html${queryString ? `?${queryString}` : ""}${hash ? `#${hash}` : ""}`;
-  }
-
-  if (path.startsWith("/workflows/")) {
-    const workflowId = path.slice("/workflows/".length).split("/")[0];
-    const query = new URLSearchParams(queryString);
-    query.set("workflowId", workflowId);
-    return `/workflows/_.html${query.toString() ? `?${query.toString()}` : ""}${hash ? `#${hash}` : ""}`;
-  }
-
-  if (path.startsWith("/mini-apps/")) {
-    const projectId = path.slice("/mini-apps/".length).split("/")[0];
-    const query = new URLSearchParams(queryString);
-    query.set("id", projectId);
-    return `/mini-apps.html${query.toString() ? `?${query.toString()}` : ""}${hash ? `#${hash}` : ""}`;
-  }
-
-  if (path.startsWith("/mini-apps-preview/")) {
-    const projectId = path.slice("/mini-apps-preview/".length).split("/")[0];
-    const query = new URLSearchParams(queryString);
-    query.set("id", projectId);
-    return `/mini-apps-preview.html${query.toString() ? `?${query.toString()}` : ""}${hash ? `#${hash}` : ""}`;
-  }
-
   const staticPath = path.endsWith(".html") ? path : `${path}.html`;
   return `${staticPath}${queryString ? `?${queryString}` : ""}${hash ? `#${hash}` : ""}`;
 }

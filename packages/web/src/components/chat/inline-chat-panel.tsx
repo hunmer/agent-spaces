@@ -22,8 +22,6 @@ const EMPTY_COMPOSER_STATE: ChatComposerInputState = {
   activeMcps: [],
   activeSkills: [],
   activeTools: [],
-  activeWorkflowIds: [],
-  activeWorkflowPluginTools: [],
 };
 
 const DEFAULT_CONTEXT_LENGTH = 20;
@@ -385,8 +383,6 @@ export function InlineChatPanel({
             skills={composerState.activeSkills}
             tools={composerState.activeTools}
             activeAgent={composerState.activeAgent}
-            workflowIds={composerState.activeWorkflowIds}
-            workflowPluginTools={composerState.activeWorkflowPluginTools}
             todos={[]}
             contextLength={contextLength}
             onContextLengthChange={handleContextLengthChange}

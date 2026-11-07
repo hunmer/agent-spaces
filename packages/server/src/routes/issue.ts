@@ -9,10 +9,8 @@ import { stopChannelRuns } from '../ws/agent-runner.js';
 
 import * as agentService from '../services/agent.js';
 import { retryIssue } from '../services/issue-retry.js';
-import { hasActiveIssueAutomation, runIssueAutomation, startIssueWorkflowExecution } from '../agents/issue-agent-runner.js';
-import * as workflowService from '../services/workflow.js';
+import { hasActiveIssueAutomation } from '../agents/issue-agent-runner.js';
 import { scheduleIssueTitleGeneration } from '../services/generated-title.js';
-import { getWorkflowExecutionManager } from '../services/builtin-tools/workflow-exec-tools.js';
 
 const router = Router({ mergeParams: true });
 
@@ -147,17 +145,6 @@ router.post('/:issueId/start', (req: Request<{ id: string; issueId: string }>, r
   broadcastToWorkspace(workspaceId, 'issue.updated', issue);
   res.json(issue);
 
-  // trigger issue automation
-  const ctx = {
-    workspaceId,
-    broadcast: (event: string, data: unknown) => broadcastToWorkspace(workspaceId, event, data),
-    getSession: (sessionId: string) => agentService.getById(workspaceId, sessionId),
-    updateSessionStatus: (sessionId: string, status: AgentSessionStatus, extra?: Record<string, unknown>) =>
-      agentService.updateStatus(workspaceId, sessionId, status, extra),
-  };
-  startIssueWorkflowExecution(workspaceId, issueId, ctx, input, env).catch((err) => {
-    console.error(`[issue-start] automation error for issue ${issueId}:`, err);
-  });
 });
 
 router.post('/:issueId/pause', (req: Request<{ id: string; issueId: string }>, res: Response) => {
@@ -169,18 +156,12 @@ router.post('/:issueId/pause', (req: Request<{ id: string; issueId: string }>, r
     return;
   }
 
-  const manager = getWorkflowExecutionManager();
-  if (!manager) {
-    res.status(500).json({ error: 'workflow execution manager is not initialized' });
-    return;
-  }
   if (!issue.workflowExecutionId) {
     res.status(400).json({ error: 'workflow execution is not running' });
     return;
   }
 
-  manager.pause(issue.workflowExecutionId);
-  res.json(issueService.getById(workspaceId, issueId) ?? issue);
+  res.status(410).json({ error: 'workflow execution is no longer supported' });
 });
 
 router.post('/:issueId/resume', async (req: Request<{ id: string; issueId: string }>, res: Response) => {
@@ -192,35 +173,6 @@ router.post('/:issueId/resume', async (req: Request<{ id: string; issueId: strin
     return;
   }
 
-  const ctx = {
-    workspaceId,
-    broadcast: (event: string, data: unknown) => broadcastToWorkspace(workspaceId, event, data),
-    getSession: (sessionId: string) => agentService.getById(workspaceId, sessionId),
-    updateSessionStatus: (sessionId: string, status: AgentSessionStatus, extra?: Record<string, unknown>) =>
-      agentService.updateStatus(workspaceId, sessionId, status, extra),
-  };
-
-  const manager = getWorkflowExecutionManager();
-  if (!manager) {
-    res.status(500).json({ error: 'workflow execution manager is not initialized' });
-    return;
-  }
-
-  if (issue.workflowExecutionId && issue.workflowExecutionStatus === 'paused') {
-    await manager.resume(issue.workflowExecutionId);
-    const updated = issueService.save(workspaceId, {
-      ...issue,
-      status: 'in_progress',
-      workflowExecutionStatus: 'running',
-      lastError: undefined,
-      retryPaused: false,
-    });
-    broadcastToWorkspace(workspaceId, 'issue.status_changed', { issueId, from: issue.status, to: 'in_progress' });
-    broadcastToWorkspace(workspaceId, 'issue.updated', updated);
-    res.json(updated);
-    return;
-  }
-
   const updated = issueService.prepareRetry(workspaceId, issueId, { manual: true });
   if (!updated) {
     res.status(404).json({ error: 'issue not found' });
@@ -228,9 +180,6 @@ router.post('/:issueId/resume', async (req: Request<{ id: string; issueId: strin
   }
   broadcastToWorkspace(workspaceId, 'issue.updated', updated);
   res.json(updated);
-  startIssueWorkflowExecution(workspaceId, issueId, ctx).catch((err) => {
-    console.error(`[issue-resume] workflow error for issue ${issueId}:`, err);
-  });
 });
 
 router.post('/:issueId/interrupt', (req: Request<{ id: string; issueId: string }>, res: Response) => {
@@ -243,14 +192,6 @@ router.post('/:issueId/interrupt', (req: Request<{ id: string; issueId: string }
   }
 
   const reason = 'Interrupted by user';
-  const manager = getWorkflowExecutionManager();
-  if (manager && before.workflowExecutionId) {
-    try {
-      manager.stop(before.workflowExecutionId);
-    } catch {
-      // best effort
-    }
-  }
   if (before.channelId) stopChannelRuns(workspaceId, before.channelId);
 
   const issue = issueService.markStopped(workspaceId, issueId);
@@ -328,18 +269,6 @@ router.post('/:issueId/comments', (req: Request<{ id: string; issueId: string }>
 
   res.status(201).json(comment);
 
-  if (!hasActiveIssueAutomation(workspaceId)) {
-    const ctx = {
-      workspaceId,
-      broadcast: (event: string, data: unknown) => broadcastToWorkspace(workspaceId, event, data),
-      getSession: (sessionId: string) => agentService.getById(workspaceId, sessionId),
-      updateSessionStatus: (sessionId: string, status: AgentSessionStatus, extra?: Record<string, unknown>) =>
-        agentService.updateStatus(workspaceId, sessionId, status, extra),
-    };
-    runIssueAutomation(workspaceId, issueId, ctx).catch((err) => {
-      console.error(`[issue-comment] automation error for issue ${issueId}:`, err);
-    });
-  }
 });
 
 router.put('/:issueId/comments/:commentId', (req: Request<{ id: string; issueId: string; commentId: string }>, res: Response) => {
@@ -389,14 +318,8 @@ function normalizeIssueMembers(workspaceId: string, members: string[]): string[]
 }
 
 function mergeWorkflowMembers(members: unknown, workflowId: unknown): string[] {
-  const base = Array.isArray(members)
+  void workflowId;
+  return Array.isArray(members)
     ? members.filter((member): member is string => typeof member === 'string' && Boolean(member.trim())).map((member) => member.trim())
     : [];
-  if (typeof workflowId !== 'string' || !workflowId.trim()) return base;
-  const workflow = workflowService.getWorkflow(workflowId.trim());
-  if (!workflow) return base;
-  return Array.from(new Set([
-    ...base,
-    ...workflow.nodes.filter((n) => n.type === 'agent').map((node) => node.data.agentConfigId as string).filter(Boolean),
-  ]));
 }

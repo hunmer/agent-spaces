@@ -6,10 +6,9 @@ import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { DashboardSidebar } from "@/components/sidebar/app-sidebar";
 import { WorkspaceDialog } from "@/components/workspace/workspace-dialog";
 import { useWorkspaceStore } from "@/stores/workspace";
-import { isLoginPath, isWorkflowSharePath, isMiniAppPreviewPath } from "@/lib/routes";
+import { isLoginPath } from "@/lib/routes";
 import { sdk } from "@/lib/sdk";
 import { useLLMStore } from "@/stores/llm";
-import { CustomShortcutExecutor } from "@/components/layout/custom-shortcut-executor";
 import { GlobalConfirmDialog } from "@/components/layout/global-confirm-dialog";
 import { saveRuntimeCliDiscovery } from "@/lib/runtime-cli-settings";
 import {
@@ -57,10 +56,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return <>{children}</>;
   }
 
-  if (isWorkflowSharePath(pathname) || isMiniAppPreviewPath(pathname)) {
-    return <>{children}</>;
-  }
-
   return (
     <>
       <SidebarProvider className="h-[var(--app-content-height)] min-h-0 bg-sidebar">
@@ -71,7 +66,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </SidebarProvider>
       <GlobalWorkspaceDialog />
       <GlobalConfirmDialog />
-      <CustomShortcutExecutor />
     </>
   );
 }

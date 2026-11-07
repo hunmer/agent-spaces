@@ -3,7 +3,7 @@
 import { useEffect, useRef, useCallback, useState, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import { useChannelStore } from '@/stores/channel';
-import type { ChannelMessageAgentOverride, MiniAppMessageContext } from '@/stores/channel';
+import type { ChannelMessageAgentOverride } from '@/stores/channel';
 import { useAgentStore } from '@/stores/agent';
 import { getWS } from '@/lib/ws';
 import { MessageItem } from './message-item';
@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Status, StatusIndicator, StatusLabel } from '@/components/ui/status-badge';
-import { ArrowLeft, FilesIcon, HelpCircleIcon, Info, SendIcon, Trash2, UploadIcon, ExternalLink } from 'lucide-react';
+import { ArrowLeft, HelpCircleIcon, Info, SendIcon, Trash2, ExternalLink } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -23,12 +23,11 @@ import { AgentIcon } from '@/components/common/agent-icon';
 import { AgentEditor } from '@/components/sidebar/agent-editor';
 import { normalizeAgent } from '@/components/sidebar/agent-shared';
 import { sdk } from '@/lib/sdk';
-import { CommonEditorPanel } from '@/components/editor/editor-panel';
 
 import { useIssueStore } from '@/stores/issue';
 import { useMobilePanelStore } from '@/stores/mobile-panel';
 import { useIsDesktop } from '@/hooks/use-mobile';
-import type { AgentConfig, Channel, FileNode, Message } from '@agent-spaces/shared';
+import type { AgentConfig, Channel, Message } from '@agent-spaces/shared';
 import type { TeamView } from '@agent-spaces/sdk';
 import type { MentionedAgent } from './chat-input-utils';
 
@@ -108,12 +107,10 @@ function ChannelMemberAvatars({ members }: { members: string[] }) {
 interface ChatPanelProps {
   workspaceId: string;
   channelId?: string;
-  miniAppContext?: MiniAppMessageContext;
-  agentFilesDirectory?: { projectId: string; scope: 'preview' | 'editor'; label?: string };
   onAgentActivated?: (agent: MentionedAgent) => void;
 }
 
-export function ChatPanel({ workspaceId, channelId, miniAppContext, agentFilesDirectory, onAgentActivated }: ChatPanelProps) {
+export function ChatPanel({ workspaceId, channelId, onAgentActivated }: ChatPanelProps) {
   const t = useTranslations('chat');
   const tc = useTranslations('common');
   const { activeChannelId, channels, messages, loadMessages, loadChannelState, sendMessage, addMessage, updateMessage, stopProcessingMessages, deleteMessage, clearMessages, upsertChannel } = useChannelStore();
@@ -138,7 +135,7 @@ export function ChatPanel({ workspaceId, channelId, miniAppContext, agentFilesDi
     () => channels.find((c) => c.id === currentChannelId) ?? {
       id: currentChannelId!,
       name: currentChannelId!,
-      type: (isExternalChannelId ? 'mini-apps' : 'agent') as Channel['type'],
+      type: 'agent' as Channel['type'],
       members: [],
       issueId: undefined,
       workspaceId: '',
@@ -268,8 +265,8 @@ export function ChatPanel({ workspaceId, channelId, miniAppContext, agentFilesDi
     modelOverride?: ChannelMessageAgentOverride,
   ) => {
     if (!currentChannelId) return;
-    sendMessage(workspaceId, currentChannelId, content, mentions, attachments, replyToMessageId, contextLength, modelOverride, miniAppContext);
-  }, [workspaceId, currentChannelId, sendMessage, miniAppContext]);
+    sendMessage(workspaceId, currentChannelId, content, mentions, attachments, replyToMessageId, contextLength, modelOverride);
+  }, [workspaceId, currentChannelId, sendMessage]);
 
   const isProcessing = channelActive || (msgs.length > 0
     && ['pending', 'streaming', 'waiting_for_user'].includes(msgs[msgs.length - 1].status ?? ''));
@@ -341,9 +338,6 @@ export function ChatPanel({ workspaceId, channelId, miniAppContext, agentFilesDi
           </Status>
           <ChannelMemberAvatars members={channel.members} />
           <div className="flex-1" />
-          {agentFilesDirectory ? (
-            <MiniAppAgentFilesPopover directory={agentFilesDirectory} />
-          ) : null}
           {channel.issueId && (
             <Button
               variant="ghost"
@@ -525,112 +519,6 @@ function findPendingQuestion(messages: Message[]): PendingQuestion | null {
     };
   }
   return null;
-}
-
-function MiniAppAgentFilesPopover({ directory }: { directory: { projectId: string; scope: 'preview' | 'editor'; label?: string } }) {
-  const [tree, setTree] = useState<FileNode[]>([]);
-  const [loading, setLoading] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  const reloadTree = useCallback(async () => {
-    setLoading(true);
-    try {
-      setTree(await sdk.miniApp.getAgentFilesTree(directory.projectId, '', 10, directory.scope));
-    } finally {
-      setLoading(false);
-    }
-  }, [directory.projectId, directory.scope]);
-
-  const uploadFiles = useCallback(async (targetPath: string, files: File[]) => {
-    const formData = new FormData();
-    for (const file of files) formData.append('files', file);
-    if (targetPath) formData.append('folder', targetPath);
-    formData.append('scope', directory.scope);
-    await sdk.miniApp.uploadAgentFiles(directory.projectId, formData);
-    await reloadTree();
-  }, [directory.projectId, directory.scope, reloadTree]);
-
-  const api = useMemo(() => ({
-    tree,
-    treeLoading: loading,
-    loadingDirs: new Set<string>(),
-    openFiles: [],
-    loadTree: reloadTree,
-    loadDirectory: reloadTree,
-    openFile: async (_path: string) => {},
-    searchFiles: async (query: string) => {
-      const lower = query.toLowerCase();
-      const results: FileNode[] = [];
-      const walk = (nodes: FileNode[]) => {
-        for (const node of nodes) {
-          if (node.name.toLowerCase().includes(lower)) results.push(node);
-          if (node.children) walk(node.children);
-        }
-      };
-      walk(tree);
-      return results;
-    },
-    saveEmptyFile: async (path: string) => {
-      await sdk.miniApp.writeAgentFile(directory.projectId, path, '', directory.scope);
-      await reloadTree();
-    },
-    deletePath: async (path: string) => {
-      await sdk.miniApp.deleteAgentFile(directory.projectId, path, directory.scope);
-      await reloadTree();
-    },
-    renamePath: async (oldPath: string, newPath: string) => {
-      await sdk.miniApp.renameAgentFile(directory.projectId, oldPath, newPath, directory.scope);
-      await reloadTree();
-    },
-    linkFolder: async (sourcePath: string) => {
-      await sdk.miniApp.linkAgentFolder(directory.projectId, sourcePath, directory.scope);
-      await reloadTree();
-    },
-    resolveAbsolutePath: (path: string) => sdk.miniApp.getAgentFileAbsolutePath(directory.projectId, path, directory.scope),
-    copyPath: async (_srcPath: string, _destPath: string) => {},
-    uploadFiles,
-  }), [directory.projectId, directory.scope, loading, reloadTree, tree, uploadFiles]);
-
-  return (
-    <Popover onOpenChange={(open) => { if (open) void reloadTree(); }}>
-      <PopoverTrigger render={<Button variant="ghost" size="icon" className="dark:!text-gray-200" title="agent_files" />}>
-        <FilesIcon className="size-4" />
-      </PopoverTrigger>
-      <PopoverContent align="end" className="h-[420px] w-80 p-0">
-        <div className="flex h-full min-h-0 flex-col">
-          <div className="flex h-8 shrink-0 items-center gap-2 border-b px-2">
-            <div className="min-w-0 flex-1 truncate text-xs font-medium text-muted-foreground">
-              {directory.label ?? 'agent_files'}
-            </div>
-            <input
-              ref={inputRef}
-              type="file"
-              multiple
-              className="hidden"
-              onChange={(event) => {
-                const files = Array.from(event.target.files ?? []);
-                event.currentTarget.value = '';
-                if (files.length) void uploadFiles('', files);
-              }}
-            />
-            <Button type="button" variant="ghost" size="icon" className="size-7" onClick={() => inputRef.current?.click()}>
-              <UploadIcon className="size-3.5" />
-            </Button>
-          </div>
-          <CommonEditorPanel
-            storageKey={`mini-app-agent-files:${directory.projectId}`}
-            variant="project"
-            api={api}
-            hideSidebarTabs
-            hideBottomTabs
-            showImport={false}
-            showSearchPanel={false}
-            allowDragUpload
-          />
-        </div>
-      </PopoverContent>
-    </Popover>
-  );
 }
 
 function PendingQuestionPanel({

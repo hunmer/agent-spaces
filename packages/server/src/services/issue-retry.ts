@@ -2,7 +2,6 @@ import type { AgentContext } from '../agents/agent-context.js';
 import * as issueService from './issue.js';
 import * as channelService from './channel.js';
 import * as messageService from './message.js';
-import { startIssueWorkflowExecution } from '../agents/issue-agent-runner.js';
 import { listWorkspaces } from '../storage/workspace-store.js';
 
 const RECOVERY_ERROR = 'Server restarted while workflow execution was running';
@@ -73,6 +72,5 @@ export async function retryIssue(
   ctx.broadcast('issue.status_changed', { issueId, from: issue.status, to: updated.status });
   ctx.broadcast('issue.updated', updated);
 
-  await startIssueWorkflowExecution(workspaceId, issueId, ctx);
   return { issue: issueService.getById(workspaceId, issueId), retried: true };
 }

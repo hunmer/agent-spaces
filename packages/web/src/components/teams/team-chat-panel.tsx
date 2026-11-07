@@ -1,9 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { AgentConfig, Channel, ExecutionLog, Message, Workflow } from "@agent-spaces/shared";
+import type { AgentConfig, Channel, Message } from "@agent-spaces/shared";
 import { useTranslations } from "next-intl";
-import { Loader2, MoreVertical, PanelRight, Plus, Trash2, Workflow as WorkflowIcon } from "lucide-react";
+import { Loader2, MoreVertical, PanelRight, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MessageItem } from "@/components/chat/message-item";
 import { MessageNavigator } from "@/components/chat/message-navigator";
@@ -30,7 +30,6 @@ import type {
   TeamSessionView,
 } from "@agent-spaces/sdk";
 import { WorkspaceWS } from "@/lib/ws";
-import { WorkflowPreview } from "@/components/workflow/workflow-preview";
 
 const TEAM_RUNTIME_WORKSPACE_ID = "__team__";
 const TEAM_USER_ACTOR_ID = "admin";
@@ -76,86 +75,6 @@ function toChannelMessage(item: TeamRuntimeMessageView, actorAgentId: string): M
   };
 }
 
-type TeamTranslator = (key: string, params?: Record<string, string | number>) => string;
-
-function createTeamMessageWorkflow(
-  teamId: string,
-  sessionId: string,
-  deliveries: TeamInboxItemView[],
-  participants: TeamParticipant[],
-  t: TeamTranslator,
-): { workflow: Workflow; executionLog: ExecutionLog } {
-  const participantById = new Map(participants.map((participant) => [participant.id, participant]));
-  const workflowId = `team-message-flow-${sessionId}`;
-  const timestamp = (value: string) => {
-    const parsed = Date.parse(value);
-    return Number.isNaN(parsed) ? Date.now() : parsed;
-  };
-  const displayName = (agentId: string) => agentId === TEAM_USER_ACTOR_ID
-    ? t("chat.user")
-    : participantById.get(agentId)?.name || agentId;
-  const nodes = deliveries.map((delivery, index) => {
-    const row = Math.floor(index / 4);
-    const column = index % 4;
-    const recipient = participantById.get(delivery.recipient_agent_id);
-    const content = delivery.body || delivery.preview;
-    return {
-      id: `delivery-${delivery.delivery_id}`,
-      type: "agent_run",
-      label: `${displayName(delivery.recipient_agent_id)}：${(delivery.subject || content).slice(0, 28) || t("chat.processing")}`,
-      position: { x: (row % 2 === 0 ? column : 3 - column) * 440, y: row * 320 },
-      data: {
-        agent: recipient
-          ? { ...recipient, role: recipient.role || "agent", enabled: true }
-          : { id: delivery.recipient_agent_id, name: displayName(delivery.recipient_agent_id), role: "agent", enabled: true },
-        prompt: content,
-        permissionMode: "dontAsk",
-      },
-    };
-  });
-  const edges = nodes.slice(1).map((node, index) => ({
-    id: `message-flow-${nodes[index].id}-${node.id}`,
-    source: nodes[index].id,
-    target: node.id,
-    middleLabel: `${displayName(deliveries[index + 1].sender_agent_id)} → ${displayName(deliveries[index + 1].recipient_agent_id)}`,
-  }));
-  const startedAt = deliveries.length > 0 ? timestamp(deliveries[0].sent_at) : Date.now();
-  const status = deliveries.some((delivery) => delivery.execution_status === "failed")
-    ? "error"
-    : deliveries.some((delivery) => ["pending", "running", "in_progress"].includes(delivery.execution_status)) ? "running" : "completed";
-  const workflow: Workflow = {
-    id: workflowId,
-    name: t("chat.workflowName"),
-    folderId: null,
-    nodes,
-    edges,
-    createdAt: startedAt,
-    updatedAt: Date.now(),
-  };
-  return {
-    workflow,
-    executionLog: {
-      id: `${workflowId}-execution`,
-      workflowId,
-      startedAt,
-      finishedAt: status === "running" ? undefined : Date.now(),
-      status,
-      steps: deliveries.map((delivery, index) => ({
-        nodeId: nodes[index].id,
-        nodeLabel: nodes[index].label,
-        startedAt: timestamp(delivery.sent_at),
-        finishedAt: ["pending", "running", "in_progress"].includes(delivery.execution_status)
-          ? undefined
-          : timestamp(delivery.completed_at || delivery.failed_at || delivery.updated_at),
-        status: delivery.execution_status === "failed"
-          ? "error"
-          : ["pending", "running", "in_progress"].includes(delivery.execution_status) ? "running" : "completed",
-        input: { senderAgentId: delivery.sender_agent_id, content: delivery.body || delivery.preview },
-      })),
-    },
-  };
-}
-
 export function TeamChatPanel({ teamId, actorAgentId, initialSessionId, sidebarOpen = true, onToggleSidebar, teamDescription, onSessionIdChange }: TeamChatPanelProps) {
   const t = useTranslations("teams");
   const agents = useAgentStore((store) => store.agents);
@@ -172,9 +91,6 @@ export function TeamChatPanel({ teamId, actorAgentId, initialSessionId, sidebarO
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
   const [configAgent, setConfigAgent] = useState<{ id: string; agent?: Partial<TeamParticipant> } | null>(null);
-  const [workflowOpen, setWorkflowOpen] = useState(false);
-  const [workflowLoading, setWorkflowLoading] = useState(false);
-  const [workflowDeliveries, setWorkflowDeliveries] = useState<TeamInboxItemView[]>([]);
   const loadRequestIdRef = useRef(0);
 
   useEffect(() => onSessionIdChange?.(sessionId), [onSessionIdChange, sessionId]);
@@ -226,11 +142,6 @@ export function TeamChatPanel({ teamId, actorAgentId, initialSessionId, sidebarO
   const participantsById = useMemo(
     () => new Map(participants.map((participant) => [participant.id, participant])),
     [participants],
-  );
-
-  const messageWorkflow = useMemo(
-    () => createTeamMessageWorkflow(teamId, runtime?.session_id ?? teamId, workflowDeliveries, participants, t),
-    [participants, runtime?.session_id, teamId, workflowDeliveries, t],
   );
 
   const viewMessages = useMemo(() => {
@@ -299,7 +210,6 @@ export function TeamChatPanel({ teamId, actorAgentId, initialSessionId, sidebarO
   const handleSessionChange = useCallback((value: string | null) => {
     if (!value || value === sessionId) return;
     setPendingAssistantSince(null);
-    setWorkflowDeliveries([]);
     setSessionId(value);
   }, [sessionId]);
 
@@ -386,32 +296,6 @@ export function TeamChatPanel({ teamId, actorAgentId, initialSessionId, sidebarO
     }
   }, [actorAgentId, loadRuntime, sessionId, teamId]);
 
-  const handleOpenWorkflow = useCallback(async () => {
-    setWorkflowLoading(true);
-    setError("");
-    try {
-      const recipientIds = Array.from(new Set([TEAM_USER_ACTOR_ID, actorAgentId, ...participants.map((participant) => participant.id)]));
-      const responses = await Promise.all(recipientIds.map((recipientAgentId) => sdk.team.listInbox({
-        actor_agent_id: actorAgentId,
-        team_id: teamId,
-        session_id: sessionId,
-        recipient_agent_id: recipientAgentId,
-        // ponytail: 单个收件箱先取最近 100 条；出现超长历史时再补分页。
-        page_size: 100,
-      })));
-      const deliveries = Array.from(new Map(
-        responses.flatMap((response) => response.inbox_items).map((delivery) => [delivery.delivery_id, delivery]),
-      ).values())
-        .filter((delivery) => !isRuntimeThinkingDelivery(delivery))
-        .sort((a, b) => a.sent_at.localeCompare(b.sent_at));
-      setWorkflowDeliveries(deliveries);
-      setWorkflowOpen(true);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setWorkflowLoading(false);
-    }
-  }, [actorAgentId, participants, sessionId, teamId]);
 
   const configStoreAgent = configAgent ? agents.find((item) => item.id === configAgent.id) : undefined;
   const configCustomAgent = configAgent && !configStoreAgent ? configAgent.agent : undefined;
@@ -466,12 +350,6 @@ export function TeamChatPanel({ teamId, actorAgentId, initialSessionId, sidebarO
                   <Plus className="size-3.5" /> {t("chat.newSession")}
                 </DropdownMenuItem>
                 <DropdownMenuItem
-                  onClick={() => void handleOpenWorkflow()}
-                  disabled={!teamId || workflowLoading}
-                >
-                  <WorkflowIcon className="size-3.5" /> {t("chat.viewWorkflow")}
-                </DropdownMenuItem>
-                <DropdownMenuItem
                   onClick={handleClearMessages}
                   disabled={viewMessages.length === 0 || sending}
                 >
@@ -497,17 +375,6 @@ export function TeamChatPanel({ teamId, actorAgentId, initialSessionId, sidebarO
                 aria-label={t("chat.newSession")}
               >
                 <Plus className="size-3.5" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="size-7"
-                onClick={() => void handleOpenWorkflow()}
-                disabled={!teamId || workflowLoading}
-                title={t("chat.viewWorkflow")}
-                aria-label={t("chat.viewWorkflow")}
-              >
-                {workflowLoading ? <Loader2 className="size-3.5 animate-spin" /> : <WorkflowIcon className="size-3.5" />}
               </Button>
               <Button
                 variant="ghost"
@@ -656,21 +523,6 @@ export function TeamChatPanel({ teamId, actorAgentId, initialSessionId, sidebarO
           </DialogContent>
         </Dialog>
       ) : null}
-      <Dialog open={workflowOpen} onOpenChange={setWorkflowOpen}>
-        <DialogContent className="flex h-[80vh] max-w-[calc(100vw-2rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-6xl">
-          <DialogHeader className="border-b px-5 py-3">
-            <DialogTitle>{t("chat.workflowTitle")}</DialogTitle>
-            <DialogDescription>{t("chat.workflowDescription", { count: workflowDeliveries.length })}</DialogDescription>
-          </DialogHeader>
-          <div className="min-h-0 flex-1">
-            <WorkflowPreview
-              workflowId={messageWorkflow.workflow.id}
-              workflow={messageWorkflow.workflow}
-              selectedExecutionLog={messageWorkflow.executionLog}
-            />
-          </div>
-        </DialogContent>
-      </Dialog>
     </section>
   );
 }

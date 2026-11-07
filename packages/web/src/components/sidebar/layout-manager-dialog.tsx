@@ -22,7 +22,7 @@ import type { IJsonModel } from "flexlayout-react";
 
 /**
  * Caller-provided behavior that adapts the generic layout manager to a specific
- * flexlayout surface (workspace shell, workflow editor, ...). The dialog stays
+ * flexlayout surface (workspace shell, ...). The dialog stays
  * UI-only and storage-agnostic.
  */
 export interface LayoutManagerDialogConfig {

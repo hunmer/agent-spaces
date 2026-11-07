@@ -6,11 +6,10 @@ import { broadcastToWorkspace } from './connection-manager.js';
 import { createMessage, updateMessage, listMessages } from '../services/message.js';
 import { getChannel, updateChannel } from '../services/channel.js';
 import * as issueService from '../services/issue.js';
-import { createAgentFunctionTools, createIssueFunctionTools, createTeamFunctionTools, createCommandFunctionTools, createDatabaseFunctionTools, createWorkspaceFileFunctionTools, createWorkflowExecutionFunctionTools, createMiniAppFunctionTools, createWorkspaceMiniAppFunctionTools } from '../services/builtin-tools/index.js';
+import { createAgentFunctionTools, createIssueFunctionTools, createTeamFunctionTools, createCommandFunctionTools, createDatabaseFunctionTools } from '../services/builtin-tools/index.js';
 import { startScheduler } from '../agents/scheduler-agent.js';
 import * as agentService from '../services/agent.js';
 import * as wsService from '../services/workspace.js';
-import * as miniAppService from '../services/mini-apps.js';
 import type { AgentContext } from '../agents/agent-context.js';
 import { createAgentRuntime } from '../adapters/agent-runtime.js';
 import type { AgentRuntime } from '../adapters/agent-runtime-types.js';
@@ -38,13 +37,6 @@ interface PendingQuestionRun {
   question: string;
 }
 
-interface MiniAppMessageContext {
-  projectId: string;
-  activeFilePath?: string;
-  projectType?: 'react' | 'html';
-  fileContent?: string;
-}
-
 interface AgentModelOverride {
   apiBase: string;
   apiKey: string;
@@ -64,7 +56,6 @@ interface RunMentionedAgentOptions {
   excludeHistoryMessageIds?: string[];
   excludeHistoryReplyIds?: string[];
   agentOverride?: AgentModelOverride;
-  miniAppContext?: MiniAppMessageContext;
 }
 
 // --- State ---
@@ -72,7 +63,6 @@ interface RunMentionedAgentOptions {
 const activeSchedulers = new Set<string>();
 const activeChannelRuns = new Map<string, Map<string, ActiveChannelRun>>();
 const pendingQuestionRuns = new Map<string, PendingQuestionRun>();
-const MINI_APP_FILE_TOOLS: BuiltInAgentToolName[] = ['ListWorkspaceFiles', 'SearchWorkspaceFiles', 'ReadWorkspaceFile', 'ReadWorkspaceFileLines', 'WriteWorkspaceFile', 'ReplaceWorkspaceFileLine', 'DeleteWorkspacePath', 'MoveWorkspacePath'];
 
 // --- Public API ---
 
@@ -244,7 +234,6 @@ export async function runMentionedAgent(
   const skills = agentService.getAvailableSkillNames(configDir, preset.skills);
   const workspace = wsService.getById(workspaceId);
   const { channel, issue } = resolveIssueChannelContext(workspaceId, channelId);
-  const miniAppRuntimeContext = resolveMiniAppRuntimeContext(options.miniAppContext);
   const functionTools = [
     ...createIssueFunctionTools(workspaceId, channel, {
       senderId: preset.id,
@@ -260,25 +249,10 @@ export async function runMentionedAgent(
     ...createAgentFunctionTools(workspaceId, preset.tools),
     ...createCommandFunctionTools(workspaceId, preset.tools),
     ...createDatabaseFunctionTools(workspaceId, preset.tools),
-    ...createWorkflowExecutionFunctionTools(workspaceId, preset.tools, {
-      boundWorkflowPluginTools: preset.boundWorkflowPluginTools,
-    }),
-    ...createWorkspaceMiniAppFunctionTools(workspaceId),
-    ...(miniAppRuntimeContext ? createMiniAppFunctionTools({
-      enabledPlugins: miniAppRuntimeContext.enabledPlugins,
-      pluginConfigSchemes: miniAppRuntimeContext.pluginConfigSchemes,
-    }) : []),
-    ...(miniAppRuntimeContext?.agentFilesWorkspace ? createWorkspaceFileFunctionTools(
-      miniAppRuntimeContext.agentFilesWorkspace.id,
-      MINI_APP_FILE_TOOLS,
-      () => miniAppRuntimeContext.agentFilesWorkspace ?? null,
-    ) : []),
   ];
-  const workingDir = miniAppRuntimeContext?.projectDir ?? agentService.resolveWorkingDir(workspaceId, preset);
-  const boundDirs = miniAppRuntimeContext ? [miniAppRuntimeContext.projectDir] : workspace?.boundDirs;
-  const sandboxDirs = miniAppRuntimeContext
-    ? [miniAppRuntimeContext.projectDir]
-    : preset.sandboxDirs;
+  const workingDir = agentService.resolveWorkingDir(workspaceId, preset);
+  const boundDirs = workspace?.boundDirs;
+  const sandboxDirs = preset.sandboxDirs;
   const workspaceRoot = boundDirs?.[0];
   const startTime = Date.now();
   const runtimePromptConfig = {
@@ -289,13 +263,6 @@ export async function runMentionedAgent(
     workingDir,
     excludeNativeClaudeMd: preset.runtimeKind === 'claude-code',
     builtInTools: buildBuiltInTools(functionTools, channel, issue),
-    boundWorkflowIds: preset.boundWorkflowIds,
-    boundWorkflowPluginTools: preset.boundWorkflowPluginTools,
-    miniAppContext: miniAppRuntimeContext ? {
-      projectId: miniAppRuntimeContext.projectId,
-      activeFilePath: options.miniAppContext?.activeFilePath,
-      projectType: miniAppRuntimeContext.projectType,
-    } : undefined,
   };
   const existingMessage = options.messageId
     ? listMessages(workspaceId, channelId).find((message) => message.id === options.messageId)
@@ -750,34 +717,6 @@ export async function runMentionedAgent(
 }
 
 // --- Internal helpers ---
-
-function resolveMiniAppRuntimeContext(context: MiniAppMessageContext | undefined): {
-  projectId: string;
-  projectDir: string;
-  projectType?: 'react' | 'html';
-  enabledPlugins: string[];
-  pluginConfigSchemes?: Record<string, string>;
-  agentFilesWorkspace?: ReturnType<typeof miniAppService.getAgentFilesWorkspace>;
-} | null {
-  const projectId = context?.projectId?.trim();
-  if (!projectId) return null;
-
-  try {
-    const project = miniAppService.getProject(projectId);
-    const projectDir = join(getDataDir(), 'mini-apps', project.id);
-    if (!existsSync(projectDir) || !statSync(projectDir).isDirectory()) return null;
-    return {
-      projectId: project.id,
-      projectDir,
-      projectType: project.type,
-      enabledPlugins: project.enabledPlugins ?? [],
-      pluginConfigSchemes: project.pluginConfigSchemes,
-      ...(miniAppService.hasMiniAppAgentFilesPermission(project) ? { agentFilesWorkspace: miniAppService.getAgentFilesWorkspace(project.id, 'editor') } : {}),
-    };
-  } catch {
-    return null;
-  }
-}
 
 function expandAgentSlashCommandPrompt(prompt: string, agentDir: string | undefined): string {
   if (!agentDir) return prompt;

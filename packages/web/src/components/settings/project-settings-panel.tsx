@@ -9,16 +9,14 @@ import { useIssueStore } from '@/stores/issue';
 import { useAgentStore } from '@/stores/agent';
 import { useWorkspaceStore } from '@/stores/workspace';
 import { AgentDialog } from '@/components/sidebar/agent-dialog';
-import { Loader2, Puzzle } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import type { Workspace, WorkspaceNotificationSettings } from '@agent-spaces/shared';
-import type { MiniAppProject } from '@agent-spaces/sdk';
 import { getNotificationPermission, type NotificationPermissionStatus } from '@/lib/native-notification';
 import { sdk } from '@/lib/sdk';
 
 import { WorkspaceInfoSection } from './workspace-info-section';
 import { NotificationSettingsTab, defaultNotificationSettings } from './notification-settings-tab';
 import { WorkspacePromptSection } from './workspace-prompt-section';
-import { MiniAppListDialog } from '@/components/mini-apps/mini-apps-list-dialog';
 
 interface ProjectSettingsPanelProps {
   workspaceId: string;
@@ -31,9 +29,6 @@ export function ProjectSettingsPanel({ workspaceId }: ProjectSettingsPanelProps)
   const [loading, setLoading] = useState(true);
   const [agentDialogOpen, setAgentDialogOpen] = useState(false);
   const [notificationDraft, setNotificationDraft] = useState<WorkspaceNotificationSettings>(defaultNotificationSettings());
-  const [miniApps, setMiniApps] = useState<MiniAppProject[]>([]);
-  const [selectedMiniAppIds, setSelectedMiniAppIds] = useState<string[]>([]);
-  const [miniAppDialogOpen, setMiniAppDialogOpen] = useState(false);
 
   const channels = useChannelStore((s) => s.channels);
   const issues = useIssueStore((s) => s.issues);
@@ -46,16 +41,13 @@ export function ProjectSettingsPanel({ workspaceId }: ProjectSettingsPanelProps)
     Promise.all([
       sdk.workspace.get(workspaceId),
       sdk.workspace.getPrompt(workspaceId),
-      sdk.miniApp.list(),
     ])
-      .then(([ws, promptData, projects]) => {
+      .then(([ws, promptData]) => {
         setWorkspace(ws);
         upsertWorkspace(ws);
         setSavedPrompt(promptData.prompt ?? '');
         const ns = ws.notificationSettings ?? defaultNotificationSettings();
         setNotificationDraft(ns);
-        setMiniApps(projects.filter((project) => project.extensions?.includes('workspace')));
-        setSelectedMiniAppIds(ws.miniAppIds ?? []);
         setLoading(false);
         // Check native notification permission status
         getNotificationPermission().then((status: NotificationPermissionStatus) => {
@@ -102,26 +94,6 @@ export function ProjectSettingsPanel({ workspaceId }: ProjectSettingsPanelProps)
           issueCount={issues.length}
         />
 
-        <div className="rounded-xl border border-border p-4">
-          <div className="mb-3 flex items-center justify-between gap-3">
-            <div>
-              <div className="flex items-center gap-2 text-sm font-medium dark:!text-gray-200">
-                <Puzzle className="size-4" />
-                {t('miniApps.title')}
-              </div>
-              <p className="mt-1 text-xs text-muted-foreground">{t('miniApps.description')}</p>
-            </div>
-            <Button variant="outline" size="sm" onClick={() => setMiniAppDialogOpen(true)} className="dark:!text-gray-200">
-              {t('miniApps.select')}
-            </Button>
-          </div>
-          <div className="text-xs text-muted-foreground">
-            {selectedMiniAppIds.length
-              ? miniApps.filter((app) => selectedMiniAppIds.includes(app.id)).map((app) => app.name).join(', ')
-              : t('miniApps.empty')}
-          </div>
-        </div>
-
         <NotificationSettingsTab
           workspaceId={workspaceId}
           workspace={workspace}
@@ -142,26 +114,6 @@ export function ProjectSettingsPanel({ workspaceId }: ProjectSettingsPanelProps)
         open={agentDialogOpen}
         onOpenChange={setAgentDialogOpen}
         roleFilter="bot"
-      />
-      <MiniAppListDialog
-        open={miniAppDialogOpen}
-        projects={miniApps}
-        selectedIds={selectedMiniAppIds}
-        onSelectedIdsChange={setSelectedMiniAppIds}
-        allowEmptySelection
-        confirmLabelKey="filters.confirm"
-        onConfirm={async (selected) => {
-          const ids = selected.map((project) => project.id);
-          const updated = await sdk.workspace.update(workspaceId, { miniAppIds: ids });
-          setWorkspace(updated);
-          setSelectedMiniAppIds(ids);
-          upsertWorkspace(updated);
-          setMiniAppDialogOpen(false);
-        }}
-        onClose={() => {
-          setSelectedMiniAppIds(workspace.miniAppIds ?? []);
-          setMiniAppDialogOpen(false);
-        }}
       />
     </ScrollArea>
   );

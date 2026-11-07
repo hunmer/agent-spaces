@@ -80,8 +80,7 @@ async function main() {
 
   if (args.transport === 'stdio') {
     // stdio 模式：日志走 stderr，避免污染 stdout（MCP 消息通道）
-    const wfNote = wsConfig ? ' | workflow_execute=WS(真实执行)' : ' | workflow_execute=SDK(未配置 workspaceId)';
-    console.error(`[mcp] stdio transport | tools=${tools.length} baseUrl=${args.baseUrl}${wfNote}`);
+    console.error(`[mcp] stdio transport | tools=${tools.length} baseUrl=${args.baseUrl}`);
     await serveStdio(server);
   } else {
     const log = (msg: string) => console.error(`[mcp] ${msg}`);

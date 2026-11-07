@@ -1,5 +1,5 @@
 import { Router, type Request, type Response } from 'express';
-import type { AgentConfig, Message, NodeTypeDefinition, Workflow, WorkflowNode } from '@agent-spaces/shared';
+import type { AgentConfig, Message } from '@agent-spaces/shared';
 import { createAgentRuntime } from '../adapters/agent-runtime.js';
 import type { AgentRuntimeEvent } from '../adapters/agent-runtime-types.js';
 import { verifyToken } from '../middleware/auth.js';
@@ -8,7 +8,6 @@ import * as workspaceService from '../services/workspace.js';
 import { getThinkingRuntimeConfig } from '../services/llm-model-config.js';
 import { buildAgentPrompt } from '../ws/agent-prompt.js';
 import { wrapOnEventWithHooks } from '../services/hook-engine.js';
-import { buildWorkflowEditorSystemPrompt, createWorkflowEditorFunctionTools } from '../services/builtin-tools/workflow-editor-tools.js';
 
 const router = Router();
 const MAX_LANGCHAIN_STALL_RETRIES = 5;
@@ -31,18 +30,6 @@ interface AgentSseRequestBody {
   systemPrompt?: string;
   outputStyle?: string;
   maxTurns?: number;
-  workflowAgent?: {
-    workflow?: Workflow;
-    nodeDefinitions?: NodeTypeDefinition[];
-    selectedNodes?: WorkflowNode[];
-  };
-}
-
-interface WorkflowToolRunRequestBody {
-  workspaceId?: string;
-  workflowAgent?: AgentSseRequestBody['workflowAgent'];
-  toolName?: string;
-  input?: unknown;
 }
 
 export async function runAgentSseText(
@@ -68,8 +55,6 @@ export async function runAgentSseText(
     boundDirs: workspace?.boundDirs ?? [],
     workingDir,
     excludeNativeClaudeMd: preset.runtimeKind === 'claude-code',
-    boundWorkflowIds: preset.boundWorkflowIds,
-    boundWorkflowPluginTools: preset.boundWorkflowPluginTools,
   });
   const output: string[] = [];
   const runtime = createAgentRuntime({
@@ -133,22 +118,9 @@ router.post('/run', async (req: Request, res: Response) => {
   const requestedSkills = normalizeSkills(body.skills ?? body.skill) ?? preset.skills;
   const configDir = agentService.getAgentConfigDir(workspaceId, { ...preset, skills: requestedSkills });
   const skills = agentService.getAvailableSkillNames(configDir, requestedSkills);
-  const workflowAgent = normalizeWorkflowAgent(body.workflowAgent);
-  const functionTools = workflowAgent
-    ? createWorkflowEditorFunctionTools({
-        workspaceId,
-        workflow: workflowAgent.workflow,
-        nodeDefinitions: workflowAgent.nodeDefinitions,
-      })
-    : undefined;
-  const runtimeKind = workflowAgent ? 'langchain' : preset.runtimeKind;
-  const systemPrompt = workflowAgent
-    ? buildWorkflowEditorSystemPrompt(workflowAgent.workflow)
-    : body.systemPrompt ?? preset.systemPrompt;
-  const history = insertWorkflowSelectedNodesMessage(
-    normalizeMessages(body.messages),
-    workflowAgent?.selectedNodes,
-  );
+  const runtimeKind = preset.runtimeKind;
+  const systemPrompt = body.systemPrompt ?? preset.systemPrompt;
+  const history = normalizeMessages(body.messages);
   const output: string[] = [];
   const workingDir = agentService.resolveWorkingDir(workspaceId, preset);
   let completed = false;
@@ -188,9 +160,7 @@ router.post('/run', async (req: Request, res: Response) => {
         boundDirs: workspace?.boundDirs ?? [],
         workingDir,
         excludeNativeClaudeMd: runtimeKind === 'claude-code',
-        builtInTools: (functionTools ?? []).map((tool) => ({ name: tool.name, description: tool.description })),
-        boundWorkflowIds: preset.boundWorkflowIds,
-        boundWorkflowPluginTools: preset.boundWorkflowPluginTools,
+        builtInTools: [],
       },
     );
     let result: Awaited<ReturnType<ReturnType<typeof createAgentRuntime>['execute']>>;
@@ -204,14 +174,13 @@ router.post('/run', async (req: Request, res: Response) => {
           maxTurns: normalizeMaxTurns(body.maxTurns),
           mcpServers,
           skills,
-          functionTools: functionTools ?? [],
           configDir,
           sandboxDirs: preset.sandboxDirs,
           userPrompt,
           outputStyle: body.outputStyle ?? preset.outputStyle,
           onEvent: wrapOnEventWithHooks((event) => {
             if (event.type === 'output') output.push(event.line);
-            writeSse(res, event.type, serializeRuntimeEvent(event, functionTools?.getDraftWorkflow()));
+            writeSse(res, event.type, serializeRuntimeEvent(event));
           }, workspaceId, workspace?.hooksEnabled),
         },
       );
@@ -269,61 +238,6 @@ router.post('/run', async (req: Request, res: Response) => {
     res.end();
   }
 });
-
-router.post('/workflow-tool/run', async (req: Request, res: Response) => {
-  const body = req.body as WorkflowToolRunRequestBody;
-  if (!verifyRequestKey(req, req.body as AgentSseRequestBody)) {
-    res.status(401).json({ error: 'Unauthorized' });
-    return;
-  }
-
-  const workflowAgent = normalizeWorkflowAgent(body.workflowAgent);
-  if (!workflowAgent) {
-    res.status(400).json({ error: 'workflowAgent is required' });
-    return;
-  }
-
-  const toolName = body.toolName?.trim();
-  if (!toolName) {
-    res.status(400).json({ error: 'toolName is required' });
-    return;
-  }
-
-  const tools = createWorkflowEditorFunctionTools({
-    workspaceId: body.workspaceId,
-    workflow: workflowAgent.workflow,
-    nodeDefinitions: workflowAgent.nodeDefinitions,
-  });
-  const tool = tools.find((item) => item.name === toolName);
-
-  if (!tool) {
-    res.status(404).json({ error: `Tool not found: ${toolName}` });
-    return;
-  }
-
-  try {
-    const result = await tool.execute(body.input);
-    res.json({ result: withWorkflowPatch(result, tools.getDraftWorkflow()) });
-  } catch (err) {
-    res.status(500).json({ result: { success: false, error: err instanceof Error ? err.message : String(err) } });
-  }
-});
-
-function withWorkflowPatch(result: unknown, workflow: Workflow): unknown {
-  const record = result && typeof result === 'object' && !Array.isArray(result)
-    ? result as Record<string, unknown>
-    : null;
-  if (!record || record.success === false || record.workflow_patch) return result;
-  return {
-    ...record,
-    workflow_patch: {
-      workflow_id: workflow.id,
-      nodes: workflow.nodes,
-      edges: workflow.edges,
-      updatedAt: workflow.updatedAt,
-    },
-  };
-}
 
 function verifyRequestKey(req: Request, body: AgentSseRequestBody): boolean {
   const auth = req.headers.authorization;
@@ -385,36 +299,6 @@ function normalizeMessages(messages: AgentSseRequestBody['messages']): Message[]
     })) as Message[];
 }
 
-function insertWorkflowSelectedNodesMessage(messages: Message[], selectedNodes: WorkflowNode[] | undefined): Message[] {
-  if (!selectedNodes?.length) return messages;
-
-  const contextMessage: Message = {
-    id: 'sse-workflow-selected-nodes',
-    channelId: 'sse',
-    senderId: 'workflow-context',
-    senderRole: 'Workflow context',
-    content: `当前选中节点：\n\`\`\`json\n${JSON.stringify(selectedNodes, null, 2)}\n\`\`\``,
-    type: 'text',
-    status: 'completed',
-    createdAt: new Date(0).toISOString(),
-  };
-
-  const latestUserIndex = findLastIndex(messages, (message) => message.senderId === 'user');
-  if (latestUserIndex < 0) return [...messages, contextMessage];
-  return [
-    ...messages.slice(0, latestUserIndex),
-    contextMessage,
-    ...messages.slice(latestUserIndex),
-  ];
-}
-
-function findLastIndex<T>(items: T[], predicate: (item: T) => boolean): number {
-  for (let index = items.length - 1; index >= 0; index -= 1) {
-    if (predicate(items[index])) return index;
-  }
-  return -1;
-}
-
 function normalizeSkills(input: AgentSseRequestBody['skills'] | AgentSseRequestBody['skill']): string[] | undefined {
   if (!input) return undefined;
   const values = Array.isArray(input) ? input : [input];
@@ -429,59 +313,7 @@ function isRetryableLangChainStall(error: string | undefined): boolean {
   return typeof error === 'string' && error.includes(LANGCHAIN_STALL_ERROR);
 }
 
-function normalizeWorkflowAgent(input: AgentSseRequestBody['workflowAgent']): {
-  workflow: Workflow;
-  nodeDefinitions: NodeTypeDefinition[];
-  selectedNodes?: WorkflowNode[];
-} | null {
-  if (!input || typeof input !== 'object') return null;
-  if (!isWorkflow(input.workflow)) return null;
-  const nodeDefinitions = Array.isArray(input.nodeDefinitions)
-    ? input.nodeDefinitions.filter(isNodeDefinition)
-    : [];
-  if (!nodeDefinitions.length) return null;
-  const selectedNodes = Array.isArray(input.selectedNodes)
-    ? input.selectedNodes.filter(isWorkflowNode)
-    : undefined;
-  return { workflow: input.workflow, nodeDefinitions, selectedNodes };
-}
-
-function isWorkflow(value: unknown): value is Workflow {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
-  const record = value as Record<string, unknown>;
-  return typeof record.id === 'string'
-    && typeof record.name === 'string'
-    && Array.isArray(record.nodes)
-    && Array.isArray(record.edges)
-    && record.nodes.every(isWorkflowNode);
-}
-
-function isWorkflowNode(value: unknown): value is WorkflowNode {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
-  const record = value as Record<string, unknown>;
-  const position = record.position as Record<string, unknown> | undefined;
-  return typeof record.id === 'string'
-    && typeof record.type === 'string'
-    && typeof record.label === 'string'
-    && Boolean(position)
-    && typeof position?.x === 'number'
-    && typeof position?.y === 'number'
-    && typeof record.data === 'object'
-    && record.data !== null
-    && !Array.isArray(record.data);
-}
-
-function isNodeDefinition(value: unknown): value is NodeTypeDefinition {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
-  const record = value as Record<string, unknown>;
-  return typeof record.type === 'string'
-    && typeof record.label === 'string'
-    && typeof record.category === 'string'
-    && typeof record.description === 'string'
-    && Array.isArray(record.properties);
-}
-
-function serializeRuntimeEvent(event: AgentRuntimeEvent, workflow?: Workflow): unknown {
+function serializeRuntimeEvent(event: AgentRuntimeEvent): unknown {
   if (event.type === 'tool_use') {
     return {
       type: event.type,
@@ -489,12 +321,6 @@ function serializeRuntimeEvent(event: AgentRuntimeEvent, workflow?: Workflow): u
       name: event.name,
       input: event.input,
       line: event.line,
-    };
-  }
-  if (event.type === 'tool_result' && workflow) {
-    return {
-      ...event,
-      result: withWorkflowPatch(event.result, workflow),
     };
   }
   return event;

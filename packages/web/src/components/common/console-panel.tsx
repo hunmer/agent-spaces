@@ -1,11 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { usePathname } from 'next/navigation';
 import { useCommandPalette } from '@/stores/command-palette';
 import { Terminal } from 'lucide-react';
 import { FloatingBall } from './floating-ball';
-import { isMiniAppPreviewPath } from '@/lib/routes';
 
 function readShowConsoleBall(): boolean {
   if (typeof window === 'undefined') return false;
@@ -14,7 +12,6 @@ function readShowConsoleBall(): boolean {
 }
 
 export function ConsolePanel() {
-  const pathname = usePathname();
   const toggle = useCommandPalette((s) => s.toggle);
   const open = useCommandPalette((s) => s.open);
   const [show, setShow] = useState(readShowConsoleBall);
@@ -29,7 +26,6 @@ export function ConsolePanel() {
   }, []);
 
   if (!show) return null;
-  if (isMiniAppPreviewPath(pathname)) return null;
 
   return (
     <FloatingBall

@@ -59,7 +59,6 @@ import fileRouter from './routes/file.js';
 import channelRouter from './routes/channel.js';
 import issueRouter from './routes/issue.js';
 import teamRouter, { teamInboxRouter, teamMessageRouter } from './routes/team.js';
-import workflowRouter, { setWorkflowTriggerService, setWorkflowExecutionManager as setRouteWorkflowExecutionManager } from './routes/workflow.js';
 import pluginRouter from './routes/plugin.js';
 import { startServerLoadPluginScripts } from './services/plugin.js';
 import agentRouter from './routes/agent.js';
@@ -76,7 +75,6 @@ import promptTemplateRouter from './routes/prompt-template.js';
 import outputStyleRouter from './routes/output-style.js';
 import mcpRouter from './routes/mcp.js';
 import npmSettingsRouter from './routes/npm-settings.js';
-import workflowSettingsRouter from './routes/workflow-settings.js';
 import subscriptionRouter from './routes/subscription.js';
 import agentSseRouter from './routes/agent-sse.js';
 import searchRouter from './routes/search.js';
@@ -93,7 +91,6 @@ import externalImportRouter from './routes/external-import.js';
 import dataRouter from './routes/data.js';
 import chatRouter from './routes/chat.js';
 import chatRunRouter from './routes/chat-run.js';
-import miniAppRouter from './routes/mini-apps.js';
 import sqliteRouter from './routes/sqlite.js';
 import runtimeRouter, { ensureDiscoveryCache } from './routes/runtime.js';
 import { getUserSettings, setUserAvatarUrl, removeUserAvatarUrl } from './storage/user-settings-store.js';
@@ -101,23 +98,10 @@ import { getDataDir } from './storage/json-store.js';
 import { authMiddleware, verifyToken } from './middleware/auth.js';
 import { handleConnection } from './ws/handler.js';
 import { broadcastToAll } from './ws/connection-manager.js';
-import { startScheduler, stopScheduler } from './agents/scheduler-agent.js';
-import { recoverRunningWorkOnStartup } from './services/issue-retry.js';
+import { startScheduler, stopScheduler } from './agents/scheduler-agent.js';import { recoverRunningWorkOnStartup } from './services/issue-retry.js';
 import { recoverTeamRuntimesOnStartup } from './services/team-internal.js';
 import { startPersistedNotificationServices } from './services/notification-hub/index.js';
-import { InteractionManager } from './services/interaction-manager.js';
-import { ClientNodeManager } from './services/client-node-manager.js';
-import { ExecutionManager } from './services/execution-manager.js';
-import { WorkflowTriggerService } from './services/workflow-trigger-service.js';
-import { registerExecutionChannels } from './ws/execution-channels.js';
-import { registerMiniAppChannels } from './ws/mini-app-channels.js';
-import { broadcastToWorkspace } from './ws/connection-manager.js';
-import { createWorkflowHookRouter } from './routes/workflow-hook.js';
-import { setWorkflowExecutionManager } from './services/builtin-tools/index.js';
 import { ensureBuiltInAgentTemplates } from './services/agent.js';
-import { rebuildIndex as rebuildMiniAppIndex } from './storage/mini-app-store.js';
-import { ensureAgentsConfigs, startServicesWatcher } from './services/mini-app-services.js';
-import { registerAllMiniAppTools } from './services/mini-app-agent.js';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORT = parseInt(process.env.PORT || '3100', 10);
 
@@ -315,38 +299,9 @@ app.use('/api/workspaces/:id/issues', issueRouter);
 app.use('/api/teams', teamRouter);
 app.use('/api/team-inbox', teamInboxRouter);
 app.use('/api/team-messages', teamMessageRouter);
-app.use('/api/workflows', workflowRouter);
-app.use('/api/mini-apps', miniAppRouter);
 app.use('/api/sqlite', sqliteRouter);
 app.use('/api/plugins', pluginRouter);
 
-// Initialize workflow execution infrastructure
-const interactionManager = new InteractionManager();
-const clientNodeManager = new ClientNodeManager();
-const executionManager = new ExecutionManager({
-  interactionManager,
-  clientNodeManager,
-  emit: (channel, payload, workspaceId) => {
-    // Only broadcast workflow execution events when the originating session
-    // has an explicit WS workspace scope. Hook/SSE executions use eventSink instead.
-    if (workspaceId) {
-      broadcastToWorkspace(workspaceId, channel, payload);
-    }
-  },
-});
-const triggerService = new WorkflowTriggerService(PORT);
-triggerService.setExecutionManager(executionManager);
-setWorkflowTriggerService(triggerService);
-setWorkflowExecutionManager(executionManager);
-// 注入给 workflow 路由，启用 POST /api/workflows/:id/execute（SSE 执行入口）
-setRouteWorkflowExecutionManager(executionManager);
-
-// Workflow webhook hook SSE endpoint (after auth middleware)
-app.use('/api/workflows', createWorkflowHookRouter(triggerService, executionManager));
-
-// Register WS execution channels
-registerExecutionChannels(executionManager);
-registerMiniAppChannels();
 app.use('/api/workspaces/:id/commands', commandRouter);
 app.use('/api/workspaces/:id/hooks', hooksRouter);
 app.use('/api/workspaces/:id/agents', agentRouter);
@@ -382,7 +337,6 @@ app.use('/api/prompt-templates', promptTemplateRouter);
 app.use('/api/output-styles', outputStyleRouter);
 app.use('/api/mcps', mcpRouter);
 app.use('/api/npm-settings', npmSettingsRouter);
-app.use('/api/workflow-settings', workflowSettingsRouter);
 app.use('/api/subscriptions', subscriptionRouter);
 app.use('/api/speech-recognition', speechRecognitionRouter);
 app.use('/api/agent-commands', agentCommandsRouter);
@@ -511,15 +465,8 @@ server.listen(PORT, HOST, () => {
   console.log(`[server] listening on http://${HOST}:${PORT}`);
   console.log(`[server] websocket on ws://${HOST}:${PORT}/ws?workspaceId=...`);
   ensureBuiltInAgentTemplates();
-  rebuildMiniAppIndex();
-  ensureAgentsConfigs();
-  startServicesWatcher();
-  registerAllMiniAppTools();
   void startServerLoadPluginScripts();
   recoverRunningWorkOnStartup();
-  triggerService.start().catch((err) => {
-    console.error('[trigger] failed to start:', err);
-  });
   startPersistedNotificationServices().catch((err) => {
     console.error('[notification] failed to restore persisted services:', err);
   });

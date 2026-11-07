@@ -1,8 +1,7 @@
 import type { WebSocket } from 'ws';
 import { randomUUID } from 'node:crypto';
 import type { WSEvent, ClientEventName, Message, AgentConfig } from '@agent-spaces/shared';
-import { addConnection, broadcastToWorkspace, getClientId, handleClientNodeResponse, handleInteractionResponse, onClientConnected, getConnectionByClientId, sendToClient } from './connection-manager.js';
-import type { ClientNodeResponse, InteractionResponse } from '@agent-spaces/shared';
+import { addConnection, broadcastToWorkspace, getClientId, onClientConnected, getConnectionByClientId, sendToClient } from './connection-manager.js';
 import { handleTerminalEvent, sendTerminalSessions } from './terminal-handler.js';
 import { registerChatHandlers } from './chat-handler.js';
 import { appendMessageReply, createMessage, updateMessage } from '../services/message.js';
@@ -11,21 +10,10 @@ import { scheduleChannelTitleGeneration } from '../services/generated-title.js';
 import * as agentService from '../services/agent.js';
 import { runMentionedAgent, stopChannelRuns, handleAnswerQuestion, ensureScheduler, makeContext } from './agent-runner.js';
 import { stripHtml, extractMentionIds, stripMentionIds } from './html-utils.js';
-import { listTasks } from '../services/mini-app-tasks.js';
-import { listConfigs } from '../services/mini-apps.js';
-import { handleMiniAppClientResponse } from '../services/mini-app-client-rpc.js';
 import { postTeamRuntimeMessage } from '../services/team-runtime.js';
 import { loadTeam } from '../services/team-internal.js';
-import { registerBackgroundService, submitBackgroundTask } from '../services/mini-app-background.js';
 
 type EventHandler = (ws: WebSocket, workspaceId: string, data: unknown) => void;
-
-interface MiniAppMessageContext {
-  projectId: string;
-  activeFilePath?: string;
-  projectType?: 'react' | 'html';
-  fileContent?: string;
-}
 
 interface AgentModelOverride {
   apiBase: string;
@@ -71,14 +59,6 @@ export function handleConnection(ws: WebSocket, workspaceId: string) {
   });
 }
 
-registerHandler('miniApp.background.register', (_ws, projectId, data) => {
-  registerBackgroundService(projectId, (data || {}) as any);
-});
-
-registerHandler('miniApp.background.submit', (_ws, projectId, data) => {
-  submitBackgroundTask(projectId, data || {});
-});
-
 // Register terminal handlers
 const terminalEvents = [
   'terminal.list',
@@ -96,7 +76,7 @@ for (const evt of terminalEvents) {
 
 // Register channel handlers
 registerHandler('channel.message', (_ws, workspaceId, data) => {
-  const { channelId, content, type, mentions, attachments, replyToMessageId, contextLength, agentOverride, miniAppContext } = data as {
+  const { channelId, content, type, mentions, attachments, replyToMessageId, contextLength, agentOverride } = data as {
     channelId: string;
     content: string;
     type?: string;
@@ -105,7 +85,6 @@ registerHandler('channel.message', (_ws, workspaceId, data) => {
     replyToMessageId?: string;
     contextLength?: number;
     agentOverride?: AgentModelOverride;
-    miniAppContext?: MiniAppMessageContext;
   };
   const normalizedContextLength = normalizeContextLength(contextLength);
   if (!channelId || (!content && !attachments?.length)) return;
@@ -134,7 +113,6 @@ registerHandler('channel.message', (_ws, workspaceId, data) => {
         excludeHistoryReplyIds: latestReplyId ? [latestReplyId] : undefined,
         contextLength: normalizedContextLength,
         agentOverride,
-        miniAppContext,
       });
     }
     return;
@@ -166,7 +144,6 @@ registerHandler('channel.message', (_ws, workspaceId, data) => {
       excludeHistoryMessageIds: [message.id],
       contextLength: normalizedContextLength,
       agentOverride,
-      miniAppContext,
     });
   }
   for (const teamId of teamIds) {
@@ -230,34 +207,11 @@ registerHandler('agent.stop', (_ws, workspaceId, data) => {
   });
 });
 
-// Workflow interaction response handler
-registerHandler('workflow:interaction', (ws, _workspaceId, data) => {
-  const clientId = getClientId(ws);
-  if (clientId) handleInteractionResponse(data as InteractionResponse, clientId);
-});
-
-registerHandler('workflow:client-node', (ws, _workspaceId, data) => {
-  const clientId = getClientId(ws);
-  if (clientId) handleClientNodeResponse(data as ClientNodeResponse, clientId);
-});
-
-registerHandler('miniApp.clientResponse', (_ws, _workspaceId, data) => {
-  handleMiniAppClientResponse(data);
-});
 
 // Register chat handlers
 registerChatHandlers();
 
-// Workflow UI: 客户端连入即推送当前任务快照（断线/刷新/新标签恢复视图）
-onClientConnected((clientId) => {
-  const conn = getConnectionByClientId(clientId);
-  if (!conn) return;
-  const tasks = listTasks(conn.workspaceId);
-  sendToClient(clientId, { event: 'miniApp.taskSnapshot', data: { tasks } });
-  // 配置全量快照：UI 据此建立内存缓存，不再直接 readConfig
-  const configs = listConfigs(conn.workspaceId);
-  sendToClient(clientId, { event: 'miniApp.configSnapshot', data: { configs } });
-});
+
 
 export { broadcastToWorkspace } from './connection-manager.js';
 export { stopChannelRuns, hasActiveChannelRuns, markInactiveChannelRunsStopped } from './agent-runner.js';

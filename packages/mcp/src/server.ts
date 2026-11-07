@@ -55,23 +55,6 @@ export function createMcpServer(
 ): { server: Server; tools: McpToolDef[] } {
   const overrides: Record<string, (args: Record<string, unknown>) => Promise<unknown>> = {};
 
-  // workflow_execute 适配：SDK 的 SSE 路由在服务器不存在，改走 WebSocket 真实执行
-  if (wsConfig) {
-    overrides.workflow_execute = async (args) => {
-      const workflowId = String(args.arg0 ?? '');
-      if (!workflowId) throw new Error('workflow_execute 需要 arg0=workflowId');
-      // arg1 可能是 { input } 或直接的 input 对象；兼容两种
-      let input: Record<string, unknown> | undefined;
-      const a1 = args.arg1;
-      if (a1 && typeof a1 === 'object') {
-        const obj = a1 as Record<string, unknown>;
-        input = (obj.input && typeof obj.input === 'object' ? obj.input : obj) as Record<string, unknown>;
-      }
-      const { executeWorkflowViaWs } = await import('./workflow-executor.js');
-      return executeWorkflowViaWs(wsConfig, { workflowId, input });
-    };
-  }
-
   const tools = buildToolRegistry(sdk, overrides);
   const toolsByName = new Map(tools.map((t) => [t.name, t]));
 

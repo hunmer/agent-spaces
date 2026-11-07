@@ -23,7 +23,6 @@ import { cn } from "@/lib/utils";
 import type { AppNotification, Issue, NotificationType } from "@agent-spaces/shared";
 import { useState, useEffect, useMemo } from "react";
 import { sdk } from "@/lib/sdk";
-import { IssueDetailWorkflowPanel } from "@/components/issue/issue-detail-workflow-panel";
 
 const typeIcon: Record<string, string> = {
   issue_completed: "✓",
@@ -221,14 +220,6 @@ export function NotificationCenterDialog({
                   <p className="text-xs text-muted-foreground">
                     {formatDistanceToNow(new Date(show.createdAt), { addSuffix: true })}
                   </p>
-                  {isIssueNotification(show) && (show.data.issueId as string) && (
-                    <div className="mt-4">
-                      <NotificationIssueWorkflow
-                        workspaceId={activeWsId}
-                        issueId={show.data.issueId as string}
-                      />
-                    </div>
-                  )}
                 </div>
               ) : filtered.length === 0 ? (
                 <div className="px-6 py-12 text-center text-sm text-muted-foreground">
@@ -315,29 +306,3 @@ export function NotificationCenterDialog({
   );
 }
 
-function isIssueNotification(n: AppNotification): boolean {
-  return n.type === 'issue_completed' || n.type === 'issue_failed';
-}
-
-function NotificationIssueWorkflow({ workspaceId, issueId }: { workspaceId: string; issueId: string }) {
-  const t = useTranslations('issue');
-  const [issue, setIssue] = useState<Issue | null>(null);
-
-  useEffect(() => {
-    let active = true;
-    setIssue(null);
-    sdk.issue.get(workspaceId, issueId)
-      .then((res) => { if (active) setIssue(res); })
-      .catch(() => { if (active) setIssue(null); });
-    return () => { active = false; };
-  }, [workspaceId, issueId]);
-
-  if (!issue) return null;
-  return (
-    <IssueDetailWorkflowPanel
-      issue={issue}
-      workspaceId={workspaceId}
-      t={t}
-    />
-  );
-}

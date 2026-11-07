@@ -318,7 +318,6 @@ export function FlexLayoutShell({
   }, []);
 
   // 添加浮动窗口（参考 flexlayout demo 的 Actions.createPopout）
-  // 支持任意 addableComponent（含 miniApp）；调用方传入目标组件。
   const handleAddFloat = useCallback((comp: AddableComponent) => {
     const api = layoutRef.current;
     const rootDiv = api?.getRootDiv();

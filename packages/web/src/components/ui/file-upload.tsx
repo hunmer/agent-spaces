@@ -10,8 +10,7 @@ import { HoverCard, HoverCardContent, HoverCardTrigger } from "./hover-card";
 import { CANVAS_IMAGE_DROP_MIME, debugCanvasImageDrag, getCanvasImageDropUrls, setCanvasImageDragData } from "./file-upload-drop";
 
 // 文件列表拖拽排序的互斥标记：写入 dataTransfer 表示当前在列表内排序。
-// 嵌入 mini-app（game-asset-canvas）时，画布 handleDrop 见此标记直接 return，
-// 防止排序松手落画布误建图片节点。字符串需与 mini-app 画布端识别的标记一致。
+// 拖拽排序时写入互斥标记 MIME，画布 handleDrop 见此标记直接 return，防止误建节点。
 const IMAGE_REORDER_MIME = "application/x-image-reorder";
 
 export interface FileUploadFileLike {
@@ -198,7 +197,7 @@ export function FileUpload<TFile extends FileUploadFileLike = File>({
 
   // 拖拽排序：拖起一项，悬停到另一项上时实时重排（受控 value 经 onChange 回写）。
   // drop 时清空状态。仅 sortable=true 启用。
-  // 同时写入互斥标记 MIME：mini-app 画布 handleDrop 见此标记直接 return，
+  // 同时写入互斥标记 MIME：
   // 防止排序松手落画布时误建图片节点（浏览器会把可拖拽元素默认转成 dataTransfer.files）。
   const handleSortDragStart = useCallback((e: DragEvent<HTMLDivElement>, item: FileUploadFile<TFile>) => {
     const imageUrl = item.file.type.startsWith("image/") ? getUploadedFileUrl(item.file) : undefined;

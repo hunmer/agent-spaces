@@ -13,7 +13,6 @@ import {
   createDatabaseFunctionTools,
   createTeamFunctionTools,
   createWorkspaceFileFunctionTools,
-  createWorkflowExecutionFunctionTools,
 } from '../services/builtin-tools/index.js';
 
 const router = Router();
@@ -127,9 +126,6 @@ router.post('/sessions/:sessionId/run', async (req, res) => {
       ...createCommandFunctionTools(workspaceId, tools),
       ...createDatabaseFunctionTools(workspaceId, tools),
       ...createWorkspaceFileFunctionTools(workspaceId, tools, () => fileWorkspace),
-      ...createWorkflowExecutionFunctionTools(workspaceId, tools, {
-        boundWorkflowPluginTools: agent.boundWorkflowPluginTools,
-      }),
     ];
     const runtimePrompt = buildChatRuntimePrompt({
       workspaceId,
@@ -142,8 +138,6 @@ router.post('/sessions/:sessionId/run', async (req, res) => {
       boundDirs: fileWorkspace?.boundDirs,
       workingDir,
       builtInTools: functionTools.map((tool) => ({ name: tool.name, description: tool.description })),
-      boundWorkflowIds: agent.boundWorkflowIds,
-      boundWorkflowPluginTools: agent.boundWorkflowPluginTools,
     });
     const result = await runtime.execute(runtimePrompt, workingDir, {
       maxTurns: 100,
@@ -290,9 +284,6 @@ router.post('/agents/:id/run', async (req, res) => {
       ...createAgentFunctionTools(id, tools),
       ...createCommandFunctionTools(id, tools),
       ...createDatabaseFunctionTools(id, tools),
-      ...createWorkflowExecutionFunctionTools(id, tools, {
-        boundWorkflowPluginTools: agent.boundWorkflowPluginTools,
-      }),
     ];
     const runtimePrompt = buildChatRuntimePrompt({
       workspaceId: id,
@@ -305,8 +296,6 @@ router.post('/agents/:id/run', async (req, res) => {
       boundDirs: chatService.getAgentWorkspace(id)?.boundDirs,
       workingDir,
       builtInTools: functionTools.map((tool) => ({ name: tool.name, description: tool.description })),
-      boundWorkflowIds: agent.boundWorkflowIds,
-      boundWorkflowPluginTools: agent.boundWorkflowPluginTools,
     });
     const result = await runtime.execute(runtimePrompt, workingDir, {
       maxTurns: 100,
@@ -553,8 +542,6 @@ interface ChatRuntimePromptOptions {
   boundDirs?: string[];
   workingDir: string;
   builtInTools: Array<{ name: string; description: string }>;
-  boundWorkflowIds?: string[];
-  boundWorkflowPluginTools?: Array<{ pluginId: string; toolName: string }>;
 }
 
 export function buildChatRuntimePrompt(options: ChatRuntimePromptOptions): string {
@@ -570,8 +557,6 @@ export function buildChatRuntimePrompt(options: ChatRuntimePromptOptions): strin
       boundDirs: options.boundDirs,
       workingDir: options.workingDir,
       builtInTools: options.builtInTools,
-      boundWorkflowIds: options.boundWorkflowIds,
-      boundWorkflowPluginTools: options.boundWorkflowPluginTools,
     },
   );
 }

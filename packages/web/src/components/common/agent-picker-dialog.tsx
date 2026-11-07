@@ -12,14 +12,6 @@ import { Button } from '@/components/ui/button';
 import { AgentIcon } from '@/components/common/agent-icon';
 import { X } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useWorkflowStore } from '@/stores/workflow';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 
 export interface AgentPickerItem {
   id: string;
@@ -57,8 +49,6 @@ export function AgentPickerDialog({
   loading,
   singleSelect,
 }: AgentPickerDialogProps) {
-  const { workflows, loadWorkflows } = useWorkflowStore();
-  const [workflowId, setWorkflowId] = useState<string>('');
   const [selected, setSelected] = useState<string[]>(initialSelected ?? []);
 
   // 用 ref 持有最新的 initialSelected，避免父组件每次渲染传入新数组引用导致
@@ -68,27 +58,13 @@ export function AgentPickerDialog({
 
   useEffect(() => {
     if (open) {
-      setWorkflowId('');
       setSelected(initialSelectedRef.current ?? []);
-      if (useWorkflowStore.getState().workflows.length === 0) {
-        loadWorkflows();
-      }
     }
     // 仅在 open 翻转时初始化，不依赖 initialSelected 引用
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, loadWorkflows]);
+  }, [open]);
 
-  const filteredAgents = useMemo(() => {
-    if (!workflowId || workflowId === '__all__') return agents;
-    const wf = workflows.find((w) => w.id === workflowId);
-    if (!wf) return agents;
-    const agentIds = new Set(
-      wf.nodes
-        .filter((n) => n.type === 'agent')
-        .map((n) => n.data.agentConfigId),
-    );
-    return agents.filter((a) => agentIds.has(a.id));
-  }, [agents, workflowId, workflows]);
+  const filteredAgents = useMemo(() => agents, [agents]);
 
   const handleToggle = (id: string) => {
     setSelected((prev) => {
@@ -111,21 +87,6 @@ export function AgentPickerDialog({
           <DialogTitle>{title}</DialogTitle>
           {description && <DialogDescription>{description}</DialogDescription>}
         </DialogHeader>
-        {workflows.length > 0 && (
-          <div className="shrink-0 px-6 pb-3">
-            <Select value={workflowId} onValueChange={(v) => { if (v) setWorkflowId(v); }}>
-              <SelectTrigger className="h-8 text-sm">
-                <SelectValue placeholder="按 Workflow 过滤" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__all__">全部 Agent</SelectItem>
-                {workflows.map((wf) => (
-                  <SelectItem key={wf.id} value={wf.id}>{wf.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        )}
         <div className="min-h-0 flex-1 pb-2 overflow-y-auto px-6 space-y-3">
           <div className="space-y-0.5">
             {filteredAgents.map((agent) => (

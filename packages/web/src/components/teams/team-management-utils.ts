@@ -1,5 +1,3 @@
-import type { WorkflowTemplate } from "@agent-spaces/shared";
-
 export const PANEL_ID_LIST = "team-list";
 export const PANEL_ID_CHAT = "team-chat";
 export const PANEL_ID_DETAIL = "team-detail";
@@ -23,26 +21,6 @@ export function loadSavedLayout(): Record<string, number> {
   } catch {
     return DEFAULT_LAYOUT;
   }
-}
-
-export function extractAgentRunIds(workflow: WorkflowTemplate): string[] {
-  const ids: string[] = [];
-  for (const node of workflow.nodes ?? []) {
-    if (node.type !== "agent" && node.type !== "agent_run") continue;
-    const data = node.data ?? {};
-    // 兼容两种数据结构：
-    // 1. 内联 agent 定义：node.data.agent.id
-    // 2. 引用模式：node.data.agentConfigId
-    const agentObj = data.agent as { id?: unknown } | undefined;
-    const fromAgent = agentObj && typeof agentObj.id === "string" ? agentObj.id.trim() : "";
-    const fromConfigId = typeof data.agentConfigId === "string" ? data.agentConfigId.trim() : "";
-    const id = fromAgent || fromConfigId;
-    if (id) ids.push(id);
-  }
-  const result = Array.from(new Set(ids));
-  // eslint-disable-next-line no-console
-  console.log("[extractAgentRunIds]", { workflowName: workflow.name, nodeCount: (workflow.nodes ?? []).length, extractedIds: result });
-  return result;
 }
 
 export function formatTime(value?: string | null) {

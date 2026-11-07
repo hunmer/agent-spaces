@@ -82,8 +82,8 @@ export function ChannelList({ workspaceId }: ChannelListProps) {
   const agents = useAgentStore(s => s.agents);
   const ensureAgents = useAgentStore(s => s.ensure);
 
-  const activeChannels = useMemo(() => channels.filter(c => !c.archived && c.type !== 'mini-apps'), [channels]);
-  const archivedChannels = useMemo(() => channels.filter(c => c.archived && c.type !== 'mini-apps'), [channels]);
+  const activeChannels = useMemo(() => channels.filter(c => !c.archived), [channels]);
+  const archivedChannels = useMemo(() => channels.filter(c => c.archived), [channels]);
 
   useEffect(() => {
     setInitialLoading(true);

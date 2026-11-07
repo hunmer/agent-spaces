@@ -1,16 +1,14 @@
 'use client';
 
 import { useEffect, useState, useRef, useCallback } from 'react';
-import type { IssueComment, IssueCommentDeletedPayload, OutputField, Workflow } from '@agent-spaces/shared';
+import type { IssueComment, IssueCommentDeletedPayload } from '@agent-spaces/shared';
 import { useTranslations } from 'next-intl';
 import { motion } from 'framer-motion';
 import {
   MessageSquare, X, MoreHorizontal, Users, Calendar, Paperclip, Plus,
-  ArrowRight, Pencil, Info, MessagesSquare, Play, Pause, Square,
-  RotateCcw, ArrowLeft, GitBranch, Workflow as WorkflowIcon,
+  ArrowRight, Pencil, Info, MessagesSquare, Play, RotateCcw,
+  ArrowLeft, GitBranch,
 } from 'lucide-react';
-import { useRouter } from 'next/navigation';
-import { nativeNavigate } from '@/lib/navigate';
 import { useIssueStore } from '@/stores/issue';
 import { useMobilePanelStore } from '@/stores/mobile-panel';
 import { useAgentStore } from '@/stores/agent';
@@ -20,9 +18,6 @@ import { ChatComposerInput } from '@/components/chat/chat-composer-input';
 import { normalizeChannelMembersToAgentIds, getMemberDisplayName } from '@/lib/agent-members';
 import { sdk } from '@/lib/sdk';
 import { getWS } from '@/lib/ws';
-import { workflowApi, executionLogApi } from '@/lib/workflow-api';
-import { IssueDetailWorkflowPanel } from './issue-detail-workflow-panel';
-import { ExecutionInputDialog } from '@/components/workflow/workflow-execution-input-dialog';
 import { IssueDetailComments } from './issue-detail-comments';
 import { IssueDetailInfoPanel } from './issue-detail-info-panel';
 import { CommentNavigator } from './comment-navigator';
@@ -65,25 +60,19 @@ interface IssueDetailProps {
 }
 
 export function IssueDetail({ workspaceId }: IssueDetailProps) {
-  const { issues, activeIssueId, startIssue, pauseIssue, resumeIssue, interruptIssue, updateIssue, deleteIssue } = useIssueStore();
+  const { issues, activeIssueId, startIssue, updateIssue, deleteIssue } = useIssueStore();
   const agents = useAgentStore((s) => s.agents);
   const ensureAgents = useAgentStore((s) => s.ensure);
-  const router = useRouter();
   const [infoOpen, setInfoOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [comments, setComments] = useState<IssueComment[]>([]);
   const [commentsLoading, setCommentsLoading] = useState(false);
   const [expandedCommentIds, setExpandedCommentIds] = useState<Set<string>>(() => new Set());
   const [composerOpen, setComposerOpen] = useState(false);
-  const [startInputOpen, setStartInputOpen] = useState(false);
   const [createChannelOpen, setCreateChannelOpen] = useState(false);
-  const [startWorkflow, setStartWorkflow] = useState<Workflow | null>(null);
-  const [retryInputValues, setRetryInputValues] = useState<Record<string, string> | undefined>(undefined);
-  const [retryEnvValues, setRetryEnvValues] = useState<Record<string, string> | undefined>(undefined);
   const commentsViewportRef = useRef<HTMLDivElement | null>(null);
   const commentRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const t = useTranslations('issue');
-  const tw = useTranslations('workflows');
 
   const issue = issues.find((i) => i.id === activeIssueId);
   const issueId = issue?.id;
@@ -120,22 +109,6 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
   useEffect(() => {
     ensureAgents();
   }, [ensureAgents]);
-
-  useEffect(() => {
-    let active = true;
-    setStartWorkflow(null);
-    if (!issue?.workflowId) return () => { active = false; };
-    workflowApi.get(issue.workflowId)
-      .then((workflow) => {
-        if (active) setStartWorkflow(workflow);
-      })
-      .catch(() => {
-        if (active) setStartWorkflow(null);
-      });
-    return () => {
-      active = false;
-    };
-  }, [issue?.workflowId]);
 
   useEffect(() => {
     if (!issueId) return;
@@ -241,38 +214,6 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
     });
   })();
 
-  const startNode = startWorkflow?.nodes.find((node) => node.type === 'start') ?? null;
-  const startNodeLabel = startNode?.label || t('detail.start');
-
-  const stringifyValues = (values: Record<string, unknown> | undefined): Record<string, string> | undefined => {
-    if (!values) return undefined;
-    const out: Record<string, string> = {};
-    for (const [k, v] of Object.entries(values)) {
-      if (v == null) continue;
-      out[k] = typeof v === 'string' ? v : JSON.stringify(v);
-    }
-    return out;
-  };
-
-  const handleRetryFailed = useCallback(async () => {
-    if (!issue?.workflowId) return;
-    try {
-      const logs = await executionLogApi.list(issue.workflowId);
-      const last = logs
-        .filter((log) => log.issueId === issue.id)
-        .sort((a, b) => b.startedAt - a.startedAt)[0];
-      const startStep = last?.steps?.find((step) => (
-        (startNode?.id && step.nodeId === startNode.id)
-        || step.nodeLabel === startNodeLabel
-      ));
-      const input = (startStep?.output ?? startStep?.input ?? undefined) as Record<string, unknown> | undefined;
-      setRetryInputValues(stringifyValues(input));
-      setRetryEnvValues(undefined);
-      setStartInputOpen(true);
-    } catch { /* ignore */ }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [issue?.id, issue?.workflowId, startNode?.id, startNodeLabel]);
-
   if (!issue || !normalizedIssue) {
     return (
       <div className="flex items-center justify-center h-full text-sm text-muted-foreground">
@@ -283,20 +224,13 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
 
   const canStart = issue.status === 'draft' || issue.status === 'stopped';
   const canRerun = issue.status === 'completed';
-  const isWorkflowRunning = issue.workflowExecutionStatus === 'running';
-  const isWorkflowPaused = issue.workflowExecutionStatus === 'paused';
   const isError = issue.status === 'error';
-  const canPause = isWorkflowRunning && !isError;
-  const canStop = (isWorkflowRunning || isWorkflowPaused) && !isError;
 
   const statusDotColor = issue.status === 'completed' ? 'bg-green-500'
     : issue.status === 'in_progress' ? 'bg-blue-500'
     : issue.status === 'stopped' ? 'bg-slate-500'
     : issue.status === 'error' ? 'bg-red-500'
     : 'bg-yellow-500';
-
-  const startInputFields = (Array.isArray(startNode?.data?.inputFields) ? startNode.data.inputFields : []) as OutputField[];
-  const workflowVariableFields = (Array.isArray(startWorkflow?.variables) ? startWorkflow.variables : []) as OutputField[];
 
   return (
     <div className="flex h-full overflow-hidden">
@@ -322,39 +256,15 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">
                   {canStart && (
-                    <Button size="sm" variant="outline" className="h-6 px-2 text-xs" onClick={() => setStartInputOpen(true)}>
+                    <Button size="sm" variant="outline" className="h-6 px-2 text-xs" onClick={() => void startIssue(workspaceId, issue.id)}>
                       <Play className="h-3 w-3 mr-1" />
                       {t('detail.start')}
                     </Button>
                   )}
                   {canRerun && (
-                    <Button size="sm" variant="outline" className="h-6 px-2 text-xs dark:!text-gray-200" onClick={() => setStartInputOpen(true)}>
+                    <Button size="sm" variant="outline" className="h-6 px-2 text-xs dark:!text-gray-200" onClick={() => void startIssue(workspaceId, issue.id)}>
                       <RotateCcw className="h-3 w-3 mr-1" />
                       {t('detail.rerun')}
-                    </Button>
-                  )}
-                  {isWorkflowPaused && (
-                    <Button size="sm" variant="outline" className="h-6 px-2 text-xs" onClick={() => resumeIssue(workspaceId, issue.id)}>
-                      <Play className="h-3 w-3 mr-1" />
-                      {tw('execution.resume')}
-                    </Button>
-                  )}
-                  {canPause && (
-                    <Button size="sm" variant="outline" className="h-6 px-2 text-xs" onClick={() => pauseIssue(workspaceId, issue.id)}>
-                      <Pause className="h-3 w-3 mr-1" />
-                      {tw('execution.pause')}
-                    </Button>
-                  )}
-                  {canStop && (
-                    <Button size="sm" variant="outline" className="h-6 px-2 text-xs text-destructive hover:text-destructive" onClick={() => interruptIssue(workspaceId, issue.id)}>
-                      <Square className="h-3 w-3 mr-1" />
-                      {tw('execution.stop')}
-                    </Button>
-                  )}
-                  {issue.status === 'error' && issue.workflowExecutionStatus !== 'paused' && (
-                    <Button size="sm" variant="outline" className="h-6 px-2 text-xs" onClick={handleRetryFailed}>
-                      <RotateCcw className="h-3 w-3 mr-1" />
-                      {t('detail.resumeFailed')}
                     </Button>
                   )}
                   {issue.retryPaused && issue.status === 'error' && (
@@ -392,7 +302,7 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
             className="flex min-h-full flex-col xl:h-full xl:grid xl:grid-cols-[minmax(0,1fr)_360px] xl:items-stretch"
           >
 
-            {/* Scrollable meta + commands + workflow + attachments */}
+            {/* Scrollable meta + attachments */}
             <div className="shrink-0 space-y-5 p-6 pb-2 xl:min-h-full xl:min-w-0">
               {/* Meta Info Grid — project-detail-view style */}
               <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
@@ -447,13 +357,6 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
                 )}
               </motion.div>
 
-              <motion.div variants={itemVariants}>
-                <IssueDetailWorkflowPanel
-                  issue={normalizedIssue}
-                  workspaceId={workspaceId}
-                  t={t}
-                />
-              </motion.div>
 
               {/* Attachments Placeholder — project-detail-view style */}
               <motion.div variants={itemVariants} className="space-y-3">
@@ -552,22 +455,6 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
                             </p>
                           </div>
                         </div>
-                        {issue.workflowId && startWorkflow && (
-                          <button
-                            type="button"
-                            onClick={() => nativeNavigate(router, `/workflows/${issue.workflowId}`)}
-                            className="group flex items-start gap-3 rounded-md text-left transition-colors hover:bg-muted/40"
-                          >
-                            <WorkflowIcon className="h-5 w-5 mt-0.5 text-muted-foreground" />
-                            <div className="min-w-0">
-                              <p className="text-muted-foreground">{t('detail.workflow', { defaultValue: 'Workflow' })}</p>
-                              <p className="mt-1 flex items-center gap-1 truncate text-xs font-medium">
-                                <span className="truncate">{startWorkflow.name}</span>
-                                <ArrowRight className="h-3 w-3 shrink-0 opacity-0 transition-opacity group-hover:opacity-100" />
-                              </p>
-                            </div>
-                          </button>
-                        )}
                         {issue.branch && (
                           <div className="flex items-start gap-3">
                             <GitBranch className="h-5 w-5 mt-0.5 text-muted-foreground" />
@@ -588,13 +475,6 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
                         )}
                       </motion.div>
 
-                      <motion.div variants={itemVariants}>
-                        <IssueDetailWorkflowPanel
-                          issue={normalizedIssue}
-                          workspaceId={workspaceId}
-                          t={t}
-                        />
-                      </motion.div>
 
                       <motion.div variants={itemVariants} className="space-y-3">
                         <div className="flex items-center justify-between">
@@ -734,24 +614,6 @@ export function IssueDetail({ workspaceId }: IssueDetailProps) {
           onSubmit={async (data) => {
             await updateIssue(workspaceId, issue.id, data);
           }}
-        />
-      )}
-
-      {issue.workflowId && (
-        <ExecutionInputDialog
-          open={startInputOpen}
-          fields={startInputFields}
-          variableFields={workflowVariableFields}
-          startNodeLabel={startNodeLabel}
-          workflowId={issue.workflowId}
-          restoreSavedValues={false}
-          initialInputValues={retryInputValues}
-          initialEnvValues={retryEnvValues}
-          onOpenChange={(open) => {
-            setStartInputOpen(open);
-            if (!open) { setRetryInputValues(undefined); setRetryEnvValues(undefined); }
-          }}
-          onSubmit={(values, env) => startIssue(workspaceId, issue.id, values, env)}
         />
       )}
 

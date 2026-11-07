@@ -10,19 +10,17 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import { Palette, Mic, GitBranch, Store, Bot, Info, Keyboard, Database, Package, BookOpen, Workflow, TerminalSquare, Settings } from "lucide-react";
+import { Palette, Mic, GitBranch, Store, Bot, Info, Database, Package, BookOpen, TerminalSquare, Settings } from "lucide-react";
 import { GitSettingsForm } from "@/components/git/git-settings-form";
 import { AppearanceTab } from "./settings/appearance-tab";
 import { GeneralTab } from "./settings/general-tab";
 import { SpeechSettingsTab } from "./settings/speech-settings-tab";
 import { RobotAccountsTab } from "./settings/robot-accounts-tab";
 import { AboutTab } from "./settings/about-tab";
-import { ShortcutsTab } from "./settings/shortcuts-tab";
 import { AgentStoreTab } from "./settings/agent-store-tab";
 import { DataTab } from "./settings/data-tab";
 import { NpmSettingsTab } from "./settings/npm-settings-tab";
 import { ModelCatalogTab } from "./settings/model-catalog-tab";
-import { WorkflowTab } from "./settings/workflow-tab";
 import { RuntimeTab } from "./settings/runtime-tab";
 
 const tabs = [
@@ -32,12 +30,10 @@ const tabs = [
   { key: "agent_store", icon: Store },
   { key: "npm", icon: Package },
   { key: "model_catalog", icon: BookOpen },
-  { key: "workflow", icon: Workflow },
   { key: "runtime", icon: TerminalSquare },
   { key: "data", icon: Database },
   { key: "git", icon: GitBranch },
   { key: "speech", icon: Mic },
-  { key: "shortcuts", icon: Keyboard },
   { key: "about", icon: Info },
 ] as const;
 
@@ -62,12 +58,10 @@ export function SettingsDialog({
     agent_store: t("agentStore"),
     npm: t("npm"),
     model_catalog: t("modelCatalogTab"),
-    workflow: t("workflow"),
     runtime: t("runtime"),
     data: t("data"),
     git: t("git"),
     speech: t("speech"),
-    shortcuts: t("shortcuts"),
     about: t("about"),
   };
 
@@ -85,8 +79,6 @@ export function SettingsDialog({
         return <NpmSettingsTab />;
       case "model_catalog":
         return <ModelCatalogTab />;
-      case "workflow":
-        return <WorkflowTab />;
       case "runtime":
         return <RuntimeTab />;
       case "data":
@@ -95,8 +87,6 @@ export function SettingsDialog({
         return <GitSettings />;
       case "speech":
         return <SpeechSettingsTab />;
-      case "shortcuts":
-        return <ShortcutsTab />;
       case "about":
         return <AboutTab />;
     }

@@ -1,7 +1,6 @@
 "use client";
 
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
-import type { WorkflowTemplate } from "@agent-spaces/shared";
 import { useTranslations } from "next-intl";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
@@ -12,10 +11,8 @@ import type {
   TeamDetail,
 } from "@agent-spaces/sdk";
 import { useAgentStore } from "@/stores/agent";
-import { useWorkflowStore } from "@/stores/workflow";
 import { CreateTeamDialog, type TeamFormDefaults, type TeamFormValues } from "@/components/teams/create-team-dialog";
 import { TeamChatPanel } from "@/components/teams/team-chat-panel";
-import { WorkflowListDialog } from "@/components/workflow/workflow-list-dialog";
 import { TeamListPanel } from "@/components/teams/team-list-panel";
 import { TeamDetailPanel } from "@/components/teams/team-detail-panel";
 import { confirmDialog } from "@/stores/confirm";
@@ -30,7 +27,6 @@ import {
   DEFAULT_LAYOUT,
   LAYOUT_KEY,
   loadSavedLayout,
-  extractAgentRunIds,
 } from "@/components/teams/team-management-utils";
 
 export type TeamManagementPageHandle = {
@@ -68,7 +64,6 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
   const [savedLayout, setSavedLayout] = useState<Record<string, number>>(loadSavedLayout);
   // 右栏初始是否展开，由持久化布局决定（detail 占比 > 0 即展开）
   const [infoSidebarOpen, setInfoSidebarOpen] = useState(() => (loadSavedLayout()[PANEL_ID_DETAIL] ?? DEFAULT_LAYOUT[PANEL_ID_DETAIL]) > 0);
-  const [workflowListOpen, setWorkflowListOpen] = useState(false);
   const isMobile = useIsMobile();
   const [leftDrawerOpen, setLeftDrawerOpen] = useState(false);
   const [rightDrawerOpen, setRightDrawerOpen] = useState(false);
@@ -117,8 +112,6 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
     if (next !== searchParams.toString()) router.replace(next ? `${pathname}?${next}` : pathname);
   }, [activeSession, pathname, router, searchParams, selectedTeamId]);
 
-  const { workflows, loadWorkflows } = useWorkflowStore();
-
   const availableAgents = useMemo(
     () => agents.filter((agent) => agent.enabled !== false && agent.id !== "agent-generator"),
     [agents],
@@ -137,20 +130,7 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
 
   useEffect(() => {
     void ensureAgents();
-    void loadWorkflows();
-  }, [ensureAgents, loadWorkflows]);
-
-  function handleImportFromWorkflow(workflow: WorkflowTemplate) {
-    setWorkflowListOpen(false);
-    const memberIds = extractAgentRunIds(workflow);
-    // eslint-disable-next-line no-console
-    console.log("[handleImportFromWorkflow]", { workflowName: workflow.name, memberIds });
-    openCreateDialogWithDefaults({
-      name: workflow.name,
-      description: workflow.description ?? "",
-      members: memberIds,
-    });
-  }
+  }, [ensureAgents]);
 
   useEffect(() => {
     if (!selectedActorId && availableAgents[0]?.id) {
@@ -366,7 +346,6 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
       selectedTeamId={selectedTeamId}
       availableAgents={availableAgents}
       onCreateTeam={openCreateDialog}
-      onImportFromWorkflow={() => setWorkflowListOpen(true)}
       onSelectTeam={(item) => {
         setSelectedTeamId(item.team_id);
         setLeftDrawerOpen(false);
@@ -511,18 +490,6 @@ export const TeamManagementPage = forwardRef<TeamManagementPageHandle, {
         onSubmit={submitTeam}
       />
 
-      <WorkflowListDialog
-        open={workflowListOpen}
-        workflows={workflows}
-        mode="single"
-        onConfirm={(selected) => {
-          const workflow = selected[0];
-          if (workflow) handleImportFromWorkflow(workflow);
-        }}
-        onCreate={() => {}}
-        onClose={() => setWorkflowListOpen(false)}
-        showCreate={false}
-      />
     </div>
   );
 });

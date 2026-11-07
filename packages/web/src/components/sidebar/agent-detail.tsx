@@ -41,10 +41,6 @@ import {
   Camera,
 } from "lucide-react";
 import { sdk } from "@/lib/sdk";
-import { workflowApi } from "@/lib/workflow-api";
-import { pluginApi } from "@/lib/workflow-plugin-api";
-import { WorkflowListDialog } from "@/components/workflow/workflow-list-dialog";
-import { PluginToolDialog } from "@/components/workflow/plugin-tool-dialog";
 import { useRuntimeCliSettings, type RuntimeCliDiscoveryItem, type SupportedRuntimeKind } from "@/lib/runtime-cli-settings";
 import { DiffViewer } from "@/components/git/diff-viewer";
 import { ToolsDialog } from "@/components/sidebar/tools-dialog";
@@ -107,10 +103,6 @@ export function AgentDetail({
   const [previewPrompt, setPreviewPrompt] = useState("");
   const [bgPickerSrc, setBgPickerSrc] = useState("");
   const [bgPickerOpen, setBgPickerOpen] = useState(false);
-  const [workflowDialogOpen, setWorkflowDialogOpen] = useState(false);
-  const [pluginToolDialogOpen, setPluginToolDialogOpen] = useState(false);
-  const [dialogEnabledPlugins, setDialogEnabledPlugins] = useState<string[]>([]);
-  const [workflows, setWorkflows] = useState<Array<{ id: string; name: string }>>([]);
   const tools = agent.tools ?? [];
   const { items: discoveredRuntimeCliItems } = useRuntimeCliSettings();
 
@@ -172,14 +164,6 @@ export function AgentDetail({
     ensureLLM();
     void loadCatalog();
   }, [ensureLLM, loadCatalog]);
-
-  useEffect(() => {
-    void workflowApi.list().then((items) => setWorkflows(items.map((item) => ({ id: item.id, name: item.name }))));
-    void (async () => {
-      const plugins = await pluginApi.listWorkflowPlugins();
-      setDialogEnabledPlugins(plugins.filter((plugin) => plugin.enabled).map((plugin) => plugin.id));
-    })();
-  }, []);
 
   // 当 provider 确定后（自动匹配或手动选择），将其连接字段同步到 agent。
   // apiBase / apiKey / modelProvider 在 UI 上是 disabled，只能由 provider 决定，
@@ -516,74 +500,6 @@ export function AgentDetail({
       </div>
       )}
 
-      {!hiddenFields?.boundWorkflowIds && (
-      <div className="flex flex-col gap-2.5">
-        <SectionHeader
-          icon={<Wrench className="size-3.5" />}
-          title={t("detail.boundWorkflows")}
-          action={
-            lockedFields?.boundWorkflowIds ? null : <Button variant="ghost" size="icon" className="size-5" onClick={() => setWorkflowDialogOpen(true)}>
-              <Settings2 className="size-3.5" />
-            </Button>
-          }
-        />
-        <div className="flex flex-wrap gap-1.5">
-          {agent.boundWorkflowIds.length > 0 ? (
-            agent.boundWorkflowIds.map((workflowId) => (
-              <span key={workflowId} className="inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs font-medium text-foreground">
-                {workflows.find((item) => item.id === workflowId)?.name || workflowId}
-                {!lockedFields?.boundWorkflowIds ? (
-                  <button
-                    type="button"
-                    onClick={() => onChange("boundWorkflowIds", agent.boundWorkflowIds.filter((id) => id !== workflowId))}
-                    className="hover:text-destructive cursor-pointer"
-                  >
-                    <X className="size-2.5" />
-                  </button>
-                ) : null}
-              </span>
-            ))
-          ) : (
-            <span className="text-xs text-muted-foreground">{t("detail.noBoundWorkflows")}</span>
-          )}
-        </div>
-      </div>
-      )}
-
-      {!hiddenFields?.boundWorkflowPluginTools && (
-      <div className="flex flex-col gap-2.5">
-        <SectionHeader
-          icon={<Wrench className="size-3.5" />}
-          title={t("detail.boundWorkflowPluginTools")}
-          action={
-            lockedFields?.boundWorkflowPluginTools ? null : <Button variant="ghost" size="icon" className="size-5" onClick={() => setPluginToolDialogOpen(true)}>
-              <Settings2 className="size-3.5" />
-            </Button>
-          }
-        />
-        <div className="flex flex-wrap gap-1.5">
-          {agent.boundWorkflowPluginTools.length > 0 ? (
-            agent.boundWorkflowPluginTools.map((item) => (
-              <span key={`${item.pluginId}:${item.toolName}`} className="inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs font-medium text-foreground">
-                {item.pluginId}:{item.toolName}
-                {!lockedFields?.boundWorkflowPluginTools ? (
-                  <button
-                    type="button"
-                    onClick={() => onChange("boundWorkflowPluginTools", agent.boundWorkflowPluginTools.filter((binding) => !(binding.pluginId === item.pluginId && binding.toolName === item.toolName)))}
-                    className="hover:text-destructive cursor-pointer"
-                  >
-                    <X className="size-2.5" />
-                  </button>
-                ) : null}
-              </span>
-            ))
-          ) : (
-            <span className="text-xs text-muted-foreground">{t("detail.noBoundWorkflowPluginTools")}</span>
-          )}
-        </div>
-      </div>
-      )}
-
       {!hiddenFields?.skills && (
       <div className="flex flex-col gap-2.5">
         <SectionHeader
@@ -805,28 +721,6 @@ export function AgentDetail({
         onAddModel={() => {}}
       />
 
-      <WorkflowListDialog
-        open={workflowDialogOpen}
-        workflows={workflows.map((workflow) => ({ id: workflow.id, name: workflow.name, description: '', nodes: [], edges: [], folderId: null, createdAt: 0, updatedAt: 0 }))}
-        mode="multiple"
-        defaultSelectedIds={agent.boundWorkflowIds}
-        onConfirm={(selected) => onChange("boundWorkflowIds", selected.map(wf => wf.id))}
-        onCreate={() => {}}
-        onClose={() => setWorkflowDialogOpen(false)}
-        showCreate={false}
-      />
-
-      <PluginToolDialog
-        open={pluginToolDialogOpen}
-        onOpenChange={setPluginToolDialogOpen}
-        projectId="agent-bindings"
-        enabledPlugins={dialogEnabledPlugins}
-        onEnabledPluginsChange={setDialogEnabledPlugins}
-        persistEnabledPlugins={false}
-        selectable
-        selectedTools={agent.boundWorkflowPluginTools}
-        onSelectedToolsChange={(tools) => onChange("boundWorkflowPluginTools", tools)}
-      />
     </div>
   );
 }

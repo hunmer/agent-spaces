@@ -5,7 +5,6 @@ import type { AgentConfig } from '@agent-spaces/shared';
 import type { AgentRuntime } from '../adapters/agent-runtime-types.js';
 import { listPresets } from './agent.js';
 import { findAgent as findChatAgent } from './chat.js';
-import { listWorkflows } from './workflow.js';
 import { ensureDir, getDataDir, readJsonFile, writeJsonFile } from '../storage/json-store.js';
 import type {
   JsonMap,
@@ -301,27 +300,12 @@ export function findPresetById(agentId: string): AgentConfig | undefined {
   return listPresets('').find((item) => item.id === agentId);
 }
 
-export function findWorkflowAgentConfig(agentId: string): Record<string, unknown> | undefined {
-  for (const workflow of listWorkflows()) {
-    for (const node of workflow.nodes ?? []) {
-      if (node.type !== 'agent_run' && node.type !== 'agent_intent') continue;
-      const data = isObject(node.data) ? node.data : null;
-      if (!data) continue;
-      const agent = asAgentRecord(data.agent);
-      const candidateId = asString(agent?.id) ?? asString(data.agentConfigId);
-      if (candidateId === agentId) return { ...(agent ?? {}), id: agentId };
-    }
-  }
-  return undefined;
-}
 
 export function resolveTeamAgentSource(
   agentId: string,
 ): { agentStore: TeamMembershipAgentStore; agent?: Record<string, unknown> } | null {
   if (findPresetById(agentId)) return { agentStore: 'agent' };
   if (findChatAgent(agentId)) return { agentStore: 'chat' };
-  const workflowAgent = findWorkflowAgentConfig(agentId);
-  if (workflowAgent) return { agentStore: 'custom', agent: workflowAgent };
   return null;
 }
 

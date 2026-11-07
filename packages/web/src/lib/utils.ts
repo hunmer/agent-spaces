@@ -132,8 +132,6 @@ function fallbackCopyToClipboard(text: string): void {
 /**
  * 二进制/资源文件扩展名集合：这些文件不会被源码 import 解析，
  * utf-8 当文本读取无意义，且会触发大体积 fetch（如 wasm 38MB、pck 12MB、glb）。
- * mini-app 的 vendor 运行时资源（pixelorama/director-desk iframe、fabric/painterro fetch+eval）
- * 都是按需懒加载，初始化时无需预读。
  */
 const SKIP_READ_EXTENSIONS = new Set([
   '.wasm', '.pck', '.glb', '.gltf', '.png', '.jpg', '.jpeg', '.gif', '.webp', '.avif', '.bmp',

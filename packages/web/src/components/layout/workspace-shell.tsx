@@ -4,7 +4,7 @@ import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useSearchParams, usePathname } from "next/navigation";
-import { TerminalSquare, Puzzle } from "lucide-react";
+import { TerminalSquare } from "lucide-react";
 import { Model, TabNode, IJsonModel, Actions, ITabRenderValues, Action } from "flexlayout-react";
 import { FlexLayoutShell, type AddableComponent } from "@/components/common/flex-layout-shell";
 import { WorkspaceSwitcher } from "@/components/layout/workspace-switcher";
@@ -30,11 +30,8 @@ import { sendNativeNotification } from "@/lib/native-notification";
 import { useNotificationStore } from "@/stores/notification";
 import { useInspectorHistoryStore } from "@/stores/inspector-history";
 import type { Issue, IssueStatusChangedPayload, AppNotification } from "@agent-spaces/shared";
-import type { MiniAppProject } from "@agent-spaces/sdk";
-import { sdk } from "@/lib/sdk";
 
 const EMPTY_MINI_APP_IDS: string[] = [];
-type LayoutJsonNode = { type?: string; component?: string; name?: string; id?: string; children?: LayoutJsonNode[] };
 
 const panelLoader = () => <PanelLoading />;
 
@@ -169,7 +166,7 @@ const defaultJson: IJsonModel = {
   },
 };
 
-// 工具栏「添加 Tab」可加入的面板清单：单终端（独立 xterm）+ 当前 workspace 选用的 miniApp
+// 工具栏「添加 Tab」可加入的面板清单：单终端（独立 xterm）
 const WORKSPACE_STATIC_ADDABLE: AddableComponent[] = [
   { key: "single-terminal", name: "Terminal", icon: <TerminalSquare className="size-4" /> },
 ];
@@ -209,25 +206,8 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
   const createChannel = useChannelStore((s) => s.createChannel);
   const createIssue = useIssueStore((s) => s.createIssue);
   const workspaceExists = useWorkspaceStore((s) => s.workspaces.some((w) => w.id === workspaceId));
-  const workspaceMiniAppIds = useWorkspaceStore((s) => s.workspaces.find((w) => w.id === workspaceId)?.miniAppIds ?? EMPTY_MINI_APP_IDS);
-  const [workspaceMiniApps, setWorkspaceMiniApps] = useState<MiniAppProject[]>([]);
-  // 工具栏「添加 Tab」下拉项：静态项 + 当前 workspace 选用的 miniApp
-  const addableComponents = useMemo<AddableComponent[]>(() => {
-    const miniAppItems: AddableComponent[] = workspaceMiniApps.map((project) => {
-      const icon = project.icon?.trim();
-      return {
-        key: `mini-app:${project.id}`,
-        name: project.name,
-        defaultName: project.name,
-        icon: icon ? (
-          <span className="text-base leading-none">{icon}</span>
-        ) : (
-          <Puzzle className="size-4" />
-        ),
-      };
-    });
-    return [...WORKSPACE_STATIC_ADDABLE, ...miniAppItems];
-  }, [workspaceMiniApps]);
+  // 工具栏「添加 Tab」下拉项
+  const addableComponents = useMemo<AddableComponent[]>(() => WORKSPACE_STATIC_ADDABLE, []);
   // 用户首次交互后才允许 tab 联动，避免恢复期间覆盖选中状态
   const userInteractedRef = useRef(false);
   useEffect(() => {
@@ -272,45 +252,6 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
     }
     return m;
   });
-
-  useEffect(() => {
-    if (!workspaceMiniAppIds.length) {
-      setWorkspaceMiniApps([]);
-      return;
-    }
-    let cancelled = false;
-    void sdk.miniApp.list().then((projects) => {
-      if (!cancelled) setWorkspaceMiniApps(projects.filter((project) => workspaceMiniAppIds.includes(project.id)));
-    });
-    return () => { cancelled = true; };
-  }, [workspaceMiniAppIds]);
-
-  // 联动移除：workspace 不再选用的 miniApp，其已存在的 tab（含 popout 浮窗）自动删除。
-  // 用 Actions.deleteTab 增量操作，避免重建 model 导致其他 tab 内容（iframe/编辑器）重载。
-  useEffect(() => {
-    if (!workspaceExists) return;
-    const validIds = new Set(workspaceMiniAppIds.map((id) => `mini-app:${id}`));
-    const json = model.toJson() as IJsonModel;
-    const toDelete: string[] = [];
-    const visit = (node: LayoutJsonNode | undefined) => {
-      if (!node || typeof node !== 'object') return;
-      if (node.type === 'tab') {
-        const comp = String(node.component ?? '');
-        if (comp.startsWith('mini-app:') && !validIds.has(comp) && node.id) {
-          toDelete.push(node.id);
-        }
-      }
-      if (Array.isArray(node.children)) node.children.forEach(visit);
-    };
-    visit(json.layout as unknown as LayoutJsonNode);
-    (json.borders ?? []).forEach((b) => (b.children ?? []).forEach(visit));
-    if (toDelete.length === 0) return;
-    // 逐个删除（deleteTab 每次基于当前 model 状态生效）
-    toDelete.forEach((id) => {
-      const n = model.getNodeById(id);
-      if (n && n instanceof TabNode) model.doAction(Actions.deleteTab(id));
-    });
-  }, [workspaceExists, workspaceMiniAppIds, model]);
 
   useEffect(() => {
     const saved = localStorage.getItem(LAYOUT_STORAGE_KEY);
@@ -539,10 +480,6 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
   const factory = useCallback(
     (node: TabNode) => {
       const comp = node.getComponent();
-      if (comp?.startsWith('mini-app:')) {
-        const miniAppId = comp.slice('mini-app:'.length);
-        return <iframe title={node.getName()} src={`/mini-apps-preview?id=${encodeURIComponent(miniAppId)}&embedded=1&workspaceId=${encodeURIComponent(workspaceId)}`} className="size-full border-0" />;
-      }
       switch (comp) {
         case "channel-list":
           return <ChannelList workspaceId={workspaceId} />;
@@ -582,21 +519,9 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
   const onRenderTab = useCallback((node: TabNode, renderValues: ITabRenderValues) => {
     const comp = node.getComponent();
     if (!comp) return;
-    // mini-app tab：显示 manifest 的 icon（emoji），而非 name 文本
-    if (comp.startsWith('mini-app:')) {
-      const miniAppId = comp.slice('mini-app:'.length);
-      const project = workspaceMiniApps.find((p) => p.id === miniAppId);
-      const icon = project?.icon?.trim();
-      renderValues.content = (
-        <span title={node.getName()} className="flex items-center justify-center">
-          {icon ? <span className="text-base leading-none">{icon}</span> : node.getName()}
-        </span>
-      );
-      return;
-    }
     const content = renderTabIcon(comp, node.getName(), gitStatus, terminalSessions, channelMessages, issues);
     if (content) renderValues.content = content;
-  }, [gitStatus, terminalSessions, channelMessages, issues, workspaceMiniApps]);
+  }, [gitStatus, terminalSessions, channelMessages, issues]);
 
   const onModelChange = useCallback(
     (_model: Model, action: Action) => {
@@ -663,7 +588,7 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
           open={issueCreateOpen}
           onOpenChange={(open) => { if (!open) setIssueCreateOpen(false); }}
           agents={agents}
-          onSubmit={(data) => createIssue(workspaceId, data.title, data.description, data.members, data.workflowId)}
+          onSubmit={(data) => createIssue(workspaceId, data.title, data.description, data.members)}
         />
       </div>
     );
@@ -700,7 +625,7 @@ export function WorkspaceShell({ workspaceId, boundDirs }: WorkspaceShellProps) 
         open={issueCreateOpen}
         onOpenChange={(open) => { if (!open) setIssueCreateOpen(false); }}
         agents={agents}
-        onSubmit={(data) => createIssue(workspaceId, data.title, data.description, data.members, data.workflowId)}
+        onSubmit={(data) => createIssue(workspaceId, data.title, data.description, data.members)}
       />
     </div>
   );
