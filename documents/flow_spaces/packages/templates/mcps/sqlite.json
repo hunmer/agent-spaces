@@ -1,9 +1,0 @@
-{
-  "mcpServers": {
-    "sqlite": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-sqlite", "--db-path", "/path/to/db.sqlite"],
-      "env": {}
-    }
-  }
-}
