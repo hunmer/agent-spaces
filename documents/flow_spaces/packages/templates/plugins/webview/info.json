@@ -1,0 +1,23 @@
+{
+  "id": "workflow.webview",
+  "name": "Webview",
+  "name_zh": "Webview",
+  "name_en": "Webview",
+  "version": "1.0.0",
+  "description": "提供通过 customView 展示网页的 webview 节点，Web 环境回退为 iframe",
+  "description_zh": "提供通过 customView 展示网页的 webview 节点，Web 环境回退为 iframe",
+  "description_en": "Provides a webview workflow node rendered with customView and iframe fallback on Web.",
+  "author": { "name": "workflow" },
+  "tags": ["Webview", "iframe", "customView"],
+  "tags_zh": ["Webview", "iframe", "customView"],
+  "tags_en": ["Webview", "iframe", "customView"],
+  "type": "server",
+  "hasWorkflow": true,
+  "hasView": false,
+  "runtimeTargets": ["web", "electron"],
+  "entries": {
+    "main": "main.js",
+    "workflow": "workflow.js"
+  },
+  "config": []
+}

@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Chat · SDK Demo</title>
+  <link rel="stylesheet" href="./css/style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <a href="./index.html" class="back">← 首页</a>
+    <h1>Chat · 会话 / Agent / Workspace / Session</h1>
+  </header>
+
+  <div class="container">
+    <div class="hint">
+      覆盖 <code>sdk.chat</code>：ChatAgent 管理、消息、工作区树、ChatWorkspace 管理、ChatSession 管理、会话状态。
+    </div>
+
+    <!-- Chat Agents -->
+    <div class="card">
+      <h2>Chat Agents</h2>
+      <p class="desc"><code>sdk.chat.listAgents()</code> · <code>listMessages(agentId, limit?, before?)</code> · <code>clearMessages(agentId)</code></p>
+      <div class="row">
+        <div class="field">
+          <label>agentId</label>
+          <input id="in-agent-id" type="text" placeholder="agent id" />
+        </div>
+        <div class="field">
+          <label>limit（listMessages 用）</label>
+          <input id="in-limit" type="text" placeholder="50" />
+        </div>
+      </div>
+      <div class="actions">
+        <button id="btn-agents" class="btn">listAgents</button>
+        <button id="btn-messages" class="btn secondary">listMessages</button>
+        <button id="btn-clear-msg" class="btn danger">clearMessages</button>
+      </div>
+      <div id="agent-table" style="margin-bottom:12px;"></div>
+      <pre id="out-agent" class="output">结果将显示于此</pre>
+    </div>
+
+    <div class="card">
+      <h2>ChatAgent CRUD</h2>
+      <p class="desc"><code>createAgent(data)</code> · <code>updateAgent(id, data)</code> · <code>deleteAgent(id)</code></p>
+      <div class="row">
+        <div class="field">
+          <label>agent id（update / delete 用）</label>
+          <input id="in-agent2-id" type="text" placeholder="agent id" />
+        </div>
+        <div class="field">
+          <label>data（JSON）</label>
+          <input id="in-agent-data" type="text" placeholder='{"name":"my-agent"}' />
+        </div>
+      </div>
+      <div class="actions">
+        <button id="btn-agent-create" class="btn">createAgent</button>
+        <button id="btn-agent-update" class="btn secondary">updateAgent</button>
+        <button id="btn-agent-delete" class="btn danger">deleteAgent</button>
+      </div>
+      <pre id="out-agent-crud" class="output">结果将显示于此</pre>
+    </div>
+
+    <!-- 工作区树 -->
+    <div class="card">
+      <h2>工作区树 & 文件内容</h2>
+      <p class="desc"><code>workspaceTree(agentId, opts?)</code> · <code>workspaceFileContent(agentId, path)</code></p>
+      <div class="row">
+        <div class="field">
+          <label>agentId</label>
+          <input id="in-tree-agent" type="text" placeholder="agent id" />
+        </div>
+        <div class="field">
+          <label>filePath（fileContent 用）</label>
+          <input id="in-tree-path" type="text" placeholder="文件路径" />
+        </div>
+      </div>
+      <div class="actions">
+        <button id="btn-tree" class="btn">workspaceTree</button>
+        <button id="btn-file-content" class="btn secondary">workspaceFileContent</button>
+      </div>
+      <pre id="out-tree" class="output">结果将显示于此</pre>
+    </div>
+
+    <hr style="border:none;border-top:1px dashed var(--border);margin:26px 0;" />
+
+    <!-- Chat Workspaces -->
+    <div class="card">
+      <h2>Chat Workspaces</h2>
+      <p class="desc"><code>sdk.chat.listWorkspaces()</code> · <code>getWorkspaceState(wsId)</code></p>
+      <div class="actions">
+        <button id="btn-ws-list" class="btn">listWorkspaces</button>
+      </div>
+      <div id="ws-table" style="margin-bottom:12px;"></div>
+      <pre id="out-ws" class="output">结果将显示于此</pre>
+    </div>
+
+    <div class="card">
+      <h2>ChatWorkspace CRUD</h2>
+      <p class="desc"><code>createWorkspace(data)</code> · <code>updateWorkspace(id, data)</code> · <code>deleteWorkspace(id)</code> · <code>saveWorkspaceState(id, state)</code></p>
+      <div class="row">
+        <div class="field">
+          <label>workspace id（update / delete 用）</label>
+          <input id="in-ws-id" type="text" placeholder="chat workspace id" />
+        </div>
+        <div class="field">
+          <label>name（create 用）/ data（JSON）</label>
+          <input id="in-ws-data" type="text" placeholder='{"name":"ws-1"}' />
+        </div>
+      </div>
+      <div class="actions">
+        <button id="btn-ws-create" class="btn">createWorkspace</button>
+        <button id="btn-ws-update" class="btn secondary">updateWorkspace</button>
+        <button id="btn-ws-delete" class="btn danger">deleteWorkspace</button>
+        <button id="btn-ws-state-get" class="btn secondary">getWorkspaceState</button>
+      </div>
+      <pre id="out-ws-crud" class="output">结果将显示于此</pre>
+    </div>
+
+    <!-- Chat Sessions -->
+    <div class="card">
+      <h2>Chat Sessions</h2>
+      <p class="desc"><code>listSessions(workspaceId)</code> · <code>createSession(wsId, agentId)</code> · <code>listSessionMessages(wsId, sessionId)</code></p>
+      <div class="field">
+        <label>workspace id</label>
+        <input id="in-sess-ws" type="text" placeholder="chat workspace id" />
+      </div>
+      <div class="actions">
+        <button id="btn-sess-list" class="btn">listSessions</button>
+      </div>
+      <div id="sess-table" style="margin-bottom:12px;"></div>
+      <pre id="out-sess" class="output">结果将显示于此</pre>
+    </div>
+
+    <div class="card">
+      <h2>Session CRUD</h2>
+      <p class="desc"><code>createSession</code> · <code>renameSession</code> · <code>updateSession</code> · <code>deleteSession</code> · <code>listSessionMessages</code> · <code>clearSessionMessages</code></p>
+      <div class="row">
+        <div class="field">
+          <label>workspace id</label>
+          <input id="in-op-ws" type="text" placeholder="workspace id" />
+        </div>
+        <div class="field">
+          <label>session id</label>
+          <input id="in-op-sess" type="text" placeholder="session id" />
+        </div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label>agentId（createSession 用）</label>
+          <input id="in-op-agent" type="text" placeholder="agent id" />
+        </div>
+        <div class="field">
+          <label>title（renameSession 用）/ data（JSON）</label>
+          <input id="in-op-title" type="text" placeholder="新标题 或 update data" />
+        </div>
+      </div>
+      <div class="actions">
+        <button id="btn-sess-create" class="btn">createSession</button>
+        <button id="btn-sess-rename" class="btn secondary">renameSession</button>
+        <button id="btn-sess-delete" class="btn danger">deleteSession</button>
+        <button id="btn-sess-msgs" class="btn secondary">listSessionMessages</button>
+        <button id="btn-sess-clear" class="btn danger">clearSessionMessages</button>
+      </div>
+      <pre id="out-sess-op" class="output">结果将显示于此</pre>
+    </div>
+  </div>
+
+  <script type="module" src="./js/chat.js"></script>
+</body>
+</html>

@@ -1,0 +1,39 @@
+{
+  "dialog": {
+    "editTitle": "Edit Workspace",
+    "newTitle": "New Workspace",
+    "editDescription": "Update workspace settings.",
+    "newDescription": "Create a new workspace bound to a local directory.",
+    "namePlaceholder": "Workspace name"
+  },
+  "agents": "Agents",
+  "addAgent": "Add Agent",
+  "noAgents": "No agents in this workspace",
+  "success": {
+    "title": "Created successfully",
+    "description": "Workspace \"{name}\" has been created successfully.",
+    "switchNow": "Switch to this workspace",
+    "stayHere": "Stay here"
+  },
+  "clone": {
+    "createFromGit": "Create from Git",
+    "fromGitTooltip": "Clone from a Git repository",
+    "selectFolderFirst": "Please select a target folder first",
+    "title": "Create from Git",
+    "description": "Enter a Git repository URL to clone into the selected folder.",
+    "cloneTo": "Will clone to: ",
+    "objects": "objects",
+    "cloning": "Cloning...",
+    "clone": "Clone",
+    "cloneFailed": "Clone failed",
+    "noResponseBody": "No response body",
+    "phase": {
+      "counting": "Counting objects...",
+      "compressing": "Compressing...",
+      "receiving": "Receiving data...",
+      "resolving": "Resolving...",
+      "done": "Done",
+      "error": "Failed"
+    }
+  }
+}

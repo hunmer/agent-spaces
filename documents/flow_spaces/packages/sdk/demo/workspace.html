@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Workspace · SDK Demo</title>
+  <link rel="stylesheet" href="./css/style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <a href="./index.html" class="back">← 首页</a>
+    <h1>Workspace · 工作区</h1>
+  </header>
+
+  <div class="container">
+    <div class="card">
+      <h2>工作区列表</h2>
+      <p class="desc">
+        <code>sdk.workspace.list()</code> —— 返回所有工作区。下方表格渲染 id / name / boundDirs。
+      </p>
+      <div class="actions">
+        <button id="btn-list" class="btn">加载列表</button>
+      </div>
+      <div id="ws-table" style="margin-bottom:12px;"></div>
+      <pre id="out-list" class="output">原始 JSON 将显示于此</pre>
+    </div>
+
+    <div class="card">
+      <h2>查看单个工作区</h2>
+      <p class="desc"><code>sdk.workspace.get(id)</code></p>
+      <div class="row">
+        <div class="field">
+          <label>workspace id</label>
+          <input id="in-get" type="text" placeholder="从上方列表复制 id" />
+        </div>
+      </div>
+      <div class="actions">
+        <button id="btn-get" class="btn">查询</button>
+      </div>
+      <pre id="out-get" class="output">结果将显示于此</pre>
+    </div>
+
+    <div class="card">
+      <h2>创建工作区</h2>
+      <p class="desc"><code>sdk.workspace.create({ name })</code></p>
+      <div class="row">
+        <div class="field">
+          <label>name</label>
+          <input id="in-name" type="text" placeholder="新工作区名称" />
+        </div>
+      </div>
+      <div class="actions">
+        <button id="btn-create" class="btn">创建</button>
+      </div>
+      <pre id="out-create" class="output">结果将显示于此</pre>
+    </div>
+
+    <div class="card">
+      <h2>文件夹浏览</h2>
+      <p class="desc"><code>sdk.workspace.browseFolder(path?)</code> —— 留空列出根目录。</p>
+      <div class="row">
+        <div class="field">
+          <label>path（可选）</label>
+          <input id="in-path" type="text" placeholder="例如 / 或绝对路径" />
+        </div>
+      </div>
+      <div class="actions">
+        <button id="btn-browse" class="btn secondary">浏览</button>
+      </div>
+      <pre id="out-browse" class="output">结果将显示于此</pre>
+    </div>
+  </div>
+
+  <script type="module" src="./js/workspace.js"></script>
+</body>
+</html>

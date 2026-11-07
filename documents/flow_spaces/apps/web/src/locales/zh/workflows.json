@@ -1,0 +1,1284 @@
+{
+  "page": {
+    "title": "工作流",
+    "subtitle": "管理 Workflow 模板",
+    "templates": "模版",
+    "import": "导入",
+    "plugins": "插件管理",
+    "create": "新建工作流",
+    "searchPlaceholder": "搜索工作流...",
+    "tags": "标签",
+    "clearFilter": "清除筛选",
+    "empty": "暂无工作流模板",
+    "createFirst": "创建第一个工作流",
+    "sortBy": "排序",
+    "createdAt": "创建时间",
+    "updatedAt": "最后更新",
+    "lastRunAt": "最后运行",
+    "lastOpenedAt": "最后打开",
+    "asc": "升序",
+    "desc": "降序",
+    "selectMode": "多选",
+    "scheduleFilter": "定时筛选",
+    "scheduleFilterAll": "全部工作流",
+    "scheduleScheduled": "定时运行",
+    "scheduleUnscheduled": "未定时运行",
+    "typeNormal": "普通工作流",
+    "typeWorkspace": "工作空间工作流",
+    "typeCurrent": "当前工作流",
+    "selectedCount": "已选 {count} 项",
+    "exportSelected": "导出选中",
+    "deleteSelected": "删除选中",
+    "confirm": "确定",
+    "cancel": "取消",
+    "openInNewWindow": "新窗口打开"
+  },
+  "card": {
+    "edit": "编辑",
+    "preview": "预览",
+    "duplicate": "复制",
+    "export": "导出",
+    "delete": "删除",
+    "nodes": "{count} 个节点",
+    "defaultInitial": "未",
+    "published": "已发布",
+    "unpublished": "未发布"
+  },
+  "pluginCard": {
+    "added": "已添加",
+    "notAdded": "未添加",
+    "installed": "已安装",
+    "notInstalled": "未安装",
+    "remove": "移除",
+    "addToWorkflow": "添加到 Workflow",
+    "reinstall": "重新安装",
+    "installing": "安装中",
+    "installAndAdd": "安装并添加",
+    "noDescription": "无描述",
+    "tools": "插件工具"
+  },
+  "pluginDetail": {
+    "title": "插件详情",
+    "tabInfo": "基础信息",
+    "tabTools": "工具列表",
+    "type": "类型",
+    "version": "版本",
+    "author": "作者",
+    "tags": "标签",
+    "updatedAt": "更新时间",
+    "loading": "加载中...",
+    "error": "说明文档加载失败",
+    "empty": "暂无说明文档"
+  },
+  "pluginsDialog": {
+    "title": "插件管理",
+    "tabLocal": "本地",
+    "tabStore": "插件商店",
+    "cancelUpdate": "取消更新({count})",
+    "updateAll": "一键更新({count})",
+    "refresh": "刷新",
+    "searchPlaceholder": "搜索插件名称或描述...",
+    "filterByTag": "按标签过滤",
+    "allTags": "全部标签",
+    "allStatus": "全部状态",
+    "statusAll": "全部状态",
+    "statusAdded": "已添加",
+    "statusNotAdded": "未添加",
+    "sortDefault": "默认排序",
+    "sortName": "按名称",
+    "sortStatusLocal": "按添加状态",
+    "sortStatusStore": "按安装状态",
+    "sortTimeLocal": "按安装时间",
+    "sortTimeStore": "按更新时间",
+    "clear": "清除",
+    "emptyStore": "插件商店暂无匹配插件",
+    "emptyLocal": "没有匹配的插件",
+    "emptyHintStore": "请检查商店配置或调整过滤条件",
+    "emptyHintLocal": "插件目录为空或当前过滤条件没有结果",
+    "loadingStore": "加载插件商店...",
+    "loadingLocal": "加载插件...",
+    "missingTitle": "当前工作流缺少插件",
+    "missingSummary": "待添加/开启 {added} 个，未安装 {missing} 个",
+    "enableMissing": "一键添加/开启",
+    "searchPlugin": "搜索 {id}",
+    "uninstalled": "已卸载 {name}",
+    "uninstallFailed": "插件卸载失败，已从本地列表移除",
+    "installed": "已安装 {name}",
+    "installFailed": "插件安装失败",
+    "reinstallUnavailable": "该插件未上架商店，无法重新安装",
+    "updateSummary": "更新完成：成功 {success} 个，失败 {fail} 个",
+    "updated": "已更新 {count} 个插件",
+    "updateCancelled": "已取消 {count} 个等待更新的插件"
+  },
+  "templatesDialog": {
+    "title": "工作流模板",
+    "description": "选择一个模板快速创建工作流",
+    "all": "全部",
+    "searchPlaceholder": "搜索工作流模板...",
+    "loading": "加载中...",
+    "empty": "暂无模板",
+    "agentCount": "{count} 个 Agent",
+    "import": "导入"
+  },
+  "defaultWorkflow": {
+    "name": "新工作流",
+    "startLabel": "开始",
+    "endLabel": "结束"
+  },
+  "outputFields": {
+    "name": "名称",
+    "type": "类型",
+    "dragSortField": "拖拽排序字段",
+    "dragSort": "拖拽排序",
+    "required": "必填",
+    "fieldNamePlaceholder": "字段名",
+    "fileNameFilterPlaceholder": "文件名过滤，如 *.pdf、.png",
+    "defaultValuePlaceholder": "默认值",
+    "selectOptionsPlaceholder": "输入选项",
+    "addOption": "添加",
+    "switchToNativeInput": "切换为原生表单",
+    "switchToVariableInput": "切换为变量表单 input",
+    "descriptionPlaceholder": "描述（可选）",
+    "addField": "添加字段"
+  },
+  "properties": {
+    "startNodeInput": "开始节点输入",
+    "inputFields": "输入字段",
+    "outputFields": "输出字段",
+    "import": "导入",
+    "applyPreset": "应用预设",
+    "applyTestOutput": "应用测试输出",
+    "reset": "重置",
+    "emptyNode": "选择节点查看属性",
+    "loopBodyHint": "循环体节点无需单独配置属性",
+    "testSuccess": "测试成功",
+    "testFailed": "测试失败",
+    "currentJsonPreset": "当前 JSON 预设",
+    "runResult": "运行结果",
+    "runLogs": "运行日志",
+    "jsonPresetAnchor": "JSON 预设",
+    "copy": "复制",
+    "node": "节点",
+    "outputPreview": "输出预览"
+  },
+  "execution": {
+    "status": {
+      "idle": "就绪",
+      "running": "运行中",
+      "paused": "已暂停",
+      "completed": "已完成",
+      "error": "错误",
+      "stopped": "已停止"
+    },
+    "resume": "继续",
+    "execute": "执行",
+    "pause": "暂停",
+    "stop": "停止",
+    "progress": "进度",
+    "elapsed": "耗时",
+    "errors": "{count} 错误",
+    "history": "执行历史",
+    "noLogs": "暂无执行记录",
+    "nodes": "{count} 节点",
+    "copyLog": "复制日志",
+    "copyLogPath": "复制日志文件位置",
+    "deleteLog": "删除日志",
+    "viewSubWorkflow": "查看子工作流",
+    "noSteps": "暂无执行步骤",
+    "selectLog": "选择一条执行记录查看详情",
+    "copy": "复制",
+    "copyError": "复制错误信息",
+    "savePreset": "保存到预设",
+    "executionResult": "{label} 执行结果",
+    "input": "输入",
+    "output": "输出",
+    "logs": "日志",
+    "noInput": "无输入",
+    "noOutput": "无输出",
+    "noLogsContent": "无日志",
+    "nodeType": "节点类型",
+    "none": "无",
+    "start": "开始",
+    "startExecution": "开始执行",
+    "workflowInput": "工作流输入",
+    "initVariables": "初始化变量"
+  },
+  "editor": {
+    "loading": "加载工作流中...",
+    "back": "返回",
+    "backToList": "返回列表",
+    "noWorkflow": "未选择工作流",
+    "properties": "属性",
+    "history": "历史",
+    "staging": "暂存",
+    "agentName": "工作流助手",
+    "inputPlaceholder": "描述要修改的工作流...",
+    "modelSettings": "模型设置",
+    "clearMessages": "清空消息",
+    "agentSettingsTitle": "工作流助手模型设置",
+    "loadingShort": "加载中...",
+    "pluginManager": "插件管理",
+    "untitled": "未命名",
+    "undo": "撤销",
+    "redo": "重做",
+    "exitPreview": "退出预览",
+    "unsavedPreviewTitle": "未保存的编辑",
+    "unsavedPreviewDesc": "你有未保存的编辑，退出后这些更改将丢失。确定要退出吗？",
+    "discard": "放弃编辑",
+    "cancel": "取消",
+    "savePreviewEdits": "保存编辑",
+    "savePreviewEditsTitle": "保存编辑",
+    "savePreviewEditsConfirm": "是否保存编辑到当前工作流？如需保留当前画布状态的版本记录，可以填写版本名称后创建版本并保存。",
+    "createVersionAndSave": "创建版本并保存",
+    "save": "保存 (Ctrl+S)",
+    "export": "导出",
+    "import": "导入",
+    "openLocation": "打开工作流位置",
+    "stopTest": "停止测试",
+    "jsonPreset": "JSON 预设",
+    "noPreset": "暂无预设",
+    "addPreset": "添加",
+    "testScript": "测试脚本",
+    "resetToDefaults": "重置为默认值",
+    "delayExecution": "延迟执行",
+    "delayDescription": "执行当前节点前等待的毫秒数",
+    "variables": "变量",
+    "groups": "分组",
+    "nodeList": {
+      "nodes": "个节点",
+      "groups": "个分组",
+      "group": "分组",
+      "unconnected": "未连接",
+      "empty": "暂无节点",
+      "deleteGroup": "删除分组",
+      "deleteTitle": "删除分组",
+      "deleteConfirm": "确定删除{group}下的 {count} 个节点？",
+      "cancel": "取消",
+      "confirmDelete": "删除",
+      "run": "运行",
+      "modeConnected": "连通分组",
+      "modeNamed": "命名分组",
+      "rename": "重命名",
+      "ungroup": "解散分组",
+      "ungroupConfirm": "确定删除分组“{group}”吗？",
+      "deleteGroupNodes": "同时删除分组内的节点",
+      "batchUngroup": "删除选中 ({count})",
+      "noNamedGroups": "暂无分组"
+    },
+    "exportPng": "导出 PNG",
+    "exportJpeg": "导出 JPEG",
+    "preview": "预览",
+    "manageTriggers": "管理触发器",
+    "triggerSettings": "触发器设置",
+    "missingPlugins": "缺少插件({count})",
+    "executionError": "执行错误",
+    "workflowExecutionError": "工作流执行错误",
+    "runTest": "运行测试",
+    "layoutManager": "布局管理",
+    "clearNodes": "清空节点",
+    "clearNodesConfirmTitle": "清空所有节点",
+    "clearNodesConfirmDesc": "将删除所有节点和连线，仅保留开始与结束节点，并清空输入输出参数。此操作不可撤销，确定继续吗？",
+    "codeFullscreen": {
+      "saved": "已保存",
+      "unsaved": "未保存"
+    }
+  },
+  "sidebar": {
+    "searchNodes": "搜索节点...",
+    "defaultConfig": "默认配置",
+    "addScheme": "新增方案",
+    "deleteScheme": "删除当前方案",
+    "editConfig": "编辑配置",
+    "newSchemeTitle": "新增配置方案",
+    "newSchemeDesc": "输入方案名称，将基于插件默认配置创建新方案。",
+    "schemeNamePlaceholder": "方案名称",
+    "cancel": "取消",
+    "create": "创建",
+    "params": "参数",
+    "outputs": "输出",
+    "idCopied": "节点 ID 已复制"
+  },
+  "pluginPicker": {
+    "title": "选择插件",
+    "searchPlaceholder": "搜索插件...",
+    "filterByTag": "按标签过滤",
+    "allTags": "全部标签",
+    "typeAll": "全部",
+    "typeServer": "服务端",
+    "typeClient": "客户端",
+    "typePlugin": "{type}插件",
+    "loading": "加载插件...",
+    "enabled": "已启用",
+    "nodeCount": "{count} 个节点",
+    "clickToToggle": "点击{action}此插件",
+    "enable": "启用",
+    "disable": "禁用",
+    "noMatch": "没有匹配的插件",
+    "noAvailable": "没有可用的工作流插件"
+  },
+  "menubar": {
+    "edit": "编辑",
+    "save": "保存",
+    "undo": "撤销",
+    "redo": "重做",
+    "selectAll": "全选",
+    "invertSelection": "反选",
+    "canvas": "画布",
+    "horizontalLayout": "自动布局（横向）",
+    "verticalLayout": "自动布局（纵向）",
+    "exportPng": "导出图片 PNG",
+    "exportJpeg": "导出图片 JPEG",
+    "run": "运行",
+    "runWorkflow": "运行工作流",
+    "preview": "预览"
+  },
+  "canvasToolbar": {
+    "exitPreview": "退出预览",
+    "exitPreviewTooltip": "退出执行记录预览",
+    "undo": "撤销 (Ctrl+Z)",
+    "redo": "重做 (Ctrl+Shift+Z)",
+    "drawAreaAddNode": "绘制区域来添加节点",
+    "drawAreaSelectNode": "绘制区域来选中节点",
+    "autoLayout": "自动布局",
+    "horizontalLayout": "横向布局",
+    "verticalLayout": "垂直布局",
+    "gridLayout": "网格平均分布",
+    "rows": "行数",
+    "columns": "列数",
+    "horizontalGap": "水平间距",
+    "verticalGap": "垂直间距",
+    "singleColumn": "单列",
+    "columnPreset": "{count} 列",
+    "applyGrid": "应用网格",
+    "hideMinimap": "隐藏小地图",
+    "showMinimap": "显示小地图",
+    "expandLogs": "展开日志",
+    "collapseLogs": "折叠日志",
+    "openInNewWindow": "新窗口打开",
+    "copiedNodes": "已复制节点",
+    "pasteCopiedNodes": "粘贴",
+    "moveCopiedNodesToStaging": "移动到暂存",
+    "clearCopiedNodes": "清空",
+    "recordCount": "{count} 个节点",
+    "clickConnect": "点击连接",
+    "clickConnectTooltip": "点击两个连接点创建连线"
+  },
+  "canvas": {
+    "mergeToWorkflow": "合并为工作流",
+    "mergeToGroup": "合并成组",
+    "batchDelete": "批量删除"
+  },
+  "triggerDialog": {
+    "title": "触发器设置",
+    "empty": "暂无触发器，点击下方按钮添加",
+    "cronTrigger": "定时触发",
+    "webhook": "Webhook",
+    "enabled": "启用",
+    "cronExpression": "Cron 表达式",
+    "hookName": "Hook 名称",
+    "nextRuns": "下次执行：",
+    "cancel": "取消",
+    "save": "保存",
+    "presets": {
+      "everyMinute": "每分钟",
+      "every5Minutes": "每5分钟",
+      "every30Minutes": "每30分钟",
+      "everyHour": "每小时",
+      "dailyAt0": "每天 0 点",
+      "dailyAt8": "每天 8 点",
+      "mondayAt9": "每周一 9 点",
+      "firstOfMonthAt0": "每月1号 0 点"
+    }
+  },
+  "version": {
+    "count": "{count} 个版本",
+    "saveCurrent": "保存当前版本",
+    "clearAll": "清空所有版本",
+    "empty": "暂无版本记录",
+    "nodes": "{count} 节点",
+    "saveTitle": "保存版本",
+    "namePlaceholder": "版本名称",
+    "cancel": "取消",
+    "save": "保存",
+    "deleteTitle": "确认删除",
+    "deleteConfirm": "确定要删除这个版本吗？此操作不可撤销。",
+    "delete": "删除",
+    "justNow": "刚刚",
+    "minutesAgo": "{count} 分钟前",
+    "hoursAgo": "{count} 小时前"
+  },
+  "operationHistory": {
+    "undo": "撤销 ({count})",
+    "redo": "重做 ({count})",
+    "undoable": "{count} 可撤销",
+    "redoable": "{count} 可重做",
+    "recordCount": "{count} 条记录",
+    "empty": "暂无操作记录",
+    "addNode": "添加节点",
+    "deleteNode": "删除节点",
+    "delete": "删除",
+    "connect": "连接",
+    "deleteEdge": "删除连线",
+    "updateEdgeLabel": "更新连线 Label",
+    "updateEdgeStyle": "更新连线样式",
+    "paste": "粘贴",
+    "move": "移动节点",
+    "updateData": "更新属性",
+    "addGroup": "添加分组",
+    "deleteGroup": "删除分组",
+    "updateTrigger": "更新触发器",
+    "import": "导入"
+  },
+  "staging": {
+    "count": "{count} 个暂存节点",
+    "empty": "暂存区为空",
+    "emptyHint": "将节点拖入此区域保存备用",
+    "uncategorized": "未分类"
+  },
+  "infoDialog": {
+    "title": "工作流信息",
+    "copyInfo": "复制工作流信息",
+    "copied": "已复制",
+    "copySuccess": "工作流信息已复制",
+    "copyFailed": "复制工作流信息失败",
+    "untitled": "未命名",
+    "nameLabel": "标题",
+    "namePlaceholder": "输入工作流标题",
+    "descriptionLabel": "注释",
+    "descriptionPlaceholder": "描述工作流的用途...",
+    "tagsLabel": "标签",
+    "tagPlaceholder": "输入标签后回车",
+    "addTag": "添加",
+    "cancel": "取消",
+    "save": "保存",
+    "publishedLabel": "发布状态",
+    "publishedHint": "发布后可通过分享链接访问，未发布时打开分享页将提示暂未开放",
+    "smartCreateLabel": "智能创建",
+    "smartCreateHint": "保存后自动跳转工作流编辑器，由 agent 根据注释/标题自动生成多 agent 协作结构"
+  },
+  "share": {
+    "missingId": "缺少 workflow_id 参数",
+    "notFound": "工作流不存在",
+    "unpublishedTitle": "该工作流暂未开放",
+    "unpublishedHint": "作者尚未发布此工作流，暂时无法访问。",
+    "nodes": "{count} 节点",
+    "params": "执行参数",
+    "execute": "执行",
+    "executing": "执行中...",
+    "stop": "停止",
+    "noInputHint": "无输入参数，直接执行",
+    "jsonOutput": "JSON 输出",
+    "noOutput": "暂无输出",
+    "fileOutput": "成品输出",
+    "noFileOutput": "暂无文件输出",
+    "fillAndRun": "填写参数并点击执行",
+    "execCompleted": "执行 #{id} 已完成",
+    "execError": "执行 #{id} 出错",
+    "execStopped": "执行 #{id} 已停止"
+  },
+  "variablePicker": {
+    "insertVariable": "插入变量",
+    "workflowInput": "工作流输入",
+    "workflowInfo": "工作流信息",
+    "workflowVariables": "工作流变量",
+    "nodeInput": "节点输入",
+    "nodeOutput": "节点输出",
+    "loopBodyVariables": "循环体变量",
+    "intermediateVariables": "中间变量",
+    "configProperties": "配置属性",
+    "noInputFields": "无输入字段",
+    "noOutputFields": "无输出字段",
+    "noVariables": "无变量",
+    "noConnectedNodes": "没有直接相连的节点"
+  },
+  "nodes": {
+    "operators": {
+      "equals": "等于",
+      "not_equals": "不等于",
+      "greater_than": "大于",
+      "less_than": "小于",
+      "greater_than_or_equal": "大于等于",
+      "less_than_or_equal": "小于等于",
+      "contains": "包含",
+      "not_contains": "不包含",
+      "starts_with": "开头是",
+      "ends_with": "结尾是",
+      "is_empty": "为空",
+      "is_not_empty": "不为空",
+      "is_true": "为真",
+      "is_false": "为假"
+    },
+    "categories": {
+      "flowControl": "流程控制",
+      "ai": "AI",
+      "interaction": "交互",
+      "display": "展示",
+      "miniapp": "Mini App",
+      "utilities": "辅助工具",
+      "sqlite": "数据库",
+      "knowledgeBase": "知识库",
+      "image": "图片"
+    },
+    "start": {
+      "label": "开始",
+      "description": "工作流入口节点，仅支持输出连接"
+    },
+    "end": {
+      "label": "结束",
+      "description": "工作流出口节点，仅支持输入连接"
+    },
+    "run_code": {
+      "label": "运行 JS 代码",
+      "description": "执行自定义 JavaScript 代码并返回对象",
+      "props": {
+        "code": {
+          "label": "代码",
+          "tooltip": "JavaScript 代码。需定义 async function main(params, context) 并返回对象"
+        }
+      }
+    },
+    "run_python": {
+      "label": "运行 Python 代码",
+      "description": "执行自定义 Python 代码并返回对象",
+      "props": {
+        "code": {
+          "label": "代码",
+          "tooltip": "Python 代码。需定义 main(params) 并返回 dict 对象"
+        },
+        "pythonPath": {
+          "label": "Python 路径",
+          "tooltip": "Python 可执行文件路径，留空则使用系统默认 python"
+        }
+      }
+    },
+    "toast": {
+      "label": "Toast 消息",
+      "description": "显示 Toast 通知消息",
+      "props": {
+        "message": { "label": "消息内容" },
+        "type": {
+          "label": "消息类型",
+          "info": "信息",
+          "success": "成功",
+          "warning": "警告",
+          "error": "错误"
+        }
+      }
+    },
+    "switch": {
+      "label": "选择器",
+      "description": "条件分支路由",
+      "props": {
+        "conditions": "条件列表",
+        "compareMode": {
+          "value": "值",
+          "length": "长度"
+        }
+      }
+    },
+    "variable_aggregate": {
+      "label": "变量聚合",
+      "description": "对多个分支的输出变量进行分组聚合",
+      "props": {
+        "strategy": {
+          "label": "聚合策略",
+          "first_non_empty": "返回每个分组中第一个非空的值"
+        },
+        "groups": {
+          "label": "变量分组",
+          "fields": {
+            "key": "输出字段名",
+            "variables": "变量列表"
+          }
+        }
+      }
+    },
+    "pluck_array_key": {
+      "label": "提取数组字段",
+      "description": "从数组对象成员中提取指定字段值，输出为 result 数组",
+      "props": {
+        "array": {
+          "label": "数组",
+          "tooltip": "对象数组，例如包含 name 字段的对象列表"
+        },
+        "key": {
+          "label": "字段名",
+          "tooltip": "要从每个对象成员中读取的字段名，例如 name"
+        }
+      }
+    },
+    "flatten_array": {
+      "label": "合并数组",
+      "description": "将数组中的数组成员合并为一个 result 数组，可按字段名读取对象里的数组",
+      "props": {
+        "array": {
+          "label": "数组",
+          "tooltip": "要合并的数组，例如二维数组，或包含数组字段的对象列表"
+        },
+        "key": {
+          "label": "字段名",
+          "tooltip": "可选。填写后从每个对象成员中读取该字段的数组，例如 names"
+        }
+      }
+    },
+    "array_text_replace": {
+      "label": "数组文本替换",
+      "description": "对数组中每个成员执行文本替换，输出 result 字符串数组",
+      "props": {
+        "array": {
+          "label": "数组",
+          "tooltip": "要处理的数组，数组成员会按字符串处理"
+        },
+        "findText": {
+          "label": "查找的文本",
+          "tooltip": "需要查找并替换的文本或正则表达式"
+        },
+        "replaceText": {
+          "label": "替换的文本",
+          "tooltip": "匹配后写入的新文本"
+        },
+        "replaceCount": {
+          "label": "替换次数",
+          "tooltip": "默认 0 表示不限次数"
+        },
+        "replaceMode": {
+          "label": "替换模式",
+          "literal": "纯文本",
+          "regex": "正则"
+        }
+      }
+    },
+    "merge_arrays": {
+      "label": "多个数组合并和一个数组",
+      "description": "将多个数组按顺序合并为一个 result 数组，可选择是否去重",
+      "props": {
+        "arrays": {
+          "label": "数组列表",
+          "tooltip": "添加多个要按顺序合并的数组输入",
+          "fields": {
+            "array": {
+              "label": "数组"
+            }
+          }
+        },
+        "dedupe": {
+          "label": "是否去重",
+          "tooltip": "开启后移除重复值，并保留第一次出现的值"
+        }
+      }
+    },
+    "parse_json": {
+      "label": "解析 JSON",
+      "description": "将 JSON 字符串解析为对象，输出 result 对象",
+      "props": {
+        "text": {
+          "label": "JSON 文本",
+          "tooltip": "要解析的 JSON 字符串，例如 '{\"key\":\"value\"}'"
+        }
+      }
+    },
+    "random_text": {
+      "label": "随机生成文本",
+      "description": "按模式和长度生成随机字符串，可选择纯文本或纯数字，文本模式可包含特殊字符，输出 result 字符串",
+      "props": {
+        "mode": {
+          "label": "生成模式",
+          "tooltip": "纯文本使用大小写字母，纯数字仅使用数字",
+          "text": "纯文本",
+          "number": "纯数字"
+        },
+        "length": {
+          "label": "长度",
+          "tooltip": "生成字符串的字符数，最小为 1"
+        },
+        "includeSpecial": {
+          "label": "包含特殊字符",
+          "tooltip": "仅纯文本模式可用，开启后加入 !@#$%^&* 等符号"
+        }
+      }
+    },
+    "string_concat": {
+      "label": "字符串拼接",
+      "description": "用模板字符串拼接输入字段，'{{expression}}' 占位符会被替换为对应值，输出 result 字符串",
+      "props": {
+        "template": {
+          "label": "模板",
+          "placeholder": "你好,'{{users[0]}}',现在是'{{today.hour}}':'{{today.min}}'",
+          "tooltip": "支持 '{{表达式}}' 插值，表达式以上方输入字段为上下文，例如 '{{users[0]}}'、'{{today.hour}}'、'{{today.min}}'"
+        }
+      }
+    },
+    "string_split": {
+      "label": "字符串分割",
+      "description": "将 source 字符串按分隔符切分成数组，输出 result 字符串数组",
+      "props": {
+        "source": {
+          "label": "源字符串",
+          "placeholder": "待分割的字符串，可使用变量",
+          "tooltip": "要分割的字符串，支持绑定上游变量"
+        },
+        "text": {
+          "label": "分隔符",
+          "tooltip": "用于分割字符串的分隔符，默认 |"
+        }
+      }
+    },
+    "image_to_base64": {
+      "label": "图片转 Base64",
+      "description": "将本地图片路径或远程图片 URL 转换为 base64 / dataURL 字符串，输出 result",
+      "props": {
+        "source": {
+          "label": "图片来源",
+          "placeholder": "本地路径或图片 URL，可使用变量",
+          "tooltip": "支持本地文件绝对路径（如 C:/a/b.png）或 http(s) 图片 URL，支持绑定上游变量"
+        },
+        "outputFormat": {
+          "label": "输出格式",
+          "tooltip": "dataURL 输出含 MIME 前缀（如 data:image/png;base64,...），base64 仅输出纯 base64 字符串",
+          "dataURL": "Data URL",
+          "base64": "纯 Base64"
+        }
+      }
+    },
+    "set_variable": {
+      "label": "设置变量",
+      "description": "写入或覆盖工作流运行时变量，可一次设置多个变量",
+      "props": {
+        "variables": {
+          "label": "变量列表",
+          "fields": {
+            "key": "变量名",
+            "value": "变量值",
+            "type": "变量类型",
+            "value_placeholder": "支持变量表达式，如：name"
+          }
+        }
+      }
+    },
+    "get_variable": {
+      "label": "获取变量",
+      "description": "读取工作流运行时变量",
+      "props": {
+        "key": "变量名",
+        "defaultValue": "默认值"
+      }
+    },
+    "delete_variable": {
+      "label": "删除变量",
+      "description": "从工作流运行时变量中删除指定变量",
+      "props": {
+        "key": "变量名"
+      }
+    },
+    "sub_workflow": {
+      "label": "子工作流",
+      "description": "执行一个独立的子工作流",
+      "select": "选择工作流",
+      "props": {
+        "workflow": "工作流"
+      }
+    },
+    "loop_break": {
+      "label": "跳出循环",
+      "description": "在 loop_body 中标记本轮结束后停止后续循环"
+    },
+    "loop": {
+      "label": "循环节点",
+      "description": "按次数、数组长度或循环体逻辑重复执行",
+      "handles": {
+        "body": "循环体",
+        "next": "完成后"
+      },
+      "props": {
+        "loopType": {
+          "label": "循环类型",
+          "count": "按次数循环",
+          "array": "使用数组循环",
+          "infinite": "无限循环"
+        },
+        "count": "循环次数",
+        "arrayPath": "数组变量",
+        "concurrency": "同时处理数量",
+        "sharedVariables": "中间变量"
+      }
+    },
+    "loop_body": {
+      "label": "循环体节点",
+      "description": "循环节点自动生成的内部锚点"
+    },
+    "agent_run": {
+      "label": "AI 执行",
+      "description": "先初始化 Agent 名称、注释和任务提示词，再调用 Agent 运行任务",
+      "props": {
+        "agent": "Agent",
+        "prompt": "任务",
+        "cwd": "工作目录",
+        "additionalDirectories": "额外目录",
+        "additionalDirectories_tooltip": "每行一个可访问目录，会追加到 Agent runtime 的 sandboxDirs/additionalDirectories。",
+        "permissionMode": "权限模式",
+        "pmOpts": {
+          "default": "默认",
+          "dontAsk": "不询问",
+          "acceptEdits": "接受编辑",
+          "plan": "计划模式",
+          "auto": "自动",
+          "bypassPermissions": "跳过权限"
+        }
+      }
+    },
+    "agent_intent": {
+      "label": "Agent 意图理解",
+      "description": "向 Agent 提供信息并将其消息解析为 JSON 对象，不返回其他运行信息"
+    },
+    "alert": {
+      "label": "消息弹窗",
+      "description": "显示消息弹窗",
+      "props": {
+        "title": "标题",
+        "title_default": "提示",
+        "message": "消息内容"
+      }
+    },
+    "prompt": {
+      "label": "输入弹窗",
+      "description": "弹出输入框",
+      "props": {
+        "title": "标题",
+        "title_default": "请输入",
+        "message": "提示文字",
+        "placeholder": "占位文本",
+        "defaultValue": "默认值"
+      }
+    },
+    "form": {
+      "label": "表单弹窗",
+      "description": "弹出自定义表单",
+      "props": {
+        "title": "标题",
+        "title_default": "表单",
+        "items": {
+          "label": "表单项",
+          "fields": {
+            "id": "字段ID",
+            "title": "显示名称",
+            "type": "字段类型",
+            "type_text": "文本",
+            "type_textarea": "多行文本",
+            "type_number": "数字",
+            "type_select": "选择",
+            "type_checkbox": "复选框"
+          }
+        }
+      }
+    },
+    "gallery_preview": {
+      "label": "资源预览",
+      "description": "展示图片/视频资源画廊，支持添加多个资源",
+      "props": {
+        "items": {
+          "label": "资源列表",
+          "tooltip": "添加要展示的图片或视频资源",
+          "fields": {
+            "src": "资源地址",
+            "src_placeholder": "图片/视频 URL",
+            "thumb": "缩略图",
+            "thumb_placeholder": "缩略图 URL（可选）",
+            "type": {
+              "label": "类型",
+              "image": "图片",
+              "video": "视频"
+            },
+            "caption": "标题",
+            "caption_placeholder": "显示标题（可选）"
+          }
+        },
+        "carousel": "轮播显示",
+        "carousel_tooltip": "开启后以轮播方式展示资源，可左右切换"
+      },
+      "outputs": {
+        "urls": "URL 地址数组"
+      }
+    },
+    "music_player": {
+      "label": "音乐播放",
+      "description": "播放音频文件列表，支持音量调节和循环播放",
+      "props": {
+        "tracks": {
+          "label": "播放列表",
+          "tooltip": "添加要播放的音频文件",
+          "fields": {
+            "src": "音频地址",
+            "src_placeholder": "音频文件 URL 或路径",
+            "title": "标题",
+            "title_placeholder": "曲目标题（可选）",
+            "cover": "封面",
+            "cover_placeholder": "封面图片 URL（可选）",
+            "duration": "时长(秒)",
+            "duration_placeholder": "音频时长（可选）"
+          }
+        },
+        "volume": "音量",
+        "volume_tooltip": "音量大小 (0-100)",
+        "loop": "循环播放",
+        "loop_tooltip": "播放结束后是否重新开始"
+      }
+    },
+    "table_display": {
+      "label": "表格展示",
+      "description": "展示数据表格，支持单选/多选确认",
+      "props": {
+        "headers": {
+          "label": "表头",
+          "tooltip": "定义表格列",
+          "fields": {
+            "id": "字段ID",
+            "title": "显示名称",
+            "title_placeholder": "列名",
+            "type": {
+              "label": "数据类型",
+              "string": "字符串",
+              "number": "数字",
+              "boolean": "布尔"
+            }
+          }
+        },
+        "cells": {
+          "label": "数据行",
+          "tooltip": "表格数据行",
+          "fields": {
+            "id": "行ID",
+            "data": "行数据 (JSON)"
+          }
+        },
+        "selectionMode": {
+          "label": "选择模式",
+          "none": "无选择",
+          "single": "单选",
+          "multi": "多选"
+        }
+      }
+    },
+    "show_miniapp": {
+      "label": "展示miniapp",
+      "description": "在工作流运行时打开 miniapp，等待用户提交数据后再继续执行",
+      "props": {
+        "miniAppId": "目标miniapp id",
+        "miniAppId_placeholder": "选择 miniapp",
+        "route": "路由",
+        "route_placeholder": "/welcome",
+        "embedDisplay": "是否内嵌显示miniapp",
+        "embedDisplay_tooltip": "将 miniapp 直接内嵌在节点内显示。工作流执行时仍然会打开交互弹窗。",
+        "params": "传入参数(JSON)",
+        "params_tooltip": "传入 JSON 对象给此 miniapp，运行时通过宿主桥接传递，不再依赖 URL query。"
+      },
+      "outputs": {
+        "submittedData": "miniapp 提交的数据",
+        "miniAppId": "miniapp id",
+        "route": "打开时的路由",
+        "params": "传入的 JSON 参数",
+        "confirmed": "是否已完成交互"
+      }
+    },
+    "code_render": {
+      "label": "代码渲染",
+      "description": "使用 React 或 HTML 渲染自定义节点界面",
+      "props": {
+        "renderType": {
+          "label": "渲染类型",
+          "react": "React",
+          "html": "HTML"
+        },
+        "code": {
+          "label": "代码",
+          "tooltip": "React 模式需要 export default 一个组件；HTML 模式可以包含 HTML 和内联 script。"
+        }
+      }
+    },
+    "sticky_note": {
+      "label": "便签",
+      "description": "画布注释节点，不影响工作流执行",
+      "props": {
+        "content": "内容",
+        "content_tooltip": "便签文本内容"
+      }
+    },
+    "markdown": {
+      "label": "Markdown",
+      "description": "在画布上渲染 Markdown 内容（支持 GFM）",
+      "props": {
+        "content": "内容",
+        "content_tooltip": "Markdown 源文本"
+      }
+    },
+    "file_display": {
+      "label": "文件展示",
+      "description": "展示在线文件卡片，右上角支持下载",
+      "props": {
+        "src": "文件地址",
+        "src_tooltip": "在线文件的访问 URL",
+        "src_placeholder": "https://example.com/file.pdf",
+        "fileName": "文件名",
+        "fileName_tooltip": "显示的文件名（可选，留空则从地址解析）",
+        "fileName_placeholder": "report.pdf",
+        "fileSize": "文件大小(字节)",
+        "fileSize_tooltip": "文件字节数（可选）",
+        "fileSize_placeholder": "1048576"
+      }
+    },
+    "delay": {
+      "label": "延迟",
+      "description": "延迟等待指111定毫秒数后继续执行。不依赖标签页。",
+      "props": {
+        "milliseconds": "等待时长（毫秒）",
+        "milliseconds_tooltip": "等待时长，范围 100-30000。",
+        "reason": "等待原因",
+        "reason_tooltip": "可选，用于日志记录。"
+      }
+    },
+    "sqlite": {
+      "props": {
+        "database": "数据库",
+        "database_tooltip": "选择本工作空间下的一个 SQL 数据库",
+        "table": "表",
+        "columns": "列",
+        "selectDbFirst": "请先选择数据库",
+        "selectTableFirst": "请先选择表",
+        "where": "条件 (WHERE)",
+        "where_tooltip": "SQL 片段，值用 ? 占位，从输入字段绑定。如：age > ?",
+        "orderBy": "排序 (ORDER BY)",
+        "limit": "行数上限",
+        "fields": "字段",
+        "fields_tooltip": "每行一个列与值，值用 ? 占位",
+        "setFields": "设置字段",
+        "column": "列",
+        "value": "值",
+        "sql": "SQL",
+        "sql_tooltip": "原生 SQL，? 占位符从输入字段绑定",
+        "mode": "模式",
+        "modeQuery": "查询(返回行)",
+        "modeExec": "执行(写入/DDL)"
+      }
+    },
+    "sqlite_query": {
+      "label": "查询数据",
+      "description": "从选定的表查询数据，返回行数组。"
+    },
+    "sqlite_insert": {
+      "label": "新增数据",
+      "description": "向表中插入一行或多行。"
+    },
+    "sqlite_update": {
+      "label": "更新数据",
+      "description": "按条件更新表中的数据。"
+    },
+    "sqlite_delete": {
+      "label": "删除数据",
+      "description": "按条件删除表中的数据。"
+    },
+    "sqlite_raw": {
+      "label": "SQL 自定义",
+      "description": "执行任意原生 SQL，? 参数从输入字段绑定。"
+    },
+    "kb_add": {
+      "label": "加入知识库",
+      "description": "将文件加入知识库（解析 + 分块 + 嵌入）。"
+    },
+    "kb_query": {
+      "label": "查询知识库",
+      "description": "对知识库进行语义搜索，返回最相关的结果。"
+    },
+    "kb_delete": {
+      "label": "从知识库删除",
+      "description": "从知识库删除文件。"
+    },
+    "kb": {
+      "props": {
+        "knowledgeBase": "知识库",
+        "knowledgeBase_tooltip": "目标知识库",
+        "filePath": "文件路径 / URL",
+        "filePath_tooltip": "工作区文件路径或 URL，支持 '{{upstream}}' 变量",
+        "fileName": "文件名",
+        "fileName_tooltip": "可选的自定义存储文件名",
+        "query": "查询",
+        "topK": "Top K",
+        "fileId": "文件 ID",
+        "fileId_tooltip": "来自上游的文件 ID；多个用逗号分隔或以数组形式传入"
+      }
+    }
+  },
+  "nodeUi": {
+    "viewResult": "查看执行结果",
+    "executionResult": "执行结果",
+    "output": "输出",
+    "input": "输入",
+    "logs": "日志",
+    "noOutput": "无输出",
+    "noInput": "无输入",
+    "noLogs": "无日志",
+    "stateBadge": {
+      "disabled": "已禁",
+      "skipped": "已跳"
+    },
+    "breakpointBadge": {
+      "start": "开始断点",
+      "end": "结束断点"
+    },
+    "test": {
+      "node": "测试节点",
+      "cancel": "取消测试",
+      "partial": "局部测试"
+    },
+    "resume": "继续运行",
+    "abort": "中断",
+    "drag": "拖拽节点",
+    "resize": "调整节点大小",
+    "collapse": "折叠节点",
+    "expand": "展开节点",
+    "delete": "删除节点",
+    "condition": "条件 {index}",
+    "conditionDefault": "默认",
+    "contextMenu": {
+      "color": "节点颜色",
+      "state": "节点状态",
+      "stateNormal": "正常",
+      "stateDisabled": "禁用（中止执行）",
+      "stateSkipped": "跳过（跳过执行）",
+      "breakpoint": "断点设置",
+      "breakpointStart": "设置开始断点",
+      "breakpointEnd": "设置结束断点",
+      "breakpointClear": "取消断点",
+      "info": "查看节点信息",
+      "copy": "复制节点",
+      "clone": "克隆节点",
+      "stage": "复制到暂存",
+      "moveToStage": "移动到暂存",
+      "delete": "删除节点"
+    },
+    "colors": {
+      "default": "默认",
+      "emerald": "翡翠绿",
+      "blue": "蓝色",
+      "violet": "紫色",
+      "rose": "玫红",
+      "orange": "橙色",
+      "amber": "琥珀",
+      "cyan": "青色",
+      "pink": "粉色",
+      "slate": "石板灰",
+      "red": "红色",
+      "indigo": "靛蓝"
+    }
+  },
+  "nodeSelect": {
+    "title": "选择节点",
+    "searchPlaceholder": "搜索节点...",
+    "allNodes": "全部节点",
+    "noMatch": "暂无匹配节点"
+  },
+  "contextMenu": {
+    "addNode": "添加节点",
+    "paste": "粘贴",
+    "selectAll": "全选",
+    "fitView": "适应画布",
+    "autoLayout": "自动布局",
+    "exportJson": "导出 JSON",
+    "edgeLineStyle": "线条样式",
+    "edgeLineStyleOptions": {
+      "default": "默认（应用全局）",
+      "solid": "实线",
+      "dashed": "虚线"
+    }
+  },
+  "edge": {
+    "addNode": "添加节点",
+    "setLabel": "设置 Label",
+    "lineStyle": "线条样式",
+    "lineStyleOptions": {
+      "default": "默认（应用全局）",
+      "solid": "实线",
+      "dashed": "虚线"
+    },
+    "deleteEdge": "删除连线",
+    "insertNode": "插入节点",
+    "labelDialogTitle": "设置连接线 Label",
+    "startPoint": "起点",
+    "middlePoint": "中间",
+    "endPoint": "终点",
+    "cancel": "取消",
+    "save": "保存"
+  },
+  "canvasStyle": {
+    "nodeDisplayMode": "节点显示模式",
+    "nodeDisplayModeOptions": {
+      "normal": { "label": "常规输入", "description": "使用默认的通用节点输入输出连接点" },
+      "properties": { "label": "属性输入", "description": "将输入和输出字段展示为节点连接点" }
+    },
+    "propertyModeBadgePosition": "属性连接点位置",
+    "propertyModeBadgePositionOptions": {
+      "top": { "label": "顶部显示" },
+      "center": { "label": "居中显示" },
+      "bottom": { "label": "底部显示" }
+    },
+    "canvasTheme": "画布主题",
+    "backgroundStyle": "背景样式",
+    "snapToGrid": "网格吸附",
+    "layoutEngine": "布局引擎",
+    "handleDirection": "连接点方向",
+    "edgeStyle": "连线样式",
+    "edgeLineStyle": "线条样式",
+    "logPanelLayout": "日志面板布局",
+    "customThemeVars": "自定义主题变量",
+    "floatingHandle": "悬浮 Handle",
+    "floatingHandleDesc": "仅悬停时显示",
+    "nodeMerge": "节点合并",
+    "nodeMergeDesc": "节点拖拽到线条自动合并",
+    "collision": "碰撞管理",
+    "collisionDesc": "拖拽结束后自动避让",
+    "deleteReconnect": "删除重连",
+    "deleteReconnectDesc": "删除节点后自动连接",
+    "clipboardPaste": "剪贴板粘贴",
+    "clipboardPasteImageDesc": "图片粘贴为画廊预览节点",
+    "autoPreviewLastRun": "自动预览上次结果",
+    "autoPreviewLastRunDesc": "打开工作流时自动进入上次运行结果的预览",
+    "background": {
+      "dots": { "label": "点阵", "description": "默认点阵背景" },
+      "lines": { "label": "线条", "description": "网格线条背景" },
+      "cross": { "label": "十字", "description": "十字交叉背景" }
+    },
+    "snap": {
+      "on": { "label": "开启", "description": "节点自动吸附到网格" },
+      "off": { "label": "关闭", "description": "自由放置节点" }
+    },
+    "layout": {
+      "dagre": { "label": "Dagre", "description": "经典有向图布局" },
+      "elk": { "label": "ELK", "description": "Eclipse Layout 引擎" }
+    },
+    "handle": {
+      "top-bottom": { "label": "上 -> 下", "description": "从顶部出、底部入" },
+      "left-right": { "label": "左 -> 右", "description": "从左侧出、右侧入" },
+      "bottom-top": { "label": "下 -> 上", "description": "从底部出、顶部入" },
+      "right-left": { "label": "右 -> 左", "description": "从右侧出、左侧入" }
+    },
+    "edge": {
+      "bezier": { "label": "贝塞尔", "description": "平滑曲线" },
+      "straight": { "label": "直线", "description": "直连两点" },
+      "step": { "label": "折线", "description": "直角折线" },
+      "smoothstep": { "label": "平滑折线", "description": "圆角折线" }
+    },
+    "edgeLine": {
+      "solid": { "label": "实线", "description": "连续线条" },
+      "dashed": { "label": "虚线", "description": "间隔线条" }
+    },
+    "logPanel": {
+      "vertical": { "label": "垂直", "description": "输入、输出、日志纵向排列" },
+      "tabs": { "label": "标签页", "description": "输入输出和日志分标签展示" }
+    },
+    "themes": {
+      "default": { "label": "默认", "description": "跟随当前界面风格" },
+      "graphite": { "label": "石墨", "description": "低对比深色画布" },
+      "mint": { "label": "薄荷", "description": "清爽浅色画布" },
+      "sunset": { "label": "日落", "description": "暖色重点连线" },
+      "custom": { "label": "自定义", "description": "使用 React Flow CSS 变量" }
+    }
+  }
+}

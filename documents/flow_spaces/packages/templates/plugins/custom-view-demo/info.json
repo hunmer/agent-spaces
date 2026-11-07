@@ -1,0 +1,22 @@
+{
+  "id": "workflow.custom-view-demo",
+  "name": "Custom View Demo",
+  "name_zh": "自定义视图示例",
+  "name_en": "Custom View Demo",
+  "version": "1.0.0",
+  "description": "演示工作流插件节点如何使用 React 或 HTML customView 渲染节点界面",
+  "description_zh": "演示工作流插件节点如何使用 React 或 HTML customView 渲染节点界面",
+  "description_en": "Demonstrates workflow plugin node customView rendering with React or HTML.",
+  "author": { "name": "workflow" },
+  "tags": ["示例", "customView", "UI"],
+  "tags_zh": ["示例", "customView", "UI"],
+  "tags_en": ["Example", "customView", "UI"],
+  "type": "server",
+  "hasWorkflow": true,
+  "hasView": false,
+  "entries": {
+    "server": "main.js",
+    "workflow": "workflow.js"
+  },
+  "config": []
+}

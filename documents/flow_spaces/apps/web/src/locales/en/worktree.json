@@ -1,0 +1,43 @@
+{
+  "panel": {
+    "title": "Worktrees",
+    "empty": "No Worktrees",
+    "emptyHint": "Create isolated branch environments for AI agents",
+    "create": "Create Worktree"
+  },
+  "card": {
+    "active": "Active",
+    "merged": "Merged",
+    "switch": "Switch",
+    "diff": "Review Diff",
+    "createPR": "Create PR",
+    "viewPR": "View PR",
+    "merge": "Merge",
+    "delete": "Delete",
+    "branch": "Branch",
+    "agent": "Agent",
+    "issue": "Issue",
+    "createdAt": "Created",
+    "confirmDelete": "Delete this Worktree? Uncommitted changes will be lost.",
+    "current": "Current"
+  },
+  "prDialog": {
+    "title": "Create PR",
+    "prTitle": "Title",
+    "body": "PR body",
+    "bodyPlaceholder": "Describe the changes for this pull request",
+    "generate": "AI generate PR body",
+    "cancel": "Cancel",
+    "submit": "Create PR"
+  },
+  "dialog": {
+    "createTitle": "Create Worktree",
+    "name": "Name",
+    "namePlaceholder": "e.g. feature-auth",
+    "branch": "Branch (optional)",
+    "branchPlaceholder": "Auto-generated if empty",
+    "agent": "Agent (optional)",
+    "issue": "Issue (optional)",
+    "creating": "Creating..."
+  }
+}

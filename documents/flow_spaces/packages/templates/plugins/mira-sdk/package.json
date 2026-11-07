@@ -1,0 +1,10 @@
+{
+  "name": "mira-sdk-plugin",
+  "version": "1.0.0",
+  "description": "Mira App Server SDK plugin for workflow",
+  "main": "main.js",
+  "type": "commonjs",
+  "dependencies": {
+    "mira-app-core": "^2.0.1"
+  }
+}

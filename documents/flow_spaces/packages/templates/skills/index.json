@@ -1,0 +1,178 @@
+[
+  {
+    "id": "caveman",
+    "name": "caveman",
+    "group": "",
+    "path": "caveman",
+    "md5": "00966395382ac41e2b4783e0f6da9b21",
+    "updatedAt": "2026-05-25T08:27:33.623Z"
+  },
+  {
+    "id": "find-skill-skillhub",
+    "name": "find-skill-skillhub",
+    "group": "",
+    "path": "find-skill-skillhub",
+    "md5": "df7892e2b003e50a8843ea8ea02f5d31",
+    "updatedAt": "2026-07-14T09:15:09.544Z"
+  },
+  {
+    "id": "grill-me",
+    "name": "grill-me",
+    "group": "",
+    "path": "grill-me",
+    "md5": "c090c5945d127a9b643ec9d93e07c93f",
+    "updatedAt": "2026-05-25T08:27:33.624Z"
+  },
+  {
+    "id": "handoff",
+    "name": "handoff",
+    "group": "",
+    "path": "handoff",
+    "md5": "d5554ea8714577812412853becae80fe",
+    "updatedAt": "2026-05-25T08:27:33.625Z"
+  },
+  {
+    "id": "improve-codebase-architecture",
+    "name": "improve-codebase-architecture",
+    "group": "",
+    "path": "improve-codebase-architecture",
+    "md5": "169bc260111e10cddef44881c0927b7e",
+    "updatedAt": "2026-05-25T08:27:33.628Z"
+  },
+  {
+    "id": "planning-with-files-zh",
+    "name": "planning-with-files-zh",
+    "group": "planning-with-files",
+    "path": "planning-with-files/planning-with-files-zh",
+    "md5": "7ceb83acc9c21d75c2e2d7f80cff1f29",
+    "updatedAt": "2026-05-25T08:27:33.634Z"
+  },
+  {
+    "id": "brainstorming",
+    "name": "brainstorming",
+    "group": "superpowers",
+    "path": "superpowers/brainstorming",
+    "md5": "0e63f8670879fd89820ecf8304c10eac",
+    "updatedAt": "2026-05-25T08:27:33.640Z"
+  },
+  {
+    "id": "dispatching-parallel-agents",
+    "name": "dispatching-parallel-agents",
+    "group": "superpowers",
+    "path": "superpowers/dispatching-parallel-agents",
+    "md5": "dd089f8dde24aae42db3f785e4fee5c8",
+    "updatedAt": "2026-05-25T08:27:33.641Z"
+  },
+  {
+    "id": "executing-plans",
+    "name": "executing-plans",
+    "group": "superpowers",
+    "path": "superpowers/executing-plans",
+    "md5": "b3c58f92fd6cba70e2e6af291ff71a54",
+    "updatedAt": "2026-05-25T08:27:33.642Z"
+  },
+  {
+    "id": "finishing-a-development-branch",
+    "name": "finishing-a-development-branch",
+    "group": "superpowers",
+    "path": "superpowers/finishing-a-development-branch",
+    "md5": "5b01399e2750d9c1d2ed93b2619df816",
+    "updatedAt": "2026-05-25T08:27:33.642Z"
+  },
+  {
+    "id": "receiving-code-review",
+    "name": "receiving-code-review",
+    "group": "superpowers",
+    "path": "superpowers/receiving-code-review",
+    "md5": "c9c2aba8071b7c26a5ee89cdda500030",
+    "updatedAt": "2026-05-25T08:27:33.643Z"
+  },
+  {
+    "id": "requesting-code-review",
+    "name": "requesting-code-review",
+    "group": "superpowers",
+    "path": "superpowers/requesting-code-review",
+    "md5": "845e29ce220cdd3e6af74c6acfaac0e0",
+    "updatedAt": "2026-05-25T08:27:33.645Z"
+  },
+  {
+    "id": "subagent-driven-development",
+    "name": "subagent-driven-development",
+    "group": "superpowers",
+    "path": "superpowers/subagent-driven-development",
+    "md5": "3089238c860d73a09e6dc08f31544ee4",
+    "updatedAt": "2026-05-25T08:27:33.647Z"
+  },
+  {
+    "id": "systematic-debugging",
+    "name": "systematic-debugging",
+    "group": "superpowers",
+    "path": "superpowers/systematic-debugging",
+    "md5": "89d0d7f3c36fb17ef145af59d56ae36a",
+    "updatedAt": "2026-05-25T08:27:33.655Z"
+  },
+  {
+    "id": "test-driven-development",
+    "name": "test-driven-development",
+    "group": "superpowers",
+    "path": "superpowers/test-driven-development",
+    "md5": "524bcfc38595033d30b46a91c720c3dc",
+    "updatedAt": "2026-05-25T08:27:33.656Z"
+  },
+  {
+    "id": "using-git-worktrees",
+    "name": "using-git-worktrees",
+    "group": "superpowers",
+    "path": "superpowers/using-git-worktrees",
+    "md5": "937d2458796d533bbab8c68514290269",
+    "updatedAt": "2026-05-25T08:27:33.657Z"
+  },
+  {
+    "id": "using-superpowers",
+    "name": "using-superpowers",
+    "group": "superpowers",
+    "path": "superpowers/using-superpowers",
+    "md5": "3082593eb2fbf5ebbb557d4ba1291b04",
+    "updatedAt": "2026-05-25T08:27:33.660Z"
+  },
+  {
+    "id": "verification-before-completion",
+    "name": "verification-before-completion",
+    "group": "superpowers",
+    "path": "superpowers/verification-before-completion",
+    "md5": "d6a474b04a2444c42838c4d486fb0522",
+    "updatedAt": "2026-05-25T08:27:33.661Z"
+  },
+  {
+    "id": "writing-plans",
+    "name": "writing-plans",
+    "group": "superpowers",
+    "path": "superpowers/writing-plans",
+    "md5": "719dd829b0e41aedd564342a250cbc86",
+    "updatedAt": "2026-05-25T08:27:33.662Z"
+  },
+  {
+    "id": "writing-skills",
+    "name": "writing-skills",
+    "group": "superpowers",
+    "path": "superpowers/writing-skills",
+    "md5": "e9f10ebdefa0bad85f0c682bedc42d09",
+    "updatedAt": "2026-05-25T08:27:33.710Z"
+  },
+  {
+    "id": "tdd",
+    "name": "tdd",
+    "group": "",
+    "path": "tdd",
+    "md5": "5ddcceb0fd1c85db4e3e386dcfe1196b",
+    "updatedAt": "2026-05-25T08:27:33.715Z"
+  },
+  {
+    "id": "to-prd",
+    "name": "to-prd",
+    "group": "",
+    "path": "to-prd",
+    "md5": "5703a6470f12207e3168f51d39980154",
+    "updatedAt": "2026-05-25T08:27:33.715Z"
+  }
+]

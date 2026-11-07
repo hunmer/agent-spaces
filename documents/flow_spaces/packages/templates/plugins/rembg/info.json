@@ -1,0 +1,49 @@
+{
+  "id": "workflow.rembg",
+  "name": "Rembg 抠图",
+  "name_zh": "Rembg 抠图",
+  "name_en": "Rembg Background Removal",
+  "icon": "icon.png",
+  "version": "1.0.0",
+  "description": "基于 Rembg HTTP 服务的一键去背景/抠图，支持从 URL 或本地文件处理、多种分割模型、Alpha Matting、纯色背景、黑白掩码与批量处理",
+  "description_zh": "基于 Rembg HTTP 服务的一键去背景/抠图，支持从 URL 或本地文件处理、多种分割模型、Alpha Matting、纯色背景、黑白掩码与批量处理",
+  "description_en": "One-click background removal via Rembg HTTP service. Supports URL/local file input, multiple segmentation models, Alpha Matting, solid background color, mask output and batch processing.",
+  "author": { "name": "workflow" },
+  "tags": ["图片处理", "抠图", "去背景", "Rembg"],
+  "tags_zh": ["图片处理", "抠图", "去背景", "Rembg"],
+  "tags_en": ["Image", "Background Removal", "Rembg", "Matting"],
+  "type": "server",
+  "hasWorkflow": true,
+  "hasView": false,
+  "entries": {
+    "server": "main.js",
+    "workflow": "workflow.js",
+    "tools": "tools.js"
+  },
+  "config": [
+    {
+      "key": "baseUrl",
+      "label": "Rembg Base URL",
+      "desc": "Rembg HTTP service URL / Rembg HTTP 服务地址，默认 http://localhost:7000",
+      "type": "string",
+      "value": "http://localhost:7000",
+      "placeholder": "http://localhost:7000",
+      "required": true
+    },
+    {
+      "key": "model",
+      "label": "Default Model / 默认模型",
+      "desc": "Default segmentation model / 默认分割模型，如 u2net / birefnet-general / isnet-anime / sam",
+      "type": "string",
+      "value": "u2net",
+      "placeholder": "u2net"
+    },
+    {
+      "key": "timeout",
+      "label": "Timeout (ms) / 超时(ms)",
+      "desc": "Per-image processing timeout / 单张图片处理超时时间",
+      "type": "number",
+      "value": 120000
+    }
+  ]
+}

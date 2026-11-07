@@ -1,0 +1,42 @@
+{
+  "id": "workflow.openai",
+  "name": "OpenAI",
+  "name_zh": "OpenAI",
+  "name_en": "OpenAI",
+  "icon": "icon.svg",
+  "version": "2.0.0",
+  "description": "OpenAI 集成插件，支持文生图、图片编辑、Chat Completions、Embeddings、Audio TTS/STT",
+  "description_zh": "OpenAI 集成插件，支持文生图、图片编辑、Chat Completions、Embeddings、Audio TTS/STT",
+  "description_en": "OpenAI integration plugin supporting image generation, image editing, Chat Completions, Embeddings, and Audio TTS/STT.",
+  "author": { "name": "workflow" },
+  "tags": ["AI", "图片生成", "OpenAI", "GPT", "Chat", "Embeddings", "TTS", "STT"],
+  "tags_zh": ["AI", "图片生成", "OpenAI", "GPT", "Chat", "Embeddings", "TTS", "STT"],
+  "tags_en": ["AI", "Image Generation", "OpenAI", "GPT", "Chat", "Embeddings", "TTS", "STT"],
+  "type": "server",
+  "hasWorkflow": true,
+  "hasView": false,
+  "entries": {
+    "server": "main.js",
+    "workflow": "workflow.js",
+    "tools": "tools.js"
+  },
+  "config": [
+    {
+      "key": "apiKey",
+      "label": "API Key",
+      "desc": "OpenAI API Key",
+      "type": "string",
+      "value": "",
+      "placeholder": "sk-...",
+      "required": true
+    },
+    {
+      "key": "baseUrl",
+      "label": "API 地址",
+      "desc": "OpenAI API 基础地址，支持代理",
+      "type": "string",
+      "value": "https://api.openai.com",
+      "placeholder": "https://api.openai.com"
+    }
+  ]
+}

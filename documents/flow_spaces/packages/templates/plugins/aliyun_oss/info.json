@@ -1,0 +1,73 @@
+{
+  "id": "workflow.aliyun-oss",
+  "name": "阿里云OSS",
+  "name_zh": "阿里云OSS",
+  "name_en": "Aliyun OSS",
+  "icon": "icon.png",
+  "version": "1.0.0",
+  "description": "阿里云OSS文件存储，支持上传、下载、删除、列举、签名URL等操作",
+  "description_zh": "阿里云OSS文件存储，支持上传、下载、删除、列举、签名URL等操作",
+  "description_en": "Aliyun OSS file storage. Supports upload, download, delete, list, signed URL and more.",
+  "author": { "name": "workflow" },
+  "tags": ["云存储", "OSS", "阿里云"],
+  "tags_zh": ["云存储", "OSS", "阿里云"],
+  "tags_en": ["Cloud Storage", "OSS", "Aliyun"],
+  "type": "server",
+  "hasWorkflow": true,
+  "hasView": false,
+  "entries": {
+    "server": "main.js",
+    "workflow": "workflow.js",
+    "tools": "tools.js"
+  },
+  "config": [
+    {
+      "key": "bucket",
+      "label": "Bucket",
+      "desc": "OSS Bucket 名称",
+      "type": "string",
+      "value": "",
+      "required": true
+    },
+    {
+      "key": "region",
+      "label": "Region",
+      "desc": "Bucket 所在地域，如 oss-cn-hangzhou",
+      "type": "string",
+      "value": "",
+      "placeholder": "oss-cn-hangzhou",
+      "required": true
+    },
+    {
+      "key": "accessKeyId",
+      "label": "AccessKey ID",
+      "desc": "阿里云 AccessKey ID",
+      "type": "string",
+      "value": "",
+      "required": true
+    },
+    {
+      "key": "accessKeySecret",
+      "label": "AccessKey Secret",
+      "desc": "阿里云 AccessKey Secret",
+      "type": "string",
+      "value": "",
+      "required": true
+    },
+    {
+      "key": "endpoint",
+      "label": "Endpoint",
+      "desc": "自定义 Endpoint（可选，填写后忽略 Region）",
+      "type": "string",
+      "value": "",
+      "placeholder": "https://oss-cn-hangzhou.aliyuncs.com"
+    },
+    {
+      "key": "secure",
+      "label": "HTTPS",
+      "desc": "是否使用 HTTPS 协议",
+      "type": "boolean",
+      "value": true
+    }
+  ]
+}

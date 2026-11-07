@@ -1,0 +1,65 @@
+{
+  "id": "workflow.mail",
+  "icon": "icon.png",
+  "name": "邮件发送",
+  "name_zh": "邮件发送",
+  "name_en": "Email",
+  "version": "1.0.0",
+  "description": "通过 SMTP 发送邮件，支持 HTML/纯文本、附件、抄送/密送",
+  "description_zh": "通过 SMTP 发送邮件，支持 HTML/纯文本、附件、抄送/密送",
+  "description_en": "Send emails via SMTP with support for HTML/plain text, attachments, CC/BCC",
+  "author": { "name": "workflow" },
+  "tags": ["邮件", "SMTP", "通知"],
+  "tags_zh": ["邮件", "SMTP", "通知"],
+  "tags_en": ["Email", "SMTP", "Notification"],
+  "type": "server",
+  "hasWorkflow": true,
+  "hasView": false,
+  "entries": {
+    "server": "main.js",
+    "workflow": "workflow.js",
+    "tools": "tools.js"
+  },
+  "config": [
+    {
+      "key": "host",
+      "label": "SMTP 服务器",
+      "desc": "SMTP 服务器地址",
+      "type": "string",
+      "value": "",
+      "placeholder": "smtp.example.com",
+      "required": true
+    },
+    {
+      "key": "port",
+      "label": "端口",
+      "desc": "SMTP 端口（465=SSL, 587=TLS）",
+      "type": "number",
+      "value": 465
+    },
+    {
+      "key": "user",
+      "label": "用户名",
+      "desc": "SMTP 登录用户名",
+      "type": "string",
+      "value": "",
+      "required": true
+    },
+    {
+      "key": "pass",
+      "label": "密码/授权码",
+      "desc": "SMTP 登录密码或授权码",
+      "type": "string",
+      "value": "",
+      "required": true
+    },
+    {
+      "key": "from",
+      "label": "发件人",
+      "desc": "默认发件人地址",
+      "type": "string",
+      "value": "",
+      "placeholder": "name <email@example.com>"
+    }
+  ]
+}

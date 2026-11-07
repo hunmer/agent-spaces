@@ -1,0 +1,18 @@
+[2026-11-07T16:11:20.588Z] [LOG] [TriggerService] Execution manager attached
+[2026-11-07T16:11:20.589Z] [WARN] [server] web frontend not found at /Users/Zhuanz/Documents/agent_spaces/documents/flow_spaces/packages/server/web - run `pnpm build` first
+[2026-11-07T16:11:20.596Z] [LOG] [server] listening on http://0.0.0.0:3110
+[2026-11-07T16:11:20.596Z] [LOG] [server] websocket on ws://0.0.0.0:3110/ws?workspaceId=...
+[2026-11-07T16:11:20.600Z] [LOG] [TriggerService] Starting trigger registration for 0 workflow(s)
+[2026-11-07T16:11:20.600Z] [LOG] [TriggerService] Started. 0 cron jobs, 0 hooks registered
+[2026-11-07T16:13:50.852Z] [LOG] [TriggerService] Execution manager attached
+[2026-11-07T16:13:50.853Z] [WARN] [server] web frontend not found at /Users/Zhuanz/Documents/agent_spaces/documents/flow_spaces/packages/server/web - run `pnpm build` first
+[2026-11-07T16:13:50.859Z] [LOG] [server] listening on http://0.0.0.0:3110
+[2026-11-07T16:13:50.859Z] [LOG] [server] websocket on ws://0.0.0.0:3110/ws?workspaceId=...
+[2026-11-07T16:13:50.860Z] [LOG] [TriggerService] Starting trigger registration for 0 workflow(s)
+[2026-11-07T16:13:50.861Z] [LOG] [TriggerService] Started. 0 cron jobs, 0 hooks registered
+[2026-11-07T16:15:01.479Z] [LOG] [TriggerService] Execution manager attached
+[2026-11-07T16:15:01.480Z] [WARN] [server] web frontend not found at /Users/Zhuanz/Documents/agent_spaces/documents/flow_spaces/packages/server/web - run `pnpm build` first
+[2026-11-07T16:15:01.487Z] [LOG] [server] listening on http://0.0.0.0:3110
+[2026-11-07T16:15:01.487Z] [LOG] [server] websocket on ws://0.0.0.0:3110/ws?workspaceId=...
+[2026-11-07T16:15:01.488Z] [LOG] [TriggerService] Starting trigger registration for 0 workflow(s)
+[2026-11-07T16:15:01.488Z] [LOG] [TriggerService] Started. 0 cron jobs, 0 hooks registered

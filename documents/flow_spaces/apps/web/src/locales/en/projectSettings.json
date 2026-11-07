@@ -1,0 +1,97 @@
+{
+  "title": "Project Settings",
+  "loading": "Loading...",
+  "workspaceNotFound": "Workspace not found",
+  "miniApps": {
+    "title": "Choose MiniApp extensions for workspaces",
+    "description": "Selected MiniApps appear as tabs in this workspace.",
+    "select": "Choose MiniApps",
+    "empty": "None selected"
+  },
+  "info": {
+    "title": "Info",
+    "path": "Path",
+    "workspace": "Workspace",
+    "channels": "Channels",
+    "issues": "Issues"
+  },
+  "automation": {
+    "title": "Automation",
+    "autoProcess": "Auto Process Issues",
+    "autoProcessDescription": "Scheduler will automatically plan and execute open issues"
+  },
+  "hooks": {
+    "title": "Hooks",
+    "enableHooks": "Enable Hooks",
+    "enableHooksDescription": "Enable per-tool-call hooks for this workspace"
+  },
+  "notifications": {
+    "title": "Notifications",
+    "messageNotifications": "Message Notifications",
+    "messageNotificationsDescription": "Push issue progress and workflow completion to external chat platforms",
+    "lark": "Feishu",
+    "wechat": "WeChat",
+    "appId": "app_id",
+    "appSecret": "app_secret",
+    "stopService": "Stop Service",
+    "startService": "Start Service",
+    "testSend": "Test Send",
+    "saveSuccess": "Notification settings saved",
+    "saveFailed": "Failed to save notification settings",
+    "startSuccess": "Notification service started",
+    "startFailed": "Failed to start notification service",
+    "stopSuccess": "Notification service stopped",
+    "stopFailed": "Failed to stop notification service",
+    "testSuccess": "Test notification sent",
+    "testFailed": "Failed to send test notification",
+    "native": "System",
+    "nativeDescription": "Push issue progress and workflow updates via native OS notifications",
+    "nativePermissionGranted": "Granted",
+    "nativePermissionDenied": "Denied",
+    "nativePermissionDefault": "Not granted",
+    "nativePermissionUnsupported": "Unsupported",
+    "nativeRequestPermission": "Grant Permission",
+    "nativeTestSuccess": "System notification sent",
+    "nativeTestSent": "Notification sent. If not visible, check System Settings > Notifications > Browser",
+    "nativeTestFailed": "Failed to send system notification",
+    "nativePermissionGrantedToast": "Notification permission granted",
+    "nativePermissionDeniedToast": "Notification permission denied",
+    "androidOngoingWorkflowNotification": "Ongoing workflow notification",
+    "androidOngoingWorkflowNotificationDescription": "Update an ongoing notification in the system notification panel when workflow execution changes. Android only; foreground service support may be required.",
+    "selectRobotAccount": "Select Robot Account",
+    "noRobotAccount": "No accounts yet. Add one in Settings first.",
+    "addRobotAccount": "Add Account"
+  },
+  "wechat": {
+    "robot": "WeChat iLink Robot",
+    "connected": "Connected: {accountId}",
+    "scanned": "Scanned. Confirm login on your phone.",
+    "expired": "QR code expired. Refresh to get a new one.",
+    "scanQr": "Scan the QR code with WeChat to authorize the robot.",
+    "refreshLogin": "Refresh Login",
+    "getQr": "Get QR",
+    "status": "Status: {status}",
+    "loginUrl": "Login URL: {url}",
+    "connectedToast": "WeChat robot connected",
+    "pollFailed": "Failed to poll WeChat QR status",
+    "getQrFailed": "Failed to get WeChat QR code"
+  },
+  "botAgent": {
+    "title": "Bot Agent",
+    "selectAgent": "No agent selected",
+    "manage": "Manage"
+  },
+  "events": {
+    "title": "Notification Events",
+    "issueStarted": "Issue Started",
+    "issueCompleted": "Issue Completed"
+  },
+  "prompt": {
+    "title": "Prompt",
+    "workspacePrompt": "Workspace Prompt",
+    "description": "Applied to every agent run in this workspace",
+    "savePrompt": "Save Prompt",
+    "saveSuccess": "Workspace prompt saved",
+    "saveFailed": "Failed to save workspace prompt"
+  }
+}

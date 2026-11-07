@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Agent · SDK Demo</title>
+  <link rel="stylesheet" href="./css/style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <a href="./index.html" class="back">← 首页</a>
+    <h1>Agent · 预设与用量</h1>
+  </header>
+
+  <div class="container">
+    <div class="card">
+      <h2>Agent 预设列表</h2>
+      <p class="desc">
+        <code>sdk.agent.listPresets()</code> —— 返回全局 Agent 配置（id / runtime / model 等）。
+      </p>
+      <div class="actions">
+        <button id="btn-list" class="btn">加载预设</button>
+      </div>
+      <div id="agent-table" style="margin-bottom:12px;"></div>
+      <pre id="out-list" class="output">原始 JSON 将显示于此</pre>
+    </div>
+
+    <div class="card">
+      <h2>用量仪表盘</h2>
+      <p class="desc"><code>sdk.agent.usageDashboard(days = 30)</code> —— 各 Agent 调用用量统计。</p>
+      <div class="row">
+        <div class="field">
+          <label>days</label>
+          <input id="in-days" type="number" value="30" min="1" max="365" />
+        </div>
+      </div>
+      <div class="actions">
+        <button id="btn-usage" class="btn">查询用量</button>
+      </div>
+      <pre id="out-usage" class="output">结果将显示于此</pre>
+    </div>
+
+    <div class="card">
+      <h2>Agent Designer（AI 生成配置）</h2>
+      <p class="desc">
+        <code>sdk.agent.design(prompt)</code> —— 让服务端用 LLM 根据自然语言生成一份 Agent 配置草稿。
+      </p>
+      <div class="field">
+        <label>需求描述</label>
+        <textarea id="in-prompt" rows="3" placeholder="例如：一个能写 TypeScript 单元测试的 agent"></textarea>
+      </div>
+      <div class="actions">
+        <button id="btn-design" class="btn">生成配置</button>
+      </div>
+      <pre id="out-design" class="output">结果将显示于此</pre>
+    </div>
+  </div>
+
+  <script type="module" src="./js/agent.js"></script>
+</body>
+</html>

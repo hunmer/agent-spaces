@@ -1,0 +1,40 @@
+{
+  "title": "Robot Accounts",
+  "description": "Manage Feishu and WeChat bot credentials. Workspace notification settings can reference these accounts.",
+  "addAccount": "Add Account",
+  "editAccount": "Edit Account",
+  "deleteAccount": "Delete Account",
+  "deleteConfirm": "Delete this account? Linked workspace notifications will stop working.",
+  "name": "Name",
+  "namePlaceholder": "e.g. Company Feishu Bot",
+  "type": "Type",
+  "noAccounts": "No Robot Accounts",
+  "noAccountsDesc": "Click \"Add Account\" above to create a Feishu or WeChat bot account.",
+  "lark": "Feishu",
+  "wechat": "WeChat",
+  "addLark": "Add Feishu Account",
+  "addWechat": "Add WeChat Account",
+  "larkFields": {
+    "appId": "App ID",
+    "appSecret": "App Secret"
+  },
+  "wechatFields": {
+    "token": "Token",
+    "accountId": "Account ID",
+    "baseUrl": "Base URL"
+  },
+  "createSuccess": "Account created",
+  "createFailed": "Failed to create account",
+  "updateSuccess": "Account updated",
+  "updateFailed": "Failed to update account",
+  "deleteSuccess": "Account deleted",
+  "deleteFailed": "Failed to delete account",
+  "wechatQrDescription": "Scan the QR code with WeChat. An account will be created automatically after login.",
+  "getQr": "Get QR Code",
+  "refreshQr": "Refresh QR Code",
+  "wechatWaitScan": "Waiting for scan...",
+  "wechatScanned": "Scanned. Confirm login on your phone.",
+  "wechatExpired": "QR code expired. Please refresh.",
+  "save": "Save",
+  "cancel": "Cancel"
+}

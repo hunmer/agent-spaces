@@ -1,0 +1,8 @@
+{
+  "name": "mcp-bridge-plugin",
+  "version": "1.0.0",
+  "description": "MCP client/server bridge plugin for workflow",
+  "main": "main.js",
+  "type": "commonjs",
+  "dependencies": {}
+}

@@ -1,0 +1,50 @@
+{
+  "id": "workflow.qianyin",
+  "name": "千音语音合成",
+  "name_zh": "千音语音合成",
+  "name_en": "Qianyin Speech Synthesis",
+  "version": "1.0.0",
+  "icon": "icon.png",
+  "description": "千音 TTS 语音合成，支持多种发音人、语速音调调节",
+  "description_zh": "千音 TTS 语音合成，支持多种发音人、语速音调调节",
+  "description_en": "Qianyin TTS speech synthesis with multiple speakers, speed and pitch control",
+  "author": { "name": "workflow" },
+  "tags": ["AI", "语音合成", "TTS", "千音"],
+  "tags_zh": ["AI", "语音合成", "TTS", "千音"],
+  "tags_en": ["AI", "Speech Synthesis", "TTS", "Qianyin"],
+  "type": "server",
+  "hasWorkflow": true,
+  "hasView": false,
+  "entries": {
+    "server": "main.js",
+    "workflow": "workflow.js"
+  },
+  "config": [
+    {
+      "key": "appkey",
+      "label": "App Key",
+      "desc": "千音开放平台 AppKey",
+      "type": "string",
+      "value": "",
+      "placeholder": "输入你的千音 AppKey",
+      "required": true
+    },
+    {
+      "key": "secret",
+      "label": "Secret",
+      "desc": "千音开放平台 Secret",
+      "type": "string",
+      "value": "",
+      "placeholder": "输入你的千音 Secret",
+      "required": true
+    },
+    {
+      "key": "baseUrl",
+      "label": "API 地址",
+      "desc": "千音 API 基础地址",
+      "type": "string",
+      "value": "https://open.qianyin123.com",
+      "placeholder": "https://open.qianyin123.com"
+    }
+  ]
+}

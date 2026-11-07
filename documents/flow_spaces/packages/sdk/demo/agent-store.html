@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Agent Store · SDK Demo</title>
+  <link rel="stylesheet" href="./css/style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <a href="./index.html" class="back">← 首页</a>
+    <h1>Agent Store · 商店索引</h1>
+  </header>
+
+  <div class="container">
+    <div class="card">
+      <h2>拉取商店索引</h2>
+      <p class="desc"><code>sdk.agentStore.fetchIndex(baseUrl)</code> · 从指定商店地址拉取 Agent / 资源索引</p>
+      <div class="field">
+        <label>store baseUrl</label>
+        <input id="in-base" type="text" placeholder="https://your-agent-store.example.com" />
+      </div>
+      <div class="actions">
+        <button id="btn-fetch" class="btn">fetchIndex</button>
+      </div>
+      <pre id="out" class="output">结果将显示于此</pre>
+    </div>
+  </div>
+
+  <script type="module" src="./js/agent-store.js"></script>
+</body>
+</html>

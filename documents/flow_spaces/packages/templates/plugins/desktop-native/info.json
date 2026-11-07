@@ -1,0 +1,22 @@
+{
+  "id": "workflow.desktop-native",
+  "icon": "icon.png",
+  "name": "桌面原生",
+  "name_zh": "桌面原生",
+  "name_en": "Desktop Native",
+  "version": "1.0.0",
+  "description": "提供剪贴板读写、系统通知等桌面原生能力",
+  "description_zh": "提供剪贴板读写、系统通知等桌面原生能力",
+  "description_en": "Provides desktop native capabilities such as clipboard access and system notifications",
+  "author": { "name": "workflow" },
+  "tags": ["剪贴板", "通知", "桌面"],
+  "tags_zh": ["剪贴板", "通知", "桌面"],
+  "tags_en": ["Clipboard", "Notification", "Desktop"],
+  "type": "client",
+  "hasWorkflow": true,
+  "hasView": false,
+  "entries": {
+    "main": "main.js",
+    "workflow": "workflow.js"
+  }
+}

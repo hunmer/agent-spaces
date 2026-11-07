@@ -1,0 +1,40 @@
+{
+  "title": "Robot 账号",
+  "description": "管理飞书和微信 Bot 账号凭证，工作空间通知配置时可直接引用",
+  "addAccount": "添加账号",
+  "editAccount": "编辑账号",
+  "deleteAccount": "删除账号",
+  "deleteConfirm": "确定删除此账号？已关联的工作空间通知将无法使用。",
+  "name": "名称",
+  "namePlaceholder": "例如：公司飞书Bot",
+  "type": "类型",
+  "noAccounts": "暂无 Robot 账号",
+  "noAccountsDesc": "点击上方「添加账号」创建飞书或微信 Bot 账号",
+  "lark": "飞书",
+  "wechat": "微信",
+  "addLark": "添加飞书账号",
+  "addWechat": "添加微信账号",
+  "larkFields": {
+    "appId": "App ID",
+    "appSecret": "App Secret"
+  },
+  "wechatFields": {
+    "token": "Token",
+    "accountId": "Account ID",
+    "baseUrl": "Base URL"
+  },
+  "createSuccess": "账号创建成功",
+  "createFailed": "创建账号失败",
+  "updateSuccess": "账号更新成功",
+  "updateFailed": "更新账号失败",
+  "deleteSuccess": "账号已删除",
+  "deleteFailed": "删除账号失败",
+  "wechatQrDescription": "使用微信扫描二维码，登录后自动创建账号",
+  "getQr": "获取二维码",
+  "refreshQr": "刷新二维码",
+  "wechatWaitScan": "等待扫码...",
+  "wechatScanned": "已扫码，请在手机上确认登录",
+  "wechatExpired": "二维码已过期，请刷新",
+  "save": "保存",
+  "cancel": "取消"
+}

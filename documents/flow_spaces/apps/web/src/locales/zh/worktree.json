@@ -1,0 +1,43 @@
+{
+  "panel": {
+    "title": "Worktrees",
+    "empty": "暂无 Worktree",
+    "emptyHint": "创建独立分支环境，为 AI 提供隔离的编码空间",
+    "create": "创建 Worktree"
+  },
+  "card": {
+    "active": "活跃",
+    "merged": "已合并",
+    "switch": "切换",
+    "diff": "审查 Diff",
+    "createPR": "创建 PR",
+    "viewPR": "查看 PR",
+    "merge": "合并",
+    "delete": "删除",
+    "branch": "分支",
+    "agent": "Agent",
+    "issue": "Issue",
+    "createdAt": "创建于",
+    "confirmDelete": "确认删除该 Worktree？未提交的变更将丢失。",
+    "current": "当前"
+  },
+  "prDialog": {
+    "title": "创建 PR",
+    "prTitle": "标题",
+    "body": "PR 正文",
+    "bodyPlaceholder": "描述这个 Pull Request 的变更内容",
+    "generate": "AI 生成 PR 正文",
+    "cancel": "取消",
+    "submit": "创建 PR"
+  },
+  "dialog": {
+    "createTitle": "创建 Worktree",
+    "name": "名称",
+    "namePlaceholder": "例如：feature-auth",
+    "branch": "分支名（可选）",
+    "branchPlaceholder": "留空自动生成",
+    "agent": "关联 Agent（可选）",
+    "issue": "关联 Issue（可选）",
+    "creating": "创建中..."
+  }
+}

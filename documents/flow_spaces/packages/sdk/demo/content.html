@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>数据 & 搜索 · SDK Demo</title>
+  <link rel="stylesheet" href="./css/style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <a href="./index.html" class="back">← 首页</a>
+    <h1>Data · 全局数据 & Search & 收藏</h1>
+  </header>
+
+  <div class="container">
+    <div class="hint">
+      本页覆盖 <code>sdk.data</code>（全局数据树 / 读写 / 导入导出，无需 workspaceId）、
+      <code>sdk.search</code>（代码 / 文件检索，依赖 workspaceId）、
+      <code>sdk.codeFavorites</code>（代码收藏，依赖 workspaceId）。
+    </div>
+
+    <!-- data 树 -->
+    <div class="card">
+      <h2>数据树 & 内容</h2>
+      <p class="desc"><code>sdk.data.tree(opts?)</code> · <code>content(path)</code> · <code>save(path, content)</code></p>
+      <div class="field">
+        <label>path</label>
+        <input id="in-path" type="text" placeholder="数据文件相对路径" />
+      </div>
+      <div class="field">
+        <label>content（save 用）</label>
+        <textarea id="in-content" rows="3" placeholder="文件内容"></textarea>
+      </div>
+      <div class="actions">
+        <button id="btn-tree" class="btn">tree</button>
+        <button id="btn-content" class="btn secondary">content</button>
+        <button id="btn-save" class="btn secondary">save</button>
+      </div>
+      <pre id="out-data" class="output">结果将显示于此</pre>
+    </div>
+
+    <!-- data 文件操作 -->
+    <div class="card">
+      <h2>文件操作</h2>
+      <p class="desc"><code>deleteFile(path)</code> · <code>rename(old, new)</code> · <code>copy(src, dest)</code></p>
+      <div class="row">
+        <div class="field">
+          <label>srcPath / oldPath</label>
+          <input id="in-src" type="text" placeholder="源路径" />
+        </div>
+        <div class="field">
+          <label>destPath / newPath</label>
+          <input id="in-dest" type="text" placeholder="目标路径" />
+        </div>
+      </div>
+      <div class="actions">
+        <button id="btn-delete" class="btn danger">deleteFile</button>
+        <button id="btn-rename" class="btn secondary">rename</button>
+        <button id="btn-copy" class="btn secondary">copy</button>
+      </div>
+      <pre id="out-op" class="output">结果将显示于此</pre>
+    </div>
+
+    <!-- 导入导出 -->
+    <div class="card">
+      <h2>导入 / 导出</h2>
+      <p class="desc"><code>exportZip()</code> · <code>importZip(formData)</code> · <code>importCcSwitch()</code> · <code>ccSwitchPreview()</code></p>
+      <div class="field">
+        <label>导入 zip（importZip 用）</label>
+        <input id="in-zip" type="file" />
+      </div>
+      <div class="actions">
+        <button id="btn-export" class="btn">exportZip</button>
+        <button id="btn-import-zip" class="btn secondary">importZip</button>
+        <button id="btn-ccswitch" class="btn secondary">importCcSwitch</button>
+        <button id="btn-ccswitch-preview" class="btn secondary">ccSwitchPreview</button>
+      </div>
+      <pre id="out-io" class="output">结果将显示于此</pre>
+    </div>
+
+    <hr style="border:none;border-top:1px dashed var(--border);margin:26px 0;" />
+
+    <!-- search -->
+    <div class="card">
+      <h2>选择工作区（Search / 收藏用）</h2>
+      <div class="field">
+        <label>workspace</label>
+        <select id="ws-select"></select>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>搜索</h2>
+      <p class="desc"><code>sdk.search.code(wsId, opts)</code> · <code>search.files(wsId, query)</code></p>
+      <div class="field">
+        <label>query（关键词）</label>
+        <input id="in-query" type="text" placeholder="搜索关键词" />
+      </div>
+      <div class="actions">
+        <button id="btn-search-code" class="btn">search.code</button>
+        <button id="btn-search-files" class="btn secondary">search.files</button>
+      </div>
+      <pre id="out-search" class="output">结果将显示于此</pre>
+    </div>
+
+    <!-- code-favorites -->
+    <div class="card">
+      <h2>代码收藏</h2>
+      <p class="desc"><code>sdk.codeFavorites.list(wsId)</code> · <code>create(wsId, data)</code> · <code>delete_(wsId, id)</code></p>
+      <div class="row">
+        <div class="field">
+          <label>title（create 用）</label>
+          <input id="in-fav-title" type="text" placeholder="收藏标题" />
+        </div>
+        <div class="field">
+          <label>path / code（create 用）</label>
+          <input id="in-fav-path" type="text" placeholder="文件路径或代码片段" />
+        </div>
+      </div>
+      <div class="field">
+        <label>favoriteId（delete 用）</label>
+        <input id="in-fav-id" type="text" placeholder="收藏 id" />
+      </div>
+      <div class="actions">
+        <button id="btn-fav-list" class="btn">list</button>
+        <button id="btn-fav-create" class="btn secondary">create</button>
+        <button id="btn-fav-del" class="btn danger">delete_</button>
+      </div>
+      <div id="fav-table" style="margin-bottom:12px;"></div>
+      <pre id="out-fav" class="output">结果将显示于此</pre>
+    </div>
+  </div>
+
+  <script type="module" src="./js/content.js"></script>
+</body>
+</html>

@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Agent 配置 · SDK Demo</title>
+  <link rel="stylesheet" href="./css/style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <a href="./index.html" class="back">← 首页</a>
+    <h1>Agent 配置 · 提示词/技能/MCP/工具/钩子/命令</h1>
+  </header>
+
+  <div class="container">
+    <div class="hint">
+      本页覆盖 Agent 运行所需的全部配置类模块：<code>prompts</code>、<code>outputStyles</code>、<code>skills</code>、<code>mcps</code>、<code>tools</code>、<code>agentCommands</code>、<code>hooks</code>、<code>command</code>。
+      前五个为全局配置（无需 workspaceId），后三个（agentCommands / hooks / command）依赖 workspaceId。
+    </div>
+
+    <!-- prompts -->
+    <div class="card">
+      <h2>Prompts · 提示词模板</h2>
+      <p class="desc"><code>sdk.prompts.list()</code> · <code>listAgents()</code> · <code>apply(id, agentIds)</code></p>
+      <div class="actions">
+        <button id="btn-prompt-list" class="btn">list</button>
+        <button id="btn-prompt-agents" class="btn secondary">listAgents</button>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label>promptId（apply 用）</label>
+          <input id="in-prompt-id" type="text" placeholder="prompt id" />
+        </div>
+        <div class="field">
+          <label>agentIds（逗号分隔）</label>
+          <input id="in-prompt-agents" type="text" placeholder="a1,a2" />
+        </div>
+      </div>
+      <div class="actions">
+        <button id="btn-prompt-apply" class="btn secondary">apply</button>
+      </div>
+      <pre id="out-prompt" class="output">结果将显示于此</pre>
+    </div>
+
+    <!-- output-styles -->
+    <div class="card">
+      <h2>Output Styles · 输出风格</h2>
+      <p class="desc"><code>sdk.outputStyles.list()</code> · <code>listAgents()</code> · <code>apply(id, agentIds)</code></p>
+      <div class="actions">
+        <button id="btn-style-list" class="btn">list</button>
+        <button id="btn-style-agents" class="btn secondary">listAgents</button>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label>styleId</label>
+          <input id="in-style-id" type="text" placeholder="style id" />
+        </div>
+        <div class="field">
+          <label>agentIds（逗号分隔）</label>
+          <input id="in-style-agents" type="text" placeholder="a1,a2" />
+        </div>
+      </div>
+      <div class="actions">
+        <button id="btn-style-apply" class="btn secondary">apply</button>
+      </div>
+      <pre id="out-style" class="output">结果将显示于此</pre>
+    </div>
+
+    <!-- skills -->
+    <div class="card">
+      <h2>Skills · 技能</h2>
+      <p class="desc"><code>sdk.skills.list()</code> · <code>toggleFavorite(name)</code> · <code>delete_(name)</code> · <code>reveal(name)</code> · <code>syncCheck()</code></p>
+      <div class="row">
+        <div class="field">
+          <label>skill name</label>
+          <input id="in-skill-name" type="text" placeholder="skill 名" />
+        </div>
+      </div>
+      <div class="actions">
+        <button id="btn-skill-list" class="btn">list</button>
+        <button id="btn-skill-fav" class="btn secondary">toggleFavorite</button>
+        <button id="btn-skill-reveal" class="btn secondary">reveal</button>
+        <button id="btn-skill-del" class="btn danger">delete_</button>
+        <button id="btn-skill-sync-check" class="btn secondary">syncCheck</button>
+      </div>
+      <div id="skill-table" style="margin-bottom:12px;"></div>
+      <pre id="out-skill" class="output">结果将显示于此</pre>
+    </div>
+
+    <!-- mcps -->
+    <div class="card">
+      <h2>MCPs · MCP 服务器</h2>
+      <p class="desc"><code>sdk.mcps.list()</code> · <code>toggleFavorite(name)</code> · <code>delete_(name)</code></p>
+      <div class="row">
+        <div class="field">
+          <label>mcp name</label>
+          <input id="in-mcp-name" type="text" placeholder="mcp 名" />
+        </div>
+      </div>
+      <div class="actions">
+        <button id="btn-mcp-list" class="btn">list</button>
+        <button id="btn-mcp-fav" class="btn secondary">toggleFavorite</button>
+        <button id="btn-mcp-del" class="btn danger">delete_</button>
+      </div>
+      <div id="mcp-table" style="margin-bottom:12px;"></div>
+      <pre id="out-mcp" class="output">结果将显示于此</pre>
+    </div>
+
+    <!-- tools -->
+    <div class="card">
+      <h2>Tools · 工具开关</h2>
+      <p class="desc"><code>sdk.tools.list()</code> · <code>update(name, enabled)</code></p>
+      <div class="row">
+        <div class="field">
+          <label>tool name</label>
+          <input id="in-tool-name" type="text" placeholder="tool 名" />
+        </div>
+        <div class="field">
+          <label>enabled（true/false）</label>
+          <input id="in-tool-enabled" type="text" placeholder="true" />
+        </div>
+      </div>
+      <div class="actions">
+        <button id="btn-tool-list" class="btn">list</button>
+        <button id="btn-tool-update" class="btn secondary">update</button>
+      </div>
+      <pre id="out-tool" class="output">结果将显示于此</pre>
+    </div>
+
+    <hr style="border:none;border-top:1px dashed var(--border);margin:26px 0;" />
+
+    <!-- 以下依赖 workspaceId -->
+    <div class="card">
+      <h2>选择工作区（agentCommands / hooks / command 用）</h2>
+      <div class="field">
+        <label>workspace</label>
+        <select id="ws-select"></select>
+      </div>
+    </div>
+
+    <!-- agent-commands -->
+    <div class="card">
+      <h2>Agent Commands · Agent 专属命令</h2>
+      <p class="desc"><code>sdk.agentCommands.listAgents()</code> · <code>listAll()</code> · <code>listForAgent(agentId)</code></p>
+      <div class="field">
+        <label>agentId（listForAgent 用）</label>
+        <input id="in-cmd-agent" type="text" placeholder="agent id" />
+      </div>
+      <div class="actions">
+        <button id="btn-cmd-agents" class="btn">listAgents</button>
+        <button id="btn-cmd-all" class="btn secondary">listAll</button>
+        <button id="btn-cmd-for" class="btn secondary">listForAgent</button>
+      </div>
+      <pre id="out-cmd" class="output">结果将显示于此</pre>
+    </div>
+
+    <!-- hooks -->
+    <div class="card">
+      <h2>Hooks · 钩子</h2>
+      <p class="desc"><code>sdk.hooks.list(workspaceId)</code> · <code>delete_(wsId, name)</code></p>
+      <div class="field">
+        <label>hook name（delete 用）</label>
+        <input id="in-hook-name" type="text" placeholder="hook 名" />
+      </div>
+      <div class="actions">
+        <button id="btn-hook-list" class="btn">list</button>
+        <button id="btn-hook-del" class="btn danger">delete_</button>
+      </div>
+      <pre id="out-hook" class="output">结果将显示于此</pre>
+    </div>
+
+    <!-- command -->
+    <div class="card">
+      <h2>Command · 自定义命令</h2>
+      <p class="desc"><code>sdk.command.list(workspaceId)</code> · <code>start(wsId, id)</code> · <code>stop(wsId, id)</code></p>
+      <div class="field">
+        <label>command id（start / stop 用）</label>
+        <input id="in-command-id" type="text" placeholder="command id" />
+      </div>
+      <div class="actions">
+        <button id="btn-command-list" class="btn">list</button>
+        <button id="btn-command-start" class="btn secondary">start</button>
+        <button id="btn-command-stop" class="btn secondary">stop</button>
+      </div>
+      <div id="command-table" style="margin-bottom:12px;"></div>
+      <pre id="out-command" class="output">结果将显示于此</pre>
+    </div>
+  </div>
+
+  <script type="module" src="./js/agent-cfg.js"></script>
+</body>
+</html>

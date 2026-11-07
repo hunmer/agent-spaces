@@ -1,0 +1,42 @@
+{
+  "id": "workflow.runninghub",
+  "name": "RunningHub",
+  "name_zh": "RunningHub",
+  "name_en": "RunningHub",
+  "icon": "icon.png",
+  "version": "1.0.0",
+  "description": "RunningHub AI 任务平台：ComfyUI 工作流、AI 应用、模型 API 视频生成（图生视频/参考生视频，聚合可灵/海螺/Vidu/万相/seedance/SkyReels 等），支持任务查询、取消、公共模型列表与工作流 JSON 获取",
+  "description_zh": "RunningHub AI 任务平台：ComfyUI 工作流、AI 应用、模型 API 视频生成（图生视频/参考生视频，聚合可灵/海螺/Vidu/万相/seedance/SkyReels 等），支持任务查询、取消、公共模型列表与工作流 JSON 获取",
+  "description_en": "RunningHub AI task platform: ComfyUI workflow, AI app, model API video generation (image-to-video / reference-to-video, aggregating Kling/Hailuo/Vidu/Wan/seedance/SkyReels etc.), with task query, cancel, public model list and workflow JSON retrieval",
+  "author": { "name": "workflow" },
+  "tags": ["AI", "视频生成", "ComfyUI", "RunningHub", "图生视频", "参考生视频"],
+  "tags_zh": ["AI", "视频生成", "ComfyUI", "RunningHub", "图生视频", "参考生视频"],
+  "tags_en": ["AI", "Video Generation", "ComfyUI", "RunningHub", "Image-to-Video", "Reference-to-Video"],
+  "type": "server",
+  "hasWorkflow": true,
+  "hasView": false,
+  "entries": {
+    "server": "main.js",
+    "workflow": "workflow.js",
+    "tools": "tools.js"
+  },
+  "config": [
+    {
+      "key": "apiKey",
+      "label": "API Key",
+      "desc": "RunningHub API Key，可在 账户>API 页面获取",
+      "type": "string",
+      "value": "",
+      "placeholder": "输入你的 RunningHub API Key",
+      "required": true
+    },
+    {
+      "key": "baseUrl",
+      "label": "API 地址",
+      "desc": "RunningHub API 服务地址",
+      "type": "string",
+      "value": "https://www.runninghub.cn",
+      "placeholder": "https://www.runninghub.cn"
+    }
+  ]
+}

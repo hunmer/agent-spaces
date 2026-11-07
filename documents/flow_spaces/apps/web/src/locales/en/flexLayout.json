@@ -1,0 +1,15 @@
+{
+  "unknownComponent": "Unknown component: {name}",
+  "unknownComponentEmpty": "(empty)",
+  "addTab": "Add Tab",
+  "addFloat": "Add Floating Window",
+  "presets": "Presets",
+  "presetsWithCount": "Presets ({count})",
+  "managePresets": "Layout Presets",
+  "resetLayout": "Reset to Default Layout",
+  "switchTheme": "Switch Theme",
+  "restore": "Restore",
+  "maximize": "Maximize",
+  "popout": "Pop out",
+  "close": "Close"
+}

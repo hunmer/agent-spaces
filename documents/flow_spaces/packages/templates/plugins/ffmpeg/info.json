@@ -1,0 +1,32 @@
+{
+  "id": "workflow.ffmpeg",
+  "name": "FFmpeg音视频处理",
+  "name_zh": "FFmpeg音视频处理",
+  "name_en": "FFmpeg Audio/Video Processing",
+  "version": "1.0.0",
+  "icon": "icon.svg",
+  "description": "基于FFmpeg的音视频处理，支持格式转换、音视频合并、音视频分离",
+  "description_zh": "基于FFmpeg的音视频处理，支持格式转换、音视频合并、音视频分离",
+  "description_en": "FFmpeg-based audio/video processing with format conversion, merge, and demux support.",
+  "author": { "name": "workflow" },
+  "tags": ["FFmpeg", "音视频", "格式转换"],
+  "tags_zh": ["FFmpeg", "音视频", "格式转换"],
+  "tags_en": ["FFmpeg", "Audio/Video", "Format Conversion"],
+  "type": "server",
+  "hasWorkflow": true,
+  "hasView": false,
+  "entries": {
+    "server": "main.js",
+    "workflow": "workflow.js"
+  },
+  "config": [
+    {
+      "key": "ffmpegPath",
+      "label": "FFmpeg路径",
+      "desc": "FFmpeg可执行文件路径，留空则使用系统PATH中的ffmpeg",
+      "type": "string",
+      "value": "",
+      "placeholder": "/usr/local/bin/ffmpeg"
+    }
+  ]
+}

@@ -1,0 +1,39 @@
+{
+  "dialog": {
+    "editTitle": "编辑工作空间",
+    "newTitle": "新建工作空间",
+    "editDescription": "更新工作空间设置。",
+    "newDescription": "创建新的工作空间并绑定到本地目录。",
+    "namePlaceholder": "工作空间名称"
+  },
+  "agents": "智能体",
+  "addAgent": "添加智能体",
+  "noAgents": "此工作空间暂无智能体",
+  "success": {
+    "title": "创建成功",
+    "description": "工作空间「{name}」已创建成功。",
+    "switchNow": "切换到该工作空间",
+    "stayHere": "留在此处"
+  },
+  "clone": {
+    "createFromGit": "从 Git 创建",
+    "fromGitTooltip": "从 Git 仓库克隆",
+    "selectFolderFirst": "请先选择目标文件夹",
+    "title": "从 Git 创建",
+    "description": "输入 Git 仓库地址，克隆到选定的文件夹中。",
+    "cloneTo": "将克隆到: ",
+    "objects": "个对象",
+    "cloning": "克隆中...",
+    "clone": "克隆",
+    "cloneFailed": "克隆失败",
+    "noResponseBody": "无响应内容",
+    "phase": {
+      "counting": "计算对象中...",
+      "compressing": "压缩中...",
+      "receiving": "接收数据中...",
+      "resolving": "解析中...",
+      "done": "完成",
+      "error": "失败"
+    }
+  }
+}

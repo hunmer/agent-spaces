@@ -1,0 +1,68 @@
+{
+  "id": "workflow.fish-audio",
+  "name": "FishAudio 语音合成",
+  "name_zh": "FishAudio 语音合成",
+  "name_en": "FishAudio Speech Synthesis",
+  "version": "1.0.0",
+  "icon": "icon.png",
+  "description": "FishAudio 语音合成与语音识别，支持 TTS 文字转语音、STT 语音转文字",
+  "description_zh": "FishAudio 语音合成与语音识别，支持 TTS 文字转语音、STT 语音转文字",
+  "description_en": "FishAudio speech synthesis and recognition, supporting TTS text-to-speech and STT speech-to-text",
+  "author": { "name": "workflow" },
+  "tags": ["AI", "语音合成", "TTS", "语音识别", "STT", "FishAudio"],
+  "tags_zh": ["AI", "语音合成", "TTS", "语音识别", "STT", "FishAudio"],
+  "tags_en": ["AI", "Speech Synthesis", "TTS", "Speech Recognition", "STT", "FishAudio"],
+  "type": "server",
+  "hasWorkflow": true,
+  "hasView": false,
+  "entries": {
+    "server": "main.js",
+    "workflow": "workflow.js"
+  },
+  "config": [
+    {
+      "key": "apiKey",
+      "label": "API Key",
+      "desc": "FishAudio API Key（在 fish.audio 控制台获取）",
+      "type": "string",
+      "value": "",
+      "placeholder": "输入你的 FishAudio API Key",
+      "required": true
+    },
+    {
+      "key": "referenceId",
+      "label": "默认音色模型 ID",
+      "desc": "默认使用的语音模型 ID（可在 fish.audio 模型市场获取）",
+      "type": "string",
+      "value": "",
+      "placeholder": "如：abc123def456"
+    },
+    {
+      "key": "model",
+      "label": "TTS 模型",
+      "desc": "使用的 TTS 模型版本",
+      "type": "select",
+      "value": "s2-pro",
+      "options": [
+        { "label": "S2-Pro（推荐）", "value": "s2-pro" },
+        { "label": "S1", "value": "s1" }
+      ]
+    },
+    {
+      "key": "baseUrl",
+      "label": "API 地址",
+      "desc": "FishAudio API 基础地址",
+      "type": "string",
+      "value": "https://api.fish.audio",
+      "placeholder": "https://api.fish.audio"
+    },
+    {
+      "key": "httpProxy",
+      "label": "HTTP 代理",
+      "desc": "HTTP 代理地址，如 http://127.0.0.1:7890（留空则不使用代理）",
+      "type": "string",
+      "value": "",
+      "placeholder": "http://127.0.0.1:7890"
+    }
+  ]
+}

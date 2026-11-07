@@ -1,0 +1,19 @@
+{
+  "group": {
+    "tab": "标签页",
+    "navigation": "导航",
+    "view": "视图",
+    "tools": "工具",
+    "window": "窗口"
+  },
+  "action": {
+    "newTab": "新建标签页",
+    "closeTab": "关闭当前标签页",
+    "nextTab": "下一个标签页",
+    "prevTab": "上一个标签页",
+    "reloadTab": "刷新当前页",
+    "forceReload": "强制刷新",
+    "toggleFullscreen": "切换全屏",
+    "commandPalette": "打开命令面板"
+  }
+}

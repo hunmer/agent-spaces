@@ -1,0 +1,15 @@
+{
+  "unknownComponent": "未知组件: {name}",
+  "unknownComponentEmpty": "(空)",
+  "addTab": "添加 Tab",
+  "addFloat": "添加浮动窗口",
+  "presets": "预设",
+  "presetsWithCount": "预设 ({count})",
+  "managePresets": "布局预设管理",
+  "resetLayout": "重置为默认布局",
+  "switchTheme": "切换样式",
+  "restore": "还原",
+  "maximize": "全屏",
+  "popout": "悬浮查看",
+  "close": "关闭"
+}

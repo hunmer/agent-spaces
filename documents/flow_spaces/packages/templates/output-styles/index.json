@@ -1,0 +1,51 @@
+[
+  {
+    "id": "carmack-mode",
+    "name": "Carmack 模式",
+    "filename": "carmack-mode.md",
+    "md5": "20ccc45bb32036ada2823770b435f72b",
+    "updatedAt": "2026-05-25T08:27:33.609Z"
+  },
+  {
+    "id": "codex-rigor-mode",
+    "name": "Codex Rigor 模式",
+    "filename": "codex-rigor-mode.md",
+    "md5": "3e72b10ba106cf428cbf48be8ace10dd",
+    "updatedAt": "2026-05-25T08:27:33.610Z"
+  },
+  {
+    "id": "dhh-mode",
+    "name": "DHH 模式",
+    "filename": "dhh-mode.md",
+    "md5": "7f873d916fb9a84eee650ee536c32f79",
+    "updatedAt": "2026-05-25T08:27:33.611Z"
+  },
+  {
+    "id": "evan-you-mode",
+    "name": "尤雨溪模式",
+    "filename": "evan-you-mode.md",
+    "md5": "dd8abc9b56eef823ebddb302600515b6",
+    "updatedAt": "2026-05-25T08:27:33.612Z"
+  },
+  {
+    "id": "jobs-mode",
+    "name": "Jobs 模式",
+    "filename": "jobs-mode.md",
+    "md5": "3dbd9cbb695a0963a7465eb50f8d664f",
+    "updatedAt": "2026-05-25T08:27:33.615Z"
+  },
+  {
+    "id": "linus-mode",
+    "name": "Linus 模式",
+    "filename": "linus-mode.md",
+    "md5": "b69bbcf5558c0ba647256802c25b5529",
+    "updatedAt": "2026-05-25T08:27:33.616Z"
+  },
+  {
+    "id": "uncle-bob-mode",
+    "name": "Uncle Bob 模式",
+    "filename": "uncle-bob-mode.md",
+    "md5": "e701c38bee82851c53e7a594fb74ae15",
+    "updatedAt": "2026-05-25T08:27:33.618Z"
+  }
+]

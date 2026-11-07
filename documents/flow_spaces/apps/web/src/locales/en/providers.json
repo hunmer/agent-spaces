@@ -1,0 +1,41 @@
+{
+  "error": {
+    "saveFailed": "Failed to save provider",
+    "deleteFailed": "Failed to delete provider"
+  },
+  "confirm": {
+    "delete": "Delete this provider?"
+  },
+  "dialog": {
+    "editTitle": "Edit Provider",
+    "addTitle": "Add Provider",
+    "title": "Providers",
+    "editDescription": "Configure provider connection settings",
+    "listDescription": "Manage LLM API providers",
+    "add": "Add",
+    "loading": "Loading providers..."
+  },
+  "list": {
+    "noApiBase": "No API base configured",
+    "modelsCount": "models",
+    "addModel": "Add model",
+    "editModels": "Edit models",
+    "empty": "No providers yet"
+  },
+  "form": {
+    "connection": "Connection",
+    "vendor": "Vendor",
+    "vendorPlaceholder": "Select a vendor to auto-fill...",
+    "name": "Name",
+    "namePlaceholder": "e.g. Anthropic",
+    "apiBase": "API Base",
+    "apiBasePlaceholder": "https://api.anthropic.com",
+    "apiKey": "API Key",
+    "apiKeyPlaceholder": "sk-...",
+    "apiMessageType": "API Message Type",
+    "apiMessageTypePlaceholder": "Select API message type...",
+    "testConnection": "Test Connection",
+    "testSuccess": "Connection successful",
+    "testFailed": "Connection failed"
+  }
+}

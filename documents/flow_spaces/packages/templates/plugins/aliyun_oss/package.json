@@ -1,0 +1,10 @@
+{
+  "name": "aliyun-oss-plugin",
+  "version": "1.0.0",
+  "description": "Aliyun OSS plugin for workflow",
+  "main": "main.js",
+  "type": "commonjs",
+  "dependencies": {
+    "ali-oss": "^6.21.0"
+  }
+}

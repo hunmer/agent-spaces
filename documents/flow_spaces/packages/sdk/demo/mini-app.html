@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mini App · SDK Demo</title>
+  <link rel="stylesheet" href="./css/style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <a href="./index.html" class="back">← 首页</a>
+    <h1>Mini Apps · 小应用管理</h1>
+  </header>
+
+  <div class="container">
+    <div class="hint">
+      覆盖 <code>sdk.miniApp</code>：项目 CRUD、文件树/读写、配置、头像/背景、Agent 配置与对话、zip 导入导出。所有接口依赖 <code>appId</code>。
+    </div>
+
+    <!-- 列表 -->
+    <div class="card">
+      <h2>项目列表</h2>
+      <p class="desc"><code>sdk.miniApp.list()</code></p>
+      <div class="actions">
+        <button id="btn-list" class="btn">刷新列表</button>
+      </div>
+      <div id="app-table" style="margin-bottom:12px;"></div>
+      <pre id="out-list" class="output">原始 JSON 将显示于此</pre>
+    </div>
+
+    <!-- 项目 CRUD -->
+    <div class="card">
+      <h2>项目 CRUD</h2>
+      <p class="desc"><code>create(data)</code> · <code>get(id)</code> · <code>update(id, data)</code> · <code>delete_(id)</code></p>
+      <div class="row">
+        <div class="field">
+          <label>项目名（create 用）</label>
+          <input id="in-name" type="text" placeholder="新应用名称" />
+        </div>
+        <div class="field">
+          <label>appId（get / update / delete 用）</label>
+          <input id="in-app-id" type="text" placeholder="app id" />
+        </div>
+      </div>
+      <div class="field">
+        <label>update data（JSON，可选）</label>
+        <input id="in-update-data" type="text" placeholder='{"name":"新名称"}' />
+      </div>
+      <div class="actions">
+        <button id="btn-create" class="btn">create</button>
+        <button id="btn-get" class="btn secondary">get</button>
+        <button id="btn-update" class="btn secondary">update</button>
+        <button id="btn-delete" class="btn danger">delete_</button>
+      </div>
+      <pre id="out-crud" class="output">结果将显示于此</pre>
+    </div>
+
+    <!-- 文件树 -->
+    <div class="card">
+      <h2>文件树 / 清单 / 配置</h2>
+      <p class="desc"><code>getFileTree(id)</code> · <code>getFileManifest(id)</code> · <code>readConfig(id, filePath)</code></p>
+      <div class="field">
+        <label>appId</label>
+        <input id="in-tree-app" type="text" placeholder="app id" />
+      </div>
+      <div class="field">
+        <label>filePath（readConfig 用）</label>
+        <input id="in-tree-path" type="text" placeholder="配置文件路径" />
+      </div>
+      <div class="actions">
+        <button id="btn-tree" class="btn">getFileTree</button>
+        <button id="btn-manifest" class="btn secondary">getFileManifest</button>
+        <button id="btn-read-config" class="btn secondary">readConfig</button>
+      </div>
+      <pre id="out-tree" class="output">结果将显示于此</pre>
+    </div>
+
+    <!-- 文件读写 -->
+    <div class="card">
+      <h2>文件读写</h2>
+      <p class="desc"><code>readFile(id, path)</code> · <code>writeFile(id, path, content)</code> · <code>deleteFile</code> · <code>renameFile</code> · <code>createFolder</code></p>
+      <div class="field">
+        <label>appId</label>
+        <input id="in-rw-app" type="text" placeholder="app id" />
+      </div>
+      <div class="row">
+        <div class="field">
+          <label>filePath</label>
+          <input id="in-rw-path" type="text" placeholder="文件路径" />
+        </div>
+        <div class="field">
+          <label>rename to / createFolder dir（可选）</label>
+          <input id="in-rw-to" type="text" placeholder="目标路径/目录" />
+        </div>
+      </div>
+      <div class="field">
+        <label>content（writeFile 用）</label>
+        <textarea id="in-rw-content" rows="3" placeholder="文件内容"></textarea>
+      </div>
+      <div class="actions">
+        <button id="btn-read" class="btn">readFile</button>
+        <button id="btn-write" class="btn secondary">writeFile</button>
+        <button id="btn-del-file" class="btn danger">deleteFile</button>
+        <button id="btn-rename-file" class="btn secondary">renameFile</button>
+        <button id="btn-mkdir" class="btn secondary">createFolder</button>
+      </div>
+      <pre id="out-rw" class="output">结果将显示于此</pre>
+    </div>
+
+    <!-- 数据文件 & 上传 -->
+    <div class="card">
+      <h2>数据文件 & 上传</h2>
+      <p class="desc"><code>writeDataFile(id, path, content, encoding?)</code> · <code>uploadFiles(id, formData)</code> · <code>writeConfig(id, path, value)</code></p>
+      <div class="row">
+        <div class="field">
+          <label>appId</label>
+          <input id="in-data-app" type="text" placeholder="app id" />
+        </div>
+        <div class="field">
+          <label>filePath</label>
+          <input id="in-data-path" type="text" placeholder="文件路径" />
+        </div>
+      </div>
+      <div class="field">
+        <label>content / value（writeDataFile / writeConfig 用）</label>
+        <textarea id="in-data-content" rows="2" placeholder="内容"></textarea>
+      </div>
+      <div class="field">
+        <label>上传文件（uploadFiles 用，可多选）</label>
+        <input id="in-upload" type="file" multiple />
+      </div>
+      <div class="actions">
+        <button id="btn-write-data" class="btn">writeDataFile</button>
+        <button id="btn-write-config" class="btn secondary">writeConfig</button>
+        <button id="btn-upload" class="btn secondary">uploadFiles</button>
+      </div>
+      <pre id="out-data" class="output">结果将显示于此</pre>
+    </div>
+
+    <!-- 头像 / 背景 / zip -->
+    <div class="card">
+      <h2>头像 / 背景 / zip 导入导出</h2>
+      <p class="desc"><code>uploadAvatar(id, dataUrl)</code> · <code>getAvatarUrl(id)</code> · <code>exportZip(id)</code> · <code>importZip(data)</code> · <code>revealFolder(id)</code></p>
+      <div class="field">
+        <label>appId</label>
+        <input id="in-media-app" type="text" placeholder="app id" />
+      </div>
+      <div class="field">
+        <label>头像图片（uploadAvatar 用，自动转 dataUrl）</label>
+        <input id="in-avatar-file" type="file" />
+      </div>
+      <div class="field">
+        <label>背景图片（uploadBackground 用，自动转 dataUrl）</label>
+        <input id="in-bg-file" type="file" />
+      </div>
+      <div class="field">
+        <label>导入 zip（importZip 用）</label>
+        <input id="in-zip" type="file" />
+      </div>
+      <div class="actions">
+        <button id="btn-upload-avatar" class="btn">uploadAvatar</button>
+        <button id="btn-avatar-url" class="btn secondary">getAvatarUrl</button>
+        <button id="btn-upload-bg" class="btn secondary">uploadBackground</button>
+        <button id="btn-export" class="btn secondary">exportZip</button>
+        <button id="btn-import" class="btn secondary">importZip</button>
+        <button id="btn-reveal" class="btn secondary">revealFolder</button>
+      </div>
+      <pre id="out-media" class="output">结果将显示于此</pre>
+    </div>
+
+    <!-- Agent 配置 -->
+    <div class="card">
+      <h2>App 内 Agent 配置</h2>
+      <p class="desc"><code>listAgents(id)</code> · <code>getAgent(id, agentId)</code> · <code>updateAgent(id, agentId, data)</code></p>
+      <div class="row">
+        <div class="field">
+          <label>appId</label>
+          <input id="in-ag-app" type="text" placeholder="app id" />
+        </div>
+        <div class="field">
+          <label>agentId（get / update 用）</label>
+          <input id="in-ag-id" type="text" placeholder="agent id" />
+        </div>
+      </div>
+      <div class="field">
+        <label>update data（JSON）</label>
+        <input id="in-ag-data" type="text" placeholder='{"model":"..."}' />
+      </div>
+      <div class="actions">
+        <button id="btn-ag-list" class="btn">listAgents</button>
+        <button id="btn-ag-get" class="btn secondary">getAgent</button>
+        <button id="btn-ag-update" class="btn secondary">updateAgent</button>
+      </div>
+      <pre id="out-ag" class="output">结果将显示于此</pre>
+    </div>
+
+    <!-- Agent 对话 -->
+    <div class="card">
+      <h2>App 内 Agent 对话</h2>
+      <p class="desc"><code>agentHistory(id, sessionId, agentId?)</code> · <code>clearAgentHistory</code> · <code>agentChat(id, agentId, body, opts?)</code></p>
+      <div class="row">
+        <div class="field">
+          <label>appId</label>
+          <input id="in-chat-app" type="text" placeholder="app id" />
+        </div>
+        <div class="field">
+          <label>sessionId</label>
+          <input id="in-chat-session" type="text" placeholder="session id" />
+        </div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label>agentId</label>
+          <input id="in-chat-agent" type="text" placeholder="agent id" />
+        </div>
+        <div class="field">
+          <label>chat body（JSON，如 {"message":"hi"}）</label>
+          <input id="in-chat-body" type="text" placeholder='{"message":"hello"}' />
+        </div>
+      </div>
+      <div class="actions">
+        <button id="btn-chat-history" class="btn">agentHistory</button>
+        <button id="btn-chat-clear" class="btn danger">clearAgentHistory</button>
+        <button id="btn-chat-send" class="btn">agentChat</button>
+      </div>
+      <pre id="out-chat" class="output">结果将显示于此</pre>
+    </div>
+  </div>
+
+  <script type="module" src="./js/mini-app.js"></script>
+</body>
+</html>

@@ -1,0 +1,43 @@
+{
+  "id": "workflow.baidu-image",
+  "name": "百度AI图像处理",
+  "name_zh": "百度AI图像处理",
+  "name_en": "Baidu AI Image",
+  "icon": "icon.svg",
+  "version": "1.0.0",
+  "description": "百度AI图像处理插件，提供智能抠图（主体分割、透明背景输出）和图像无损放大（长宽各2倍）能力",
+  "description_zh": "百度AI图像处理插件，提供智能抠图（主体分割、透明背景输出）和图像无损放大（长宽各2倍）能力",
+  "description_en": "Baidu AI image processing plugin: smart cutout (subject segmentation, transparent background) and lossless image upscaling (2x in both dimensions).",
+  "author": { "name": "workflow" },
+  "tags": ["AI", "图像处理", "智能抠图", "无损放大", "百度"],
+  "tags_zh": ["AI", "图像处理", "智能抠图", "无损放大", "百度"],
+  "tags_en": ["AI", "Image Processing", "Cutout", "Upscale", "Baidu"],
+  "type": "server",
+  "hasWorkflow": true,
+  "hasView": false,
+  "entries": {
+    "server": "main.js",
+    "workflow": "workflow.js",
+    "tools": "tools.js"
+  },
+  "config": [
+    {
+      "key": "apiKey",
+      "label": "API Key",
+      "desc": "百度智能云应用的 API Key",
+      "type": "string",
+      "value": "",
+      "placeholder": "应用的 API Key",
+      "required": true
+    },
+    {
+      "key": "secretKey",
+      "label": "Secret Key",
+      "desc": "百度智能云应用的 Secret Key",
+      "type": "string",
+      "value": "",
+      "placeholder": "应用的 Secret Key",
+      "required": true
+    }
+  ]
+}

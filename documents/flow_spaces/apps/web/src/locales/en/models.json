@@ -1,0 +1,55 @@
+{
+  "capability": {
+    "vision": "Vision",
+    "reasoning": "Reasoning",
+    "embedding": "Embedding",
+    "image": "Image"
+  },
+  "error": {
+    "saveFailed": "Failed to save model",
+    "deleteFailed": "Failed to delete model",
+    "syncFailed": "Failed to sync model prices"
+  },
+  "confirm": {
+    "delete": "Delete this model?"
+  },
+  "dialog": {
+    "editTitle": "Edit Model",
+    "addTitle": "Add Model",
+    "title": "Models",
+    "editDescription": "Configure model properties and capabilities",
+    "listDescription": "Manage available LLM models",
+    "add": "Add",
+    "loading": "Loading models...",
+    "syncPrices": "Sync Model Prices",
+    "syncing": "Syncing...",
+    "syncResult": "Synced prices: {updated}/{total} models updated"
+  },
+  "list": {
+    "contextAbbr": "ctx",
+    "empty": "No models yet"
+  },
+  "form": {
+    "details": "Details",
+    "modelId": "Model ID",
+    "modelIdPlaceholder": "e.g. gpt-4o",
+    "modelIdSearch": "Search or enter model ID...",
+    "showAllModels": "Show all models",
+    "displayName": "Display Name",
+    "displayNamePlaceholder": "e.g. GPT-4o",
+    "provider": "Provider",
+    "context": "Context",
+    "maxContextTokens": "Max context tokens",
+    "customContextPlaceholder": "128000",
+    "thinking": "Thinking",
+    "enableThinking": "Enable thinking",
+    "enableThinkingHelper": "Send reasoning/thinking options with model requests.",
+    "thinkingNotSupported": "This model does not support thinking/reasoning.",
+    "effort": "Effort",
+    "cost": "Cost",
+    "inputPerMillion": "Input / 1M tokens",
+    "outputPerMillion": "Output / 1M tokens",
+    "costPlaceholder": "0.00",
+    "capabilities": "Capabilities"
+  }
+}

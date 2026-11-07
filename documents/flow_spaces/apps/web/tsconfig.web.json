@@ -1,0 +1,30 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "useDefineForClassFields": true,
+    "lib": ["ESNext", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "moduleDetection": "force",
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "types": [],
+    "noEmit": true,
+    "jsx": "react-jsx",
+
+    /* Linting — 对齐原仓库 packages/web/tsconfig.json（不加 noUnusedLocals/
+       noUnusedParameters/verbatimModuleSyntax：业务闭包代码不满足这些附加项） */
+    "strict": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedSideEffectImports": true,
+
+    /* Aliases — keep in sync with vite.config.ts */
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"],
+      "next/*": ["./src/shims/next/*"],
+      "next-intl": ["./src/shims/next-intl.tsx"]
+    }
+  },
+  "include": ["src"]
+}

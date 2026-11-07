@@ -1,0 +1,1163 @@
+// AI 图片生成与编辑插件
+// 对接 OpenAI 兼容的异步图像 API（参考 closeai.fans 等 DALL·E 格式中转）：
+//   文生图  POST /v1/images/generations?async=true  (JSON)
+//   图像编辑 POST /v1/images/edits?async=true       (multipart/form-data)
+//   查询任务 GET /v1/images/tasks/{task_id}
+// 提交返回 task_id，轮询查询接口直到终态（IN_PROGRESS / SUCCESS / FAILURE）。
+//
+// 运行时说明：插件在 vm sandbox 中执行，仅注入了 fetch / Buffer / setTimeout 等，
+// 没有 FormData / Blob / AbortController，因此图像编辑的 multipart body 需要手动拼装。
+
+const fs = require('fs')
+
+// 版本前缀 /v1 由 baseUrl 承担，路径常量不带 /v1，方便用户自定义。
+const DEFAULT_BASE_URL = 'https://ai.comfly.chat/v1'
+const GENERATIONS_PATH = '/images/generations'
+const EDITS_PATH = '/images/edits'
+const TASK_PATH = '/images/tasks'
+const CHAT_COMPLETIONS_PATH = '/chat/completions'
+const RESPONSES_PATH = '/responses'
+const VIDEO_GENERATIONS_PATH = '/video/generations'
+const POLL_INTERVAL = 5000
+const POLL_MAX_ATTEMPTS = 120 // 最长 ~10 分钟
+
+const API_MODES = [
+  { label: '自动识别 (按 baseUrl 后缀)', value: 'auto' },
+  { label: '异步任务 (Images API)', value: 'async_task' },
+  { label: 'Chat Completions', value: 'chat_completions' },
+  { label: 'Responses', value: 'responses' },
+]
+
+// 视频参考模式（OpenAI 风格 /video/generations，兼容 liblib-api 等服务）
+const VIDEO_MODES = [
+  { label: '自动（有参考图→全能参考，无→文生视频）', value: 'auto' },
+  { label: '全能参考 mixed2video（多图融合，{{Mixed N}} 引用）', value: 'mixed2video' },
+  { label: '首尾帧 frames2video（1图=首帧，2图=首尾帧）', value: 'frames2video' },
+  { label: '文生视频 text2video', value: 'text2video' },
+]
+
+const CONFIG_APIKEY = '{{ __config__["workflow.ai-image"]["apiKey"] }}'
+const CONFIG_BASEURL = '{{ __config__["workflow.ai-image"]["baseUrl"] }}'
+
+// ── 基础工具 ────────────────────────────────────────────────
+
+function getBaseUrl(args) {
+  return (args.baseUrl && String(args.baseUrl).trim()) || DEFAULT_BASE_URL
+}
+
+// 节点参数 timeout（秒）→ 毫秒；未填或非法时返回 fallbackMs（保持旧行为）
+function getTimeoutMs(args, fallbackMs) {
+  const sec = Number(args.timeout)
+  return Number.isFinite(sec) && sec > 0 ? Math.round(sec * 1000) : fallbackMs
+}
+
+function getHeaders(args) {
+  const apiKey = args.apiKey
+  if (!apiKey) throw new Error('缺少 apiKey（请填写 Bearer Token）')
+  return { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` }
+}
+
+// ── 同步接口模式（chat / responses）工具 ─────────────────────
+
+function getApiMode(args) {
+  const mode = (args.apiMode || 'auto').toString()
+  return API_MODES.some((m) => m.value === mode) ? mode : 'auto'
+}
+
+// auto 模式：根据 baseUrl 末尾的端点后缀推断模式，并剥掉后缀得到真正的 base。
+// 返回 { mode, baseUrl } —— baseUrl 是不含端点后缀的规范 base，供后续 PATH 拼接，避免重复。
+//   .../responses          → responses
+//   .../chat/completions   → chat_completions
+//   .../images/generations → async_task (文生图)
+//   .../images/edits       → async_task (图生图)
+//   其它(纯 base)          → async_task（默认兼容旧行为）
+function resolveAuto(baseUrl, mode) {
+  if (mode !== 'auto') return { mode, baseUrl }
+  const b = String(baseUrl || '').replace(/\?.*$/, '').replace(/\/+$/, '')
+  const rules = [
+    { re: /\/chat\/completions$/i, mode: 'chat_completions' },
+    { re: /\/responses$/i, mode: 'responses' },
+    { re: /\/images\/(generations|edits)$/i, mode: 'async_task' },
+  ]
+  for (const { re, mode: m } of rules) {
+    const mat = re.exec(b)
+    if (mat) return { mode: m, baseUrl: b.slice(0, mat.index) }
+  }
+  return { mode: 'async_task', baseUrl }
+}
+
+// 统一解析 mode + 规范 baseUrl（auto 时已剥掉端点后缀）
+function resolveRequest(args) {
+  const mode = getApiMode(args)
+  const rawBase = getBaseUrl(args)
+  return resolveAuto(rawBase, mode)
+}
+
+// buffer → data URI（用于 chat image_url / responses input_image）
+function bufferToDataUri(img) {
+  const mime = (img && img.mime) || 'image/png'
+  const buf = img && img.buffer
+  if (!Buffer.isBuffer(buf)) throw new Error('无效的图片 buffer')
+  return `data:${mime};base64,${buf.toString('base64')}`
+}
+
+// 比例 → Responses API 标准尺寸（非标准比例返回 ''，交由模型默认处理）
+function aspectRatioToSize(ratio) {
+  const map = {
+    '1:1': '1024x1024',
+    '16:9': '1536x1024',
+    '9:16': '1024x1536',
+  }
+  return map[ratio] || ''
+}
+
+// 从 chat/completions 的 message.content 提取图片
+// content 可能是字符串（markdown/url/data-uri）或多模态数组（image_url）
+function extractImagesFromChatContent(content, ctx) {
+  const images = []
+  const collect = (raw) => {
+    if (!raw) return
+    // http(s) 图片 URL（非页面 URL：不含 html/htm 后缀，避免把网页链接当图片）
+    if (/^https?:\/\/\S+\.(png|jpe?g|webp|gif|bmp)(\?\S*)?$/i.test(raw)) {
+      images.push(raw)
+      return
+    }
+    // data:image/...;base64,xxxx
+    const dataMatch = /^data:([^;,]+)?(;base64)?,(.*)$/is.exec(raw)
+    if (dataMatch) {
+      const mime = (dataMatch[1] || 'image/png').split(';')[0]
+      const buf = Buffer.from(dataMatch[3], 'base64')
+      const { httpPath } = ctx.api.savePublicFile(buf, extFromMime(mime))
+      images.push(httpPath)
+      return
+    }
+  }
+
+  if (Array.isArray(content)) {
+    for (const part of content) {
+      if (!part || typeof part !== 'object') continue
+      // 常见写法 { type:'image_url', image_url:{ url } } 或 { type:'image', image:{ url } }
+      const url =
+        (part.image_url && (part.image_url.url || part.image_url)) ||
+        (part.image && (part.image.url || part.image)) ||
+        part.url
+      collect(typeof url === 'string' ? url : '')
+    }
+  } else if (typeof content === 'string') {
+    // 1) markdown 图片 ![..](url)
+    const mdRe = /!\[[^\]]*\]\(([^)\s]+)(?:\s+"[^"]*")?\)/g
+    let mdHit = false
+    let m
+    while ((m = mdRe.exec(content))) {
+      mdHit = true
+      collect(m[1])
+    }
+    if (mdHit && images.length) return images
+    // 2) content 整体就是 url / data-uri
+    const trimmed = content.trim()
+    if (/^(https?:|data:)/i.test(trimmed)) {
+      collect(trimmed)
+      if (images.length) return images
+    }
+    // 3) 文本里散落的 url / data-uri
+    const re = /(https?:\/\/\S+\.(?:png|jpe?g|webp|gif|bmp)(?:\?\S*)?|data:[^;\s]+;base64,[A-Za-z0-9+/=]+)/gi
+    while ((m = re.exec(content))) collect(m[1])
+  }
+  return images
+}
+
+// 从 /v1/responses 的 output 数组提取图片
+// output 项 type === 'image_generation_call' → result(b64_json)，兜底取 image_url
+function extractImagesFromResponsesOutput(output, ctx) {
+  const images = []
+  const items = Array.isArray(output) ? output : []
+  for (const item of items) {
+    if (!item || typeof item !== 'object') continue
+    if (item.type === 'image_generation_call' || item.type === 'image_generation') {
+      if (typeof item.result === 'string' && item.result) {
+        const { httpPath } = ctx.api.savePublicFile(Buffer.from(item.result, 'base64'), 'png')
+        images.push(httpPath)
+      } else if (typeof item.image_url === 'string') {
+        images.push(item.image_url)
+      } else if (item.url) {
+        images.push(item.url)
+      }
+    }
+  }
+  return images
+}
+
+// 通用同步 POST + 返回 { images, model, created }
+// baseUrl 为 resolveRequest 已解析的规范 base（auto 时已剥掉端点后缀）
+async function runChatCompletions(ctx, args, baseUrl, body) {
+  const headers = getHeaders(args)
+  ctx.logger.info(`chat/completions model=${body.model} 同步请求`)
+  const resp = await ctx.api.postJson(`${baseUrl}${CHAT_COMPLETIONS_PATH}`, {
+    headers,
+    body,
+    timeout: getTimeoutMs(args, 180000),
+  })
+  const choice = resp && resp.choices && resp.choices[0]
+  if (!choice) throw new Error(`chat/completions 响应异常: ${JSON.stringify(resp).slice(0, 200)}`)
+  // content：字符串（markdown/url/data-uri）或多模态数组（image_url）
+  const content = choice.message && choice.message.content
+  const images = extractImagesFromChatContent(content, ctx)
+  if (!images.length) {
+    throw new Error(`未从 chat/completions 响应解析到图片: ${JSON.stringify(content).slice(0, 200)}`)
+  }
+  return { images, model: resp.model || body.model, created: resp.created }
+}
+
+async function runResponses(ctx, args, baseUrl, body) {
+  const headers = getHeaders(args)
+  ctx.logger.info(`/v1/responses model=${body.model} 同步请求`)
+  const resp = await ctx.api.postJson(`${baseUrl}${RESPONSES_PATH}`, {
+    headers,
+    body,
+    timeout: getTimeoutMs(args, 180000),
+  })
+  const output = (resp && resp.output) || []
+  const images = extractImagesFromResponsesOutput(output, ctx)
+  if (!images.length) {
+    throw new Error(`未从 /v1/responses 响应解析到图片: ${JSON.stringify(resp).slice(0, 200)}`)
+  }
+  return { images, model: resp.model || body.model, created: resp.created }
+}
+
+function mimeFromExt(file) {
+  const m = /\.([a-z0-9]+)$/i.exec(file || '')
+  const ext = (m && m[1] || '').toLowerCase()
+  if (ext === 'jpg' || ext === 'jpeg') return 'image/jpeg'
+  if (ext === 'webp') return 'image/webp'
+  if (ext === 'gif') return 'image/gif'
+  if (ext === 'bmp') return 'image/bmp'
+  if (ext === 'png') return 'image/png'
+  return 'image/png'
+}
+
+function extFromMime(mime) {
+  const sub = ((mime || 'image/png').split('/')[1] || 'png').split('+')[0].toLowerCase()
+  return sub === 'jpeg' ? 'jpg' : sub
+}
+
+function basename(p) {
+  const m = /[^/\\?]+/.exec(p || '')
+  return m ? m[0] : 'image.png'
+}
+
+// ── 图片输入解析 ────────────────────────────────────────────
+// 接受 data URI / http(s) URL / 本地路径，统一返回 { buffer, mime, filename }
+async function resolveImage(input) {
+  if (typeof input !== 'string' || !input.trim()) throw new Error('图片输入不能为空')
+
+  // data:image/png;base64,xxxx 或 data:image/png,xxxx
+  const dataMatch = /^data:([^;,]+)?(;base64)?,(.*)$/is.exec(input)
+  if (dataMatch) {
+    const mime = (dataMatch[1] || 'image/png').split(';')[0]
+    const isBase64 = !!dataMatch[2]
+    const buffer = isBase64
+      ? Buffer.from(dataMatch[3], 'base64')
+      : Buffer.from(decodeURIComponent(dataMatch[3]), 'utf-8')
+    return { buffer, mime, filename: `image.${extFromMime(mime)}` }
+  }
+
+  // http(s) URL：用注入的 fetch 下载
+  if (/^https?:\/\//i.test(input)) {
+    const resp = await globalThis.fetch(input)
+    if (!resp.ok) throw new Error(`下载图片失败: HTTP ${resp.status}`)
+    const buffer = Buffer.from(await resp.arrayBuffer())
+    const mime = (resp.headers.get('content-type') || mimeFromExt(input)).split(';')[0].trim()
+    const filename = basename(input) || `image.${extFromMime(mime)}`
+    return { buffer, mime, filename }
+  }
+
+  // 本地路径
+  const buffer = fs.readFileSync(input)
+  return { buffer, mime: mimeFromExt(input), filename: basename(input) }
+}
+
+// 把 string / string[] / JSON 字符串归一为图片数组
+function toImageArray(input) {
+  if (input == null) return []
+  if (Array.isArray(input)) return input.filter(Boolean)
+  if (typeof input === 'string') {
+    const trimmed = input.trim()
+    if (!trimmed) return []
+    if (trimmed.startsWith('[')) {
+      try {
+        const parsed = JSON.parse(trimmed)
+        return Array.isArray(parsed) ? parsed : [parsed]
+      } catch {
+        return [trimmed]
+      }
+    }
+    return [trimmed]
+  }
+  return []
+}
+
+// ── multipart 手拼（sandbox 无 FormData/Blob）──────────────
+function buildMultipart(fields) {
+  const boundary = '----AIImagePlugin' + Math.random().toString(36).slice(2)
+  const chunks = []
+  for (const [name, value] of Object.entries(fields)) {
+    const list = Array.isArray(value) ? value : [value]
+    for (const item of list) {
+      if (item && typeof item === 'object' && Buffer.isBuffer(item.buffer)) {
+        chunks.push(
+          Buffer.from(
+            `--${boundary}\r\n` +
+              `Content-Disposition: form-data; name="${name}"; filename="${item.filename || 'image.png'}"\r\n` +
+              `Content-Type: ${item.mime || 'image/png'}\r\n\r\n`,
+            'utf-8',
+          ),
+        )
+        chunks.push(item.buffer)
+        chunks.push(Buffer.from('\r\n', 'utf-8'))
+      } else {
+        chunks.push(
+          Buffer.from(
+            `--${boundary}\r\n` +
+              `Content-Disposition: form-data; name="${name}"\r\n\r\n` +
+              `${item == null ? '' : String(item)}\r\n`,
+            'utf-8',
+          ),
+        )
+      }
+    }
+  }
+  chunks.push(Buffer.from(`--${boundary}--\r\n`, 'utf-8'))
+  return { body: Buffer.concat(chunks), contentType: `multipart/form-data; boundary=${boundary}` }
+}
+
+// ── 任务结果解析 ────────────────────────────────────────────
+// 任务查询响应：result.data = { status, progress, fail_reason, data: { data: [{url,b64_json}], model, created, usage } }
+async function extractImages(taskData, ctx) {
+  // 异步查询结果把图片数据包在 data 中；部分兼容服务即使带 async=true，
+  // 仍会直接返回 OpenAI 格式 { created, data: [{ b64_json }] }。
+  const payload =
+    taskData && Array.isArray(taskData.data) ? taskData : taskData && taskData.data ? taskData.data : {}
+  const items = Array.isArray(payload.data) ? payload.data : []
+  const images = []
+  const revisedPrompts = []
+  for (const item of items) {
+    if (!item || typeof item !== 'object') continue
+    if (item.revised_prompt) revisedPrompts.push(item.revised_prompt)
+    if (item.url) {
+      images.push(item.url)
+    } else if (item.b64_json) {
+      const { httpPath } = ctx.api.savePublicFile(Buffer.from(item.b64_json, 'base64'), 'png')
+      images.push(httpPath)
+    }
+  }
+  return {
+    images,
+    model: payload.model,
+    created: payload.created,
+    usage: payload.usage,
+    revisedPrompts,
+  }
+}
+
+// 轮询任务直到终态
+// baseUrl 为 resolveRequest 已解析的规范 base（auto 时已剥掉端点后缀）
+async function pollTask(ctx, args, baseUrl, taskId) {
+  const headers = getHeaders(args)
+  const url = `${baseUrl}${TASK_PATH}/${encodeURIComponent(taskId)}`
+  const maxMs = getTimeoutMs(args, POLL_MAX_ATTEMPTS * POLL_INTERVAL)
+  const deadline = Date.now() + maxMs
+  while (Date.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL))
+    let result
+    try {
+      result = await ctx.api.getJson(url, { headers, timeout: 30000 })
+    } catch (err) {
+      ctx.logger.warning(`查询任务失败，将重试: ${err.message}`)
+      continue
+    }
+    const data = result && result.data ? result.data : {}
+    const status = String(data.status || '').toUpperCase()
+    ctx.logger.info(`任务 ${taskId} 状态: ${status || '未知'} ${data.progress || ''}`)
+    if (status === 'SUCCESS') return data
+    if (status === 'FAILURE' || status === 'FAILED') {
+      throw new Error(`图片任务失败: ${data.fail_reason || result.message || '未知错误'}`)
+    }
+  }
+  throw new Error(`轮询超时（约 ${Math.round(maxMs / 60000)} 分钟）`)
+}
+
+// 提交后兼容两种响应：task_id 异步任务，或直接返回 OpenAI 格式图片数据。
+async function submitAndPoll(ctx, args, baseUrl, submitFn) {
+  const submission = await submitFn()
+  const taskId = pickTaskId(submission)
+  if (!taskId) {
+    const out = await extractImages(submission, ctx)
+    if (out.images.length) return { taskId: '', ...out }
+    throw new Error(
+      `提交失败: ${submission && submission.code ? submission.code : ''} ${submission && submission.message ? submission.message : JSON.stringify(submission).slice(0, 200)}`,
+    )
+  }
+  ctx.logger.info(`已提交任务 task_id=${taskId}，开始轮询...`)
+  const taskData = await pollTask(ctx, args, baseUrl, taskId)
+  const out = await extractImages(taskData, ctx)
+  return { taskId, ...out }
+}
+
+function pickTaskId(r) {
+  if (!r) return ''
+  // comfly 等服务直接在顶层返回 { task_id }；closeai 风格返回 { data: taskId | { task_id } }
+  if (typeof r.task_id === 'string' && r.task_id) return r.task_id
+  if (typeof r.data === 'string') return r.data
+  if (r.data && typeof r.data === 'object') return r.data.task_id || ''
+  return ''
+}
+
+// ── 视频生成 ────────────────────────────────────────────────
+
+// 视频参考图归一：http(s) URL 直接透传（服务端免二次上传），其余（本地路径/data URI）转 data URI
+async function toVideoRef(src) {
+  if (/^https?:\/\//i.test(src)) return src
+  const { buffer, mime } = await resolveImage(src)
+  return `data:${mime};base64,${buffer.toString('base64')}`
+}
+
+// modeType 决策：显式指定优先（auto 除外）；auto 按参考图数量（有图→全能参考，无图→文生）
+function resolveVideoMode(mode, refCount) {
+  const m = (mode || 'auto').toString()
+  if (m !== 'auto' && VIDEO_MODES.some((v) => v.value === m)) return m
+  return refCount > 0 ? 'mixed2video' : 'text2video'
+}
+
+module.exports = (t) => [
+  {
+    name: 'ai_image_generate',
+    label: t('action.generate.label', 'AI Text to Image'),
+    category: t('category', 'AI Image'),
+    icon: 'Image',
+    description: t(
+      'action.generate.description',
+      'Generate images from text descriptions via an OpenAI-compatible async image API.',
+    ),
+    properties: [
+      {
+        key: 'apiKey',
+        label: t('field.apiKey.label', 'API Key'),
+        type: 'text',
+        dataType: 'string',
+        required: true,
+        default: CONFIG_APIKEY,
+        tooltip: t('field.apiKey.tooltip', 'Bearer token for the image service.'),
+      },
+      {
+        key: 'baseUrl',
+        label: t('field.baseUrl.label', 'API Base URL'),
+        type: 'text',
+        dataType: 'string',
+        default: CONFIG_BASEURL,
+        tooltip: t('field.baseUrl.tooltip', 'OpenAI-compatible image API base URL.'),
+      },
+      {
+        key: 'apiMode',
+        label: t('field.apiMode.label', 'API Mode'),
+        type: 'select',
+        dataType: 'string',
+        default: 'auto',
+        options: API_MODES,
+        tooltip: t(
+          'field.apiMode.tooltip',
+          'auto: 按 baseUrl 末尾自动识别（…/responses / …/chat/completions / …/images/* ），无后缀则走异步任务；async_task: Images API 轮询；chat_completions: /chat/completions 同步；responses: /responses 同步。',
+        ),
+      },
+      {
+        key: 'prompt',
+        label: t('field.prompt.label', 'Image Description'),
+        type: 'textarea',
+        dataType: 'string',
+        required: true,
+        tooltip: t('field.prompt.tooltip', 'Describe the image you want to generate.'),
+      },
+      {
+        key: 'model',
+        label: t('field.model.label', 'Model'),
+        type: 'select',
+        dataType: 'string',
+        default: 'gpt-image-2-all',
+        options: [
+          { label: 'gpt-image-2-all', value: 'gpt-image-2-all' },
+          { label: 'gpt-image-1', value: 'gpt-image-1' },
+          { label: 'sora_image', value: 'sora_image' },
+          { label: 'nano-banana', value: 'nano-banana' },
+          { label: 'dall-e-3', value: 'dall-e-3' },
+          { label: 'flux-pro-1.1', value: 'flux-pro-1.1' },
+          { label: 'flux-kontext-pro', value: 'flux-kontext-pro' },
+        ],
+      },
+      {
+        key: 'aspectRatio',
+        label: t('field.aspectRatio.label', 'Aspect Ratio'),
+        type: 'select',
+        dataType: 'string',
+        default: '1:1',
+        options: [
+          { label: t('field.aspectRatio.unset', 'Not set'), value: '' },
+          { label: '1:1', value: '1:1' },
+          { label: '16:9', value: '16:9' },
+          { label: '9:16', value: '9:16' },
+          { label: '4:3', value: '4:3' },
+          { label: '3:4', value: '3:4' },
+          { label: '3:2', value: '3:2' },
+          { label: '2:3', value: '2:3' },
+        ],
+      },
+      {
+        key: 'n',
+        label: t('field.n.label', 'Count'),
+        type: 'number',
+        dataType: 'number',
+        default: 1,
+        tooltip: t('field.n.tooltip', 'Number of images to generate.'),
+      },
+      {
+        key: 'timeout',
+        label: t('field.timeout.label', 'Timeout (seconds)'),
+        type: 'number',
+        dataType: 'number',
+        tooltip: t(
+          'field.timeout.tooltip',
+          'Leave empty to use defaults: 180s for sync requests, 300s for task submission, 600s for polling.',
+        ),
+      },
+    ],
+    outputs: [
+      { key: 'success', type: 'boolean', dataType: 'boolean' },
+      { key: 'message', type: 'string' },
+      {
+        key: 'data',
+        type: 'object', dataType: 'object',
+        children: [
+          { key: 'images', type: 'image[]' },
+          { key: 'taskId', type: 'string' },
+          { key: 'model', type: 'string' },
+          { key: 'created', type: 'number', dataType: 'number' },
+        ],
+      },
+    ],
+    run: async (ctx, args) => {
+      const model = args.model || 'gpt-image-2-all'
+      const prompt = args.prompt
+      const { mode, baseUrl } = resolveRequest(args)
+      ctx.logger.info(`文生图 mode=${mode} model=${model} ratio=${args.aspectRatio || '默认'} n=${args.n || 1}`)
+      ctx.logger.info(`提示词: ${prompt}`)
+
+      // ── chat/completions：同步，messages 取图 ──
+      if (mode === 'chat_completions') {
+        const body = {
+          model,
+          messages: [{ role: 'user', content: prompt }],
+          ...(args.n && { n: Number(args.n) }),
+        }
+        const out = await runChatCompletions(ctx, args, baseUrl, body)
+        return {
+          success: true,
+          message: t('message.generated', 'Generated {count} image(s)').replace('{count}', out.images.length),
+          data: { images: out.images, taskId: '', model: out.model, created: out.created },
+        }
+      }
+
+      // ── responses：同步，image_generation 工具 ──
+      if (mode === 'responses') {
+        const size = aspectRatioToSize(args.aspectRatio)
+        const tool = { type: 'image_generation', ...(size && { size }) }
+        const body = {
+          model,
+          input: prompt,
+          tools: [tool],
+        }
+        const out = await runResponses(ctx, args, baseUrl, body)
+        return {
+          success: true,
+          message: t('message.generated', 'Generated {count} image(s)').replace('{count}', out.images.length),
+          data: { images: out.images, taskId: '', model: out.model, created: out.created },
+        }
+      }
+
+      // ── async_task：现有异步任务逻辑（auto 无端点后缀时的默认）──
+      const headers = getHeaders(args)
+      const body = {
+        prompt,
+        model,
+        ...(args.aspectRatio && { aspect_ratio: args.aspectRatio }),
+        ...(args.n && { n: Number(args.n) }),
+      }
+      const out = await submitAndPoll(ctx, args, baseUrl, async () => {
+        const r = await ctx.api.postJson(`${baseUrl}${GENERATIONS_PATH}?async=true`, {
+          headers,
+          body,
+          timeout: getTimeoutMs(args, 1000 * 60 * 5),
+        })
+        return r
+      })
+      return {
+        success: true,
+        message: t('message.generated', 'Generated {count} image(s)').replace('{count}', out.images.length),
+        data: {
+          images: out.images,
+          taskId: out.taskId,
+          model: out.model,
+          created: out.created,
+        },
+      }
+    },
+  },
+
+  {
+    name: 'ai_image_edit',
+    label: t('action.edit.label', 'AI Image Edit'),
+    category: t('category', 'AI Image'),
+    icon: 'Wand2',
+    description: t(
+      'action.edit.description',
+      'Edit images from reference image(s) and a text instruction (gpt-image-1, flux-kontext, etc.).',
+    ),
+    properties: [
+      {
+        key: 'apiKey',
+        label: t('field.apiKey.label', 'API Key'),
+        type: 'text',
+        dataType: 'string',
+        required: true,
+        default: CONFIG_APIKEY,
+        tooltip: t('field.apiKey.tooltip', 'Bearer token for the image service.'),
+      },
+      {
+        key: 'baseUrl',
+        label: t('field.baseUrl.label', 'API Base URL'),
+        type: 'text',
+        dataType: 'string',
+        default: CONFIG_BASEURL,
+        tooltip: t('field.baseUrl.tooltip', 'OpenAI-compatible image API base URL.'),
+      },
+      {
+        key: 'apiMode',
+        label: t('field.apiMode.label', 'API Mode'),
+        type: 'select',
+        dataType: 'string',
+        default: 'auto',
+        options: API_MODES,
+        tooltip: t(
+          'field.apiMode.tooltip',
+          'auto: 按 baseUrl 末尾自动识别（…/responses / …/chat/completions / …/images/* ），无后缀则走异步任务；async_task: Images API 轮询；chat_completions: /chat/completions 多模态同步；responses: /responses input_image 同步。',
+        ),
+      },
+      {
+        key: 'image',
+        label: t('field.image.label', 'Reference Image'),
+        type: 'textarea',
+        dataType: 'string[]',
+        required: true,
+        tooltip: t(
+          'field.image.tooltip',
+          'Image URL / data URI / local path. Multiple allowed. JSON array supported.',
+        ),
+      },
+      {
+        key: 'prompt',
+        label: t('field.editPrompt.label', 'Edit Instruction'),
+        type: 'textarea',
+        dataType: 'string',
+        required: true,
+        tooltip: t('field.editPrompt.tooltip', 'Describe how to edit the image, e.g. "put on sunglasses".'),
+      },
+      {
+        key: 'model',
+        label: t('field.model.label', 'Model'),
+        type: 'select',
+        dataType: 'string',
+        default: 'gpt-image-2-all',
+        options: [
+          { label: 'gpt-image-2-all', value: 'gpt-image-2-all' },
+          { label: 'gpt-image-1', value: 'gpt-image-1' },
+          { label: 'flux-kontext-pro', value: 'flux-kontext-pro' },
+          { label: 'flux-kontext-max', value: 'flux-kontext-max' },
+          { label: 'nano-banana', value: 'nano-banana' },
+        ],
+      },
+      {
+        key: 'mask',
+        label: t('field.mask.label', 'Mask (optional)'),
+        type: 'textarea',
+        dataType: 'string',
+        tooltip: t(
+          'field.mask.tooltip',
+          'PNG mask: transparent (alpha=0) areas are edited. Same size as the first image.',
+        ),
+      },
+      {
+        key: 'aspectRatio',
+        label: t('field.aspectRatio.label', 'Aspect Ratio'),
+        type: 'select',
+        dataType: 'string',
+        default: '1:1',
+        options: [
+          { label: t('field.aspectRatio.unset', 'Not set'), value: '' },
+          { label: '1:1', value: '1:1' },
+          { label: '16:9', value: '16:9' },
+          { label: '9:16', value: '9:16' },
+          { label: '4:3', value: '4:3' },
+          { label: '3:4', value: '3:4' },
+        ],
+      },
+      {
+        key: 'n',
+        label: t('field.n.label', 'Count'),
+        type: 'number',
+        dataType: 'number',
+        default: 1,
+        tooltip: t('field.n.tooltip', 'Number of images to generate.'),
+      },
+      {
+        key: 'timeout',
+        label: t('field.timeout.label', 'Timeout (seconds)'),
+        type: 'number',
+        dataType: 'number',
+        tooltip: t(
+          'field.timeout.tooltip',
+          'Leave empty to use defaults: 180s for sync requests, 300s for task submission, 600s for polling.',
+        ),
+      },
+    ],
+    outputs: [
+      { key: 'success', type: 'boolean', dataType: 'boolean' },
+      { key: 'message', type: 'string' },
+      {
+        key: 'data',
+        type: 'object', dataType: 'object',
+        children: [
+          { key: 'images', type: 'image[]' },
+          { key: 'taskId', type: 'string' },
+          { key: 'model', type: 'string' },
+        ],
+      },
+    ],
+    run: async (ctx, args) => {
+      const inputs = toImageArray(args.image)
+      if (!inputs.length) {
+        return { success: false, message: t('message.imageRequired', 'At least one reference image is required.') }
+      }
+
+      const files = []
+      for (const src of inputs) files.push(await resolveImage(src))
+      const maskDataUrl = args.mask
+        ? `data:image/png;base64,${(await resolveImage(args.mask)).buffer.toString('base64')}`
+        : ''
+
+      const model = args.model || 'gpt-image-1'
+      const prompt = args.prompt
+      const { mode, baseUrl } = resolveRequest(args)
+
+      // ── chat/completions：多模态 messages 同步取图 ──
+      if (mode === 'chat_completions') {
+        const content = [{ type: 'text', text: prompt }]
+        for (const f of files) {
+          content.push({ type: 'image_url', image_url: { url: bufferToDataUri(f) } })
+        }
+        if (maskDataUrl) content.push({ type: 'image_url', image_url: { url: maskDataUrl } })
+        ctx.logger.info(`图片编辑 chat/completions model=${model} 输入图片=${files.length} 蒙版=${maskDataUrl ? '有' : '无'}`)
+        ctx.logger.info(`编辑指令: ${prompt}`)
+        const body = { model, messages: [{ role: 'user', content }], ...(args.n && { n: Number(args.n) }) }
+        const out = await runChatCompletions(ctx, args, baseUrl, body)
+        return {
+          success: true,
+          message: t('message.edited', 'Edited {count} image(s)').replace('{count}', out.images.length),
+          data: { images: out.images, taskId: '', model: out.model },
+        }
+      }
+
+      // ── responses：input 数组多模态同步取图 ──
+      if (mode === 'responses') {
+        const content = [{ type: 'input_text', text: prompt }]
+        for (const f of files) {
+          content.push({ type: 'input_image', image_url: bufferToDataUri(f) })
+        }
+        if (maskDataUrl) content.push({ type: 'input_image', image_url: maskDataUrl })
+        ctx.logger.info(`图片编辑 /v1/responses model=${model} 输入图片=${files.length} 蒙版=${maskDataUrl ? '有' : '无'}`)
+        ctx.logger.info(`编辑指令: ${prompt}`)
+        const body = { model, input: [{ role: 'user', content }], tools: [{ type: 'image_generation' }] }
+        const out = await runResponses(ctx, args, baseUrl, body)
+        return {
+          success: true,
+          message: t('message.edited', 'Edited {count} image(s)').replace('{count}', out.images.length),
+          data: { images: out.images, taskId: '', model: out.model },
+        }
+      }
+
+      // ── async_task：现有异步任务逻辑（auto 无端点后缀时的默认）──
+      const headers = getHeaders(args)
+      const fields = {}
+      // 多图用 image[]，单图用 image（OpenAI / gpt-image-1 多参考图约定）
+      const fileField = files.length > 1 ? 'image[]' : 'image'
+      fields[fileField] = files.map((f) => ({ buffer: f.buffer, filename: f.filename, mime: f.mime }))
+
+      fields.prompt = prompt
+      fields.model = model
+      if (args.aspectRatio) fields.aspect_ratio = args.aspectRatio
+      if (args.n) fields.n = String(args.n)
+      if (maskDataUrl) {
+        const maskFile = await resolveImage(maskDataUrl)
+        fields.mask = { buffer: maskFile.buffer, filename: 'mask.png', mime: 'image/png' }
+      }
+
+      const mp = buildMultipart(fields)
+      ctx.logger.info(`图片编辑 model=${fields.model} 输入图片=${files.length} 蒙版=${maskDataUrl ? '有' : '无'}`)
+      ctx.logger.info(`编辑指令: ${prompt}`)
+
+      const out = await submitAndPoll(ctx, args, baseUrl, async () => {
+        // sandbox 无 AbortController，用 Promise.race 实现提交超时
+        const submitTimeoutMs = getTimeoutMs(args, 1000 * 60 * 5)
+        const resp = await Promise.race([
+          globalThis.fetch(`${baseUrl}${EDITS_PATH}?async=true`, {
+            method: 'POST',
+            headers: { Authorization: headers.Authorization, 'Content-Type': mp.contentType },
+            body: mp.body,
+          }),
+          new Promise((_, reject) =>
+            setTimeout(
+              () => reject(new Error(`提交编辑超时（${Math.round(submitTimeoutMs / 1000)} 秒）`)),
+              submitTimeoutMs,
+            ),
+          ),
+        ])
+        if (!resp.ok) {
+          const text = await resp.text()
+          throw new Error(`提交编辑失败: HTTP ${resp.status} ${text.slice(0, 200)}`)
+        }
+        const r = await resp.json()
+        return r
+      })
+
+      return {
+        success: true,
+        message: t('message.edited', 'Edited {count} image(s)').replace('{count}', out.images.length),
+        data: { images: out.images, taskId: out.taskId, model: out.model },
+      }
+    },
+  },
+
+  {
+    name: 'ai_image_query_task',
+    label: t('action.query.label', 'Query Image Task'),
+    category: t('category', 'AI Image'),
+    icon: 'Search',
+    description: t(
+      'action.query.description',
+      'Query an async image task by task_id once. Returns current status and images if finished.',
+    ),
+    tool: false,
+    properties: [
+      {
+        key: 'apiKey',
+        label: t('field.apiKey.label', 'API Key'),
+        type: 'text',
+        dataType: 'string',
+        required: true,
+        default: CONFIG_APIKEY,
+        tooltip: t('field.apiKey.tooltip', 'Bearer token for the image service.'),
+      },
+      {
+        key: 'baseUrl',
+        label: t('field.baseUrl.label', 'API Base URL'),
+        type: 'text',
+        dataType: 'string',
+        default: CONFIG_BASEURL,
+        tooltip: t('field.baseUrl.tooltip', 'OpenAI-compatible image API base URL.'),
+      },
+      {
+        key: 'taskId',
+        label: t('field.taskId.label', 'Task ID'),
+        type: 'text',
+        dataType: 'string',
+        required: true,
+        tooltip: t('field.taskId.tooltip', 'task_id returned by a generate/edit action.'),
+      },
+    ],
+    outputs: [
+      { key: 'success', type: 'boolean', dataType: 'boolean' },
+      { key: 'message', type: 'string' },
+      {
+        key: 'data',
+        type: 'object', dataType: 'object',
+        children: [
+          { key: 'status', type: 'string' },
+          { key: 'progress', type: 'string' },
+          { key: 'images', type: 'image[]' },
+          { key: 'taskId', type: 'string' },
+        ],
+      },
+    ],
+    run: async (ctx, args) => {
+      if (!args.taskId) return { success: false, message: t('message.taskIdRequired', 'task_id is required.') }
+      const baseUrl = getBaseUrl(args)
+      const headers = getHeaders(args)
+      const url = `${baseUrl}${TASK_PATH}/${encodeURIComponent(args.taskId)}`
+      ctx.logger.info(`查询任务 ${args.taskId}`)
+      const r = await ctx.api.getJson(url, { headers, timeout: 30000 })
+      const data = (r && r.data) || {}
+      const status = String(data.status || '').toUpperCase()
+      if (status === 'SUCCESS') {
+        const out = await extractImages(data, ctx)
+        return {
+          success: true,
+          message: t('message.taskSuccess', 'Task succeeded'),
+          data: {
+            status,
+            images: out.images,
+            taskId: args.taskId,
+            model: out.model,
+            created: out.created,
+          },
+        }
+      }
+      if (status === 'FAILURE' || status === 'FAILED') {
+        return {
+          success: false,
+          message: t('message.taskFailed', 'Task failed: {reason}').replace(
+            '{reason}',
+            data.fail_reason || r.message || '',
+          ),
+          data: { status, taskId: args.taskId },
+        }
+      }
+      return {
+        success: true,
+        message: t('message.taskInProgress', 'Task in progress: {progress}').replace(
+          '{progress}',
+          data.progress || status || '',
+        ),
+        data: { status, progress: data.progress || '', taskId: args.taskId },
+      }
+    },
+  },
+
+  {
+    name: 'ai_video_generate',
+    label: t('action.video.label', 'AI Video Generation'),
+    category: t('category', 'AI Image'),
+    icon: 'Video',
+    description: t(
+      'action.video.description',
+      'Generate videos via an OpenAI-style /video/generations API. Supports text-to-video, all-reference (multi-image, {{Mixed N}}) and first/last-frame modes.',
+    ),
+    properties: [
+      {
+        key: 'apiKey',
+        label: t('field.apiKey.label', 'API Key'),
+        type: 'text',
+        dataType: 'string',
+        required: true,
+        default: CONFIG_APIKEY,
+        tooltip: t('field.apiKey.tooltip', 'Bearer token for the image service.'),
+      },
+      {
+        key: 'baseUrl',
+        label: t('field.baseUrl.label', 'API Base URL'),
+        type: 'text',
+        dataType: 'string',
+        default: CONFIG_BASEURL,
+        tooltip: t(
+          'field.videoBaseUrl.tooltip',
+          'OpenAI-style video API base URL (with /v1), e.g. http://127.0.0.1:19201/v1 for the liblib-api bridge.',
+        ),
+      },
+      {
+        key: 'modeType',
+        label: t('field.modeType.label', 'Reference Mode'),
+        type: 'select',
+        dataType: 'string',
+        default: 'auto',
+        options: VIDEO_MODES,
+        tooltip: t(
+          'field.modeType.tooltip',
+          'auto: with reference images → all-reference (mixed2video), without → text-to-video; mixed2video: fuse up to 4 images, reference them in the prompt as {{Mixed 1}}, {{Mixed 2}}…; frames2video: 1 image = first frame, 2 images = first/last frame.',
+        ),
+      },
+      {
+        key: 'prompt',
+        label: t('field.videoPrompt.label', 'Video Description'),
+        type: 'textarea',
+        dataType: 'string',
+        required: true,
+        tooltip: t(
+          'field.videoPrompt.tooltip',
+          'Describe the video. In all-reference mode use {{Mixed 1}} / {{Mixed 2}} to cite reference images by order.',
+        ),
+      },
+      {
+        key: 'model',
+        label: t('field.model.label', 'Model'),
+        type: 'select',
+        dataType: 'string',
+        default: 'wanx3.0',
+        options: [
+          { label: 'wanx3.0（全能参考推荐）', value: 'wanx3.0' },
+          { label: 'MiniMax-Hailuo-o2（最便宜 8power）', value: 'MiniMax-Hailuo-o2' },
+          { label: 'kling-v2-5-turbo-pro', value: 'kling-v2-5-turbo-pro' },
+          { label: 'MiniMax-Hailuo-2.3-Fast', value: 'MiniMax-Hailuo-2.3-Fast' },
+          { label: 'happy-horse-1.1', value: 'happy-horse-1.1' },
+          { label: 'seedance-1.5-pro', value: 'seedance-1.5-pro' },
+          { label: 'wanxiang-v2-6', value: 'wanxiang-v2-6' },
+          { label: 'viduq2', value: 'viduq2' },
+          { label: 'kling-v2-6', value: 'kling-v2-6' },
+          { label: 'star-video2', value: 'star-video2' },
+          { label: 'star-video2.5', value: 'star-video2.5' },
+          { label: 'midjourney-video', value: 'midjourney-video' },
+        ],
+        tooltip: t('field.videoModel.tooltip', 'Model list from the liblib-api bridge (GET /v1/models).'),
+      },
+      {
+        key: 'image',
+        label: t('field.videoImage.label', 'Reference Images'),
+        type: 'textarea',
+        dataType: 'string[]',
+        tooltip: t(
+          'field.videoImage.tooltip',
+          'Image URL / data URI / local path. Order matters: all-reference mode cites them as {{Mixed 1}}, {{Mixed 2}}…; first/last-frame mode takes image 1 as first frame and image 2 as last frame.',
+        ),
+      },
+      {
+        key: 'aspectRatio',
+        label: t('field.aspectRatio.label', 'Aspect Ratio'),
+        type: 'select',
+        dataType: 'string',
+        default: '16:9',
+        options: [
+          { label: '16:9', value: '16:9' },
+          { label: '9:16', value: '9:16' },
+          { label: '1:1', value: '1:1' },
+          { label: '4:3', value: '4:3' },
+          { label: '3:4', value: '3:4' },
+        ],
+      },
+      {
+        key: 'resolution',
+        label: t('field.resolution.label', 'Resolution'),
+        type: 'select',
+        dataType: 'string',
+        default: '480P',
+        options: [
+          { label: '480P（省积分）', value: '480P' },
+          { label: '720P', value: '720P' },
+          { label: '1080P', value: '1080P' },
+        ],
+        tooltip: t('field.resolution.tooltip', 'Not all models support every tier; 480P/720P are the safest.'),
+      },
+      {
+        key: 'duration',
+        label: t('field.duration.label', 'Duration (seconds)'),
+        type: 'number',
+        dataType: 'number',
+        default: 3,
+        tooltip: t('field.duration.tooltip', 'Video length in seconds. Supported values vary by model.'),
+      },
+      {
+        key: 'enableSound',
+        label: t('field.enableSound.label', 'Sound'),
+        type: 'select',
+        dataType: 'string',
+        default: 'on',
+        options: [
+          { label: 'on', value: 'on' },
+          { label: 'off', value: 'off' },
+        ],
+      },
+      {
+        key: 'timeout',
+        label: t('field.timeout.label', 'Timeout (seconds)'),
+        type: 'number',
+        dataType: 'number',
+        tooltip: t('field.videoTimeout.tooltip', 'Video generation is slow; leave empty for the 600s default.'),
+      },
+    ],
+    outputs: [
+      { key: 'success', type: 'boolean', dataType: 'boolean' },
+      { key: 'message', type: 'string' },
+      {
+        key: 'data',
+        type: 'object', dataType: 'object',
+        children: [
+          { key: 'videos', type: 'video[]' },
+          { key: 'modeType', type: 'string' },
+          { key: 'model', type: 'string' },
+          { key: 'created', type: 'number', dataType: 'number' },
+        ],
+      },
+    ],
+    run: async (ctx, args) => {
+      const model = args.model || 'wanx3.0'
+      const prompt = args.prompt
+      if (!prompt) {
+        return { success: false, message: t('message.promptRequired', 'Prompt is required.') }
+      }
+      const baseUrl = getBaseUrl(args)
+      const headers = getHeaders(args)
+
+      const sources = toImageArray(args.image)
+      if (sources.length > 4) {
+        return {
+          success: false,
+          message: t('message.tooManyRefs', 'At most 4 reference images are supported.'),
+        }
+      }
+      const refs = []
+      for (const src of sources) refs.push(await toVideoRef(src))
+
+      const modeType = resolveVideoMode(args.modeType, refs.length)
+      if (modeType === 'frames2video' && refs.length > 2) {
+        return {
+          success: false,
+          message: t('message.framesLimit', 'First/last-frame mode accepts at most 2 images (first frame, last frame).'),
+        }
+      }
+      if (modeType === 'text2video' && refs.length) refs.length = 0
+
+      const body = {
+        model,
+        prompt,
+        modeType,
+        refs,
+        ratio: args.aspectRatio || '16:9',
+        resolution: args.resolution || '480P',
+        duration: Number(args.duration) || 3,
+        enableSound: args.enableSound || 'on',
+      }
+      ctx.logger.info(
+        `视频生成 model=${model} mode=${modeType} 参考图=${refs.length} ${body.ratio} ${body.resolution} ${body.duration}s`,
+      )
+      ctx.logger.info(`提示词: ${prompt}`)
+
+      const timeoutMs = getTimeoutMs(args, 1000 * 60 * 10)
+      let resp
+      try {
+        resp = await ctx.api.postJson(`${baseUrl}${VIDEO_GENERATIONS_PATH}`, {
+          headers,
+          body,
+          timeout: timeoutMs,
+        })
+      } catch (err) {
+        return { success: false, message: `视频生成请求失败: ${err.message}` }
+      }
+
+      const items = (resp && Array.isArray(resp.data) && resp.data) || []
+      const videos = items.map((d) => (d && (d.url || d.video_url)) || '').filter(Boolean)
+      if (!videos.length) {
+        const detail =
+          (resp && resp.error && resp.error.message) || JSON.stringify(resp || {}).slice(0, 200)
+        return { success: false, message: `未获取到视频: ${detail}` }
+      }
+      return {
+        success: true,
+        message: t('message.videoGenerated', 'Generated {count} video(s)').replace('{count}', videos.length),
+        data: { videos, modeType, model, created: resp.created },
+      }
+    },
+  },
+]

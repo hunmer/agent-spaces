@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Editor & Worktree · SDK Demo</title>
+  <link rel="stylesheet" href="./css/style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <a href="./index.html" class="back">← 首页</a>
+    <h1>Editor · 文件树 & Worktree</h1>
+  </header>
+
+  <div class="container">
+    <div class="card">
+      <h2>选择工作区</h2>
+      <p class="desc">Editor / Worktree 接口依赖 <code>workspaceId</code>。</p>
+      <div class="field">
+        <label>workspace</label>
+        <select id="ws-select"></select>
+      </div>
+    </div>
+
+    <!-- 文件树 -->
+    <div class="card">
+      <h2>文件树</h2>
+      <p class="desc"><code>sdk.editor.tree(workspaceId, opts?)</code> · <code>exists(wsId, path)</code> · <code>reveal(wsId, path)</code></p>
+      <div class="field">
+        <label>path（exists / reveal 用，tree 留空查根）</label>
+        <input id="in-path" type="text" placeholder="相对路径，如 src/index.ts" />
+      </div>
+      <div class="actions">
+        <button id="btn-tree" class="btn">tree</button>
+        <button id="btn-exists" class="btn secondary">exists</button>
+        <button id="btn-reveal" class="btn secondary">reveal</button>
+      </div>
+      <pre id="out-tree" class="output">结果将显示于此</pre>
+    </div>
+
+    <!-- 读写文件 -->
+    <div class="card">
+      <h2>读取 / 保存文件</h2>
+      <p class="desc"><code>content(wsId, path)</code> · <code>save(wsId, path, content)</code></p>
+      <div class="field">
+        <label>path</label>
+        <input id="in-rw-path" type="text" placeholder="相对路径" />
+      </div>
+      <div class="field">
+        <label>content（save 用）</label>
+        <textarea id="in-rw-content" rows="3" placeholder="文件内容"></textarea>
+      </div>
+      <div class="actions">
+        <button id="btn-content" class="btn">content</button>
+        <button id="btn-save" class="btn secondary">save</button>
+      </div>
+      <pre id="out-rw" class="output">结果将显示于此</pre>
+    </div>
+
+    <!-- 文件操作 -->
+    <div class="card">
+      <h2>文件操作</h2>
+      <p class="desc"><code>copy(wsId, src, dest)</code> · <code>rename(wsId, old, new)</code> · <code>deleteFile(wsId, path)</code> · <code>search(wsId, opts)</code></p>
+      <div class="row">
+        <div class="field">
+          <label>srcPath / oldPath</label>
+          <input id="in-src" type="text" placeholder="源路径" />
+        </div>
+        <div class="field">
+          <label>destPath / newPath</label>
+          <input id="in-dest" type="text" placeholder="目标路径" />
+        </div>
+      </div>
+      <div class="field">
+        <label>search query（仅 search 用）</label>
+        <input id="in-search" type="text" placeholder="搜索关键词" />
+      </div>
+      <div class="actions">
+        <button id="btn-copy" class="btn">copy</button>
+        <button id="btn-rename" class="btn">rename</button>
+        <button id="btn-delete" class="btn danger">deleteFile</button>
+        <button id="btn-search" class="btn secondary">search</button>
+      </div>
+      <pre id="out-op" class="output">结果将显示于此</pre>
+    </div>
+
+    <!-- 编辑器状态 -->
+    <div class="card">
+      <h2>编辑器状态</h2>
+      <p class="desc"><code>editorState(wsId)</code> · <code>saveEditorState(wsId, state)</code></p>
+      <div class="field">
+        <label>state（save 用，JSON 字符串）</label>
+        <textarea id="in-state" rows="3" placeholder='{"openTabs":["a.ts"]}'></textarea>
+      </div>
+      <div class="actions">
+        <button id="btn-state-get" class="btn">editorState</button>
+        <button id="btn-state-save" class="btn secondary">saveEditorState</button>
+      </div>
+      <pre id="out-state" class="output">结果将显示于此</pre>
+    </div>
+
+    <!-- 导入 -->
+    <div class="card">
+      <h2>导入文件 / URL</h2>
+      <p class="desc"><code>importUrl(wsId, url, targetDir)</code> · <code>importPath(wsId, absPath, targetDir)</code> · <code>uploadFiles(wsId, targetDir, files)</code></p>
+      <div class="field">
+        <label>targetDir</label>
+        <input id="in-target" type="text" placeholder="目标目录" />
+      </div>
+      <div class="row">
+        <div class="field">
+          <label>url（importUrl 用）</label>
+          <input id="in-url" type="text" placeholder="https://..." />
+        </div>
+        <div class="field">
+          <label>absPath（importPath 用）</label>
+          <input id="in-abspath" type="text" placeholder="服务器绝对路径" />
+        </div>
+      </div>
+      <div class="field">
+        <label>上传文件（uploadFiles 用，可多选）</label>
+        <input id="in-files" type="file" multiple />
+      </div>
+      <div class="actions">
+        <button id="btn-import-url" class="btn">importUrl</button>
+        <button id="btn-import-path" class="btn secondary">importPath</button>
+        <button id="btn-upload" class="btn secondary">uploadFiles</button>
+      </div>
+      <pre id="out-import" class="output">结果将显示于此</pre>
+    </div>
+
+    <hr style="border:none;border-top:1px dashed var(--border);margin:26px 0;" />
+
+    <!-- Worktree -->
+    <div class="card">
+      <h2>Worktree 列表</h2>
+      <p class="desc"><code>sdk.worktree.list(workspaceId)</code></p>
+      <div class="actions">
+        <button id="btn-wt-list" class="btn">刷新列表</button>
+      </div>
+      <div id="wt-table" style="margin-bottom:12px;"></div>
+      <pre id="out-wt" class="output">原始 JSON 将显示于此</pre>
+    </div>
+
+    <div class="card">
+      <h2>Worktree 操作</h2>
+      <p class="desc"><code>create(wsId, data)</code> · <code>remove</code> · <code>diff</code> · <code>merge</code> · <code>createPR(wsId, wtId, opts?)</code></p>
+      <div class="row">
+        <div class="field">
+          <label>worktreeId</label>
+          <input id="in-wt-id" type="text" placeholder="worktree id" />
+        </div>
+        <div class="field">
+          <label>create data（JSON，可空键）</label>
+          <input id="in-wt-data" type="text" placeholder='{"branch":"feat-x"}' />
+        </div>
+      </div>
+      <div class="actions">
+        <button id="btn-wt-create" class="btn">create</button>
+        <button id="btn-wt-diff" class="btn secondary">diff</button>
+        <button id="btn-wt-merge" class="btn secondary">merge</button>
+        <button id="btn-wt-pr" class="btn secondary">createPR</button>
+        <button id="btn-wt-remove" class="btn danger">remove</button>
+      </div>
+      <pre id="out-wt-op" class="output">结果将显示于此</pre>
+    </div>
+  </div>
+
+  <script type="module" src="./js/editor.js"></script>
+</body>
+</html>

@@ -1,0 +1,1276 @@
+[
+  {
+    "id": "workflow.ai-image",
+    "name": "AI Image Generation & Edit",
+    "version": "1.0.0",
+    "description": "OpenAI-compatible async image API: text-to-image, reference-image editing (multi-image fusion / inpainting / mask), and task querying.",
+    "author": {
+      "name": "workflow"
+    },
+    "tags": [
+      "AI",
+      "Image Generation",
+      "Image Edit",
+      "OpenAI"
+    ],
+    "type": "server",
+    "hasView": false,
+    "hasWorkflow": true,
+    "path": "ai-image",
+    "iconUrl": "plugins/ai-image/icon.svg",
+    "md5": "923f96df969c89d9c59aee9412ccd6fe",
+    "updatedAt": "2026-09-03T03:35:29.108Z",
+    "files": [
+      "actions.js",
+      "icon.svg",
+      "info.json",
+      "lang.json",
+      "main.js",
+      "README.md",
+      "refs/api-339685644.md",
+      "refs/api-356258955.md",
+      "refs/api-356258956.md",
+      "tools.js",
+      "workflow.js"
+    ]
+  },
+  {
+    "id": "workflow.aliyun-ai",
+    "name": "Aliyun Bailian AI",
+    "version": "1.0.0",
+    "description": "Aliyun Bailian AI image & video generation and speech recognition. Supports Qwen text-to-image/image editing, Wan text-to-image/image-to-video/text-to-video/video editing/reference-to-video/first-last-frame-to-video/animate-move, Kling image generation, image outpainting, VideoRetalk, and ASR speech recognition (FunASR/Paraformer/Qwen-ASR).",
+    "author": {
+      "name": "workflow"
+    },
+    "tags": [
+      "AI",
+      "Image Generation",
+      "Image Editing",
+      "Video Generation",
+      "Video Editing",
+      "Aliyun",
+      "Bailian",
+      "Qwen",
+      "Wan",
+      "Kling",
+      "Outpainting",
+      "VideoRetalk",
+      "Speech Recognition",
+      "ASR",
+      "Paraformer"
+    ],
+    "type": "server",
+    "hasView": false,
+    "hasWorkflow": true,
+    "path": "aliyun-ai",
+    "iconUrl": "plugins/aliyun-ai/icon.svg",
+    "md5": "33aba992070ae5a1faffd0a3108a37cd",
+    "updatedAt": "2026-06-24T06:15:47.828Z",
+    "files": [
+      "actions.js",
+      "icon.svg",
+      "info.json",
+      "lang.json",
+      "main.js",
+      "package.json",
+      "README.md",
+      "shared.js",
+      "tools-asr.js",
+      "tools-image.js",
+      "tools-upload.js",
+      "tools-video.js",
+      "tools.js",
+      "workflow.js"
+    ]
+  },
+  {
+    "id": "workflow.aliyun-oss",
+    "name": "Aliyun OSS",
+    "version": "1.0.0",
+    "description": "Aliyun OSS file storage. Supports upload, download, delete, list, signed URL and more.",
+    "author": {
+      "name": "workflow"
+    },
+    "tags": [
+      "Cloud Storage",
+      "OSS",
+      "Aliyun"
+    ],
+    "type": "server",
+    "hasView": false,
+    "hasWorkflow": true,
+    "path": "aliyun_oss",
+    "iconUrl": "plugins/aliyun_oss/icon.png",
+    "md5": "476437bfe5d728063b5958eea9fc2322",
+    "updatedAt": "2026-06-18T01:06:04.300Z",
+    "files": [
+      "actions.js",
+      "icon.png",
+      "info.json",
+      "lang.json",
+      "main.js",
+      "package-lock.json",
+      "package.json",
+      "README.md",
+      "shared.js",
+      "tools.js",
+      "workflow.js"
+    ]
+  },
+  {
+    "id": "workflow.audio-separator",
+    "name": "Audio Vocal Separator",
+    "version": "1.0.0",
+    "description": "Separate audio into vocals and instrumental stems via a local audio-separator HTTP service (GPU accelerated), with multiple UVR models.",
+    "author": {
+      "name": "workflow"
+    },
+    "tags": [
+      "Audio",
+      "Vocal Separation",
+      "AI"
+    ],
+    "type": "server",
+    "hasView": false,
+    "hasWorkflow": true,
+    "path": "audio-separator",
+    "iconUrl": "plugins/audio-separator/icon.svg",
+    "md5": "64e5725ea0d8050aea65d452b41b4c8f",
+    "updatedAt": "2026-09-12T07:28:22.971Z",
+    "files": [
+      "actions.js",
+      "icon.svg",
+      "info.json",
+      "lang.json",
+      "main.js",
+      "README.md",
+      "shared.js",
+      "tools.js",
+      "workflow.js"
+    ]
+  },
+  {
+    "id": "workflow.baidu-image",
+    "name": "Baidu AI Image",
+    "version": "1.0.0",
+    "description": "Baidu AI image processing plugin: smart cutout (subject segmentation, transparent background) and lossless image upscaling (2x in both dimensions).",
+    "author": {
+      "name": "workflow"
+    },
+    "tags": [
+      "AI",
+      "Image Processing",
+      "Cutout",
+      "Upscale",
+      "Baidu"
+    ],
+    "type": "server",
+    "hasView": false,
+    "hasWorkflow": true,
+    "path": "baidu-image",
+    "iconUrl": "plugins/baidu-image/icon.svg",
+    "md5": "0144f904dc31d8d95e38daf6ae84950c",
+    "updatedAt": "2026-07-22T08:47:30.801Z",
+    "files": [
+      "actions.js",
+      "icon.svg",
+      "info.json",
+      "lang.json",
+      "main.js",
+      "README.md",
+      "shared.js",
+      "tools.js",
+      "workflow.js"
+    ]
+  },
+  {
+    "id": "workflow.comfyui",
+    "name": "ComfyUI",
+    "version": "1.0.0",
+    "description": "Interact with ComfyUI HTTP API: submit & poll workflows, upload images, query system stats / queue / history, list models, interrupt tasks.",
+    "author": {
+      "name": "workflow"
+    },
+    "tags": [
+      "AI",
+      "ComfyUI",
+      "Workflow",
+      "Image Generation"
+    ],
+    "type": "server",
+    "hasView": false,
+    "hasWorkflow": true,
+    "path": "comfyui",
+    "iconUrl": "plugins/comfyui/icon.png",
+    "md5": "00bbf6a706319a82a2b73fe636b261f8",
+    "updatedAt": "2026-07-04T07:12:44.709Z",
+    "files": [
+      "actions.js",
+      "icon.png",
+      "info.json",
+      "lang.json",
+      "main.js",
+      "package.json",
+      "README.md",
+      "shared.js",
+      "tools.js",
+      "workflow.js"
+    ]
+  },
+  {
+    "id": "workflow.custom-view-demo",
+    "name": "Custom View Demo",
+    "version": "1.0.0",
+    "description": "Demonstrates workflow plugin node customView rendering with React or HTML.",
+    "author": {
+      "name": "workflow"
+    },
+    "tags": [
+      "Example",
+      "customView",
+      "UI"
+    ],
+    "type": "server",
+    "hasView": false,
+    "hasWorkflow": true,
+    "path": "custom-view-demo",
+    "md5": "9f0e7fc44928f1cf71caa9805d570766",
+    "updatedAt": "2026-06-18T01:06:04.302Z",
+    "files": [
+      "actions.js",
+      "info.json",
+      "main.js",
+      "README.md",
+      "tools.js",
+      "workflow.js"
+    ]
+  },
+  {
+    "id": "workflow.depth-anything",
+    "name": "Depth Anything Depth Estimation",
+    "version": "1.0.0",
+    "description": "Monocular depth estimation via the Depth Anything HTTP service. Supports URL/local file input, grayscale or Inferno colormap depth output, depth-only or side-by-side comparison, and batch processing. Also converts videos to depth videos frame-by-frame (MP4 without audio).",
+    "author": {
+      "name": "workflow"
+    },
+    "tags": [
+      "Image",
+      "Depth Estimation",
+      "Monocular Depth",
+      "Depth Anything"
+    ],
+    "type": "server",
+    "hasView": false,
+    "hasWorkflow": true,
+    "path": "depth-anything",
+    "iconUrl": "plugins/depth-anything/icon.svg",
+    "md5": "77bc4612744358d37a335f4c93bd9cc0",
+    "updatedAt": "2026-09-12T03:09:52.192Z",
+    "files": [
+      "actions.js",
+      "icon.svg",
+      "info.json",
+      "lang.json",
+      "main.js",
+      "README.md",
+      "shared.js",
+      "tools.js",
+      "workflow.js"
+    ]
+  },
+  {
+    "id": "workflow.desktop-native",
+    "name": "Desktop Native",
+    "version": "1.0.0",
+    "description": "Provides desktop native capabilities such as clipboard access and system notifications",
+    "author": {
+      "name": "workflow"
+    },
+    "tags": [
+      "Clipboard",
+      "Notification",
+      "Desktop"
+    ],
+    "type": "client",
+    "hasView": false,
+    "hasWorkflow": true,
+    "path": "desktop-native",
+    "iconUrl": "plugins/desktop-native/icon.png",
+    "md5": "b1c79bf8b6a444a46b1ffdd1f99e729d",
+    "updatedAt": "2026-06-18T01:06:04.303Z",
+    "files": [
+      "actions.js",
+      "api.js",
+      "icon.png",
+      "info.json",
+      "lang.json",
+      "main.js",
+      "README.md",
+      "tools.js",
+      "workflow.js"
+    ]
+  },
+  {
+    "id": "workflow.dingtalk",
+    "name": "DingTalk",
+    "version": "1.0.0",
+    "description": "通过钉钉自定义机器人 Webhook 发送群消息，支持 text/markdown/link/actionCard/feedCard 五种消息类型",
+    "author": {
+      "name": "workflow"
+    },
+    "tags": [
+      "notification",
+      "dingtalk"
+    ],
+    "type": "server",
+    "hasView": false,
+    "hasWorkflow": true,
+    "path": "dingtalk",
+    "iconUrl": "plugins/dingtalk/icon.png",
+    "md5": "4dc587927ee49da8b0ff8d1b29b7de53",
+    "updatedAt": "2026-07-16T16:40:19.938Z",
+    "files": [
+      "actions.js",
+      "icon.png",
+      "info.json",
+      "lang.json",
+      "main.js",
+      "README.md",
+      "tools.js",
+      "workflow.js"
+    ]
+  },
+  {
+    "id": "workflow.eagle",
+    "name": "Eagle",
+    "version": "1.0.0",
+    "description": "Operate Eagle library via local Eagle Web API v2: item list/query/add/update, folders & smart folders, tags & tag groups, library switch, and AI semantic search.",
+    "author": {
+      "name": "workflow"
+    },
+    "tags": [
+      "Eagle",
+      "Asset",
+      "Image",
+      "API"
+    ],
+    "type": "server",
+    "hasView": false,
+    "hasWorkflow": true,
+    "path": "eagle",
+    "iconUrl": "plugins/eagle/icon.png",
+    "md5": "28efea66425c265c14a6e4f0200e500c",
+    "updatedAt": "2026-06-27T07:40:08.375Z",
+    "files": [
+      "actions/folder.js",
+      "actions/index.js",
+      "actions/item.js",
+      "actions/misc.js",
+      "actions/tag.js",
+      "icon.png",
+      "info.json",
+      "lang.json",
+      "main.js",
+      "README.md",
+      "shared.js",
+      "tools.js",
+      "workflow.js"
+    ]
+  },
+  {
+    "id": "workflow.epub-parser",
+    "name": "EPUB Parser",
+    "version": "1.0.0",
+    "description": "Parse EPUB ebook files to extract book info, table of contents, and chapter content",
+    "author": {
+      "name": "workflow"
+    },
+    "tags": [
+      "File Processing",
+      "E-Book",
+      "EPUB"
+    ],
+    "type": "server",
+    "hasView": false,
+    "hasWorkflow": true,
+    "path": "epub-parser",
+    "iconUrl": "plugins/epub-parser/icon.png",
+    "md5": "7b122bfaac58a15e58657985598d44e1",
+    "updatedAt": "2026-06-18T01:06:04.305Z",
+    "files": [
+      "actions.js",
+      "icon.png",
+      "info.json",
+      "lang.json",
+      "main.js",
+      "package-lock.json",
+      "package.json",
+      "README.md",
+      "tools.js",
+      "workflow.js"
+    ]
+  },
+  {
+    "id": "workflow.feed-parser",
+    "name": "Feed Parser",
+    "version": "1.0.1",
+    "description": "Feed parser: fetch and parse RSS / Atom / RDF / JSON Feed into structured content",
+    "author": {
+      "name": "workflow"
+    },
+    "tags": [
+      "Feed",
+      "RSS",
+      "Atom",
+      "Parser"
+    ],
+    "type": "server",
+    "hasView": false,
+    "hasWorkflow": true,
+    "path": "feed-parser",
+    "iconUrl": "plugins/feed-parser/icon.png",
+    "md5": "2e42030b6534bab7e4b12d302df6d791",
+    "updatedAt": "2026-07-16T16:40:40.123Z",
+    "files": [
+      "actions.js",
+      "icon.png",
+      "info.json",
+      "lang.json",
+      "main.js",
+      "package-lock.json",
+      "package.json",
+      "README.md",
+      "tools.js",
+      "workflow.js"
+    ]
+  },
+  {
+    "id": "workflow.feishu",
+    "name": "Feishu",
+    "version": "1.0.0",
+    "description": "Send messages to chats/users via Feishu Open Platform Node SDK, supporting text/post/image/interactive/share_chat/share_user/file/audio/media/sticker/overflow types, rich text and message cards",
+    "author": {
+      "name": "workflow"
+    },
+    "tags": [
+      "notification",
+      "feishu",
+      "lark"
+    ],
+    "type": "server",
+    "hasView": false,
+    "hasWorkflow": true,
+    "path": "feishu",
+    "iconUrl": "plugins/feishu/icon.png",
+    "md5": "66100664b8638da05a631ce58a6e070e",
+    "updatedAt": "2026-06-27T07:15:03.553Z",
+    "files": [
+      "actions.js",
+      "icon.png",
+      "info.json",
+      "lang.json",
+      "main.js",
+      "package.json",
+      "README.md",
+      "tools.js",
+      "workflow.js"
+    ]
+  },
+  {
+    "id": "workflow.fetch",
+    "name": "HTTP Request",
+    "version": "1.0.0",
+    "description": "Provides web content fetching, network file download and other operation nodes",
+    "author": {
+      "name": "workflow"
+    },
+    "tags": [
+      "Network",
+      "Request",
+      "Fetch",
+      "Download"
+    ],
+    "type": "server",
+    "hasView": false,
+    "hasWorkflow": true,
+    "path": "fetch",
+    "iconUrl": "plugins/fetch/icon.png",
+    "md5": "7358fbfd3272fbd89b898e91d18a0585",
+    "updatedAt": "2026-06-18T01:06:04.306Z",
+    "files": [
+      "actions.js",
+      "icon.png",
+      "info.json",
+      "lang.json",
+      "main.js",
+      "README.md",
+      "tools.js",
+      "workflow.js"
+    ]
+  },
+  {
+    "id": "workflow.ffmpeg",
+    "name": "FFmpeg Audio/Video Processing",
+    "version": "1.0.0",
+    "description": "FFmpeg-based audio/video processing with format conversion, merge, and demux support.",
+    "author": {
+      "name": "workflow"
+    },
+    "tags": [
+      "FFmpeg",
+      "Audio/Video",
+      "Format Conversion"
+    ],
+    "type": "server",
+    "hasView": false,
+    "hasWorkflow": true,
+    "path": "ffmpeg",
+    "iconUrl": "plugins/ffmpeg/icon.svg",
+    "md5": "d4b1314c29da67106b0e39e085e5d084",
+    "updatedAt": "2026-09-12T04:08:31.395Z",
+    "files": [
+      "actions.js",
+      "frames.js",
+      "icon.svg",
+      "info.json",
+      "lang.json",
+      "main.js",
+      "package-lock.json",
+      "package.json",
+      "README.md",
+      "tools.js",
+      "workflow.js"
+    ]
+  },
+  {
+    "id": "workflow.file-system",
+    "name": "File System",
+    "version": "1.0.0",
+    "description": "Provides workflow nodes for file read/write, edit, list, delete, and directory management",
+    "author": {
+      "name": "workflow"
+    },
+    "tags": [
+      "File",
+      "Directory",
+      "File System"
+    ],
+    "type": "server",
+    "hasView": false,
+    "hasWorkflow": true,
+    "path": "file-system",
+    "iconUrl": "plugins/file-system/icon.svg",
+    "md5": "1b02b1bf9027345643397947219ac28a",
+    "updatedAt": "2026-06-24T01:59:52.675Z",
+    "files": [
+      "actions.js",
+      "icon.svg",
+      "info.json",
+      "lang.json",
+      "main.js",
+      "README.md",
+      "tools.js",
+      "workflow.js"
+    ]
+  },
+  {
+    "id": "workflow.fish-audio",
+    "name": "FishAudio Speech Synthesis",
+    "version": "1.0.0",
+    "description": "FishAudio speech synthesis and recognition, supporting TTS text-to-speech and STT speech-to-text",
+    "author": {
+      "name": "workflow"
+    },
+    "tags": [
+      "AI",
+      "Speech Synthesis",
+      "TTS",
+      "Speech Recognition",
+      "STT",
+      "FishAudio"
+    ],
+    "type": "server",
+    "hasView": false,
+    "hasWorkflow": true,
+    "path": "fish-audio",
+    "iconUrl": "plugins/fish-audio/icon.png",
+    "md5": "7bed9f1e31afe665a85df57a49d5acd4",
+    "updatedAt": "2026-06-18T01:06:04.311Z",
+    "files": [
+      "actions.js",
+      "icon.png",
+      "info.json",
+      "lang.json",
+      "main.js",
+      "README.md",
+      "shared.js",
+      "tools.js",
+      "workflow.js"
+    ]
+  },
+  {
+    "id": "workflow.jianying-draft",
+    "name": "JianYing Draft Import",
+    "version": "1.0.0",
+    "description": "Import JianYing (CapCut) drafts via pyJianYingDraft server. Submit preset data, import by URL, query task result, validate preset.",
+    "author": {
+      "name": "workflow"
+    },
+    "tags": [
+      "JianYing",
+      "Draft",
+      "Video"
+    ],
+    "type": "server",
+    "hasView": false,
+    "hasWorkflow": true,
+    "path": "jianying-draft",
+    "iconUrl": "plugins/jianying-draft/icon.png",
+    "md5": "b93a46354284aaa21a6d59200db17ee7",
+    "updatedAt": "2026-06-22T06:00:47.700Z",
+    "files": [
+      "actions.js",
+      "icon.png",
+      "info.json",
+      "lang.json",
+      "main.js",
+      "package.json",
+      "README.md",
+      "shared.js",
+      "tools.js",
+      "workflow.js"
+    ]
+  },
+  {
+    "id": "workflow.jimeng",
+    "name": "Jimeng AI Image Generation",
+    "version": "1.0.1",
+    "description": "Jimeng AI image and video generation with text-to-image, image-to-image, and text-to-video support.",
+    "author": {
+      "name": "workflow"
+    },
+    "tags": [
+      "AI",
+      "Image Generation",
+      "Video Generation",
+      "Jimeng"
+    ],
+    "type": "server",
+    "hasView": false,
+    "hasWorkflow": true,
+    "path": "jimeng",
+    "iconUrl": "plugins/jimeng/icon.png",
+    "md5": "5ced00566adf119a0855abbe3a89d031",
+    "updatedAt": "2026-06-24T09:50:25.943Z",
+    "files": [
+      "actions.js",
+      "icon.png",
+      "info.json",
+      "lang.json",
+      "main.js",
+      "README.md",
+      "tools.js",
+      "workflow.js"
+    ]
+  },
+  {
+    "id": "workflow.lumimatte",
+    "name": "LumiMatte Image Toolkit",
+    "version": "1.0.0",
+    "description": "Image toolkit backed by the local LumiMatte inference server: AI matting (single/batch), inpainting, super resolution, layered PSD export with real layer pixels, plus health check and model inventory.",
+    "author": {
+      "name": "workflow"
+    },
+    "tags": [
+      "Image",
+      "Matting",
+      "Super Resolution",
+      "Inpainting",
+      "PSD"
+    ],
+    "type": "server",
+    "hasView": false,
+    "hasWorkflow": true,
+    "path": "lumimatte",
+    "iconUrl": "plugins/lumimatte/icon.svg",
+    "md5": "4f6f43209f8c79e7a470135482b7c4a3",
+    "updatedAt": "2026-09-12T02:30:42.260Z",
+    "files": [
+      "actions.js",
+      "icon.svg",
+      "info.json",
+      "lang.json",
+      "main.js",
+      "README.md",
+      "shared.js",
+      "tools.js",
+      "workflow.js"
+    ]
+  },
+  {
+    "id": "workflow.mail",
+    "name": "Email",
+    "version": "1.0.0",
+    "description": "Send emails via SMTP with support for HTML/plain text, attachments, CC/BCC",
+    "author": {
+      "name": "workflow"
+    },
+    "tags": [
+      "Email",
+      "SMTP",
+      "Notification"
+    ],
+    "type": "server",
+    "hasView": false,
+    "hasWorkflow": true,
+    "path": "mail",
+    "iconUrl": "plugins/mail/icon.png",
+    "md5": "f64d79b399df502efbcc4c0a5eba2a0a",
+    "updatedAt": "2026-06-18T01:06:04.314Z",
+    "files": [
+      "actions.js",
+      "icon.png",
+      "info.json",
+      "lang.json",
+      "main.js",
+      "package-lock.json",
+      "package.json",
+      "README.md",
+      "tools.js",
+      "workflow.js"
+    ]
+  },
+  {
+    "id": "workflow.mcp-bridge",
+    "name": "MCP Bridge",
+    "version": "1.0.0",
+    "description": "MCP client/server bridge: connect to an MCP, list tools, call a tool, and create an MCP server.",
+    "author": {
+      "name": "workflow"
+    },
+    "tags": [
+      "MCP",
+      "AI",
+      "Bridge"
+    ],
+    "type": "server",
+    "hasView": false,
+    "hasWorkflow": true,
+    "path": "mcp-bridge",
+    "iconUrl": "plugins/mcp-bridge/icon.svg",
+    "md5": "5e42bb81cdb7c7d7a7f63469556988e5",
+    "updatedAt": "2026-07-01T03:00:41.324Z",
+    "files": [
+      "actions.js",
+      "icon.svg",
+      "info.json",
+      "lang.json",
+      "lib/connection-pool.js",
+      "lib/mcp-client.js",
+      "main.js",
+      "package.json",
+      "README.md",
+      "tools.js",
+      "workflow.js"
+    ]
+  },
+  {
+    "id": "workflow.minimax",
+    "name": "MiniMax AI",
+    "version": "1.0.1",
+    "description": "MiniMax AI multimodal generation with text synthesis (M2.x LLM), character dialogue (M2-her), TTS, music generation, video generation (text-to-video/image-to-video/first-last-frame/subject-reference), and lyrics generation",
+    "author": {
+      "name": "workflow"
+    },
+    "tags": [
+      "AI",
+      "Text Synthesis",
+      "Character Dialogue",
+      "TTS",
+      "Music Generation",
+      "Video Generation",
+      "MiniMax",
+      "Hailuo AI"
+    ],
+    "type": "server",
+    "hasView": false,
+    "hasWorkflow": true,
+    "path": "minimax",
+    "iconUrl": "plugins/minimax/icon.svg",
+    "md5": "90eb83e2dde6f5198696c8d0f21b66ec",
+    "updatedAt": "2026-06-24T12:13:34.629Z",
+    "files": [
+      "actions.js",
+      "icon.svg",
+      "info.json",
+      "lang.json",
+      "main.js",
+      "README.md",
+      "tools.js",
+      "workflow.js"
+    ]
+  },
+  {
+    "id": "workflow.mira-sdk",
+    "name": "Mira SDK",
+    "version": "1.1.0",
+    "description": "Mira App Server SDK for library management, file operations, plugin management, device communication, and system monitoring.",
+    "author": {
+      "name": "workflow"
+    },
+    "tags": [
+      "Mira",
+      "SDK",
+      "Library"
+    ],
+    "type": "server",
+    "hasView": false,
+    "hasWorkflow": true,
+    "path": "mira-sdk",
+    "iconUrl": "plugins/mira-sdk/icon.png",
+    "md5": "c92281fe469bc01c1f9489b21d9711e3",
+    "updatedAt": "2026-08-26T02:43:33.521Z",
+    "files": [
+      "actions.js",
+      "icon.png",
+      "info.json",
+      "lang.json",
+      "main.js",
+      "package.json",
+      "README.md",
+      "shared.js",
+      "tools.js",
+      "workflow.js"
+    ]
+  },
+  {
+    "id": "workflow.nano-banana",
+    "name": "Nano Banana",
+    "version": "1.0.0",
+    "description": "Google Gemini native image generation (Nano Banana): text-to-image, image editing, multi-reference compositing, multi-turn editing, Google Search grounding, Thinking mode, and up to 4K resolution.",
+    "author": {
+      "name": "workflow"
+    },
+    "tags": [
+      "AI",
+      "Image Generation",
+      "Gemini",
+      "Nano Banana"
+    ],
+    "type": "server",
+    "hasView": false,
+    "hasWorkflow": true,
+    "path": "nano-banana",
+    "iconUrl": "plugins/nano-banana/icon.png",
+    "md5": "75c63d40ad1b2ee32356f490f36615ae",
+    "updatedAt": "2026-07-16T16:28:00.318Z",
+    "files": [
+      "actions.js",
+      "icon.png",
+      "info.json",
+      "lang.json",
+      "main.js",
+      "Nano Banana image generation.md",
+      "README.md",
+      "tools.js",
+      "workflow.js"
+    ]
+  },
+  {
+    "id": "workflow.notion",
+    "name": "Notion",
+    "version": "1.0.0",
+    "description": "Operate Notion pages & databases via Notion API: search, create/update/move/archive pages, create/update databases, query databases and retrieve page properties",
+    "author": {
+      "name": "workflow"
+    },
+    "tags": [
+      "Notion",
+      "Notes",
+      "Database",
+      "API"
+    ],
+    "type": "server",
+    "hasView": false,
+    "hasWorkflow": true,
+    "path": "notion",
+    "iconUrl": "plugins/notion/icon.png",
+    "md5": "f49d80517e6aa8428fc6406371083e8e",
+    "updatedAt": "2026-06-27T07:14:18.423Z",
+    "files": [
+      "actions.js",
+      "icon.png",
+      "info.json",
+      "lang.json",
+      "main.js",
+      "README.md",
+      "shared.js",
+      "tools.js",
+      "workflow.js"
+    ]
+  },
+  {
+    "id": "workflow.obsidian",
+    "name": "Obsidian",
+    "version": "1.0.0",
+    "description": "Operate Obsidian Vault via Local REST API: read/write/search/patch notes, execute commands, manage tags and periodic notes",
+    "author": {
+      "name": "workflow"
+    },
+    "tags": [
+      "Obsidian",
+      "Notes",
+      "Knowledge Base",
+      "API"
+    ],
+    "type": "server",
+    "hasView": false,
+    "hasWorkflow": true,
+    "path": "obsidian",
+    "iconUrl": "plugins/obsidian/icon.png",
+    "md5": "30722f9270975cb2bf5bb14e0ea864e7",
+    "updatedAt": "2026-07-04T07:12:44.707Z",
+    "files": [
+      "actions.js",
+      "icon.png",
+      "info.json",
+      "lang.json",
+      "main.js",
+      "README.md",
+      "shared.js",
+      "tools.js",
+      "workflow.js"
+    ]
+  },
+  {
+    "id": "workflow.openai",
+    "name": "OpenAI",
+    "version": "2.0.0",
+    "description": "OpenAI integration plugin supporting image generation, image editing, Chat Completions, Embeddings, and Audio TTS/STT.",
+    "author": {
+      "name": "workflow"
+    },
+    "tags": [
+      "AI",
+      "Image Generation",
+      "OpenAI",
+      "GPT",
+      "Chat",
+      "Embeddings",
+      "TTS",
+      "STT"
+    ],
+    "type": "server",
+    "hasView": false,
+    "hasWorkflow": true,
+    "path": "openai",
+    "iconUrl": "plugins/openai/icon.svg",
+    "md5": "5c6003a3bd400a357e9260fde8e89866",
+    "updatedAt": "2026-06-18T01:06:04.319Z",
+    "files": [
+      "actions.js",
+      "icon.svg",
+      "info.json",
+      "lang.json",
+      "main.js",
+      "package-lock.json",
+      "package.json",
+      "README.md",
+      "tools.js",
+      "workflow.js"
+    ]
+  },
+  {
+    "id": "workflow.qianyin",
+    "name": "Qianyin Speech Synthesis",
+    "version": "1.0.0",
+    "description": "Qianyin TTS speech synthesis with multiple speakers, speed and pitch control",
+    "author": {
+      "name": "workflow"
+    },
+    "tags": [
+      "AI",
+      "Speech Synthesis",
+      "TTS",
+      "Qianyin"
+    ],
+    "type": "server",
+    "hasView": false,
+    "hasWorkflow": true,
+    "path": "qianyin",
+    "iconUrl": "plugins/qianyin/icon.png",
+    "md5": "e5287ba1e3734e7d16afdca1177b2ade",
+    "updatedAt": "2026-07-16T16:29:31.559Z",
+    "files": [
+      "actions.js",
+      "icon.png",
+      "info.json",
+      "lang.json",
+      "main.js",
+      "README.md",
+      "shared.js",
+      "tools.js",
+      "workflow.js"
+    ]
+  },
+  {
+    "id": "workflow.rembg",
+    "name": "Rembg Background Removal",
+    "version": "1.0.0",
+    "description": "One-click background removal via Rembg HTTP service. Supports URL/local file input, multiple segmentation models, Alpha Matting, solid background color, mask output and batch processing.",
+    "author": {
+      "name": "workflow"
+    },
+    "tags": [
+      "Image",
+      "Background Removal",
+      "Rembg",
+      "Matting"
+    ],
+    "type": "server",
+    "hasView": false,
+    "hasWorkflow": true,
+    "path": "rembg",
+    "iconUrl": "plugins/rembg/icon.png",
+    "md5": "eca9c974800a034ca926938701363cda",
+    "updatedAt": "2026-07-30T07:36:20.618Z",
+    "files": [
+      "actions.js",
+      "icon.png",
+      "info.json",
+      "lang.json",
+      "main.js",
+      "README.md",
+      "shared.js",
+      "tools.js",
+      "workflow.js"
+    ]
+  },
+  {
+    "id": "workflow.runninghub",
+    "name": "RunningHub",
+    "version": "1.0.0",
+    "description": "RunningHub AI task platform: ComfyUI workflow, AI app, model API video generation (image-to-video / reference-to-video, aggregating Kling/Hailuo/Vidu/Wan/seedance/SkyReels etc.), with task query, cancel, public model list and workflow JSON retrieval",
+    "author": {
+      "name": "workflow"
+    },
+    "tags": [
+      "AI",
+      "Video Generation",
+      "ComfyUI",
+      "RunningHub",
+      "Image-to-Video",
+      "Reference-to-Video"
+    ],
+    "type": "server",
+    "hasView": false,
+    "hasWorkflow": true,
+    "path": "runninghub",
+    "iconUrl": "plugins/runninghub/icon.png",
+    "md5": "297c96ca851ff61321de28fe8dd5f74e",
+    "updatedAt": "2026-07-28T08:20:18.492Z",
+    "files": [
+      "actions.js",
+      "icon.png",
+      "info.json",
+      "lang.json",
+      "main.js",
+      "shared.js",
+      "tools.js",
+      "workflow.js"
+    ]
+  },
+  {
+    "id": "workflow.sam",
+    "name": "SAM Box Segmentation",
+    "version": "1.0.0",
+    "description": "Call a standalone SAM HTTP service with one image and multiple boxes, returning a grayscale mask for each region.",
+    "author": {
+      "name": "workflow"
+    },
+    "tags": [
+      "Image",
+      "Segmentation",
+      "SAM"
+    ],
+    "type": "server",
+    "hasView": false,
+    "hasWorkflow": true,
+    "path": "sam",
+    "iconUrl": "plugins/sam/icon.png",
+    "md5": "63394ca8ef5fd74689188df933f72323",
+    "updatedAt": "2026-07-30T14:00:27.777Z",
+    "files": [
+      "actions.js",
+      "icon.png",
+      "info.json",
+      "lang.json",
+      "main.js",
+      "package.json",
+      "README.md",
+      "sam_server/.env.example",
+      "sam_server/README.md",
+      "sam_server/requirements.txt",
+      "sam_server/sam_server.py",
+      "shared.js",
+      "tools.js",
+      "workflow.js"
+    ]
+  },
+  {
+    "id": "workflow.suno",
+    "name": "Suno AI Music",
+    "version": "1.0.0",
+    "description": "Suno API integration: AI music generation, lyrics generation, audio extension, upload & cover, vocal removal, music video, task query and credits query",
+    "author": {
+      "name": "workflow"
+    },
+    "tags": [
+      "AI",
+      "Music",
+      "Suno",
+      "Lyrics",
+      "Vocal Removal"
+    ],
+    "type": "server",
+    "hasView": false,
+    "hasWorkflow": true,
+    "path": "suno",
+    "iconUrl": "plugins/suno/icon.svg",
+    "md5": "5f5723604a4683b3575e82a6e8835c67",
+    "updatedAt": "2026-06-22T05:55:10.260Z",
+    "files": [
+      "actions.js",
+      "icon.svg",
+      "info.json",
+      "lang.json",
+      "main.js",
+      "README.md",
+      "shared.js",
+      "tools.js",
+      "workflow.js"
+    ]
+  },
+  {
+    "id": "workflow.tencent-cos",
+    "name": "Tencent COS",
+    "version": "1.0.1",
+    "description": "Tencent COS object storage with upload, download, delete, list, signed URL, copy, and file metadata operations.",
+    "author": {
+      "name": "workflow"
+    },
+    "tags": [
+      "Cloud Storage",
+      "COS",
+      "Tencent"
+    ],
+    "type": "server",
+    "hasView": false,
+    "hasWorkflow": true,
+    "path": "tencent_cos",
+    "iconUrl": "plugins/tencent_cos/icon.svg",
+    "md5": "5479bce038341420952ec8decfbb7bb0",
+    "updatedAt": "2026-07-13T10:51:39.603Z",
+    "files": [
+      "actions.js",
+      "icon.svg",
+      "info.json",
+      "lang.json",
+      "main.js",
+      "package-lock.json",
+      "package.json",
+      "README.md",
+      "shared.js",
+      "tools.js",
+      "workflow.js"
+    ]
+  },
+  {
+    "id": "workflow.test-plugin",
+    "name": "Test Plugin",
+    "version": "1.0.0",
+    "description": "workflow Web client 插件示例，通过 CDN 加载 runtime 与 view",
+    "author": {
+      "name": "workflow"
+    },
+    "tags": [
+      "测试",
+      "开发",
+      "Web"
+    ],
+    "type": "client",
+    "hasView": true,
+    "hasWorkflow": false,
+    "path": "test-plugin",
+    "iconUrl": "https://raw.githubusercontent.com/hunmer/work-fox/refs/heads/master/plugins/test-plugin/icon.png",
+    "md5": "1a3cefd3eae85902db37486a437f3768",
+    "updatedAt": "2026-06-16T07:30:57.452Z",
+    "files": [
+      "README.md",
+      "view.js",
+      "web-client.js",
+      "web-plugin.json"
+    ]
+  },
+  {
+    "id": "workflow.webview",
+    "name": "Webview",
+    "version": "1.0.0",
+    "description": "Provides a webview workflow node rendered with customView and iframe fallback on Web.",
+    "author": {
+      "name": "workflow"
+    },
+    "tags": [
+      "Webview",
+      "iframe",
+      "customView"
+    ],
+    "type": "server",
+    "hasView": false,
+    "hasWorkflow": true,
+    "path": "webview",
+    "md5": "c1a87a0ef96f74d9e8d18b6ffac44c34",
+    "updatedAt": "2026-06-18T01:06:04.324Z",
+    "files": [
+      "actions.js",
+      "info.json",
+      "lang.json",
+      "main.js",
+      "README.md",
+      "tools.js",
+      "workflow.js"
+    ]
+  },
+  {
+    "id": "workflow.window-manager",
+    "name": "Window Manager",
+    "version": "1.0.0",
+    "description": "Provides workflow nodes for creating, navigating, closing, and taking screenshots of independent browser windows.",
+    "author": {
+      "name": "workflow"
+    },
+    "tags": [
+      "Window",
+      "Browser",
+      "Management"
+    ],
+    "type": "client",
+    "hasView": false,
+    "hasWorkflow": true,
+    "path": "window-manager",
+    "iconUrl": "plugins/window-manager/icon.png",
+    "md5": "b1f97902d28be2d8bc66aadd57703994",
+    "updatedAt": "2026-06-18T01:06:04.326Z",
+    "files": [
+      "actions.js",
+      "api.js",
+      "icon.png",
+      "info.json",
+      "lang.json",
+      "main.js",
+      "README.md",
+      "tools.js",
+      "workflow.js"
+    ]
+  }
+]

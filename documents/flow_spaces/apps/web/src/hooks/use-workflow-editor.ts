@@ -1,0 +1,243 @@
+
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { getWorkflowEditorStore } from '@/stores/workflow-editor';
+import type { WorkflowNode, WorkflowEdge } from '@agent-spaces/shared';
+import { copyToClipboard } from '@/lib/utils';
+import { remapPastedNodeData } from './workflow-clipboard';
+
+// ---- useWorkflowEditor ----
+
+export function useWorkflowEditor(workspaceId: string) {
+  const store = getWorkflowEditorStore(workspaceId);
+  const state = store();
+
+  return {
+    ...state,
+    store,
+  };
+}
+
+// ---- useFlowCanvas ----
+
+export function useFlowCanvas() {
+  const [isDragging, setIsDragging] = useState(false);
+
+  const onDragStart = useCallback(() => setIsDragging(true), []);
+  const onDragEnd = useCallback(() => setIsDragging(false), []);
+
+  return { isDragging, onDragStart, onDragEnd };
+}
+
+// ---- useEditorShortcuts ----
+
+function isEditableElement(element: Element | null): boolean {
+  if (!(element instanceof HTMLElement)) return false;
+
+  return (
+    element instanceof HTMLInputElement
+    || element instanceof HTMLTextAreaElement
+    || element instanceof HTMLSelectElement
+    || element.isContentEditable
+    || element.closest('.monaco-editor, .monaco-editor *') !== null
+    || element.closest('[contenteditable="true"], [role="textbox"]') !== null
+  );
+}
+
+function isEditableKeyboardTarget(event: KeyboardEvent): boolean {
+  if (event.composedPath().some(target => target instanceof Element && isEditableElement(target))) {
+    return true;
+  }
+
+  return isEditableElement(document.activeElement);
+}
+
+export function useEditorShortcuts({
+  onSave,
+  onUndo,
+  onRedo,
+  onDelete,
+  onCopy,
+  onPaste,
+}: {
+  onSave?: () => void;
+  onUndo?: () => void;
+  onRedo?: () => void;
+  onDelete?: () => void;
+  onCopy?: () => void;
+  onPaste?: () => void;
+}) {
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (!e.key) return;
+      const isEditableTarget = isEditableKeyboardTarget(e);
+      const key = e.key.toLowerCase();
+
+      if ((e.metaKey || e.ctrlKey) && key === 's') {
+        e.preventDefault();
+        onSave?.();
+      }
+      if (!isEditableTarget && (e.metaKey || e.ctrlKey) && key === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        onUndo?.();
+      }
+      if (!isEditableTarget && (e.metaKey || e.ctrlKey) && key === 'z' && e.shiftKey) {
+        e.preventDefault();
+        onRedo?.();
+      }
+      if (!isEditableTarget && (e.metaKey || e.ctrlKey) && key === 'y') {
+        e.preventDefault();
+        onRedo?.();
+      }
+      if (!isEditableTarget && (e.key === 'Delete' || e.key === 'Backspace')) {
+        onDelete?.();
+      }
+      if (!isEditableTarget && (e.metaKey || e.ctrlKey) && key === 'c') {
+        onCopy?.();
+      }
+      if (!isEditableTarget && (e.metaKey || e.ctrlKey) && key === 'v') {
+        onPaste?.();
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [onSave, onUndo, onRedo, onDelete, onCopy, onPaste]);
+}
+
+// ---- useClipboard ----
+
+export interface ClipboardRecord {
+  id: string;
+  nodes: WorkflowNode[];
+  edges: WorkflowEdge[];
+  count: number;
+  label: string;
+}
+
+const MAX_CLIPBOARD_RECORDS = 10;
+const WORKFLOW_CLIPBOARD_KIND = 'agent-spaces/workflow-nodes';
+
+interface WorkflowClipboardPayload {
+  kind: typeof WORKFLOW_CLIPBOARD_KIND;
+  version: 1;
+  nodes: WorkflowNode[];
+  edges: WorkflowEdge[];
+}
+
+function buildWorkflowClipboardPayload(nodes: WorkflowNode[], edges: WorkflowEdge[]): WorkflowClipboardPayload {
+  return {
+    kind: WORKFLOW_CLIPBOARD_KIND,
+    version: 1,
+    nodes: JSON.parse(JSON.stringify(nodes)),
+    edges: JSON.parse(JSON.stringify(edges)),
+  };
+}
+
+export function parseWorkflowClipboardText(text: string): { nodes: WorkflowNode[]; edges: WorkflowEdge[] } | null {
+  if (!text.trim()) return null;
+
+  try {
+    const parsed = JSON.parse(text) as Partial<WorkflowClipboardPayload> & { nodes?: WorkflowNode[]; edges?: WorkflowEdge[] };
+    const nodes = Array.isArray(parsed.nodes) ? parsed.nodes : null;
+    const edges = Array.isArray(parsed.edges) ? parsed.edges : [];
+    if (!nodes || nodes.length === 0) return null;
+    if (parsed.kind && parsed.kind !== WORKFLOW_CLIPBOARD_KIND) return null;
+    return {
+      nodes: JSON.parse(JSON.stringify(nodes)),
+      edges: JSON.parse(JSON.stringify(edges)),
+    };
+  } catch {
+    return null;
+  }
+}
+
+export function useClipboard() {
+  const recordsRef = useRef<ClipboardRecord[]>([]);
+  const [records, setRecords] = useState<ClipboardRecord[]>([]);
+
+  const copy = useCallback((nodes: WorkflowNode[], edges: WorkflowEdge[]) => {
+    if (nodes.length === 0) return;
+    const payload = buildWorkflowClipboardPayload(nodes, edges);
+    const record: ClipboardRecord = {
+      id: `clip_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      nodes: payload.nodes,
+      edges: payload.edges,
+      count: nodes.length,
+      label: nodes[0]?.label?.trim() || nodes[0]?.type || 'node',
+    };
+    const next = [record, ...recordsRef.current].slice(0, MAX_CLIPBOARD_RECORDS);
+    recordsRef.current = next;
+    setRecords(next);
+    void copyToClipboard(JSON.stringify(payload, null, 2)).catch(() => {});
+  }, []);
+
+  // record 省略时取最近一次复制
+  const paste = useCallback((record?: ClipboardRecord): { nodes: WorkflowNode[]; edges: WorkflowEdge[] } | null => {
+    const target = record ?? recordsRef.current[0];
+    if (!target) return null;
+    const idMap = new Map<string, string>();
+    for (const node of target.nodes) {
+      idMap.set(node.id, `node_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`);
+    }
+    const newNodes = target.nodes.map(n => ({
+      ...n,
+      id: idMap.get(n.id)!,
+      position: { ...n.position },
+      data: remapPastedNodeData(n.data, idMap),
+    }));
+    const newEdges = target.edges
+      .filter(e => idMap.has(e.source) && idMap.has(e.target))
+      .map(e => ({
+        ...e,
+        id: `edge_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+        source: idMap.get(e.source)!,
+        target: idMap.get(e.target)!,
+      }));
+    return { nodes: newNodes, edges: newEdges };
+  }, []);
+
+  const getData = useCallback((record?: ClipboardRecord): { nodes: WorkflowNode[]; edges: WorkflowEdge[] } | null => {
+    const target = record ?? recordsRef.current[0];
+    if (!target) return null;
+    return JSON.parse(JSON.stringify({ nodes: target.nodes, edges: target.edges }));
+  }, []);
+
+  const clear = useCallback(() => {
+    recordsRef.current = [];
+    setRecords([]);
+  }, []);
+
+  const hasData = records.length > 0;
+  const count = records.length;
+
+  return { copy, paste, getData, clear, hasData, count, records };
+}
+
+// ---- useExecutionPanel ----
+
+export function useExecutionPanel() {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const toggle = useCallback(() => setIsExpanded(v => !v), []);
+  return { isExpanded, toggle, setExpanded: setIsExpanded };
+}
+
+// ---- usePanelSizes ----
+
+export function usePanelSizes(storageKey: string) {
+  const [sizes, setSizes] = useState<number[]>(() => {
+    try {
+      const stored = localStorage.getItem(storageKey);
+      return stored ? JSON.parse(stored) : [280, 420];
+    } catch {
+      return [280, 420];
+    }
+  });
+
+  const updateSizes = useCallback((newSizes: number[]) => {
+    setSizes(newSizes);
+    try {
+      localStorage.setItem(storageKey, JSON.stringify(newSizes));
+    } catch {}
+  }, [storageKey]);
+
+  return { sizes, updateSizes };
+}
