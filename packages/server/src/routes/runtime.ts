@@ -1,19 +1,14 @@
 import { Router, type Request, type Response } from 'express';
 import { spawn } from 'node:child_process';
-import { existsSync, readFileSync } from 'node:fs';
-import { createRequire } from 'node:module';
-import { dirname, join, resolve } from 'node:path';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { AgentConfig } from '@agent-spaces/shared';
-import { buildDshSpawnSpec, resolveDshCommand } from '../adapters/deepseek-harness-command.js';
 
 const router = Router();
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const rootDir = join(__dirname, '../..');
-const workspaceRootDir = join(rootDir, '../..');
-const requireFromRoot = createRequire(join(rootDir, 'package.json'));
 
-type SupportedRuntimeKind = Extract<NonNullable<AgentConfig['runtimeKind']>, 'claude-code' | 'codex' | 'grok' | 'gemini-cli' | 'open-agent-sdk' | 'hermes' | 'pi' | 'deepseek-harness'>;
+type SupportedRuntimeKind = Extract<NonNullable<AgentConfig['runtimeKind']>, 'claude-code' | 'codex' | 'gemini-cli'>;
 type InstallableRuntimePackageId = RuntimeDescriptor['id'];
 type RuntimeCategory = 'cli' | 'sdk';
 type VersionSource = { type: 'npm'; packageName: string } | { type: 'github'; repo: string };
@@ -25,12 +20,11 @@ type InstallCommandSpec = {
 };
 
 interface RuntimeDescriptor {
-  id: 'claude-code' | 'codex' | 'grok' | 'gemini-cli' | 'hermes' | 'pi' | 'deepseek-harness' | 'claude-code-sdk' | 'codex-sdk' | 'open-agent-sdk' | 'openclaw' | 'omp' | 'opencode' | 'qwen' | 'cursor' | 'kimi' | 'kiro' | 'kilocode' | 'antigravity' | 'xiaomimimo' | 'githubcopilot';
+  id: 'claude-code' | 'codex' | 'gemini-cli';
   category: RuntimeCategory;
   label: string;
   commands?: string[];
   runtimeKind?: SupportedRuntimeKind;
-  packageName?: string;
   versionArgs?: string[];
   versionSource?: VersionSource;
   installable?: boolean;
@@ -73,23 +67,6 @@ const RUNTIME_DESCRIPTORS: RuntimeDescriptor[] = [
     },
   },
   {
-    id: 'grok',
-    category: 'cli',
-    label: 'Grok CLI',
-    commands: ['grok'],
-    runtimeKind: 'grok',
-    versionArgs: ['--version'],
-    installable: true,
-    updateCommand: {
-      command: process.env.GROK_CLI_PATH?.trim()
-        || (process.platform === 'win32' && process.env.USERPROFILE
-          ? join(process.env.USERPROFILE, '.grok', 'bin', 'grok.exe')
-          : 'grok'),
-      args: ['update'],
-      cwd: rootDir,
-    },
-  },
-  {
     id: 'gemini-cli',
     category: 'cli',
     label: 'Gemini CLI',
@@ -103,143 +80,6 @@ const RUNTIME_DESCRIPTORS: RuntimeDescriptor[] = [
       args: ['update', '-g', '@google/gemini-cli'],
       cwd: rootDir,
     },
-  },
-  {
-    id: 'deepseek-harness',
-    category: 'cli',
-    label: 'DeepSeek Harness CLI',
-    commands: ['dsh'],
-    runtimeKind: 'deepseek-harness',
-    versionArgs: ['--version'],
-    versionSource: { type: 'npm', packageName: '@deepseek-ai/dsh' },
-    installable: true,
-    updateCommand: {
-      command: 'npm',
-      args: ['update', '-g', '@deepseek-ai/dsh'],
-      cwd: rootDir,
-    },
-  },
-  {
-    id: 'hermes',
-    category: 'cli',
-    label: 'Hermes CLI',
-    commands: ['hermes'],
-    runtimeKind: 'hermes',
-    versionArgs: ['--version'],
-    versionSource: { type: 'github', repo: 'NousResearch/hermes-agent' },
-    installable: true,
-  },
-  {
-    id: 'openclaw',
-    category: 'cli',
-    label: 'OpenClaw',
-    commands: ['openclaw'],
-    versionArgs: ['--version'],
-  },
-  {
-    id: 'omp',
-    category: 'cli',
-    label: 'OpenMultiMind (OMP)',
-    commands: ['omp'],
-    versionArgs: ['--version'],
-  },
-  {
-    id: 'opencode',
-    category: 'cli',
-    label: 'OpenCode',
-    commands: ['opencode'],
-    versionArgs: ['--version'],
-  },
-  {
-    id: 'qwen',
-    category: 'cli',
-    label: 'Qwen Code',
-    commands: ['qwen'],
-    versionArgs: ['--version'],
-  },
-  {
-    id: 'cursor',
-    category: 'cli',
-    label: 'Cursor',
-    commands: ['cursor', 'cursor-agent'],
-    versionArgs: ['--version'],
-  },
-  {
-    id: 'kimi',
-    category: 'cli',
-    label: 'Kimi',
-    commands: ['kimi'],
-    versionArgs: ['--version'],
-  },
-  {
-    id: 'kiro',
-    category: 'cli',
-    label: 'Kiro',
-    commands: ['kiro'],
-    versionArgs: ['--version'],
-  },
-  {
-    id: 'kilocode',
-    category: 'cli',
-    label: 'Kilo Code',
-    commands: ['kilocode'],
-    versionArgs: ['--version'],
-  },
-  {
-    id: 'antigravity',
-    category: 'cli',
-    label: 'Antigravity',
-    commands: ['antigravity'],
-    versionArgs: ['--version'],
-  },
-  {
-    id: 'xiaomimimo',
-    category: 'cli',
-    label: 'Xiaomi MiMo',
-    commands: ['xiaomimimo'],
-    versionArgs: ['--version'],
-  },
-  {
-    id: 'githubcopilot',
-    category: 'cli',
-    label: 'GitHub Copilot',
-    commands: ['githubcopilot', 'gh', 'copilot'],
-    versionArgs: ['--version'],
-  },
-  {
-    id: 'pi',
-    category: 'sdk',
-    label: 'Pi SDK',
-    runtimeKind: 'pi',
-    packageName: '@earendil-works/pi-coding-agent',
-    installable: false,
-  },
-  {
-    id: 'claude-code-sdk',
-    category: 'sdk',
-    label: 'Claude Code SDK',
-    runtimeKind: 'claude-code',
-    packageName: '@anthropic-ai/claude-agent-sdk',
-    versionSource: { type: 'npm', packageName: '@anthropic-ai/claude-agent-sdk' },
-    installable: true,
-  },
-  {
-    id: 'codex-sdk',
-    category: 'sdk',
-    label: 'Codex SDK',
-    runtimeKind: 'codex',
-    packageName: '@openai/codex-sdk',
-    versionSource: { type: 'npm', packageName: '@openai/codex-sdk' },
-    installable: true,
-  },
-  {
-    id: 'open-agent-sdk',
-    category: 'sdk',
-    label: 'Open Agent SDK',
-    runtimeKind: 'open-agent-sdk',
-    packageName: '@codeany/open-agent-sdk',
-    versionSource: { type: 'npm', packageName: '@codeany/open-agent-sdk' },
-    installable: true,
   },
 ];
 
@@ -279,7 +119,7 @@ router.post('/install-cli', async (req: Request, res: Response) => {
   try {
     const installedPath = descriptor.category === 'cli' ? await locateRuntimeCommand(descriptor) : null;
     const installCommand = resolveRuntimeInstallCommand(descriptor, Boolean(installedPath));
-    const packageSpec = descriptor.packageName ? `${descriptor.packageName}@latest` : descriptor.label;
+    const packageSpec = descriptor.label;
     const result = await runCommand(installCommand.command, installCommand.args, installCommand.cwd);
     const refreshed = await refreshDiscoveryCache();
     const items = refreshed.items;
@@ -326,21 +166,6 @@ router.post('/check-sdk-updates', async (req: Request, res: Response) => {
 });
 
 async function discoverRuntime(descriptor: RuntimeDescriptor) {
-  if (descriptor.category === 'sdk' && descriptor.packageName) {
-    const installed = readInstalledPackage(descriptor.packageName);
-    return {
-      id: descriptor.id,
-      category: descriptor.category,
-      label: descriptor.label,
-      command: descriptor.packageName,
-      found: Boolean(installed),
-      path: installed?.path ?? null,
-      version: installed?.version ?? null,
-      runtimeKind: descriptor.runtimeKind ?? null,
-      supportedRuntime: Boolean(descriptor.runtimeKind),
-    };
-  }
-
   const path = await locateRuntimeCommand(descriptor);
   if (path) {
     const version = await readInstalledCliVersion(descriptor, path);
@@ -361,7 +186,7 @@ async function discoverRuntime(descriptor: RuntimeDescriptor) {
     id: descriptor.id,
     category: descriptor.category,
     label: descriptor.label,
-    command: descriptor.commands?.[0] ?? descriptor.packageName ?? descriptor.id,
+    command: descriptor.commands?.[0] ?? descriptor.id,
     found: false,
     path: null,
     version: null,
@@ -395,51 +220,11 @@ function locateCommand(command: string): Promise<string | null> {
 }
 
 async function locateRuntimeCommand(descriptor: RuntimeDescriptor): Promise<string | null> {
-  // DSH_CLI_PATH is authoritative: check the configured command before the default `dsh` name.
-  if (descriptor.id === 'deepseek-harness') {
-    try {
-      const configured = resolveDshCommand();
-      const located = await locateCommand(configured);
-      if (located) return located;
-      return configured !== 'dsh' && existsSync(configured) ? configured : null;
-    } catch {
-      return null;
-    }
-  }
-
   for (const command of descriptor.commands ?? []) {
     const path = await locateCommand(command);
     if (path) return path;
   }
 
-  if (descriptor.id === 'hermes') {
-    return resolveWindowsInstalledCliPath('HERMES_CLI_PATH', [
-      ['hermes', 'hermes-agent', 'venv', 'Scripts', 'hermes.exe'],
-      ['AppData', 'Local', 'hermes', 'hermes-agent', 'venv', 'Scripts', 'hermes.exe'],
-    ]);
-  }
-
-  if (descriptor.id === 'grok') {
-    return resolveWindowsInstalledCliPath('GROK_CLI_PATH', [
-      ['.grok', 'bin', 'grok.exe'],
-    ]);
-  }
-
-  return null;
-}
-
-function resolveWindowsInstalledCliPath(configEnvName: 'HERMES_CLI_PATH' | 'GROK_CLI_PATH', relativeCandidates: string[][]): string | null {
-  const configured = process.env[configEnvName]?.trim();
-  if (configured && existsSync(configured)) return configured;
-  if (process.platform !== 'win32') return null;
-
-  const bases = [process.env.LOCALAPPDATA, process.env.USERPROFILE].filter((value): value is string => Boolean(value));
-  for (const base of bases) {
-    for (const parts of relativeCandidates) {
-      const candidate = join(base, ...parts);
-      if (existsSync(candidate)) return candidate;
-    }
-  }
   return null;
 }
 
@@ -448,118 +233,14 @@ async function readInstalledCliVersion(descriptor: RuntimeDescriptor, commandPat
   if (!versionArgs || versionArgs.length === 0) return null;
 
   try {
-    const spec = descriptor.id === 'deepseek-harness'
-      ? buildDshSpawnSpec(commandPath, versionArgs)
-      : { command: commandPath, args: versionArgs };
-    const result = await runCommand(spec.command, spec.args, rootDir);
+    const result = await runCommand(commandPath, versionArgs, rootDir);
     return extractNormalizedVersion(result.stdout || result.stderr);
   } catch {
     return null;
   }
 }
 
-function locatePackage(packageName: string): string | null {
-  const directCandidates = [
-    resolve(rootDir, 'node_modules', ...packageName.split('/'), 'package.json'),
-    resolve(workspaceRootDir, 'node_modules', ...packageName.split('/'), 'package.json'),
-  ];
-  for (const directPath of directCandidates) {
-    if (existsSync(directPath)) return directPath;
-  }
-
-  try {
-    const entryPath = requireFromRoot.resolve(packageName);
-    return findPackageJsonPath(entryPath, packageName);
-  } catch {
-    return null;
-  }
-}
-
-function readInstalledPackage(packageName: string): { path: string; version: string | null } | null {
-  const path = locatePackage(packageName);
-  if (!path) return null;
-  try {
-    const pkg = JSON.parse(readFileSync(path, 'utf8')) as { version?: unknown };
-    return {
-      path,
-      version: typeof pkg.version === 'string' ? pkg.version : null,
-    };
-  } catch {
-    return { path, version: null };
-  }
-}
-
-function findPackageJsonPath(entryPath: string, packageName: string): string | null {
-  let currentDir = dirname(entryPath);
-  const root = dirname(currentDir);
-
-  while (currentDir !== root) {
-    const packageJsonPath = join(currentDir, 'package.json');
-    if (existsSync(packageJsonPath)) {
-      try {
-        const pkg = JSON.parse(readFileSync(packageJsonPath, 'utf8')) as { name?: unknown };
-        if (pkg.name === packageName) return packageJsonPath;
-      } catch {
-        // Ignore malformed package.json and continue upward.
-      }
-    }
-    const parentDir = dirname(currentDir);
-    if (parentDir === currentDir) break;
-    currentDir = parentDir;
-  }
-
-  return null;
-}
-
-function resolveInstallTarget(): { packageManager: 'pnpm' | 'npm'; cwd: string } {
-  const isProduction = process.env.NODE_ENV === 'production';
-
-  if (!isProduction && existsSync(join(workspaceRootDir, 'pnpm-lock.yaml'))) {
-    return {
-      packageManager: 'pnpm',
-      cwd: workspaceRootDir,
-    };
-  }
-
-  if (existsSync(join(rootDir, 'package-lock.json'))) {
-    return {
-      packageManager: 'npm',
-      cwd: rootDir,
-    };
-  }
-
-  if (existsSync(join(rootDir, 'pnpm-lock.yaml'))) {
-    return {
-      packageManager: 'pnpm',
-      cwd: rootDir,
-    };
-  }
-
-  return {
-    packageManager: 'npm',
-    cwd: rootDir,
-  };
-}
-
 function resolveRuntimeInstallCommand(descriptor: RuntimeDescriptor, alreadyInstalled = false): InstallCommandSpec {
-  if (descriptor.category === 'sdk' && descriptor.packageName) {
-    const installTarget = resolveInstallTarget();
-    const packageSpec = `${descriptor.packageName}@latest`;
-    return installTarget.packageManager === 'pnpm'
-      ? {
-          command: 'pnpm',
-          args: ['--filter', '@agent-spaces/server', 'add', packageSpec],
-          cwd: installTarget.cwd,
-          packageManagerLabel: 'pnpm',
-        }
-      : {
-          command: 'npm',
-          args: ['install', packageSpec],
-          cwd: installTarget.cwd,
-          packageManagerLabel: 'npm',
-        };
-  }
-
   if (alreadyInstalled && descriptor.updateCommand) {
     return {
       ...descriptor.updateCommand,
@@ -599,22 +280,6 @@ function resolveRuntimeInstallCommand(descriptor: RuntimeDescriptor, alreadyInst
         };
   }
 
-  if (descriptor.id === 'grok') {
-    return process.platform === 'win32'
-      ? {
-          command: 'powershell.exe',
-          args: ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', 'irm https://x.ai/cli/install.ps1 | iex'],
-          cwd: rootDir,
-          packageManagerLabel: 'powershell',
-        }
-      : {
-          command: 'sh',
-          args: ['-c', 'curl -fsSL https://x.ai/cli/install.sh | bash'],
-          cwd: rootDir,
-          packageManagerLabel: 'shell',
-        };
-  }
-
   if (descriptor.id === 'gemini-cli') {
     return {
       command: 'npm',
@@ -622,31 +287,6 @@ function resolveRuntimeInstallCommand(descriptor: RuntimeDescriptor, alreadyInst
       cwd: rootDir,
       packageManagerLabel: 'npm',
     };
-  }
-
-  if (descriptor.id === 'deepseek-harness') {
-    return {
-      command: 'npm',
-      args: ['install', '-g', '@deepseek-ai/dsh'],
-      cwd: rootDir,
-      packageManagerLabel: 'npm',
-    };
-  }
-
-  if (descriptor.id === 'hermes') {
-    return process.platform === 'win32'
-      ? {
-          command: 'powershell.exe',
-          args: ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', 'iex (irm https://hermes-agent.nousresearch.com/install.ps1)'],
-          cwd: rootDir,
-          packageManagerLabel: 'powershell',
-        }
-      : {
-          command: 'sh',
-          args: ['-c', 'curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash'],
-          cwd: rootDir,
-          packageManagerLabel: 'shell',
-        };
   }
 
   throw new Error(`runtime ${descriptor.id} is not installable`);
@@ -791,7 +431,7 @@ function fetchLatestVersion(descriptor: RuntimeDescriptor) {
     return Promise.resolve({
       latestVersion: null,
       debug: {
-        packageName: descriptor.packageName ?? descriptor.id,
+        packageName: descriptor.id,
         command: '',
         cwd: rootDir,
         stdout: '',
