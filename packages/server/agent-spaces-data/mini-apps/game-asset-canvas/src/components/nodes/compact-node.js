@@ -1,1 +1,0 @@
-export const COMPACT_NODE_ZOOM_THRESHOLD = 0.3;
